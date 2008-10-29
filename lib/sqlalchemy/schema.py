@@ -1690,7 +1690,7 @@ class MetaData(SchemaItem):
           total tables in the ``MetaData`` (others are ignored).
 
         checkfirst
-          Defaults to True, don't issue CREATEs for tables already present
+          Defaults to True, only issue DROPs for tables confirmed to be present
           in the target database.
         """
 
