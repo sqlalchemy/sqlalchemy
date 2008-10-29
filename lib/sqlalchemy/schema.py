@@ -1544,6 +1544,9 @@ class MetaData(SchemaItem):
     
     @property
     def sorted_tables(self):
+        """Returns a list of ``Table`` objects sorted in order of
+        dependency.
+        """
         from sqlalchemy.sql.util import sort_tables
         return sort_tables(self.tables.values())
         
