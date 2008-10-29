@@ -38,12 +38,12 @@ Loading objects is as easy as this::
     >>> users = db.users.all()
     >>> users.sort()
     >>> users
-    [MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
+    [MappedUsers(name=u'Joe Student',email=u'student@example.edu',password=u'student',classname=None,admin=0), MappedUsers(name=u'Bhargan Basepair',email=u'basepair@example.edu',password=u'basepair',classname=None,admin=1)]
 
 Of course, letting the database do the sort is better::
 
     >>> db.users.order_by(db.users.name).all()
-    [MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+    [MappedUsers(name=u'Bhargan Basepair',email=u'basepair@example.edu',password=u'basepair',classname=None,admin=1), MappedUsers(name=u'Joe Student',email=u'student@example.edu',password=u'student',classname=None,admin=0)]
 
 Field access is intuitive::
 
@@ -57,24 +57,24 @@ it::
     >>> from sqlalchemy import or_, and_, desc
     >>> where = or_(db.users.name=='Bhargan Basepair', db.users.email=='student@example.edu')
     >>> db.users.filter(where).order_by(desc(db.users.name)).all()
-    [MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
+    [MappedUsers(name=u'Joe Student',email=u'student@example.edu',password=u'student',classname=None,admin=0), MappedUsers(name=u'Bhargan Basepair',email=u'basepair@example.edu',password=u'basepair',classname=None,admin=1)]
 
 You can also use .first() (to retrieve only the first object from a query) or
 .one() (like .first when you expect exactly one user -- it will raise an
 exception if more were returned)::
 
     >>> db.users.filter(db.users.name=='Bhargan Basepair').one()
-    MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
+    MappedUsers(name=u'Bhargan Basepair',email=u'basepair@example.edu',password=u'basepair',classname=None,admin=1)
 
 Since name is the primary key, this is equivalent to
 
     >>> db.users.get('Bhargan Basepair')
-    MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
+    MappedUsers(name=u'Bhargan Basepair',email=u'basepair@example.edu',password=u'basepair',classname=None,admin=1)
 
 This is also equivalent to
 
     >>> db.users.filter_by(name='Bhargan Basepair').one()
-    MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
+    MappedUsers(name=u'Bhargan Basepair',email=u'basepair@example.edu',password=u'basepair',classname=None,admin=1)
 
 filter_by is like filter, but takes kwargs instead of full clause expressions.
 This makes it more concise for simple queries like this, but you can't do
@@ -107,7 +107,7 @@ it::
 
     >>> book_id = db.books.filter_by(title='Regional Variation in Moss').first().id
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
-    MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
+    MappedLoans(book_id=2,user_name=u'Bhargan Basepair',loan_date=None)
     >>> db.flush()
 
     >>> loan = db.loans.filter_by(book_id=2, user_name='Bhargan Basepair').one()
@@ -124,7 +124,7 @@ to the select methods.
 ::
 
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
-    MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
+    MappedLoans(book_id=2,user_name=u'Bhargan Basepair',loan_date=None)
     >>> db.flush()
     >>> db.loans.delete(db.loans.book_id==2)
 
@@ -133,7 +133,7 @@ book_id to 1 in all loans whose book_id is 2::
 
     >>> db.loans.update(db.loans.book_id==2, book_id=1)
     >>> db.loans.filter_by(book_id=1).all()
-    [MappedLoans(book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+    [MappedLoans(book_id=1,user_name=u'Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
 
 Joins
@@ -150,7 +150,7 @@ uses that as the join condition automatically.
 
     >>> join1 = db.join(db.users, db.loans, isouter=True)
     >>> join1.filter_by(name='Joe Student').all()
-    [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+    [MappedJoin(name=u'Joe Student',email=u'student@example.edu',password=u'student',classname=None,admin=0,book_id=1,user_name=u'Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
 If you're unfortunate enough to be using MySQL with the default MyISAM
 storage engine, you'll have to specify the join condition manually,
@@ -166,7 +166,7 @@ books table::
 
     >>> join2 = db.join(join1, db.books)
     >>> join2.all()
-    [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
+    [MappedJoin(name=u'Joe Student',email=u'student@example.edu',password=u'student',classname=None,admin=0,book_id=1,user_name=u'Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title=u'Mustards I Have Known',published_year=u'1989',authors=u'Jones')]
 
 If you join tables that have an identical column name, wrap your join
 with `with_labels`, to disambiguate columns with their table name
@@ -192,10 +192,10 @@ You can define relations on SqlSoup classes:
 These can then be used like a normal SA property:
 
     >>> db.users.get('Joe Student').loans
-    [MappedLoans(book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+    [MappedLoans(book_id=1,user_name=u'Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
     >>> db.users.filter(~db.users.loans.any()).all()
-    [MappedUsers(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1)]
+    [MappedUsers(name=u'Bhargan Basepair',email='basepair+nospam@example.edu',password=u'basepair',classname=None,admin=1)]
 
 
 relate can take any options that the relation function accepts in normal mapper definition:
@@ -241,7 +241,7 @@ PK in the database.)
     >>> s = s.alias('years_with_count')
     >>> years_with_count = db.map(s, primary_key=[s.c.published_year])
     >>> years_with_count.filter_by(published_year='1989').all()
-    [MappedBooks(published_year='1989',n=1)]
+    [MappedBooks(published_year=u'1989',n=1)]
 
 Obviously if we just wanted to get a list of counts associated with
 book years once, raw SQL is going to be less work. The advantage of
@@ -295,7 +295,7 @@ Boring tests here.  Nothing of real expository value.
 ::
 
     >>> db.users.filter_by(classname=None).order_by(db.users.name).all()
-    [MappedUsers(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+    [MappedUsers(name=u'Bhargan Basepair',email=u'basepair+nospam@example.edu',password=u'basepair',classname=None,admin=1), MappedUsers(name=u'Joe Student',email=u'student@example.edu',password=u'student',classname=None,admin=0)]
 
     >>> db.nopk
     Traceback (most recent call last):
@@ -463,14 +463,8 @@ def class_for_table(selectable, **mapper_kwargs):
         return cmp(t1, t2)
 
     def __repr__(self):
-        import locale
-        encoding = locale.getdefaultlocale()[1] or 'ascii'
-        L = []
-        for k in self.__class__.c.keys():
-            value = getattr(self, k, '')
-            if isinstance(value, unicode):
-                value = value.encode(encoding)
-            L.append("%s=%r" % (k, value))
+        L = ["%s=%r" % (key, getattr(self, key, ''))
+             for key in self.__class__.c.keys()]
         return '%s(%s)' % (self.__class__.__name__, ','.join(L))
 
     for m in ['__cmp__', '__repr__']:
