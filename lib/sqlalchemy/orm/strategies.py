@@ -368,7 +368,8 @@ class LazyLoader(AbstractRelationLoader):
                 # use the "committed" (database) version to get query column values
                 # also its a deferred value; so that when used by Query, the committed value is used
                 # after an autoflush occurs
-                bindparam.value = lambda: mapper._get_committed_state_attr_by_column(state, bind_to_col[bindparam.key])
+                o = state.obj() # strong ref
+                bindparam.value = lambda: mapper._get_committed_attr_by_column(o, bind_to_col[bindparam.key])
 
         if self.parent_property.secondary and alias_secondary:
             criterion = sql_util.ClauseAdapter(self.parent_property.secondary.alias()).traverse(criterion)

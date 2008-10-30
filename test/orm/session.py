@@ -207,6 +207,11 @@ class SessionTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_autoflush_expressions(self):
+        """test that an expression which is dependent on object state is 
+        evaluated after the session autoflushes.   This is the lambda
+        inside of strategies.py lazy_clause.
+        
+        """
         mapper(User, users, properties={
             'addresses':relation(Address, backref="user")})
         mapper(Address, addresses)
@@ -216,6 +221,16 @@ class SessionTest(_fixtures.FixtureTest):
         sess.add(u)
         eq_(sess.query(Address).filter(Address.user==u).one(),
             Address(email_address='foo'))
+
+        # still works after "u" is garbage collected
+        sess.commit()
+        sess.close()
+        u = sess.query(User).get(u.id)
+        q = sess.query(Address).filter(Address.user==u)
+        del u
+        gc.collect()
+        eq_(q.one(), Address(email_address='foo'))
+
 
     @testing.crashes('mssql', 'test causes mssql to hang')
     @testing.requires.independent_connections
