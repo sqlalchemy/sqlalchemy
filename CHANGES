@@ -82,7 +82,11 @@ CHANGES
 
     - No longer expects include_columns in table reflection to be
       lower case.
-
+      
+- misc
+    - util.flatten_iterator() func doesn't interpret strings with
+      __iter__() methods as iterators, such as in pypy [ticket:1077].
+      
 0.5.0rc2
 ========
 - orm

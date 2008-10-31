@@ -211,10 +211,10 @@ else:
 def flatten_iterator(x):
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.
-    """
 
+    """
     for elem in x:
-        if hasattr(elem, '__iter__'):
+        if not isinstance(elem, basestring) and hasattr(elem, '__iter__'):
             for y in flatten_iterator(elem):
                 yield y
         else:

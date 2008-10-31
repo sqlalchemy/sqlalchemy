@@ -92,6 +92,21 @@ class ColumnCollectionTest(TestBase):
 class ImmutableSubclass(str):
     pass
 
+class FlattenIteratorTest(TestBase):
+    def test_flatten(self):
+        assert list(util.flatten_iterator([[1,2,3], [4,5,6], 7, 8])) == [1,2,3,4,5,6,7,8]
+
+    def test_str_with_iter(self):
+        """ensure that a str object with an __iter__ method (like in PyPy) is not interpreted
+        as an iterable.
+        
+        """
+        class IterString(str):
+            def __iter__(self):
+                return iter(self + "")
+
+        assert list(util.flatten_iterator([IterString("asdf"), [IterString("x"), IterString("y")]])) == ["asdf", "x", "y"]
+                
 class HashOverride(object):
     def __init__(self, value=None):
         self.value = value
