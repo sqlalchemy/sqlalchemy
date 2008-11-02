@@ -645,16 +645,16 @@ class ExpireTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
 
         sess = create_session()
-        userlist = sess.query(User).all()
+        userlist = sess.query(User).order_by(User.id).all()
         assert self.static.user_address_result == userlist
         assert len(list(sess)) == 9
         sess.expire_all()
         gc.collect()
         assert len(list(sess)) == 4 # since addresses were gc'ed
 
-        userlist = sess.query(User).all()
+        userlist = sess.query(User).order_by(User.id).all()
         u = userlist[1]
-        assert self.static.user_address_result == userlist
+        self.assertEquals(self.static.user_address_result, userlist)
         assert len(list(sess)) == 9
 
 class PolymorphicExpireTest(_base.MappedTest):

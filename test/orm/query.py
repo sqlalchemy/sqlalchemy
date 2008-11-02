@@ -1010,7 +1010,7 @@ class JoinTest(QueryTest):
         q = sess.query(User)
         AdAlias = aliased(Address)
         q = q.add_entity(AdAlias).select_from(outerjoin(User, AdAlias))
-        l = q.all()
+        l = q.order_by(User.id, Address.id).all()
         self.assertEquals(l, expected)
 
         sess.clear()
@@ -1291,7 +1291,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         adalias = addresses.alias()
         q = sess.query(User).select_from(users.outerjoin(adalias)).options(contains_eager(User.addresses, alias=adalias))
         def go():
-            assert fixtures.user_address_result == q.all()
+            self.assertEquals(fixtures.user_address_result, q.order_by(User.id).all())
         self.assert_sql_count(testing.db, go, 1)
         sess.clear()
 
@@ -1687,7 +1687,7 @@ class MixedEntitiesTest(QueryTest):
         q = sess.query(User)
         adalias = addresses.alias('adalias')
         q = q.add_entity(Address, alias=adalias).select_from(users.outerjoin(adalias))
-        l = q.all()
+        l = q.order_by(User.id, Address.id).all()
         assert l == expected
 
         sess.clear()
@@ -2305,7 +2305,6 @@ class ExternalColumnsTest(QueryTest):
             Address(id=4, user=User(id=8, concat=16, count=3)),
             Address(id=5, user=User(id=9, concat=18, count=1))
         ]
-
         self.assertEquals(sess.query(Address).all(), address_result)
 
         # run the eager version twice to test caching of aliased clauses
@@ -2322,7 +2321,7 @@ class ExternalColumnsTest(QueryTest):
         )
 
         self.assertEquals(
-                sess.query(Address, ualias.count).join(('user', ualias)).join('user', aliased=True).all(),
+                sess.query(Address, ualias.count).join(('user', ualias)).join('user', aliased=True).order_by(Address.id).all(),
                 [
                     (Address(id=1), 1),
                     (Address(id=2), 3),
@@ -2332,7 +2331,7 @@ class ExternalColumnsTest(QueryTest):
                 ]
             )
 
-        self.assertEquals(sess.query(Address, ualias.concat, ualias.count).join(('user', ualias)).join('user', aliased=True).all(),
+        self.assertEquals(sess.query(Address, ualias.concat, ualias.count).join(('user', ualias)).join('user', aliased=True).order_by(Address.id).all(),
             [
                 (Address(id=1), 14, 1),
                 (Address(id=2), 16, 3),

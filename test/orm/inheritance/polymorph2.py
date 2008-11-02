@@ -732,7 +732,7 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         
         r = session.query(Person).filter(Person.name.like('%2')).join('status').filter_by(name="active")
         assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
-        r = session.query(Engineer).join('status').filter(Person.name.in_(['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & (status.c.name=="active"))
+        r = session.query(Engineer).join('status').filter(Person.name.in_(['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & (status.c.name=="active")).order_by(Person.name)
         assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"
 
         r = session.query(Person).filter(exists([1], Car.owner==Person.person_id))
