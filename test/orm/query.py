@@ -41,6 +41,9 @@ class QueryTest(FixtureTest):
         })
         mapper(Keyword, keywords)
 
+        compile_mappers()
+        #class_mapper(User).add_property('addresses', relation(Address, primaryjoin=User.id==Address.user_id, order_by=Address.id, backref='user'))
+
 class UnicodeSchemaTest(QueryTest):
     keep_mappers = False
 
@@ -357,10 +360,10 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         )
 
         # fails, needs autoaliasing
-        #self._test(
-        #    Node.children==None, 
-        #    "NOT (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id))"
-        #)
+        self._test(
+            Node.children==None, 
+            "NOT (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id))"
+        )
         
         self._test(
             Node.parent==None,
@@ -372,33 +375,19 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             "nodes_1.parent_id IS NULL"
         )
 
-        # fails, needs autoaliasing
-        #self._test(
-        #    Node.children==[Node(id=1), Node(id=2)],
-        #    "(EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id AND nodes_1.id = :id_1)) "
-        #    "AND (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id AND nodes_1.id = :id_2))"
-        #)
-
         # fails, overaliases
-        #self._test(
-        #    nalias.children==[Node(id=1), Node(id=2)],
-        #    "(EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id AND nodes_1.id = :id_1)) "
-        #    "AND (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id AND nodes_1.id = :id_2))"
-        #)
-        
-        # fails, overaliases
-        #self._test(
-        #    nalias.children==None, 
-        #    "NOT (EXISTS (SELECT 1 FROM nodes AS nodes WHERE nodes_1.id = nodes.parent_id))"
-        #)
+        self._test(
+            nalias.children==None, 
+            "NOT (EXISTS (SELECT 1 FROM nodes WHERE nodes_1.id = nodes.parent_id))"
+        )
         
         # fails
-        #self._test(
-        #        nalias.children.any(Node.data=='some data'), 
-        #        "EXISTS (SELECT 1 FROM nodes WHERE "
-        #        "nodes_1.id = nodes.parent_id AND nodes.data = :data_1)")
+        self._test(
+                nalias.children.any(Node.data=='some data'), 
+                "EXISTS (SELECT 1 FROM nodes WHERE "
+                "nodes_1.id = nodes.parent_id AND nodes.data = :data_1)")
         
-        # fails
+        # fails, but I think I want this to fail
         #self._test(
         #        Node.children.any(nalias.data=='some data'), 
         #        "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE "
@@ -406,10 +395,10 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         #        )
 
         # fails, overaliases
-        #self._test(
-        #    nalias.parent.has(Node.data=='some data'), 
-        #   "EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id AND nodes.data = :data_1)"
-        #)
+        self._test(
+            nalias.parent.has(Node.data=='some data'), 
+           "EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id AND nodes.data = :data_1)"
+        )
 
         self._test(
             Node.parent.has(Node.data=='some data'), 
@@ -428,10 +417,10 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
         # fails
         # (also why are we doing an EXISTS for this??)
-        #self._test(
-        #    nalias.parent != Node(id=7), 
-        #    'NOT (EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id AND nodes.id = :id_1))'
-        #)
+        self._test(
+            nalias.parent != Node(id=7), 
+            'nodes_1.parent_id != :parent_id_1 OR nodes_1.parent_id IS NULL'
+        )
         
         self._test(
             nalias.children.contains(Node(id=7)), "nodes_1.id = :param_1"
@@ -451,8 +440,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_selfref_between(self):
         ualias = aliased(User)
         self._test(User.id.between(ualias.id, ualias.id), "users.id BETWEEN users_1.id AND users_1.id")
-        # fails:
-        # self._test(ualias.id.between(User.id, User.id), "users_1.id BETWEEN users.id AND users.id")
+        self._test(ualias.id.between(User.id, User.id), "users_1.id BETWEEN users.id AND users.id")
 
     def test_clauses(self):
         for (expr, compare) in (
@@ -569,6 +557,31 @@ class TextTest(QueryTest):
     def test_binds(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()
 
+
+class FooTest(FixtureTest):
+    keep_data = True
+        
+    def test_filter_by(self):
+        clear_mappers()
+        sess = create_session(bind=testing.db)
+        from sqlalchemy.ext.declarative import declarative_base
+        Base = declarative_base(bind=testing.db)
+        class User(Base, _base.ComparableEntity):
+            __table__ = users
+        
+        class Address(Base, _base.ComparableEntity):
+            __table__ = addresses
+
+        compile_mappers()
+#        Address.user = relation(User, primaryjoin="User.id==Address.user_id")
+        Address.user = relation(User, primaryjoin=User.id==Address.user_id)
+#        Address.user = relation(User, primaryjoin=users.c.id==addresses.c.user_id)
+        compile_mappers()
+#        Address.user.property.primaryjoin = User.id==Address.user_id
+        user = sess.query(User).get(8)
+        print sess.query(Address).filter_by(user=user).all()
+        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).filter_by(user=user).all()
+    
 class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()

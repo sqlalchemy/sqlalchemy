@@ -263,7 +263,12 @@ class AliasedClass(object):
 
     def __adapt_prop(self, prop):
         existing = getattr(self.__target, prop.key)
-        comparator = AliasedComparator(self, self.__adapter, existing.comparator)
+        
+        adapter = sql_util.ClauseAdapter(self.__alias, equivalents=self.__mapper._equivalent_columns, exclude=getattr(prop, 'remote_side', None))
+        def adapt(elem):
+            return adapter.traverse(elem)._annotate({'parententity': self})
+        comparator = existing.comparator.adapted(adapt)
+
         queryattr = attributes.QueryableAttribute(
             existing.impl, parententity=self, comparator=comparator)
         setattr(self, prop.key, queryattr)
@@ -299,22 +304,6 @@ class AliasedClass(object):
         return '<AliasedClass at 0x%x; %s>' % (
             id(self), self.__target.__name__)
 
-class AliasedComparator(PropComparator):
-    def __init__(self, aliasedclass, adapter, comparator):
-        self.aliasedclass = aliasedclass
-        self.comparator = comparator
-        self.adapter = adapter
-        self.__clause_element = self.adapter.traverse(self.comparator.__clause_element__())._annotate({'parententity': aliasedclass})
-
-    def __clause_element__(self):
-        return self.__clause_element
-
-    def operate(self, op, *other, **kwargs):
-        return self.adapter.traverse(self.comparator.operate(op, *other, **kwargs))
-
-    def reverse_operate(self, op, other, **kwargs):
-        return self.adapter.traverse(self.comparator.reverse_operate(op, *other, **kwargs))
-
 def _orm_annotate(element, exclude=None):
     """Deep copy the given ClauseElement, annotating each element with the "_orm_adapt" flag.
     
@@ -324,8 +313,8 @@ def _orm_annotate(element, exclude=None):
     def clone(elem):
         if exclude and elem in exclude:
             elem = elem._clone()
-        elif '_orm_adapt' not in elem._annotations:
-            elem = elem._annotate({'_orm_adapt':True})
+        elif '_orm_adapt' not in elem._annotations or '_halt_adapt' in elem._annotations:
+            elem = elem._annotate({'_orm_adapt':True, '_halt_adapt':False})
         elem._copy_internals(clone=clone)
         return elem
     
