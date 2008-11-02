@@ -85,11 +85,8 @@ class ColumnProperty(StrategizedProperty):
     class ColumnComparator(PropComparator):
         @util.memoized_instancemethod
         def __clause_element__(self):
-            if self.adapter:
-                return self.adapter(self.prop.columns[0])
-            else:
-                return self.prop.columns[0]._annotate({"parententity": self.mapper})
-                
+            return self.prop.columns[0]._annotate({"parententity": self.mapper})
+
         def operate(self, op, *other, **kwargs):
             return op(self.__clause_element__(), *other, **kwargs)
 
@@ -321,26 +318,18 @@ class PropertyLoader(StrategizedProperty):
         self._is_backref = _is_backref
 
     class Comparator(PropComparator):
-        def __init__(self, prop, mapper, of_type=None, adapter=None):
+        def __init__(self, prop, mapper, of_type=None):
             self.prop = self.property = prop
             self.mapper = mapper
-            self.adapter = adapter
             if of_type:
                 self._of_type = _class_to_mapper(of_type)
 
-        def adapted(self, adapter):
-            return PropertyLoader.Comparator(self.prop, self.mapper, getattr(self, '_of_type', None), adapter)
-            
         @property
         def parententity(self):
             return self.prop.parent
 
         def __clause_element__(self):
-            elem = self.prop.parent._with_polymorphic_selectable
-            if self.adapter:
-                return self.adapter(elem)
-            else:
-                return elem
+            return self.prop.parent._with_polymorphic_selectable
 
         def operate(self, op, *other, **kwargs):
             return op(self, *other, **kwargs)
@@ -354,15 +343,13 @@ class PropertyLoader(StrategizedProperty):
         def __eq__(self, other):
             if other is None:
                 if self.prop.direction in [ONETOMANY, MANYTOMANY]:
-                    return ~self._criterion_exists()
+                    return ~sql.exists([1], self.prop.primaryjoin)
                 else:
-                    return self.prop._optimized_compare(None, adapt_source=self.adapter)
+                    return self.prop._optimized_compare(None)
             elif self.prop.uselist:
                 raise sa_exc.InvalidRequestError("Can't compare a collection to an object or collection; use contains() to test for membership.")
             else:
-                import pdb
-                pdb.set_trace()
-                return self.prop._optimized_compare(other, adapt_source=self.adapter)
+                return self.prop._optimized_compare(other)
 
         def _criterion_exists(self, criterion=None, **kwargs):
             if getattr(self, '_of_type', None):
@@ -373,12 +360,7 @@ class PropertyLoader(StrategizedProperty):
             else:
                 to_selectable = None
 
-            if self.adapter:
-                source_selectable = self.__clause_element__()
-            else:
-                source_selectable = None
-            pj, sj, source, dest, secondary, target_adapter = \
-                self.prop._create_joins(dest_polymorphic=True, dest_selectable=to_selectable, source_selectable=source_selectable)
+            pj, sj, source, dest, secondary, target_adapter = self.prop._create_joins(dest_polymorphic=True, dest_selectable=to_selectable)
 
             for k in kwargs:
                 crit = self.prop.mapper.class_manager.get_inst(k) == kwargs[k]
@@ -387,7 +369,6 @@ class PropertyLoader(StrategizedProperty):
                 else:
                     criterion = criterion & crit
 
-            # why are we annotating ????
             if sj:
                 j = _orm_annotate(pj) & sj
             else:
@@ -402,10 +383,7 @@ class PropertyLoader(StrategizedProperty):
             # to anything in the enclosing query.
             if criterion:
                 criterion = criterion._annotate({'_halt_adapt': True})
-            
-            crit = j & criterion
-            
-            return sql.exists([1], crit, from_obj=dest).correlate(source)
+            return sql.exists([1], j & criterion, from_obj=dest).correlate(source)
 
         def any(self, criterion=None, **kwargs):
             if not self.prop.uselist:
@@ -421,7 +399,7 @@ class PropertyLoader(StrategizedProperty):
         def contains(self, other, **kwargs):
             if not self.prop.uselist:
                 raise sa_exc.InvalidRequestError("'contains' not implemented for scalar attributes.  Use ==")
-            clause = self.prop._optimized_compare(other, adapt_source=self.adapter)
+            clause = self.prop._optimized_compare(other)
 
             if self.prop.secondaryjoin:
                 clause.negation_clause = self.__negated_contains_or_equals(other)
@@ -432,22 +410,12 @@ class PropertyLoader(StrategizedProperty):
             if self.prop.direction == MANYTOONE:
                 state = attributes.instance_state(other)
                 strategy = self.prop._get_strategy(strategies.LazyLoader)
-                
-                def state_bindparam(state, col):
-                    o = state.obj() # strong ref
-                    return lambda: self.prop.mapper._get_committed_attr_by_column(o, col)
-                
-                def adapt(col):
-                    if self.adapter:
-                        return self.adapter(col)
-                    else:
-                        return col
-                        
                 if strategy.use_get:
                     return sql.and_(*[
                         sql.or_(
-                        adapt(x) != state_bindparam(state, y),
-                        adapt(x) == None)
+                        x !=
+                        self.prop.mapper._get_committed_state_attr_by_column(state, y),
+                        x == None)
                         for (x, y) in self.prop.local_remote_pairs])
                     
             criterion = sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))])
@@ -476,11 +444,10 @@ class PropertyLoader(StrategizedProperty):
         else:
             return op(self.comparator, value)
 
-    def _optimized_compare(self, value, value_is_parent=False, adapt_source=None):
+    def _optimized_compare(self, value, value_is_parent=False):
         if value is not None:
             value = attributes.instance_state(value)
-        return self._get_strategy(strategies.LazyLoader).\
-                lazy_clause(value, reverse_direction=not value_is_parent, alias_secondary=True, adapt_source=adapt_source)
+        return self._get_strategy(strategies.LazyLoader).lazy_clause(value, reverse_direction=not value_is_parent, alias_secondary=True)
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
@@ -638,10 +605,6 @@ class PropertyLoader(StrategizedProperty):
                         "Specify a 'primaryjoin' expression.  If this is a "
                         "many-to-many relation, 'secondaryjoin' is needed as well." % (self))
 
-        self.primaryjoin = self.primaryjoin._annotate({}) #{'_halt_adapt':True})
-#        if self.secondaryjoin:
-#            self.secondaryjoin = self.secondaryjoin._annotate({}) #{'_halt_adapt':True})
-        
     def _col_is_part_of_mappings(self, column):
         if self.secondary is None:
             return self.parent.mapped_table.c.contains_column(column) or \

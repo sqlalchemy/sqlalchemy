@@ -353,9 +353,9 @@ class LazyLoader(AbstractRelationLoader):
         self.is_class_level = True
         self._register_attribute(self.parent.class_, callable_=self.class_level_loader)
 
-    def lazy_clause(self, state, reverse_direction=False, alias_secondary=False, adapt_source=None):
+    def lazy_clause(self, state, reverse_direction=False, alias_secondary=False):
         if state is None:
-            return self._lazy_none_clause(reverse_direction, adapt_source=adapt_source)
+            return self._lazy_none_clause(reverse_direction)
             
         if not reverse_direction:
             (criterion, bind_to_col, rev) = (self.__lazywhere, self.__bind_to_col, self._equated_columns)
@@ -374,12 +374,9 @@ class LazyLoader(AbstractRelationLoader):
         if self.parent_property.secondary and alias_secondary:
             criterion = sql_util.ClauseAdapter(self.parent_property.secondary.alias()).traverse(criterion)
 
-        criterion = visitors.cloned_traverse(criterion, {}, {'bindparam':visit_bindparam})
-        if adapt_source:
-            criterion = adapt_source(criterion)
-        return criterion
-        
-    def _lazy_none_clause(self, reverse_direction=False, adapt_source=None):
+        return visitors.cloned_traverse(criterion, {}, {'bindparam':visit_bindparam})
+    
+    def _lazy_none_clause(self, reverse_direction=False):
         if not reverse_direction:
             (criterion, bind_to_col, rev) = (self.__lazywhere, self.__bind_to_col, self._equated_columns)
         else:
@@ -396,10 +393,7 @@ class LazyLoader(AbstractRelationLoader):
                 binary.right = expression.null()
                 binary.operator = operators.is_
         
-        criterion = visitors.cloned_traverse(criterion, {}, {'binary':visit_binary})
-        if adapt_source:
-            criterion = adapt_source(criterion)
-        return criterion
+        return visitors.cloned_traverse(criterion, {}, {'binary':visit_binary})
         
     def class_level_loader(self, state, options=None, path=None):
         if not mapperutil._state_has_identity(state):

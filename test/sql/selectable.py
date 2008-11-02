@@ -5,7 +5,7 @@ every selectable unit behaving nicely with others.."""
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from testlib import *
-from sqlalchemy.sql import util as sql_util, visitors
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy import exc
 
 metadata = MetaData()
@@ -475,21 +475,6 @@ class AnnotationsTest(TestBase):
         assert inner.corresponding_column(t2.c.col1, require_embedded=False) is inner.corresponding_column(t2.c.col1, require_embedded=True) is inner.c.col1
         assert inner.corresponding_column(t1.c.col1, require_embedded=False) is inner.corresponding_column(t1.c.col1, require_embedded=True) is inner.c.col1
 
-    def test_annotated_visit(self):
-        from sqlalchemy.sql import table, column
-        table1 = table('table1', column("col1"), column("col2"))
-        
-        bin = table1.c.col1 == bindparam('foo', value=None)
-        assert str(bin) == "table1.col1 = :foo"
-        def visit_binary(b):
-            b.right = table1.c.col2
-        b2 = visitors.cloned_traverse(bin, {}, {'binary':visit_binary})
-        assert str(b2) == "table1.col1 = table1.col2"
-
-        b3 = visitors.cloned_traverse(bin._annotate({}), {}, {'binary':visit_binary})
-        assert str(b3) == "table1.col1 = table1.col2"
-        
-        
         
 if __name__ == "__main__":
     testenv.main()
