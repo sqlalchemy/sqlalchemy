@@ -248,7 +248,7 @@ Consider this "association object" mapping:
         Column('id', Integer, primary_key=True),
         Column('name', String(64)),
     )
-    
+
     keywords_table = Table('keywords', metadata,
         Column('id', Integer, primary_key=True),
         Column('keyword', String(64))
@@ -283,7 +283,7 @@ Above are three simple tables, modeling users, keywords and a many-to-many relat
     # [<__main__.Keyword object at 0xb791ea0c>]
     print user.kw[0].keyword
     # 'cheese inspector'
-    print [keyword.keyword for keyword in u._keywords]
+    print [keyword.keyword for keyword in user.kw]
     # ['cheese inspector']
 
 With ``association_proxy`` you have a "view" of the relation that contains just the `.keyword` of the related objects.  The proxy is a Python property, and unlike the mapper relation, is defined in your class:
@@ -333,6 +333,10 @@ Association proxies are also useful for keeping [association objects](rel:datama
 
     # users_table and keywords_table tables as above, then:
 
+    def get_current_uid():
+        """Return the uid of the current user."""
+        return 1  # hardcoded for this example
+
     userkeywords_table = Table('userkeywords', metadata,
         Column('user_id', Integer, ForeignKey("users.id"), primary_key=True),
         Column('keyword_id', Integer, ForeignKey("keywords.id"), primary_key=True),
@@ -361,15 +365,12 @@ Association proxies are also useful for keeping [association objects](rel:datama
             self.user = user
             self.keyword = keyword
 
-    mapper(User, users_table, properties={
-        'user_keywords': relation(UserKeyword)
-    })
+    mapper(User, users_table)
     mapper(Keyword, keywords_table)
     mapper(UserKeyword, userkeywords_table, properties={
-        'user': relation(User),
+        'user': relation(User, backref='user_keywords'),
         'keyword': relation(Keyword),
     })
-
 
     user = User('log')
     kw1  = Keyword('new_from_blammo')
