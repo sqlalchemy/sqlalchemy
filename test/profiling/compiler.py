@@ -19,7 +19,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
     def test_insert(self):
         t1.insert().compile()
 
-    @profiling.function_call_count(70, {'2.4': 42})
+    @profiling.function_call_count(70, {'2.4': 45})
     def test_update(self):
         t1.update().compile()
 
