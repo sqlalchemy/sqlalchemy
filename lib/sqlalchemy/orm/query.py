@@ -552,9 +552,11 @@ class Query(object):
 
     def value(self, column):
         """Return a scalar result corresponding to the given column expression."""
-        
-        return self.values(column).next()[0]
-        
+        try:
+            return self.values(column).next()[0]
+        except StopIteration:
+            return None
+
     @_generative()
     def add_column(self, column):
         """Add a SQL ColumnElement to the list of result columns to be returned."""
@@ -1058,6 +1060,8 @@ class Query(object):
           <Item>
           >>> session.query(Item.id).scalar()
           1
+          >>> session.query(Item.id).filter(Item.id < 0).scalar()
+          None
           >>> session.query(Item.id, Item.name).scalar()
           1
           >>> session.query(func.count(Parent.id)).scalar()
@@ -1066,10 +1070,10 @@ class Query(object):
         This results in an execution of the underlying query.
 
         """
-        ret = list(self)[0]
-        if not isinstance(ret, tuple):
-            return ret
         try:
+            ret = list(self)[0]
+            if not isinstance(ret, tuple):
+                return ret
             return ret[0]
         except IndexError:
             return None

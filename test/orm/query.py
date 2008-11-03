@@ -1828,10 +1828,30 @@ class ImmediateTest(_fixtures.FixtureTest):
         self.assertRaises(sa.orm.exc.MultipleResultsFound,
                           sess.query(User, Address).join(User.addresses).one)
 
-
     @testing.future
     def test_getslice(self):
         assert False
+
+    @testing.resolve_artifact_names
+    def test_scalar(self):
+        sess = create_session()
+
+        eq_(sess.query(User.id).filter_by(id=7).scalar(), 7)
+        eq_(sess.query(User.id, User.name).filter_by(id=7).scalar(), 7)
+        eq_(sess.query(User.id).filter_by(id=0).scalar(), None)
+        eq_(sess.query(User).filter_by(id=7).scalar(),
+            sess.query(User).filter_by(id=7).one())
+
+    @testing.resolve_artifact_names
+    def test_value(self):
+        sess = create_session()
+
+        eq_(sess.query(User).filter_by(id=7).value(User.id), 7)
+        eq_(sess.query(User.id, User.name).filter_by(id=7).value(User.id), 7)
+        eq_(sess.query(User).filter_by(id=0).value(User.id), None)
+
+        sess.bind = sa.testing.db
+        eq_(sess.query().value(sa.literal_column('1')), 1)
 
 
 class SelectFromTest(QueryTest):
