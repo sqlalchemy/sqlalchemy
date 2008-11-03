@@ -1869,7 +1869,7 @@ class ImmediateTest(_fixtures.FixtureTest):
         eq_(sess.query(User).filter_by(id=0).value(User.id), None)
 
         sess.bind = sa.testing.db
-        eq_(sess.query().value(sa.literal_column('1')), 1)
+        eq_(sess.query().value(sa.literal_column('1').label('x')), 1)
 
 
 class SelectFromTest(QueryTest):
