@@ -929,7 +929,17 @@ class JoinTest(QueryTest):
             sess.query(User).join([('orders', orderalias), ('items', itemalias)]).filter(orderalias.user_id==9).filter(itemalias.description=='item 4').all(),
             []
         )
-
+    
+    def test_multiple_with_aliases(self):
+        sess = create_session()
+        
+        ualias = aliased(User)
+        oalias1 = aliased(Order)
+        oalias2 = aliased(Order)
+        result = sess.query(ualias).join((oalias1, ualias.orders), (oalias2, ualias.orders)).\
+                filter(or_(oalias1.user_id==9, oalias2.user_id==7)).all()
+        self.assertEquals(result, [User(id=7,name=u'jack'), User(id=9,name=u'fred')])
+        
     def test_orderby_arg_bug(self):
         sess = create_session()
         # no arg error
@@ -1377,7 +1387,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         ialias = aliased(Item)
         def go():
             l = q.options(contains_eager(User.orders, alias=oalias), contains_eager(User.orders, Order.items, alias=ialias)).\
-                outerjoin((oalias, User.orders), (ialias, Order.items)).order_by(User.id, oalias.id, ialias.id)
+                outerjoin((oalias, User.orders), (ialias, oalias.items)).order_by(User.id, oalias.id, ialias.id)
             assert fixtures.user_order_result == l.all()
         self.assert_sql_count(testing.db, go, 1)
         sess.clear()

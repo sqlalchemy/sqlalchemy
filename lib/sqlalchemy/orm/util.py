@@ -349,7 +349,7 @@ class _ORMJoin(expression.Join):
                 adapt_from = left
             else:
                 adapt_from = None
-
+        
         right_mapper, right, right_is_aliased = _entity_info(right)
         if right_is_aliased:
             adapt_to = right

@@ -24,6 +24,9 @@ CHANGES
       when using declarative), which later would be inappropriately 
       aliased by Query, particularly with the various EXISTS
       based comparators.
+    
+    - Fixed bug when using multiple query.join() with an aliased-bound
+      descriptor which would lose the left alias.
       
     - Improved weakref identity map memory management to no longer
       require mutexing, resurrects garbage collected instance on a
