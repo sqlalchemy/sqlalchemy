@@ -84,10 +84,9 @@ session.commit()
 print session.query(Employee).all()
 
 # 1. Find an employee and all his/her supervisors, no matter how deep the tree.
-# (the between() operator in SQLAlchemy has a bug here, [ticket:1171])
 ealias = aliased(Employee)
 print session.query(Employee).\
-            filter(ealias.left>=Employee.left).filter(ealias.left<=Employee.right).\
+            filter(ealias.left.between(Employee.left, Employee.right)).\
             filter(ealias.emp=='Eddie').all()
 
 #2. Find the employee and all his/her subordinates. (This query has a nice symmetry with the first query.)
@@ -97,7 +96,7 @@ print session.query(Employee).\
 
 #3. Find the level of each node, so you can print the tree as an indented listing.
 for indentation, employee in session.query(func.count(Employee.emp).label('indentation') - 1, ealias).\
-    filter(ealias.left>=Employee.left).filter(ealias.left<=Employee.right).\
+    filter(ealias.left.between(Employee.left, Employee.right)).\
     group_by(ealias.emp).\
     order_by(ealias.left):
     print "    " * indentation + str(employee)

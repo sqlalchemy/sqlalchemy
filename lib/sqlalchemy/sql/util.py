@@ -159,12 +159,59 @@ class Annotated(object):
         clone.__dict__ = self.__dict__.copy()
         clone._annotations = _values
         return clone
+    
+    def _deannotate(self):
+        return self.__element
+        
+    def _clone(self):
+        clone = self.__element._clone()
+        if clone is self.__element:
+            # detect immutable, don't change anything
+            return self
+        else:
+            # update the clone with any changes that have occured
+            # to this object's __dict__.
+            clone.__dict__.update(self.__dict__)
+            return Annotated(clone, self._annotations)
         
     def __hash__(self):
         return hash(self.__element)
 
     def __cmp__(self, other):
         return cmp(hash(self.__element), hash(other))
+
+def _deep_annotate(element, annotations, exclude=None):
+    """Deep copy the given ClauseElement, annotating each element with the given annotations dictionary.
+
+    Elements within the exclude collection will be cloned but not annotated.
+
+    """
+    def clone(elem):
+        # check if element is present in the exclude list.
+        # take into account proxying relationships.
+        if exclude and elem.proxy_set.intersection(exclude):
+            elem = elem._clone()
+        elif annotations != elem._annotations:
+            elem = elem._annotate(annotations.copy())
+        elem._copy_internals(clone=clone)
+        return elem
+
+    if element is not None:
+        element = clone(element)
+    return element
+
+def _deep_deannotate(element):
+    """Deep copy the given element, removing all annotations."""
+
+    def clone(elem):
+        elem = elem._deannotate()
+        elem._copy_internals(clone=clone)
+        return elem
+
+    if element is not None:
+        element = clone(element)
+    return element
+
 
 def splice_joins(left, right, stop_on=None):
     if left is None:
@@ -208,7 +255,6 @@ def reduce_columns(columns, *clauses, **kw):
     in the the selectable to just those that are not repeated.
 
     """
-
     ignore_nonexistent_tables = kw.pop('ignore_nonexistent_tables', False)
     
     columns = util.OrderedSet(columns)
@@ -317,7 +363,12 @@ def folded_equivalents(join, equivs=None):
     return collist
 
 class AliasedRow(object):
+    """Wrap a RowProxy with a translation map.
     
+    This object allows a set of keys to be translated
+    to those present in a RowProxy.
+    
+    """
     def __init__(self, row, map):
         # AliasedRow objects don't nest, so un-nest
         # if another AliasedRow was passed
@@ -341,10 +392,8 @@ class AliasedRow(object):
 
 
 class ClauseAdapter(visitors.ReplacingCloningVisitor):
-    """Given a clause (like as in a WHERE criterion), locate columns
-    which are embedded within a given selectable, and changes those
-    columns to be that of the selectable.
-
+    """Clones and modifies clauses based on column correspondence.
+    
     E.g.::
 
       table1 = Table('sometable', metadata,
@@ -358,7 +407,7 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
 
       condition = table1.c.col1 == table2.c.col1
 
-    and make an alias of table1::
+    make an alias of table1::
 
       s = table1.alias('foo')
 
@@ -401,7 +450,14 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
         return self._corresponding_column(col, True)
 
 class ColumnAdapter(ClauseAdapter):
-
+    """Extends ClauseAdapter with extra utility functions.
+    
+    Provides the ability to "wrap" this ClauseAdapter 
+    around another, a columns dictionary which returns
+    cached, adapted elements given an original, and an 
+    adapted_row() factory.
+    
+    """
     def __init__(self, selectable, equivalents=None, chain_to=None, include=None, exclude=None):
         ClauseAdapter.__init__(self, selectable, equivalents, include, exclude)
         if chain_to:

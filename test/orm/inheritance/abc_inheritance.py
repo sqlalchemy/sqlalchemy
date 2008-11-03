@@ -163,7 +163,7 @@ for parent in ["a", "b", "c"]:
         for direction in [ONETOMANY, MANYTOONE]:
             testclass = produce_test(parent, child, direction)
             exec("%s = testclass" % testclass.__name__)
-
+            del testclass
 
 if __name__ == "__main__":
     testenv.main()

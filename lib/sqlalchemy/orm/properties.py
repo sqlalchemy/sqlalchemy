@@ -18,7 +18,7 @@ from sqlalchemy.sql import operators, expression
 from sqlalchemy.orm import (
     attributes, dependency, mapper, object_mapper, strategies,
     )
-from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, _orm_annotate
+from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, _orm_annotate, _orm_deannotate
 from sqlalchemy.orm.interfaces import (
     MANYTOMANY, MANYTOONE, MapperProperty, ONETOMANY, PropComparator,
     StrategizedProperty,
@@ -85,8 +85,11 @@ class ColumnProperty(StrategizedProperty):
     class ColumnComparator(PropComparator):
         @util.memoized_instancemethod
         def __clause_element__(self):
-            return self.prop.columns[0]._annotate({"parententity": self.mapper})
-
+            if self.adapter:
+                return self.adapter(self.prop.columns[0])
+            else:
+                return self.prop.columns[0]._annotate({"parententity": self.mapper})
+                
         def operate(self, op, *other, **kwargs):
             return op(self.__clause_element__(), *other, **kwargs)
 
@@ -147,7 +150,11 @@ class CompositeProperty(ColumnProperty):
 
     class Comparator(PropComparator):
         def __clause_element__(self):
-            return expression.ClauseList(*self.prop.columns)
+            if self.adapter:
+                # TODO: test coverage for adapted composite comparison
+                return expression.ClauseList(*[self.adapter(x) for x in self.prop.columns])
+            else:
+                return expression.ClauseList(*self.prop.columns)
 
         def __eq__(self, other):
             if other is None:
@@ -318,18 +325,30 @@ class PropertyLoader(StrategizedProperty):
         self._is_backref = _is_backref
 
     class Comparator(PropComparator):
-        def __init__(self, prop, mapper, of_type=None):
+        def __init__(self, prop, mapper, of_type=None, adapter=None):
             self.prop = self.property = prop
             self.mapper = mapper
+            self.adapter = adapter
             if of_type:
                 self._of_type = _class_to_mapper(of_type)
 
+        def adapted(self, adapter):
+            """Return a copy of this PropComparator which will use the given adaption function
+            on the local side of generated expressions.
+
+            """
+            return PropertyLoader.Comparator(self.prop, self.mapper, getattr(self, '_of_type', None), adapter)
+            
         @property
         def parententity(self):
             return self.prop.parent
 
         def __clause_element__(self):
-            return self.prop.parent._with_polymorphic_selectable
+            elem = self.prop.parent._with_polymorphic_selectable
+            if self.adapter:
+                return self.adapter(elem)
+            else:
+                return elem
 
         def operate(self, op, *other, **kwargs):
             return op(self, *other, **kwargs)
@@ -343,13 +362,13 @@ class PropertyLoader(StrategizedProperty):
         def __eq__(self, other):
             if other is None:
                 if self.prop.direction in [ONETOMANY, MANYTOMANY]:
-                    return ~sql.exists([1], self.prop.primaryjoin)
+                    return ~self._criterion_exists()
                 else:
-                    return self.prop._optimized_compare(None)
+                    return self.prop._optimized_compare(None, adapt_source=self.adapter)
             elif self.prop.uselist:
                 raise sa_exc.InvalidRequestError("Can't compare a collection to an object or collection; use contains() to test for membership.")
             else:
-                return self.prop._optimized_compare(other)
+                return self.prop._optimized_compare(other, adapt_source=self.adapter)
 
         def _criterion_exists(self, criterion=None, **kwargs):
             if getattr(self, '_of_type', None):
@@ -360,7 +379,12 @@ class PropertyLoader(StrategizedProperty):
             else:
                 to_selectable = None
 
-            pj, sj, source, dest, secondary, target_adapter = self.prop._create_joins(dest_polymorphic=True, dest_selectable=to_selectable)
+            if self.adapter:
+                source_selectable = self.__clause_element__()
+            else:
+                source_selectable = None
+            pj, sj, source, dest, secondary, target_adapter = \
+                self.prop._create_joins(dest_polymorphic=True, dest_selectable=to_selectable, source_selectable=source_selectable)
 
             for k in kwargs:
                 crit = self.prop.mapper.class_manager.get_inst(k) == kwargs[k]
@@ -368,12 +392,15 @@ class PropertyLoader(StrategizedProperty):
                     criterion = crit
                 else:
                     criterion = criterion & crit
-
+            
+            # annotate the *local* side of the join condition, in the case of pj + sj this
+            # is the full primaryjoin, in the case of just pj its the local side of
+            # the primaryjoin.  
             if sj:
                 j = _orm_annotate(pj) & sj
             else:
                 j = _orm_annotate(pj, exclude=self.prop.remote_side)
-
+            
             if criterion and target_adapter:
                 # limit this adapter to annotated only?
                 criterion = target_adapter.traverse(criterion)
@@ -383,7 +410,10 @@ class PropertyLoader(StrategizedProperty):
             # to anything in the enclosing query.
             if criterion:
                 criterion = criterion._annotate({'_halt_adapt': True})
-            return sql.exists([1], j & criterion, from_obj=dest).correlate(source)
+            
+            crit = j & criterion
+            
+            return sql.exists([1], crit, from_obj=dest).correlate(source)
 
         def any(self, criterion=None, **kwargs):
             if not self.prop.uselist:
@@ -399,7 +429,7 @@ class PropertyLoader(StrategizedProperty):
         def contains(self, other, **kwargs):
             if not self.prop.uselist:
                 raise sa_exc.InvalidRequestError("'contains' not implemented for scalar attributes.  Use ==")
-            clause = self.prop._optimized_compare(other)
+            clause = self.prop._optimized_compare(other, adapt_source=self.adapter)
 
             if self.prop.secondaryjoin:
                 clause.negation_clause = self.__negated_contains_or_equals(other)
@@ -410,12 +440,22 @@ class PropertyLoader(StrategizedProperty):
             if self.prop.direction == MANYTOONE:
                 state = attributes.instance_state(other)
                 strategy = self.prop._get_strategy(strategies.LazyLoader)
+                
+                def state_bindparam(state, col):
+                    o = state.obj() # strong ref
+                    return lambda: self.prop.mapper._get_committed_attr_by_column(o, col)
+                
+                def adapt(col):
+                    if self.adapter:
+                        return self.adapter(col)
+                    else:
+                        return col
+                        
                 if strategy.use_get:
                     return sql.and_(*[
                         sql.or_(
-                        x !=
-                        self.prop.mapper._get_committed_state_attr_by_column(state, y),
-                        x == None)
+                        adapt(x) != state_bindparam(state, y),
+                        adapt(x) == None)
                         for (x, y) in self.prop.local_remote_pairs])
                     
             criterion = sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))])
@@ -444,10 +484,11 @@ class PropertyLoader(StrategizedProperty):
         else:
             return op(self.comparator, value)
 
-    def _optimized_compare(self, value, value_is_parent=False):
+    def _optimized_compare(self, value, value_is_parent=False, adapt_source=None):
         if value is not None:
             value = attributes.instance_state(value)
-        return self._get_strategy(strategies.LazyLoader).lazy_clause(value, reverse_direction=not value_is_parent, alias_secondary=True)
+        return self._get_strategy(strategies.LazyLoader).\
+                lazy_clause(value, reverse_direction=not value_is_parent, alias_secondary=True, adapt_source=adapt_source)
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
@@ -549,6 +590,14 @@ class PropertyLoader(StrategizedProperty):
         for attr in ('order_by', 'primaryjoin', 'secondaryjoin', 'secondary', '_foreign_keys', 'remote_side'):
             if callable(getattr(self, attr)):
                 setattr(self, attr, getattr(self, attr)())
+
+        # in the case that InstrumentedAttributes were used to construct
+        # primaryjoin or secondaryjoin, remove the "_orm_adapt" annotation so these
+        # interact with Query in the same way as the original Table-bound Column objects
+        for attr in ('primaryjoin', 'secondaryjoin'):
+            val = getattr(self, attr)
+            if val:
+                setattr(self, attr, _orm_deannotate(val))
         
         if self.order_by:
             self.order_by = [expression._literal_as_column(x) for x in util.to_list(self.order_by)]

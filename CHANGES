@@ -15,6 +15,16 @@ CHANGES
       to an iterable.  Use contains() to test for collection
       membership.
 
+    - Improved the behavior of aliased() objects such that they more
+      accurately adapt the expressions generated, which helps 
+      particularly with self-referential comparisons. [ticket:1171]
+      
+    - Fixed bug involving primaryjoin/secondaryjoin conditions
+      constructed from class-bound attributes (as often occurs 
+      when using declarative), which later would be inappropriately 
+      aliased by Query, particularly with the various EXISTS
+      based comparators.
+      
     - Improved weakref identity map memory management to no longer
       require mutexing, resurrects garbage collected instance on a
       lazy basis for an InstanceState with pending changes.

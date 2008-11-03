@@ -987,6 +987,13 @@ class ClauseElement(Visitable):
 
     @property
     def _cloned_set(self):
+        """Return the set consisting all cloned anscestors of this ClauseElement.
+        
+        Includes this ClauseElement.  This accessor tends to be used for 
+        FromClause objects to identify 'equivalent' FROM clauses, regardless
+        of transformative operations.
+        
+        """
         f = self
         while f is not None:
             yield f
@@ -1008,7 +1015,11 @@ class ClauseElement(Visitable):
         if Annotated is None:
             from sqlalchemy.sql.util import Annotated
         return Annotated(self, values)
-
+    
+    def _deannotate(self):
+        """return a copy of this ClauseElement with an empty annotations dictionary."""
+        return self._clone()
+        
     def unique_params(self, *optionaldict, **kwargs):
         """Return a copy with ``bindparam()`` elments replaced.
 

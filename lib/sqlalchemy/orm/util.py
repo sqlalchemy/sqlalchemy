@@ -243,6 +243,12 @@ class ExtensionCarrier(dict):
         return self.get(key, self._pass)
 
 class ORMAdapter(sql_util.ColumnAdapter):
+    """Extends ColumnAdapter to accept ORM entities.
+    
+    The selectable is extracted from the given entity,
+    and the AliasedClass if any is referenced.
+    
+    """
     def __init__(self, entity, equivalents=None, chain_to=None):
         mapper, selectable, is_aliased_class = _entity_info(entity)
         if is_aliased_class:
@@ -252,18 +258,36 @@ class ORMAdapter(sql_util.ColumnAdapter):
         sql_util.ColumnAdapter.__init__(self, selectable, equivalents, chain_to)
 
 class AliasedClass(object):
+    """Represents an 'alias'ed form of a mapped class for usage with Query.
+    
+    The ORM equivalent of a sqlalchemy.sql.expression.Alias 
+    object, this object mimics the mapped class using a 
+    __getattr__ scheme and maintains a reference to a
+    real Alias object.   It indicates to Query that the 
+    selectable produced for this class should be aliased,
+    and also adapts PropComparators produced by the class'
+    InstrumentedAttributes so that they adapt the 
+    "local" side of SQL expressions against the alias.
+    
+    """
     def __init__(self, cls, alias=None, name=None):
         self.__mapper = _class_to_mapper(cls)
         self.__target = self.__mapper.class_
         alias = alias or self.__mapper._with_polymorphic_selectable.alias()
         self.__adapter = sql_util.ClauseAdapter(alias, equivalents=self.__mapper._equivalent_columns)
         self.__alias = alias
+        # used to assign a name to the RowTuple object
+        # returned by Query.
         self._sa_label_name = name
         self.__name__ = 'AliasedClass_' + str(self.__target)
 
+    def __adapt_element(self, elem):
+        return self.__adapter.traverse(elem)._annotate({'parententity': self})
+        
     def __adapt_prop(self, prop):
         existing = getattr(self.__target, prop.key)
-        comparator = AliasedComparator(self, self.__adapter, existing.comparator)
+        comparator = existing.comparator.adapted(self.__adapt_element)
+
         queryattr = attributes.QueryableAttribute(
             existing.impl, parententity=self, comparator=comparator)
         setattr(self, prop.key, queryattr)
@@ -299,41 +323,16 @@ class AliasedClass(object):
         return '<AliasedClass at 0x%x; %s>' % (
             id(self), self.__target.__name__)
 
-class AliasedComparator(PropComparator):
-    def __init__(self, aliasedclass, adapter, comparator):
-        self.aliasedclass = aliasedclass
-        self.comparator = comparator
-        self.adapter = adapter
-        self.__clause_element = self.adapter.traverse(self.comparator.__clause_element__())._annotate({'parententity': aliasedclass})
-
-    def __clause_element__(self):
-        return self.__clause_element
-
-    def operate(self, op, *other, **kwargs):
-        return self.adapter.traverse(self.comparator.operate(op, *other, **kwargs))
-
-    def reverse_operate(self, op, other, **kwargs):
-        return self.adapter.traverse(self.comparator.reverse_operate(op, *other, **kwargs))
-
 def _orm_annotate(element, exclude=None):
     """Deep copy the given ClauseElement, annotating each element with the "_orm_adapt" flag.
     
     Elements within the exclude collection will be cloned but not annotated.
     
     """
-    def clone(elem):
-        if exclude and elem in exclude:
-            elem = elem._clone()
-        elif '_orm_adapt' not in elem._annotations:
-            elem = elem._annotate({'_orm_adapt':True})
-        elem._copy_internals(clone=clone)
-        return elem
-    
-    if element is not None:
-        element = clone(element)
-    return element
+    return sql_util._deep_annotate(element, {'_orm_adapt':True}, exclude)
 
-
+_orm_deannotate = sql_util._deep_deannotate
+        
 class _ORMJoin(expression.Join):
     """Extend Join to support ORM constructs as input."""
     
