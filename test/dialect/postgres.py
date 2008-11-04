@@ -384,12 +384,13 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
 
     def setUpAll(self):
         con = testing.db.connect()
-        try:
-            con.execute('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42')
-            con.execute('CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0')
-        except exc.SQLError, e:
-            if not "already exists" in str(e):
-                raise e
+        for ddl in ('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42',
+                    'CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0'):
+            try:
+                con.execute(ddl)
+            except exc.SQLError, e:
+                if not "already exists" in str(e):
+                    raise e
         con.execute('CREATE TABLE testtable (question integer, answer testdomain)')
         con.execute('CREATE TABLE alt_schema.testtable(question integer, answer alt_schema.testdomain, anything integer)')
         con.execute('CREATE TABLE crosschema (question integer, answer alt_schema.testdomain)')
