@@ -221,7 +221,7 @@ AUTOCOMMIT_RE = re.compile(
     r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|LOAD +DATA|REPLACE)',
     re.I | re.UNICODE)
 SELECT_RE = re.compile(
-    r'\s*(?:SELECT|SHOW|DESCRIBE|XA RECOVER|CALL)',
+    r'\s*(?:SELECT|SHOW|DESCRIBE|XA RECOVER|CALL|EXPLAIN)',
     re.I | re.UNICODE)
 SET_RE = re.compile(
     r'\s*SET\s+(?:(?:GLOBAL|SESSION)\s+)?\w',
