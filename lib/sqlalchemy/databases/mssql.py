@@ -337,12 +337,6 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = [int(row[0])] + self._last_inserted_ids[1:]
         super(MSSQLExecutionContext, self).post_exec()
 
-    _ms_is_select = re.compile(r'\s*(?:SELECT|sp_columns|EXEC)',
-                               re.I | re.UNICODE)
-
-    def returns_rows_text(self, statement):
-        return self._ms_is_select.match(statement) is not None
-
 
 class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):
     def pre_exec(self):

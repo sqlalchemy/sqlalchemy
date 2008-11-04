@@ -225,60 +225,25 @@ ischema_names = {
     'interval':PGInterval,
 }
 
+# TODO: filter out 'FOR UPDATE' statements
 SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
     re.I | re.UNICODE)
 
-SELECT_RE = re.compile(
-    r'\s*(?:SELECT|FETCH|(UPDATE|INSERT))',
-    re.I | re.UNICODE)
-
-RETURNING_RE = re.compile(
-    'RETURNING',
-    re.I | re.UNICODE)
-
-# This finds if the RETURNING is not inside a quoted/commented values. Handles string literals,
-# quoted identifiers, dollar quotes, SQL comments and C style multiline comments. This does not
-# handle correctly nested C style quotes, lets hope no one does the following:
-# UPDATE tbl SET x=y /* foo /* bar */ RETURNING */
-RETURNING_QUOTED_RE = re.compile(
-    """\s*(?:UPDATE|INSERT)\s
-        (?: # handle quoted and commented tokens separately
-            [^'"$/-] # non quote/comment character
-            | -(?!-) # a dash that does not begin a comment
-            | /(?!\*) # a slash that does not begin a comment
-            | "(?:[^"]|"")*" # quoted literal
-            | '(?:[^']|'')*' # quoted string
-            | \$(?P<dquote>[^$]*)\$.*?\$(?P=dquote)\$ # dollar quotes
-            | --[^\\n]*(?=\\n) # SQL comment, leave out line ending as that counts as whitespace
-                            # for the returning token
-            | /\*([^*]|\*(?!/))*\*/ # C style comment, doesn't handle nesting
-        )*
-        \sRETURNING\s""", re.I | re.UNICODE | re.VERBOSE)
-
 class PGExecutionContext(default.DefaultExecutionContext):
-    def returns_rows_text(self, statement):
-        m = SELECT_RE.match(statement)
-        return m and (not m.group(1) or (RETURNING_RE.search(statement)
-           and RETURNING_QUOTED_RE.match(statement)))
-
-    def returns_rows_compiled(self, compiled):
-        return isinstance(compiled.statement, expression.Selectable) or \
-            (
-                (compiled.isupdate or compiled.isinsert) and "postgres_returning" in compiled.statement.kwargs
-            )
-
     def create_cursor(self):
-        self.__is_server_side = \
+        # TODO: coverage for server side cursors + select.for_update()
+        is_server_side = \
             self.dialect.server_side_cursors and \
-            ((self.compiled and isinstance(self.compiled.statement, expression.Selectable)) \
+            ((self.compiled and isinstance(self.compiled.statement, expression.Selectable) and not self.compiled.statement.for_update) \
             or \
             (
                 (not self.compiled or isinstance(self.compiled.statement, expression._TextClause)) 
                 and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement))
             )
 
-        if self.__is_server_side:
+        self.__is_server_side = is_server_side
+        if is_server_side:
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
             ident = "c_%s_%s" % (hex(id(self))[2:], hex(random.randint(0, 65535))[2:])

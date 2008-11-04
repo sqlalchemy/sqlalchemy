@@ -220,9 +220,6 @@ RESERVED_WORDS = set(
 AUTOCOMMIT_RE = re.compile(
     r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|LOAD +DATA|REPLACE)',
     re.I | re.UNICODE)
-SELECT_RE = re.compile(
-    r'\s*(?:SELECT|SHOW|DESCRIBE|XA RECOVER|CALL|EXPLAIN)',
-    re.I | re.UNICODE)
 SET_RE = re.compile(
     r'\s*SET\s+(?:(?:GLOBAL|SESSION)\s+)?\w',
     re.I | re.UNICODE)
@@ -1462,9 +1459,6 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
             # This misses if a user forces autocommit on text('SET NAMES'),
             # which is probably a programming error anyhow.
             self.connection.info.pop(('mysql', 'charset'), None)
-
-    def returns_rows_text(self, statement):
-        return SELECT_RE.match(statement)
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_RE.match(statement)

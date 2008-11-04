@@ -261,45 +261,10 @@ ischema_names = {
        'BLOB': lambda r: r['stype']==1 and FBText() or FBBinary()
       }
 
-
-SELECT_RE = re.compile(
-    r'\s*(?:SELECT|(UPDATE|INSERT|DELETE))',
-    re.I | re.UNICODE)
-
-RETURNING_RE = re.compile(
-    'RETURNING',
-    re.I | re.UNICODE)
-
-# This finds if the RETURNING is not inside a quoted/commented values. Handles string literals,
-# quoted identifiers, dollar quotes, SQL comments and C style multiline comments. This does not
-# handle correctly nested C style quotes, lets hope no one does the following:
-# UPDATE tbl SET x=y /* foo /* bar */ RETURNING */
-RETURNING_QUOTED_RE = re.compile(
-    """\s*(?:UPDATE|INSERT|DELETE)\s
-        (?: # handle quoted and commented tokens separately
-            [^'"$/-] # non quote/comment character
-            | -(?!-) # a dash that does not begin a comment
-            | /(?!\*) # a slash that does not begin a comment
-            | "(?:[^"]|"")*" # quoted literal
-            | '(?:[^']|'')*' # quoted string
-            | --[^\\n]*(?=\\n) # SQL comment, leave out line ending as that counts as whitespace
-                               # for the returning token
-            | /\*([^*]|\*(?!/))*\*/ # C style comment, doesn't handle nesting
-        )*
-        \sRETURNING\s""", re.I | re.UNICODE | re.VERBOSE)
-
 RETURNING_KW_NAME = 'firebird_returning'
 
 class FBExecutionContext(default.DefaultExecutionContext):
-    def returns_rows_text(self, statement):
-        m = SELECT_RE.match(statement)
-        return m and (not m.group(1) or (RETURNING_RE.search(statement)
-                                         and RETURNING_QUOTED_RE.match(statement)))
-
-    def returns_rows_compiled(self, compiled):
-        return (isinstance(compiled.statement, sql.expression.Selectable) or
-                ((compiled.isupdate or compiled.isinsert or compiled.isdelete) and
-                 RETURNING_KW_NAME in compiled.statement.kwargs))
+    pass
 
 
 class FBDialect(default.DefaultDialect):

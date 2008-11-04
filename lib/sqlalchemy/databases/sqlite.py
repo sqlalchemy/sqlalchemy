@@ -14,8 +14,6 @@ import sqlalchemy.util as util
 from sqlalchemy.sql import compiler, functions as sql_functions
 from types import NoneType
 
-SELECT_REGEXP = re.compile(r'\s*(?:SELECT|PRAGMA)', re.I | re.UNICODE)
-
 class SLNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
         type_ = self.asdecimal and str or float
@@ -233,9 +231,6 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         if self.compiled.isinsert and not self.executemany:
             if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
                 self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
-
-    def returns_rows_text(self, statement):
-        return SELECT_REGEXP.match(statement)
 
 class SQLiteDialect(default.DefaultDialect):
     name = 'sqlite'

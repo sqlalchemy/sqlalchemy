@@ -19,8 +19,6 @@ from sqlalchemy import exc
 
 AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
                                re.I | re.UNICODE)
-SELECT_REGEXP = re.compile(r'\s*SELECT', re.I | re.UNICODE)
-
 
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
@@ -152,10 +150,8 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
             if isinstance(compiled.statement, expression._TextClause):
-                self.returns_rows = self.returns_rows_text(self.statement)
                 self.should_autocommit = compiled.statement._autocommit or self.should_autocommit_text(self.statement)
             else:
-                self.returns_rows = self.returns_rows_compiled(compiled)
                 self.should_autocommit = getattr(compiled.statement, '_autocommit', False) or self.should_autocommit_compiled(compiled)
 
             if not parameters:
@@ -181,15 +177,16 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.statement = statement
             self.isinsert = self.isupdate = False
             self.cursor = self.create_cursor()
-            self.returns_rows = self.returns_rows_text(statement)
             self.should_autocommit = self.should_autocommit_text(statement)
         else:
             # no statement. used for standalone ColumnDefault execution.
             self.statement = None
-            self.isinsert = self.isupdate = self.executemany = self.returns_rows = self.should_autocommit = False
+            self.isinsert = self.isupdate = self.executemany = self.should_autocommit = False
             self.cursor = self.create_cursor()
 
-    connection = property(lambda s:s._connection._branch())
+    @property
+    def connection(self):
+        return self._connection._branch()
 
     def __encode_param_keys(self, params):
         """apply string encoding to the keys of dictionary-based bind parameters.
@@ -248,12 +245,6 @@ class DefaultExecutionContext(base.ExecutionContext):
                 parameters.append(param)
         return parameters
 
-    def returns_rows_compiled(self, compiled):
-        return isinstance(compiled.statement, expression.Selectable)
-
-    def returns_rows_text(self, statement):
-        return SELECT_REGEXP.match(statement)
-
     def should_autocommit_compiled(self, compiled):
         return isinstance(compiled.statement, expression._UpdateBase)
 
@@ -269,15 +260,12 @@ class DefaultExecutionContext(base.ExecutionContext):
     def post_execution(self):
         self.post_exec()
 
-    def result(self):
-        return self.get_result_proxy()
-
     def pre_exec(self):
         pass
 
     def post_exec(self):
         pass
-
+    
     def get_result_proxy(self):
         return base.ResultProxy(self)
 

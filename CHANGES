@@ -58,6 +58,11 @@ CHANGES
       upon disposal to keep it outside of cyclic garbage collection.
 
 - sql
+    - Simplified the check for ResultProxy "autoclose without results"
+      to be based solely on presence of cursor.description.   
+      All the regexp-based guessing about statements returning rows 
+      has been removed [ticket:1212].
+      
     - Further simplified SELECT compilation and its relationship to
       result row processing.
 
@@ -96,9 +101,6 @@ CHANGES
     - No longer expects include_columns in table reflection to be
       lower case.
 
-    - added 'EXPLAIN' to the list of 'returns rows', but this 
-      issue will be addressed more fully by [ticket:1212].
-      
 - misc
     - util.flatten_iterator() func doesn't interpret strings with
       __iter__() methods as iterators, such as in pypy [ticket:1077].
