@@ -47,7 +47,6 @@ ILLEGAL_INITIAL_CHARACTERS = re.compile(r'[0-9$]')
 
 BIND_PARAMS = re.compile(r'(?<![:\w\$\x5c]):([\w\$]+)(?![:\w\$])', re.UNICODE)
 BIND_PARAMS_ESC = re.compile(r'\x5c(:[\w\$]+)(?![:\w\$])', re.UNICODE)
-ANONYMOUS_LABEL = re.compile(r'{ANON (-?\d+) ([^{}]+)}')
 
 BIND_TEMPLATES = {
     'pyformat':"%%(%(name)s)s",
@@ -129,6 +128,7 @@ class DefaultCompiler(engine.Compiled):
 
     Compiles ClauseElements into SQL strings.   Uses a similar visit
     paradigm as visitors.ClauseVisitor but implements its own traversal.
+
     """
 
     operators = OPERATORS
@@ -146,8 +146,8 @@ class DefaultCompiler(engine.Compiled):
         column_keys
           a list of column names to be compiled into an INSERT or UPDATE
           statement.
-        """
 
+        """
         super(DefaultCompiler, self).__init__(dialect, statement, column_keys, **kwargs)
 
         # if we are insert/update/delete.  set to true when we visit an INSERT, UPDATE or DELETE
@@ -171,11 +171,6 @@ class DefaultCompiler(engine.Compiled):
         # ResultProxy uses this for type processing and column targeting
         self.result_map = {}
 
-        # a dictionary of ClauseElement subclasses to counters, which are used to
-        # generate truncated identifier names or "anonymous" identifiers such as
-        # for aliases
-        self.generated_ids = {}
-
         # true if the paramstyle is positional
         self.positional = self.dialect.positional
         if self.positional:
@@ -185,6 +180,16 @@ class DefaultCompiler(engine.Compiled):
 
         # an IdentifierPreparer that formats the quoting of identifiers
         self.preparer = self.dialect.identifier_preparer
+
+        self.label_length = self.dialect.label_length or self.dialect.max_identifier_length
+        
+        # a map which tracks "anonymous" identifiers that are
+        # created on the fly here
+        self.anon_map = util.PopulateDict(self._process_anon)
+
+        # a map which tracks "truncated" names based on dialect.label_length
+        # or dialect.max_identifier_length
+        self.truncated_names = {}
 
     def compile(self):
         self.string = self.process(self.statement)
@@ -226,8 +231,8 @@ class DefaultCompiler(engine.Compiled):
         """Called when a SELECT statement has no froms, and no FROM clause is to be appended.
 
         Gives Oracle a chance to tack on a ``FROM DUAL`` to the string output.
-        """
 
+        """
         return ""
 
     def visit_grouping(self, grouping, **kwargs):
@@ -238,21 +243,22 @@ class DefaultCompiler(engine.Compiled):
         # or ORDER BY clause of a select.  dialect-specific compilers
         # can modify this behavior.
         if within_columns_clause:
-            labelname = self._truncated_identifier("colident", label.name)
+            labelname = isinstance(label.name, sql._generated_label) and \
+                    self._truncated_identifier("colident", label.name) or label.name
 
             if result_map is not None:
                 result_map[labelname.lower()] = (label.name, (label, label.element, labelname), label.element.type)
 
-            return " ".join([self.process(label.element), self.operator_string(operators.as_), self.preparer.format_label(label, labelname)])
+            return self.process(label.element) + " " + \
+                        self.operator_string(operators.as_) + " " + \
+                        self.preparer.format_label(label, labelname)
         else:
             return self.process(label.element)
             
     def visit_column(self, column, result_map=None, **kwargs):
-
-        if not column.is_literal:
-            name = self._truncated_identifier("colident", column.name)
-        else:
-            name = column.name
+        name = column.name
+        if not column.is_literal and isinstance(name, sql._generated_label):
+            name = self._truncated_identifier("colident", name)
 
         if result_map is not None:
             result_map[name.lower()] = (name, (column, ), column.type)
@@ -269,7 +275,7 @@ class DefaultCompiler(engine.Compiled):
                 schema_prefix = self.preparer.quote(column.table.schema, column.table.quote_schema) + '.'
             else:
                 schema_prefix = ''
-            return schema_prefix + self.preparer.quote(ANONYMOUS_LABEL.sub(self._process_anon, column.table.name), column.table.quote) + "." + name
+            return schema_prefix + self.preparer.quote(column.table.name % self.anon_map, column.table.quote) + "." + name
 
     def escape_literal_column(self, text):
         """provide escaping for the literal_column() construct."""
@@ -392,42 +398,37 @@ class DefaultCompiler(engine.Compiled):
             return self.bind_names[bindparam]
 
         bind_name = bindparam.key
-        bind_name = self._truncated_identifier("bindparam", bind_name)
+        bind_name = isinstance(bind_name, sql._generated_label) and \
+                        self._truncated_identifier("bindparam", bind_name) or bind_name
         # add to bind_names for translation
         self.bind_names[bindparam] = bind_name
 
         return bind_name
 
     def _truncated_identifier(self, ident_class, name):
-        if (ident_class, name) in self.generated_ids:
-            return self.generated_ids[(ident_class, name)]
+        if (ident_class, name) in self.truncated_names:
+            return self.truncated_names[(ident_class, name)]
         
-        anonname = ANONYMOUS_LABEL.sub(self._process_anon, name)
+        anonname = name % self.anon_map
 
-        if len(anonname) > self.dialect.max_identifier_length:
-            counter = self.generated_ids.get(ident_class, 1)
-            truncname = anonname[0:self.dialect.max_identifier_length - 6] + "_" + hex(counter)[2:]
-            self.generated_ids[ident_class] = counter + 1
+        if len(anonname) > self.label_length:
+            counter = self.truncated_names.get(ident_class, 1)
+            truncname = anonname[0:max(self.label_length - 6, 0)] + "_" + hex(counter)[2:]
+            self.truncated_names[ident_class] = counter + 1
         else:
             truncname = anonname
-        self.generated_ids[(ident_class, name)] = truncname
+        self.truncated_names[(ident_class, name)] = truncname
         return truncname
     
-    def _process_anon(self, match):
-        (ident, derived) = match.group(1, 2)
-
-        key = ('anonymous', ident)
-        if key in self.generated_ids:
-            return self.generated_ids[key]
-        else:
-            anonymous_counter = self.generated_ids.get(('anon_counter', derived), 1)
-            newname = derived + "_" + str(anonymous_counter)
-            self.generated_ids[('anon_counter', derived)] = anonymous_counter + 1
-            self.generated_ids[key] = newname
-            return newname
-
     def _anonymize(self, name):
-        return ANONYMOUS_LABEL.sub(self._process_anon, name)
+        return name % self.anon_map
+        
+    def _process_anon(self, key):
+        (ident, derived) = key.split(' ')
+
+        anonymous_counter = self.anon_map.get(derived, 1)
+        self.anon_map[derived] = anonymous_counter + 1
+        return derived + "_" + str(anonymous_counter)
 
     def bindparam_string(self, name):
         if self.positional:
@@ -438,7 +439,7 @@ class DefaultCompiler(engine.Compiled):
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         if asfrom:
-            return self.process(alias.original, asfrom=True, **kwargs) + " AS " + self.preparer.format_alias(alias, self._anonymize(alias.name))
+            return self.process(alias.original, asfrom=True, **kwargs) + " AS " + self.preparer.format_alias(alias, alias.name % self.anon_map)
         else:
             return self.process(alias.original, **kwargs)
 
@@ -457,7 +458,7 @@ class DefaultCompiler(engine.Compiled):
             not column.is_literal and \
             column.table is not None and \
             not isinstance(column.table, sql.Select):
-            return _CompileLabel(column, column.name)
+            return _CompileLabel(column, sql._generated_label(column.name))
         elif not isinstance(column, (sql._UnaryExpression, sql._TextClause, sql._BindParamClause)) and (not hasattr(column, 'name') or isinstance(column, sql._Function)):
             return _CompileLabel(column, column.anon_label)
         else:

@@ -110,14 +110,6 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
 
     @testing.requires.subqueries
     def test_subquery(self):
-        # this is the test that fails if the "max identifier length" is
-        # shorter than the length of the actual columns created, because the
-        # column names get truncated.  if you try to separate "physical
-        # columns" from "labels", and only truncate the labels, the
-        # compiler.DefaultCompiler.visit_select() logic which auto-labels
-        # columns in a subquery (for the purposes of sqlite compat) breaks the
-        # code, since it is creating "labels" on the fly but not affecting
-        # derived columns, which think they are still "physical"
         q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias('foo')
         x = select([q])
         print x.execute().fetchall()
@@ -137,5 +129,34 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
 
         print x.execute().fetchall()
 
+    def test_adjustable(self):
+
+        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias('foo')
+        x = select([q])
+
+        compile_dialect = default.DefaultDialect(label_length=10)
+        self.assert_compile(x, "SELECT foo.this_is_the_primarykey_column, foo.this_is_the_data_column FROM "
+            "(SELECT some_large_named_table.this_is_the_primarykey_column AS this_1, some_large_named_table.this_is_the_data_column "
+            "AS this_2 FROM some_large_named_table WHERE some_large_named_table.this_is_the_primarykey_column = :this_1) AS foo", dialect=compile_dialect)
+
+        compile_dialect = default.DefaultDialect(label_length=4)
+        self.assert_compile(x, "SELECT foo.this_is_the_primarykey_column, foo.this_is_the_data_column FROM "
+            "(SELECT some_large_named_table.this_is_the_primarykey_column AS _1, some_large_named_table.this_is_the_data_column AS _2 "
+            "FROM some_large_named_table WHERE some_large_named_table.this_is_the_primarykey_column = :_1) AS foo", dialect=compile_dialect)
+
+        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias()
+        x = select([q], use_labels=True)
+
+        compile_dialect = default.DefaultDialect(label_length=10)
+        self.assert_compile(x, "SELECT anon_1.this_is_the_primarykey_column AS anon_1, anon_1.this_is_the_data_column AS anon_2 FROM "
+            "(SELECT some_large_named_table.this_is_the_primarykey_column AS this_3, some_large_named_table.this_is_the_data_column AS this_4 "
+            "FROM some_large_named_table WHERE some_large_named_table.this_is_the_primarykey_column = :this_1) AS anon_1", dialect=compile_dialect)
+
+        compile_dialect = default.DefaultDialect(label_length=4)
+        self.assert_compile(x, "SELECT anon_1.this_is_the_primarykey_column AS _1, anon_1.this_is_the_data_column AS _2 FROM "
+            "(SELECT some_large_named_table.this_is_the_primarykey_column AS _3, some_large_named_table.this_is_the_data_column AS _4 "
+            "FROM some_large_named_table WHERE some_large_named_table.this_is_the_primarykey_column = :_1) AS anon_1", dialect=compile_dialect)
+        
+        
 if __name__ == '__main__':
     testenv.main()

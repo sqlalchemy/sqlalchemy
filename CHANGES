@@ -62,7 +62,16 @@ CHANGES
       to be based solely on presence of cursor.description.   
       All the regexp-based guessing about statements returning rows 
       has been removed [ticket:1212].
-      
+    
+    - Dialects can now generate label names of adjustable length.
+      Pass in the argument "label_length=<value>" to create_engine()
+      to adjust how many characters max will be present in dynamically
+      generated column labels, i.e. "somecolumn AS somelabel".  Any 
+      value less than 6 will result in a label of minimal size,
+      consiting of an underscore and a numeric counter.
+      The compiler uses the value of dialect.max_identifier_length
+      as a default. [ticket:1211]
+        
     - Further simplified SELECT compilation and its relationship to
       result row processing.
 

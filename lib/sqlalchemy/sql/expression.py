@@ -869,6 +869,9 @@ func = _FunctionGenerator()
 # TODO: use UnaryExpression for this instead ?
 modifier = _FunctionGenerator(group=False)
 
+class _generated_label(unicode):
+    """A unicode subclass used to identify dynamically generated names."""
+    
 def _clone(element):
     return element._clone()
 
@@ -1607,7 +1610,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         expressions and function calls.
 
         """
-        return "{ANON %d %s}" % (id(self), getattr(self, 'name', 'anon'))
+        return _generated_label("%%(%d %s)s" % (id(self), getattr(self, 'name', 'anon')))
 
 class ColumnCollection(util.OrderedProperties):
     """An ordered dictionary that stores a list of ColumnElement
@@ -1908,9 +1911,9 @@ class _BindParamClause(ColumnElement):
 
         """
         if unique:
-            self.key = "{ANON %d %s}" % (id(self), key or 'param')
+            self.key = _generated_label("%%(%d %s)s" % (id(self), key or 'param'))
         else:
-            self.key = key or "{ANON %d param}" % id(self)
+            self.key = key or _generated_label("%%(%d param)s" % id(self))
         self._orig_key = key or 'param'
         self.unique = unique
         self.value = value
@@ -1927,13 +1930,13 @@ class _BindParamClause(ColumnElement):
     def _clone(self):
         c = ClauseElement._clone(self)
         if self.unique:
-            c.key = "{ANON %d %s}" % (id(c), c._orig_key or 'param')
+            c.key = _generated_label("%%(%d %s)s" % (id(c), c._orig_key or 'param'))
         return c
 
     def _convert_to_unique(self):
         if not self.unique:
             self.unique = True
-            self.key = "{ANON %d %s}" % (id(self), self._orig_key or 'param')
+            self.key = _generated_label("%%(%d %s)s" % (id(self), self._orig_key or 'param'))
 
     def _get_from_objects(self, **modifiers):
         return []
@@ -2518,7 +2521,7 @@ class Alias(FromClause):
         if alias is None:
             if self.original.named_with_column:
                 alias = getattr(self.original, 'name', None)
-            alias = '{ANON %d %s}' % (id(self), alias or 'anon')
+            alias = _generated_label('%%(%d %s)s' % (id(self), alias or 'anon'))
         self.name = alias
 
     @property
@@ -2637,7 +2640,7 @@ class _Label(ColumnElement):
     def __init__(self, name, element, type_=None):
         while isinstance(element, _Label):
             element = element.element
-        self.name = self.key = self._label = name or "{ANON %d %s}" % (id(self), getattr(element, 'name', 'anon'))
+        self.name = self.key = self._label = name or _generated_label("%%(%d %s)s" % (id(self), getattr(element, 'name', 'anon')))
         self._element = element
         self._type = type_
         self.quote = element.quote
@@ -2736,7 +2739,7 @@ class _ColumnClause(_Immutable, ColumnElement):
                     _label = label + "_" + str(counter)
                     counter += 1
                 label = _label
-            return label
+            return _generated_label(label)
             
         else:
             return self.name

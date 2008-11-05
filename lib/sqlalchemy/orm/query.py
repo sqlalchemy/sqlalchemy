@@ -1210,7 +1210,8 @@ class Query(object):
                 try:
                     params[_get_params[primary_key].key] = ident[i]
                 except IndexError:
-                    raise sa_exc.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join("'%s'" % str(c) for c in q.mapper.primary_key))
+                    raise sa_exc.InvalidRequestError("Could not find enough values to formulate primary key for "
+                        "query.get(); primary key columns are %s" % ', '.join("'%s'" % c for c in q.mapper.primary_key))
             q._params = params
 
         if lockmode is not None:
