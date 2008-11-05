@@ -1637,7 +1637,14 @@ class CompositeTypesTest(_base.MappedTest):
 
         g2 = sess.query(Graph).get(Version(1, 1))
         eq_(g.version, g2.version)
+
+        # test pk mutation
+        g2.version = Version(2, 1)
+        sess.flush()
+        g3 = sess.query(Graph).get(Version(2, 1))
+        eq_(g2.version, g3.version)
         
+        # test pk with one column NULL
         # TODO: can't seem to get NULL in for a PK value
         # in either mysql or postgres, autoincrement=False etc.
         # notwithstanding

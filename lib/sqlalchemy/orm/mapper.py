@@ -1289,10 +1289,10 @@ class Mapper(object):
                                     params[col.key] = prop.get_col_value(col, history.added[0])
                                 if col in pks:
                                     if history.deleted:
-                                        params[col._label] = history.deleted[0]
+                                        params[col._label] = prop.get_col_value(col, history.deleted[0])
                                     else:
                                         # row switch logic can reach us here
-                                        params[col._label] = history.added[0]
+                                        params[col._label] = prop.get_col_value(col, history.added[0])
                                 hasdata = True
                             elif col in pks:
                                 params[col._label] = mapper._get_state_attr_by_column(state, col)

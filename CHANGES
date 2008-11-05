@@ -48,6 +48,9 @@ CHANGES
     - Repaired support for "passive-deletes" on a many-to-one
       relation() with "delete" cascade. [ticket:1183]
 
+    - Fixed bug in composite types which prevented a primary-key
+      composite type from being mutated [ticket:1213].
+      
     - Added more granularity to internal attribute access, such that
       cascade and flush operations will not initialize unloaded
       attributes and collections, leaving them intact for a
