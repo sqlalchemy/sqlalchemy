@@ -333,26 +333,28 @@ class Mapper(object):
             return self
             
         _COMPILE_MUTEX.acquire()
-        global _already_compiling
-        if _already_compiling:
-            self.__initialize_properties()
-            return
-        _already_compiling = True
         try:
+            global _already_compiling
+            if _already_compiling:
+                self.__initialize_properties()
+                return
+            _already_compiling = True
+            try:
 
-            # double-check inside mutex
-            if self.__props_init and not _new_mappers:
+                # double-check inside mutex
+                if self.__props_init and not _new_mappers:
+                    return self
+
+                # initialize properties on all mappers
+                for mapper in list(_mapper_registry):
+                    if not mapper.__props_init:
+                        mapper.__initialize_properties()
+
+                _new_mappers = False
                 return self
-
-            # initialize properties on all mappers
-            for mapper in list(_mapper_registry):
-                if not mapper.__props_init:
-                    mapper.__initialize_properties()
-
-            _new_mappers = False
-            return self
+            finally:
+                _already_compiling = False
         finally:
-            _already_compiling = False
             _COMPILE_MUTEX.release()
 
     def __initialize_properties(self):

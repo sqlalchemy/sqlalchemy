@@ -10,6 +10,11 @@ CHANGES
     - Fixed 0.4-only bug preventing composite columns
       from working properly with inheriting mappers
       [ticket:1199]
+
+    - Fixed RLock-related bug in mapper which could deadlock upon
+      reentrant mapper compile() calls, something that occurs when
+      using declarative constructs inside of ForeignKey objects.
+      Ported from 0.5.
       
 0.4.8
 =====
