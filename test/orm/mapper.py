@@ -1293,6 +1293,11 @@ class CompositeTypesTest(ORMTest):
         g2 = sess.query(Graph).get(Version(1, 1))
         assert g.version == g2.version
 
+        # test pk mutation
+        g2.version = Version(2, 1)
+        sess.flush()
+        g3 = sess.query(Graph).get(Version(2, 1))
+        assert g2.version == g3.version
 
 
 class NoLoadTest(MapperSuperTest):

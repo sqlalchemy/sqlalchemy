@@ -15,6 +15,9 @@ CHANGES
       reentrant mapper compile() calls, something that occurs when
       using declarative constructs inside of ForeignKey objects.
       Ported from 0.5.
+
+    - Fixed bug in composite types which prevented a primary-key
+      composite type from being mutated [ticket:1213].
       
 0.4.8
 =====
