@@ -7,6 +7,12 @@ CHANGES
 0.5.0rc3
 ========
 - orm
+
+    - Added two new hooks to SessionExtension: after_bulk_delete and
+      after_bulk_update. after_bulk_delete is called after a bulk delete()
+      operation on a query. after_bulk_update is called after a bulk update()
+      operation on a query.
+
     - "not equals" comparisons of simple many-to-one relation to an
       instance will not drop into an EXISTS clause and will compare
       foreign key columns instead.

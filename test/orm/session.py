@@ -898,6 +898,10 @@ class SessionTest(_fixtures.FixtureTest):
                 log.append('after_begin')
             def after_attach(self, session, instance):
                 log.append('after_attach')
+            def after_bulk_update(self, session, query, query_context, result):
+                log.append('after_bulk_update')
+            def after_bulk_delete(self, session, query, query_context, result):
+                log.append('after_bulk_delete')
 
         sess = create_session(extension = MyExt())
         u = User(name='u1')
@@ -920,6 +924,14 @@ class SessionTest(_fixtures.FixtureTest):
         log = []
         sess.commit()
         assert log == ['before_commit', 'after_commit']
+
+        log = []
+        sess.query(User).delete()
+        assert log == ['after_begin', 'after_bulk_delete']
+
+        log = []
+        sess.query(User).update({'name': 'foo'})
+        assert log == ['after_bulk_update']
         
         log = []
         sess = create_session(autocommit=False, extension=MyExt(), bind=testing.db)

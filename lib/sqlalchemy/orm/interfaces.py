@@ -307,6 +307,26 @@ class SessionExtension(object):
         This is called after an add, delete or merge.
         """
 
+    def after_bulk_update(self, session, query, query_context, result):
+        """Execute after a bulk update operation to the session.
+
+        This is called after a session.query(...).update()
+
+        `query` is the query object that this update operation was called on.
+        `query_context` was the query context object.
+        `result` is the result object returned from the bulk operation.
+        """
+
+    def after_bulk_delete(self, session, query, query_context, result):
+        """Execute after a bulk delete operation to the session.
+
+        This is called after a session.query(...).delete()
+
+        `query` is the query object that this delete operation was called on.
+        `query_context` was the query context object.
+        `result` is the result object returned from the bulk operation.
+        """
+    
 class MapperProperty(object):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual

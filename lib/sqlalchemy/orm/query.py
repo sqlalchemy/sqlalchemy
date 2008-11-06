@@ -1348,6 +1348,9 @@ class Query(object):
                 if identity_key in session.identity_map:
                     session._remove_newly_deleted(attributes.instance_state(session.identity_map[identity_key]))
 
+        for ext in session.extensions:
+            ext.after_bulk_delete(session, self, context, result)
+
         return result.rowcount
 
     def update(self, values, synchronize_session='expire'):
@@ -1442,6 +1445,9 @@ class Query(object):
                 if identity_key in session.identity_map:
                     session.expire(session.identity_map[identity_key], values.keys())
 
+        for ext in session.extensions:
+            ext.after_bulk_update(session, self, context, result)
+            
         return result.rowcount
 
     def _compile_context(self, labels=True):
