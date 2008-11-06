@@ -195,11 +195,11 @@ class Query(object):
         if as_filter and self._filter_aliases:
             adapters.append(self._filter_aliases.replace)
 
-        if self._polymorphic_adapters:
-            adapters.append(self.__adapt_polymorphic_element)
-
         if self._from_obj_alias:
             adapters.append(self._from_obj_alias.replace)
+
+        if self._polymorphic_adapters:
+            adapters.append(self.__adapt_polymorphic_element)
 
         if not adapters:
             return clause
@@ -1707,9 +1707,9 @@ class _MapperEntity(_QueryEntity):
         if context.order_by is False and self.mapper.order_by:
             context.order_by = self.mapper.order_by
 
-        if context.order_by and adapter:
-            context.order_by = adapter.adapt_list(util.to_list(context.order_by))
-
+            if adapter:
+                context.order_by = adapter.adapt_list(util.to_list(context.order_by))
+                    
         for value in self.mapper._iterate_polymorphic_properties(self._with_polymorphic):
             if query._only_load_props and value.key not in query._only_load_props:
                 continue

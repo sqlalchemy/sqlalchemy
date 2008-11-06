@@ -121,6 +121,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False):
     else:
         return sql.and_(*crit)
 
+    
 class Annotated(object):
     """clones a ClauseElement and applies an 'annotations' dictionary.
     
@@ -133,14 +134,17 @@ class Annotated(object):
     hash value may be reused, causing conflicts.
 
     """
+    
     def __new__(cls, *args):
         if not args:
+            # clone constructor
             return object.__new__(cls)
         else:
             element, values = args
-            return object.__new__(
-                type.__new__(type, "Annotated%s" % element.__class__.__name__, (Annotated, element.__class__), {}) 
-            )
+            # pull appropriate subclass from this module's 
+            # namespace (see below for rationale)
+            cls = eval("Annotated%s"  % element.__class__.__name__)
+            return object.__new__(cls)
 
     def __init__(self, element, values):
         # force FromClause to generate their internal 
@@ -179,6 +183,17 @@ class Annotated(object):
 
     def __cmp__(self, other):
         return cmp(hash(self.__element), hash(other))
+
+# hard-generate Annotated subclasses.  this technique
+# is used instead of on-the-fly types (i.e. type.__new__())
+# so that the resulting objects are pickleable.
+from sqlalchemy.sql import expression
+for cls in expression.__dict__.values() + [schema.Column, schema.Table]:
+    if isinstance(cls, type) and issubclass(cls, expression.ClauseElement):
+        exec "class Annotated%s(Annotated, cls):\n" \
+             "    __visit_name__ = cls.__visit_name__\n"\
+             "    pass" % (cls.__name__, ) in locals()
+
 
 def _deep_annotate(element, annotations, exclude=None):
     """Deep copy the given ClauseElement, annotating each element with the given annotations dictionary.
@@ -495,3 +510,11 @@ class ColumnAdapter(ClauseAdapter):
     def adapted_row(self, row):
         return AliasedRow(row, self.columns)
     
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        del d['columns']
+        return d
+        
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.columns = util.PopulateDict(self._locate_col)

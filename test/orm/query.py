@@ -1028,7 +1028,7 @@ class JoinTest(QueryTest):
         q = sess.query(User)
         AdAlias = aliased(Address)
         q = q.add_entity(AdAlias).select_from(outerjoin(User, AdAlias))
-        l = q.order_by(User.id, Address.id).all()
+        l = q.order_by(User.id, AdAlias.id).all()
         self.assertEquals(l, expected)
 
         sess.clear()
@@ -1705,7 +1705,7 @@ class MixedEntitiesTest(QueryTest):
         q = sess.query(User)
         adalias = addresses.alias('adalias')
         q = q.add_entity(Address, alias=adalias).select_from(users.outerjoin(adalias))
-        l = q.order_by(User.id, Address.id).all()
+        l = q.order_by(User.id, adalias.c.id).all()
         assert l == expected
 
         sess.clear()

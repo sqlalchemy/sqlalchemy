@@ -7,6 +7,7 @@ def suite():
         'ext.declarative',
         'ext.orderinglist',
         'ext.associationproxy',
+        'ext.serializer',
         )
 
     if sys.version_info < (2, 4):

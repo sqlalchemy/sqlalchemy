@@ -5,11 +5,8 @@ import re
 from sqlalchemy import schema, types, engine, sql, pool, orm, exceptions, databases, interfaces
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, strategies, threadlocal, url
-import sqlalchemy.orm.shard
-import sqlalchemy.ext.orderinglist as orderinglist
-import sqlalchemy.ext.associationproxy as associationproxy
-import sqlalchemy.ext.sqlsoup as sqlsoup
-import sqlalchemy.ext.declarative as declarative
+from sqlalchemy.orm import shard
+from sqlalchemy.ext import orderinglist, associationproxy, sqlsoup, declarative, serializer
 
 def make_doc(obj, classes=None, functions=None, **kwargs):
     """generate a docstring.ObjectDoc structure for an individual module, list of classes, and list of functions."""
@@ -47,6 +44,7 @@ def make_all_docs():
         make_doc(obj=declarative),
         make_doc(obj=associationproxy, classes=[associationproxy.AssociationProxy]),
         make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
+        make_doc(obj=serializer),
         make_doc(obj=sqlsoup),
     ] + [make_doc(getattr(__import__('sqlalchemy.databases.%s' % m).databases, m)) for m in databases.__all__]
     return objects

@@ -42,6 +42,10 @@ CHANGES
       the "please specify primaryjoin" message when determining join
       condition.
 
+    - Fixed bug in Query involving order_by() in conjunction with 
+      multiple aliases of the same class (will add tests in 
+      [ticket:1218])
+      
     - When using Query.join() with an explicit clause for the ON
       clause, the clause will be aliased in terms of the left side
       of the join, allowing scenarios like query(Source).
@@ -119,6 +123,19 @@ CHANGES
     - No longer expects include_columns in table reflection to be
       lower case.
 
+- ext
+    - Added a new extension sqlalchemy.ext.serializer.  Provides
+      Serializer/Deserializer "classes" which mirror Pickle/Unpickle,
+      as well as dumps() and loads().  This serializer implements
+      an "external object" pickler which keeps key context-sensitive
+      objects, including engines, sessions, metadata, Tables/Columns,
+      and mappers, outside of the pickle stream, and can later 
+      restore the pickle using any engine/metadata/session provider.   
+      This is used not for pickling regular object instances, which are 
+      pickleable without any special logic, but for pickling expression
+      objects and full Query objects, such that all mapper/engine/session
+      dependencies can be restored at unpickle time.
+      
 - misc
     - util.flatten_iterator() func doesn't interpret strings with
       __iter__() methods as iterators, such as in pypy [ticket:1077].

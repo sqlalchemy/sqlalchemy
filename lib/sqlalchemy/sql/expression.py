@@ -1002,6 +1002,11 @@ class ClauseElement(Visitable):
             yield f
             f = getattr(f, '_is_clone_of', None)
 
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d.pop('_is_clone_of', None)
+        return d
+        
     def _get_from_objects(self, **modifiers):
         """Return objects represented in this ``ClauseElement`` that
         should be added to the ``FROM`` list of a query, when this
@@ -1959,7 +1964,17 @@ class _BindParamClause(ColumnElement):
 
         """
         return isinstance(other, _BindParamClause) and other.type.__class__ == self.type.__class__
-
+    
+    def __getstate__(self):
+        """execute a deferred value for serialization purposes."""
+        
+        d = self.__dict__.copy()
+        v = self.value
+        if callable(v):
+            v = v()
+        d['value'] = v
+        return d
+        
     def __repr__(self):
         return "_BindParamClause(%s, %s, type_=%s)" % (repr(self.key), repr(self.value), repr(self.type))
 

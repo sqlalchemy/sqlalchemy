@@ -281,6 +281,19 @@ class AliasedClass(object):
         self._sa_label_name = name
         self.__name__ = 'AliasedClass_' + str(self.__target)
 
+    def __getstate__(self):
+        return {'mapper':self.__mapper, 'alias':self.__alias, 'name':self._sa_label_name}
+    
+    def __setstate__(self, state):
+        self.__mapper = state['mapper']
+        self.__target = self.__mapper.class_
+        alias = state['alias']
+        self.__adapter = sql_util.ClauseAdapter(alias, equivalents=self.__mapper._equivalent_columns)
+        self.__alias = alias
+        name = state['name']
+        self._sa_label_name = name
+        self.__name__ = 'AliasedClass_' + str(self.__target)
+        
     def __adapt_element(self, elem):
         return self.__adapter.traverse(elem)._annotate({'parententity': self})
         
