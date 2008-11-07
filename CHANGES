@@ -8,151 +8,179 @@ CHANGES
 ========
 - features
 - orm
-    - Added two new hooks to SessionExtension: after_bulk_delete and
-      after_bulk_update. after_bulk_delete is called after a bulk delete()
-      operation on a query. after_bulk_update is called after a bulk update()
-      operation on a query.
+    - Added two new hooks to SessionExtension:
+      after_bulk_delete() and after_bulk_update().
+      after_bulk_delete() is called after a bulk delete()
+      operation on a query. after_bulk_update() is called 
+      after a bulk update() operation on a query.
 
 - sql
-    - SQL compiler optimizations.  The call count for compiling a
-      typical select() construct is 20% less versus 0.5.0rc2.
+    - SQL compiler optimizations and complexity
+      reduction. The call count for compiling a
+      typical select() construct is 20% less versus
+      0.5.0rc2.
 
-    - Dialects can now generate label names of adjustable length.
-      Pass in the argument "label_length=<value>" to create_engine()
-      to adjust how many characters max will be present in dynamically
-      generated column labels, i.e. "somecolumn AS somelabel".  Any 
-      value less than 6 will result in a label of minimal size,
-      consiting of an underscore and a numeric counter.
-      The compiler uses the value of dialect.max_identifier_length
-      as a default. [ticket:1211]
+    - Dialects can now generate label names of adjustable
+      length. Pass in the argument "label_length=<value>" to
+      create_engine() to adjust how many characters max will
+      be present in dynamically generated column labels, i.e.
+      "somecolumn AS somelabel". Any value less than 6 will
+      result in a label of minimal size, consiting of an
+      underscore and a numeric counter. The compiler uses the
+      value of dialect.max_identifier_length as a default.
+      [ticket:1211]
 
 - ext
-    - Added a new extension sqlalchemy.ext.serializer.  Provides
-      Serializer/Deserializer "classes" which mirror Pickle/Unpickle,
-      as well as dumps() and loads().  This serializer implements
-      an "external object" pickler which keeps key context-sensitive
-      objects, including engines, sessions, metadata, Tables/Columns,
-      and mappers, outside of the pickle stream, and can later 
-      restore the pickle using any engine/metadata/session provider.   
-      This is used not for pickling regular object instances, which are 
-      pickleable without any special logic, but for pickling expression
-      objects and full Query objects, such that all mapper/engine/session
+    - Added a new extension sqlalchemy.ext.serializer.
+      Provides Serializer/Deserializer "classes" which mirror
+      Pickle/Unpickle, as well as dumps() and loads(). This
+      serializer implements an "external object" pickler
+      which keeps key context-sensitive objects, including
+      engines, sessions, metadata, Tables/Columns, and
+      mappers, outside of the pickle stream, and can later
+      restore the pickle using any engine/metadata/session
+      provider. This is used not for pickling regular object
+      instances, which are pickleable without any special
+      logic, but for pickling expression objects and full
+      Query objects, such that all mapper/engine/session
       dependencies can be restored at unpickle time.
 
 - oracle
-    - Wrote a docstring for Oracle dialect.  Apparently that Ohloh
-      "few source code comments" label is starting to sting :).
+    - Wrote a docstring for Oracle dialect. Apparently
+      that Ohloh "few source code comments" label is
+      starting to sting :).
 
-    - Removed FIRST_ROWS() optimize flag when using LIMIT/OFFSET,
-      can be reenabled with optimize_limits=True create_engine()
-      flag.  [ticket:536]
+    - Removed FIRST_ROWS() optimize flag when using
+      LIMIT/OFFSET, can be reenabled with
+      optimize_limits=True create_engine() flag.
+      [ticket:536]
 
 - bugfixes and behavioral changes
 - orm
-    - "not equals" comparisons of simple many-to-one relation to an
-      instance will not drop into an EXISTS clause and will compare
-      foreign key columns instead.
+    - "not equals" comparisons of simple many-to-one
+      relation to an instance will not drop into an
+      EXISTS clause and will compare foreign key
+      columns instead.
 
-    - Removed not-really-working use cases of comparing a collection
-      to an iterable.  Use contains() to test for collection
-      membership.
+    - Removed not-really-working use cases of
+      comparing a collection to an iterable. Use
+      contains() to test for collection membership.
 
-    - Improved the behavior of aliased() objects such that they more
-      accurately adapt the expressions generated, which helps 
-      particularly with self-referential comparisons. [ticket:1171]
+    - Improved the behavior of aliased() objects such
+      that they more accurately adapt the expressions
+      generated, which helps particularly with
+      self-referential comparisons. [ticket:1171]
       
-    - Fixed bug involving primaryjoin/secondaryjoin conditions
-      constructed from class-bound attributes (as often occurs 
-      when using declarative), which later would be inappropriately 
-      aliased by Query, particularly with the various EXISTS
-      based comparators.
+    - Fixed bug involving primaryjoin/secondaryjoin
+      conditions constructed from class-bound
+      attributes (as often occurs when using
+      declarative), which later would be
+      inappropriately aliased by Query, particularly
+      with the various EXISTS based comparators.
     
-    - Fixed bug when using multiple query.join() with an aliased-bound
-      descriptor which would lose the left alias.
+    - Fixed bug when using multiple query.join() with
+      an aliased-bound descriptor which would lose the
+      left alias.
       
-    - Improved weakref identity map memory management to no longer
-      require mutexing, resurrects garbage collected instance on a
-      lazy basis for an InstanceState with pending changes.
+    - Improved weakref identity map memory management
+      to no longer require mutexing, resurrects
+      garbage collected instance on a lazy basis for
+      an InstanceState with pending changes.
 
-    - relation() won't hide unrelated ForeignKey errors inside of
-      the "please specify primaryjoin" message when determining join
+    - InstanceState object now removes circular
+      references to itself upon disposal to keep it
+      outside of cyclic garbage collection.
+
+    - relation() won't hide unrelated ForeignKey
+      errors inside of the "please specify
+      primaryjoin" message when determining join
       condition.
 
-    - Fixed bug in Query involving order_by() in conjunction with 
-      multiple aliases of the same class (will add tests in 
-      [ticket:1218])
+    - Fixed bug in Query involving order_by() in
+      conjunction with multiple aliases of the same
+      class (will add tests in [ticket:1218])
       
-    - When using Query.join() with an explicit clause for the ON
-      clause, the clause will be aliased in terms of the left side
-      of the join, allowing scenarios like query(Source).
-      from_self().join((Dest, Source.id==Dest.source_id)) to work
-      properly.
+    - When using Query.join() with an explicit clause
+      for the ON clause, the clause will be aliased in
+      terms of the left side of the join, allowing
+      scenarios like query(Source).
+      from_self().join((Dest,
+      Source.id==Dest.source_id)) to work properly.
 
-    - polymorphic_union() function respects the "key" of each Column
-      if they differ from the column's name.
+    - polymorphic_union() function respects the "key"
+      of each Column if they differ from the column's
+      name.
 
-    - Repaired support for "passive-deletes" on a many-to-one
-      relation() with "delete" cascade. [ticket:1183]
+    - Repaired support for "passive-deletes" on a
+      many-to-one relation() with "delete" cascade.
+      [ticket:1183]
 
-    - Fixed bug in composite types which prevented a primary-key
-      composite type from being mutated [ticket:1213].
+    - Fixed bug in composite types which prevented a
+      primary-key composite type from being mutated
+      [ticket:1213].
       
-    - Added more granularity to internal attribute access, such that
-      cascade and flush operations will not initialize unloaded
-      attributes and collections, leaving them intact for a
-      lazy-load later on.  Backref events still initialize attrbutes
-      and collections for pending instances.  [ticket:1202]
-
-    - InstanceState object now removes circular references to itself
-      upon disposal to keep it outside of cyclic garbage collection.
+    - Added more granularity to internal attribute
+      access, such that cascade and flush operations
+      will not initialize unloaded attributes and
+      collections, leaving them intact for a lazy-load
+      later on. Backref events still initialize
+      attrbutes and collections for pending instances.
+      [ticket:1202]
 
 - sql
-    - Simplified the check for ResultProxy "autoclose without results"
-      to be based solely on presence of cursor.description.   
-      All the regexp-based guessing about statements returning rows 
-      has been removed [ticket:1212].
+    - Simplified the check for ResultProxy "autoclose
+      without results" to be based solely on presence
+      of cursor.description. All the regexp-based
+      guessing about statements returning rows has
+      been removed [ticket:1212].
     
-    - Further simplified SELECT compilation and its relationship to
-      result row processing.
+    - Direct execution of a union() construct will
+      properly set up result-row processing.
+      [ticket:1194]
 
-    - Direct execution of a union() construct will properly set up
-      result-row processing. [ticket:1194]
+    - The internal notion of an "OID" or "ROWID"
+      column has been removed. It's basically not used
+      by any dialect, and the possibility of its usage
+      with psycopg2's cursor.lastrowid is basically
+      gone now that INSERT..RETURNING is available.
 
-    - The internal notion of an "OID" or "ROWID" column has been
-      removed.  It's basically not used by any dialect, and the
-      possibility of its usage with psycopg2's cursor.lastrowid is
-      basically gone now that INSERT..RETURNING is available.
+    - Removed "default_order_by()" method on all
+      FromClause objects.
 
-    - Removed "default_order_by()" method on all FromClause objects.
-
-    - Repaired the table.tometadata() method so that a passed-in
-      schema argument is propigated to ForeignKey constructs.
+    - Repaired the table.tometadata() method so that a
+      passed-in schema argument is propigated to
+      ForeignKey constructs.
       
-    - Slightly changed behavior of IN operator for comparing to
-      empty collections. Now results in inequality comparison
-      against self. More portable, but breaks with stored procedures
-      that aren't pure functions.
+    - Slightly changed behavior of IN operator for
+      comparing to empty collections. Now results in
+      inequality comparison against self. More
+      portable, but breaks with stored procedures that
+      aren't pure functions.
 
 - oracle
-    - Setting the auto_convert_lobs to False on create_engine() will
-      also instruct the OracleBinary type to return the cx_oracle
-      LOB object unchanged.
+    - Setting the auto_convert_lobs to False on
+      create_engine() will also instruct the
+      OracleBinary type to return the cx_oracle LOB
+      object unchanged.
 
 - mysql
-    - Fixed foreign key reflection in the edge case where a Table's
-      explicit schema= is the same as the schema (database) the
-      connection is attached to.
+    - Fixed foreign key reflection in the edge case
+      where a Table's explicit schema= is the same as
+      the schema (database) the connection is attached
+      to.
 
-    - No longer expects include_columns in table reflection to be
-      lower case.
+    - No longer expects include_columns in table
+      reflection to be lower case.
 
 - ext
-    - Fixed bug preventing declarative-bound "column" objects 
-      from being used in column_mapped_collection().  [ticket:1174]
+    - Fixed bug preventing declarative-bound "column"
+      objects from being used in
+      column_mapped_collection(). [ticket:1174]
 
 - misc
-    - util.flatten_iterator() func doesn't interpret strings with
-      __iter__() methods as iterators, such as in pypy [ticket:1077].
+    - util.flatten_iterator() func doesn't interpret
+      strings with __iter__() methods as iterators,
+      such as in pypy [ticket:1077].
       
 0.5.0rc2
 ========
