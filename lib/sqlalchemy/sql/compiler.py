@@ -459,7 +459,8 @@ class DefaultCompiler(engine.Compiled):
             column.table is not None and \
             not isinstance(column.table, sql.Select):
             return _CompileLabel(column, sql._generated_label(column.name))
-        elif not isinstance(column, (sql._UnaryExpression, sql._TextClause, sql._BindParamClause)) and (not hasattr(column, 'name') or isinstance(column, sql._Function)):
+        elif not isinstance(column, (sql._UnaryExpression, sql._TextClause, sql._BindParamClause)) \
+                and (not hasattr(column, 'name') or isinstance(column, sql._Function)):
             return _CompileLabel(column, column.anon_label)
         else:
             return column
@@ -479,12 +480,12 @@ class DefaultCompiler(engine.Compiled):
         # if existingfroms:
         #     correlate_froms = correlate_froms.union(existingfroms)
 
+        self.stack.append({'from':correlate_froms, 'iswrapper':iswrapper})
+
         if compound_index==1 and not entry or entry.get('iswrapper', False):
             column_clause_args = {'result_map':self.result_map}
         else:
             column_clause_args = {}
-
-        self.stack.append({'from':correlate_froms, 'iswrapper':iswrapper})
 
         # the actual list of columns to print in the SELECT column list.
         inner_columns = util.unique_list(
@@ -515,18 +516,22 @@ class DefaultCompiler(engine.Compiled):
             if t:
                 text += " \nWHERE " + t
 
-        group_by = self.process(select._group_by_clause)
-        if group_by:
-            text += " GROUP BY " + group_by
+        if select._group_by_clause.clauses:
+            group_by = self.process(select._group_by_clause)
+            if group_by:
+                text += " GROUP BY " + group_by
 
         if select._having is not None:
             t = self.process(select._having)
             if t:
                 text += " \nHAVING " + t
 
-        text += self.order_by_clause(select)
-        text += (select._limit is not None or select._offset is not None) and self.limit_clause(select) or ""
-        text += self.for_update_clause(select)
+        if select._order_by_clause.clauses:
+            text += self.order_by_clause(select)
+        if select._limit is not None or select._offset is not None:
+            text += self.limit_clause(select)
+        if select.for_update:
+            text += self.for_update_clause(select)
 
         self.stack.pop(-1)
 
