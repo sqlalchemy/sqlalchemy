@@ -6,13 +6,42 @@ CHANGES
 =======
 0.5.0rc3
 ========
-- orm
+- features
 
     - Added two new hooks to SessionExtension: after_bulk_delete and
       after_bulk_update. after_bulk_delete is called after a bulk delete()
       operation on a query. after_bulk_update is called after a bulk update()
       operation on a query.
 
+    - SQL compiler optimizations.  The call count for compiling a
+      typical select() construct is 20% less versus 0.5.0rc2.
+
+    - Dialects can now generate label names of adjustable length.
+      Pass in the argument "label_length=<value>" to create_engine()
+      to adjust how many characters max will be present in dynamically
+      generated column labels, i.e. "somecolumn AS somelabel".  Any 
+      value less than 6 will result in a label of minimal size,
+      consiting of an underscore and a numeric counter.
+      The compiler uses the value of dialect.max_identifier_length
+      as a default. [ticket:1211]
+
+    - Added a new extension sqlalchemy.ext.serializer.  Provides
+      Serializer/Deserializer "classes" which mirror Pickle/Unpickle,
+      as well as dumps() and loads().  This serializer implements
+      an "external object" pickler which keeps key context-sensitive
+      objects, including engines, sessions, metadata, Tables/Columns,
+      and mappers, outside of the pickle stream, and can later 
+      restore the pickle using any engine/metadata/session provider.   
+      This is used not for pickling regular object instances, which are 
+      pickleable without any special logic, but for pickling expression
+      objects and full Query objects, such that all mapper/engine/session
+      dependencies can be restored at unpickle time.
+
+    - Wrote a docstring for Oracle dialect.  Apparently that Ohloh
+      "few source code comments" label is starting to sting :).
+
+- bugfixes and behavioral changes
+- orm
     - "not equals" comparisons of simple many-to-one relation to an
       instance will not drop into an EXISTS clause and will compare
       foreign key columns instead.
@@ -76,15 +105,6 @@ CHANGES
       All the regexp-based guessing about statements returning rows 
       has been removed [ticket:1212].
     
-    - Dialects can now generate label names of adjustable length.
-      Pass in the argument "label_length=<value>" to create_engine()
-      to adjust how many characters max will be present in dynamically
-      generated column labels, i.e. "somecolumn AS somelabel".  Any 
-      value less than 6 will result in a label of minimal size,
-      consiting of an underscore and a numeric counter.
-      The compiler uses the value of dialect.max_identifier_length
-      as a default. [ticket:1211]
-        
     - Further simplified SELECT compilation and its relationship to
       result row processing.
 
@@ -111,9 +131,6 @@ CHANGES
       can be reenabled with optimize_limits=True create_engine()
       flag.  [ticket:536]
 
-    - Wrote a docstring for Oracle dialect.  Apparently that Ohloh
-      "few source code comments" label is starting to sting :).
-
     - Setting the auto_convert_lobs to False on create_engine() will
       also instruct the OracleBinary type to return the cx_oracle
       LOB object unchanged.
@@ -127,17 +144,6 @@ CHANGES
       lower case.
 
 - ext
-    - Added a new extension sqlalchemy.ext.serializer.  Provides
-      Serializer/Deserializer "classes" which mirror Pickle/Unpickle,
-      as well as dumps() and loads().  This serializer implements
-      an "external object" pickler which keeps key context-sensitive
-      objects, including engines, sessions, metadata, Tables/Columns,
-      and mappers, outside of the pickle stream, and can later 
-      restore the pickle using any engine/metadata/session provider.   
-      This is used not for pickling regular object instances, which are 
-      pickleable without any special logic, but for pickling expression
-      objects and full Query objects, such that all mapper/engine/session
-      dependencies can be restored at unpickle time.
       
 - misc
     - util.flatten_iterator() func doesn't interpret strings with
