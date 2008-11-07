@@ -396,16 +396,16 @@ class Table(SchemaItem, expression.TableClause):
         """Return a copy of this ``Table`` associated with a different ``MetaData``."""
 
         try:
-            if schema is None:
+            if not schema:
                 schema = self.schema
             key = _get_table_key(self.name, schema)
             return metadata.tables[key]
         except KeyError:
             args = []
             for c in self.columns:
-                args.append(c.copy())
+                args.append(c.copy(schema=schema))
             for c in self.constraints:
-                args.append(c.copy())
+                args.append(c.copy(schema=schema))
             return Table(self.name, metadata, schema=schema, *args)
 
 class Column(SchemaItem, expression._ColumnClause):
@@ -688,13 +688,13 @@ class Column(SchemaItem, expression._ColumnClause):
         self._init_items(*toinit)
         self.args = None
 
-    def copy(self):
+    def copy(self, **kw):
         """Create a copy of this ``Column``, unitialized.
 
         This is used in ``Table.tometadata``.
 
         """
-        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, quote=self.quote, index=self.index, autoincrement=self.autoincrement, *[c.copy() for c in self.constraints])
+        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, quote=self.quote, index=self.index, autoincrement=self.autoincrement, *[c.copy(**kw) for c in self.constraints])
 
     def _make_proxy(self, selectable, name=None):
         """Create a *proxy* for this column.
@@ -783,15 +783,17 @@ class ForeignKey(SchemaItem):
         self.initially = initially
 
     def __repr__(self):
-        return "ForeignKey(%s)" % repr(self._get_colspec())
+        return "ForeignKey(%r)" % self._get_colspec()
 
-    def copy(self):
+    def copy(self, schema=None):
         """Produce a copy of this ForeignKey object."""
 
-        return ForeignKey(self._get_colspec())
+        return ForeignKey(self._get_colspec(schema=schema))
 
-    def _get_colspec(self):
-        if isinstance(self._colspec, basestring):
+    def _get_colspec(self, schema=None):
+        if schema:
+            return schema + "." + self.column.table.name + "." + self.column.key
+        elif isinstance(self._colspec, basestring):
             return self._colspec
         else:
             return "%s.%s" % (self._colspec.table.fullname, self._colspec.key)
@@ -1091,7 +1093,7 @@ class Constraint(SchemaItem):
     def __len__(self):
         return len(self.columns)
 
-    def copy(self):
+    def copy(self, **kw):
         raise NotImplementedError()
 
 class CheckConstraint(Constraint):
@@ -1136,7 +1138,7 @@ class CheckConstraint(Constraint):
         self.parent = parent
         parent.constraints.add(self)
 
-    def copy(self):
+    def copy(self, **kw):
         return CheckConstraint(self.sqltext, name=self.name)
 
 class ForeignKeyConstraint(Constraint):
@@ -1212,8 +1214,8 @@ class ForeignKeyConstraint(Constraint):
         self.columns.add(self.table.c[fk.parent.key])
         self.elements.add(fk)
 
-    def copy(self):
-        return ForeignKeyConstraint([x.parent.name for x in self.elements], [x._get_colspec() for x in self.elements], name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, use_alter=self.use_alter)
+    def copy(self, **kw):
+        return ForeignKeyConstraint([x.parent.name for x in self.elements], [x._get_colspec(**kw) for x in self.elements], name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, use_alter=self.use_alter)
 
 class PrimaryKeyConstraint(Constraint):
     """A table-level PRIMARY KEY constraint.
@@ -1272,7 +1274,7 @@ class PrimaryKeyConstraint(Constraint):
         col.primary_key = False
         del self.columns[col.key]
 
-    def copy(self):
+    def copy(self, **kw):
         return PrimaryKeyConstraint(name=self.name, *[c.key for c in self])
 
     def __eq__(self, other):
@@ -1326,7 +1328,7 @@ class UniqueConstraint(Constraint):
     def append_column(self, col):
         self.columns.add(col)
 
-    def copy(self):
+    def copy(self, **kw):
         return UniqueConstraint(name=self.name, *self.__colnames)
 
 class Index(SchemaItem):

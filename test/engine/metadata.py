@@ -5,7 +5,7 @@ from testlib.sa import Table, Column, Integer, String, UniqueConstraint, \
      CheckConstraint, ForeignKey
 import testlib.sa as tsa
 from testlib import TestBase, ComparesTables, testing, engines
-
+from testlib.testing import eq_
 
 class MetaDataTest(TestBase, ComparesTables):
     def test_metadata_connect(self):
@@ -110,7 +110,32 @@ class MetaDataTest(TestBase, ComparesTables):
                     assert not c.columns.contains_column(table.c.name)
         finally:
             meta.drop_all(testing.db)
+    
+    def test_tometadata_with_schema(self):
+        meta = MetaData()
 
+        table = Table('mytable', meta,
+            Column('myid', Integer, primary_key=True),
+            Column('name', String(40), nullable=True),
+            Column('description', String(30), CheckConstraint("description='hi'")),
+            UniqueConstraint('name'),
+            test_needs_fk=True,
+        )
+
+        table2 = Table('othertable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('myid', Integer, ForeignKey('mytable.myid')),
+            test_needs_fk=True,
+            )
+
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2, schema='someschema')
+        table2_c = table2.tometadata(meta2, schema='someschema')
+
+        eq_(str(table_c.join(table2_c).onclause), str(table_c.c.myid == table2_c.c.myid))
+        eq_(str(table_c.join(table2_c).onclause), "someschema.mytable.myid = someschema.othertable.myid")
+        
+        
     def test_nonexistent(self):
         self.assertRaises(tsa.exc.NoSuchTableError, Table,
                           'fake_table',

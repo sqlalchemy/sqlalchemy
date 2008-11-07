@@ -98,6 +98,9 @@ CHANGES
 
     - Removed "default_order_by()" method on all FromClause objects.
 
+    - Repaired the table.tometadata() method so that a passed-in
+      schema argument is propigated to ForeignKey constructs.
+      
     - Slightly changed behavior of IN operator for comparing to
       empty collections. Now results in inequality comparison
       against self. More portable, but breaks with stored procedures
