@@ -104,6 +104,7 @@ import sys
 import weakref
 
 import sqlalchemy.exceptions as sa_exc
+from sqlalchemy.sql import expression
 from sqlalchemy import schema
 import sqlalchemy.util as sautil
 
@@ -130,18 +131,13 @@ def column_mapped_collection(mapping_spec):
     from sqlalchemy.orm.util import _state_mapper
     from sqlalchemy.orm.attributes import instance_state
 
-    if isinstance(mapping_spec, schema.Column):
+    cols = [expression._no_literals(q) for q in sautil.to_list(mapping_spec)]
+    if len(cols) == 1:
         def keyfunc(value):
             state = instance_state(value)
             m = _state_mapper(state)
-            return m._get_state_attr_by_column(state, mapping_spec)
+            return m._get_state_attr_by_column(state, cols[0])
     else:
-        cols = []
-        for c in mapping_spec:
-            if not isinstance(c, schema.Column):
-                raise sa_exc.ArgumentError(
-                    "mapping_spec tuple may only contain columns")
-            cols.append(c)
         mapping_spec = tuple(cols)
         def keyfunc(value):
             state = instance_state(value)

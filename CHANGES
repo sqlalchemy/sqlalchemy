@@ -146,6 +146,10 @@ CHANGES
     - No longer expects include_columns in table reflection to be
       lower case.
 
+- ext
+    - Fixed bug preventing declarative-bound "column" objects 
+      from being used in column_mapped_collection().  [ticket:1174]
+
 - misc
     - util.flatten_iterator() func doesn't interpret strings with
       __iter__() methods as iterators, such as in pypy [ticket:1077].

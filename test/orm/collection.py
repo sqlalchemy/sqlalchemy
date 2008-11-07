@@ -11,7 +11,7 @@ from testlib.sa import util, exc as sa_exc
 from testlib.sa.orm import create_session, mapper, relation, \
     attributes
 from orm import _base
-
+from testlib.testing import eq_
 
 class Canary(sa.orm.interfaces.AttributeExtension):
     def __init__(self):
@@ -1369,7 +1369,8 @@ class DictHelpersTest(_base.MappedTest):
 
         p = session.query(Parent).get(pid)
 
-        self.assert_(set(p.children.keys()) == set(['foo', 'bar']))
+        
+        self.assertEquals(set(p.children.keys()), set(['foo', 'bar']))
         cid = p.children['foo'].id
 
         collections.collection_adapter(p.children).append_with_event(
@@ -1457,6 +1458,27 @@ class DictHelpersTest(_base.MappedTest):
         collection_class = collections.attribute_mapped_collection('a')
         self._test_scalar_mapped(collection_class)
 
+    def test_declarative_column_mapped(self):
+        """test that uncompiled attribute usage works with column_mapped_collection"""
+        
+        from sqlalchemy.ext.declarative import declarative_base
+
+        BaseObject = declarative_base()
+
+        class Foo(BaseObject):
+            __tablename__ = "foo"
+            id = Column(Integer(), primary_key=True)
+            bar_id = Column(Integer, ForeignKey('bar.id'))
+            
+        class Bar(BaseObject):
+            __tablename__ = "bar"
+            id = Column(Integer(), primary_key=True)
+            foos = relation(Foo, collection_class=collections.column_mapped_collection(Foo.id))
+            foos2 = relation(Foo, collection_class=collections.column_mapped_collection((Foo.id, Foo.bar_id)))
+            
+        eq_(Bar.foos.property.collection_class().keyfunc(Foo(id=3)), 3)
+        eq_(Bar.foos2.property.collection_class().keyfunc(Foo(id=3, bar_id=12)), (3, 12))
+        
     @testing.resolve_artifact_names
     def test_column_mapped_collection(self):
         collection_class = collections.column_mapped_collection(
