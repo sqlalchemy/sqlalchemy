@@ -2,8 +2,8 @@ from toc import TOCElement
 import docstring
 import re
 
-from sqlalchemy import schema, types, engine, sql, pool, orm, exceptions, databases, interfaces
-from sqlalchemy.sql import compiler, expression
+from sqlalchemy import schema, types, engine, sql, pool, orm, exceptions, databases, interfaces, util
+from sqlalchemy.sql import compiler, expression, visitors
 from sqlalchemy.engine import default, strategies, threadlocal, url
 from sqlalchemy.orm import shard
 from sqlalchemy.ext import orderinglist, associationproxy, sqlsoup, declarative, serializer
@@ -26,10 +26,15 @@ def make_all_docs():
         make_doc(obj=interfaces),
         make_doc(obj=pool),
         make_doc(obj=schema),
-        #make_doc(obj=sql,include_all_classes=True),
         make_doc(obj=compiler),
-        make_doc(obj=expression,include_all_classes=True),
+        make_doc(obj=expression,
+            classes=[getattr(expression, key) for key in expression.__all__ if isinstance(getattr(expression, key), type)] + 
+                [expression._CompareMixin, expression.Operators, expression.ColumnOperators, 
+                expression._SelectBaseMixin, expression._Immutable, expression._ValuesBase, expression._UpdateBase]
+            ),
+        make_doc(obj=visitors),
         make_doc(obj=types),
+        make_doc(obj=util),
         make_doc(obj=orm),
         make_doc(obj=orm.attributes),
         make_doc(obj=orm.collections, classes=[orm.collections.collection,

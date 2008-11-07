@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import datetime, re, operator
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util
-from sqlalchemy.sql import table, column, compiler
+from sqlalchemy.sql import table, column, label, compiler
 from sqlalchemy.engine import default
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
 from testlib import *
@@ -339,6 +339,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         x = func.lala(table1.c.myid).label('foo')
         self.assert_compile(select([x], x==5), "SELECT lala(mytable.myid) AS foo FROM mytable WHERE lala(mytable.myid) = :param_1")
 
+        self.assert_compile(label('bar', column('foo', type_=String)) + "foo", "foo || :param_1")
     
 
     def test_conjunctions(self):

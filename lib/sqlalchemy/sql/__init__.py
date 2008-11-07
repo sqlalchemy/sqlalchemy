@@ -33,6 +33,7 @@ from sqlalchemy.sql.expression import (
     intersect,
     intersect_all,
     join,
+    label,
     literal,
     literal_column,
     modifier,

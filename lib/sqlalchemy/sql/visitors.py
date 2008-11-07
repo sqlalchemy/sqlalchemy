@@ -1,8 +1,37 @@
+"""Visitor/traversal interface and library functions.
+
+SQLAlchemy schema and expression constructs rely on a Python-centric
+version of the classic "visitor" pattern as the primary way in which
+they apply functionality.  The most common use of this pattern 
+is statement compilation, where individual expression classes match 
+up to rendering methods that produce a string result.   Beyond this, 
+the visitor system is also used to inspect expressions for various 
+information and patterns, as well as for usage in 
+some kinds of expression transformation.  Other kinds of transformation
+use a non-visitor traversal system.
+
+For many examples of how the visit system is used, see the 
+sqlalchemy.sql.util and the sqlalchemy.sql.compiler modules.
+For an introduction to clause adaption, see
+http://techspot.zzzeek.org/?p=19 .
+
+"""
+
 from collections import deque
 import re
 from sqlalchemy import util
 
+__all__ = ['VisitableType', 'Visitable', 'ClauseVisitor', 
+    'CloningVisitor', 'ReplacingCloningVisitor', 'iterate', 
+    'iterate_depthfirst', 'traverse_using', 'traverse',
+    'cloned_traverse', 'replacement_traverse']
+    
 class VisitableType(type):
+    """Metaclass which applies a `__visit_name__` attribute and 
+    `_compiler_dispatch` method to classes.
+    
+    """
+    
     def __init__(cls, clsname, bases, dict):
         if not '__visit_name__' in cls.__dict__:
             m = re.match(r'_?(\w+?)(?:Expression|Clause|Element|$)', clsname)
@@ -27,9 +56,19 @@ class VisitableType(type):
         super(VisitableType, cls).__init__(clsname, bases, dict)
 
 class Visitable(object):
+    """Base class for visitable objects, applies the
+    ``VisitableType`` metaclass.
+    
+    """
+
     __metaclass__ = VisitableType
 
 class ClauseVisitor(object):
+    """Base class for visitor objects which can traverse using 
+    the traverse() function.
+    
+    """
+    
     __traverse_options__ = {}
     
     def traverse_single(self, obj):
@@ -77,6 +116,11 @@ class ClauseVisitor(object):
         return self
 
 class CloningVisitor(ClauseVisitor):
+    """Base class for visitor objects which can traverse using 
+    the cloned_traverse() function.
+    
+    """
+
     def copy_and_process(self, list_):
         """Apply cloned traversal to the given list of elements, and return the new list."""
 
@@ -88,6 +132,11 @@ class CloningVisitor(ClauseVisitor):
         return cloned_traverse(obj, self.__traverse_options__, self._visitor_dict)
 
 class ReplacingCloningVisitor(CloningVisitor):
+    """Base class for visitor objects which can traverse using 
+    the replacement_traverse() function.
+    
+    """
+
     def replace(self, elem):
         """receive pre-copied elements during a cloning traversal.
         
@@ -155,6 +204,8 @@ def traverse_depthfirst(obj, opts, visitors):
     return traverse_using(iterate_depthfirst(obj, opts), obj, visitors)
 
 def cloned_traverse(obj, opts, visitors):
+    """clone the given expression structure, allowing modifications by visitors."""
+    
     cloned = {}
 
     def clone(element):
@@ -180,6 +231,8 @@ def cloned_traverse(obj, opts, visitors):
     return obj
 
 def replacement_traverse(obj, opts, replace):
+    """clone the given expression structure, allowing element replacement by a given replacement function."""
+    
     cloned = {}
     stop_on = set(opts.get('stop_on', []))
 

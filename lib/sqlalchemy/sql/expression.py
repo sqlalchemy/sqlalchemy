@@ -45,7 +45,7 @@ __all__ = [
     'between', 'bindparam', 'case', 'cast', 'column', 'delete',
     'desc', 'distinct', 'except_', 'except_all', 'exists', 'extract', 'func',
     'modifier', 'collate',
-    'insert', 'intersect', 'intersect_all', 'join', 'literal',
+    'insert', 'intersect', 'intersect_all', 'join', 'label', 'literal',
     'literal_column', 'not_', 'null', 'or_', 'outparam', 'outerjoin', 'select',
     'subquery', 'table', 'text', 'union', 'union_all', 'update', ]
 
@@ -1143,26 +1143,47 @@ class ClauseElement(Visitable):
 
     def compile(self, bind=None, column_keys=None, compiler=None, dialect=None, inline=False):
         """Compile this SQL expression.
+        
+        The return value is a [sqlalchemy.engine#Compiled] object.
+        Calling `str()` or `unicode()` on the returned value will yield 
+        a string representation of the result.   The ``Compiled``
+        object also can return a dictionary of bind parameter names and 
+        values using the `params` accessor.
 
-        Uses the given ``Compiler``, or the given ``AbstractDialect``
-        or ``Engine`` to create a ``Compiler``.  If no `compiler`
-        arguments are given, tries to use the underlying ``Engine``
-        this ``ClauseElement`` is bound to to create a ``Compiler``,
-        if any.
+        bind
+          An ``Engine`` or ``Connection`` from which a 
+          ``Compiled`` will be acquired.  This argument
+          takes precedence over this ``ClauseElement``'s
+          bound engine, if any.
 
-        Finally, if there is no bound ``Engine``, uses an
-        ``DefaultDialect`` to create a default ``Compiler``.
-
-        `parameters` is a dictionary representing the default bind
-        parameters to be used with the statement.  If `parameters` is
-        a list, it is assumed to be a list of dictionaries and the
-        first dictionary in the list is used with which to compile
-        against.
-
-        The bind parameters can in some cases determine the output of
-        the compilation, such as for ``UPDATE`` and ``INSERT``
-        statements the bind parameters that are present determine the
-        ``SET`` and ``VALUES`` clause of those statements.
+        column_keys
+          Used for INSERT and UPDATE statements, a list of
+          column names which should be present in the VALUES clause
+          of the compiled statement.  If ``None``, all columns
+          from the target table object are rendered.
+          
+        compiler
+          A ``Compiled`` instance which will be used to compile
+          this expression.  This argument takes precedence 
+          over the `bind` and `dialect` arguments as well as
+          this ``ClauseElement``'s bound engine, if 
+          any.
+          
+        dialect
+          A ``Dialect`` instance frmo which a ``Compiled``
+          will be acquired.  This argument takes precedence 
+          over the `bind` argument as well as this 
+          ``ClauseElement``'s bound engine, if any.
+          
+        inline
+          Used for INSERT statements, for a dialect which does
+          not support inline retrieval of newly generated 
+          primary key columns, will force the expression used 
+          to create the new primary key value to be rendered 
+          inline within the INSERT statement's VALUES clause.
+          This typically refers to Sequence execution but
+          may also refer to any server-side default generation
+          function associated with a primary key `Column`.
         
         """
         if compiler is None:
@@ -1172,13 +1193,12 @@ class ClauseElement(Visitable):
                 compiler = bind.statement_compiler(self, column_keys=column_keys, inline=inline)
             elif self.bind is not None:
                 compiler = self.bind.statement_compiler(self, column_keys=column_keys, inline=inline)
-
-        if compiler is None:
-            global DefaultDialect
-            if DefaultDialect is None:
-                from sqlalchemy.engine.default import DefaultDialect
-            dialect = DefaultDialect()
-            compiler = dialect.statement_compiler(dialect, self, column_keys=column_keys, inline=inline)
+            else:
+                global DefaultDialect
+                if DefaultDialect is None:
+                    from sqlalchemy.engine.default import DefaultDialect
+                dialect = DefaultDialect()
+                compiler = dialect.statement_compiler(dialect, self, column_keys=column_keys, inline=inline)
         compiler.compile()
         return compiler
 
@@ -2658,7 +2678,7 @@ class _Label(ColumnElement):
     
     @util.memoized_property
     def type(self):
-        return sqltypes.to_instance(self._type or getattr(element, 'type', None))
+        return sqltypes.to_instance(self._type or getattr(self._element, 'type', None))
         
     @util.memoized_property
     def element(self):

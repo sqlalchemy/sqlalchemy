@@ -225,9 +225,10 @@ def get_cls_kwargs(cls):
     """Return the full set of inherited kwargs for the given `cls`.
 
     Probes a class's __init__ method, collecting all named arguments.  If the
-    __init__ defines a **kwargs catch-all, then the constructor is presumed to
+    __init__ defines a \**kwargs catch-all, then the constructor is presumed to
     pass along unrecognized keywords to it's base classes, and the collection
     process is repeated recursively on each of the bases.
+    
     """
 
     for c in cls.__mro__:
@@ -411,7 +412,7 @@ def asbool(obj):
     return bool(obj)
 
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
-    """If 'key' is present in dict 'kw', coerce its value to type 'type_' if
+    """If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
     when coercing to boolean.
     """
