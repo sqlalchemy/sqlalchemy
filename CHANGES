@@ -7,12 +7,13 @@ CHANGES
 0.5.0rc3
 ========
 - features
-
+- orm
     - Added two new hooks to SessionExtension: after_bulk_delete and
       after_bulk_update. after_bulk_delete is called after a bulk delete()
       operation on a query. after_bulk_update is called after a bulk update()
       operation on a query.
 
+- sql
     - SQL compiler optimizations.  The call count for compiling a
       typical select() construct is 20% less versus 0.5.0rc2.
 
@@ -25,6 +26,7 @@ CHANGES
       The compiler uses the value of dialect.max_identifier_length
       as a default. [ticket:1211]
 
+- ext
     - Added a new extension sqlalchemy.ext.serializer.  Provides
       Serializer/Deserializer "classes" which mirror Pickle/Unpickle,
       as well as dumps() and loads().  This serializer implements
@@ -37,8 +39,13 @@ CHANGES
       objects and full Query objects, such that all mapper/engine/session
       dependencies can be restored at unpickle time.
 
+- oracle
     - Wrote a docstring for Oracle dialect.  Apparently that Ohloh
       "few source code comments" label is starting to sting :).
+
+    - Removed FIRST_ROWS() optimize flag when using LIMIT/OFFSET,
+      can be reenabled with optimize_limits=True create_engine()
+      flag.  [ticket:536]
 
 - bugfixes and behavioral changes
 - orm
@@ -127,10 +134,6 @@ CHANGES
       that aren't pure functions.
 
 - oracle
-    - Removed FIRST_ROWS() optimize flag when using LIMIT/OFFSET,
-      can be reenabled with optimize_limits=True create_engine()
-      flag.  [ticket:536]
-
     - Setting the auto_convert_lobs to False on create_engine() will
       also instruct the OracleBinary type to return the cx_oracle
       LOB object unchanged.
@@ -143,8 +146,6 @@ CHANGES
     - No longer expects include_columns in table reflection to be
       lower case.
 
-- ext
-      
 - misc
     - util.flatten_iterator() func doesn't interpret strings with
       __iter__() methods as iterators, such as in pypy [ticket:1077].
