@@ -978,6 +978,7 @@ class ClauseElement(Visitable):
         """
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
+        c.__dict__.pop('_cloned_set', None)
 
         # this is a marker that helps to "equate" clauses to each other
         # when a Select returns its list of FROM clauses.  the cloning
@@ -988,7 +989,7 @@ class ClauseElement(Visitable):
 
         return c
 
-    @property
+    @util.memoized_property
     def _cloned_set(self):
         """Return the set consisting all cloned anscestors of this ClauseElement.
         
@@ -997,11 +998,13 @@ class ClauseElement(Visitable):
         of transformative operations.
         
         """
+        s = set()
         f = self
         while f is not None:
-            yield f
+            s.add(f)
             f = getattr(f, '_is_clone_of', None)
-
+        return s
+        
     def __getstate__(self):
         d = self.__dict__.copy()
         d.pop('_is_clone_of', None)
@@ -1562,23 +1565,19 @@ class ColumnElement(ClauseElement, _CompareMixin):
     def _select_iterable(self):
         return (self, )
         
-    @property
+    @util.memoized_property
     def base_columns(self):
-        if not hasattr(self, '_base_columns'):
-            self._base_columns = set(c for c in self.proxy_set
+        return set(c for c in self.proxy_set
                                      if not hasattr(c, 'proxies'))
-        return self._base_columns
 
-    @property
+    @util.memoized_property
     def proxy_set(self):
-        if not hasattr(self, '_proxy_set'):
-            s = set([self])
-            if hasattr(self, 'proxies'):
-                for c in self.proxies:
-                    s.update(c.proxy_set)
-            self._proxy_set = s
-        return self._proxy_set
-
+        s = set([self])
+        if hasattr(self, 'proxies'):
+            for c in self.proxies:
+                s.update(c.proxy_set)
+        return s
+            
     def shares_lineage(self, othercolumn):
         """Return True if the given ``ColumnElement`` has a common ancestor to this ``ColumnElement``."""
         
@@ -1773,7 +1772,7 @@ class FromClause(Selectable):
         An example would be an Alias of a Table is derived from that Table.
         
         """
-        return fromclause in set(self._cloned_set)
+        return fromclause in self._cloned_set
 
     def replace_selectable(self, old, alias):
         """replace all occurences of FromClause 'old' with the given Alias object, returning a copy of this ``FromClause``."""
@@ -2544,7 +2543,7 @@ class Alias(FromClause):
         return self.name.encode('ascii', 'backslashreplace')
 
     def is_derived_from(self, fromclause):
-        if fromclause in set(self._cloned_set):
+        if fromclause in self._cloned_set:
             return True
         return self.element.is_derived_from(fromclause)
 
@@ -2588,10 +2587,7 @@ class _Grouping(ColumnElement):
 
     @property
     def _label(self):
-        try:
-            return self.element._label
-        except AttributeError:
-            return self.anon_label
+        return getattr(self.element, '_label', None) or self.anon_label
 
     def _copy_internals(self, clone=_clone):
         self.element = clone(self.element)
@@ -3192,7 +3188,7 @@ class Select(_SelectBaseMixin, FromClause):
         return itertools.chain(*[c._select_iterable for c in self._raw_columns])
 
     def is_derived_from(self, fromclause):
-        if self in set(fromclause._cloned_set):
+        if self in fromclause._cloned_set:
             return True
         
         for f in self.locate_all_froms():

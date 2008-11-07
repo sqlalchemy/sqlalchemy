@@ -773,7 +773,6 @@ class ForeignKey(SchemaItem):
         """
 
         self._colspec = column
-        self._column = None
         self.constraint = constraint
         self.use_alter = use_alter
         self.name = name
@@ -812,67 +811,65 @@ class ForeignKey(SchemaItem):
 
         return table.corresponding_column(self.column)
 
+    @util.memoized_property
     def column(self):
         # ForeignKey inits its remote column as late as possible, so tables
         # can be defined without dependencies
-        if self._column is None:
-            if isinstance(self._colspec, basestring):
-                # locate the parent table this foreign key is attached to.  we
-                # use the "original" column which our parent column represents
-                # (its a list of columns/other ColumnElements if the parent
-                # table is a UNION)
-                for c in self.parent.base_columns:
-                    if isinstance(c, Column):
-                        parenttable = c.table
-                        break
-                else:
-                    raise exc.ArgumentError(
-                        "Parent column '%s' does not descend from a "
-                        "table-attached Column" % str(self.parent))
-                m = re.match(r"^(.+?)(?:\.(.+?))?(?:\.(.+?))?$", self._colspec,
-                             re.UNICODE)
-                if m is None:
-                    raise exc.ArgumentError(
-                        "Invalid foreign key column specification: %s" %
-                        self._colspec)
-                if m.group(3) is None:
-                    (tname, colname) = m.group(1, 2)
-                    schema = None
-                else:
-                    (schema, tname, colname) = m.group(1, 2, 3)
-                if _get_table_key(tname, schema) not in parenttable.metadata:
-                    raise exc.NoReferencedTableError(
-                        "Could not find table '%s' with which to generate a "
-                        "foreign key" % tname)
-                table = Table(tname, parenttable.metadata,
-                              mustexist=True, schema=schema)
-                try:
-                    if colname is None:
-                        # colname is None in the case that ForeignKey argument
-                        # was specified as table name only, in which case we
-                        # match the column name to the same column on the
-                        # parent.
-                        key = self.parent
-                        self._column = table.c[self.parent.key]
-                    else:
-                        self._column = table.c[colname]
-                except KeyError, e:
-                    raise exc.NoReferencedColumnError(
-                        "Could not create ForeignKey '%s' on table '%s': "
-                        "table '%s' has no column named '%s'" % (
-                        self._colspec, parenttable.name, table.name, str(e)))
-
-            elif hasattr(self._colspec, '__clause_element__'):
-                self._column = self._colspec.__clause_element__()
+        if isinstance(self._colspec, basestring):
+            # locate the parent table this foreign key is attached to.  we
+            # use the "original" column which our parent column represents
+            # (its a list of columns/other ColumnElements if the parent
+            # table is a UNION)
+            for c in self.parent.base_columns:
+                if isinstance(c, Column):
+                    parenttable = c.table
+                    break
             else:
-                self._column = self._colspec
+                raise exc.ArgumentError(
+                    "Parent column '%s' does not descend from a "
+                    "table-attached Column" % str(self.parent))
+            m = re.match(r"^(.+?)(?:\.(.+?))?(?:\.(.+?))?$", self._colspec,
+                         re.UNICODE)
+            if m is None:
+                raise exc.ArgumentError(
+                    "Invalid foreign key column specification: %s" %
+                    self._colspec)
+            if m.group(3) is None:
+                (tname, colname) = m.group(1, 2)
+                schema = None
+            else:
+                (schema, tname, colname) = m.group(1, 2, 3)
+            if _get_table_key(tname, schema) not in parenttable.metadata:
+                raise exc.NoReferencedTableError(
+                    "Could not find table '%s' with which to generate a "
+                    "foreign key" % tname)
+            table = Table(tname, parenttable.metadata,
+                          mustexist=True, schema=schema)
+            try:
+                if colname is None:
+                    # colname is None in the case that ForeignKey argument
+                    # was specified as table name only, in which case we
+                    # match the column name to the same column on the
+                    # parent.
+                    key = self.parent
+                    _column = table.c[self.parent.key]
+                else:
+                    _column = table.c[colname]
+            except KeyError, e:
+                raise exc.NoReferencedColumnError(
+                    "Could not create ForeignKey '%s' on table '%s': "
+                    "table '%s' has no column named '%s'" % (
+                    self._colspec, parenttable.name, table.name, str(e)))
+
+        elif hasattr(self._colspec, '__clause_element__'):
+            _column = self._colspec.__clause_element__()
+        else:
+            _column = self._colspec
 
         # propagate TypeEngine to parent if it didn't have one
         if isinstance(self.parent.type, types.NullType):
-            self.parent.type = self._column.type
-        return self._column
-
-    column = property(column)
+            self.parent.type = _column.type
+        return _column
 
     def _set_parent(self, column):
         self.parent = column
