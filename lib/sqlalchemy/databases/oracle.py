@@ -55,7 +55,7 @@ use the sqlalchemy.schema.Sequence object which is passed to a Column construct:
         Column(...), ...
   )
 
-This step is also required when using table reflection, i.e. autoload=True:
+This step is also required when using table reflection, i.e. autoload=True::
 
   t = Table('mytable', metadata, 
         Column('id', Integer, Sequence('id_seq'), primary_key=True),
