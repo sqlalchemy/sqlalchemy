@@ -10,6 +10,18 @@
 class PoolListener(object):
     """Hooks into the lifecycle of connections in a ``Pool``.
 
+    Usage::
+    
+        # create a new pool with a listener
+        p = QueuePool(..., listeners=[MyListener()])
+        
+        # add a listener after the fact
+        p.add_listener(MyListener())
+        
+        # usage with create_engine()
+        e = create_engine("url://", ...)
+        e.pool.add_listener(MyListener())
+        
     All of the standard connection [sqlalchemy.pool#Pool] types can
     accept event listeners for key connection lifecycle events:
     creation, pool check-out and check-in.  There are no events fired
@@ -40,6 +52,7 @@ class PoolListener(object):
     internal event queues based on its capabilities.  In terms of
     efficiency and function call overhead, you're much better off only
     providing implementations for the hooks you'll be using.
+    
     """
 
     def connect(self, dbapi_con, con_record):
