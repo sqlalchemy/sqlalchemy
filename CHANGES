@@ -6,6 +6,12 @@ CHANGES
 =======
 0.5.0rc4
 ========
+- bugfixes and behavioral changes
+- orm
+    - Query.count() and Query.get() return a more informative
+      error message when executed against multiple entities.
+      [ticket:1220]
+
 - mssql
     - Lots of cleanup and fixes to correct problems with
       limit and offset.

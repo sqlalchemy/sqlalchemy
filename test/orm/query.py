@@ -236,6 +236,14 @@ class InvalidGenerationsTest(QueryTest):
         # this is fine, however
         q.from_self()
     
+    def test_mapper_zero(self):
+        s = create_session()
+        
+        q = s.query(User, Address)
+        self.assertRaises(sa_exc.InvalidRequestError, q.count)
+
+        self.assertRaises(sa_exc.InvalidRequestError, q.get, 5)
+        
     def test_from_statement(self):
         s = create_session()
         

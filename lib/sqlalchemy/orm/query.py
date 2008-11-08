@@ -236,14 +236,14 @@ class Query(object):
             return None
         return self._entities[0].mapper
 
-    def _only_mapper_zero(self):
+    def _only_mapper_zero(self, rationale=None):
         if len(self._entities) > 1:
-            raise sa_exc.InvalidRequestError("This operation requires a Query against a single mapper.")
+            raise sa_exc.InvalidRequestError(rationale or "This operation requires a Query against a single mapper.")
         return self._mapper_zero()
 
-    def _only_entity_zero(self):
+    def _only_entity_zero(self, rationale=None):
         if len(self._entities) > 1:
-            raise sa_exc.InvalidRequestError("This operation requires a Query against a single mapper.")
+            raise sa_exc.InvalidRequestError(rationale or "This operation requires a Query against a single mapper.")
         return self._entity_zero()
 
     def _generate_mapper_zero(self):
@@ -410,7 +410,7 @@ class Query(object):
         if hasattr(ident, '__composite_values__'):
             ident = ident.__composite_values__()
 
-        key = self._only_mapper_zero().identity_key_from_primary_key(ident)
+        key = self._only_mapper_zero("get() can only be used against a single mapped class.").identity_key_from_primary_key(ident)
         return self._get(key, ident)
 
     @classmethod
@@ -1248,7 +1248,12 @@ class Query(object):
     def count(self):
         """Apply this query's criterion to a SELECT COUNT statement."""
 
-        return self._col_aggregate(sql.literal_column('1'), sql.func.count, nested_cols=list(self._only_mapper_zero().primary_key))
+        return self._col_aggregate(sql.literal_column('1'), sql.func.count, 
+            nested_cols=list(self._only_mapper_zero(
+                "Can't issue count() for multiple types of objects or columns. "
+                " Construct the Query against a single element as the thing to be counted, "
+                "or for an actual row count use Query(func.count(somecolumn)) or "
+                "query.values(func.count(somecolumn)) instead.").primary_key))
 
     def _col_aggregate(self, col, func, nested_cols=None):
         context = QueryContext(self)
