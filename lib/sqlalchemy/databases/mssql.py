@@ -69,7 +69,14 @@ class MSNumeric(sqltypes.Numeric):
                 # Not sure that this exception is needed
                 return value
             else:
-                return str(value)
+                if value._exp < 6:
+                    value = ((value < 0 and '-' or '')
+                        + '0.'
+                        + '0' * -(value._exp+1)
+                        + value._int)
+                    return value
+                else:
+                    return str(value)
         return process
 
     def get_col_spec(self):

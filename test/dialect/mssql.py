@@ -366,5 +366,39 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
         connection = dialect.create_connect_args(u)
         self.assertEquals([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password;foo=bar;LANGUAGE=us_english'], {}], connection)
 
+class TypesTest(TestBase):
+    __only_on__ = 'mssql'
+
+    def setUpAll(self):
+        global numeric_table, metadata
+        metadata = MetaData(testing.db)
+        numeric_table = Table('numeric_table', metadata,
+            Column('id', Integer, Sequence('numeric_id_seq', optional=True), primary_key=True),
+            Column('numericcol', Numeric(asdecimal=False))
+        )
+        metadata.create_all()
+
+    def tearDownAll(self):
+        metadata.drop_all()
+
+    def tearDown(self):
+        numeric_table.delete().execute()
+
+    def test_decimal_e_notation(self):
+        from decimal import Decimal
+
+        try:
+            numeric_table.insert().execute(numericcol=Decimal('4.1'))
+            numeric_table.insert().execute(numericcol=Decimal('1E-1'))
+            numeric_table.insert().execute(numericcol=Decimal('1E-2'))
+            numeric_table.insert().execute(numericcol=Decimal('1E-3'))
+            numeric_table.insert().execute(numericcol=Decimal('1E-4'))
+            numeric_table.insert().execute(numericcol=Decimal('1E-5'))
+            numeric_table.insert().execute(numericcol=Decimal('1E-6'))
+            numeric_table.insert().execute(numericcol=Decimal('1E-7'))
+            numeric_table.insert().execute(numericcol=Decimal('1E-8'))
+        except:
+            assert False 
+
 if __name__ == "__main__":
     testenv.main()
