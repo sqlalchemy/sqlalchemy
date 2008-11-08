@@ -290,7 +290,7 @@ class ZooMarkTest(TestBase):
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
-    @profiling.function_call_count(13636, {'2.4':12478})
+    @profiling.function_call_count(12925, {'2.4':12478})
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 

@@ -294,8 +294,8 @@ class UserDefinedExtensionTest(_base.ORMTest):
         attributes.register_attribute(Foo, "name", uselist=False, useobject=False)
         attributes.register_attribute(Foo, "bars", uselist=True, trackparent=True, useobject=True)
 
-        assert Foo.name == attributes.manager_of_class(Foo).get_inst('name')
-        assert Foo.bars == attributes.manager_of_class(Foo).get_inst('bars')
+        assert Foo.name == attributes.manager_of_class(Foo)['name']
+        assert Foo.bars == attributes.manager_of_class(Foo)['bars']
 
     def test_alternate_finders(self):
         """Ensure the generic finder front-end deals with edge cases."""

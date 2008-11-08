@@ -387,7 +387,7 @@ class PropertyLoader(StrategizedProperty):
                 self.prop._create_joins(dest_polymorphic=True, dest_selectable=to_selectable, source_selectable=source_selectable)
 
             for k in kwargs:
-                crit = self.prop.mapper.class_manager.get_inst(k) == kwargs[k]
+                crit = self.prop.mapper.class_manager[k] == kwargs[k]
                 if criterion is None:
                     criterion = crit
                 else:

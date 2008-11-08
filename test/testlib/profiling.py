@@ -60,6 +60,7 @@ def profiled(target=None, **target_opts):
                     stats.print_stats(limit)
                 else:
                     stats.print_stats()
+                #stats.print_callers()
             os.unlink(filename)
             return result
         return _function_named(profiled, fn.__name__)

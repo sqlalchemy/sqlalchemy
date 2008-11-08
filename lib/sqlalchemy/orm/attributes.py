@@ -806,13 +806,13 @@ class InstanceState(object):
         self.manager = manager
         self.obj = weakref.ref(obj, self._cleanup)
         self.dict = obj.__dict__
-        self.committed_state = {}
         self.modified = False
         self.callables = {}
-        self.parents = {}
-        self.pending = {}
         self.expired = False
-
+        self.committed_state = {}
+        self.pending = {}
+        self.parents = {}
+        
     def detach(self):
         if self.session_id:
             del self.session_id
@@ -861,9 +861,6 @@ class InstanceState(object):
 
     def get_impl(self, key):
         return self.manager.get_impl(key)
-
-    def get_inst(self, key):
-        return self.manager.get_inst(key)
 
     def get_pending(self, key):
         if key not in self.pending:
@@ -933,7 +930,7 @@ class InstanceState(object):
     def __call__(self):
         """__call__ allows the InstanceState to act as a deferred
         callable for loading expired attributes, which is also
-        serializable.
+        serializable (picklable).
 
         """
         unmodified = self.unmodified
@@ -1052,9 +1049,10 @@ class InstanceState(object):
         if a value was not populated in state.dict.
 
         """
+        
         self.committed_state = {}
         self.pending = {}
-
+        
         # unexpire attributes which have loaded
         if self.expired_attributes:
             for key in self.expired_attributes.intersection(self.dict):
@@ -1224,49 +1222,42 @@ class ClassManager(dict):
     def get_impl(self, key):
         return self[key].impl
 
-    get_inst = dict.__getitem__
-
     @property
     def attributes(self):
         return self.itervalues()
 
     @classmethod
     def deferred_scalar_loader(cls, state, keys):
-        """TODO"""
+        """Apply a scalar loader to the given state.
+        
+        Unimplemented by default, is patched
+        by the mapper.
+        
+        """
 
     ## InstanceState management
 
     def new_instance(self, state=None):
         instance = self.class_.__new__(self.class_)
-        self.setup_instance(instance, state)
+        setattr(instance, self.STATE_ATTR, state or self.instance_state_factory(instance, self))
         return instance
 
-    def setup_instance(self, instance, with_state=None):
-        """Register an InstanceState with an instance."""
-        if self.has_state(instance):
-            state = self.state_of(instance)
-            if with_state:
-                assert state is with_state
-            return state
-        if with_state is None:
-            with_state = self.instance_state_factory(instance, self)
-        self.install_state(instance, with_state)
-        return with_state
+    def _new_state_if_none(self, instance):
+        """Install a default InstanceState if none is present.
 
-    def install_state(self, instance, state):
-        setattr(instance, self.STATE_ATTR, state)
-
-    def has_state(self, instance):
-        """True if an InstanceState is installed on the instance."""
-        return bool(getattr(instance, self.STATE_ATTR, False))
-
-    def state_of(self, instance):
-        """Retrieve the InstanceState of an instance.
-
-        May raise KeyError or AttributeError if no state is available.
+        A private convenience method used by the __init__ decorator.
+        
         """
+        if hasattr(instance, self.STATE_ATTR):
+            return False
+        else:
+            state = self.instance_state_factory(instance, self)
+            setattr(instance, self.STATE_ATTR, state)
+            return state
+    
+    def state_of(self, instance):
         return getattr(instance, self.STATE_ATTR)
-
+        
     def state_getter(self):
         """Return a (instance) -> InstanceState callable.
 
@@ -1274,18 +1265,12 @@ class ClassManager(dict):
         AttributeError if no InstanceState could be found for the
         instance.
         """
+
         return attrgetter(self.STATE_ATTR)
-
-    def _new_state_if_none(self, instance):
-        """Install a default InstanceState if none is present.
-
-        A private convenience method used by the __init__ decorator.
-        """
-        if self.has_state(instance):
-            return False
-        else:
-            return self.setup_instance(instance)
-
+    
+    def has_state(self, instance):
+        return hasattr(instance, self.STATE_ATTR)
+        
     def has_parent(self, state, key, optimistic=False):
         """TODO"""
         return self.get_impl(key).hasparent(state, optimistic=optimistic)
@@ -1342,14 +1327,31 @@ class _ClassInstrumentationAdapter(ClassManager):
         else:
             return ClassManager.initialize_collection(self, key, state, factory)
 
-    def setup_instance(self, instance, state=None):
+    def new_instance(self, state=None):
+        instance = self.class_.__new__(self.class_)
+        self._setup_instance(instance, state)
+        return instance
+
+    def _new_state_if_none(self, instance):
+        """Install a default InstanceState if none is present.
+
+        A private convenience method used by the __init__ decorator.
+        """
+        if self.has_state(instance):
+            return False
+        else:
+            return self._setup_instance(instance)
+
+    def _setup_instance(self, instance, state=None):
         self._adapted.initialize_instance_dict(self.class_, instance)
-        state = ClassManager.setup_instance(self, instance, with_state=state)
+        
+        if state is None:
+            state = self.instance_state_factory(instance, self)
+            
+        # the given instance is assumed to have no state
+        self._adapted.install_state(self.class_, instance, state)
         state.dict = self._adapted.get_instance_dict(self.class_, instance)
         return state
-
-    def install_state(self, instance, state):
-        self._adapted.install_state(self.class_, instance, state)
 
     def state_of(self, instance):
         if hasattr(self._adapted, 'state_of'):
