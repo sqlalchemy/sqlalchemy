@@ -4,6 +4,16 @@
 =======
 CHANGES
 =======
+0.5.0rc4
+========
+- mssql
+    - Lots of cleanup and fixes to correct problems with
+      limit and offset.
+
+    - Correct situation where subqueries as part of a
+      binary expression need to be translated to use the
+      IN and NOT IN syntax.
+
 0.5.0rc3
 ========
 - features

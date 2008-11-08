@@ -20,6 +20,16 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         t = table('sometable', column('somecolumn'))
         self.assert_compile(t.update(t.c.somecolumn==7), "UPDATE sometable SET somecolumn=:somecolumn WHERE sometable.somecolumn = :somecolumn_1", dict(somecolumn=10))
 
+    def test_in_with_subqueries(self):
+        """Test that when using subqueries in a binary expression
+        the == and != are changed to IN and NOT IN respectively.
+
+        """
+
+        t = table('sometable', column('somecolumn'))
+        self.assert_compile(t.select().where(t.c.somecolumn==t.select()), "SELECT sometable.somecolumn FROM sometable WHERE sometable.somecolumn IN (SELECT sometable.somecolumn FROM sometable)")
+        self.assert_compile(t.select().where(t.c.somecolumn!=t.select()), "SELECT sometable.somecolumn FROM sometable WHERE sometable.somecolumn NOT IN (SELECT sometable.somecolumn FROM sometable)")
+
     def test_count(self):
         t = table('sometable', column('somecolumn'))
         self.assert_compile(t.count(), "SELECT count(sometable.somecolumn) AS tbl_row_count FROM sometable")
@@ -197,28 +207,6 @@ class QueryTest(TestBase):
         finally:
             table.drop()
 
-    def test_select_limit_nooffset(self):
-        metadata = MetaData(testing.db)
-
-        users = Table('query_users', metadata,
-            Column('user_id', INT, primary_key = True),
-            Column('user_name', VARCHAR(20)),
-        )
-        addresses = Table('query_addresses', metadata,
-            Column('address_id', Integer, primary_key=True),
-            Column('user_id', Integer, ForeignKey('query_users.user_id')),
-            Column('address', String(30)))
-        metadata.create_all()
-
-        try:
-            try:
-                r = users.select(limit=3, offset=2,
-                                 order_by=[users.c.user_id]).execute().fetchall()
-                assert False # InvalidRequestError should have been raised
-            except exc.InvalidRequestError:
-                pass
-        finally:
-            metadata.drop_all()
 
 class Foo(object):
     def __init__(self, **kw):

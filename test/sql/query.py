@@ -648,9 +648,10 @@ class LimitTest(TestBase):
         r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
 
-    @testing.crashes('mssql', 'FIXME: guessing')
     @testing.fails_on('maxdb')
     def test_select_limit_offset(self):
+        """Test the interaction between limit and offset"""
+
         r = users.select(limit=3, offset=2, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
         r = users.select(offset=5, order_by=[users.c.user_id]).execute().fetchall()
@@ -659,14 +660,15 @@ class LimitTest(TestBase):
     def test_select_distinct_limit(self):
         """Test the interaction between limit and distinct"""
 
-        r = sorted([x[0] for x in select([addresses.c.address]).distinct().limit(3).execute().fetchall()])
+        r = sorted([x[0] for x in select([addresses.c.address]).distinct().limit(3).order_by(addresses.c.address).execute().fetchall()])
         self.assert_(len(r) == 3, repr(r))
         self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
 
+    @testing.fails_on('mssql')
     def test_select_distinct_offset(self):
-        """Test the interaction between limit and offset"""
+        """Test the interaction between distinct and offset"""
 
-        r = sorted([x[0] for x in select([addresses.c.address]).distinct().offset(1).execute().fetchall()])
+        r = sorted([x[0] for x in select([addresses.c.address]).distinct().offset(1).order_by(addresses.c.address).execute().fetchall()])
         self.assert_(len(r) == 4, repr(r))
         self.assert_(r[0] != r[1] and r[1] != r[2] and r[2] != [3], repr(r))
 
