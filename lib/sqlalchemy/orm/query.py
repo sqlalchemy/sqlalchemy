@@ -1246,28 +1246,54 @@ class Query(object):
                 kwargs.get('distinct', False))
 
     def count(self):
-        """Apply this query's criterion to a SELECT COUNT statement."""
-
+        """Apply this query's criterion to a SELECT COUNT statement.
+        
+        If column expressions or LIMIT/OFFSET/DISTINCT are present,
+        the query "SELECT count(1) FROM (SELECT ...)" is issued, 
+        so that the result matches the total number of rows
+        this query would return.  For mapped entities,
+        the primary key columns of each is written to the 
+        columns clause of the nested SELECT statement.
+        
+        For a Query which is only against mapped entities,
+        a simpler "SELECT count(1) FROM table1, table2, ... 
+        WHERE criterion" is issued.  
+        
+        """
+        should_nest = [self._should_nest_selectable]
+        def ent_cols(ent):
+            if isinstance(ent, _MapperEntity):
+                return ent.mapper.primary_key
+            else:
+                should_nest[0] = True
+                return [ent.column]
+                
         return self._col_aggregate(sql.literal_column('1'), sql.func.count, 
-            nested_cols=list(self._only_mapper_zero(
-                "Can't issue count() for multiple types of objects or columns. "
-                " Construct the Query against a single element as the thing to be counted, "
-                "or for an actual row count use Query(func.count(somecolumn)) or "
-                "query.values(func.count(somecolumn)) instead.").primary_key))
+            nested_cols=chain(*[ent_cols(ent) for ent in self._entities]),
+            should_nest = should_nest[0]
+        )
 
-    def _col_aggregate(self, col, func, nested_cols=None):
+    def _col_aggregate(self, col, func, nested_cols=None, should_nest=False):
         context = QueryContext(self)
+
+        for entity in self._entities:
+            entity.setup_context(self, context)
+
+        if context.from_clause:
+            from_obj = [context.from_clause]
+        else:
+            from_obj = context.froms
 
         self._adjust_for_single_inheritance(context)
 
         whereclause  = context.whereclause
 
-        from_obj = self.__mapper_zero_from_obj()
-
-        if self._should_nest_selectable:
+        if should_nest:
             if not nested_cols:
                 nested_cols = [col]
-            s = sql.select(nested_cols, whereclause, from_obj=from_obj, **self._select_args)
+            else:
+                nested_cols = list(nested_cols)
+            s = sql.select(nested_cols, whereclause, from_obj=from_obj, use_labels=True, **self._select_args)
             s = s.alias()
             s = sql.select([func(s.corresponding_column(col) or col)]).select_from(s)
         else:

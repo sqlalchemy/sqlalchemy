@@ -240,8 +240,6 @@ class InvalidGenerationsTest(QueryTest):
         s = create_session()
         
         q = s.query(User, Address)
-        self.assertRaises(sa_exc.InvalidRequestError, q.count)
-
         self.assertRaises(sa_exc.InvalidRequestError, q.get, 5)
         
     def test_from_statement(self):
@@ -779,10 +777,53 @@ class AggregateTest(QueryTest):
 
 class CountTest(QueryTest):
     def test_basic(self):
-        assert 4 == create_session().query(User).count()
+        s = create_session()
+        
+        eq_(s.query(User).count(), 4)
 
-        assert 2 == create_session().query(User).filter(users.c.name.endswith('ed')).count()
+        eq_(s.query(User).filter(users.c.name.endswith('ed')).count(), 2)
 
+    def test_multiple_entity(self):
+        s = create_session()
+        q = s.query(User, Address)
+        eq_(q.count(), 20)  # cartesian product
+        
+        q = s.query(User, Address).join(User.addresses)
+        eq_(q.count(), 5)
+    
+    def test_nested(self):
+        s = create_session()
+        q = s.query(User, Address).limit(2)
+        eq_(q.count(), 2)
+
+        q = s.query(User, Address).limit(100)
+        eq_(q.count(), 20)
+
+        q = s.query(User, Address).join(User.addresses).limit(100)
+        eq_(q.count(), 5)
+    
+    def test_cols(self):
+        """test that column-based queries always nest."""
+        
+        s = create_session()
+        
+        q = s.query(func.count(distinct(User.name)))
+        eq_(q.count(), 1)
+
+        q = s.query(func.count(distinct(User.name))).distinct()
+        eq_(q.count(), 1)
+
+        q = s.query(User.name)
+        eq_(q.count(), 4)
+
+        q = s.query(User.name, Address)
+        eq_(q.count(), 20)
+
+        q = s.query(Address.user_id)
+        eq_(q.count(), 5)
+        eq_(q.distinct().count(), 3)
+        
+        
 class DistinctTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).distinct().all()

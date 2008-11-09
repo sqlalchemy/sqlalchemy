@@ -6,15 +6,30 @@ CHANGES
 =======
 0.5.0rc4
 ========
+- features
+- orm
+    - Query.count() has been enhanced to do the "right
+      thing" in a wider variety of cases. It can now
+      count multiple-entity queries, as well as
+      column-based queries. Note that this means if you
+      say query(A, B).count() without any joining
+      criterion, it's going to count the cartesian
+      product of A*B. Any query which is against
+      column-based entities will automatically issue
+      "SELECT count(1) FROM (SELECT...)" so that the
+      real rowcount is returned, meaning a query such as
+      query(func.count(A.name)).count() will return a value of
+      one, since that query would return one row.
+      
 - bugfixes and behavioral changes
 - general:
     - global "propigate"->"propagate" change.
 
 - orm
-    - Query.count() and Query.get() return a more informative
+    - Query.get() returns a more informative
       error message when executed against multiple entities.
       [ticket:1220]
-
+      
 - access
     - Added support for Currency type.
 
