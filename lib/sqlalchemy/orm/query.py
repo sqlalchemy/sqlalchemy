@@ -1791,13 +1791,13 @@ class _ColumnEntity(_QueryEntity):
         # of FROMs for the overall expression - this helps
         # subqueries which were built from ORM constructs from
         # leaking out their entities into the main select construct
-        actual_froms = set(column._get_from_objects())
+        actual_froms = set(column._from_objects)
 
         self.entities = util.OrderedSet(
             elem._annotations['parententity']
             for elem in visitors.iterate(column, {})
             if 'parententity' in elem._annotations
-            and actual_froms.intersection(elem._get_from_objects())
+            and actual_froms.intersection(elem._from_objects)
             )
 
         if self.entities:

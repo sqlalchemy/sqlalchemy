@@ -1318,7 +1318,6 @@ class memoized_instancemethod(object):
         oneshot.__doc__ = self.__doc__
         return oneshot
 
-
 def reset_memoized(instance, name):
     try:
         del instance.__dict__[name]

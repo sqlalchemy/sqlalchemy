@@ -679,10 +679,9 @@ class OracleDialect(default.DefaultDialect):
 
 class _OuterJoinColumn(sql.ClauseElement):
     __visit_name__ = 'outer_join_column'
+    
     def __init__(self, column):
         self.column = column
-    def _get_from_objects(self, **kwargs):
-        return []
 
 class OracleCompiler(compiler.DefaultCompiler):
     """Oracle compiler modifies the lexical structure of Select

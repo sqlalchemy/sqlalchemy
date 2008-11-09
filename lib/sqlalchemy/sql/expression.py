@@ -896,8 +896,8 @@ def _compound_select(keyword, *selects, **kwargs):
 def _is_literal(element):
     return not isinstance(element, Visitable) and not hasattr(element, '__clause_element__')
 
-def _from_objects(*elements, **kwargs):
-    return itertools.chain(*[element._get_from_objects(**kwargs) for element in elements])
+def _from_objects(*elements):
+    return itertools.chain(*[element._from_objects for element in elements])
 
 def _labeled(element):
     if not hasattr(element, 'name'):
@@ -967,6 +967,7 @@ class ClauseElement(Visitable):
 
     _annotations = {}
     supports_execution = False
+    _from_objects = []
     
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
@@ -1010,15 +1011,6 @@ class ClauseElement(Visitable):
         d.pop('_is_clone_of', None)
         return d
         
-    def _get_from_objects(self, **modifiers):
-        """Return objects represented in this ``ClauseElement`` that
-        should be added to the ``FROM`` list of a query, when this
-        ``ClauseElement`` is placed in the column clause of a
-        ``Select`` statement.
-        
-        """
-        raise NotImplementedError(repr(self))
-    
     def _annotate(self, values):
         """return a copy of this ClauseElement with the given annotations dictionary."""
 
@@ -1544,6 +1536,8 @@ class _CompareMixin(ColumnOperators):
             return other.__clause_element__()
         elif not isinstance(other, ClauseElement):
             return self._bind_param(other)
+        elif isinstance(other, _SelectBaseMixin):
+            return other.as_scalar()
         else:
             return other
 
@@ -1754,9 +1748,6 @@ class FromClause(Selectable):
     quote = None
     schema = None
 
-    def _get_from_objects(self, **modifiers):
-        return []
-
     def count(self, whereclause=None, **params):
         """return a SELECT COUNT generated against this ``FromClause``."""
 
@@ -1962,9 +1953,6 @@ class _BindParamClause(ColumnElement):
             self.unique = True
             self.key = _generated_label("%%(%d %s)s" % (id(self), self._orig_key or 'param'))
 
-    def _get_from_objects(self, **modifiers):
-        return []
-
     def bind_processor(self, dialect):
         return self.type.dialect_impl(dialect).bind_processor(dialect)
 
@@ -2009,8 +1997,6 @@ class _TypeClause(ClauseElement):
     def __init__(self, type):
         self.type = type
 
-    def _get_from_objects(self, **modifiers):
-        return []
 
 class _TextClause(ClauseElement):
     """Represent a literal SQL text fragment.
@@ -2064,8 +2050,6 @@ class _TextClause(ClauseElement):
     def get_children(self, **kwargs):
         return self.bindparams.values()
 
-    def _get_from_objects(self, **modifiers):
-        return []
     
 class _Null(ColumnElement):
     """Represent the NULL keyword in a SQL statement.
@@ -2075,11 +2059,8 @@ class _Null(ColumnElement):
     """
 
     def __init__(self):
-        ColumnElement.__init__(self)
         self.type = sqltypes.NULLTYPE
 
-    def _get_from_objects(self, **modifiers):
-        return []
 
 class ClauseList(ClauseElement):
     """Describe a list of clauses, separated by an operator.
@@ -2124,8 +2105,9 @@ class ClauseList(ClauseElement):
     def get_children(self, **kwargs):
         return self.clauses
 
-    def _get_from_objects(self, **modifiers):
-        return list(itertools.chain(*[c._get_from_objects(**modifiers) for c in self.clauses]))
+    @property
+    def _from_objects(self):
+        return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
     def self_group(self, against=None):
         if self.group and self.operator != against and operators.is_precedent(self.operator, against):
@@ -2168,7 +2150,6 @@ class _CalculatedClause(ColumnElement):
     __visit_name__ = 'calculatedclause'
 
     def __init__(self, name, *clauses, **kwargs):
-        ColumnElement.__init__(self)
         self.name = name
         self.type = sqltypes.to_instance(kwargs.get('type_', None))
         self._bind = kwargs.get('bind', None)
@@ -2199,8 +2180,9 @@ class _CalculatedClause(ColumnElement):
     def get_children(self, **kwargs):
         return self.clause_expr,
 
-    def _get_from_objects(self, **modifiers):
-        return self.clauses._get_from_objects(**modifiers)
+    @property
+    def _from_objects(self):
+        return self.clauses._from_objects
 
     def _bind_param(self, obj):
         return _BindParamClause(self.name, obj, type_=self.type, unique=True)
@@ -2252,7 +2234,6 @@ class _Function(_CalculatedClause, FromClause):
 class _Cast(ColumnElement):
 
     def __init__(self, clause, totype, **kwargs):
-        ColumnElement.__init__(self)
         self.type = sqltypes.to_instance(totype)
         self.clause = _literal_as_binds(clause, None)
         self.typeclause = _TypeClause(self.type)
@@ -2264,13 +2245,13 @@ class _Cast(ColumnElement):
     def get_children(self, **kwargs):
         return self.clause, self.typeclause
 
-    def _get_from_objects(self, **modifiers):
-        return self.clause._get_from_objects(**modifiers)
+    @property
+    def _from_objects(self):
+        return self.clause._from_objects
 
 
 class _UnaryExpression(ColumnElement):
     def __init__(self, element, operator=None, modifier=None, type_=None, negate=None):
-        ColumnElement.__init__(self)
         self.operator = operator
         self.modifier = modifier
 
@@ -2278,8 +2259,9 @@ class _UnaryExpression(ColumnElement):
         self.type = sqltypes.to_instance(type_)
         self.negate = negate
 
-    def _get_from_objects(self, **modifiers):
-        return self.element._get_from_objects(**modifiers)
+    @property
+    def _from_objects(self):
+        return self.element._from_objects
 
     def _copy_internals(self, clone=_clone):
         self.element = clone(self.element)
@@ -2319,7 +2301,6 @@ class _BinaryExpression(ColumnElement):
     """Represent an expression that is ``LEFT <operator> RIGHT``."""
 
     def __init__(self, left, right, operator, type_=None, negate=None, modifiers=None):
-        ColumnElement.__init__(self)
         self.left = _literal_as_text(left).self_group(against=operator)
         self.right = _literal_as_text(right).self_group(against=operator)
         self.operator = operator
@@ -2330,8 +2311,9 @@ class _BinaryExpression(ColumnElement):
         else:
             self.modifiers = modifiers
 
-    def _get_from_objects(self, **modifiers):
-        return self.left._get_from_objects(**modifiers) + self.right._get_from_objects(**modifiers)
+    @property
+    def _from_objects(self):
+        return self.left._from_objects + self.right._from_objects
 
     def _copy_internals(self, clone=_clone):
         self.left = clone(self.left)
@@ -2379,7 +2361,8 @@ class _BinaryExpression(ColumnElement):
 
 class _Exists(_UnaryExpression):
     __visit_name__ = _UnaryExpression.__visit_name__
-
+    _from_objects = []
+    
     def __init__(self, *args, **kwargs):
         if args and isinstance(args[0], _SelectBaseMixin):
             s = args[0]
@@ -2397,9 +2380,6 @@ class _Exists(_UnaryExpression):
         e = self._clone()
         e.element = self.element.correlate(fromclause).self_group()
         return e
-
-    def _get_from_objects(self, **modifiers):
-        return []
 
     def select_from(self, clause):
         """return a new exists() construct with the given expression set as its FROM clause."""
@@ -2524,11 +2504,12 @@ class Join(FromClause):
     def _hide_froms(self):
         return itertools.chain(*[_from_objects(x.left, x.right) for x in self._cloned_set])
 
-    def _get_from_objects(self, **modifiers):
+    @property
+    def _from_objects(self):
         return [self] + \
-                self.onclause._get_from_objects(**modifiers) + \
-                self.left._get_from_objects(**modifiers) + \
-                self.right._get_from_objects(**modifiers)
+                self.onclause._from_objects + \
+                self.left._from_objects + \
+                self.right._from_objects
 
 class Alias(FromClause):
     """Represents an table or selectable alias (AS).
@@ -2588,7 +2569,8 @@ class Alias(FromClause):
         if aliased_selectables:
             yield self.element
 
-    def _get_from_objects(self, **modifiers):
+    @property
+    def _from_objects(self):
         return [self]
 
     @property
@@ -2599,7 +2581,6 @@ class _Grouping(ColumnElement):
     """Represent a grouping within a column expression"""
 
     def __init__(self, element):
-        ColumnElement.__init__(self)
         self.element = element
         self.type = getattr(element, 'type', None)
 
@@ -2617,8 +2598,9 @@ class _Grouping(ColumnElement):
     def get_children(self, **kwargs):
         return self.element,
 
-    def _get_from_objects(self, **modifiers):
-        return self.element._get_from_objects(**modifiers)
+    @property
+    def _from_objects(self):
+        return self.element._from_objects
 
     def __getattr__(self, attr):
         return getattr(self.element, attr)
@@ -2652,8 +2634,9 @@ class _FromGrouping(FromClause):
     def _copy_internals(self, clone=_clone):
         self.element = clone(self.element)
 
-    def _get_from_objects(self, **modifiers):
-        return self.element._get_from_objects(**modifiers)
+    @property
+    def _from_objects(self):
+        return self.element._from_objects
 
     def __getattr__(self, attr):
         return getattr(self.element, attr)
@@ -2704,8 +2687,9 @@ class _Label(ColumnElement):
     def _copy_internals(self, clone=_clone):
         self.element = clone(self.element)
 
-    def _get_from_objects(self, **modifiers):
-        return self.element._get_from_objects(**modifiers)
+    @property
+    def _from_objects(self):
+        return self.element._from_objects
 
     def _make_proxy(self, selectable, name = None):
         if isinstance(self.element, (Selectable, ColumnElement)):
@@ -2743,7 +2727,6 @@ class _ColumnClause(_Immutable, ColumnElement):
       
     """
     def __init__(self, text, selectable=None, type_=None, is_literal=False):
-        ColumnElement.__init__(self)
         self.key = self.name = text
         self.table = selectable
         self.type = sqltypes.to_instance(type_)
@@ -2783,7 +2766,8 @@ class _ColumnClause(_Immutable, ColumnElement):
         else:
             return super(_ColumnClause, self).label(name)
 
-    def _get_from_objects(self, **modifiers):
+    @property
+    def _from_objects(self):
         if self.table:
             return [self.table]
         else:
@@ -2858,7 +2842,8 @@ class TableClause(_Immutable, FromClause):
     def delete(self, whereclause=None, **kwargs):
         return delete(self, whereclause, **kwargs)
 
-    def _get_from_objects(self, **modifiers):
+    @property
+    def _from_objects(self):
         return [self]
 
 @util.decorator
@@ -2994,15 +2979,15 @@ class _SelectBaseMixin(object):
                 clauses = list(self._group_by_clause) + list(clauses)
             self._group_by_clause = ClauseList(*clauses)
 
-    def _get_from_objects(self, is_where=False, **modifiers):
-        if is_where:
-            return []
-        else:
-            return [self]
+    @property
+    def _from_objects(self):
+        return [self]
 
+        
 class _ScalarSelect(_Grouping):
     __visit_name__ = 'grouping'
-
+    _from_objects = []
+    
     def __init__(self, element):
         self.element = element
         cols = list(element.c)
@@ -3022,9 +3007,6 @@ class _ScalarSelect(_Grouping):
 
     def _make_proxy(self, selectable, name):
         return list(self.inner_columns)[0]._make_proxy(selectable, name)
-
-    def _get_from_objects(self, **modifiers):
-        return []
 
 class CompoundSelect(_SelectBaseMixin, FromClause):
     def __init__(self, keyword, *selects, **kwargs):
@@ -3125,7 +3107,7 @@ class Select(_SelectBaseMixin, FromClause):
 
         if whereclause:
             self._whereclause = _literal_as_text(whereclause)
-            self._froms.update(_from_objects(self._whereclause, is_where=True))
+            self._froms.update(_from_objects(self._whereclause))
         else:
             self._whereclause = None
 
@@ -3348,7 +3330,7 @@ class Select(_SelectBaseMixin, FromClause):
 
         """
         whereclause = _literal_as_text(whereclause)
-        self._froms = self._froms.union(_from_objects(whereclause, is_where=True))
+        self._froms = self._froms.union(_from_objects(whereclause))
         
         if self._whereclause is not None:
             self._whereclause = and_(self._whereclause, whereclause)

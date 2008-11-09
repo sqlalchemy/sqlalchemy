@@ -1016,9 +1016,9 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             return self.process(expression._BinaryExpression(binary.right, binary.left, binary.operator), **kwargs)
         else:
             if (binary.operator in (operator.eq, operator.ne)) and (
-                (isinstance(binary.left, expression._FromGrouping) and isinstance(binary.left.element, expression._SelectBaseMixin)) or \
-                (isinstance(binary.right, expression._FromGrouping) and isinstance(binary.right.element, expression._SelectBaseMixin)) or \
-                 isinstance(binary.left, expression._SelectBaseMixin) or isinstance(binary.right, expression._SelectBaseMixin)):
+                (isinstance(binary.left, expression._FromGrouping) and isinstance(binary.left.element, expression._ScalarSelect)) or \
+                (isinstance(binary.right, expression._FromGrouping) and isinstance(binary.right.element, expression._ScalarSelect)) or \
+                 isinstance(binary.left, expression._ScalarSelect) or isinstance(binary.right, expression._ScalarSelect)):
                 op = binary.operator == operator.eq and "IN" or "NOT IN"
                 return self.process(expression._BinaryExpression(binary.left, binary.right, op), **kwargs)
             return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
