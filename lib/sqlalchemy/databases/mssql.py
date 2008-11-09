@@ -682,10 +682,10 @@ class MSSQLDialect(default.DefaultDialect):
         rows = connection.execute(s).fetchall()
 
         def _gen_fkref(table, rschema, rtbl, rcol):
-            if table.schema and rschema != table.schema or rschema != current_schema:
-                return '.'.join([rschema, rtbl, rcol])
-            else:
+            if rschema == current_schema and not table.schema:
                 return '.'.join([rtbl, rcol])
+            else:
+                return '.'.join([rschema, rtbl, rcol])
 
         # group rows by constraint ID, to handle multi-column FKs
         fknm, scols, rcols = (None, [], [])
@@ -693,7 +693,7 @@ class MSSQLDialect(default.DefaultDialect):
             scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
             # if the reflected schema is the default schema then don't set it because this will
             # play into the metadata key causing duplicates.
-            if rschema == current_schema:
+            if rschema == current_schema and not table.schema:
                 schema.Table(rtbl, table.metadata, autoload=True, autoload_with=connection)
             else:
                 schema.Table(rtbl, table.metadata, schema=rschema, autoload=True, autoload_with=connection)

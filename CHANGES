@@ -23,6 +23,10 @@ CHANGES
     - Fixed E Notation issue that prevented the ability to
       insert decimal values less than 1E-6. [ticket:1216]
 
+    - Corrected problems with reflection when dealing with
+      schemas, particularly when those schemas are the
+      default schema. [ticket:1217]
+
 0.5.0rc3
 ========
 - features
