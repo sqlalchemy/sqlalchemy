@@ -29,6 +29,10 @@ CHANGES
     - Query.get() returns a more informative
       error message when executed against multiple entities.
       [ticket:1220]
+
+- sql
+    - Removed the 'properties' attribute of the 
+      Connection object, Connection.info should be used.
       
 - access
     - Added support for Currency type.

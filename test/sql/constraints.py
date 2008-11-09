@@ -175,12 +175,12 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         capt = []
         connection = testing.db.connect()
         # TODO: hacky, put a real connection proxy in
-        ex = connection._Connection__execute_raw
+        ex = connection._Connection__execute_context
         def proxy(context):
             capt.append(context.statement)
             capt.append(repr(context.parameters))
             ex(context)
-        connection._Connection__execute_raw = proxy
+        connection._Connection__execute_context = proxy
         schemagen = testing.db.dialect.schemagenerator(testing.db.dialect, connection)
         schemagen.traverse(events)
 

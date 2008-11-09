@@ -136,6 +136,9 @@ class DefaultExecutionContext(base.ExecutionContext):
             # compiled clauseelement.  process bind params, process table defaults,
             # track collections used by ResultProxy to target and process results
 
+            if not compiled.can_execute:
+                raise exc.ArgumentError("Not an executable clause: %s" % compiled)
+
             self.processors = dict(
                 (key, value) for key, value in
                 ( (compiled.bind_names[bindparam],
@@ -152,10 +155,9 @@ class DefaultExecutionContext(base.ExecutionContext):
 
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
+            self.should_autocommit = compiled.statement._autocommit
             if isinstance(compiled.statement, expression._TextClause):
-                self.should_autocommit = compiled.statement._autocommit or self.should_autocommit_text(self.statement)
-            else:
-                self.should_autocommit = getattr(compiled.statement, '_autocommit', False) or self.should_autocommit_compiled(compiled)
+                self.should_autocommit = self.should_autocommit or self.should_autocommit_text(self.statement)
 
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]
@@ -248,20 +250,11 @@ class DefaultExecutionContext(base.ExecutionContext):
                 parameters.append(param)
         return parameters
 
-    def should_autocommit_compiled(self, compiled):
-        return isinstance(compiled.statement, expression._UpdateBase)
-
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_REGEXP.match(statement)
 
     def create_cursor(self):
         return self._connection.connection.cursor()
-
-    def pre_execution(self):
-        self.pre_exec()
-
-    def post_execution(self):
-        self.post_exec()
 
     def pre_exec(self):
         pass

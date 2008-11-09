@@ -2551,6 +2551,8 @@ class Alias(FromClause):
             baseselectable = baseselectable.element
         self.original = baseselectable
         self.supports_execution = baseselectable.supports_execution
+        if self.supports_execution:
+            self._autocommit = baseselectable._autocommit
         self.element = selectable
         if alias is None:
             if self.original.named_with_column:
@@ -3453,7 +3455,8 @@ class _UpdateBase(ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
 
     supports_execution = True
-
+    _autocommit = True
+    
     def _generate(self):
         s = self.__class__.__new__(self.__class__)
         s.__dict__ = self.__dict__.copy()
@@ -3606,6 +3609,7 @@ class Delete(_UpdateBase):
 
 class _IdentifiedClause(ClauseElement):
     supports_execution = True
+    _autocommit = False
     quote = None
     
     def __init__(self, ident):

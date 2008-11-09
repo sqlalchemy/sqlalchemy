@@ -324,7 +324,7 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def pre_execution(self):
+    def pre_exec(self):
         """Called before an execution of a compiled statement.
 
         If a compiled statement was passed to this ExecutionContext,
@@ -334,7 +334,7 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def post_execution(self):
+    def post_exec(self):
         """Called after the execution of a compiled statement.
 
         If a compiled statement was passed to this ExecutionContext,
@@ -349,11 +349,6 @@ class ExecutionContext(object):
 
         Returns a ResultProxy.
         """
-
-        raise NotImplementedError()
-
-    def should_autocommit_compiled(self, compiled):
-        """return True if the given Compiled object refers to a "committable" statement."""
 
         raise NotImplementedError()
 
@@ -425,6 +420,7 @@ class Compiled(object):
 
         bind
           Optional Engine or Connection to compile this statement against.
+          
         """
         self.dialect = dialect
         self.statement = statement
@@ -502,6 +498,7 @@ class Connection(Connectable):
     a begin method to return Transaction objects.
 
     The Connection object is **not** threadsafe.
+    
     """
 
     def __init__(self, engine, connection=None, close_with_result=False,
@@ -511,6 +508,7 @@ class Connection(Connectable):
         Connection objects are typically constructed by an
         [sqlalchemy.engine#Engine], see the ``connect()`` and
         ``contextual_connect()`` methods of Engine.
+        
         """
 
         self.engine = engine
@@ -528,6 +526,7 @@ class Connection(Connectable):
 
         This is used to execute "sub" statements within a single execution,
         usually an INSERT statement.
+        
         """
         return self.engine.Connection(self.engine, self.__connection, _branch=True)
 
@@ -568,8 +567,8 @@ class Connection(Connectable):
     def should_close_with_result(self):
         """Indicates if this Connection should be closed when a corresponding
         ResultProxy is closed; this is essentially an auto-release mode.
+        
         """
-
         return self.__close_with_result
 
     @property
@@ -577,16 +576,14 @@ class Connection(Connectable):
         """A collection of per-DB-API connection instance properties."""
         return self.connection.info
 
-    properties = property(info, doc="""An alias for the .info collection, will be removed in 0.5.""")
-
     def connect(self):
         """Returns self.
 
         This ``Connectable`` interface method returns self, allowing
         Connections to be used interchangably with Engines in most
         situations that require a bind.
-        """
 
+        """
         return self
 
     def contextual_connect(self, **kwargs):
@@ -595,8 +592,8 @@ class Connection(Connectable):
         This ``Connectable`` interface method returns self, allowing
         Connections to be used interchangably with Engines in most
         situations that require a bind.
-        """
 
+        """
         return self
 
     def invalidate(self, exception=None):
@@ -636,8 +633,8 @@ class Connection(Connectable):
         [sqlalchemy.interfaces#PoolListener] for a mechanism to modify
         connection state when connections leave and return to their
         connection pool.
-        """
 
+        """
         self.__connection.detach()
 
     def begin(self):
@@ -648,8 +645,8 @@ class Connection(Connectable):
         outermost transaction may ``commit``.  Calls to ``commit`` on
         inner transactions are ignored.  Any transaction in the
         hierarchy may ``rollback``, however.
-        """
 
+        """
         if self.__transaction is None:
             self.__transaction = RootTransaction(self)
         else:
@@ -774,20 +771,6 @@ class Connection(Connectable):
             self.engine.dialect.do_commit_twophase(self, xid, is_prepared)
         self.__transaction = None
 
-    def _autocommit(self, context):
-        """Possibly issue a commit.
-
-        When no Transaction is present, this is called after statement
-        execution to provide "autocommit" behavior.  Dialects may
-        inspect the statement to determine if a commit is actually
-        required.
-        """
-
-        # TODO: have the dialect determine if autocommit can be set on
-        # the connection directly without this extra step
-        if not self.in_transaction() and context.should_autocommit:
-            self._commit_impl()
-
     def _autorollback(self):
         if not self.in_transaction():
             self._rollback_impl()
@@ -824,16 +807,6 @@ class Connection(Connectable):
         else:
             raise exc.InvalidRequestError("Unexecutable object type: " + str(type(object)))
 
-    def _execute_default(self, default, multiparams=None, params=None):
-        return self.engine.dialect.defaultrunner(self.__create_execution_context()).traverse_single(default)
-
-    def _execute_text(self, statement, multiparams, params):
-        parameters = self.__distill_params(multiparams, params)
-        context = self.__create_execution_context(statement=statement, parameters=parameters)
-        self.__execute_raw(context)
-        self._autocommit(context)
-        return context.get_result_proxy()
-
     def __distill_params(self, multiparams, params):
         """given arguments from the calling form *multiparams, **params, return a list
         of bind parameter structures, usually a list of dictionaries.
@@ -847,15 +820,16 @@ class Connection(Connectable):
             else:
                 return [{}]
         elif len(multiparams) == 1:
-            if isinstance(multiparams[0], (list, tuple)):
-                if not multiparams[0] or isinstance(multiparams[0][0], (list, tuple, dict)):
-                    return multiparams[0]
+            zero = multiparams[0]
+            if isinstance(zero, (list, tuple)):
+                if not zero or isinstance(zero[0], (list, tuple, dict)):
+                    return zero
                 else:
-                    return [multiparams[0]]
-            elif isinstance(multiparams[0], dict):
-                return [multiparams[0]]
+                    return [zero]
+            elif isinstance(zero, dict):
+                return [zero]
             else:
-                return [[multiparams[0]]]
+                return [[zero]]
         else:
             if isinstance(multiparams[0], (list, tuple, dict)):
                 return multiparams
@@ -865,35 +839,49 @@ class Connection(Connectable):
     def _execute_function(self, func, multiparams, params):
         return self.execute_clauseelement(func.select(), multiparams, params)
 
+    def _execute_default(self, default, multiparams=None, params=None):
+        return self.engine.dialect.defaultrunner(self.__create_execution_context()).traverse_single(default)
+
     def execute_clauseelement(self, elem, multiparams=None, params=None):
         params = self.__distill_params(multiparams, params)
         if params:
             keys = params[0].keys()
         else:
             keys = None
-        return self._execute_compiled(elem.compile(dialect=self.dialect, column_keys=keys, inline=len(params) > 1), distilled_params=params)
 
-    def _execute_compiled(self, compiled, multiparams=None, params=None, distilled_params=None):
+        context = self.__create_execution_context(
+                        compiled=elem.compile(dialect=self.dialect, column_keys=keys, inline=len(params) > 1), 
+                        parameters=params
+                    )
+        return self.__execute_context(context)
+
+    def _execute_compiled(self, compiled, multiparams=None, params=None):
         """Execute a sql.Compiled object."""
-        if not compiled.can_execute:
-            raise exc.ArgumentError("Not an executable clause: %s" % (str(compiled)))
 
-        if distilled_params is None:
-            distilled_params = self.__distill_params(multiparams, params)
-        context = self.__create_execution_context(compiled=compiled, parameters=distilled_params)
+        context = self.__create_execution_context(
+                    compiled=compiled, 
+                    parameters=self.__distill_params(multiparams, params)
+                )
+        return self.__execute_context(context)
 
-        context.pre_execution()
-        self.__execute_raw(context)
-        context.post_execution()
-        self._autocommit(context)
-        return context.get_result_proxy()
-
-    def __execute_raw(self, context):
+    def _execute_text(self, statement, multiparams, params):
+        parameters = self.__distill_params(multiparams, params)
+        context = self.__create_execution_context(statement=statement, parameters=parameters)
+        return self.__execute_context(context)
+    
+    def __execute_context(self, context):
+        if context.compiled:
+            context.pre_exec()
         if context.executemany:
             self._cursor_executemany(context.cursor, context.statement, context.parameters, context=context)
         else:
             self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
-
+        if context.compiled:
+            context.post_exec()
+        if context.should_autocommit and not self.in_transaction():
+            self._commit_impl()
+        return context.get_result_proxy()
+        
     def _execute_ddl(self, ddl, params, multiparams):
         if params:
             schema_item, params = params[0], params[1:]

@@ -134,6 +134,10 @@ class DefaultCompiler(engine.Compiled):
     operators = OPERATORS
     functions = FUNCTIONS
 
+    # if we are insert/update/delete. 
+    # set to true when we visit an INSERT, UPDATE or DELETE
+    isdelete = isinsert = isupdate = False
+
     def __init__(self, dialect, statement, column_keys=None, inline=False, **kwargs):
         """Construct a new ``DefaultCompiler`` object.
 
@@ -148,10 +152,7 @@ class DefaultCompiler(engine.Compiled):
           statement.
 
         """
-        super(DefaultCompiler, self).__init__(dialect, statement, column_keys, **kwargs)
-
-        # if we are insert/update/delete.  set to true when we visit an INSERT, UPDATE or DELETE
-        self.isdelete = self.isinsert = self.isupdate = False
+        engine.Compiled.__init__(self, dialect, statement, column_keys, **kwargs)
 
         # compile INSERT/UPDATE defaults/sequences inlined (no pre-execute)
         self.inline = inline or getattr(statement, 'inline', False)

@@ -486,7 +486,7 @@ class ExecutionContextWrapper(object):
         setattr(self.ctx, key, value)
 
     trailing_underscore_pattern = re.compile(r'(\W:[\w_#]+)_\b',re.MULTILINE)
-    def post_execution(self):
+    def post_exec(self):
         ctx = self.ctx
         statement = unicode(ctx.compiled)
         statement = re.sub(r'\n', '', ctx.statement)
@@ -540,7 +540,7 @@ class ExecutionContextWrapper(object):
             testdata.unittest.assert_(equivalent,
                     "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         testdata.sql_count += 1
-        self.ctx.post_execution()
+        self.ctx.post_exec()
 
     def convert_statement(self, query):
         paramstyle = self.ctx.dialect.paramstyle
