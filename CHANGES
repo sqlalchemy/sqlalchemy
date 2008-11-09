@@ -8,12 +8,21 @@ CHANGES
 ========
 - bugfixes and behavioral changes
 - general:
-  - global "propigate"->"propagate" change.
+    - global "propigate"->"propagate" change.
 
 - orm
     - Query.count() and Query.get() return a more informative
       error message when executed against multiple entities.
       [ticket:1220]
+
+- access
+    - Added support for Currency type.
+
+    - Functions were not return their result. [ticket:1017]
+
+    - Corrected problem with joins. Access only support 
+      LEFT OUTER or INNER not just JOIN by itself. 
+      [ticket:1017]
 
 - mssql
     - Lots of cleanup and fixes to correct problems with
@@ -51,7 +60,7 @@ CHANGES
       create_engine() to adjust how many characters max will
       be present in dynamically generated column labels, i.e.
       "somecolumn AS somelabel". Any value less than 6 will
-      result in a label of minimal size, consiting of an
+      result in a label of minimal size, consisting of an
       underscore and a numeric counter. The compiler uses the
       value of dialect.max_identifier_length as a default.
       [ticket:1211]
@@ -318,14 +327,14 @@ CHANGES
     - Joins along a relation() from a mapped class to a mapped
       subclass, where the mapped subclass is configured with single
       table inheritance, will include an IN clause which limits the
-      subtypes of the joined class to those requsted, within the ON
+      subtypes of the joined class to those requested, within the ON
       clause of the join.  This takes effect for eager load joins as
       well as query.join().  Note that in some scenarios the IN
       clause will appear in the WHERE clause of the query as well
       since this discrimination has multiple trigger points.
 
     - AttributeExtension has been refined such that the event
-      is fired before the mutation actually occurs.  Addtionally,
+      is fired before the mutation actually occurs.  Additionally,
       the append() and set() methods must now return the given value,
       which is used as the value to be used in the mutation operation.
       This allows creation of validating AttributeListeners which
@@ -373,7 +382,7 @@ CHANGES
       joined-table inheritance subclasses, using explicit join
       criteria (i.e. not on a relation).
 
-    - @orm.attributes.on_reconsitute and
+    - @orm.attributes.on_reconstitute and
       MapperExtension.on_reconstitute have been renamed to
       @orm.reconstructor and MapperExtension.reconstruct_instance
 
@@ -499,7 +508,7 @@ CHANGES
     - fixed endless loop bug which could occur within a mapper's
       deferred load of inherited attributes.
 
-    - a legacy-support flag "_enable_transation_accounting" flag
+    - a legacy-support flag "_enable_transaction_accounting" flag
       added to Session which when False, disables all
       transaction-level object accounting, including expire on
       rollback, expire on commit, new/deleted list maintenance, and

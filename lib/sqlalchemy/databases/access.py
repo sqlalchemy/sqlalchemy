@@ -252,6 +252,7 @@ class AccessDialect(default.DefaultDialect):
                 const.dbMemo:       AcText,
                 const.dbBoolean:    AcBoolean,
                 const.dbText:       AcUnicode, # All Access strings are unicode
+                const.dbCurrency:   AcNumeric,
             }
 
         # A fresh DAO connection is opened for each reflection
@@ -360,7 +361,7 @@ class AccessCompiler(compiler.DefaultCompiler):
     def visit_function(self, func):
         """Access function names differ from the ANSI SQL names; rewrite common ones"""
         func.name = self.function_rewrites.get(func.name, func.name)
-        super(AccessCompiler, self).visit_function(func)
+        return super(AccessCompiler, self).visit_function(func)
 
     def for_update_clause(self, select):
         """FOR UPDATE is not supported by Access; silently ignore"""
@@ -372,6 +373,10 @@ class AccessCompiler(compiler.DefaultCompiler):
             return self.preparer.quote(table.name, table.quote)
         else:
             return ""
+
+    def visit_join(self, join, asfrom=False, **kwargs):
+        return (self.process(join.left, asfrom=True) + (join.isouter and " LEFT OUTER JOIN " or " INNER JOIN ") + \
+            self.process(join.right, asfrom=True) + " ON " + self.process(join.onclause))
 
 
 class AccessSchemaGenerator(compiler.SchemaGenerator):
