@@ -475,7 +475,7 @@ class DefaultCompiler(engine.Compiled):
 
         correlate_froms = set(sql._from_objects(*froms))
 
-        # TODO: might want to propigate existing froms for select(select(select))
+        # TODO: might want to propagate existing froms for select(select(select))
         # where innermost select should correlate to outermost
         # if existingfroms:
         #     correlate_froms = correlate_froms.union(existingfroms)

@@ -2791,7 +2791,7 @@ class _ColumnClause(_Immutable, ColumnElement):
         return _BindParamClause(self.name, obj, type_=self.type, unique=True)
 
     def _make_proxy(self, selectable, name=None, attach=True):
-        # propigate the "is_literal" flag only if we are keeping our name,
+        # propagate the "is_literal" flag only if we are keeping our name,
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
         c = _ColumnClause(name or self.name, selectable=selectable, type_=self.type, is_literal=is_literal)

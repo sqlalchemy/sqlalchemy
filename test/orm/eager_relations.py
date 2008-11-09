@@ -491,7 +491,7 @@ class EagerTest(_fixtures.FixtureTest):
     @testing.fails_on('maxdb')
     @testing.resolve_artifact_names
     def test_limit_3(self):
-        """test that the ORDER BY is propigated from the inner select to the outer select, when using the
+        """test that the ORDER BY is propagated from the inner select to the outer select, when using the
         'wrapped' select statement resulting from the combination of eager loading and limit/offset clauses."""
 
         mapper(Item, items)

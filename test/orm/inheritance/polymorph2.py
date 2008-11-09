@@ -878,7 +878,7 @@ class CustomPKTest(ORMTest):
             Column('t2data', String(30)))
 
     def test_custompk(self):
-        """test that the primary_key attribute is propigated to the polymorphic mapper"""
+        """test that the primary_key attribute is propagated to the polymorphic mapper"""
 
         class T1(object):pass
         class T2(T1):pass

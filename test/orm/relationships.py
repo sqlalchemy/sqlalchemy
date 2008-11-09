@@ -12,7 +12,7 @@ class RelationTest(_base.MappedTest):
 
     This is essentially an extension of the "dependency.py" topological sort
     test.  In this test, a table is dependent on two other tables that are
-    otherwise unrelated to each other.  The dependency sort must insure that
+    otherwise unrelated to each other.  The dependency sort must ensure that
     this childmost table is below both parent tables in the outcome (a bug
     existed where this was not always the case).
 

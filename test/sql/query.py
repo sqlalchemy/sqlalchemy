@@ -339,7 +339,7 @@ class QueryTest(TestBase):
 
     @testing.exclude('mysql', '<', (5, 0, 37), 'database bug')
     def test_scalar_select(self):
-        """test that scalar subqueries with labels get their type propigated to the result set."""
+        """test that scalar subqueries with labels get their type propagated to the result set."""
         # mysql and/or mysqldb has a bug here, type isn't propagated for scalar
         # subquery.
         datetable = Table('datetable', metadata,

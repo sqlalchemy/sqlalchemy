@@ -313,7 +313,7 @@ class PropertyLoader(StrategizedProperty):
         self.order_by = order_by
 
         if isinstance(backref, str):
-            # propigate explicitly sent primary/secondary join conditions to the BackRef object if
+            # propagate explicitly sent primary/secondary join conditions to the BackRef object if
             # just a string was sent
             if secondary is not None:
                 # reverse primary/secondary in case of a many-to-many
