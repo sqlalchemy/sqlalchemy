@@ -87,10 +87,13 @@ class WeakInstanceDict(IdentityMap):
 
     def __contains__(self, key):
         try:
-            state = dict.__getitem__(self, key)
-            o = state.obj()
-            if o is None:
-                o = state._is_really_none()
+            if dict.__contains__(self, key):
+                state = dict.__getitem__(self, key)
+                o = state.obj()
+                if o is None:
+                    o = state._is_really_none()
+            else:
+                return False
         except KeyError:
             return False
         return o is not None
@@ -112,9 +115,8 @@ class WeakInstanceDict(IdentityMap):
         self.remove(state)
         
     def remove(self, state):
-        if not self.contains_state(state):
+        if dict.pop(self, state.key) is not state:
             raise AssertionError("State %s is not present in this identity map" % state)
-        dict.__delitem__(self, state.key)
         del state._instance_dict
         self._manage_removed_state(state)
     
@@ -166,9 +168,8 @@ class StrongInstanceDict(IdentityMap):
         self._manage_incoming_state(state)
     
     def remove(self, state):
-        if not self.contains_state(state):
+        if dict.pop(self, state.key) is not state:
             raise AssertionError("State %s is not present in this identity map" % state)
-        dict.__delitem__(self, state.key)
         self._manage_removed_state(state)
     
     def discard(self, state):

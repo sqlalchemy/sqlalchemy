@@ -857,12 +857,19 @@ class Mapper(object):
         else:
             return mappers, self._selectable_from_mappers(mappers)
 
+    @util.memoized_property
+    def _default_polymorphic_properties(self):
+        return util.unique_list(
+            chain(*[list(mapper.iterate_properties) for mapper in [self] + self._with_polymorphic_mappers])
+        )
+        
     def _iterate_polymorphic_properties(self, mappers=None):
         if mappers is None:
-            mappers = self._with_polymorphic_mappers
-        return iter(util.unique_list(
-            chain(*[list(mapper.iterate_properties) for mapper in [self] + mappers])
-        ))
+            return iter(self._default_polymorphic_properties)
+        else:
+            return iter(util.unique_list(
+                chain(*[list(mapper.iterate_properties) for mapper in [self] + mappers])
+            ))
 
     @property
     def properties(self):

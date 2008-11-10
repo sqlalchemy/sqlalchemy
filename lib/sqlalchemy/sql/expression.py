@@ -1844,34 +1844,36 @@ class FromClause(Selectable):
         return getattr(self, 'name', self.__class__.__name__ + " object")
 
     def _reset_exported(self):
-        # delete all the "generated" collections of columns for a
-        # newly cloned FromClause, so that they will be re-derived
-        # from the item.  this is because FromClause subclasses, when
-        # cloned, need to reestablish new "proxied" columns that are
-        # linked to the new item
-        for attr in ('_columns', '_primary_key' '_foreign_keys', '_embedded_columns', '_all_froms'):
-            if hasattr(self, attr):
-                delattr(self, attr)
+        """delete memoized collections when a FromClause is cloned."""
 
-    def _expr_attr_func(name):
-        get = attrgetter(name)
-        def attr(self):
-            try:
-                return get(self)
-            except AttributeError:
-                self._export_columns()
-                return get(self)
-        return property(attr)
+        for attr in ('_columns', '_primary_key' '_foreign_keys', 'locate_all_froms'):
+            self.__dict__.pop(attr, None)
+
+    @util.memoized_property
+    def _columns(self):
+        self._export_columns()
+        return self._columns
     
-    columns = c = _select_iterable = _expr_attr_func('_columns')
-    primary_key = _expr_attr_func('_primary_key')
-    foreign_keys = _expr_attr_func('_foreign_keys')
+    @util.memoized_property
+    def _primary_key(self):
+        self._export_columns()
+        return self._primary_key
+    
+    @util.memoized_property
+    def _foreign_keys(self):
+        self._export_columns()
+        return self._foreign_keys
+        
+    columns = property(attrgetter('_columns'))
+    primary_key = property(attrgetter('_primary_key'))
+    foreign_keys = property(attrgetter('_foreign_keys'))
 
+    # synonyms for 'columns'
+    c = _select_iterable = property(attrgetter('columns'))
+    
     def _export_columns(self):
         """Initialize column collections."""
 
-        if hasattr(self, '_columns'):
-            return
         self._columns = ColumnCollection()
         self._primary_key = ColumnSet()
         self._foreign_keys = set()
@@ -2622,7 +2624,6 @@ class _FromGrouping(FromClause):
     @property
     def columns(self):
         return self.element.columns
-    c = columns
 
     @property
     def _hide_froms(self):
@@ -3000,8 +3001,8 @@ class _ScalarSelect(_Grouping):
     def columns(self):
         raise exc.InvalidRequestError("Scalar Select expression has no columns; "
                     "use this object directly within a column-level expression.")
-    c = columns
-
+    c  = columns
+    
     def self_group(self, **kwargs):
         return self
 
@@ -3169,7 +3170,8 @@ class Select(_SelectBaseMixin, FromClause):
         raise exc.InvalidRequestError("Select objects don't have a type.  "
                     "Call as_scalar() on this Select object "
                     "to return a 'scalar' version of this Select.")
-
+    
+    @util.memoized_instancemethod
     def locate_all_froms(self):
         """return a Set of all FromClause elements referenced by this Select.
 
@@ -3177,10 +3179,7 @@ class Select(_SelectBaseMixin, FromClause):
         is specifically for those FromClause elements that would actually be rendered.
         
         """
-        if not hasattr(self, '_all_froms'):
-            self._all_froms = self._froms.union(_from_objects(*list(self._froms)))
-
-        return self._all_froms
+        return self._froms.union(_from_objects(*list(self._froms)))
 
     @property
     def inner_columns(self):
