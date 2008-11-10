@@ -797,12 +797,18 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         if 'dsn' in keys:
             connectors = ['dsn=%s' % keys.pop('dsn')]
         else:
+            port = ''
+            if 'port' in keys and (
+                keys.get('driver', 'SQL Server') == 'SQL Server'):
+                port = ',%d' % int(keys.pop('port'))
+
             connectors = ["DRIVER={%s}" % keys.pop('driver', 'SQL Server'),
-                          'Server=%s' % keys.pop('host', ''),
+                          'Server=%s%s' % (keys.pop('host', ''), port),
                           'Database=%s' % keys.pop('database', '') ]
-            if 'port' in keys:
+
+            if 'port' in keys and not port:
                 connectors.append('Port=%d' % int(keys.pop('port')))
-        
+
         user = keys.pop("user", None)
         if user:
             connectors.append("UID=%s" % user)
