@@ -359,6 +359,10 @@ class PropertyLoader(StrategizedProperty):
         def of_type(self, cls):
             return PropertyLoader.Comparator(self.prop, self.mapper, cls)
 
+        def in_(self, other):
+            raise NotImplementedError("in_() not yet supported for relations.  For a "
+                    "simple many-to-one, use in_() against the set of foreign key values.")
+            
         def __eq__(self, other):
             if other is None:
                 if self.prop.direction in [ONETOMANY, MANYTOMANY]:

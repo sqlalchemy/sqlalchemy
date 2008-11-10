@@ -30,6 +30,9 @@ CHANGES
       error message when executed against multiple entities.
       [ticket:1220]
 
+    - Restored NotImplementedError on Cls.relation.in_()
+      [ticket:1140] [ticket:1221]
+      
 - sql
     - Removed the 'properties' attribute of the 
       Connection object, Connection.info should be used.

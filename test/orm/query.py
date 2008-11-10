@@ -434,6 +434,9 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
          self._test(User.id.in_(['a', 'b']),
                     "users.id IN (:id_1, :id_2)")
 
+    def test_in_on_relation_not_supported(self):
+        self.assertRaises(NotImplementedError, Address.user.in_, [User(id=5)])
+        
     def test_between(self):
         self._test(User.id.between('a', 'b'),
                    "users.id BETWEEN :id_1 AND :id_2")
