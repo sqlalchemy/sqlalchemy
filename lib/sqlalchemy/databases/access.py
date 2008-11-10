@@ -120,7 +120,7 @@ class AcTimeStamp(types.TIMESTAMP):
 class AccessExecutionContext(default.DefaultExecutionContext):
     def _has_implicit_sequence(self, column):
         if column.primary_key and column.autoincrement:
-            if isinstance(column.type, types.Integer) and not column.foreign_key:
+            if isinstance(column.type, types.Integer) and not column.foreign_keys:
                 if column.default is None or (isinstance(column.default, schema.Sequence) and \
                                               column.default.optional):
                     return True
@@ -385,7 +385,7 @@ class AccessSchemaGenerator(compiler.SchemaGenerator):
 
         # install a sequence if we have an implicit IDENTITY column
         if (not getattr(column.table, 'has_sequence', False)) and column.primary_key and \
-                column.autoincrement and isinstance(column.type, types.Integer) and not column.foreign_key:
+                column.autoincrement and isinstance(column.type, types.Integer) and not column.foreign_keys:
             if column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional):
                 column.sequence = schema.Sequence(column.name + '_seq')
 
