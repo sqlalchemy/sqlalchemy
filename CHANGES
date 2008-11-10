@@ -3,6 +3,9 @@ CHANGES
 =======
 0.4.9
 =====
+- general:
+    - global "propigate"->"propagate" change.
+    
 - orm
     - polymorphic_union() function respects the "key" of each 
       Column if they differ from the column's name.
@@ -237,7 +240,7 @@ CHANGES
       towards [ticket:610])
     
     - repaired single table inheritance such that you 
-      can single-table inherit from a joined-table inherting
+      can single-table inherit from a joined-table inheriting
       mapper without issue [ticket:1036].
       
     - Fixed "concatenate tuple" bug which could occur with
@@ -506,7 +509,7 @@ CHANGES
           whether or not it remains attached to its also-deleted
           parent.
 
-        - delete-orphan casacde is properly detected on
+        - delete-orphan cascade is properly detected on
           relations that are present on superclasses when using
           inheritance.
 
@@ -2620,7 +2623,7 @@ CHANGES
   - _Label class overrides compare_self to return its ultimate
     object. meaning, if you say someexpr.label('foo') == 5, it
     produces the correct "someexpr == 5".
-  - _Label propigates "_hide_froms()" so that scalar selects
+  - _Label propagates "_hide_froms()" so that scalar selects
     behave more properly with regards to FROM clause #574
   - fix to long name generation when using oid_column as an order by
     (oids used heavily in mapper queries)
@@ -2652,7 +2655,7 @@ CHANGES
   - many-to-many relationships check that the number of rows deleted
     from the association table by a delete operation matches the
     expected results
-  - session.get() and session.load() propigate **kwargs through to
+  - session.get() and session.load() propagate **kwargs through to
     query
   - fix to polymorphic query which allows the original
     polymorphic_union to be embedded into a correlated subquery
@@ -2660,7 +2663,7 @@ CHANGES
   - fix to select_by(<propname>=<object instance>) -style joins in
     conjunction with many-to-many relationships, bug introduced in
     r2556
-  - the "primary_key" argument to mapper() is propigated to the
+  - the "primary_key" argument to mapper() is propagated to the
     "polymorphic" mapper. primary key columns in this list get
     normalized to that of the mapper's local table.
   - restored logging of "lazy loading clause" under
@@ -2753,7 +2756,7 @@ CHANGES
       are to work around glitchy SQLite behavior that doesnt understand
       "foo.id" as equivalent to "id", are now only generated in the case
       that those named columns are selected from (part of [ticket:513])
-    - the label() method on ColumnElement will properly propigate the
+    - the label() method on ColumnElement will properly propagate the
       TypeEngine of the base element out to the label, including a label()
       created from a scalar=True select() statement.
     - MS-SQL better detects when a query is a subquery and knows not to
@@ -2766,7 +2769,7 @@ CHANGES
       for **kwargs compat
     - slight tweak to raw execute() change to also support tuples
       for positional parameters, not just lists [ticket:523]
-    - fix to case() construct to propigate the type of the first
+    - fix to case() construct to propagate the type of the first
       WHEN condition as the return type of the case statement
 - orm:
     - fixed critical issue when, after options(eagerload()) is used,
@@ -2873,7 +2876,7 @@ CHANGES
 
     - quoting wont occur for literal columns when they are "proxied" into
       the column collection for their selectable (is_literal flag is
-      propigated). literal columns are specified via
+      propagated). literal columns are specified via
       literal_column("somestring").
 
     - added "fold_equivalents" boolean argument to Join.select(), which
@@ -2961,7 +2964,7 @@ CHANGES
       occur on the "backref" side of the operation [ticket:249]
 
     - added "refresh-expire" cascade [ticket:492].  allows refresh() and
-      expire() calls to propigate along relationships.
+      expire() calls to propagate along relationships.
 
     - more fixes to polymorphic relations, involving proper lazy-clause
       generation on many-to-one relationships to polymorphic mappers
@@ -3023,7 +3026,7 @@ CHANGES
     - also fixed CLOB read/write on a separate changeset.
 
     - auto_setinputsizes defaults to True for Oracle, fixed cases where
-      it improperly propigated bad types.
+      it improperly propagated bad types.
 
 - mysql:
     - added a catchall **kwargs to MSString, to help reflection of
@@ -3052,7 +3055,7 @@ CHANGES
     - fixed named PrimaryKeyConstraint generation [ticket:466] courtesy
       andrija at gmail
     - fixed generation of CHECK constraints on columns [ticket:464]
-    - fixes to tometadata() operation to propigate Constraints at column and
+    - fixes to tometadata() operation to propagate Constraints at column and
       table level
 - oracle:
     - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER
@@ -3102,7 +3105,7 @@ CHANGES
       now patches an "options" method, in conjunction with a relationship
       named "options". (relationships take precedence over monkeypatched
       assign_mapper methods).
-    - extension() query option propigates to Mapper._instance() method so that
+    - extension() query option propagates to Mapper._instance() method so that
       all loading-related methods get called [ticket:454]
     - eager relation to an inheriting mapper wont fail if no rows returned for
       the relationship.
@@ -3259,7 +3262,7 @@ CHANGES
   - added an error message if you actually try to modify primary key values on
     an entity and then flush it [ticket:412]
 - extensions
-  - added "validate=False" argument to assign_mapper, if True will insure that
+  - added "validate=False" argument to assign_mapper, if True will ensure that
     only mapped attributes are named [ticket:426]
   - assign_mapper gets "options", "instances" functions added (i.e.
     MyClass.instances())
@@ -3301,8 +3304,8 @@ fixes [ticket:388]
 - added label() function to Select class, when scalar=True is used
 to create a scalar subquery
 i.e. "select x, y, (select max(foo) from table) AS foomax from table"
-- added onupdate and ondelete keyword arguments to ForeignKey; propigate
-to underlying ForeignKeyConstraint if present.  (dont propigate in the
+- added onupdate and ondelete keyword arguments to ForeignKey; propagate
+to underlying ForeignKeyConstraint if present.  (dont propagate in the
 other direction, however)
 - fix to session.update() to preserve "dirty" status of incoming object
 - sending a selectable to an IN via the in_() function no longer creates
@@ -3472,7 +3475,7 @@ the instance is an "orphan" only if its not attached to *any* of those parents
     - a wide refactoring to "attribute loader" and "options" architectures.
     ColumnProperty and PropertyLoader define their loading behaivor via switchable
     "strategies", and MapperOptions no longer use mapper/property copying
-    in order to function; they are instead propigated via QueryContext
+    in order to function; they are instead propagated via QueryContext
     and SelectionContext objects at query/instances time.
     All of the internal copying of mappers and properties that was used to handle
     inheritance as well as options() has been removed; the structure
@@ -3636,9 +3639,9 @@ sort) dont have to worry about maintaining order (which they werent anyway)
 if it was not loaded already
 - [ticket:256] - pass URL query string arguments to connect() function
 - [ticket:257] - oracle boolean type
-- custom primary/secondary join conditions in a relation *will* be propigated
+- custom primary/secondary join conditions in a relation *will* be propagated
 to backrefs by default.  specifying a backref() will override this behavior.
-- better check for ambiguous join conditions in sql.Join; propigates to a
+- better check for ambiguous join conditions in sql.Join; propagates to a
 better error message in PropertyLoader (i.e. relation()/backref()) for when
 the join condition can't be reasonably determined.
 - sqlite creates ForeignKeyConstraint objects properly upon table
@@ -3707,7 +3710,7 @@ a flush() under some circumstances, this was fixed
 propname the same as another, for the purposes of overriding props
 and allowing the original propname to be accessible in select_by().
 - fix to typing in clause construction which specifically helps
-type issues with polymorphic_union (CAST/ColumnClause propigates
+type issues with polymorphic_union (CAST/ColumnClause propagates
 its type to proxy columns)
 - mapper compilation work ongoing, someday it'll work....moved
 around the initialization of MapperProperty objects to be after
@@ -3768,8 +3771,8 @@ causing a reentrant hang unless threading.RLock is used.
 - postgres will not place SERIAL keyword on a primary key column
 if it has a foreign key constraint
 - cursor() method on ConnectionFairy allows db-specific extension
-arguments to be propigated [ticket:221]
-- lazy load bind params properly propigate column type [ticket:225]
+arguments to be propagated [ticket:221]
+- lazy load bind params properly propagate column type [ticket:225]
 - new MySQL types: MSEnum, MSTinyText, MSMediumText, MSLongText, etc.
 more support for MS-specific length/precision params in numeric types
 patch courtesy Mike Bernson
@@ -3813,7 +3816,7 @@ __doc__ from the original class
 [ticket:200]
 - small tweak to cascade_mappers, not very strongly supported
 function at the moment
-- some fixes to between(), column.between() to propigate typing
+- some fixes to between(), column.between() to propagate typing
 information better [ticket:202]
 - if an object fails to be constructed, is not added to the
 session [ticket:203]
@@ -3851,7 +3854,7 @@ out will use the default metadata.
 - more fixes to threadlocal connection nesting patterns
 
 0.2.1
-- "pool" argument to create_engine() properly propigates
+- "pool" argument to create_engine() properly propagates
 - fixes to URL, raises exception if not parsed, does not pass blank
 fields along to the DB connect string (a string such as
 user:host@/db was breaking on postgres)
@@ -3913,7 +3916,7 @@ doesnt get compiled, fixes [ticket:147]
 "threadlocal" mod if used
 - mods now called in via "import <modname>".  extensions favored over
 mods as mods are globally-monkeypatching
-- fix to add_property so that it propigates properties to inheriting
+- fix to add_property so that it propagates properties to inheriting
 mappers [ticket:154]
 - backrefs create themselves against primary mapper of its originating
 property, priamry/secondary join arguments can be specified to override.

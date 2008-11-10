@@ -492,7 +492,7 @@ class DefaultCompiler(engine.Compiled):
 
         correlate_froms = util.Set(itertools.chain(*([froms] + [f._get_from_objects() for f in froms])))
 
-        # TODO: might want to propigate existing froms for select(select(select))
+        # TODO: might want to propagate existing froms for select(select(select))
         # where innermost select should correlate to outermost
 #        if existingfroms:
 #            correlate_froms = correlate_froms.union(existingfroms)

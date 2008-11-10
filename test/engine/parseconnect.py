@@ -38,7 +38,7 @@ class ParseConnectTest(TestBase):
             assert str(u) == text
 
 class CreateEngineTest(TestBase):
-    """test that create_engine arguments of different types get propigated properly"""
+    """test that create_engine arguments of different types get propagated properly"""
     def test_connect_query(self):
         dbapi = MockDBAPI(foober='12', lala='18', fooz='somevalue')
 

@@ -407,7 +407,7 @@ class Mapper(object):
             self.extension.append(ext)
 
     def __compile_inheritance(self):
-        """Configure settings related to inherting and/or inherited mappers being present."""
+        """Configure settings related to inheriting and/or inherited mappers being present."""
 
         if self.inherits:
             if isinstance(self.inherits, type):

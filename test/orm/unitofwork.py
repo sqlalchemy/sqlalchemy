@@ -884,7 +884,7 @@ class OneToManyTest(ORMTest):
         self.assert_(u.user_id == userid and a2.address_id == addressid)
 
     def test_onetomany_2(self):
-        """digs deeper into modifying the child items of an object to insure the correct
+        """digs deeper into modifying the child items of an object to ensure the correct
         updates take place"""
         m = mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = True)

@@ -33,7 +33,7 @@ class AdaptTest(TestBase):
 
     def testmsnvarchar(self):
         dialect = mssql.MSSQLDialect()
-        # run the test twice to insure the caching step works too
+        # run the test twice to ensure the caching step works too
         for x in range(0, 1):
             col = Column('', Unicode(length=10))
             dialect_type = col.type.dialect_impl(dialect)
