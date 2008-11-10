@@ -950,7 +950,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         so tries to wrap it in a subquery with ``row_number()`` criterion.
 
         """
-        if self.dialect.has_window_funcs and (not getattr(select, '_mssql_visit', None)) and (select._offset is not None):
+        if self.dialect.has_window_funcs and (not getattr(select, '_mssql_visit', None)) and select._offset:
             # to use ROW_NUMBER(), an ORDER BY is required.
             orderby = self.process(select._order_by_clause)
             if not orderby:
