@@ -778,18 +778,24 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         if 'max_identifier_length' in keys:
             self.max_identifier_length = int(keys.pop('max_identifier_length'))
         if 'dsn' in keys:
-            connectors = ['dsn=%s' % keys['dsn']]
+            connectors = ['dsn=%s' % keys.pop('dsn')]
         else:
+            port = ''
+            if 'port' in keys and (
+                keys.get('driver', 'SQL Server') == 'SQL Server'):
+                port = ',%d' % int(keys.pop('port'))
+
             connectors = ["DRIVER={%s}" % keys.pop('driver', 'SQL Server'),
-                          'Server=%s' % keys['host'],
-                          'Database=%s' % keys['database'] ]
-            if 'port' in keys:
-                connectors.append('Port=%d' % int(keys['port']))
-        
-        user = keys.get("user")
+                          'Server=%s%s' % (keys.pop('host', ''), port),
+                          'Database=%s' % keys.pop('database', '') ]
+
+            if 'port' in keys and not port:
+                connectors.append('Port=%d' % int(keys.pop('port')))
+
+        user = keys.pop("user", None)
         if user:
             connectors.append("UID=%s" % user)
-            connectors.append("PWD=%s" % keys.get("password", ""))
+            connectors.append("PWD=%s" % keys.pop('password', ''))
         else:
             connectors.append("TrustedConnection=Yes")
 
@@ -797,7 +803,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         # textual data from your database encoding to your client encoding 
         # This should obviously be set to 'No' if you query a cp1253 encoded 
         # database from a latin1 client... 
-        if 'odbc_autotranslate' in keys: 
+        if 'odbc_autotranslate' in keys:
             connectors.append("AutoTranslate=%s" % keys.pop("odbc_autotranslate"))
 
         # Allow specification of partial ODBC connect string
@@ -806,7 +812,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             if odbc_options[0]=="'" and odbc_options[-1]=="'":
                 odbc_options=odbc_options[1:-1]
             connectors.append(odbc_options)
-        
+        connectors.extend(['%s=%s' % (k,v) for k,v in keys.iteritems()])
         return [[";".join (connectors)], {}]
 
     def is_disconnect(self, e):
