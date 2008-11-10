@@ -36,6 +36,9 @@ CHANGES
 - sql
     - Removed the 'properties' attribute of the 
       Connection object, Connection.info should be used.
+    
+    - Restored "active rowcount" fetch before ResultProxy
+      autocloses the cursor.  This was removed in 0.5rc3.
       
 - access
     - Added support for Currency type.

@@ -1382,7 +1382,10 @@ class ResultProxy(object):
     
     @property
     def rowcount(self):
-        return self.context.get_rowcount()
+        if self._rowcount is None:
+            return self.context.get_rowcount()
+        else:
+            return self._rowcount
 
     @property
     def lastrowid(self):
@@ -1395,10 +1398,13 @@ class ResultProxy(object):
     def _init_metadata(self):
         metadata = self.cursor.description
         if metadata is None:
-            # no results, close
+            # no results, get rowcount (which requires open cursor on some DB's such as firebird),
+            # then close
+            self._rowcount = self.context.get_rowcount()
             self.close()
             return
             
+        self._rowcount = None
         self._props = util.PopulateDict(None)
         self._props.creator = self.__key_fallback()
         self.keys = []

@@ -36,7 +36,7 @@ class MockConnection(object):
 class MockCursor(object):
     def __init__(self, parent):
         self.explode = parent.explode
-        self.description = None
+        self.description = ()
     def execute(self, *args, **kwargs):
         if self.explode[0]:
             raise MockDisconnect("Lost the DB connection")
