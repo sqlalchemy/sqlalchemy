@@ -708,10 +708,10 @@ class NumericTest(TestBase, AssertsExecutionResults):
             (l[0][0], l[0][1], round(l[0][2], 5), l[0][3], l[0][4]),
             (l[1][0], l[1][1], round(l[1][2], 5), l[1][3], l[1][4]),
         ]
-        assert rounded == [
+        testing.eq_(rounded, [
             (1, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
             (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
-        ]
+        ])
 
     def test_decimal_fallback(self):
         from decimal import Decimal
