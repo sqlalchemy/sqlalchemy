@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import inspect, itertools, new, operator, sets, sys, warnings, weakref
+import inspect, itertools, new, operator, sys, warnings, weakref
 import __builtin__
 types = __import__('types')
 
@@ -18,8 +18,20 @@ except ImportError:
     import dummy_threading as threading
     from dummy_threading import local as ThreadLocal
 
-# TODO: 2.6 will whine about importing `sets`, but I think we still need it to
-# around to support older DB-API modules that return the 2.3 style set.
+if sys.version_info < (2, 6):
+    import sets
+else:
+    # 2.6 deprecates sets.Set, but we still need to be able to detect them
+    # in user code and as return values from DB-APIs
+    ignore = ('ignore', None, DeprecationWarning, None, 0)
+    try:
+        warnings.filters.insert(0, ignore)
+    except Exception:
+        import sets
+    else:
+        import sets
+        warnings.filters.remove(ignore)
+
 set_types = set, sets.Set
 
 EMPTY_SET = frozenset()
