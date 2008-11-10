@@ -317,7 +317,6 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                                        
         x = union(select([unicode_table.c.unicode_varchar]), select([unicode_table.c.unicode_varchar])).execute().fetchone()
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
-        
 
     def test_assertions(self):
         try:
