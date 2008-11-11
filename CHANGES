@@ -26,6 +26,10 @@ CHANGES
     - global "propigate"->"propagate" change.
 
 - orm
+    - Adjustments to the enhanced garbage collection on 
+      InstanceState to better guard against errors due 
+      to lost state.
+      
     - Query.get() returns a more informative
       error message when executed against multiple entities.
       [ticket:1220]

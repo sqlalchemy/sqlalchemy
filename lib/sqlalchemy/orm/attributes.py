@@ -799,7 +799,6 @@ class InstanceState(object):
     runid = None
     expired_attributes = EMPTY_SET
     insert_order = None
-    dict = None
     
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
@@ -820,15 +819,23 @@ class InstanceState(object):
     def dispose(self):
         if self.session_id:
             del self.session_id
-        del self.dict
         del self.obj
+        del self.dict
     
     def _cleanup(self, ref):
         self.dispose()
     
     def obj(self):
         return None
-            
+    
+    @util.memoized_property
+    def dict(self):
+        # return a blank dict
+        # if none is available, so that asynchronous gc
+        # doesn't blow up expiration operations in progress
+        # (usually expire_attributes)
+        return {}
+    
     @property
     def sort_key(self):
         return self.key and self.key[1] or self.insert_order
@@ -969,9 +976,6 @@ class InstanceState(object):
             if key not in self.committed_state and key not in self.dict)
 
     def expire_attributes(self, attribute_names):
-        if self.dict is None:
-            return
-            
         self.expired_attributes = set(self.expired_attributes)
 
         if attribute_names is None:
