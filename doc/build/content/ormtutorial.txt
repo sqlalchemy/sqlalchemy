@@ -20,7 +20,7 @@ For this tutorial we will use an in-memory-only SQLite database.  To connect we 
     >>> from sqlalchemy import create_engine
     >>> engine = create_engine('sqlite:///:memory:', echo=True)
     
-The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard `logging` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to `False`.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see whats being generated.
+The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard `logging` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to `False`.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see what's being generated.
     
 ## Define and Create a Table {@name=tables}
 
@@ -751,7 +751,7 @@ The above would produce SQL something like `foo JOIN bars ON <onclause> JOIN bat
     
 ### Using Aliases {@name=aliases}
 
-When querying across multiple tables, if the same table needs to be referenced more than once, SQL typically requires that the table be *aliased* with another name, so that it can be distinguished against other occurences of that table.  The `Query` supports this most expicitly using the `aliased` construct.  Below we join to the `Address` entity twice, to locate a user who has two distinct email addresses at the same time:
+When querying across multiple tables, if the same table needs to be referenced more than once, SQL typically requires that the table be *aliased* with another name, so that it can be distinguished against other occurrences of that table.  The `Query` supports this most explicitly using the `aliased` construct.  Below we join to the `Address` entity twice, to locate a user who has two distinct email addresses at the same time:
 
     {python}
     >>> from sqlalchemy.orm import aliased

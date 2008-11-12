@@ -327,7 +327,7 @@ The `mapper` function returns a new instance of `Mapper`.  As it is the first Ma
 
 After you create a Mapper, all operations with that Mapper require the usage of an important object called a `Session`.  All objects loaded or saved by the Mapper must be *attached* to a `Session` object, which represents a kind of "workspace" of objects that are loaded into memory.  A particular object instance can only be attached to one `Session` at a time (but of course can be moved around or detached altogether).
 
-By default, you have to create a `Session` object explicitly before you can load or save objects.  Theres several ways to manage sessions, but the most straightforward is to just create one, which we will do by saying, `create_session()`:
+By default, you have to create a `Session` object explicitly before you can load or save objects.  There are several ways to manage sessions, but the most straightforward is to just create one, which we will do by saying, `create_session()`:
 
     {python}
     >>> session = create_session()

@@ -170,7 +170,7 @@ Note that if a reflected table has a foreign key referencing another table, the 
     >>> 'shopping_carts' in meta.tables:
     True
         
-To get direct access to 'shopping_carts', simply instantiate it via the `Table` constructor.  `Table` uses a special contructor that will return the already created `Table` instance if it's already present:
+To get direct access to 'shopping_carts', simply instantiate it via the `Table` constructor.  `Table` uses a special constructor that will return the already created `Table` instance if it's already present:
 
     {python}
     shopping_carts = Table('shopping_carts', meta)

@@ -315,12 +315,12 @@ The proxy is read/write.  New associated objects are created on demand when valu
 - You can access and modify both the proxy and the backing relation. Changes in one are immediate in the other.
 - The proxy acts like the type of the underlying collection.  A list gets a list-like proxy, a dict a dict-like proxy, and so on.
 - Multiple proxies for the same relation are fine.
-- Proxies are lazy, and won't triger a load of the backing relation until they are accessed.
+- Proxies are lazy, and won't trigger a load of the backing relation until they are accessed.
 - The relation is inspected to determine the type of the related objects.
 - To construct new instances, the type is called with the value being assigned, or key and value for dicts.
 - A ``creator`` function can be used to create instances instead.
 
-Above, the ``Keyword.__init__`` takes a single argument ``keyword``, which maps conveniently to the value being set through the proxy.  A ``creator`` function could have been used instead if more flexiblity was required.
+Above, the ``Keyword.__init__`` takes a single argument ``keyword``, which maps conveniently to the value being set through the proxy.  A ``creator`` function could have been used instead if more flexibility was required.
 
 Because the proxies are backed a regular relation collection, all of the usual hooks and patterns for using collections are still in effect.  The most convenient behavior is the automatic setting of "parent"-type relationships on assignment.  In the example above, nothing special had to be done to associate the Keyword to the User.  Simply adding it to the collection is sufficient.
 

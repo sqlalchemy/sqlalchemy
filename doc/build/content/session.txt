@@ -24,15 +24,15 @@ The usage of `sessionmaker()` is illustrated below:
     Session = sessionmaker(bind=some_engine)
 
     # create a Session
-    sess = Session()
+    session = Session()
     
     # work with sess
     myobject = MyObject('foo', 'bar')
-    sess.add(myobject)
-    sess.commit()
+    session.add(myobject)
+    session.commit()
     
     # close when finished
-    sess.close()
+    session.close()
 
 Above, the `sessionmaker` call creates a class for us, which we assign to the name `Session`.  This class is a subclass of the actual `sqlalchemy.orm.session.Session` class, which will instantiate with a particular bound engine.
 
@@ -53,7 +53,7 @@ In our previous example regarding `sessionmaker()`, we specified a `bind` for a 
     Session.configure(bind=engine)
 
     # work with the session
-    sess = Session()
+    session = Session()
 
 It's actually entirely optional to bind a Session to an engine.  If the underlying mapped `Table` objects use "bound" metadata, the `Session` will make use of the bound engine instead (or will even use multiple engines if multiple binds are present within the mapped tables).  "Bound" metadata is described at [metadata_tables_binding](rel:metadata_tables_binding).
 
@@ -77,7 +77,7 @@ The `Session` can also be explicitly bound to an individual database `Connection
     connection = engine.connect()
     
     # bind an individual Session to the connection
-    sess = Session(bind=connection)
+    session = Session(bind=connection)
 
 ### Using create_session() {@name=createsession}
 
@@ -104,7 +104,7 @@ It's helpful to know the states which an instance can have within a session:
 
 * *Persistent* - An instance which is present in the session and has a record in the database.  You get persistent instances by either flushing so that the pending instances become persistent, or by querying the database for existing instances (or moving persistent instances from other sessions into your local session).
 
-* *Detached* - an instance which has a record in the database, but is not in any session.  Theres nothing wrong with this, and you can use objects normally when they're detached, **except** they will not be able to issue any SQL in order to load collections or attributes which are not yet loaded, or were marked as "expired".
+* *Detached* - an instance which has a record in the database, but is not in any session.  There's nothing wrong with this, and you can use objects normally when they're detached, **except** they will not be able to issue any SQL in order to load collections or attributes which are not yet loaded, or were marked as "expired".
 
 Knowing these states is important, since the `Session` tries to be strict about ambiguous operations (such as trying to save the same object to two different sessions at the same time).
 
@@ -367,7 +367,7 @@ Cascading is configured by setting the `cascade` keyword argument on a `relation
 
 The above mapper specifies two relations, `items` and `customer`.  The `items` relationship specifies "all, delete-orphan" as its `cascade` value, indicating that all  `add`, `merge`, `expunge`, `refresh` `delete` and `expire` operations performed on a parent `Order` instance should also be performed on the child `Item` instances attached to it.  The `delete-orphan` cascade value additionally indicates that if an `Item` instance is no longer associated with an `Order`, it should also be deleted.  The "all, delete-orphan" cascade argument allows a so-called *lifecycle* relationship between an `Order` and an `Item` object.
 
-The `customer` relationship specifies only the "save-update" cascade value, indicating most operations will not be cascaded from a parent `Order` instance to a child `User` instance except for the `add()` operation.  "save-update" cascade indicates that an `add()` on the parent will casade to all child items, and also that items added to a parent which is already present in the sessio will also be added.
+The `customer` relationship specifies only the "save-update" cascade value, indicating most operations will not be cascaded from a parent `Order` instance to a child `User` instance except for the `add()` operation.  "save-update" cascade indicates that an `add()` on the parent will cascade to all child items, and also that items added to a parent which is already present in the session will also be added.
 
 The default value for `cascade` on `relation()`s is `save-update, merge`.
 
@@ -375,47 +375,47 @@ The default value for `cascade` on `relation()`s is `save-update, merge`.
 
 The `Session` manages transactions across all engines associated with it.  As the `Session` receives requests to execute SQL statements using a particular `Engine` or `Connection`, it adds each individual `Engine` encountered to its transactional state and maintains an open connection for each one (note that a simple application normally has just one `Engine`).  At commit time, all unflushed data is flushed, and each individual transaction is committed.  If the underlying databases support two-phase semantics, this may be used by the Session as well if two-phase transactions are enabled.
 
-Normal operation ends the transactional state using the `rolback()` or `commit()` methods.  After either is called, the `Session` starts a new transaction.
+Normal operation ends the transactional state using the `rollback()` or `commit()` methods.  After either is called, the `Session` starts a new transaction.
 
     {python}
     Session = sessionmaker()
-    sess = Session()
+    session = Session()
     try:
-        item1 = sess.query(Item).get(1)
-        item2 = sess.query(Item).get(2)
+        item1 = session.query(Item).get(1)
+        item2 = session.query(Item).get(2)
         item1.foo = 'bar'
         item2.bar = 'foo'
     
         # commit- will immediately go into a new transaction afterwards
-        sess.commit()
+        session.commit()
     except:
         # rollback - will immediately go into a new transaction afterwards.
-        sess.rollback()
+        session.rollback()
 
 A session which is configured with `autocommit=True` may be placed into a transaction using `begin()`.  With an `autocommit=True` session that's been placed into a transaction using `begin()`, the session releases all connection resources after a `commit()` or `rollback()` and remains transaction-less (with the exception of flushes) until the next `begin()` call:
 
     {python}
     Session = sessionmaker(autocommit=True)
-    sess = Session()
-    sess.begin()
+    session = Session()
+    session.begin()
     try:
-        item1 = sess.query(Item).get(1)
-        item2 = sess.query(Item).get(2)
+        item1 = session.query(Item).get(1)
+        item2 = session.query(Item).get(2)
         item1.foo = 'bar'
         item2.bar = 'foo'
-        sess.commit()
+        session.commit()
     except:
-        sess.rollback()
+        session.rollback()
         raise
 
 The `begin()` method also returns a transactional token which is compatible with the Python 2.6 `with` statement:
 
     {python}
     Session = sessionmaker(autocommit=True)
-    sess = Session()
-    with sess.begin():
-        item1 = sess.query(Item).get(1)
-        item2 = sess.query(Item).get(2)
+    session = Session()
+    with session.begin():
+        item1 = session.query(Item).get(1)
+        item2 = session.query(Item).get(2)
         item1.foo = 'bar'
         item2.bar = 'foo'
 
@@ -425,15 +425,15 @@ SAVEPOINT transactions, if supported by the underlying engine, may be delineated
 
     {python}
     Session = sessionmaker()
-    sess = Session()
-    sess.add(u1)
-    sess.add(u2)
+    session = Session()
+    session.add(u1)
+    session.add(u2)
 
-    sess.begin_nested() # establish a savepoint
-    sess.add(u3)
-    sess.rollback()  # rolls back u3, keeps u1 and u2
+    session.begin_nested() # establish a savepoint
+    session.add(u3)
+    session.rollback()  # rolls back u3, keeps u1 and u2
 
-    sess.commit() # commits u1 and u2
+    session.commit() # commits u1 and u2
 
 `begin_nested()` may be called any number of times, which will issue a new SAVEPOINT with a unique identifier for each call.  For each `begin_nested()` call, a corresponding `rollback()` or `commit()` must be issued.  
 
@@ -441,7 +441,7 @@ When `begin_nested()` is called, a `flush()` is unconditionally issued (regardle
 
 ### Enabling Two-Phase Commit {@name=twophase}
 
-Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instructed to use two-phase commit semantics. This will coordinate the commiting of transactions across databases so that the transaction is either committed or rolled back in all databases. You can also `prepare()` the session for interacting with transactions not managed by SQLAlchemy. To use two phase transactions set the flag `twophase=True` on the session:
+Finally, for MySQL, PostgreSQL, and soon Oracle as well, the session can be instructed to use two-phase commit semantics. This will coordinate the committing of transactions across databases so that the transaction is either committed or rolled back in all databases. You can also `prepare()` the session for interacting with transactions not managed by SQLAlchemy. To use two phase transactions set the flag `twophase=True` on the session:
 
     {python}
     engine1 = create_engine('postgres://db1')
@@ -452,13 +452,13 @@ Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instru
     # bind User operations to engine 1, Account operations to engine 2
     Session.configure(binds={User:engine1, Account:engine2})
 
-    sess = Session()
+    session = Session()
     
     # .... work with accounts and users
     
     # commit.  session will issue a flush to all DBs, and a prepare step to all DBs,
     # before committing both transactions
-    sess.commit()
+    session.commit()
 
 ## Embedding SQL Insert/Update Expressions into a Flush {@name=flushsql}
 
@@ -485,31 +485,31 @@ SQL expressions and strings can be executed via the `Session` within its transac
 
     {python}
     Session = sessionmaker(bind=engine)
-    sess = Session()
+    session = Session()
     
     # execute a string statement
-    result = sess.execute("select * from table where id=:id", {'id':7})
+    result = session.execute("select * from table where id=:id", {'id':7})
     
     # execute a SQL expression construct
-    result = sess.execute(select([mytable]).where(mytable.c.id==7))
+    result = session.execute(select([mytable]).where(mytable.c.id==7))
 
 The current `Connection` held by the `Session` is accessible using the `connection()` method:
 
     {python}
-    connection = sess.connection()
+    connection = session.connection()
 
 The examples above deal with a `Session` that's bound to a single `Engine` or `Connection`.  To execute statements using a `Session` which is bound either to multiple engines, or none at all (i.e. relies upon bound metadata), both `execute()` and `connection()` accept a `mapper` keyword argument, which is passed a mapped class or `Mapper` instance, which is used to locate the proper context for the desired engine:
     
     {python}
     Session = sessionmaker()
-    sess = Session()
+    session = Session()
     
     # need to specify mapper or class when executing
-    result = sess.execute("select * from table where id=:id", {'id':7}, mapper=MyMappedClass)
+    result = session.execute("select * from table where id=:id", {'id':7}, mapper=MyMappedClass)
 
-    result = sess.execute(select([mytable], mytable.c.id==7), mapper=MyMappedClass)
+    result = session.execute(select([mytable], mytable.c.id==7), mapper=MyMappedClass)
 
-    connection = sess.connection(MyMappedClass)
+    connection = session.connection(MyMappedClass)
 
 ## Joining a Session into an External Transaction {@name=joining}
 
@@ -523,16 +523,16 @@ If a `Connection` is being used which is already in a transactional state (i.e. 
     trans = conn.begin()
     
     # create a Session, bind to the connection
-    sess = Session(bind=conn)
+    session = Session(bind=conn)
     
     # ... work with session
     
-    sess.commit() # commit the session
-    sess.close()  # close it out, prohibit further actions
+    session.commit() # commit the session
+    session.close()  # close it out, prohibit further actions
     
     trans.commit() # commit the actual transaction
 
-Note that above, we issue a `commit()` both on the `Session` as well as the `Transaction`.  This is an example of where we take advantage of `Connection`'s ability to maintain *subtransactions*, or nested begin/commit pairs.  The `Session` is used exactly as though it were managing the transaction on its own; its `commit()` method issues its `flush()`, and commits the subtransaction.   The subsequent transaction the `Session` starts after commit will not begin until it's next used.  Above we issue a `close()` to prevent this from occuring.  Finally, the actual transaction is committed using `Transaction.commit()`.
+Note that above, we issue a `commit()` both on the `Session` as well as the `Transaction`.  This is an example of where we take advantage of `Connection`'s ability to maintain *subtransactions*, or nested begin/commit pairs.  The `Session` is used exactly as though it were managing the transaction on its own; its `commit()` method issues its `flush()`, and commits the subtransaction.   The subsequent transaction the `Session` starts after commit will not begin until it's next used.  Above we issue a `close()` to prevent this from occurring.  Finally, the actual transaction is committed using `Transaction.commit()`.
 
 When using the `threadlocal` engine context, the process above is simplified; the `Session` uses the same connection/transaction as everyone else in the current thread, whether or not you explicitly bind it:
 
@@ -540,7 +540,7 @@ When using the `threadlocal` engine context, the process above is simplified; th
     engine = create_engine('postgres://mydb', strategy="threadlocal")
     engine.begin()
     
-    sess = Session()  # session takes place in the transaction like everyone else
+    session = Session()  # session takes place in the transaction like everyone else
     
     # ... go nuts
     
@@ -562,13 +562,13 @@ However, when you instantiate this `Session` "class", in reality the object is p
 
     {python}
     >>> # call Session() the first time.  the new Session instance is created.
-    >>> sess = Session()
+    >>> session = Session()
     
     >>> # later, in the same application thread, someone else calls Session()
-    >>> sess2 = Session()
+    >>> session2 = Session()
     
     >>> # the two Session objects are *the same* object
-    >>> sess is sess2
+    >>> session is session2
     True
 
 Since the `Session()` constructor now returns the same `Session` object every time within the current thread, the object returned by `scoped_session()` also implements most of the `Session` methods and properties at the "class" level, such that you don't even need to instantiate `Session()`:
@@ -606,16 +606,16 @@ A (really, really) common question is when does the contextual session get creat
     web request    -> 
                         call controller ->   # call Session().  this establishes a new,
                                              # contextual Session.
-                                             sess = Session()
+                                             session = Session()
                                              
                                              # load some objects, save some changes
-                                             objects = sess.query(MyClass).all()
+                                             objects = session.query(MyClass).all()
                                              
                                              # some other code calls Session, it's the 
                                              # same contextual session as "sess"
-                                             sess2 = Session()
-                                             sess2.add(foo)
-                                             sess2.commit()
+                                             session2 = Session()
+                                             session2.add(foo)
+                                             session2.commit()
                                              
                                              # generate content to be returned
                                              return generate_content()
@@ -649,7 +649,7 @@ Vertical partitioning places different kinds of objects, or different tables, ac
     # bind User operations to engine 1, Account operations to engine 2
     Session.configure(binds={User:engine1, Account:engine2})
 
-    sess = Session()
+    session = Session()
 
 ### Horizontal Partitioning
 
@@ -673,6 +673,6 @@ Basic usage is similar to `MapperExtension`:
 or with `create_session()`:
 
     {python}
-    sess = create_session(extension=MySessionExtension())
+    session = create_session(extension=MySessionExtension())
     
 The same `SessionExtension` instance can be used with any number of sessions.

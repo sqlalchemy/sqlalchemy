@@ -49,7 +49,7 @@ Date and time types return objects from the Python `datetime` module.  Most DBAP
 
 #### Interval
 
-The Interval type deals with `datetime.timedelta` objects.  In Postgres, the native INTERVAL type is used; for others, the value is stored as a date which is relative to the "epoch" (Jan. 1, 1970).
+The Interval type deals with `datetime.timedelta` objects.  In PostgreSQL, the native INTERVAL type is used; for others, the value is stored as a date which is relative to the "epoch" (Jan. 1, 1970).
 
 #### Binary
 
@@ -85,7 +85,7 @@ The idea behind the SQL-specific types is that a CREATE TABLE statement would ge
 
 ### Dialect Specific Types {@name=dialect}
 
-Each dialect has its own set of types, many of which are available only within that dialect.  For example, MySQL has a `BigInteger` type and Postgres has an `Inet` type.  To use these, import them from the module explicitly:
+Each dialect has its own set of types, many of which are available only within that dialect.  For example, MySQL has a `BigInteger` type and PostgreSQL has an `Inet` type.  To use these, import them from the module explicitly:
 
     {python}
     from sqlalchemy.databases.mysql import MSEnum, MSBigInteger
@@ -95,7 +95,7 @@ Each dialect has its own set of types, many of which are available only within t
         Column('id', MSBigInteger)
     )
         
-Or some postgres types:
+Or some PostgreSQL types:
 
     {python}
     from sqlalchemy.databases.postgres import PGInet, PGArray

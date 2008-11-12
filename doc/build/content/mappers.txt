@@ -194,12 +194,12 @@ However, the approach above is not complete.  While our `EmailAddress` object wi
 The `email` attribute is now usable in the same way as any other mapped attribute, including filter expressions, get/set operations, etc.:
 
     {python}
-    address = sess.query(EmailAddress).filter(EmailAddress.email == 'some address').one()
+    address = session.query(EmailAddress).filter(EmailAddress.email == 'some address').one()
 
     address.email = 'some other address'
-    sess.flush()
+    session.flush()
 
-    q = sess.query(EmailAddress).filter_by(email='some other address')
+    q = session.query(EmailAddress).filter_by(email='some other address')
 
 If the mapped class does not provide a property, the `synonym()` construct will create a default getter/setter object automatically.
 
@@ -250,11 +250,11 @@ Setting up the mapping uses the `composite()` function:
 We can now use the `Vertex` instances as well as querying as though the `start` and `end` attributes are regular scalar attributes:
 
     {python}
-    sess = Session()
+    session = Session()
     v = Vertex(Point(3, 4), Point(5, 6))
-    sess.save(v)
+    session.save(v)
 
-    v2 = sess.query(Vertex).filter(Vertex.start == Point(3, 4))
+    v2 = session.query(Vertex).filter(Vertex.start == Point(3, 4))
 
 The "equals" comparison operation by default produces an AND of all corresponding columns equated to one another.  If you'd like to override this, or define the behavior of other SQL operators for your new type, the `composite()` function accepts an extension object of type `sqlalchemy.orm.PropComparator`:
 
@@ -412,7 +412,7 @@ Next is a way to join along `relation` paths while narrowing the criterion to sp
         'employees': relation(Employee)
     })
 
-If we wanted to join from `Company` to not just `Employee` but specifically `Engineers`, using the `join()` method or `any()` or `has()` operators will by default create a join from `companies` to `employees`, without including `engineers` or `managers` in the mix.  If we wish to have criterion which is specifically against the `Engineer` class, we can tell those methods to join or subquery against the full set of tables representing the subclass using the `of_type()` opertator:
+If we wanted to join from `Company` to not just `Employee` but specifically `Engineers`, using the `join()` method or `any()` or `has()` operators will by default create a join from `companies` to `employees`, without including `engineers` or `managers` in the mix.  If we wish to have criterion which is specifically against the `Engineer` class, we can tell those methods to join or subquery against the full set of tables representing the subclass using the `of_type()` operator:
 
     {python}
     session.query(Company).join(Company.employees.of_type(Engineer)).filter(Engineer.engineer_info=='someinfo')
@@ -739,17 +739,17 @@ Above, the "customers" table is joined against the "orders" table to produce a f
 
 The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well on the "load side" - these are called **secondary mappers**.   This is a mapper that must be constructed with the keyword argument `non_primary=True`, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new `relation()`s to a non-primary mapper. To use this mapper with the Session, specify it to the `query` method:
 
-    example:
+example:
 
-        {python}
-        # primary mapper
-        mapper(User, users_table)
+    {python}
+    # primary mapper
+    mapper(User, users_table)
 
-        # make a secondary mapper to load User against a join
-        othermapper = mapper(User, users_table.join(someothertable), non_primary=True)
+    # make a secondary mapper to load User against a join
+    othermapper = mapper(User, users_table.join(someothertable), non_primary=True)
 
-        # select
-        result = session.query(othermapper).select()
+    # select
+    result = session.query(othermapper).select()
 
 The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the `Query` object can produce any kind of query that's desired.  It's recommended that a straight `Query` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a `relation()` of a parent mapper.
 
@@ -809,7 +809,7 @@ class's `__init__` slightly.  The method is lightly wrapped to act as
 a trigger for the ORM, allowing mappers to be compiled automatically
 and will fire a `init_instance` event that `MapperExtension`s may
 listen for.  `MapperExtension`s can also listen for a
-`reconstruct_instance` event, analagous to the `reconstructor`
+`reconstruct_instance` event, analogous to the `reconstructor`
 decorator above.
 
 #### Extending Mapper {@name=extending}
@@ -1066,18 +1066,18 @@ There are several examples included with SQLAlchemy illustrating self-referentia
 
 ##### Self-Referential Query Strategies {@name=query}
 
-Querying self-referential structures is done in the same way as any other query in SQLAlchemy, such as below, we query for any node whose `data` attrbibute stores the value `child2`:
+Querying self-referential structures is done in the same way as any other query in SQLAlchemy, such as below, we query for any node whose `data` attribute stores the value `child2`:
 
     {python}
     # get all nodes named 'child2'
-    sess.query(Node).filter(Node.data=='child2')
+    session.query(Node).filter(Node.data=='child2')
 
 On the subject of joins, i.e. those described in [datamapping_joins](rel:datamapping_joins), self-referential structures require the usage of aliases so that the same table can be referenced multiple times within the FROM clause of the query.   Aliasing can be done either manually using the `nodes` `Table` object as a source of aliases:
 
     {python}
     # get all nodes named 'subchild1' with a parent named 'child2'
     nodealias = nodes.alias()
-    {sql}sess.query(Node).filter(Node.data=='subchild1').\
+    {sql}session.query(Node).filter(Node.data=='subchild1').\
         filter(and_(Node.parent_id==nodealias.c.id, nodealias.c.data=='child2')).all()
     SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data
     FROM treenodes, treenodes AS treenodes_1
@@ -1088,7 +1088,7 @@ or automatically, using `join()` with `aliased=True`:
 
     {python}
     # get all nodes named 'subchild1' with a parent named 'child2'
-    {sql}sess.query(Node).filter(Node.data=='subchild1').\
+    {sql}session.query(Node).filter(Node.data=='subchild1').\
         join('parent', aliased=True).filter(Node.data=='child2').all()
     SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data
     FROM treenodes JOIN treenodes AS treenodes_1 ON treenodes_1.id = treenodes.parent_id
@@ -1099,7 +1099,7 @@ To add criterion to multiple points along a longer join, use `from_joinpoint=Tru
 
     {python}
     # get all nodes named 'subchild1' with a parent named 'child2' and a grandparent 'root'
-    {sql}sess.query(Node).filter(Node.data=='subchild1').\
+    {sql}session.query(Node).filter(Node.data=='subchild1').\
         join('parent', aliased=True).filter(Node.data=='child2').\
         join('parent', aliased=True, from_joinpoint=True).filter(Node.data=='root').all()
     SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data

@@ -20,7 +20,7 @@ For this tutorial we will use an in-memory-only SQLite database.   This is an ea
     >>> from sqlalchemy import create_engine
     >>> engine = create_engine('sqlite:///:memory:', echo=True)
     
-The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard `logging` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to `False`.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see whats being generated.
+The `echo` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard `logging` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to `False`.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see what's being generated.
     
 ## Define and Create Tables {@name=tables}
 
@@ -71,7 +71,7 @@ Next, to tell the `MetaData` we'd actually like to create our selection of table
     {}
     COMMIT
 
-Users familiar with the syntax of CREATE TABLE may notice that the VARCHAR columns were generated without a length; on SQLite, this is a valid datatype, but on most databases it's not allowed.  So if running this tutorial on a database such as Postgres or MySQL, and you wish to use SQLAlchemy to generate the tables, a "length" may be provided to the `String` type as below:
+Users familiar with the syntax of CREATE TABLE may notice that the VARCHAR columns were generated without a length; on SQLite, this is a valid datatype, but on most databases it's not allowed.  So if running this tutorial on a database such as PostgreSQL or MySQL, and you wish to use SQLAlchemy to generate the tables, a "length" may be provided to the `String` type as below:
 
     {python}
     Column('name', String(50))
@@ -426,7 +426,7 @@ So with all of this vocabulary, let's select all users who have an email address
     [', ', 'm', 'z', '%@aol.com', '%@msn.com']
     [(u'Wendy Williams, wendy@aol.com',)]
 
-Once again, SQLAlchemy figured out the FROM clause for our statement.  In fact it will determine the FROM clause based on all of its other bits; the columns clause, the whereclause, and also some other elements which we haven't covered yet, which include ORDER BY, GROUP BY, and HAVING. 
+Once again, SQLAlchemy figured out the FROM clause for our statement.  In fact it will determine the FROM clause based on all of its other bits; the columns clause, the where clause, and also some other elements which we haven't covered yet, which include ORDER BY, GROUP BY, and HAVING. 
 
 ## Using Text {@name=text}
 
@@ -717,7 +717,7 @@ Functions are most typically used in the columns clause of a select statement, a
     []
     {stop}www@www.org
     
-Databases such as Postgres and Oracle which support functions that return whole result sets can be assembled into selectable units, which can be used in statements.   Such as, a database function `calculate()` which takes the parameters `x` and `y`, and returns three columns which we'd like to name `q`, `z` and `r`, we can construct using "lexical" column objects as well as bind parameters:
+Databases such as PostgreSQL and Oracle which support functions that return whole result sets can be assembled into selectable units, which can be used in statements.   Such as, a database function `calculate()` which takes the parameters `x` and `y`, and returns three columns which we'd like to name `q`, `z` and `r`, we can construct using "lexical" column objects as well as bind parameters:
 
     {python}
     >>> from sqlalchemy.sql import column
