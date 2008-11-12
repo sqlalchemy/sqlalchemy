@@ -311,7 +311,7 @@ def _as_declarative(cls, classname, dict_):
         inherits = cls._decl_class_registry.get(inherits.__name__, None)
         if inherits:
             mapper_args['inherits'] = inherits
-            if not mapper_args.get('concrete', False) and table:
+            if not mapper_args.get('concrete', False) and table and 'inherit_condition' not in mapper_args:
                 # figure out the inherit condition with relaxed rules
                 # about nonexistent tables, to allow for ForeignKeys to
                 # not-yet-defined tables (since we know for sure that our

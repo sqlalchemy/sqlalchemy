@@ -29,7 +29,7 @@ CHANGES
     - Adjustments to the enhanced garbage collection on 
       InstanceState to better guard against errors due 
       to lost state.
-      
+
     - Query.get() returns a more informative
       error message when executed against multiple entities.
       [ticket:1220]
@@ -68,6 +68,10 @@ CHANGES
       schemas, particularly when those schemas are the
       default schema. [ticket:1217]
 
+- ext
+    - Can now use a custom "inherit_condition" in 
+      __mapper_args__ when using declarative.
+      
 0.5.0rc3
 ========
 - features

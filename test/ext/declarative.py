@@ -536,6 +536,20 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         sess.flush()
         eq_(sess.query(User).filter(User.name == "SOMENAME someuser").one(), u1)
 
+    def test_custom_inh(self):
+        class Foo(Base):
+            __tablename__ = 'foo'
+            id = Column('id', Integer, primary_key=True)
+
+        class Bar(Foo):
+            __tablename__ = 'bar'
+            id = Column('id', Integer, primary_key=True)
+            foo_id = Column('foo_id', Integer)
+            __mapper_args__ = {'inherit_condition':foo_id==Foo.id}
+        
+        # compile succeeds because inherit_condition is honored
+        compile_mappers()
+
     def test_joined_inheritance(self):
         class Company(Base, ComparableEntity):
             __tablename__ = 'companies'
