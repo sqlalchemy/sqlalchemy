@@ -83,6 +83,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         tbl = Table('test', metadata, Column('id', Integer, primary_key=True), schema='paj')
         self.assert_compile(tbl.delete(tbl.c.id == 1), "DELETE FROM paj.test WHERE paj.test.id = :id_1")
 
+        s = select([tbl.c.id]).where(tbl.c.id==1)
+        self.assert_compile(tbl.delete().where(tbl.c.id==(s)), "DELETE FROM paj.test WHERE paj.test.id IN (SELECT test_1.id FROM paj.test AS test_1 WHERE test_1.id = :id_1)")
+
     def test_union(self):
         t1 = table('t1',
             column('col1'),

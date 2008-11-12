@@ -1001,7 +1001,8 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
 
     def visit_column(self, column, result_map=None, **kwargs):
-        if column.table is not None and not self.isupdate and not self.isdelete:
+        if column.table is not None and \
+            (not self.isupdate and not self.isdelete) or self.is_subquery():
             # translate for schema-qualified table aliases
             t = self._schema_aliased_table(column.table)
             if t is not None:
@@ -1009,9 +1010,9 @@ class MSSQLCompiler(compiler.DefaultCompiler):
 
                 if result_map is not None:
                     result_map[column.name.lower()] = (column.name, (column, ), column.type)
-                    
+
                 return super(MSSQLCompiler, self).visit_column(converted, result_map=None, **kwargs)
-                
+
         return super(MSSQLCompiler, self).visit_column(column, result_map=result_map, **kwargs)
 
     def visit_binary(self, binary, **kwargs):
