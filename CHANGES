@@ -43,6 +43,11 @@ CHANGES
     
     - Restored "active rowcount" fetch before ResultProxy
       autocloses the cursor.  This was removed in 0.5rc3.
+    
+    - Rearranged the `load_dialect_impl()` method in 
+      `TypeDecorator` such that it will take effect
+      even if the user-defined `TypeDecorator` uses
+      another `TypeDecorator` as its impl.
       
 - access
     - Added support for Currency type.

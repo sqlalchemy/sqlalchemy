@@ -152,13 +152,11 @@ class TypeDecorator(AbstractType):
         except KeyError:
             pass
 
-        if isinstance(self.impl, TypeDecorator):
-            typedesc = self.impl.dialect_impl(dialect)
-        else:
-            typedesc = self.load_dialect_impl(dialect)
+        typedesc = self.load_dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
-            raise AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
+            raise AssertionError("Type object %s does not properly implement the copy() "
+                    "method, it must return an object of type %s" % (self, self.__class__))
         tt.impl = typedesc
         self._impl_dict[dialect] = tt
         return tt
@@ -170,7 +168,10 @@ class TypeDecorator(AbstractType):
         can be overridden to provide different behavior.
         """
 
-        return dialect.type_descriptor(self.impl)
+        if isinstance(self.impl, TypeDecorator):
+            return self.impl.dialect_impl(dialect)
+        else:
+            return dialect.type_descriptor(self.impl)
 
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying implementation."""
