@@ -191,7 +191,7 @@ class GetTest(QueryTest):
         assert u.addresses[0].email_address == 'jack@bean.com'
         assert u.orders[1].items[2].description == 'item 5'
 
-    @testing.fails_on_everything_except('sqlite')
+    @testing.fails_on_everything_except('sqlite', 'mssql')
     def test_query_str(self):
         s = create_session()
         q = s.query(User).filter(User.id==1)
