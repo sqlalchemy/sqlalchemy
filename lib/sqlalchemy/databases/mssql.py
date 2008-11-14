@@ -212,7 +212,7 @@ class MSText(sqltypes.Text):
 
 class MSString(sqltypes.String):
     def get_col_spec(self):
-        return "VARCHAR(%(length)s)" % {'length' : self.length}
+        return "VARCHAR" + (self.length and "(%d)" % self.length or "")
 
 class MSNVarchar(sqltypes.Unicode):
     def get_col_spec(self):

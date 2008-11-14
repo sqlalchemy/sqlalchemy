@@ -73,6 +73,9 @@ CHANGES
       schemas, particularly when those schemas are the
       default schema. [ticket:1217]
 
+    - Corrected problem with casting a zero length item to
+      a varchar. It now correctly adjusts the CAST.
+
 - ext
     - Can now use a custom "inherit_condition" in 
       __mapper_args__ when using declarative.
