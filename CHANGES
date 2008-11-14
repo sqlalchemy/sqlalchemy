@@ -20,6 +20,10 @@ CHANGES
       real rowcount is returned, meaning a query such as
       query(func.count(A.name)).count() will return a value of
       one, since that query would return one row.
+    
+    - Lots of performance tuning.  A rough guesstimate 
+      over various ORM operations places it 10% faster 
+      over 0.5.0rc3, 25-30% over 0.4.8.
       
 - bugfixes and behavioral changes
 - general:
