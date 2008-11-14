@@ -4,6 +4,13 @@
 =======
 CHANGES
 =======
+0.5.0rc5
+========
+- bugfixes
+- postgres
+    - Calling alias.execute() in conjunction with
+      server_side_cursors won't raise AttributeError.
+      
 0.5.0rc4
 ========
 - features

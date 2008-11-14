@@ -235,7 +235,8 @@ class PGExecutionContext(default.DefaultExecutionContext):
         # TODO: coverage for server side cursors + select.for_update()
         is_server_side = \
             self.dialect.server_side_cursors and \
-            ((self.compiled and isinstance(self.compiled.statement, expression.Selectable) and not self.compiled.statement.for_update) \
+            ((self.compiled and isinstance(self.compiled.statement, expression.Selectable) 
+                and not getattr(self.compiled.statement, 'for_update', False)) \
             or \
             (
                 (not self.compiled or isinstance(self.compiled.statement, expression._TextClause)) 
