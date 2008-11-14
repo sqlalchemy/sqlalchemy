@@ -592,14 +592,14 @@ class FilterTest(QueryTest):
 
     @testing.fails_on('maxdb')
     def test_limit(self):
-        assert [User(id=8), User(id=9)] == create_session().query(User).limit(2).offset(1).all()
+        assert [User(id=8), User(id=9)] == create_session().query(User).order_by(User.id).limit(2).offset(1).all()
 
-        assert [User(id=8), User(id=9)] == list(create_session().query(User)[1:3])
+        assert [User(id=8), User(id=9)] == list(create_session().query(User).order_by(User.id)[1:3])
 
-        assert User(id=8) == create_session().query(User)[1]
+        assert User(id=8) == create_session().query(User).order_by(User.id)[1]
     
-        assert [] == create_session().query(User)[3:3]
-        assert [] == create_session().query(User)[0:0]
+        assert [] == create_session().query(User).order_by(User.id)[3:3]
+        assert [] == create_session().query(User).order_by(User.id)[0:0]
         
         
     def test_one_filter(self):
@@ -730,8 +730,8 @@ class FromSelfTest(QueryTest):
 
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().all()
 
-        assert [User(id=8), User(id=9)] == create_session().query(User).slice(1,3)._from_self().all()
-        assert [User(id=8)] == list(create_session().query(User).filter(User.id.in_([8,9]))._from_self()[0:1])
+        assert [User(id=8), User(id=9)] == create_session().query(User).order_by(User.id).slice(1,3)._from_self().all()
+        assert [User(id=8)] == list(create_session().query(User).filter(User.id.in_([8,9]))._from_self().order_by(User.id)[0:1])
     
     def test_join(self):
         assert [
@@ -1050,7 +1050,7 @@ class JoinTest(QueryTest):
         # the onclause must be aliased against the query's custom
         # FROM object
         self.assertEquals(
-            sess.query(User).offset(2).from_self().join(
+            sess.query(User).order_by(User.id).offset(2).from_self().join(
                 (Order, User.id==Order.user_id)
             ).all(),
             [User(name='fred')]
@@ -1058,7 +1058,7 @@ class JoinTest(QueryTest):
 
         # same with an explicit select_from()
         self.assertEquals(
-            sess.query(User).select_from(select([users]).offset(2).alias()).join(
+            sess.query(User).select_from(select([users]).order_by(User.id).offset(2).alias()).join(
                 (Order, User.id==Order.user_id)
             ).all(),
             [User(name='fred')]
