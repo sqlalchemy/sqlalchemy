@@ -377,6 +377,8 @@ def resetwarnings():
     warnings.filterwarnings('error', category=sa_exc.SADeprecationWarning)
     warnings.filterwarnings('error', category=sa_exc.SAWarning)
 
+#    warnings.simplefilter('error')
+
     if sys.version_info < (2, 4):
         warnings.filterwarnings('ignore', category=FutureWarning)
 

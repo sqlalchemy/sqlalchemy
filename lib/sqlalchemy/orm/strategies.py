@@ -546,7 +546,7 @@ class LoadLazyAttribute(object):
             return q.get(ident)
 
         if prop.order_by:
-            q = q.order_by(prop.order_by)
+            q = q.order_by(*util.to_list(prop.order_by))
 
         if self.options:
             q = q._conditional_options(*self.options)

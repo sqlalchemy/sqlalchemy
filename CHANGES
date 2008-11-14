@@ -37,6 +37,9 @@ CHANGES
     - Restored NotImplementedError on Cls.relation.in_()
       [ticket:1140] [ticket:1221]
       
+    - Fixed PendingDeprecationWarning involving order_by
+      parameter on relation(). [ticket:1226]
+      
 - sql
     - Removed the 'properties' attribute of the 
       Connection object, Connection.info should be used.

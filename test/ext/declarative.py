@@ -44,7 +44,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='two'),
         ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -220,7 +220,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='two'),
         ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -254,7 +254,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='one'),
         ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
         eq_(sess.query(User).options(eagerload(User.addresses)).all(), [User(name='u1', addresses=[
@@ -262,6 +262,32 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='two'),
         ])])
 
+    def test_order_by_multi(self):
+        class Address(Base, ComparableEntity):
+            __tablename__ = 'addresses'
+
+            id = Column('id', Integer, primary_key=True)
+            email = Column('email', String(50))
+            user_id = Column('user_id', Integer, ForeignKey('users.id'))
+
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            addresses = relation("Address", order_by=(Address.email, Address.id))
+
+        Base.metadata.create_all()
+        u1 = User(name='u1', addresses=[
+            Address(email='two'),
+            Address(email='one'),
+        ])
+        sess = create_session()
+        sess.add(u1)
+        sess.flush()
+        sess.clear()
+        u = sess.query(User).filter(User.name == 'u1').one()
+        a = u.addresses
             
     def test_as_declarative(self):
         class User(ComparableEntity):
@@ -288,7 +314,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='two'),
         ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -389,7 +415,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='two'),
         ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -414,7 +440,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         eq_(u1.a, 'a')
         eq_(User.a.get_history(u1), (['a'], (), ()))
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -445,7 +471,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='two'),
         ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -482,7 +508,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
 
         Base.metadata.create_all()
         sess = create_session()
-        sess.save(User(name='u1'))
+        sess.add(User(name='u1'))
         sess.flush()
         sess.clear()
 
@@ -510,7 +536,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         sess = create_session()
         u1 = User(name='someuser')
         eq_(u1.name, "SOMENAME someuser")
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         eq_(sess.query(User).filter(User.name == "SOMENAME someuser").one(), u1)
 
@@ -532,7 +558,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         sess = create_session()
         u1 = User(name='someuser')
         eq_(u1.name, "SOMENAME someuser")
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         eq_(sess.query(User).filter(User.name == "SOMENAME someuser").one(), u1)
 
@@ -591,8 +617,8 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Engineer(name="vlad", primary_language="cobol")
         ])
 
-        sess.save(c1)
-        sess.save(c2)
+        sess.add(c1)
+        sess.add(c2)
         sess.flush()
         sess.clear()
 
@@ -668,7 +694,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='two'),
         ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -704,7 +730,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Address(email='two'),
         ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -766,8 +792,8 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             Engineer(name="vlad", primary_language="cobol")
         ])
 
-        sess.save(c1)
-        sess.save(c2)
+        sess.add(c1)
+        sess.add(c2)
         sess.flush()
         sess.clear()
 
@@ -791,7 +817,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
 
             sess = create_session()
             m = MyObj(id="someid", data="somedata")
-            sess.save(m)
+            sess.add(m)
             sess.flush()
 
             eq_(t1.select().execute().fetchall(), [('someid', 'somedata')])
@@ -920,7 +946,7 @@ class DeclarativeReflectionTest(testing.TestBase):
             Address(email='two'),
             ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -951,7 +977,7 @@ class DeclarativeReflectionTest(testing.TestBase):
             Address(email='two'),
             ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -985,7 +1011,7 @@ class DeclarativeReflectionTest(testing.TestBase):
             IMHandle(network='lol', handle='zomg')
             ])
         sess = create_session()
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
@@ -1016,7 +1042,7 @@ class DeclarativeReflectionTest(testing.TestBase):
         u1 = User(name='someuser')
         eq_(u1.name, "someuser")
         eq_(u1.namesyn, 'someuser')
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
 
         rt = sess.query(User).filter(User.namesyn == 'someuser').one()
@@ -1050,7 +1076,7 @@ class DeclarativeReflectionTest(testing.TestBase):
         u1 = User(name='someuser')
         eq_(u1.name, "someuser", u1.name)
         eq_(u1.uc_name, 'SOMEUSER', u1.uc_name)
-        sess.save(u1)
+        sess.add(u1)
         sess.flush()
         sess.clear()
 
