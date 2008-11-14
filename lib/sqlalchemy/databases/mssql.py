@@ -1016,9 +1016,10 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         return super(MSSQLCompiler, self).visit_column(column, result_map=result_map, **kwargs)
 
     def visit_binary(self, binary, **kwargs):
-        """Move bind parameters to the right-hand side of an operator, where possible."""
-        #import pdb
-        #pdb.set_trace()
+        """Move bind parameters to the right-hand side of an operator, where
+        possible.
+
+        """
         if isinstance(binary.left, expression._BindParamClause) and binary.operator == operator.eq \
             and not isinstance(binary.right, expression._BindParamClause):
             return self.process(expression._BinaryExpression(binary.right, binary.left, binary.operator), **kwargs)

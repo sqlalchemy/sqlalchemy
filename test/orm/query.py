@@ -1495,9 +1495,6 @@ class MixedEntitiesTest(QueryTest):
         q2 = q.order_by(User.id).values(User.name, User.name + " " + cast(User.id, String))
         self.assertEquals(list(q2), [(u'jack', u'jack 7'), (u'ed', u'ed 8'), (u'fred', u'fred 9'), (u'chuck', u'chuck 10')])
         
-        q2 = q.group_by([User.name.like('%j%')]).order_by(desc(User.name.like('%j%'))).values(User.name.like('%j%'), func.count(User.name.like('%j%')))
-        self.assertEquals(list(q2), [(True, 1), (False, 3)])
-        
         q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(User.id, Address.id).values(User.name, Address.email_address)
         self.assertEquals(list(q2), [(u'ed', u'ed@wood.com'), (u'ed', u'ed@bettyboop.com'), (u'ed', u'ed@lala.com'), (u'fred', u'fred@fred.com')])
         
@@ -1525,7 +1522,16 @@ class MixedEntitiesTest(QueryTest):
         # whereas this uses users.c.xxx, is not aliased and creates a new join
         q2 = q.select_from(sel).filter(users.c.id==8).filter(users.c.id>sel.c.id).values(users.c.name, sel.c.name, User.name)
         self.assertEquals(list(q2), [(u'ed', u'jack', u'jack')])
-    
+
+    @testing.fails_on('mssql')
+    def test_values_with_boolean_selects(self):
+        """Tests a values clause that works with select boolean evaluations"""
+        sess = create_session()
+
+        q = sess.query(User)
+        q2 = q.group_by([User.name.like('%j%')]).order_by(desc(User.name.like('%j%'))).values(User.name.like('%j%'), func.count(User.name.like('%j%')))
+        self.assertEquals(list(q2), [(True, 1), (False, 3)])
+
     def test_scalar_subquery(self):
         """test that a subquery constructed from ORM attributes doesn't leak out 
         those entities to the outermost query.
