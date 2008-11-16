@@ -236,6 +236,23 @@ class InvalidGenerationsTest(QueryTest):
         # this is fine, however
         q.from_self()
     
+    def test_invalid_select_from(self):
+        s = create_session()
+        q = s.query(User)
+        self.assertRaises(sa_exc.ArgumentError, q.select_from, User.id==5)
+        self.assertRaises(sa_exc.ArgumentError, q.select_from, User.id)
+
+    def test_invalid_from_statement(self):
+        s = create_session()
+        q = s.query(User)
+        self.assertRaises(sa_exc.ArgumentError, q.from_statement, User.id==5)
+        self.assertRaises(sa_exc.ArgumentError, q.from_statement, users.join(addresses))
+    
+    def test_invalid_column(self):
+        s = create_session()
+        q = s.query(User)
+        self.assertRaises(sa_exc.InvalidRequestError, q.add_column, object())
+        
     def test_mapper_zero(self):
         s = create_session()
         
@@ -1783,6 +1800,16 @@ class MixedEntitiesTest(QueryTest):
 
         self.assertRaises(sa_exc.InvalidRequestError, sess.query(User).add_column, object())
     
+    def test_add_multi_columns(self):
+        """test that add_column accepts a FROM clause."""
+        
+        sess = create_session()
+        
+        eq_(
+            sess.query(User.id).add_column(users).all(),
+            [(7, 7, u'jack'), (8, 8, u'ed'), (9, 9, u'fred'), (10, 10, u'chuck')]
+        )
+        
     def test_multi_columns_2(self):
         """test aliased/nonalised joins with the usage of add_column()"""
         sess = create_session()

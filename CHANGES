@@ -6,7 +6,15 @@ CHANGES
 =======
 0.5.0rc5
 ========
-- bugfixes
+- bugfixes, behavioral changes
+- orm
+    - Query.select_from(), from_statement() ensure
+      that the given argument is a FromClause,
+      or Text/Select/Union, respectively.
+
+    - Query.add_column() can accept FromClause objects
+      in the same manner as session.query() can.
+      
 - postgres
     - Calling alias.execute() in conjunction with
       server_side_cursors won't raise AttributeError.

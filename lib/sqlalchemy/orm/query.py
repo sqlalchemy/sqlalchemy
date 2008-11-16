@@ -562,8 +562,11 @@ class Query(object):
         """Add a SQL ColumnElement to the list of result columns to be returned."""
 
         self._entities = list(self._entities)
-        c = _ColumnEntity(self, column)
-        self.__setup_aliasizers([c])
+        l = len(self._entities)
+        _ColumnEntity(self, column)
+        # _ColumnEntity may add many entities if the
+        # given arg is a FROM clause
+        self.__setup_aliasizers(self._entities[l:])
 
     def options(self, *args):
         """Return a new Query object, applying the given list of
@@ -930,6 +933,8 @@ class Query(object):
         if isinstance(from_obj, (tuple, list)):
             util.warn_deprecated("select_from() now accepts a single Selectable as its argument, which replaces any existing FROM criterion.")
             from_obj = from_obj[-1]
+        if not isinstance(from_obj, expression.FromClause):
+            raise sa_exc.ArgumentError("select_from() accepts FromClause objects only.")
         self.__set_select_from(from_obj)
 
     def __getitem__(self, item):
@@ -1013,6 +1018,10 @@ class Query(object):
         """
         if isinstance(statement, basestring):
             statement = sql.text(statement)
+
+        if not isinstance(statement, (expression._TextClause, expression._SelectBaseMixin)):
+            raise sa_exc.ArgumentError("from_statement accepts text(), select(), and union() objects only.")
+        
         self._statement = statement
 
     def first(self):
