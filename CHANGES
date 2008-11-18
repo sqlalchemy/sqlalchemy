@@ -14,6 +14,9 @@ CHANGES
 
     - Query.add_column() can accept FromClause objects
       in the same manner as session.query() can.
+
+    - the "passive" flag on session.is_modified()
+      is correctly propagated to the attribute manager.
       
 - postgres
     - Calling alias.execute() in conjunction with

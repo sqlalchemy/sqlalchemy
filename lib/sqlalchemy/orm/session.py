@@ -1464,7 +1464,7 @@ class Session(object):
         for attr in state.manager.attributes:
             if not include_collections and hasattr(attr.impl, 'get_collection'):
                 continue
-            (added, unchanged, deleted) = attr.get_history(instance)
+            (added, unchanged, deleted) = attr.get_history(instance, passive=passive)
             if added or deleted:
                 return True
         return False
