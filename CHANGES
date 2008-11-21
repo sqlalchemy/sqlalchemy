@@ -15,6 +15,9 @@ CHANGES
     - Query.add_column() can accept FromClause objects
       in the same manner as session.query() can.
 
+    - Comparison of many-to-one relation to NULL is
+      properly converted to IS NOT NULL based on not_().
+      
 - sql
     - Added NotImplementedError for params() method
       on Insert/Update/Delete constructs.  These items

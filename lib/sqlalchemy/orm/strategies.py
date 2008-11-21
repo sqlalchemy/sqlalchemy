@@ -392,10 +392,12 @@ class LazyLoader(AbstractRelationLoader):
                 binary.left = binary.right
                 binary.right = expression.null()
                 binary.operator = operators.is_
+                binary.negate = operators.isnot
             elif isinstance(binary.right, expression._BindParamClause) and binary.right.key in bind_to_col:
                 binary.right = expression.null()
                 binary.operator = operators.is_
-        
+                binary.negate = operators.isnot
+
         criterion = visitors.cloned_traverse(criterion, {}, {'binary':visit_binary})
         if adapt_source:
             criterion = adapt_source(criterion)

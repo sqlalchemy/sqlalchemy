@@ -353,7 +353,17 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
                 self.assert_(compiled == fwd_sql or compiled == rev_sql,
                              "\n'" + compiled + "'\n does not match\n'" +
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
-
+    
+    def test_negated_null(self):
+        self._test(User.id == None, "users.id IS NULL")
+        self._test(~(User.id==None), "users.id IS NOT NULL")
+        self._test(None == User.id, "users.id IS NULL")
+        self._test(~(None == User.id), "users.id IS NOT NULL")
+        self._test(Address.user == None, "addresses.user_id IS NULL")
+        self._test(~(Address.user==None), "addresses.user_id IS NOT NULL")
+        self._test(None == Address.user, "addresses.user_id IS NULL")
+        self._test(~(None == Address.user), "addresses.user_id IS NOT NULL")
+        
     def test_relation(self):
         self._test(User.addresses.any(Address.id==17), 
                         "EXISTS (SELECT 1 "
