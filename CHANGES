@@ -15,6 +15,13 @@ CHANGES
     - Query.add_column() can accept FromClause objects
       in the same manner as session.query() can.
 
+- sql
+    - Added NotImplementedError for params() method
+      on Insert/Update/Delete constructs.  These items
+      currently don't support this functionality, which
+      also would be a little misleading compared to
+      values().
+
     - the "passive" flag on session.is_modified()
       is correctly propagated to the attribute manager.
       

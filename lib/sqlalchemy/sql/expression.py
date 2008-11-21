@@ -3455,7 +3455,11 @@ class _UpdateBase(ClauseElement):
             return pp
         else:
             return parameters
-
+    
+    def params(self, *arg, **kw):
+        raise NotImplementedError("params() is not supported for INSERT/UPDATE/DELETE statements."
+            "  To set the values for an INSERT or UPDATE statement, use stmt.values(**parameters).")
+        
     def bind(self):
         return self._bind or self.table.bind
         
