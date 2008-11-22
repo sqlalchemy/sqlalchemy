@@ -601,6 +601,7 @@ class PropertyLoader(StrategizedProperty):
         for attr in ('primaryjoin', 'secondaryjoin'):
             val = getattr(self, attr)
             if val:
+                util.assert_arg_type(val, sql.ClauseElement, attr)
                 setattr(self, attr, _orm_deannotate(val))
         
         if self.order_by:

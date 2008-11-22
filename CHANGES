@@ -17,7 +17,12 @@ CHANGES
 
     - Comparison of many-to-one relation to NULL is
       properly converted to IS NOT NULL based on not_().
-      
+     
+    - Extra checks added to ensure explicit 
+      primaryjoin/secondaryjoin are ClauseElement 
+      instances, to prevent more confusing errors later 
+      on.
+       
 - sql
     - Fixed the import weirdness in sqlalchemy.sql
       to not export __names__ [ticket:1215].
