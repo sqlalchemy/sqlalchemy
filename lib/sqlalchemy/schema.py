@@ -1417,6 +1417,9 @@ class MetaData(SchemaItem):
     ``Connection``.  If bound, the [sqlalchemy.schema#Table] objects in the
     collection and their columns may participate in implicit SQL execution.
 
+    The `Table` objects themselves are stored in the `metadata.tables` 
+    dictionary.
+    
     The ``bind`` property may be assigned to dynamically.  A common pattern is
     to start unbound and then bind later when an engine is available::
 
@@ -1448,8 +1451,8 @@ class MetaData(SchemaItem):
           Defaults to False. ``bind`` is required when this option is set.
           For finer control over loaded tables, use the ``reflect`` method of
           ``MetaData``.
-        """
 
+        """
         self.tables = {}
         self.bind = bind
         self.metadata = self
@@ -1488,8 +1491,8 @@ class MetaData(SchemaItem):
           string or ``URL``, will be passed to ``create_engine()`` along with
           ``\**kwargs`` to produce the engine which to connect to.  Otherwise
           connects directly to the given ``Engine``.
+          
         """
-
         global URL
         if URL is None:
             from sqlalchemy.engine.url import URL
@@ -1505,6 +1508,7 @@ class MetaData(SchemaItem):
         This property may be assigned an ``Engine`` or ``Connection``, or
         assigned a string or URL to automatically create a basic ``Engine``
         for this bind with ``create_engine()``.
+        
         """
         return self._bind
 
@@ -1523,14 +1527,21 @@ class MetaData(SchemaItem):
     bind = property(bind, _bind_to)
 
     def clear(self):
+        """Clear all Table objects from this MetaData."""
+        # TODO: why have clear()/remove() but not all
+        # other accesors/mutators for the tables dict ?
         self.tables.clear()
 
     def remove(self, table):
+        """Remove the given Table object from this MetaData."""
+        
         # TODO: scan all other tables and remove FK _column
         del self.tables[table.key]
 
     @util.deprecated('Deprecated. Use ``metadata.sorted_tables``')
     def table_iterator(self, reverse=True, tables=None):
+        """Deprecated - use metadata.sorted_tables()."""
+        
         from sqlalchemy.sql.util import sort_tables
         if tables is None:
             tables = self.tables.values()
@@ -1578,8 +1589,8 @@ class MetaData(SchemaItem):
           filter the list of potential table names.  The callable is called
           with a table name and this ``MetaData`` instance as positional
           arguments and should return a true value for any table to reflect.
-        """
 
+        """
         reflect_opts = {'autoload': True}
         if bind is None:
             bind = _bind_or_error(self)
@@ -1644,8 +1655,8 @@ class MetaData(SchemaItem):
 
           # triggers MetaData listeners too:
           some.table.create()
-        """
 
+        """
         if event not in self.ddl_events:
             raise LookupError(event)
         self.ddl_listeners[event].append(listener)
@@ -1694,8 +1705,8 @@ class MetaData(SchemaItem):
         checkfirst
           Defaults to True, only issue DROPs for tables confirmed to be present
           in the target database.
-        """
 
+        """
         if bind is None:
             bind = _bind_or_error(self)
         for listener in self.ddl_listeners['before-drop']:

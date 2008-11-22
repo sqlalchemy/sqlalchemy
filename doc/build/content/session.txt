@@ -86,6 +86,8 @@ As an alternative to `sessionmaker()`, `create_session()` is a function which ca
     {python}
     session = create_session(bind=myengine, autocommit=True, autoflush=False)
 
+Note that `create_session()` disables all optional "automation" by default.  Called with no arguments, the session produced is not autoflushing, does not auto-expire, and does not maintain a transaction (i.e. it begins and commits a new transaction for each `flush()`).  SQLAlchemy uses `create_session()` extensively within its own unit tests.
+
 ### Configurational Arguments {@name=configuration}
 
 Configurational arguments accepted by `sessionmaker()` and `create_session()` are the same as that of the `Session` class itself, and are described at [docstrings_sqlalchemy.orm_modfunc_sessionmaker](rel:docstrings_sqlalchemy.orm_modfunc_sessionmaker).

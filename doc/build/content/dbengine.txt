@@ -147,10 +147,7 @@ A list of all standard options, as well as several that are used by particular d
 * **pool_size=5** - the number of connections to keep open inside the connection pool.  This used with `QueuePool` as well as `SingletonThreadPool`.
 * **pool_recycle=-1** - this setting causes the pool to recycle connections after the given number of seconds has passed.  It defaults to -1, or no timeout.  For example, setting to 3600 means connections will be recycled after one hour.  Note that MySQL in particular will **disconnect automatically** if no activity is detected on a connection for eight hours (although this is configurable with the MySQLDB connection itself and the  server configuration as well).
 * **pool_timeout=30** - number of seconds to wait before giving up on getting a connection from the pool.  This is only used with `QueuePool`.
-* **strategy='plain'** - the Strategy argument is used to select alternate implementations of the underlying Engine object, which coordinates operations between dialects, compilers, connections, and so on.  Currently, the only alternate strategy besides the default value of "plain" is the "threadlocal" strategy, which selects the usage of the `TLEngine` class that provides a modified connection scope for connectionless executions.  Connectionless execution as well as further detail on this setting are described in [dbengine_implicit](rel:dbengine_implicit).
-* **threaded=True** - used by cx_Oracle; sets the `threaded` parameter of the connection indicating thread-safe usage.  cx_Oracle docs indicate setting this flag to `False` will speed performance by 10-15%.  While this defaults to `False` in cx_Oracle, SQLAlchemy defaults it to `True`, preferring stability over early optimization.
-* **use_ansi=True** - used only by Oracle;  when False, the Oracle driver attempts to support a particular "quirk" of Oracle versions 8 and previous, that the LEFT OUTER JOIN SQL syntax is not supported, and the "Oracle join" syntax of using `column1(+)=column2` must be used in order to achieve a LEFT OUTER JOIN.
-* **use_oids=False** - used only by Postgres, will enable the column name "oid" as the object ID column, which is also used for the default sort order of tables.  Postgres as of 8.1 has object IDs disabled by default.
+* **strategy='plain'** - used to invoke alternate `Engine` implementations.  Currently available is the `threadlocal` strategy, which is described in  [dbengine_implicit_strategies](rel:dbengine_implicit_strategies).
 
 ### More On Connections {@name=connections}
 
@@ -294,45 +291,28 @@ In both "connectionless" examples, the `Connection` is created behind the scenes
 
 #### Using the Threadlocal Execution Strategy {@name=strategies}
 
-With connectionless execution, each returned `ResultProxy` object references its own distinct DBAPI connection object.  This means that multiple executions will result in multiple DBAPI connections being used at the same time; the example below illustrates this:
+The "threadlocal" engine strategy is used by non-ORM applications which wish to bind a transaction to the current thread, such that all parts of the application can participate in that transaction implicitly without the need to explicitly reference a `Connection`.   "threadlocal" is designed for a very specific pattern of use, and is not appropriate unless this very specfic pattern, described below, is what's desired.  It has **no impact** on the "thread safety" of SQLAlchemy components or one's application.  It also should not be used when using an ORM `Session` object, as the `Session` itself represents an ongoing transaction and itself handles the job of maintaining connection and transactional resources.
+
+Enabling `threadlocal` is achieved as follows:
 
     {python}
-    db = create_engine('mysql://localhost/test')
-
-    # execute one statement and receive results.  r1 now references a DBAPI connection resource.
-    r1 = db.execute("select * from table1")
-
-    # execute a second statement and receive results.  r2 now references a *second* DBAPI connection resource.
-    r2 = db.execute("select * from table2")
-    for row in r1:
-        ...
-    for row in r2:
-        ...
-    # release connection 1
-    r1.close()
-
-    # release connection 2
-    r2.close()
-
-Where above, we have two result sets in scope at the same time, therefore we have two distinct DBAPI connections, both separately checked out from the connection pool, in scope at the same time.
-
-An option exists to `create_engine()` called `strategy="threadlocal"`, which changes this behavior.  When this option is used, the `Engine` which is returned by `create_engine()` is a special subclass of engine called `TLEngine`.  This engine, when it creates the `Connection` used by a connectionless execution, checks a **threadlocal variable** for an existing DBAPI connection that was already checked out from the pool, within the current thread.  If one exists, it uses that one. 
-
-The usage of "threadlocal" modifies the underlying behavior of our example above, as follows:
-
-    {python title="Threadlocal Strategy"}
     db = create_engine('mysql://localhost/test', strategy='threadlocal')
+    
+When the engine above is used in a "connectionless" style, meaning `engine.execute()` is called, a DBAPI connection is retrieved from the connection pool and then associated with the current thread.   Subsequent operations on the `Engine` while the DBAPI connection remains checked out will make use of the *same* DBAPI connection object.  The connection stays allocated until all returned `ResultProxy` objects are closed, which occurs for a particular `ResultProxy` after all pending results are fetched, or immediately for an operation which returns no rows (such as an INSERT).
 
+    {python}
     # execute one statement and receive results.  r1 now references a DBAPI connection resource.
     r1 = db.execute("select * from table1")
 
     # execute a second statement and receive results.  r2 now references the *same* resource as r1
     r2 = db.execute("select * from table2")
 
-    for row in r1:
-        ...
-    for row in r2:
-        ...
+    # fetch a row on r1 (assume more results are pending)
+    row1 = r1.fetchone()
+
+    # fetch a row on r2 (same)
+    row2 = r2.fetchone()
+
     # close r1.  the connection is still held by r2.
     r1.close()
 
@@ -340,85 +320,59 @@ The usage of "threadlocal" modifies the underlying behavior of our example above
     # are returned to the pool.
     r2.close()
 
-Where above, we again have two result sets in scope at the same time, but because they are present in the same thread, there is only **one DBAPI connection in use**.
+The above example does not illustrate any pattern that is particularly useful, as it is not a frequent occurence that two execute/result fetching operations "leapfrog" one another.  There is a slight savings of connection pool checkout overhead between the two operations, and an implicit sharing of the same transactional context, but since there is no explicitly declared transaction, this association is short lived.
 
-While the above distinction may not seem like much, it has several potentially desirable effects.  One is that you can in some cases reduce the number of concurrent connections checked out from the connection pool, in the case that a `ResultProxy` is still opened and a second statement is issued.  A second advantage is that by limiting the number of checked out connections in a thread to just one, you eliminate the issue of deadlocks within a single thread, such as when connection A locks a table, and connection B attempts to read from the same table in the same thread, it will "deadlock" on waiting for connection A to release its lock; the `threadlocal` strategy eliminates this possibility.
-
-A third advantage to the `threadlocal` strategy is that it allows the `Transaction` object to be used in combination with connectionless execution.  Recall from the section on transactions, that the `Transaction` is returned by the `begin()` method on a `Connection`; all statements which wish to participate in this transaction must be executed by the same `Connection`, thereby forcing the usage of an explicit connection.  However, the `TLEngine` provides a `Transaction` that is local to the current thread;  using it, one can issue many "connectionless" statements within a thread and they will all automatically partake in the current transaction, as in the example below:
-
-    {python title="threadlocal connection sharing"}
-    # get a TLEngine
-    engine = create_engine('mysql://localhost/test', strategy='threadlocal')
-
-    engine.begin()
-    try:
-        engine.execute("insert into users values (?, ?)", 1, "john")
-        users.update(users.c.user_id==5).execute(name='ed')
-        engine.commit()
-    except:
-        engine.rollback()
-
-Notice that no `Connection` needed to be used; the `begin()` method on `TLEngine` (which note is not available on the regular `Engine`) created a `Transaction` as well as a `Connection`, and held onto both in a context corresponding to the current thread.  Each `execute()` call made use of the same connection, allowing them all to participate in the same transaction.
-
-Complex application flows can take advantage of the "threadlocal" strategy in order to allow many disparate parts of an application to take place in the same transaction automatically.  The example below demonstrates several forms of "connectionless execution" as well as some specialized explicit ones:
-
-    {python title="threadlocal connection sharing"}
-    engine = create_engine('mysql://localhost/test', strategy='threadlocal')
-
-    def dosomethingimplicit():
-        table1.execute("some sql")
-        table1.execute("some other sql")
-    
-    def dosomethingelse():
-        table2.execute("some sql")
-        conn = engine.contextual_connect()
-        # do stuff with conn
-        conn.execute("some other sql")
-        conn.close()
-
-    def dosomethingtransactional():
-        conn = engine.contextual_connect()
-        trans = conn.begin()
-         # do stuff
-        trans.commit()
-    
-    engine.begin()
-    try:
-        dosomethingimplicit()
-        dosomethingelse()
-        dosomethingtransactional()
-        engine.commit()
-    except:
-        engine.rollback()
-
-In the above example, the program calls three functions `dosomethingimplicit()`, `dosomethingelse()` and `dosomethingtransactional()`.  All three functions use either connectionless execution, or a special function `contextual_connect()` which we will describe in a moment.  These two styles of execution both indicate that all executions will use the same connection object.  Additionally, the method `dosomethingtransactional()` begins and commits its own `Transaction`.  But only one transaction is used, too; it's controlled completely by the `engine.begin()`/`engine.commit()` calls at the bottom.  Recall that `Transaction` supports "nesting" behavior, whereby transactions begun on a `Connection` which already has a transaction open, will "nest" into the enclosing transaction.  Since the transaction opened in `dosomethingtransactional()` occurs using the same connection which already has a transaction begun, it "nests" into that transaction and therefore has no effect on the actual transaction scope (unless it calls `rollback()`).
-
-Some of the functions in the above example make use of a method called `engine.contextual_connect()`.  This method is available on both `Engine` as well as `TLEngine`, and returns the `Connection` that applies to the current **connection context**.  When using the `TLEngine`, this is just another term for the "thread local connection" that is being used for all connectionless executions.  When using just the regular `Engine` (i.e. the "default" strategy), `contextual_connect()` is synonymous with `connect()`.  Below we illustrate that two connections opened via `contextual_connect()` at the same time, both reference the same underlying DBAPI connection:
-
-    {python title="Contextual Connection"}
-    # threadlocal strategy
-    db = create_engine('mysql://localhost/test', strategy='threadlocal')
-    
-    conn1 = db.contextual_connect()
-    conn2 = db.contextual_connect()
-
-    >>> conn1.connection is conn2.connection
-    True
-
-The basic idea of `contextual_connect()` is that it's the "connection used by connectionless execution".  It's different from the `connect()` method in that `connect()` is always used when handling an explicit `Connection`, which will always reference distinct DBAPI connection.  Using `connect()` in combination with `TLEngine` allows one to "circumvent" the current thread local context, as in this example where a single statement issues data to the database externally to the current transaction:
+The real usage of "threadlocal" comes when we want several operations to occur within the scope of a shared transaction.  The `Engine` now has `begin()`, `commit()` and `rollback()` methods which will retrieve a connection resource from the pool and establish a new transaction, maintaining the connection against the current thread until the transaction is committed or rolled back:
 
     {python}
-    engine.begin()
-    engine.execute("insert into users values (?, ?)", 1, "john")
-    connection = engine.connect()
-    connection.execute(users.update(users.c.user_id==5).execute(name='ed'))
-    engine.rollback()
+    db.begin()
+    try:
+        call_operation1()
+        call_operation2()
+        db.commit()
+    except:
+        db.rollback()
+        
+`call_operation1()` and `call_operation2()` can make use of the `Engine` as a global variable, using the "connectionless" execution style, and their operations will participate in the same transaction:
 
-In the above example, a thread-local transaction is begun, but is later rolled back.  The statement `insert into users values (?, ?)` is executed without using a connection, therefore uses the thread-local transaction.  So its data is rolled back when the transaction is rolled back.  However, the `users.update()` statement is executed using a distinct `Connection` returned by the `engine.connect()` method, so it therefore is not part of the threadlocal transaction; it autocommits immediately.
+    {python}
+    def call_operation1():
+        engine.execute("insert into users values (?, ?)", 1, "john")
+        
+    def call_operation2():
+        users.update(users.c.user_id==5).execute(name='ed')
+    
+When using threadlocal, operations that do call upon the `engine.connect()` method will receive a `Connection` that is **outside** the scope of the transaction.  This can be used for operations such as logging the status of an operation regardless of transaction success:
+
+    {python}
+    db.begin()
+    conn = db.connect()
+    try:
+        conn.execute(log_table.insert(), message="Operation started")
+        call_operation1()
+        call_operation2()
+        db.commit()
+        conn.execute(log_table.insert(), message="Operation succeeded")
+    except:
+        db.rollback()
+        conn.execute(log_table.insert(), message="Operation failed")
+    finally:
+        conn.close()
+
+Functions which are written to use an explicit `Connection` object, but wish to participate in the threadlocal transaction, can receive their `Connection` object from the `contextual_connect()` method, which returns a `Connection` that is **inside** the scope of the transaction:
+
+    {python}
+    conn = db.contextual_connect()
+    call_operation3(conn)
+    conn.close()
+    
+Calling `close()` on the "contextual" connection does not release the connection resources to the pool if other resources are making use of it.  A resource-counting mechanism is employed so that the connection is released back to the pool only when all users of that connection, including the transaction established by `engine.begin()`, have been completed.
+
+So remember - if you're not sure if you need to use `strategy="threadlocal"` or not, the answer is **no** !  It's driven by a specific programming pattern that is generally not the norm.
 
 ### Configuring Logging {@name=logging}
 
-As of the 0.3 series of SQLAlchemy, Python's standard [logging](http://www.python.org/doc/lib/module-logging.html) module is used to implement informational and debug log output.  This allows SQLAlchemy's logging to integrate in a standard way with other applications and libraries.  The `echo` and `echo_pool` flags that are present on `create_engine()`, as well as the `echo_uow` flag used on `Session`, all interact with regular loggers.
+Python's standard [logging](http://www.python.org/doc/lib/module-logging.html) module is used to implement informational and debug log output with SQLAlchemy.  This allows SQLAlchemy's logging to integrate in a standard way with other applications and libraries.  The `echo` and `echo_pool` flags that are present on `create_engine()`, as well as the `echo_uow` flag used on `Session`, all interact with regular loggers.
 
 This section assumes familiarity with the above linked logging module.  All logging performed by SQLAlchemy exists underneath the `sqlalchemy` namespace, as used by `logging.getLogger('sqlalchemy')`.  When logging has been configured (i.e. such as via `logging.basicConfig()`), the general namespace of SA loggers that can be turned on is as follows:
 

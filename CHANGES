@@ -30,6 +30,19 @@ CHANGES
 
     - the "passive" flag on session.is_modified()
       is correctly propagated to the attribute manager.
+
+- documentation
+    - Tickets [ticket:1200].
+      
+    - Added note about create_session() defaults.
+    
+    - Added section about metadata.reflect().
+    
+    - Updated `TypeDecorator` section.
+    
+    - Rewrote the "threadlocal" strategy section of 
+      the docs due to recent confusion over this 
+      feature.
       
 - postgres
     - Calling alias.execute() in conjunction with

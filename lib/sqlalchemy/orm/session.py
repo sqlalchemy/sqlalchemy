@@ -83,18 +83,6 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       by any of these methods, the ``Session`` is ready for the next usage,
       which will again acquire and maintain a new connection/transaction.
 
-    expire_on_commit
-      Defaults to ``True``. When ``True``, all instances will be fully expired after
-      each ``commit()``, so that all attribute/object access subsequent to a completed
-      transaction will load from the most recent database state.
-
-    _enable_transaction_accounting
-      Defaults to ``True``.  A legacy-only flag which when ``False``
-      disables *all* 0.5-style object accounting on transaction boundaries,
-      including auto-expiry of instances on rollback and commit, maintenance of
-      the "new" and "deleted" lists upon rollback, and autoflush
-      of pending changes upon begin(), all of which are interdependent.
-
     autoflush
       When ``True``, all query operations will issue a ``flush()`` call to
       this ``Session`` before proceeding. This is a convenience feature so
@@ -138,12 +126,28 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       Deprecated.  Use
       ``logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)``.
 
+    _enable_transaction_accounting
+      Defaults to ``True``.  A legacy-only flag which when ``False``
+      disables *all* 0.5-style object accounting on transaction boundaries,
+      including auto-expiry of instances on rollback and commit, maintenance of
+      the "new" and "deleted" lists upon rollback, and autoflush
+      of pending changes upon begin(), all of which are interdependent.
+
+    expire_on_commit
+      Defaults to ``True``. When ``True``, all instances will be fully expired after
+      each ``commit()``, so that all attribute/object access subsequent to a completed
+      transaction will load from the most recent database state.
+
     extension
       An optional [sqlalchemy.orm.session#SessionExtension] instance, or
       a list of such instances, which
       will receive pre- and post- commit and flush events, as well as a
       post-rollback event.  User- defined code may be placed within these
       hooks using a user-defined subclass of ``SessionExtension``.
+
+    query_cls
+      Class which should be used to create new Query objects, as returned
+      by the ``query()`` method.  Defaults to [sqlalchemy.orm.query#Query].
 
     twophase
       When ``True``, all transactions will be started using
@@ -152,10 +156,6 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       ``prepare()`` method on each database's ``TwoPhaseTransaction`` will be
       called. This allows each database to roll back the entire transaction,
       before each transaction is committed.
-
-    query_cls
-      Class which should be used to create new Query objects, as returned
-      by the ``query()`` method.  Defaults to [sqlalchemy.orm.query#Query].
 
     weak_identity_map
       When set to the default value of ``False``, a weak-referencing map is

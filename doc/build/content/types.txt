@@ -19,29 +19,31 @@ Following is a rundown of the standard types.
 
 #### String
 
-This type is the base type for all string and character types, such as `Unicode`, `TEXT`, `CLOB`, etc.  By default it generates a VARCHAR in DDL.  It includes an argument `length`, which indicates the length in characters of the type, as well as `convert_unicode` and `assert_unicode`, which are booleans.  `length` will be used as the length argument when generating DDL.  If `length` is omitted, the `String` type resolves into the `TEXT` type.
-
-`convert_unicode=True` indicates that incoming strings, if they are Python `unicode` strings, will be encoded into a raw bytestring using the `encoding` attribute of the dialect (defaults to `utf-8`).  Similarly, raw bytestrings coming back from the database will be decoded into `unicode` objects on the way back.
-
-`assert_unicode` is set to `None` by default. When `True`, it indicates that incoming bind parameters will be checked that they are in fact  `unicode` objects, else an error is raised.  A value of `'warn'` instead raises a warning.  Setting it to `None` indicates that the dialect-level `convert_unicode` setting should take place, whereas setting it to `False` disables it unconditionally  (this flag is new as of version 0.4.2).
-
-Both `convert_unicode` and `assert_unicode` may be set at the engine level as flags to `create_engine()`.
+This type is the base class for all string and character types.  `String` includes a `length` parameter, which will be used as the "length" when generating DDL for types such as `CHAR` and `VARCHAR`.  The base `String` type will usually generate the DDL of `VARCHAR`.  `length` has no other usage and can be omitted if DDL is not being generated.
 
 #### Unicode
 
-The `Unicode` type is shorthand for `String` with `convert_unicode=True` and `assert_unicode='warn'`.  When writing a Unicode-aware application, it is strongly recommended that this type is used, and that only Unicode strings are used in the application.  By "Unicode string" we mean a string with a u, i.e. `u'hello'`.  Otherwise, particularly when using the ORM, data will be converted to Unicode when it returns from the database, but local data which was generated locally will not be in Unicode format, which can create confusion.
+The `Unicode` type is a `String` which converts Python unicode objects (i.e., strings that are defined as `u'somevalue'`) into encoded bytestrings when passing the value to the database, and similarly decodes values from the database back into Python unicode objects.  The encoding used is configured on the dialect using the `encoding` parameter, which defaults to utf-8.
+
+When using the `Unicode` type, it is only appropriate to pass Python unicode objects, and not plain strings.   If a bytestring is passed, a warning is issued.  If you notice your application raising these warnings but you're not sure where, the Python `warnings` filter can be used to turn these warnings into exceptions which will illustrate a stack trace:
+
+    {python}
+    import warnings
+    warnings.simplefilter('error')
+
+Any `String` type or subtype can be turned into a `Unicode` type by passing the flags `convert_unicode=True, assert_unicode='warn'` to the constructor.  The `Unicode` type itself is shorthand for this notation.   The `create_engine()` call also accepts these flags which when passed will establish their settings as the default setting for all `String` types.
 
 #### Text / UnicodeText
 
-These are the "unbounded" versions of ``String`` and ``Unicode``.  They have no "length" parameter, and generate a column type of TEXT or CLOB.
+The `Text` and `UnicodeText` types are the same as `String` and `Unicode` except they do not take a length parameter.  They differ only in that they generate DDL of `TEXT` or `CLOB` instead of `VARCHAR`.
 
 #### Numeric
 
-Numeric types return `decimal.Decimal` objects by default.  The flag `asdecimal=False` may be specified which enables the type to pass data straight through.   Numeric also takes "precision" and "scale" arguments which are used when CREATE TABLE is issued.
+Numeric types return `decimal.Decimal` objects by default.  The flag `asdecimal=False` may be specified which causes data to be passed straight from the DBAPI's preferred return type, which may be either `Decimal` or `float`.   Numeric also takes "precision" and "scale" arguments which are used when generating DDL.
 
 #### Float
 
-Float types return Python floats.  Float also takes a "precision" argument which is used when CREATE TABLE is issued.
+Float types return Python floats.  Float also takes a "precision" argument which is used when generating DDL.
 
 #### DateTime/Date/Time
 
@@ -57,7 +59,7 @@ The Binary type generates BLOB or BYTEA when tables are created, and also conver
 
 #### Boolean
 
-Boolean typically uses BOOLEAN or SMALLINT on the CREATE TABLE side, and returns Python `True` or `False`.
+Boolean typically uses BOOLEAN or SMALLINT on the DDL side, and on the Python side deals in `True` or `False`.
 
 #### PickleType
 
@@ -81,7 +83,7 @@ These are subclasses of the generic types and include:
     class BLOB(Binary)
     class BOOLEAN(Boolean)
 
-The idea behind the SQL-specific types is that a CREATE TABLE statement would generate the exact type specified.  
+The idea behind the SQL-specific types is that DDL (i.e. during a CREATE TABLE statement) would generate the exact type specified in all cases.   This also implies that some of these types may not be supported by all dialects.
 
 ### Dialect Specific Types {@name=dialect}
 
@@ -102,13 +104,13 @@ Or some PostgreSQL types:
     
     table = Table('foo', meta,
         Column('ipaddress', PGInet),
-        Column('elements', PGArray(str))   # PGArray is available in 0.4, and takes a type argument
+        Column('elements', PGArray(str))
         )
 
 
 ### Creating your Own Types {@name=custom}
 
-User-defined types can be created which can augment the bind parameter and result processing capabilities of the built in types.  This is usually achieved using the `TypeDecorator` class, which "decorates" the behavior of any existing type.  As of version 0.4.2, the new `process_bind_param()` and `process_result_value()` methods should be used:
+User-defined types can be created which can augment the bind parameter and result processing capabilities of the built in types.  This is usually achieved using the `TypeDecorator` class, which "decorates" the behavior of any existing type.  
 
     {python}
     import sqlalchemy.types as types
@@ -128,7 +130,7 @@ User-defined types can be created which can augment the bind parameter and resul
         def copy(self):
             return MyType(self.impl.length)
 
-`TypeDecorator` should generally be used for any user-defined type which redefines the behavior of another type, including other `TypeDecorator` subclasses such as `PickleType`, and the new `process_...()` methods described above should be used.
+The reason that type behavior is modified using class decoration instead of subclassing is due to the way dialect specific types are used.  Such as with the example above, when using the mysql dialect, the actual type in use will be a `sqlalchemy.databases.mysql.MSString` instance.  `TypeDecorator` handles the mechanics of passing the values between user-defined `process_` methods and the current dialect-specific type in use.
 
 To build a type object from scratch, which will not have a corresponding database-specific implementation, subclass `TypeEngine`:
 
@@ -152,7 +154,7 @@ To build a type object from scratch, which will not have a corresponding databas
                 return value
             return process
 
-The `bind_processor` and `result_processor` methods return a callable which will be used to process data at the bind parameter and result row level.  If either processing is not necessary, the method can return `None` (this reduces the workload as well).
+The `bind_processor` and `result_processor` methods return a callable which will be used to process data at the bind parameter and result row level.  If processing is not necessary, the method should return `None`.
 
 Once you make your type, it's immediately useable:
 

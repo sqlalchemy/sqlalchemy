@@ -186,7 +186,25 @@ Individual columns can be overridden with explicit values when reflecting tables
     ... Column('id', Integer, primary_key=True),   # override reflected 'id' to have primary key
     ... Column('mydata', Unicode(50)),    # override reflected 'mydata' to be Unicode
     ... autoload=True)
+
+##### Reflecting All Tables at Once {@name=reflectall}
+
+The `MetaData` object can also get a listing of tables and reflect the full set.  This is achieved by using the `reflect()` method.  After calling it, all located tables are present within the `MetaData`s dictionary of tables:
+
+    {python}
+    meta = MetaData()
+    meta.reflect(bind=someengine)
+    users_table = meta.tables['users']
+    addresses_table = meta.tables['addresses']
     
+`metadata.reflect()` is also a handy way to clear or drop all tables in a database:
+
+    {python}
+    meta = MetaData()
+    meta.reflect(bind=someengine)
+    for table in reversed(meta.sorted_tables):
+        someengine.execute(table.delete())
+
 #### Specifying the Schema Name {@name=schema}
 
 Some databases support the concept of multiple schemas.  A `Table` can reference this by specifying the `schema` keyword argument:
