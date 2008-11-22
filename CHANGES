@@ -19,6 +19,9 @@ CHANGES
       properly converted to IS NOT NULL based on not_().
       
 - sql
+    - Fixed the import weirdness in sqlalchemy.sql
+      to not export __names__ [ticket:1215].
+      
     - Added NotImplementedError for params() method
       on Insert/Update/Delete constructs.  These items
       currently don't support this functionality, which
