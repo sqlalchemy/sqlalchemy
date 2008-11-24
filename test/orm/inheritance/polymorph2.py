@@ -156,7 +156,7 @@ class RelationTest2(ORMTest):
                     self.data = data
             mapper(Data, data)
 
-        mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=polymorphic_on)
+        mapper(Person, people, with_polymorphic=('*', poly_union), polymorphic_identity='person', polymorphic_on=polymorphic_on)
 
         if usedata:
             mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager',
@@ -241,14 +241,14 @@ def generate_test(jointype="join1", usedata=False):
             mapper(Data, data)
 
         if usedata:
-            mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
+            mapper(Person, people, with_polymorphic=('*', poly_union), polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
                     'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, remote_side=people.c.colleague_id, uselist=True),
                     'data':relation(Data, uselist=False)
                     }
             )
         else:
-            mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
+            mapper(Person, people, with_polymorphic=('*', poly_union), polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
                     'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id,
                         remote_side=people.c.colleague_id, uselist=True)
@@ -348,7 +348,7 @@ class RelationTest4(ORMTest):
                 'manager':people.join(managers),
             }, "type", 'employee_join')
 
-        person_mapper   = mapper(Person, people, select_table=employee_join,polymorphic_on=employee_join.c.type, polymorphic_identity='person')
+        person_mapper   = mapper(Person, people, with_polymorphic=('*', employee_join), polymorphic_on=employee_join.c.type, polymorphic_identity='person')
         engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
         car_mapper      = mapper(Car, cars, properties= {'employee':relation(person_mapper)})
@@ -579,12 +579,12 @@ class RelationTest7(ORMTest):
             }, "type", 'car_join')
 
         car_mapper  = mapper(Car, cars,
-                select_table=car_join,polymorphic_on=car_join.c.type,
+                with_polymorphic=('*', car_join) ,polymorphic_on=car_join.c.type,
                 polymorphic_identity='car',
                 )
         offroad_car_mapper = mapper(Offraod_Car, offroad_cars, inherits=car_mapper, polymorphic_identity='offroad')
         person_mapper = mapper(Person, people,
-                select_table=employee_join,polymorphic_on=employee_join.c.type,
+                with_polymorphic=('*', employee_join), polymorphic_on=employee_join.c.type,
                 polymorphic_identity='person',
                 properties={
                     'car':relation(car_mapper)
@@ -686,7 +686,7 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
 
         status_mapper   = mapper(Status, status)
         person_mapper   = mapper(Person, people,
-            select_table=employee_join,polymorphic_on=employee_join.c.type,
+            with_polymorphic=('*', employee_join), polymorphic_on=employee_join.c.type,
             polymorphic_identity='person', properties={'status':relation(status_mapper)})
         engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
@@ -781,7 +781,7 @@ class MultiLevelTest(ORMTest):
         mapper_Employee = mapper( Employee, table_Employee,
                     polymorphic_identity= 'Employee',
                     polymorphic_on= pu_Employee.c.atype,
-                    select_table= pu_Employee,
+                    with_polymorphic=('*', pu_Employee),
                 )
 
         pu_Engineer = polymorphic_union( {
@@ -793,7 +793,7 @@ class MultiLevelTest(ORMTest):
                     inherits= mapper_Employee,
                     polymorphic_identity= 'Engineer',
                     polymorphic_on= pu_Engineer.c.atype,
-                    select_table= pu_Engineer,
+                    with_polymorphic=('*', pu_Engineer),
                 )
 
         mapper_Manager = mapper( Manager, table_Manager,
@@ -851,7 +851,7 @@ class ManyToManyPolyTest(ORMTest):
 
         mapper(
             BaseItem, base_item_table,
-            select_table=item_join,
+            with_polymorphic=('*', item_join),
             polymorphic_on=base_item_table.c.child_name,
             polymorphic_identity='BaseItem',
             properties=dict(collections=relation(Collection, secondary=base_item_collection_table, backref="items")))
@@ -892,7 +892,7 @@ class CustomPKTest(ORMTest):
         d['t2'] = t1.join(t2)
         pjoin = polymorphic_union(d, None, 'pjoin')
 
-        mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1', select_table=pjoin, primary_key=[pjoin.c.id])
+        mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1', with_polymorphic=('*', pjoin), primary_key=[pjoin.c.id])
         mapper(T2, t2, inherits=T1, polymorphic_identity='t2')
         print [str(c) for c in class_mapper(T1).primary_key]
         ot1 = T1()
@@ -927,7 +927,7 @@ class CustomPKTest(ORMTest):
         d['t2'] = t1.join(t2)
         pjoin = polymorphic_union(d, None, 'pjoin')
 
-        mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1', select_table=pjoin)
+        mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1', with_polymorphic=('*', pjoin))
         mapper(T2, t2, inherits=T1, polymorphic_identity='t2')
         assert len(class_mapper(T1).primary_key) == 1
 
@@ -1043,7 +1043,7 @@ class MissingPolymorphicOnTest(ORMTest):
         poly_select = select([tablea, tableb.c.data.label('discriminator')], from_obj=tablea.join(tableb)).alias('poly')
         
         mapper(B, tableb)
-        mapper(A, tablea, select_table=poly_select, polymorphic_on=poly_select.c.discriminator, properties={
+        mapper(A, tablea, with_polymorphic=('*', poly_select), polymorphic_on=poly_select.c.discriminator, properties={
             'b':relation(B, uselist=False)
         })
         mapper(C, tablec, inherits=A,polymorphic_identity='c')

@@ -2,10 +2,11 @@
 
 import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
-from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper, reconstructor, validates
-from testlib.sa.orm import defer, deferred, synonym, attributes
-from testlib.testing import eq_
+from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, func
+from testlib.sa.engine import default
+from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper, reconstructor, validates, aliased
+from testlib.sa.orm import defer, deferred, synonym, attributes, column_property, composite, relation, dynamic_loader, comparable_property
+from testlib.testing import eq_, AssertsCompiledSQL
 import pickleable
 from orm import _base, _fixtures
 
@@ -1128,7 +1129,80 @@ class ValidatorTest(_fixtures.FixtureTest):
             sess.query(User).filter_by(name='edward').one(), 
             User(name='edward', addresses=[Address(email_address='foo@bar.com')])
         )
+
+class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+    @testing.resolve_artifact_names
+    def test_kwarg_accepted(self):
+        class DummyComposite(object):
+            def __init__(self, x, y):
+                pass
         
+        from sqlalchemy.orm.interfaces import PropComparator
+        
+        class MyFactory(PropComparator):
+            pass
+            
+        for args in (
+            (column_property, users.c.name),
+            (deferred, users.c.name),
+            (synonym, 'name'),
+            (composite, DummyComposite, users.c.id, users.c.name),
+            (relation, Address),
+            (backref, 'address'),
+            (comparable_property, ),
+            (dynamic_loader, Address)
+        ):
+            fn = args[0]
+            args = args[1:]
+            fn(comparator_factory=MyFactory, *args)
+        
+    @testing.resolve_artifact_names
+    def test_column(self):
+        from sqlalchemy.orm.properties import ColumnProperty
+        
+        class MyFactory(ColumnProperty.Comparator):
+            def __eq__(self, other):
+                return func.foobar(self.__clause_element__()) == func.foobar(other)
+        mapper(User, users, properties={'name':column_property(users.c.name, comparator_factory=MyFactory)})
+        self.assert_compile(User.name == 'ed', "foobar(users.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+        self.assert_compile(aliased(User).name == 'ed', "foobar(users_1.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+
+    @testing.resolve_artifact_names
+    def test_synonym(self):
+        from sqlalchemy.orm.properties import ColumnProperty
+        class MyFactory(ColumnProperty.Comparator):
+            def __eq__(self, other):
+                return func.foobar(self.__clause_element__()) == func.foobar(other)
+        mapper(User, users, properties={'name':synonym('_name', map_column=True, comparator_factory=MyFactory)})
+        self.assert_compile(User.name == 'ed', "foobar(users.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+        self.assert_compile(aliased(User).name == 'ed', "foobar(users_1.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+
+    @testing.resolve_artifact_names
+    def test_relation(self):
+        from sqlalchemy.orm.properties import PropertyLoader
+
+        class MyFactory(PropertyLoader.Comparator):
+            def __eq__(self, other):
+                return func.foobar(self.__clause_element__().c.user_id) == func.foobar(other.id)
+
+        class MyFactory2(PropertyLoader.Comparator):
+            def __eq__(self, other):
+                return func.foobar(self.__clause_element__().c.id) == func.foobar(other.user_id)
+                
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user':relation(User, comparator_factory=MyFactory, 
+                backref=backref("addresses", comparator_factory=MyFactory2)
+            )
+            }
+        )
+        self.assert_compile(Address.user == User(id=5), "foobar(addresses.user_id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+        self.assert_compile(User.addresses == Address(id=5, user_id=7), "foobar(users.id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+
+        self.assert_compile(aliased(Address).user == User(id=5), "foobar(addresses_1.user_id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+        self.assert_compile(aliased(User).addresses == Address(id=5, user_id=7), "foobar(users_1.id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+
+    
 class DeferredTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names

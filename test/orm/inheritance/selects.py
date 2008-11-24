@@ -29,14 +29,14 @@ class InheritingSelectablesTest(ORMTest):
         mapper(Foo, foo, polymorphic_on=foo.c.b)
 
         mapper(Baz, baz,
-                    select_table=foo.join(baz, foo.c.b=='baz').alias('baz'),
+                    with_polymorphic=('*', foo.join(baz, foo.c.b=='baz').alias('baz')),
                     inherits=Foo,
                     inherit_condition=(foo.c.a==baz.c.a),
                     inherit_foreign_keys=[baz.c.a],
                     polymorphic_identity='baz')
 
         mapper(Bar, bar,
-                    select_table=foo.join(bar, foo.c.b=='bar').alias('bar'),
+                    with_polymorphic=('*', foo.join(bar, foo.c.b=='bar').alias('bar')),
                     inherits=Foo,
                     inherit_condition=(foo.c.a==bar.c.a),
                     inherit_foreign_keys=[bar.c.a],

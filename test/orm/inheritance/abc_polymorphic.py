@@ -32,8 +32,8 @@ class ABCTest(ORMTest):
             else:
                 abc = bc = None
 
-            mapper(A, a, select_table=abc, polymorphic_on=a.c.type, polymorphic_identity='a')
-            mapper(B, b, select_table=bc, inherits=A, polymorphic_identity='b')
+            mapper(A, a, with_polymorphic=('*', abc), polymorphic_on=a.c.type, polymorphic_identity='a')
+            mapper(B, b, with_polymorphic=('*', bc), inherits=A, polymorphic_identity='b')
             mapper(C, c, inherits=B, polymorphic_identity='c')
 
             a1 = A(adata='a1')

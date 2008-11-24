@@ -539,7 +539,29 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         sess.add(u1)
         sess.flush()
         eq_(sess.query(User).filter(User.name == "SOMENAME someuser").one(), u1)
+    
+    def test_synonym_no_descriptor(self):
+        from sqlalchemy.orm.properties import ColumnProperty
+        
+        class CustomCompare(ColumnProperty.Comparator):
+            def __eq__(self, other):
+                return self.__clause_element__() == other + ' FOO'
+                
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
 
+            id = Column('id', Integer, primary_key=True)
+            _name = Column('name', String(50))
+            name = sa.orm.synonym('_name', comparator_factory=CustomCompare)
+        
+        Base.metadata.create_all()
+
+        sess = create_session()
+        u1 = User(name='someuser FOO')
+        sess.add(u1)
+        sess.flush()
+        eq_(sess.query(User).filter(User.name == "someuser").one(), u1)
+        
     def test_synonym_added(self):
         class User(Base, ComparableEntity):
             __tablename__ = 'users'

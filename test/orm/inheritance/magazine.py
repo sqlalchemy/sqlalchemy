@@ -148,10 +148,10 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
                     'c': page_table.join(magazine_page_table).join(classified_page_table),
                     'p': page_table.select(page_table.c.type=='p'),
                 }, None, 'page_join')
-            page_mapper = mapper(Page, page_table, select_table=page_join, polymorphic_on=page_join.c.type, polymorphic_identity='p')
+            page_mapper = mapper(Page, page_table, with_polymorphic=('*', page_join), polymorphic_on=page_join.c.type, polymorphic_identity='p')
         elif use_joins:
             page_join = page_table.outerjoin(magazine_page_table).outerjoin(classified_page_table)
-            page_mapper = mapper(Page, page_table, select_table=page_join, polymorphic_on=page_table.c.type, polymorphic_identity='p')
+            page_mapper = mapper(Page, page_table, with_polymorphic=('*', page_join), polymorphic_on=page_table.c.type, polymorphic_identity='p')
         else:
             page_mapper = mapper(Page, page_table, polymorphic_on=page_table.c.type, polymorphic_identity='p')
 
@@ -161,12 +161,12 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
                     'm': page_table.join(magazine_page_table),
                     'c': page_table.join(magazine_page_table).join(classified_page_table),
                 }, None, 'page_join')
-            magazine_page_mapper = mapper(MagazinePage, magazine_page_table, select_table=magazine_join, inherits=page_mapper, polymorphic_identity='m', properties={
+            magazine_page_mapper = mapper(MagazinePage, magazine_page_table, with_polymorphic=('*', magazine_join), inherits=page_mapper, polymorphic_identity='m', properties={
                 'magazine': relation(Magazine, backref=backref('pages', order_by=magazine_join.c.page_no))
             })
         elif use_joins:
             magazine_join = page_table.join(magazine_page_table).outerjoin(classified_page_table)
-            magazine_page_mapper = mapper(MagazinePage, magazine_page_table, select_table=magazine_join, inherits=page_mapper, polymorphic_identity='m', properties={
+            magazine_page_mapper = mapper(MagazinePage, magazine_page_table, with_polymorphic=('*', magazine_join), inherits=page_mapper, polymorphic_identity='m', properties={
                 'magazine': relation(Magazine, backref=backref('pages', order_by=page_table.c.page_no))
             })
         else:

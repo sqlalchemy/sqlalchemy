@@ -92,8 +92,8 @@ def produce_test(parent, child, direction):
             class B(A):pass
             class C(B):pass
 
-            mapper(A, ta, polymorphic_on=abcjoin.c.type, select_table=abcjoin, polymorphic_identity="a")
-            mapper(B, tb, polymorphic_on=bcjoin.c.type, select_table=bcjoin, polymorphic_identity="b", inherits=A, inherit_condition=atob)
+            mapper(A, ta, polymorphic_on=abcjoin.c.type, with_polymorphic=('*', abcjoin), polymorphic_identity="a")
+            mapper(B, tb, polymorphic_on=bcjoin.c.type, with_polymorphic=('*', bcjoin), polymorphic_identity="b", inherits=A, inherit_condition=atob)
             mapper(C, tc, polymorphic_identity="c", inherits=B, inherit_condition=btoc)
 
             parent_mapper = class_mapper({ta:A, tb:B, tc:C}[parent_table])

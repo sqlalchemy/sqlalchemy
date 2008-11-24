@@ -22,7 +22,17 @@ CHANGES
       primaryjoin/secondaryjoin are ClauseElement 
       instances, to prevent more confusing errors later 
       on.
-       
+    
+    - comparator_factory argument is now documented
+      and supported by all MapperProperty types,
+      including column_property(), relation(), 
+      backref(), and synonym() [ticket:5051].
+      
+    - Changed the name of PropertyLoader to
+      RelationProperty, to be consistent
+      with all the other names.  PropertyLoader is 
+      still present as a synonym.
+      
 - sql
     - Fixed the import weirdness in sqlalchemy.sql
       to not export __names__ [ticket:1215].
@@ -37,7 +47,7 @@ CHANGES
       is correctly propagated to the attribute manager.
 
 - documentation
-    - Tickets [ticket:1200].
+    - Tickets [ticket:1200] [ticket:1149].
       
     - Added note about create_session() defaults.
     
@@ -48,7 +58,15 @@ CHANGES
     - Rewrote the "threadlocal" strategy section of 
       the docs due to recent confusion over this 
       feature.
+     
+    - Removed badly out of date 'polymorphic_fetch'
+      and 'select_table' docs from inheritance, 
+      reworked the second half of "joined table
+      inheritance".
       
+    - Documented `comparator_factory` kwarg, added
+      new doc section "Custom Comparators".
+    
 - postgres
     - Calling alias.execute() in conjunction with
       server_side_cursors won't raise AttributeError.

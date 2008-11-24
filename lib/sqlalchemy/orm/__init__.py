@@ -41,6 +41,7 @@ from sqlalchemy.orm.properties import (
      ColumnProperty,
      ComparableProperty,
      CompositeProperty,
+     RelationProperty,
      PropertyLoader,
      SynonymProperty,
      )
@@ -159,7 +160,7 @@ def relation(argument, secondary=None, **kwargs):
 
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of
-    [sqlalchemy.orm.properties#PropertyLoader].
+    [sqlalchemy.orm.properties#RelationProperty].
 
       argument
           a class or Mapper instance, representing the target of the relation.
@@ -209,6 +210,10 @@ def relation(argument, secondary=None, **kwargs):
           a class or function that returns a new list-holding object. will be
           used in place of a plain list for storing elements.
 
+        comparator_factory
+          a class which extends sqlalchemy.orm.properties.RelationProperty.Comparator
+          which provides custom SQL clause generation for comparison operations.
+          
         extension
           an [sqlalchemy.orm.interfaces#AttributeExtension] instance, 
           or list of extensions, which will be prepended to the list of 
@@ -359,11 +364,11 @@ def relation(argument, secondary=None, **kwargs):
           use an alternative method.
 
     """
-    return PropertyLoader(argument, secondary=secondary, **kwargs)
+    return RelationProperty(argument, secondary=secondary, **kwargs)
 
 def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=None, 
     foreign_keys=None, backref=None, post_update=False, cascade=False, remote_side=None, enable_typechecks=True,
-    passive_deletes=False, order_by=None):
+    passive_deletes=False, order_by=None, comparator_factory=None):
     """Construct a dynamically-loading mapper property.
 
     This property is similar to relation(), except read operations return an
@@ -377,10 +382,10 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=Non
     """
     from sqlalchemy.orm.dynamic import DynaLoader
 
-    return PropertyLoader(argument, secondary=secondary, primaryjoin=primaryjoin,
+    return RelationProperty(argument, secondary=secondary, primaryjoin=primaryjoin,
             secondaryjoin=secondaryjoin, foreign_keys=foreign_keys, backref=backref,
             post_update=post_update, cascade=cascade, remote_side=remote_side, enable_typechecks=enable_typechecks,
-            passive_deletes=passive_deletes, order_by=order_by,
+            passive_deletes=passive_deletes, order_by=order_by, comparator_factory=comparator_factory,
             strategy_class=DynaLoader)
 
 def column_property(*args, **kwargs):
@@ -397,6 +402,10 @@ def column_property(*args, **kwargs):
 
       \*cols
           list of Column objects to be mapped.
+
+      comparator_factory
+        a class which extends sqlalchemy.orm.properties.RelationProperty.Comparator
+        which provides custom SQL clause generation for comparison operations.
 
       group
           a group name for this property when marked as deferred.

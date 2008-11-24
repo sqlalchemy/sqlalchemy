@@ -49,7 +49,7 @@ class CompileTest(_base.ORMTest):
         order_join = order.select().alias('pjoin')
 
         order_mapper = mapper(Order, order,
-            select_table=order_join,
+            with_polymorphic=('*', order_join),
             polymorphic_on=order_join.c.type,
             polymorphic_identity='order',
             properties={
@@ -102,7 +102,7 @@ class CompileTest(_base.ORMTest):
         order_join = order.select().alias('pjoin')
 
         order_mapper = mapper(Order, order,
-            select_table=order_join,
+            with_polymorphic=('*', order_join),
             polymorphic_on=order_join.c.type,
             polymorphic_identity='order',
             properties={

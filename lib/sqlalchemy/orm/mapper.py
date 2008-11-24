@@ -139,6 +139,9 @@ class Mapper(object):
 
         self.select_table = select_table
         if select_table:
+            util.warn_deprecated('select_table option is deprecated.  Use with_polymorphic=("*", selectable) '
+                            'instead.')
+
             if with_polymorphic:
                 raise sa_exc.ArgumentError("select_table can't be used with "
                             "with_polymorphic (they define conflicting settings)")

@@ -203,6 +203,39 @@ The `email` attribute is now usable in the same way as any other mapped attribut
 
 If the mapped class does not provide a property, the `synonym()` construct will create a default getter/setter object automatically.
 
+##### Custom Comparators {@name=comparators}
+
+The expressions returned by comparison operations, such as `User.name=='ed'`, can be customized.  SQLAlchemy attributes generate these expressions using [docstrings_sqlalchemy.orm.interfaces_PropComparator](rel:docstrings_sqlalchemy.orm.interfaces_PropComparator) objects, which provide common Python expression overrides including `__eq__()`, `__ne__()`, `__lt__()`, and so on.  Any mapped attribute can be passed a user-defined class via the `comparator_factory` keyword argument, which subclasses the appropriate `PropComparator` in use, which can provide any or all of these methods:
+
+    {python}
+    from sqlalchemy.orm.properties import ColumnProperty
+    class MyComparator(ColumnProperty.Comparator):
+        def __eq__(self, other):
+            return func.lower(self.__clause_element__()) == func.lower(other)
+
+    mapper(EmailAddress, addresses_table, properties={
+        'email':column_property(addresses_table.c.email, comparator_factory=MyComparator)
+    })
+
+Above, comparisons on the `email` column are wrapped in the SQL lower() function to produce case-insensitive matching:
+
+    {python}
+    >>> str(EmailAddress.email == 'SomeAddress@foo.com')
+    lower(addresses.email) = lower(:lower_1)
+
+The `__clause_element__()` method is provided by the base `Comparator` class in use, and represents the SQL element which best matches what this attribute represents.  For a column-based attribute, it's the mapped column.  For a composite attribute, it's a `sqlalchemy.sql.expression.ClauseList` consisting of each column represented.  For a relation, it's the table mapped by the local mapper (not the remote mapper).  `__clause_element__()` should be honored by the custom comparator class in most cases since the resulting element will be applied any translations which are in effect, such as the correctly aliased member when using an `aliased()` construct or certain `with_polymorphic()` scenarios.
+
+There are four kinds of `Comparator` classes which may be subclassed, as according to the type of mapper property configured:
+
+  * `column_property()` attribute - `sqlalchemy.orm.properties.ColumnProperty.Comparator`
+  * `composite()` attribute - `sqlalchemy.orm.properties.CompositeProperty.Comparator`
+  * `relation()` attribute - `sqlalchemy.orm.properties.RelationProperty.Comparator`
+  * `comparable_property()` attribute - `sqlalchemy.orm.interfaces.PropComparator`
+
+When using `comparable_property()`, which is a mapper property that isn't tied to any column or mapped table, the `__clause_element__()` method of `PropComparator` should also be implemented.
+  
+The `comparator_factory` argument is accepted by all `MapperProperty`-producing functions:  `column_property()`, `composite()`, `comparable_property()`, `synonym()`, `relation()`, `backref()`, `deferred()`, and `dynamic_loader()`.
+
 #### Composite Column Types {@name=composite}
 
 Sets of columns can be associated with a single datatype.  The ORM treats the group of columns like a single column which accepts and returns objects using the custom datatype you provide.  In this example, we'll create a table `vertices` which stores a pair of x/y coordinates, and a custom datatype `Point` which is a composite type of an x and y column:
@@ -347,7 +380,7 @@ In joined table inheritance, each class along a particular classes' list of pare
 
 The table also has a column called `type`.  It is strongly advised in both single- and joined- table inheritance scenarios that the root table contains a column whose sole purpose is that of the **discriminator**; it stores a value which indicates the type of object represented within the row.  The column may be of any desired datatype.  While there are some "tricks" to work around the requirement that there be a discriminator column, they are more complicated to configure when one wishes to load polymorphically.
 
-Next we define individual tables for each of `Engineer` and `Manager`, which each contain columns that represent the attributes unique to the subclass they represent.  Each table also must contain a primary key column (or columns), and in most cases a foreign key reference to the parent table.  It is  standard practice that the same column is used for both of these roles, and that the column is also named the same as that of the parent table.  However this is optional in SQLAlchemy; separate columns may be used for primary key and parent-relation, the column may be named differently than that of the parent, and even a custom join condition can be specified between parent and child tables instead of using a foreign key.  In joined table inheritance, the primary key of an instance is always represented by the primary key of the base table only (new in SQLAlchemy 0.4).
+Next we define individual tables for each of `Engineer` and `Manager`, which contain columns that represent the attributes unique to the subclass they represent.  Each table also must contain a primary key column (or columns), and in most cases a foreign key reference to the parent table.  It is  standard practice that the same column is used for both of these roles, and that the column is also named the same as that of the parent table.  However this is optional in SQLAlchemy; separate columns may be used for primary key and parent-relation, the column may be named differently than that of the parent, and even a custom join condition can be specified between parent and child tables instead of using a foreign key. 
 
     {python}
     engineers = Table('engineers', metadata,
@@ -360,6 +393,8 @@ Next we define individual tables for each of `Engineer` and `Manager`, which eac
        Column('manager_data', String(50)),
     )
 
+One natural effect of the joined table inheritance configuration is that the identity of any mapped object can be determined entirely from the base table.  This has obvious advantages, so SQLAlchemy always considers the primary key columns of a joined inheritance class to be those of the base table only, unless otherwise manually configured.  In other words, the `employee_id` column of both the `engineers` and `managers` table is not used to locate the `Engineer` or `Manager` object itself - only the value in `employees.employee_id` is considered, and the primary key in this case is non-composite.  `engineers.employee_id` and `managers.employee_id` are still of course critical to the proper operation of the pattern overall as they are used to locate the joined row, once the parent row has been determined, either through a distinct SELECT statement or all at once within a JOIN.
+
 We then configure mappers as usual, except we use some additional arguments to indicate the inheritance relationship, the polymorphic discriminator column, and the **polymorphic identity** of each class; this is the value that will be stored in the polymorphic discriminator column.
 
     {python}
@@ -367,30 +402,93 @@ We then configure mappers as usual, except we use some additional arguments to i
     mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
     mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
 
-And that's it.  Querying against `Employee` will return a combination of `Employee`, `Engineer` and `Manager` objects.
+And that's it.  Querying against `Employee` will return a combination of `Employee`, `Engineer` and `Manager` objects.   Newly saved `Engineer`, `Manager`, and `Employee` objects will automatically populate the `employees.type` column with `engineer`, `manager`, or `employee`, as appropriate.
 
-###### Polymorphic Querying Strategies {@name=querying}
+###### Controlling Which Tables are Queried {@name=with_polymorphic}
 
-The `Query` object includes some helper functionality when dealing with joined-table inheritance mappings.  These are the `with_polymorphic()` and `of_type()` methods, both of which are introduced in version 0.4.4.
-
-The `with_polymorphic()` method affects the specific subclass tables which the Query selects from.  Normally, a query such as this:
+The `with_polymorphic()` method of `Query` affects the specific subclass tables which the Query selects from.  Normally, a query such as this:
 
     {python}
-    session.query(Employee).filter(Employee.name=='ed')
+    session.query(Employee).all()
 
-Selects only from the `employees` table.  The criterion we use in `filter()` and other methods will generate WHERE criterion against this table.  What if we wanted to load `Employee` objects but also wanted to use criterion against `Engineer` ?  We could just query against the `Engineer` class instead.  But, if we were using criterion which filters among more than one subclass (subclasses which do not inherit directly from one to the other), we'd like to select from an outer join of all those tables.  The `with_polymorphic()` method can tell `Query` which joined-table subclasses we want to select for:
-
-    {python}
-    session.query(Employee).with_polymorphic(Engineer).filter(Engineer.engineer_info=='some info')
-
-Even without criterion, the `with_polymorphic()` method has the added advantage that instances are loaded from all of their tables in one result set.  Such as, to optimize the loading of all `Employee` objects, `with_polymorphic()` accepts `'*'` as a wildcard indicating that all subclass tables should be joined:
+...selects only from the `employees` table.   When loading fresh from the database, our joined-table setup will query from the parent table only, using SQL such as this:
 
     {python}
-    session.query(Employee).with_polymorphic('*').all()
+    {opensql}
+    SELECT employees.employee_id AS employees_employee_id, employees.name AS employees_name, employees.type AS employees_type
+    FROM employees
+    []
 
-`with_polymorphic()` is an effective query-level alternative to the existing `select_table` option available on `mapper()`.
+As attributes are requested from those `Employee` objects which are represented in either the `engineers` or `managers` child tables, a second load is issued for the columns in that related row, if the data was not already loaded.  So above, after accessing the objects you'd see further SQL issued along the lines of:
 
-Next is a way to join along `relation` paths while narrowing the criterion to specific subclasses.  Suppose the `employees` table represents a collection of employees which are associated with a `Company` object.  We'll add a `company_id` column to the `employees` table and a new table `companies`:
+    {python}
+    {opensql}
+    SELECT managers.employee_id AS managers_employee_id, managers.manager_data AS managers_manager_data
+    FROM managers
+    WHERE ? = managers.employee_id
+    [5]
+    SELECT engineers.employee_id AS engineers_employee_id, engineers.engineer_info AS engineers_engineer_info
+    FROM engineers
+    WHERE ? = engineers.employee_id
+    [2]
+
+This behavior works well when issuing searches for small numbers of items, such as when using `get()`, since the full range of joined tables are not pulled in to the SQL statement unnecessarily.  But when querying a larger span of rows which are known to be of many types, you may want to actively join to some or all of the joined tables.  The `with_polymorphic` feature of `Query` and `mapper` provides this.
+
+Telling our query to polymorphically load `Engineer` and `Manager` objects:
+
+    {python}
+    query = session.query(Employee).with_polymorphic([Engineer, Manager])
+
+produces a query which joins the `employees` table to both the `engineers` and `managers` tables like the following:
+
+    {python}
+    query.all()
+    {opensql}
+    SELECT employees.employee_id AS employees_employee_id, engineers.employee_id AS engineers_employee_id, managers.employee_id AS managers_employee_id, employees.name AS employees_name, employees.type AS employees_type, engineers.engineer_info AS engineers_engineer_info, managers.manager_data AS managers_manager_data
+    FROM employees LEFT OUTER JOIN engineers ON employees.employee_id = engineers.employee_id LEFT OUTER JOIN managers ON employees.employee_id = managers.employee_id
+    []
+
+`with_polymorphic()` accepts a single class or mapper, a list of classes/mappers, or the string `'*'` to indicate all subclasses:
+
+    {python}
+    # join to the engineers table
+    query.with_polymorphic(Engineer)
+    
+    # join to the engineers and managers tables
+    query.with_polymorphic([Engineer, Manager])
+    
+    # join to all subclass tables
+    query.with_polymorphic('*')
+    
+It also accepts a second argument `selectable` which replaces the automatic join creation and instead selects directly from the selectable given.  This feature is normally used with "concrete" inheritance, described later, but can be used with any kind of inheritance setup in the case that specialized SQL should be used to load polymorphically:
+
+    {python}
+    # custom selectable
+    query.with_polymorphic([Engineer, Manager], employees.outerjoin(managers).outerjoin(engineers))
+
+`with_polymorphic()` is also needed when you wish to add filter criterion that is specific to one or more subclasses, so that those columns are available to the WHERE clause:
+
+    {python}
+    session.query(Employee).with_polymorphic([Engineer, Manager]).\
+        filter(or_(Engineer.engineer_info=='w', Manager.manager_data=='q'))
+        
+Note that if you only need to load a single subtype, such as just the `Engineer` objects, `with_polymorphic()` is not needed since you would query against the `Engineer` class directly.
+
+The mapper also accepts `with_polymorphic` as a configurational argument so that the joined-style load will be issued automatically.  This argument may be the string `'*'`, a list of classes, or a tuple consisting of either, followed by a selectable.
+
+    {python}
+    mapper(Employee, employees, polymorphic_on=employees.c.type, \
+        polymorphic_identity='employee', with_polymorphic='*')
+    mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
+    mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
+
+The above mapping will produce a query similar to that of `with_polymorphic('*')` for every query of `Employee` objects.
+
+Using `with_polymorphic()` with `Query` will override the mapper-level `with_polymorphic` setting.
+
+###### Creating Joins to Specific Subtypes {@name=joins}
+
+The `of_type()` method is a helper which allows the construction of joins along `relation` paths while narrowing the criterion to specific subclasses.  Suppose the `employees` table represents a collection of employees which are associated with a `Company` object.  We'll add a `company_id` column to the `employees` table and a new table `companies`:
 
     {python}
     companies = Table('companies', metadata,
@@ -412,20 +510,20 @@ Next is a way to join along `relation` paths while narrowing the criterion to sp
         'employees': relation(Employee)
     })
 
-If we wanted to join from `Company` to not just `Employee` but specifically `Engineers`, using the `join()` method or `any()` or `has()` operators will by default create a join from `companies` to `employees`, without including `engineers` or `managers` in the mix.  If we wish to have criterion which is specifically against the `Engineer` class, we can tell those methods to join or subquery against the full set of tables representing the subclass using the `of_type()` operator:
+When querying from `Company` onto the `Employee` relation, the `join()` method as well as the `any()` and `has()` operators will create a join from `companies` to `employees`, without including `engineers` or `managers` in the mix.  If we wish to have criterion which is specifically against the `Engineer` class, we can tell those methods to join or subquery against the joined table representing the subclass using the `of_type()` operator:
 
     {python}
     session.query(Company).join(Company.employees.of_type(Engineer)).filter(Engineer.engineer_info=='someinfo')
 
-A longhand notation, introduced in 0.4.3, is also available, which involves spelling out the full target selectable within a 2-tuple:
+A longhand version of this would involve spelling out the full target selectable within a 2-tuple:
 
     {python}
-    session.query(Company).join(('employees', employees.join(engineers))).filter(Engineer.engineer_info=='someinfo')
+    session.query(Company).join((employees.join(engineers), Company.employees)).filter(Engineer.engineer_info=='someinfo')
 
-The second notation allows more flexibility, such as joining to any group of subclass tables:
+Currently, `of_type()` accepts a single class argument.  It may be expanded later on to accept multiple classes.  For now, to join to any group of subclasses, the longhand notation allows this flexibility:
 
     {python}
-    session.query(Company).join(('employees', employees.outerjoin(engineers).outerjoin(managers))).\
+    session.query(Company).join((employees.outerjoin(engineers).outerjoin(managers), Company.employees)).\
         filter(or_(Engineer.engineer_info=='someinfo', Manager.manager_data=='somedata'))
 
 The `any()` and `has()` operators also can be used with `of_type()` when the embedded criterion is in terms of a subclass:
@@ -444,75 +542,6 @@ Note that the `any()` and `has()` are both shorthand for a correlated EXISTS que
     ).all()
 
 The EXISTS subquery above selects from the join of `employees` to `engineers`, and also specifies criterion which correlates the EXISTS subselect back to the parent `companies` table.
-
-###### Optimizing Joined Table Loads {@name=optimizing}
-
-When loading fresh from the database, the joined-table setup above will query from the parent table first, then for each row will issue a second query to the child table.  For example, for a load of five rows with `Employee` id 3, `Manager` ids 1 and 5 and `Engineer` ids 2 and 4, will produce queries along the lines of this example:
-
-    {python}
-    session.query(Employee).all()
-    {opensql}
-    SELECT employees.employee_id AS employees_employee_id, employees.name AS employees_name, employees.type AS employees_type
-    FROM employees ORDER BY employees.oid
-    []
-    SELECT managers.employee_id AS managers_employee_id, managers.manager_data AS managers_manager_data
-    FROM managers
-    WHERE ? = managers.employee_id
-    [5]
-    SELECT engineers.employee_id AS engineers_employee_id, engineers.engineer_info AS engineers_engineer_info
-    FROM engineers
-    WHERE ? = engineers.employee_id
-    [2]
-    SELECT engineers.employee_id AS engineers_employee_id, engineers.engineer_info AS engineers_engineer_info
-    FROM engineers
-    WHERE ? = engineers.employee_id
-    [4]
-    SELECT managers.employee_id AS managers_employee_id, managers.manager_data AS managers_manager_data
-    FROM managers
-    WHERE ? = managers.employee_id
-    [1]
-
-The above query works well for a `get()` operation, since it limits the queries to only the tables directly involved in fetching a single instance.  For instances which are already present in the session, the secondary table load is not needed.  However, the above loading style is not efficient for loading large groups of objects, as it incurs separate queries for each parent row.
-
-One way to reduce the number of "secondary" loads of child rows is to "defer" them, using `polymorphic_fetch='deferred'`:
-
-    {python}
-    mapper(Employee, employees, polymorphic_on=employees.c.type, \
-        polymorphic_identity='employee', polymorphic_fetch='deferred')
-    mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
-    mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
-
-The above configuration queries in the same manner as earlier, except the load of each "secondary" table occurs only when attributes referencing those columns are first referenced on the loaded instance.  This style of loading is very efficient for cases where large selects of items occur, but a detailed "drill down" of extra inherited properties is less common.
-
-More commonly, an all-at-once load may be achieved by constructing a query which combines all three tables together.  The easiest way to do this as of version 0.4.4 is to use the `with_polymorphic()` query method which will automatically join in the classes desired:
-
-    {python}
-    query = session.query(Employee).with_polymorphic([Engineer, Manager])
-
-Which produces a query like the following:
-
-    {python}
-    query.all()
-    {opensql}
-    SELECT employees.employee_id AS employees_employee_id, engineers.employee_id AS engineers_employee_id, managers.employee_id AS managers_employee_id, employees.name AS employees_name, employees.type AS employees_type, engineers.engineer_info AS engineers_engineer_info, managers.manager_data AS managers_manager_data
-    FROM employees LEFT OUTER JOIN engineers ON employees.employee_id = engineers.employee_id LEFT OUTER JOIN managers ON employees.employee_id = managers.employee_id ORDER BY employees.oid
-    []
-
-`with_polymorphic()` accepts a single class or mapper, a list of classes/mappers, or the string `'*'` to indicate all subclasses.  It also accepts a second argument `selectable` which replaces the automatic join creation and instead selects directly from the selectable given.  This can allow polymorphic loads from a variety of inheritance schemes including concrete tables, if the appropriate unions are constructed.
-
-Similar behavior as provided by `with_polymorphic()` can be configured at the mapper level so that any user-defined query is used by default in order to load instances.  The `select_table` argument references an arbitrary selectable which the mapper will use for load operations (it has no impact on save operations).  Any selectable can be used for this, such as a UNION of tables.  For joined table inheritance, the easiest method is to use OUTER JOIN:
-
-    {python}
-    join = employees.outerjoin(engineers).outerjoin(managers)
-
-    mapper(Employee, employees, polymorphic_on=employees.c.type, \
-        polymorphic_identity='employee', select_table=join)
-    mapper(Engineer, engineers, inherits=Employee, polymorphic_identity='engineer')
-    mapper(Manager, managers, inherits=Employee, polymorphic_identity='manager')
-
-The above mapping will produce a query similar to that of `with_polymorphic('*')` for every query of `Employee` objects.
-
-When `select_table` is used, `with_polymorphic()` still overrides its usage at the query level.  For example, if `select_table` were configured to load from a join of multiple tables, using `with_polymorphic(Employee)` will limit the list of tables selected from to just the base table (as always, tables which don't get loaded in the first pass will be loaded on an as-needed basis).
 
 ##### Single Table Inheritance
 
@@ -563,7 +592,7 @@ Notice in this case there is no `type` column.  If polymorphic loading is not re
     mapper(Manager, managers_table)
     mapper(Engineer, engineers_table)
 
-To load polymorphically, the `select_table` argument is currently required.  In this case we must construct a UNION of all three tables.  SQLAlchemy includes a helper function to create these called `polymorphic_union`, which will map all the different columns into a structure of selects with the same numbers and names of columns, and also generate a virtual `type` column for each subselect:
+To load polymorphically, the `with_polymorphic` argument is required, along with a selectable indicating how rows should be loaded.  In this case we must construct a UNION of all three tables.  SQLAlchemy includes a helper function to create these called `polymorphic_union`, which will map all the different columns into a structure of selects with the same numbers and names of columns, and also generate a virtual `type` column for each subselect:
 
     {python}
     pjoin = polymorphic_union({
@@ -572,7 +601,7 @@ To load polymorphically, the `select_table` argument is currently required.  In 
         'engineer': engineers_table
     }, 'type', 'pjoin')
 
-    employee_mapper = mapper(Employee, employees_table, select_table=pjoin, \
+    employee_mapper = mapper(Employee, employees_table, with_polymorphic=('*', pjoin), \
         polymorphic_on=pjoin.c.type, polymorphic_identity='employee')
     manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, \
         concrete=True, polymorphic_identity='manager')
@@ -598,7 +627,7 @@ Upon select, the polymorphic union produces a query like this:
         SELECT engineers.employee_id AS employee_id, CAST(NULL AS VARCHAR(50)) AS manager_data, engineers.name AS name,
         engineers.engineer_info AS engineer_info, 'engineer' AS type
         FROM engineers
-    ) AS pjoin ORDER BY pjoin.oid
+    ) AS pjoin
     []
 
 ##### Using Relations with Inheritance {@name=relations}
@@ -673,7 +702,7 @@ Let's crank it up and try loading with an eager load:
     managers.manager_data AS manager_data, managers.name AS name, managers.company_id AS company_id, 'manager' AS type
     FROM managers UNION ALL SELECT engineers.engineer_info AS engineer_info, engineers.employee_id AS employee_id,
     CAST(NULL AS VARCHAR(50)) AS manager_data, engineers.name AS name, engineers.company_id AS company_id, 'engineer' AS type
-    FROM engineers) AS anon_1 ON companies.id = anon_1.company_id ORDER BY companies.oid, anon_1.oid
+    FROM engineers) AS anon_1 ON companies.id = anon_1.company_id
     []
 
 The big limitation with concrete table inheritance is that relation()s placed on each concrete mapper do **not** propagate to child mappers.  If you want to have the same relation()s set up on all concrete mappers, they must be configured manually on each.
@@ -1081,7 +1110,7 @@ On the subject of joins, i.e. those described in [datamapping_joins](rel:datamap
         filter(and_(Node.parent_id==nodealias.c.id, nodealias.c.data=='child2')).all()
     SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data
     FROM treenodes, treenodes AS treenodes_1
-    WHERE treenodes.data = ? AND treenodes.parent_id = treenodes_1.id AND treenodes_1.data = ? ORDER BY treenodes.oid
+    WHERE treenodes.data = ? AND treenodes.parent_id = treenodes_1.id AND treenodes_1.data = ?
     ['subchild1', 'child2']
 
 or automatically, using `join()` with `aliased=True`:
@@ -1092,7 +1121,7 @@ or automatically, using `join()` with `aliased=True`:
         join('parent', aliased=True).filter(Node.data=='child2').all()
     SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data
     FROM treenodes JOIN treenodes AS treenodes_1 ON treenodes_1.id = treenodes.parent_id
-    WHERE treenodes.data = ? AND treenodes_1.data = ? ORDER BY treenodes.oid
+    WHERE treenodes.data = ? AND treenodes_1.data = ?
     ['subchild1', 'child2']
 
 To add criterion to multiple points along a longer join, use `from_joinpoint=True`:
@@ -1104,7 +1133,7 @@ To add criterion to multiple points along a longer join, use `from_joinpoint=Tru
         join('parent', aliased=True, from_joinpoint=True).filter(Node.data=='root').all()
     SELECT treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data
     FROM treenodes JOIN treenodes AS treenodes_1 ON treenodes_1.id = treenodes.parent_id JOIN treenodes AS treenodes_2 ON treenodes_2.id = treenodes_1.parent_id
-    WHERE treenodes.data = ? AND treenodes_1.data = ? AND treenodes_2.data = ? ORDER BY treenodes.oid
+    WHERE treenodes.data = ? AND treenodes_1.data = ? AND treenodes_2.data = ?
     ['subchild1', 'child2', 'root']
 
 ##### Configuring Eager Loading {@name=eagerloading}
@@ -1118,7 +1147,7 @@ Eager loading of relations occurs using joins or outerjoins from parent to child
 
     {sql}session.query(Node).all()
     SELECT treenodes_1.id AS treenodes_1_id, treenodes_1.parent_id AS treenodes_1_parent_id, treenodes_1.data AS treenodes_1_data, treenodes_2.id AS treenodes_2_id, treenodes_2.parent_id AS treenodes_2_parent_id, treenodes_2.data AS treenodes_2_data, treenodes.id AS treenodes_id, treenodes.parent_id AS treenodes_parent_id, treenodes.data AS treenodes_data
-    FROM treenodes LEFT OUTER JOIN treenodes AS treenodes_2 ON treenodes.id = treenodes_2.parent_id LEFT OUTER JOIN treenodes AS treenodes_1 ON treenodes_2.id = treenodes_1.parent_id ORDER BY treenodes.oid, treenodes_2.oid, treenodes_1.oid
+    FROM treenodes LEFT OUTER JOIN treenodes AS treenodes_2 ON treenodes.id = treenodes_2.parent_id LEFT OUTER JOIN treenodes AS treenodes_1 ON treenodes_2.id = treenodes_1.parent_id
     []
 
 #### Specifying Alternate Join Conditions to relation() {@name=customjoin}
@@ -1364,7 +1393,7 @@ In the [datamapping](rel:datamapping), we introduced the concept of **Eager Load
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
     FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
-    WHERE users.name = ? ORDER BY users.oid, addresses_1.oid
+    WHERE users.name = ?
     ['jack']
 
 By default, all relations are **lazy loading**.  The scalar or collection attribute associated with a `relation()` contains a trigger which fires the first time the attribute is accessed, which issues a SQL call at that point:
@@ -1373,7 +1402,7 @@ By default, all relations are **lazy loading**.  The scalar or collection attrib
     {sql}>>> jack.addresses
     SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
     FROM addresses
-    WHERE ? = addresses.user_id ORDER BY addresses.oid
+    WHERE ? = addresses.user_id
     [5]
     {stop}[<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
 
