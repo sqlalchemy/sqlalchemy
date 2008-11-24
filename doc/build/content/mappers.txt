@@ -289,23 +289,23 @@ We can now use the `Vertex` instances as well as querying as though the `start` 
 
     v2 = session.query(Vertex).filter(Vertex.start == Point(3, 4))
 
-The "equals" comparison operation by default produces an AND of all corresponding columns equated to one another.  If you'd like to override this, or define the behavior of other SQL operators for your new type, the `composite()` function accepts an extension object of type `sqlalchemy.orm.PropComparator`:
+The "equals" comparison operation by default produces an AND of all corresponding columns equated to one another.  This can be changed using the `comparator_factory`, described in [advdatamapping_mapper_attributes_comparators](rel:advdatamapping_mapper_attributes_comparators)
 
     {python}
-    from sqlalchemy.orm import PropComparator
+    from sqlalchemy.orm.properties import CompositeProperty
     from sqlalchemy import sql
 
-    class PointComparator(PropComparator):
+    class PointComparator(CompositeProperty.Comparator):
         def __gt__(self, other):
             """define the 'greater than' operation"""
 
             return sql.and_(*[a>b for a, b in
-                              zip(self.prop.columns,
+                              zip(self.__clause_element__().clauses,
                                   other.__composite_values__())])
 
     maper(Vertex, vertices, properties={
-        'start': composite(Point, vertices.c.x1, vertices.c.y1, comparator=PointComparator),
-        'end': composite(Point, vertices.c.x2, vertices.c.y2, comparator=PointComparator)
+        'start': composite(Point, vertices.c.x1, vertices.c.y1, comparator_factory=PointComparator),
+        'end': composite(Point, vertices.c.x2, vertices.c.y2, comparator_factory=PointComparator)
     })
 
 #### Controlling Ordering {@name=orderby}

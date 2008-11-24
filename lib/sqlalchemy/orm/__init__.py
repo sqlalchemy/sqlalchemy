@@ -211,7 +211,7 @@ def relation(argument, secondary=None, **kwargs):
           used in place of a plain list for storing elements.
 
         comparator_factory
-          a class which extends sqlalchemy.orm.properties.RelationProperty.Comparator
+          a class which extends ``sqlalchemy.orm.properties.RelationProperty.Comparator``
           which provides custom SQL clause generation for comparison operations.
           
         extension
@@ -404,7 +404,7 @@ def column_property(*args, **kwargs):
           list of Column objects to be mapped.
 
       comparator_factory
-        a class which extends sqlalchemy.orm.properties.RelationProperty.Comparator
+        a class which extends ``sqlalchemy.orm.properties.ColumnProperty.Comparator``
         which provides custom SQL clause generation for comparison operations.
 
       group
@@ -485,9 +485,9 @@ def composite(class_, *cols, **kwargs):
       load immediately, and is instead loaded when the attribute is first
       accessed on an instance.  See also [sqlalchemy.orm#deferred()].
 
-    comparator
-      An optional instance of [sqlalchemy.orm#PropComparator] which provides
-      SQL expression generation functions for this composite type.
+    comparator_factory
+      a class which extends ``sqlalchemy.orm.properties.CompositeProperty.Comparator``
+      which provides custom SQL clause generation for comparison operations.
 
     extension
       an [sqlalchemy.orm.interfaces#AttributeExtension] instance, 

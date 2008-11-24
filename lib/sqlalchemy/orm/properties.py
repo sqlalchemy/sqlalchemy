@@ -41,7 +41,7 @@ class ColumnProperty(StrategizedProperty):
         self.columns = [expression._labeled(c) for c in columns]
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
-        self.comparator_factory = kwargs.pop('comparator_factory', ColumnProperty.ColumnComparator)
+        self.comparator_factory = kwargs.pop('comparator_factory', self.__class__.Comparator)
         self.extension = kwargs.pop('extension', None)
         util.set_creation_order(self)
         if self.deferred:
@@ -108,10 +108,12 @@ class CompositeProperty(ColumnProperty):
     """subclasses ColumnProperty to provide composite type support."""
     
     def __init__(self, class_, *columns, **kwargs):
+        if 'comparator' in kwargs:
+            util.warn_deprecated("The 'comparator' argument to CompositeProperty is deprecated.  Use comparator_factory.")
+            kwargs['comparator_factory'] = kwargs['comparator']
         super(CompositeProperty, self).__init__(*columns, **kwargs)
         self._col_position_map = dict((c, i) for i, c in enumerate(columns))
         self.composite_class = class_
-        self.comparator_factory = kwargs.pop('comparator', CompositeProperty.Comparator)
         self.strategy_class = strategies.CompositeColumnLoader
 
     def do_init(self):
