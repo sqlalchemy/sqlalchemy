@@ -681,7 +681,7 @@ In a concrete inheritance scenario, mapping `relation()`s is more difficult sinc
         Column('company_id', Integer, ForeignKey('companies.id'))
     )
 
-    mapper(Employee, employees_table, select_table=pjoin, polymorphic_on=pjoin.c.type, polymorphic_identity='employee')
+    mapper(Employee, employees_table, with_polymorphic=('*', pjoin), polymorphic_on=pjoin.c.type, polymorphic_identity='employee')
     mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
     mapper(Engineer, engineers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='engineer')
     mapper(Company, companies, properties={
