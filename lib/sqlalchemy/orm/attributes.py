@@ -1427,11 +1427,15 @@ class History(tuple):
             elif original is NEVER_SET:
                 return cls((), list(current), ())
             else:
-                collection = util.OrderedIdentitySet(current)
-                s = util.OrderedIdentitySet(original)
-                return cls(list(collection.difference(s)),
-                           list(collection.intersection(s)),
-                           list(s.difference(collection)))
+                current_set = util.IdentitySet(current)
+                original_set = util.IdentitySet(original)
+
+                # ensure duplicates are maintained
+                return cls(
+                    [x for x in current if x not in original_set],
+                    [x for x in current if x in original_set],
+                    [x for x in original if x not in current_set]
+                )
         else:
             if current is NO_VALUE:
                 if original not in [None, NEVER_SET, NO_VALUE]:

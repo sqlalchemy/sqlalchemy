@@ -1047,6 +1047,19 @@ class HistoryTest(_base.ORMTest):
         f.someattr = [there]
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [], []))
 
+        # case 4.  ensure duplicates show up, order is maintained
+        f = Foo()
+        f.someattr.append(hi)
+        f.someattr.append(there)
+        f.someattr.append(hi)
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi, there, hi], [], []))
+
+        attributes.instance_state(f).commit_all()
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [hi, there, hi], ()))
+        
+        f.someattr = []
+        eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([], [], [hi, there, hi]))
+        
     def test_collections_via_backref(self):
         class Foo(_base.BasicEntity):
             pass

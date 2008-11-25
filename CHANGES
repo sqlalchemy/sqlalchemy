@@ -12,6 +12,18 @@ CHANGES
       that the given argument is a FromClause,
       or Text/Select/Union, respectively.
 
+    - Duplicate items in a list-based collection will
+      be maintained when issuing INSERTs to
+      a "secondary" table in a many-to-many relation.
+      Assuming the m2m table has a unique or primary key 
+      constraint on it, this will raise the expected 
+      constraint violation instead of silently
+      dropping the duplicate entries. Note that the 
+      old behavior remains for a one-to-many relation
+      since collection entries in that case
+      don't result in INSERT statements and SQLA doesn't
+      manually police collections. [ticket:1232]
+      
     - Query.add_column() can accept FromClause objects
       in the same manner as session.query() can.
 

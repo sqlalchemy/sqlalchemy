@@ -63,7 +63,7 @@ class M2MTest(_base.MappedTest):
                                  repr(self.outputs)))
 
     @testing.resolve_artifact_names
-    def testerror(self):
+    def test_error(self):
         mapper(Place, place, properties={
             'transitions':relation(Transition, secondary=place_input, backref='places')
         })
@@ -74,8 +74,8 @@ class M2MTest(_base.MappedTest):
                                  sa.orm.compile_mappers)
 
     @testing.resolve_artifact_names
-    def testcircular(self):
-        """tests a many-to-many relationship from a table to itself."""
+    def test_circular(self):
+        """test a many-to-many relationship from a table to itself."""
 
         Place.mapper = mapper(Place, place)
 
@@ -124,8 +124,8 @@ class M2MTest(_base.MappedTest):
         sess.flush()
 
     @testing.resolve_artifact_names
-    def testdouble(self):
-        """tests that a mapper can have two eager relations to the same table, via
+    def test_double(self):
+        """test that a mapper can have two eager relations to the same table, via
         two different association tables.  aliases are required."""
 
         Place.mapper = mapper(Place, place, properties = {
@@ -155,7 +155,7 @@ class M2MTest(_base.MappedTest):
             })
 
     @testing.resolve_artifact_names
-    def testbidirectional(self):
+    def test_bidirectional(self):
         """tests a many-to-many backrefs"""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
@@ -200,18 +200,20 @@ class M2MTest2(_base.MappedTest):
             Column('course_id', String(20), ForeignKey('course.name'),
                    primary_key=True))
 
-    @testing.resolve_artifact_names
-    def testcircular(self):
-        class Student(object):
+    def setup_classes(self):
+        class Student(_base.BasicEntity):
             def __init__(self, name=''):
                 self.name = name
-        class Course(object):
+        class Course(_base.BasicEntity):
             def __init__(self, name=''):
                 self.name = name
 
+    @testing.resolve_artifact_names
+    def test_circular(self):
+
         mapper(Student, student)
         mapper(Course, course, properties={
-            'students': relation(Student, enroll, lazy=True, backref='courses')})
+            'students': relation(Student, enroll, backref='courses')})
 
         sess = create_session()
         s1 = Student('Student1')
@@ -233,14 +235,24 @@ class M2MTest2(_base.MappedTest):
         self.assert_(len(s.courses) == 2)
 
     @testing.resolve_artifact_names
+    def test_dupliates_raise(self):
+        """test constraint error is raised for dupe entries in a list"""
+        
+        mapper(Student, student)
+        mapper(Course, course, properties={
+            'students': relation(Student, enroll, backref='courses')})
+
+        sess = create_session()
+        s1 = Student("s1")
+        c1 = Course('c1')
+        s1.courses.append(c1)
+        s1.courses.append(c1)
+        sess.add(s1)
+        self.assertRaises(sa.exc.DBAPIError, sess.flush)
+        
+    @testing.resolve_artifact_names
     def test_delete(self):
         """A many-to-many table gets cleared out with deletion from the backref side"""
-        class Student(object):
-            def __init__(self, name=''):
-                self.name = name
-        class Course(object):
-            def __init__(self, name=''):
-                self.name = name
 
         mapper(Student, student)
         mapper(Course, course, properties = {
@@ -286,7 +298,7 @@ class M2MTest3(_base.MappedTest):
             Column('b2', sa.Boolean))
 
     @testing.resolve_artifact_names
-    def testbasic(self):
+    def test_basic(self):
         class C(object):pass
         class A(object):pass
         class B(object):pass
