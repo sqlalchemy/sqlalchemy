@@ -83,14 +83,18 @@ class Query(object):
         self._only_load_props = None
         self._refresh_state = None
         self._from_obj = None
-        self._entities = []
         self._polymorphic_adapters = {}
         self._filter_aliases = None
         self._from_obj_alias = None
         self.__currenttables = set()
+        self._set_entities(entities)
 
+    def _set_entities(self, entities, entity_wrapper=None):
+        if entity_wrapper is None:
+            entity_wrapper = _QueryEntity
+        self._entities = []
         for ent in util.to_list(entities):
-            _QueryEntity(self, ent)
+            entity_wrapper(self, ent)
 
         self.__setup_aliasizers(self._entities)
 
@@ -528,10 +532,7 @@ class Query(object):
         self._limit = self._offset = None
         self.__set_select_from(fromclause)
         if entities:
-            self._entities = []
-            for ent in entities:
-                _QueryEntity(self, ent)
-            self.__setup_aliasizers(self._entities)
+            self._set_entities(entities)
 
     _from_self = from_self
 
@@ -541,10 +542,7 @@ class Query(object):
         if not columns:
             return iter(())
         q = self._clone()
-        q._entities = []
-        for column in columns:
-            _ColumnEntity(q, column)
-        q.__setup_aliasizers(q._entities)
+        q._set_entities(columns, entity_wrapper=_ColumnEntity)
         if not q._yield_per:
             q._yield_per = 10
         return iter(q)
