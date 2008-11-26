@@ -175,7 +175,7 @@ class FlushTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_delete_nocascade(self):
         mapper(User, users, properties={
-            'addresses':dynamic_loader(mapper(Address, addresses), backref='user')
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id, backref='user')
         })
         sess = create_session(autoflush=True)
         u = User(name='ed')
@@ -209,7 +209,7 @@ class FlushTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_delete_cascade(self):
         mapper(User, users, properties={
-            'addresses':dynamic_loader(mapper(Address, addresses), backref='user', cascade="all, delete-orphan")
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id, backref='user', cascade="all, delete-orphan")
         })
         sess = create_session(autoflush=True)
         u = User(name='ed')
@@ -243,7 +243,7 @@ class FlushTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_remove_orphans(self):
         mapper(User, users, properties={
-            'addresses':dynamic_loader(mapper(Address, addresses), cascade="all, delete-orphan", backref='user')
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id, cascade="all, delete-orphan", backref='user')
         })
         sess = create_session(autoflush=True)
         u = User(name='ed')
