@@ -44,6 +44,11 @@ CHANGES
       RelationProperty, to be consistent
       with all the other names.  PropertyLoader is 
       still present as a synonym.
+    
+    - fixed "double iter()" call causing bus errors
+      in shard API, removed errant result.close()
+      left over from the 0.4 version. [ticket:1099]
+      [ticket:1228]
       
 - sql
     - Fixed the import weirdness in sqlalchemy.sql
