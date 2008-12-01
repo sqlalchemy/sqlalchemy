@@ -1851,25 +1851,31 @@ class FromClause(Selectable):
 
     @util.memoized_property
     def _columns(self):
+        """Return the collection of Column objects contained by this FromClause."""
+
         self._export_columns()
         return self._columns
-    
+
     @util.memoized_property
     def _primary_key(self):
+        """Return the collection of Column objects which comprise the primary key of this FromClause."""
+
         self._export_columns()
         return self._primary_key
-    
+
     @util.memoized_property
     def _foreign_keys(self):
+        """Return the collection of ForeignKey objects which this FromClause references."""
+
         self._export_columns()
         return self._foreign_keys
-        
-    columns = property(attrgetter('_columns'))
-    primary_key = property(attrgetter('_primary_key'))
-    foreign_keys = property(attrgetter('_foreign_keys'))
+
+    columns = property(attrgetter('_columns'), doc=_columns.__doc__)
+    primary_key = property(attrgetter('_primary_key'), doc=_primary_key.__doc__)
+    foreign_keys = property(attrgetter('_foreign_keys'), doc=_foreign_keys.__doc__)
 
     # synonyms for 'columns'
-    c = _select_iterable = property(attrgetter('columns'))
+    c = _select_iterable = property(attrgetter('columns'), doc=_columns.__doc__)
     
     def _export_columns(self):
         """Initialize column collections."""
