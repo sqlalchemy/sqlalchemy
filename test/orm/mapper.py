@@ -2104,6 +2104,8 @@ class RequirementsTest(_base.MappedTest):
 
         self.assertRaises(sa.exc.ArgumentError, mapper, OldStyle, ht1)
 
+        self.assertRaises(sa.exc.ArgumentError, mapper, 123)
+        
         class NoWeakrefSupport(str):
             pass
 

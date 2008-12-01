@@ -109,7 +109,7 @@ def mapper(type_, *args, **kw):
         ('__gt__', 'noncomparable', lambda s, o: object.__gt__(s, o)),
         ('__nonzero__', 'truthless', lambda s: 1), ]
 
-    if type_.__bases__ == (object,):
+    if isinstance(type_, type) and type_.__bases__ == (object,):
         for method_name, option, fallback in forbidden:
             if (getattr(config.options, option, False) and
                 method_name not in type_.__dict__):

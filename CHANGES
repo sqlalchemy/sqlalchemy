@@ -34,6 +34,9 @@ CHANGES
       primaryjoin/secondaryjoin are ClauseElement 
       instances, to prevent more confusing errors later 
       on.
+
+    - Improved mapper() check for non-class classes.
+      [ticket:1236]
     
     - comparator_factory argument is now documented
       and supported by all MapperProperty types,

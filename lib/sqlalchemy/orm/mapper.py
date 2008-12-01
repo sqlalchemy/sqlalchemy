@@ -101,7 +101,9 @@ class Mapper(object):
         function.  See for details.
 
         """
-        self.class_ = class_
+
+        self.class_ = util.assert_arg_type(class_, type, 'class_')
+
         self.class_manager = None
 
         self.primary_key_argument = primary_key
@@ -134,8 +136,6 @@ class Mapper(object):
         self._requires_row_aliasing = False
         self._inherits_equated_pairs = None
 
-        if not issubclass(class_, object):
-            raise sa_exc.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
 
         self.select_table = select_table
         if select_table:
