@@ -665,5 +665,16 @@ class MergeTest(_fixtures.FixtureTest):
         sess.expunge(u)
         sess.merge(u)
 
+    @testing.resolve_artifact_names
+    def test_cascades_dont_autoflush(self):
+        sess = create_session(autoflush=True)
+        m = mapper(User, users, properties={
+            'addresses':relation(mapper(Address, addresses),backref='user')})
+        user = User(id=8, name='fred', addresses=[Address(email_address='user')])
+        merged_user = sess.merge(user)
+        assert merged_user in sess.new
+        sess.flush()
+        assert merged_user not in sess.new
+
 if __name__ == "__main__":
     testenv.main()

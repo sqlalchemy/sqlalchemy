@@ -52,6 +52,10 @@ CHANGES
       in shard API, removed errant result.close()
       left over from the 0.4 version. [ticket:1099]
       [ticket:1228]
+
+    - made Session.merge cascades not trigger autoflush.
+      Fixes merged instances getting prematurely inserted
+      with missing values.
       
 - sql
     - Fixed the import weirdness in sqlalchemy.sql

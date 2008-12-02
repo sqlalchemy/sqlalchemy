@@ -1172,6 +1172,9 @@ class Session(object):
             # TODO: this should be an IdentityDict for instances, but will
             # need a separate dict for PropertyLoader tuples
             _recursive = {}
+            # Autoflush only on the topmost call
+            self._autoflush()
+
         mapper = _object_mapper(instance)
         if instance in _recursive:
             return _recursive[instance]
@@ -1204,7 +1207,7 @@ class Session(object):
                 self._update_impl(merged_state)
                 new_instance = True
             else:
-                merged = self.query(mapper.class_).get(key[1])
+                merged = self.query(mapper.class_).autoflush(False).get(key[1])
 
         if merged is None:
             merged = mapper.class_manager.new_instance()
