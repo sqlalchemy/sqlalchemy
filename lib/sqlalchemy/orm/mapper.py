@@ -860,7 +860,7 @@ class Mapper(object):
         else:
             return mappers, self._selectable_from_mappers(mappers)
 
-    @util.memoized_property
+    @property
     def _default_polymorphic_properties(self):
         return util.unique_list(
             chain(*[list(mapper.iterate_properties) for mapper in [self] + self._with_polymorphic_mappers])

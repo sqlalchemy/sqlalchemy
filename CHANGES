@@ -11,6 +11,11 @@ CHANGES
     - Query.select_from(), from_statement() ensure
       that the given argument is a FromClause,
       or Text/Select/Union, respectively.
+      
+    - Fixed bug introduced in 0.5rc4 involving eager 
+      loading not functioning for properties which were
+      added to a mapper post-compile using 
+      add_property() or equivalent.
 
     - Duplicate items in a list-based collection will
       be maintained when issuing INSERTs to

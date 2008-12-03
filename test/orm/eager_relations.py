@@ -24,6 +24,22 @@ class EagerTest(_fixtures.FixtureTest):
         assert self.static.user_address_result == q.all()
 
     @testing.resolve_artifact_names
+    def test_late_compile(self):
+        m = mapper(User, users)
+        sess = create_session()
+        sess.query(User).all()
+        m.add_property("addresses", relation(mapper(Address, addresses)))
+        
+        sess.clear()
+        def go():
+            eq_(
+               [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])],
+               sess.query(User).options(eagerload('addresses')).filter(User.id==7).all()
+            )
+        self.assert_sql_count(testing.db, go, 1)
+            
+        
+    @testing.resolve_artifact_names
     def test_no_orphan(self):
         """An eagerly loaded child object is not marked as an orphan"""
         mapper(User, users, properties={
