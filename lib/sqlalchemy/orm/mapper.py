@@ -165,7 +165,7 @@ class Mapper(object):
             self.local_table = self.local_table.alias()
 
         if self.with_polymorphic and isinstance(self.with_polymorphic[1], expression._SelectBaseMixin):
-            self.with_polymorphic[1] = self.with_polymorphic[1].alias()
+            self.with_polymorphic = (self.with_polymorphic[0], self.with_polymorphic[1].alias())
 
         # our 'polymorphic identity', a string name that when located in a result set row
         # indicates this Mapper should be used to construct the object instance for that row.
@@ -270,20 +270,11 @@ class Mapper(object):
                         if mapper.polymorphic_on:
                             self.polymorphic_on = self.mapped_table.corresponding_column(mapper.polymorphic_on)
                             break
-                    else:
-                        # TODO: this exception not covered
-                        raise sa_exc.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', "
-                                    "but no mapper in it's hierarchy specifies "
-                                    "the 'polymorphic_on' column argument" % (self, self.polymorphic_identity))
         else:
             self._all_tables = set()
             self.base_mapper = self
             self.mapped_table = self.local_table
             if self.polymorphic_identity:
-                if self.polymorphic_on is None:
-                    raise sa_exc.ArgumentError("Mapper '%s' specifies a polymorphic_identity of '%s', but "
-                                "no mapper in it's hierarchy specifies the "
-                                "'polymorphic_on' column argument" % (self, self.polymorphic_identity))
                 self.polymorphic_map[self.polymorphic_identity] = self
             self._identity_class = self.class_
 
@@ -1489,7 +1480,7 @@ class Mapper(object):
 
     # result set conversion
 
-    def _instance_processor(self, context, path, adapter, polymorphic_from=None, extension=None, only_load_props=None, refresh_state=None):
+    def _instance_processor(self, context, path, adapter, polymorphic_from=None, extension=None, only_load_props=None, refresh_state=None, polymorphic_discriminator=None):
         """Produce a mapper level row processor callable which processes rows into mapped instances."""
         
         pk_cols = self.primary_key
@@ -1497,7 +1488,7 @@ class Mapper(object):
         if polymorphic_from or refresh_state:
             polymorphic_on = None
         else:
-            polymorphic_on = self.polymorphic_on
+            polymorphic_on = polymorphic_discriminator or self.polymorphic_on
             polymorphic_instances = util.PopulateDict(self._configure_subclass_mapper(context, path, adapter))
 
         version_id_col = self.version_id_col

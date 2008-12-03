@@ -274,50 +274,6 @@ class GetTest(ORMTest):
     test_get_polymorphic = create_test(True, 'test_get_polymorphic')
     test_get_nonpolymorphic = create_test(False, 'test_get_nonpolymorphic')
 
-class ConstructionTest(ORMTest):
-    def define_tables(self, metadata):
-        global content_type, content, product
-        content_type = Table('content_type', metadata,
-            Column('id', Integer, primary_key=True)
-            )
-        content = Table('content', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('content_type_id', Integer, ForeignKey('content_type.id')),
-            Column('type', String(30))
-            )
-        product = Table('product', metadata,
-            Column('id', Integer, ForeignKey('content.id'), primary_key=True)
-        )
-
-    def testbasic(self):
-        class ContentType(object): pass
-        class Content(object): pass
-        class Product(Content): pass
-
-        content_types = mapper(ContentType, content_type)
-        try:
-            contents = mapper(Content, content, properties={
-                'content_type':relation(content_types)
-            }, polymorphic_identity='contents')
-            assert False
-        except sa_exc.ArgumentError, e:
-            assert str(e) == "Mapper 'Mapper|Content|content' specifies a polymorphic_identity of 'contents', but no mapper in it's hierarchy specifies the 'polymorphic_on' column argument"
-
-    def testbackref(self):
-        """tests adding a property to the superclass mapper"""
-        class ContentType(object): pass
-        class Content(object): pass
-        class Product(Content): pass
-
-        contents = mapper(Content, content, polymorphic_on=content.c.type, polymorphic_identity='content')
-        products = mapper(Product, product, inherits=contents, polymorphic_identity='product')
-        content_types = mapper(ContentType, content_type, properties={
-            'content':relation(contents, backref='contenttype')
-        })
-        p = Product()
-        p.contenttype = ContentType()
-        # TODO: assertion ??
-
 class EagerLazyTest(ORMTest):
     """tests eager load/lazy load of child items off inheritance mappers, tests that
     LazyLoader constructs the right query condition."""

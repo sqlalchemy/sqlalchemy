@@ -6,6 +6,21 @@ CHANGES
 =======
 0.5.0rc5
 ========
+- new features
+- orm
+    - Query.with_polymorphic() now accepts a third
+      argument "discriminator" which will replace
+      the value of mapper.polymorphic_on for that
+      query.  Mappers themselves no longer require
+      polymorphic_on to be set, even if the mapper
+      has a polymorphic_identity.   When not set,
+      the mapper will load non-polymorphically 
+      by default. Together, these two features allow 
+      a non-polymorphic concrete inheritance setup 
+      to use polymorphic loading on a per-query basis,
+      since concrete setups are prone to many
+      issues when used polymorphically in all cases.
+      
 - bugfixes, behavioral changes
 - orm
     - Query.select_from(), from_statement() ensure
