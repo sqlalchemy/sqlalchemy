@@ -65,6 +65,10 @@ CHANGES
 - sql
     - Fixed the import weirdness in sqlalchemy.sql
       to not export __names__ [ticket:1215].
+    
+    - Using the same ForeignKey object repeatedly
+      raises an error instead of silently failing
+      later. [ticket:1238]
       
     - Added NotImplementedError for params() method
       on Insert/Update/Delete constructs.  These items

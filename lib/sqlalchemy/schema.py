@@ -872,6 +872,8 @@ class ForeignKey(SchemaItem):
         return _column
 
     def _set_parent(self, column):
+        if hasattr(self, 'parent'):
+            raise exc.InvalidRequestError("This ForeignKey already has a parent !")
         self.parent = column
 
         if self.parent._pre_existing_column is not None:
