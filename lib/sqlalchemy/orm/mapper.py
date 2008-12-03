@@ -612,7 +612,13 @@ class Mapper(object):
                 # right set
                 if hasattr(self, '_cols_by_table') and col.table in self._cols_by_table and col not in self._cols_by_table[col.table]:
                     self._cols_by_table[col.table].add(col)
-
+            
+            # if this ColumnProperty represents the "polymorphic discriminator"
+            # column, mark it.  We'll need this when rendering columns
+            # in SELECT statements.
+            if not hasattr(prop, '_is_polymorphic_discriminator'):
+                prop._is_polymorphic_discriminator = (col is self.polymorphic_on or prop.columns[0] is self.polymorphic_on)
+                
             self.columns[key] = col
             for col in prop.columns:
                 for col in col.proxy_set:
@@ -860,20 +866,27 @@ class Mapper(object):
         else:
             return mappers, self._selectable_from_mappers(mappers)
 
-    @property
-    def _default_polymorphic_properties(self):
-        return util.unique_list(
-            chain(*[list(mapper.iterate_properties) for mapper in [self] + self._with_polymorphic_mappers])
-        )
-        
     def _iterate_polymorphic_properties(self, mappers=None):
+        """Return an iterator of MapperProperty objects which will render into a SELECT."""
+        
         if mappers is None:
-            return iter(self._default_polymorphic_properties)
-        else:
-            return iter(util.unique_list(
-                chain(*[list(mapper.iterate_properties) for mapper in [self] + mappers])
-            ))
+            mappers = self._with_polymorphic_mappers
 
+        if not mappers:
+            for c in self.iterate_properties:
+                yield c
+        else:
+            # in the polymorphic case, filter out discriminator columns
+            # from other mappers, as these are sometimes dependent on that
+            # mapper's polymorphic selectable (which we don't want rendered)
+            for c in util.unique_list(
+                chain(*[list(mapper.iterate_properties) for mapper in [self] + mappers])
+            ):
+                if getattr(c, '_is_polymorphic_discriminator', False) and \
+                    (not self.polymorphic_on or c.columns[0] is not self.polymorphic_on):
+                        continue
+                yield c
+    
     @property
     def properties(self):
         raise NotImplementedError("Public collection of MapperProperty objects is "

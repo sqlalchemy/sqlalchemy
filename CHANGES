@@ -61,6 +61,23 @@ CHANGES
     - made Session.merge cascades not trigger autoflush.
       Fixes merged instances getting prematurely inserted
       with missing values.
+
+    - Two fixes to help prevent out-of-band columns from
+      being rendered in polymorphic_union inheritance
+      scenarios (which then causes extra tables to be
+      rendered in the FROM clause causing cartesian 
+      products): 
+        - improvements to "column adaption" for
+          a->b->c inheritance situations to better
+          locate columns that are related to one
+          another via multiple levels of indirection,
+          rather than rendering the non-adapted
+          column.
+        - the "polymorphic discriminator" column is
+          only rendered for the actual mapper being
+          queried against. The column won't be
+          "pulled in" from a subclass or superclass
+          mapper since it's not needed.
       
 - sql
     - Fixed the import weirdness in sqlalchemy.sql

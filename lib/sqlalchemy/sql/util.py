@@ -439,12 +439,12 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
         self.exclude = exclude
         self.equivalents = equivalents or {}
         
-    def _corresponding_column(self, col, require_embedded):
+    def _corresponding_column(self, col, require_embedded, _seen=util.EMPTY_SET):
         newcol = self.selectable.corresponding_column(col, require_embedded=require_embedded)
 
-        if not newcol and col in self.equivalents:
+        if not newcol and col in self.equivalents and col not in _seen:
             for equiv in self.equivalents[col]:
-                newcol = self.selectable.corresponding_column(equiv, require_embedded=require_embedded)
+                newcol = self._corresponding_column(equiv, require_embedded=require_embedded, _seen=_seen.union([col]))
                 if newcol:
                     return newcol
         return newcol
