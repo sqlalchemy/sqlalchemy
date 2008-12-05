@@ -135,6 +135,12 @@ CHANGES
 - postgres
     - Calling alias.execute() in conjunction with
       server_side_cursors won't raise AttributeError.
+
+- oracle
+    - Adjusted the format of create_xid() to repair
+      two-phase commit.   We now have field reports
+      of Oracle two-phase commit working properly
+      with this change.
       
 0.5.0rc4
 ========

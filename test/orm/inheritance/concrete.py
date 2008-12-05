@@ -82,8 +82,10 @@ class ConcreteTest(ORMTest):
         }, 'type', 'pjoin')
 
         employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-        manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
-        engineer_mapper = mapper(Engineer, engineers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='engineer')
+        manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, 
+            concrete=True, polymorphic_identity='manager')
+        engineer_mapper = mapper(Engineer, engineers_table, inherits=employee_mapper, 
+            concrete=True, polymorphic_identity='engineer')
 
         session = create_session()
         session.save(Manager('Tom', 'knows how to manage things'))
@@ -162,7 +164,8 @@ class ConcreteTest(ORMTest):
             'hacker': hackers_table
         }, 'type', 'pjoin2')
 
-        employee_mapper = mapper(Employee, employees_table, with_polymorphic=('*', pjoin), polymorphic_on=pjoin.c.type)
+        employee_mapper = mapper(Employee, employees_table, 
+                with_polymorphic=('*', pjoin), polymorphic_on=pjoin.c.type)
         manager_mapper = mapper(Manager, managers_table, 
                                 inherits=employee_mapper, concrete=True, 
                                 polymorphic_identity='manager')

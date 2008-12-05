@@ -441,8 +441,8 @@ class OracleDialect(default.DefaultDialect):
         do_commit_twophase().  its format is unspecified."""
 
         id = random.randint(0, 2 ** 128)
-        return (0x1234, "%032x" % 9, "%032x" % id)
-
+        return (0x1234, "%032x" % id, "%032x" % 9)
+        
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT
         pass
