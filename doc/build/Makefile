@@ -46,3 +46,5 @@ latex:
 	@echo "Build finished; the LaTeX files are in output/latex."
 	@echo "Run \`make all-pdf' or \`make all-ps' in that directory to" \
 	      "run these through (pdf)latex."
+doctest:
+	$(SPHINXBUILD) -b doctest -d output/doctrees . .
