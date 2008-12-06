@@ -111,6 +111,13 @@ CHANGES
     - the "passive" flag on session.is_modified()
       is correctly propagated to the attribute manager.
 
+    - union() and union_all() will not whack 
+      any order_by() that has been applied to the 
+      select()s inside.  If you union() a 
+      select() with order_by() (presumably to support
+      LIMIT/OFFSET), you should also call self_group() 
+      on it to apply parenthesis.
+      
 - documentation
     - Tickets [ticket:1200] [ticket:1149].
       

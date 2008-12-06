@@ -3033,8 +3033,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                         "have identical numbers of columns; select #%d has %d columns, select #%d has %d" %
                         (1, len(self.selects[0].c), n+1, len(s.c))
                 )
-            if s._order_by_clause:
-                s = s.order_by(None)
+
             # unions group from left to right, so don't group first select
             if n:
                 self.selects.append(s.self_group(self))
