@@ -102,13 +102,13 @@ To see a sample of the SQL this construct produces, use the ``str()`` function::
     >>> str(ins)
     'INSERT INTO users (id, name, fullname) VALUES (:id, :name, :fullname)'
     
-Notice above that the INSERT statement names every column in the ``users`` table.  This can be limited by using the ``values`` keyword, which establishes the VALUES clause of the INSERT explicitly::
+Notice above that the INSERT statement names every column in the ``users`` table.  This can be limited by using the ``values()`` method, which establishes the VALUES clause of the INSERT explicitly::
 
-    >>> ins = users.insert(values={'name':'jack', 'fullname':'Jack Jones'})
+    >>> ins = users.insert().values(name='jack', fullname='Jack Jones')
     >>> str(ins)
     'INSERT INTO users (name, fullname) VALUES (:name, :fullname)'
     
-Above, while the ``values`` keyword limited the VALUES clause to just two columns, the actual data we placed in ``values`` didn't get rendered into the string; instead we got named bind parameters.  As it turns out, our data *is* stored within our ``Insert`` construct, but it typically only comes out when the statement is actually executed; since the data consists of literal values, SQLAlchemy automatically generates bind parameters for them.  We can peek at this data for now by looking at the compiled form of the statement::
+Above, while the ``values`` method limited the VALUES clause to just two columns, the actual data we placed in ``values`` didn't get rendered into the string; instead we got named bind parameters.  As it turns out, our data *is* stored within our ``Insert`` construct, but it typically only comes out when the statement is actually executed; since the data consists of literal values, SQLAlchemy automatically generates bind parameters for them.  We can peek at this data for now by looking at the compiled form of the statement::
 
     >>> ins.compile().params #doctest: +NORMALIZE_WHITESPACE
     {'fullname': 'Jack Jones', 'name': 'jack'}    
@@ -379,7 +379,7 @@ The ``7`` literal is embedded in ``ClauseElement``; we can use the same trick we
 .. sourcecode:: pycon+sql
 
     >>> (users.c.id==7).compile().params
-    {'id_1': 7}
+    {u'id_1': 7}
     
 Most Python operators, as it turns out, produce a SQL expression here, like equals, not equals, etc.:
 
@@ -833,7 +833,7 @@ If we wanted to use our ``calculate`` statement twice with different bind parame
     WHERE users.id BETWEEN c1.z AND c2.z
 
     >>> s.compile().params
-    {'x_2': 5, 'y_2': 12, 'y_1': 45, 'x_1': 17}
+    {u'x_2': 5, u'y_2': 12, u'y_1': 45, u'x_1': 17}
 
 See also :attr:`sqlalchemy.sql.expression.func`.
 
@@ -977,22 +977,22 @@ Finally, we're back to UPDATE.  Updates work a lot like INSERTS, except there is
 .. sourcecode:: pycon+sql
 
     >>> # change 'jack' to 'ed'
-    {sql}>>> conn.execute(users.update(users.c.name=='jack', values={'name':'ed'})) #doctest: +ELLIPSIS
+    {sql}>>> conn.execute(users.update().where(users.c.name=='jack').values(name='ed')) #doctest: +ELLIPSIS
     UPDATE users SET name=? WHERE users.name = ?
     ['ed', 'jack']
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
     
     >>> # use bind parameters
-    >>> u = users.update(users.c.name==bindparam('oldname'), values={'name':bindparam('newname')})
+    >>> u = users.update().where(users.c.name==bindparam('oldname')).values(name=bindparam('newname'))
     {sql}>>> conn.execute(u, oldname='jack', newname='ed') #doctest: +ELLIPSIS
     UPDATE users SET name=? WHERE users.name = ?
     ['ed', 'jack']
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
 
-    >>> # update a column to an expression
-    {sql}>>> conn.execute(users.update(values={users.c.fullname:"Fullname: " + users.c.name})) #doctest: +ELLIPSIS
+    >>> # update a column to an expression.  Send a dictionary to values():
+    {sql}>>> conn.execute(users.update().values({users.c.fullname:"Fullname: " + users.c.name})) #doctest: +ELLIPSIS
     UPDATE users SET fullname=(? || users.name)
     ['Fullname: ']
     COMMIT
@@ -1001,13 +1001,12 @@ Finally, we're back to UPDATE.  Updates work a lot like INSERTS, except there is
 Correlated Updates 
 ------------------
 
-
 A correlated update lets you update a table using selection from another table, or the same table:
 
 .. sourcecode:: pycon+sql
 
     >>> s = select([addresses.c.email_address], addresses.c.user_id==users.c.id).limit(1)
-    {sql}>>> conn.execute(users.update(values={users.c.fullname:s})) #doctest: +ELLIPSIS,+NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(users.update().values({users.c.fullname:s})) #doctest: +ELLIPSIS,+NORMALIZE_WHITESPACE
     UPDATE users SET fullname=(SELECT addresses.email_address 
     FROM addresses 
     WHERE addresses.user_id = users.id 
@@ -1030,7 +1029,7 @@ Finally, a delete.  Easy enough:
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
     
-    {sql}>>> conn.execute(users.delete(users.c.name > 'm')) #doctest: +ELLIPSIS
+    {sql}>>> conn.execute(users.delete().where(users.c.name > 'm')) #doctest: +ELLIPSIS
     DELETE FROM users WHERE users.name > ?
     ['m']
     COMMIT

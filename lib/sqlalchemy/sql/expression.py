@@ -268,23 +268,21 @@ def insert(table, values=None, inline=False, **kwargs):
     Similar functionality is available via the ``insert()`` method on
     :class:`~sqlalchemy.schema.Table`.
 
-    table
-      The table to be inserted into.
+    :param table: The table to be inserted into.
 
-    values
-      A dictionary which specifies the column specifications of the
+    :param values: A dictionary which specifies the column specifications of the
       ``INSERT``, and is optional.  If left as None, the column
       specifications are determined from the bind parameters used
       during the compile phase of the ``INSERT`` statement.  If the
       bind parameters also are None during the compile phase, then the
       column specifications will be generated from the full list of
-      table columns.
+      table columns.  Note that the :meth:`~Insert.values()` generative method
+      may also be used for this.
 
-    prefixes
-      A list of modifier keywords to be inserted between INSERT and INTO,
-      see ``Insert.prefix_with``.
+    :param prefixes: A list of modifier keywords to be inserted between INSERT and INTO.
+      Alternatively, the :meth:`~Insert.prefix_with` generative method may be used.
 
-    inline
+    :param inline:
       if True, SQL defaults will be compiled 'inline' into the statement
       and not pre-executed.
 
@@ -312,26 +310,25 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
     Similar functionality is available via the ``update()`` method on
     :class:`~sqlalchemy.schema.Table`.
 
-    table
-      The table to be updated.
+    :param table: The table to be updated.
 
-    whereclause
-      A ``ClauseElement`` describing the ``WHERE`` condition of the
-      ``UPDATE`` statement.
+    :param whereclause: A ``ClauseElement`` describing the ``WHERE`` condition of the
+      ``UPDATE`` statement.  Note that the :meth:`~Update.where()` generative
+      method may also be used for this.
 
-    values
+    :param values:
       A dictionary which specifies the ``SET`` conditions of the
       ``UPDATE``, and is optional. If left as None, the ``SET``
       conditions are determined from the bind parameters used during
       the compile phase of the ``UPDATE`` statement.  If the bind
       parameters also are None during the compile phase, then the
       ``SET`` conditions will be generated from the full list of table
-      columns.
+      columns.  Note that the :meth:`~Update.values()` generative method may
+      also be used for this.
 
-    inline
+    :param inline:
       if True, SQL defaults will be compiled 'inline' into the statement
       and not pre-executed.
-
 
     If both `values` and compile-time bind parameters are present, the
     compile-time bind parameters override the information specified
@@ -357,12 +354,11 @@ def delete(table, whereclause = None, **kwargs):
     Similar functionality is available via the ``delete()`` method on
     :class:`~sqlalchemy.schema.Table`.
 
-    table
-      The table to be updated.
+    :param table: The table to be updated.
 
-    whereclause
-      A ``ClauseElement`` describing the ``WHERE`` condition of the
-      ``UPDATE`` statement.
+    :param whereclause: A :class:`ClauseElement` describing the ``WHERE`` condition of the
+      ``UPDATE`` statement.  Note that the :meth:`~Delete.where()` generative method
+      may be used instead.
 
     """
     return Delete(table, whereclause, **kwargs)
@@ -522,15 +518,15 @@ def exists(*args, **kwargs):
     Calling styles are of the following forms::
     
         # use on an existing select()
-        s = select([<columns>]).where(<criterion>)
+        s = select([table.c.col1]).where(table.c.col2==5)
         s = exists(s)
         
         # construct a select() at once
-        exists(['*'], **select_arguments).where(<criterion>)
+        exists(['*'], **select_arguments).where(criterion)
         
         # columns argument is optional, generates "EXISTS (SELECT *)"
         # by default.
-        exists().where(<criterion>) 
+        exists().where(table.c.col2==5) 
 
     """
     return _Exists(*args, **kwargs)
@@ -2841,12 +2837,18 @@ class TableClause(_Immutable, FromClause):
         return select([func.count(col).label('tbl_row_count')], whereclause, from_obj=[self], **params)
 
     def insert(self, values=None, inline=False, **kwargs):
+        """Genrate an :func:`insert()` construct."""
+        
         return insert(self, values=values, inline=inline, **kwargs)
 
     def update(self, whereclause=None, values=None, inline=False, **kwargs):
+        """Genrate an :func:`update()` construct."""
+        
         return update(self, whereclause=whereclause, values=values, inline=inline, **kwargs)
 
     def delete(self, whereclause=None, **kwargs):
+        """Genrate a :func:`delete()` construct."""
+        
         return delete(self, whereclause, **kwargs)
 
     @property
@@ -3487,7 +3489,8 @@ class _ValuesBase(_UpdateBase):
                 key=<somevalue> arguments
                 
             \*args
-                deprecated.  A single dictionary can be sent as the first positional argument.
+                A single dictionary can be sent as the first positional argument.  This allows
+                non-string based keys, such as Column objects, to be used.
 
         """
         if args:
@@ -3504,6 +3507,11 @@ class _ValuesBase(_UpdateBase):
             self.parameters.update(kwargs)
 
 class Insert(_ValuesBase):
+    """Represent an INSERT construct.
+    
+    The ``Insert`` object is created using the :func:`insert()` function.
+    
+    """
     def __init__(self, table, values=None, inline=False, bind=None, prefixes=None, **kwargs):
         _ValuesBase.__init__(self, table, values)
         self._bind = bind
@@ -3537,6 +3545,11 @@ class Insert(_ValuesBase):
         self._prefixes = self._prefixes + [clause]
 
 class Update(_ValuesBase):
+    """Represent an Update construct.
+    
+    The ``Update`` object is created using the :func:`update()` function.
+    
+    """
     def __init__(self, table, whereclause, values=None, inline=False, bind=None, **kwargs):
         _ValuesBase.__init__(self, table, values)
         self._bind = bind
@@ -3570,6 +3583,12 @@ class Update(_ValuesBase):
 
 
 class Delete(_UpdateBase):
+    """Represent a DELETE construct.
+    
+    The ``Delete`` object is created using the :func:`delete()` function.
+    
+    """
+    
     def __init__(self, table, whereclause, bind=None, **kwargs):
         self._bind = bind
         self.table = table

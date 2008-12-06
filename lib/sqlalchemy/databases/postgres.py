@@ -6,17 +6,87 @@
 
 """Support for the PostgreSQL database.
 
-PostgreSQL supports partial indexes. To create them pass a posgres_where
+Driver
+------
+
+The psycopg2 driver is supported, available at http://pypi.python.org/pypi/psycopg2/ .
+The dialect has several behaviors  which are specifically tailored towards compatibility 
+with this module.
+
+Note that psycopg1 is **not** supported.
+
+Connecting
+----------
+
+URLs are of the form `postgres://user@password@host:port/dbname[?key=value&key=value...]`.
+
+Postgres-specific keyword arguments which are accepted by :func:`~sqlalchemy.create_engine()` are:
+
+* *server_side_cursors* - Enable the usage of "server side cursors" for SQL statements which support
+  this feature.  What this essentially means from a psycopg2 point of view is that the cursor is 
+  created using a name, e.g. `connection.cursor('some name')`, which has the effect that result rows
+  are not immediately pre-fetched and buffered after statement execution, but are instead left 
+  on the server and only retrieved as needed.    SQLAlchemy's :class:`~sqlalchemy.engine.base.ResultProxy`
+  uses special row-buffering behavior when this feature is enabled, such that groups of 100 rows 
+  at a time are fetched over the wire to reduce conversational overhead.
+
+Sequences/SERIAL
+----------------
+
+Postgres supports sequences, and SQLAlchemy uses these as the default means of creating
+new primary key values for integer-based primary key columns.   When creating tables, 
+SQLAlchemy will issue the ``SERIAL`` datatype for integer-based primary key columns, 
+which generates a sequence corresponding to the column and associated with it based on
+a naming convention.
+
+To specify a specific named sequence to be used for primary key generation, use the
+:func:`~sqlalchemy.schema.Sequence` construct::
+
+    Table('sometable', metadata, 
+            Column('id', Integer, Sequence('some_id_seq'), primary_key=True)
+        )
+
+Currently, when SQLAlchemy issues a single insert statement, to fulfill the contract of
+having the "last insert identifier" available, the sequence is executed independently
+beforehand and the new value is retrieved, to be used in the subsequent insert.  Note
+that when an :func:`~sqlalchemy.sql.expression.insert()` construct is executed using 
+"executemany" semantics, the sequence is not pre-executed and normal PG SERIAL behavior
+is used.
+
+Postgres 8.3 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy supports 
+as well.  A future release of SQLA will use this feature by default in lieu of 
+sequence pre-execution in order to retrieve new primary key values, when available.
+
+INSERT/UPDATE...RETURNING
+-------------------------
+
+The dialect supports PG 8.3's ``INSERT..RETURNING`` and ``UPDATE..RETURNING`` syntaxes, 
+but must be explicitly enabled on a per-statement basis::
+
+    # INSERT..RETURNING
+    result = table.insert(postgres_returning=[table.c.col1, table.c.col2]).\\
+        values(name='foo')
+    print result.fetchall()
+    
+    # UPDATE..RETURNING
+    result = table.update(postgres_returning=[table.c.col1, table.c.col2]).\\
+        where(table.c.name=='foo').values(name='bar')
+    print result.fetchall()
+
+Indexes
+-------
+
+PostgreSQL supports partial indexes. To create them pass a postgres_where
 option to the Index constructor::
 
   Index('my_index', my_table.c.id, postgres_where=tbl.c.value > 10)
 
-PostgreSQL 8.2+ supports returning a result set from inserts and updates.
-To use this pass the column/expression list to the postgres_returning
-parameter when creating the queries::
+Transactions
+------------
 
-  raises = tbl.update(empl.c.sales > 100, values=dict(salary=empl.c.salary * 1.1),
-    postgres_returning=[empl.c.id, empl.c.salary]).execute().fetchall()
+The Postgres dialect fully supports SAVEPOINT and two-phase commit operations.
+
+
 """
 
 import decimal, random, re, string

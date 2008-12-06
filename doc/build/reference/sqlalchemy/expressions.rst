@@ -143,7 +143,7 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Delete
-   :members:
+   :members: where
    :show-inheritance:
 
 .. autoclass:: FromClause
@@ -151,7 +151,7 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Insert
-   :members:
+   :members: prefix_with, values
    :show-inheritance:
 
 .. autoclass:: Join
@@ -171,7 +171,7 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Update
-  :members:
+  :members: where, values
   :show-inheritance:
 
 .. _generic_functions:
