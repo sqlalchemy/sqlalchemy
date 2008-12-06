@@ -531,8 +531,6 @@ def class_mapper(class_, compile=True):
     Raises UnmappedClassError if no mapping is configured.
     
     """
-    if not isinstance(class_, type):
-        class_ = type(class_)
     try:
         class_manager = attributes.manager_of_class(class_)
         mapper = class_manager.mapper

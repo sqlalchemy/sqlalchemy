@@ -20,6 +20,7 @@ http://techspot.zzzeek.org/?p=19 .
 from collections import deque
 import re
 from sqlalchemy import util
+import operator
 
 __all__ = ['VisitableType', 'Visitable', 'ClauseVisitor', 
     'CloningVisitor', 'ReplacingCloningVisitor', 'iterate', 
@@ -43,15 +44,14 @@ class VisitableType(type):
         # for use by the compiler
         visit_name = cls.__dict__["__visit_name__"]
         if isinstance(visit_name, str):
-            func_text = "def _compiler_dispatch(self, visitor, **kw):\n"\
-            "    return visitor.visit_%s(self, **kw)" % visit_name
+            getter = operator.attrgetter("visit_%s" % visit_name)
+            def _compiler_dispatch(self, visitor, **kw):
+                return getter(visitor)(self, **kw)
         else:
-            func_text = "def _compiler_dispatch(self, visitor, **kw):\n"\
-            "    return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)"
+            def _compiler_dispatch(self, visitor, **kw):
+                return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)
     
-        env = locals().copy()
-        exec func_text in env
-        cls._compiler_dispatch = env['_compiler_dispatch']
+        cls._compiler_dispatch = _compiler_dispatch
         
         super(VisitableType, cls).__init__(clsname, bases, dict)
 

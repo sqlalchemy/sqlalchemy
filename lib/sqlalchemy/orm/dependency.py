@@ -444,7 +444,6 @@ class ManyToManyDP(DependencyProcessor):
                         secondary_update.append(associationrow)
 
         if secondary_delete:
-            secondary_delete.sort()
             # TODO: precompile the delete/insert queries?
             statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key, type_=c.type) for c in self.secondary.c if c.key in associationrow]))
             result = connection.execute(statement, secondary_delete)
