@@ -735,7 +735,7 @@ def literal_column(text, type_=None):
     return ColumnClause(text, type_=type_, is_literal=True)
 
 def table(name, *columns):
-    """Return a :class:`~sqlalchemy.sql.expression.Table` object.
+    """Return a :class:`~sqlalchemy.sql.expression.TableClause` object.
 
     This is a primitive version of the :class:`~sqlalchemy.schema.Table` object,
     which is a subclass of this object.
@@ -2837,17 +2837,17 @@ class TableClause(_Immutable, FromClause):
         return select([func.count(col).label('tbl_row_count')], whereclause, from_obj=[self], **params)
 
     def insert(self, values=None, inline=False, **kwargs):
-        """Genrate an :func:`insert()` construct."""
+        """Genrate an :func:`~sqlalchemy.sql.expression.insert()` construct."""
         
         return insert(self, values=values, inline=inline, **kwargs)
 
     def update(self, whereclause=None, values=None, inline=False, **kwargs):
-        """Genrate an :func:`update()` construct."""
+        """Generate an :func:`~sqlalchemy.sql.expression.update()` construct."""
         
         return update(self, whereclause=whereclause, values=values, inline=inline, **kwargs)
 
     def delete(self, whereclause=None, **kwargs):
-        """Genrate a :func:`delete()` construct."""
+        """Genrate a :func:`~sqlalchemy.sql.expression.delete()` construct."""
         
         return delete(self, whereclause, **kwargs)
 
