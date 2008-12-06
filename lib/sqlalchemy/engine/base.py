@@ -47,22 +47,22 @@ class Dialect(object):
       'utf-8'.
 
     schemagenerator
-      a [sqlalchemy.schema#SchemaVisitor] class which generates
+      a :class:`~sqlalchemy.schema.SchemaVisitor` class which generates
       schemas.
 
     schemadropper
-      a [sqlalchemy.schema#SchemaVisitor] class which drops schemas.
+      a :class:`~sqlalchemy.schema.SchemaVisitor` class which drops schemas.
 
     defaultrunner
-      a [sqlalchemy.schema#SchemaVisitor] class which executes
+      a :class:`~sqlalchemy.schema.SchemaVisitor` class which executes
       defaults.
 
     statement_compiler
-      a [sqlalchemy.engine.base#Compiled] class used to compile SQL
+      a :class:`~sqlalchemy.engine.base.Compiled` class used to compile SQL
       statements
 
     preparer
-      a [sqlalchemy.sql.compiler#IdentifierPreparer] class used to
+      a :class:`~sqlalchemy.sql.compiler.IdentifierPreparer` class used to
       quote identifiers.
 
     supports_alter
@@ -107,7 +107,7 @@ class Dialect(object):
     def create_connect_args(self, url):
         """Build DB-API compatible connection arguments.
 
-        Given a [sqlalchemy.engine.url#URL] object, returns a tuple
+        Given a :class:`~sqlalchemy.engine.url.URL` object, returns a tuple
         consisting of a `*args`/`**kwargs` suitable to send directly
         to the dbapi's connect function.
         """
@@ -118,11 +118,11 @@ class Dialect(object):
     def type_descriptor(self, typeobj):
         """Transform a generic type to a database-specific type.
 
-        Transforms the given [sqlalchemy.types#TypeEngine] instance
+        Transforms the given :class:`~sqlalchemy.types.TypeEngine` instance
         from generic to database-specific.
 
         Subclasses will usually use the
-        [sqlalchemy.types#adapt_type()] method in the types module to
+        :func:`~sqlalchemy.types.adapt_type` method in the types module to
         make this job easy.
         """
 
@@ -137,8 +137,8 @@ class Dialect(object):
     def reflecttable(self, connection, table, include_columns=None):
         """Load table description from the database.
 
-        Given a [sqlalchemy.engine#Connection] and a
-        [sqlalchemy.schema#Table] object, reflect its columns and
+        Given a :class:`~sqlalchemy.engine.Connection` and a
+        :class:`~sqlalchemy.schema.Table` object, reflect its columns and
         properties from the database.  If include_columns (a list or
         set) is specified, limit the autoload to the given column
         names.
@@ -149,7 +149,7 @@ class Dialect(object):
     def has_table(self, connection, table_name, schema=None):
         """Check the existence of a particular table in the database.
 
-        Given a [sqlalchemy.engine#Connection] object and a string
+        Given a :class:`~sqlalchemy.engine.Connection` object and a string
         `table_name`, return True if the given table (possibly within
         the specified `schema`) exists in the database, False
         otherwise.
@@ -160,7 +160,7 @@ class Dialect(object):
     def has_sequence(self, connection, sequence_name, schema=None):
         """Check the existence of a particular sequence in the database.
 
-        Given a [sqlalchemy.engine#Connection] object and a string
+        Given a :class:`~sqlalchemy.engine.Connection` object and a string
         `sequence_name`, return True if the given sequence exists in
         the database, False otherwise.
         """
@@ -168,12 +168,12 @@ class Dialect(object):
         raise NotImplementedError()
 
     def get_default_schema_name(self, connection):
-        """Return the string name of the currently selected schema given a [sqlalchemy.engine#Connection]."""
+        """Return the string name of the currently selected schema given a :class:`~sqlalchemy.engine.Connection`."""
 
         raise NotImplementedError()
 
     def create_execution_context(self, connection, compiled=None, compiled_parameters=None, statement=None, parameters=None):
-        """Return a new [sqlalchemy.engine#ExecutionContext] object."""
+        """Return a new :class:`~sqlalchemy.engine.ExecutionContext` object."""
 
         raise NotImplementedError()
 
@@ -506,7 +506,7 @@ class Connection(Connectable):
         """Construct a new Connection.
 
         Connection objects are typically constructed by an
-        [sqlalchemy.engine#Engine], see the ``connect()`` and
+        :class:`~sqlalchemy.engine.Engine`, see the ``connect()`` and
         ``contextual_connect()`` methods of Engine.
         
         """
@@ -630,7 +630,7 @@ class Connection(Connectable):
         This method can be used to insulate the rest of an application
         from a modified state on a connection (such as a transaction
         isolation level or similar).  Also see
-        [sqlalchemy.interfaces#PoolListener] for a mechanism to modify
+        :class:`~sqlalchemy.interfaces.PoolListener` for a mechanism to modify
         connection state when connections leave and return to their
         connection pool.
 
@@ -1064,8 +1064,9 @@ class TwoPhaseTransaction(Transaction):
 
 class Engine(Connectable):
     """
-    Connects a Pool, a Dialect and a CompilerFactory together to
-    provide a default implementation of SchemaEngine.
+    Connects a :class:`~sqlalchemy.pool.Pool` and :class:`~sqlalchemy.engine.base.Dialect` 
+    together to provide a source of database connectivity and behavior.
+
     """
 
     def __init__(self, pool, dialect, url, echo=None, proxy=None):
@@ -1082,7 +1083,7 @@ class Engine(Connectable):
 
     @property
     def name(self):
-        "String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``."
+        "String name of the :class:`~sqlalchemy.engine.Dialect` in use by this ``Engine``."
         
         return self.dialect.name
 

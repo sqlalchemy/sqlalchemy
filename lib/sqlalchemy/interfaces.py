@@ -12,6 +12,11 @@ class PoolListener(object):
 
     Usage::
     
+        class MyListener(PoolListener):
+            def connect(self, dbapi_con, con_record):
+                '''perform connect operations'''
+            # etc. 
+            
         # create a new pool with a listener
         p = QueuePool(..., listeners=[MyListener()])
         
@@ -19,10 +24,9 @@ class PoolListener(object):
         p.add_listener(MyListener())
         
         # usage with create_engine()
-        e = create_engine("url://", ...)
-        e.pool.add_listener(MyListener())
+        e = create_engine("url://", listeners=[MyListener()])
         
-    All of the standard connection [sqlalchemy.pool#Pool] types can
+    All of the standard connection :class:`~sqlalchemy.pool.Pool` types can
     accept event listeners for key connection lifecycle events:
     creation, pool check-out and check-in.  There are no events fired
     when a connection closes.

@@ -32,16 +32,13 @@ def manage(module, **params):
     creating new connection pools for each distinct set of connection
     arguments sent to the decorated module's connect() function.
 
-    Arguments:
+    :param module: a DB-API 2.0 database module
 
-    module
-      A DB-API 2.0 database module.
+    :param poolclass: the class used by the pool module to provide
+      pooling.  Defaults to :class:`QueuePool`.
 
-    poolclass
-      The class used by the pool module to provide pooling.  Defaults
-      to ``QueuePool``.
+    :param \*\*params: will be passed through to *poolclass*
 
-    See the ``Pool`` class for options.
     """
     try:
         return proxies[module]
@@ -59,65 +56,48 @@ def clear_managers():
     proxies.clear()
 
 class Pool(object):
-    """Base class for connection pools.
+    """Abstract base class for connection pools."""
 
-    This is an abstract class, implemented by various subclasses
-    including:
-
-    QueuePool
-      Pools multiple connections using ``Queue.Queue``.
-
-    SingletonThreadPool
-      Stores a single connection per execution thread.
-
-    NullPool
-      Doesn't do any pooling; opens and closes connections.
-
-    AssertionPool
-      Stores only one connection, and asserts that only one connection
-      is checked out at a time.
-
-    The main argument, `creator`, is a callable function that returns
-    a newly connected DB-API connection object.
-
-    Options that are understood by Pool are:
-
-    echo
-      If set to True, connections being pulled and retrieved from/to
-      the pool will be logged to the standard output, as well as pool
-      sizing information.  Echoing can also be achieved by enabling
-      logging for the "sqlalchemy.pool" namespace. Defaults to False.
-
-    use_threadlocal
-      If set to True, repeated calls to ``connect()`` within the same
-      application thread will be guaranteed to return the same
-      connection object, if one has already been retrieved from the
-      pool and has not been returned yet. This allows code to retrieve
-      a connection from the pool, and then while still holding on to
-      that connection, to call other functions which also ask the pool
-      for a connection of the same arguments; those functions will act
-      upon the same connection that the calling method is using.
-      Defaults to False.
-
-    recycle
-      If set to non -1, a number of seconds between connection
-      recycling, which means upon checkout, if this timeout is
-      surpassed the connection will be closed and replaced with a
-      newly opened connection. Defaults to -1.
-
-    listeners
-      A list of ``PoolListener``-like objects or dictionaries of callables
-      that receive events when DB-API connections are created, checked out and
-      checked in to the pool.
-
-    reset_on_return
-      Defaults to True.  Reset the database state of connections returned to
-      the pool.  This is typically a ROLLBACK to release locks and transaction
-      resources.  Disable at your own peril.
-
-    """
     def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False,
                  reset_on_return=True, listeners=None):
+        """Construct a Pool.
+
+        :param creator: a callable function that returns a DB-API
+          connection object.  The function will be called with
+          parameters.
+
+        :param recycle: If set to non -1, number of seconds between
+          connection recycling, which means upon checkout, if this
+          timeout is surpassed the connection will be closed and
+          replaced with a newly opened connection. Defaults to -1.
+
+        :param echo: If True, connections being pulled and retrieved
+          from the pool will be logged to the standard output, as well
+          as pool sizing information.  Echoing can also be achieved by
+          enabling logging for the "sqlalchemy.pool"
+          namespace. Defaults to False.
+
+        :param use_threadlocal: If set to True, repeated calls to
+          :meth:`connect` within the same application thread will be
+          guaranteed to return the same connection object, if one has
+          already been retrieved from the pool and has not been
+          returned yet.  Offers a slight performance advantage at the
+          cost of individual transactions by default.  The
+          :meth:`unique_connection` method is provided to bypass the
+          threadlocal behavior installed into :meth:`connect`.
+
+        :param reset_on_return: If true, reset the database state of
+          connections returned to the pool.  This is typically a
+          ROLLBACK to release locks and transaction resources.
+          Disable at your own peril.  Defaults to True.
+
+        :param listeners: A list of
+          :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
+          dictionaries of callables that receive events when DB-API
+          connections are created, checked out and checked in to the
+          pool.
+
+        """
         self.logger = log.instance_logger(self, echoflag=echo)
         self._threadconns = threading.local()
         self._creator = creator
@@ -545,37 +525,70 @@ class SingletonThreadPool(Pool):
         return c
 
 class QueuePool(Pool):
-    """A Pool that imposes a limit on the number of open connections.
+    """A Pool that imposes a limit on the number of open connections."""
 
-    Arguments include all those used by the base Pool class, as well
-    as:
+    def __init__(self, creator, pool_size=5, max_overflow=10, timeout=30,
+                 **params):
+        """Construct a QueuePool.
 
-    pool_size
-      The size of the pool to be maintained. This is the largest
-      number of connections that will be kept persistently in the
-      pool. Note that the pool begins with no connections; once this
-      number of connections is requested, that number of connections
-      will remain. Defaults to 5.
+        :param creator: a callable function that returns a DB-API
+          connection object.  The function will be called with
+          parameters.
 
-    max_overflow
-      The maximum overflow size of the pool. When the number of
-      checked-out connections reaches the size set in pool_size,
-      additional connections will be returned up to this limit. When
-      those additional connections are returned to the pool, they are
-      disconnected and discarded. It follows then that the total
-      number of simultaneous connections the pool will allow is
-      pool_size + `max_overflow`, and the total number of "sleeping"
-      connections the pool will allow is pool_size. `max_overflow` can
-      be set to -1 to indicate no overflow limit; no limit will be
-      placed on the total number of concurrent connections. Defaults
-      to 10.
+        :param pool_size: The size of the pool to be maintained. This
+          is the largest number of connections that will be kept
+          persistently in the pool. Note that the pool begins with no
+          connections; once this number of connections is requested,
+          that number of connections will remain. Defaults to 5.
 
-    timeout
-      The number of seconds to wait before giving up on returning a
-      connection. Defaults to 30.
-    """
+        :param max_overflow: The maximum overflow size of the
+          pool. When the number of checked-out connections reaches the
+          size set in pool_size, additional connections will be
+          returned up to this limit. When those additional connections
+          are returned to the pool, they are disconnected and
+          discarded. It follows then that the total number of
+          simultaneous connections the pool will allow is pool_size +
+          `max_overflow`, and the total number of "sleeping"
+          connections the pool will allow is pool_size. `max_overflow`
+          can be set to -1 to indicate no overflow limit; no limit
+          will be placed on the total number of concurrent
+          connections. Defaults to 10.
 
-    def __init__(self, creator, pool_size = 5, max_overflow = 10, timeout=30, **params):
+        :param timeout: The number of seconds to wait before giving up
+          on returning a connection. Defaults to 30.
+
+        :param recycle: If set to non -1, number of seconds between
+          connection recycling, which means upon checkout, if this
+          timeout is surpassed the connection will be closed and
+          replaced with a newly opened connection. Defaults to -1.
+
+        :param echo: If True, connections being pulled and retrieved
+          from the pool will be logged to the standard output, as well
+          as pool sizing information.  Echoing can also be achieved by
+          enabling logging for the "sqlalchemy.pool"
+          namespace. Defaults to False.
+
+        :param use_threadlocal: If set to True, repeated calls to
+          :meth:`connect` within the same application thread will be
+          guaranteed to return the same connection object, if one has
+          already been retrieved from the pool and has not been
+          returned yet.  Offers a slight performance advantage at the
+          cost of individual transactions by default.  The
+          :meth:`unique_connection` method is provided to bypass the
+          threadlocal behavior installed into :meth:`connect`.
+
+        :param reset_on_return: If true, reset the database state of
+          connections returned to the pool.  This is typically a
+          ROLLBACK to release locks and transaction resources.
+          Disable at your own peril.  Defaults to True.
+
+        :param listeners: A list of
+          :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
+          dictionaries of callables that receive events when DB-API
+          connections are created, checked out and checked in to the
+          pool.
+
+        """
         Pool.__init__(self, creator, **params)
         self._pool = Queue.Queue(pool_size)
         self._overflow = 0 - pool_size
@@ -660,6 +673,7 @@ class NullPool(Pool):
 
     Instead it literally opens and closes the underlying DB-API connection
     per each connection open/close.
+
     """
 
     def status(self):
@@ -678,6 +692,44 @@ class StaticPool(Pool):
     """A Pool of exactly one connection, used for all requests."""
 
     def __init__(self, creator, **params):
+        """Construct a StaticPool.
+
+        :param creator: a callable function that returns a DB-API
+          connection object.  The function will be called with
+          parameters.
+
+        :param recycle: If set to non -1, number of seconds between
+          connection recycling, which means upon checkout, if this
+          timeout is surpassed the connection will be closed and
+          replaced with a newly opened connection. Defaults to -1.
+
+        :param echo: If True, connections being pulled and retrieved
+          from the pool will be logged to the standard output, as well
+          as pool sizing information.  Echoing can also be achieved by
+          enabling logging for the "sqlalchemy.pool"
+          namespace. Defaults to False.
+
+        :param use_threadlocal: If set to True, repeated calls to
+          :meth:`connect` within the same application thread will be
+          guaranteed to return the same connection object, if one has
+          already been retrieved from the pool and has not been
+          returned yet.  Offers a slight performance advantage at the
+          cost of individual transactions by default.  The
+          :meth:`unique_connection` method is provided to bypass the
+          threadlocal behavior installed into :meth:`connect`.
+
+        :param reset_on_return: If true, reset the database state of
+          connections returned to the pool.  This is typically a
+          ROLLBACK to release locks and transaction resources.
+          Disable at your own peril.  Defaults to True.
+
+        :param listeners: A list of
+          :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
+          dictionaries of callables that receive events when DB-API
+          connections are created, checked out and checked in to the
+          pool.
+
+        """
         Pool.__init__(self, creator, **params)
         self._conn = creator()
         self.connection = _ConnectionRecord(self)
@@ -688,7 +740,7 @@ class StaticPool(Pool):
     def dispose(self):
         self._conn.close()
         self._conn = None
-        
+
     def create_connection(self):
         return self._conn
 
@@ -708,11 +760,50 @@ class AssertionPool(Pool):
     This will raise an exception if more than one connection is checked out
     at a time.  Useful for debugging code that is using more connections
     than desired.
+
     """
 
     ## TODO: modify this to handle an arbitrary connection count.
 
     def __init__(self, creator, **params):
+        """Construct an AssertionPool.
+
+        :param creator: a callable function that returns a DB-API
+          connection object.  The function will be called with
+          parameters.
+
+        :param recycle: If set to non -1, number of seconds between
+          connection recycling, which means upon checkout, if this
+          timeout is surpassed the connection will be closed and
+          replaced with a newly opened connection. Defaults to -1.
+
+        :param echo: If True, connections being pulled and retrieved
+          from the pool will be logged to the standard output, as well
+          as pool sizing information.  Echoing can also be achieved by
+          enabling logging for the "sqlalchemy.pool"
+          namespace. Defaults to False.
+
+        :param use_threadlocal: If set to True, repeated calls to
+          :meth:`connect` within the same application thread will be
+          guaranteed to return the same connection object, if one has
+          already been retrieved from the pool and has not been
+          returned yet.  Offers a slight performance advantage at the
+          cost of individual transactions by default.  The
+          :meth:`unique_connection` method is provided to bypass the
+          threadlocal behavior installed into :meth:`connect`.
+
+        :param reset_on_return: If true, reset the database state of
+          connections returned to the pool.  This is typically a
+          ROLLBACK to release locks and transaction resources.
+          Disable at your own peril.  Defaults to True.
+
+        :param listeners: A list of
+          :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
+          dictionaries of callables that receive events when DB-API
+          connections are created, checked out and checked in to the
+          pool.
+
+        """
         Pool.__init__(self, creator, **params)
         self.connection = _ConnectionRecord(self)
         self._conn = self.connection

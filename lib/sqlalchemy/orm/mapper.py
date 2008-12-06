@@ -6,11 +6,11 @@
 
 """Logic to map Python classes to and from selectables.
 
-Defines the [sqlalchemy.orm.mapper#Mapper] class, the central configurational
+Defines the :class:`~sqlalchemy.orm.mapper.Mapper` class, the central configurational
 unit which associates a class with a database table.
 
 This is a semi-private module; the main configurational API of the ORM is
-available in [sqlalchemy.orm#].
+available in :class:`~sqlalchemy.orm.`.
 
 """
 
@@ -66,7 +66,7 @@ class Mapper(object):
     columns.
 
     Instances of this class should be constructed via the
-    [sqlalchemy.orm#mapper()] function.
+    :func:`~sqlalchemy.orm.mapper` function.
 
     """
     def __init__(self,
@@ -97,7 +97,7 @@ class Mapper(object):
                  eager_defaults=False):
         """Construct a new mapper.
 
-        Mappers are normally constructed via the [sqlalchemy.orm#mapper()]
+        Mappers are normally constructed via the :func:`~sqlalchemy.orm.mapper`
         function.  See for details.
 
         """
@@ -1141,11 +1141,11 @@ class Mapper(object):
         """Iterate each element and its mapper in an object graph,
         for all relations that meet the given cascade rule.
 
-        type\_
+        ``type\_``:
           The name of the cascade rule (i.e. save-update, delete,
           etc.)
 
-        state
+        ``state``:
           The lead InstanceState.  child items will be processed per
           the relations defined for this object's mapper.
 

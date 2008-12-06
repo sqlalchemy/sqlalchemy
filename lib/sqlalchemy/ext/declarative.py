@@ -408,7 +408,7 @@ def _deferred_relation(cls, prop):
 def synonym_for(name, map_column=False):
     """Decorator, make a Python @property a query synonym for a column.
 
-    A decorator version of [sqlalchemy.orm#synonym()].  The function being
+    A decorator version of :func:`~sqlalchemy.orm.synonym`.  The function being
     decorated is the 'descriptor', otherwise passes its arguments through
     to synonym()::
 
@@ -430,7 +430,7 @@ def synonym_for(name, map_column=False):
 def comparable_using(comparator_factory):
     """Decorator, allow a Python @property to be used in query criteria.
 
-    A decorator front end to [sqlalchemy.orm#comparable_property()], passes
+    A decorator front end to :func:`~sqlalchemy.orm.comparable_property`, passes
     through the comparator_factory and the function being decorated::
 
       @comparable_using(MyComparatorType)

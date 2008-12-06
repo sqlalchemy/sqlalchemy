@@ -7,7 +7,7 @@
 
 The base exception class is SQLAlchemyError.  Exceptions which are raised as a
 result of DBAPI exceptions are all subclasses of
-[sqlalchemy.exc#DBAPIError].
+:class:`~sqlalchemy.exc.DBAPIError`.
 
 """
 

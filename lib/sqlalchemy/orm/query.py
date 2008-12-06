@@ -6,11 +6,11 @@
 
 """The Query class and support.
 
-Defines the [sqlalchemy.orm.query#Query] class, the central construct used by
+Defines the :class:`~sqlalchemy.orm.query.Query` class, the central construct used by
 the ORM to construct database queries.
 
 The ``Query`` class should not be confused with the
-[sqlalchemy.sql.expression#Select] class, which defines database SELECT
+:class:`~sqlalchemy.sql.expression.Select` class, which defines database SELECT
 operations at the SQL (non-ORM) level.  ``Query`` differs from ``Select`` in
 that it returns ORM-mapped objects and interacts with an ORM session, whereas
 the ``Select`` construct interacts directly with the database to return
@@ -367,26 +367,26 @@ class Query(object):
         instances will also have those columns already loaded so that
         no "post fetch" of those columns will be required.
 
-        :param cls_or_mappers: - a single class or mapper, or list of class/mappers,
-        which inherit from this Query's mapper.  Alternatively, it
-        may also be the string ``'*'``, in which case all descending
-        mappers will be added to the FROM clause.
+        :param cls_or_mappers: a single class or mapper, or list of class/mappers,
+            which inherit from this Query's mapper.  Alternatively, it
+            may also be the string ``'*'``, in which case all descending
+            mappers will be added to the FROM clause.
 
-        :param selectable: - a table or select() statement that will
-        be used in place of the generated FROM clause.  This argument
-        is required if any of the desired mappers use concrete table
-        inheritance, since SQLAlchemy currently cannot generate UNIONs
-        among tables automatically.  If used, the ``selectable``
-        argument must represent the full set of tables and columns mapped
-        by every desired mapper.  Otherwise, the unaccounted mapped columns
-        will result in their table being appended directly to the FROM
-        clause which will usually lead to incorrect results.
+        :param selectable: a table or select() statement that will
+            be used in place of the generated FROM clause.  This argument
+            is required if any of the desired mappers use concrete table
+            inheritance, since SQLAlchemy currently cannot generate UNIONs
+            among tables automatically.  If used, the ``selectable``
+            argument must represent the full set of tables and columns mapped
+            by every desired mapper.  Otherwise, the unaccounted mapped columns
+            will result in their table being appended directly to the FROM
+            clause which will usually lead to incorrect results.
 
-        :param discriminator: - a column to be used as the "discriminator"
-        column for the given selectable.  If not given, the polymorphic_on
-        attribute of the mapper will be used, if any.   This is useful
-        for mappers that don't have polymorphic loading behavior by default,
-        such as concrete table mappers.
+        :param discriminator: a column to be used as the "discriminator"
+            column for the given selectable.  If not given, the polymorphic_on
+            attribute of the mapper will be used, if any.   This is useful
+            for mappers that don't have polymorphic loading behavior by default,
+            such as concrete table mappers.
         
         """
         entity = self._generate_mapper_zero()

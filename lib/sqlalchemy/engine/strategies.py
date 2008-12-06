@@ -2,7 +2,7 @@
 
 These are semi-private implementation classes which provide the
 underlying behavior for the "strategy" keyword argument available on
-[sqlalchemy.engine#create_engine()].  Current available options are
+:func:`~sqlalchemy.engine.create_engine`.  Current available options are
 ``plain``, ``threadlocal``, and ``mock``.
 
 New strategies can be added via new ``EngineStrategy`` classes.

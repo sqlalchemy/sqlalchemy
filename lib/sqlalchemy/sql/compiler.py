@@ -6,13 +6,13 @@
 
 """Base SQL and DDL compiler implementations.
 
-Provides the [sqlalchemy.sql.compiler#DefaultCompiler] class, which is
+Provides the :class:`~sqlalchemy.sql.compiler.DefaultCompiler` class, which is
 responsible for generating all SQL query strings, as well as
-[sqlalchemy.sql.compiler#SchemaGenerator] and [sqlalchemy.sql.compiler#SchemaDropper]
+:class:`~sqlalchemy.sql.compiler.SchemaGenerator` and :class:`~sqlalchemy.sql.compiler.SchemaDropper`
 which issue CREATE and DROP DDL for tables, sequences, and indexes.
 
 The elements in this module are used by public-facing constructs like
-[sqlalchemy.sql.expression#ClauseElement] and [sqlalchemy.engine#Engine].
+:class:`~sqlalchemy.sql.expression.ClauseElement` and :class:`~sqlalchemy.engine.Engine`.
 While dialect authors will want to be familiar with this module for the purpose of
 creating database-specific compilers and schema generators, the module
 is otherwise internal to SQLAlchemy.
@@ -455,7 +455,7 @@ class DefaultCompiler(engine.Compiled):
 
         if \
             asfrom and \
-            isinstance(column, sql._ColumnClause) and \
+            isinstance(column, sql.ColumnClause) and \
             not column.is_literal and \
             column.table is not None and \
             not isinstance(column.table, sql.Select):

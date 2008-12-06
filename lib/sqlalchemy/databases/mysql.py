@@ -1,3 +1,4 @@
+# -*- fill-column: 78 -*-
 # mysql.py
 # Copyright (C) 2005, 2006, 2007, 2008 Michael Bayer mike_mp@zzzcomputing.com
 #
@@ -6,13 +7,41 @@
 
 """Support for the MySQL database.
 
+Overview
+--------
+
+For normal SQLAlchemy usage, importing this module is unnecessary.  It will be
+loaded on-demand when a MySQL connection is needed.  The generic column types
+like :class:`~sqlalchemy.String` and :class:`~sqlalchemy.Integer` will
+automatically be adapted to the optimal matching MySQL column type.
+
+But if you would like to use one of the MySQL-specific or enhanced column
+types when creating tables with your :class:`~sqlalchemy.Table` definitions,
+then you will need to import them from this module::
+
+  from sqlalchemy.databases import mysql
+
+  Table('mytable', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('ittybittyblob', mysql.MSTinyBlob),
+        Column('biggy', mysql.MSBigInteger(unsigned=True)))
+
+All standard MySQL column types are supported.  The OpenGIS types are
+available for use via table reflection but have no special support or mapping
+to Python classes.  If you're using these types and have opinions about how
+OpenGIS can be smartly integrated into SQLAlchemy please join the mailing
+list!
+
+Supported Versions and Features
+-------------------------------
+
 SQLAlchemy supports 6 major MySQL versions: 3.23, 4.0, 4.1, 5.0, 5.1 and 6.0,
-with capablities increasing with more modern servers.
+with capabilities increasing with more modern servers.
 
 Versions 4.1 and higher support the basic SQL functionality that SQLAlchemy
-uses in the ORM and SQL expressions.  These versions pass the applicable
-tests in the suite 100%.  No heroic measures are taken to work around major
-missing SQL features- if your server version does not support sub-selects, for
+uses in the ORM and SQL expressions.  These versions pass the applicable tests
+in the suite 100%.  No heroic measures are taken to work around major missing
+SQL features- if your server version does not support sub-selects, for
 example, they won't work in SQLAlchemy either.
 
 Currently, the only DB-API driver supported is `MySQL-Python` (also referred to
@@ -35,51 +64,81 @@ Nested Transactions                    5.0.3
 See the official MySQL documentation for detailed information about features
 supported in any given server release.
 
+Character Sets
+--------------
+
 Many MySQL server installations default to a ``latin1`` encoding for client
-connections.  All data sent through the connection will be converted
-into ``latin1``, even if you have ``utf8`` or another character set on your
-tables and columns.  With versions 4.1 and higher, you can change the
-connection character set either through server configuration or by passing
-the  ``charset`` parameter to  ``create_engine``.  The ``charset`` option is
-passed through to MySQL-Python and has the side-effect of also enabling
-``use_unicode`` in the driver by default.  For regular encoded strings, also
-pass ``use_unicode=0`` in the connection arguments.
+connections.  All data sent through the connection will be converted into
+``latin1``, even if you have ``utf8`` or another character set on your tables
+and columns.  With versions 4.1 and higher, you can change the connection
+character set either through server configuration or by including the
+``charset`` parameter in the URL used for ``create_engine``.  The ``charset``
+option is passed through to MySQL-Python and has the side-effect of also
+enabling ``use_unicode`` in the driver by default.  For regular encoded
+strings, also pass ``use_unicode=0`` in the connection arguments::
 
-Most MySQL server installations have a default table type of `MyISAM`, a
-non-transactional table type.  During a transaction, non-transactional
-storage engines do not participate and continue to store table changes in
-autocommit mode.  For fully atomic transactions, all participating tables
-must use a transactional engine such as `InnoDB`, `Falcon`, `SolidDB`,
-`PBXT`, etc.  Storage engines can be elected when creating tables in
-SQLAlchemy by supplying a ``mysql_engine='whatever'`` to the ``Table``
-constructor.  Any MySQL table creation option can be specified in this syntax.
+  # set client encoding to utf8; all strings come back as unicode
+  create_engine('mysql:///mydb?charset=utf8')
 
-Not all MySQL storage engines support foreign keys.  For `MyISAM` and similar
-engines, the information loaded by table reflection will not include foreign
-keys.  For these tables, you may supply ``ForeignKeyConstraints`` at reflection
-time::
+  # set client encoding to utf8; all strings come back as utf8 str
+  create_engine('mysql:///mydb?charset=utf8&use_unicode=0')
 
-  Table('mytable', metadata, autoload=True,
-        ForeignKeyConstraint(['other_id'], ['othertable.other_id']))
+Storage Engines
+---------------
 
-When creating tables, SQLAlchemy will automatically set AUTO_INCREMENT on an
-integer primary key column::
+Most MySQL server installations have a default table type of ``MyISAM``, a
+non-transactional table type.  During a transaction, non-transactional storage
+engines do not participate and continue to store table changes in autocommit
+mode.  For fully atomic transactions, all participating tables must use a
+transactional engine such as ``InnoDB``, ``Falcon``, ``SolidDB``, `PBXT`, etc.
+
+Storage engines can be elected when creating tables in SQLAlchemy by supplying
+a ``mysql_engine='whatever'`` to the ``Table`` constructor.  Any MySQL table
+creation option can be specified in this syntax::
+
+  Table('mytable', metadata,
+        Column('data', String(32)),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
+       )
+
+Keys
+----
+
+Not all MySQL storage engines support foreign keys.  For ``MyISAM`` and
+similar engines, the information loaded by table reflection will not include
+foreign keys.  For these tables, you may supply a
+:class:`~sqlalchemy.ForeignKeyConstraint` at reflection time::
+
+  Table('mytable', metadata,
+        ForeignKeyConstraint(['other_id'], ['othertable.other_id']),
+        autoload=True
+       )
+
+When creating tables, SQLAlchemy will automatically set ``AUTO_INCREMENT``` on
+an integer primary key column::
 
   >>> t = Table('mytable', metadata,
-  ...   Column('mytable_id', Integer, primary_key=True))
+  ...   Column('mytable_id', Integer, primary_key=True)
+  ... )
   >>> t.create()
   CREATE TABLE mytable (
           id INTEGER NOT NULL AUTO_INCREMENT,
           PRIMARY KEY (id)
   )
 
-You can disable this behavior by supplying ``autoincrement=False`` in addition.
-This can also be used to enable auto-increment on a secondary column in a
-multi-column key for some storage engines::
+You can disable this behavior by supplying ``autoincrement=False`` to the
+:class:`~sqlalchemy.Column`.  This flag can also be used to enable
+auto-increment on a secondary column in a multi-column key for some storage
+engines::
 
   Table('mytable', metadata,
         Column('gid', Integer, primary_key=True, autoincrement=False),
-        Column('id', Integer, primary_key=True))
+        Column('id', Integer, primary_key=True)
+       )
+
+SQL Mode
+--------
 
 MySQL SQL modes are supported.  Modes that enable ``ANSI_QUOTES`` (such as
 ``ANSI``) require an engine option to modify SQLAlchemy's quoting style.
@@ -89,43 +148,24 @@ creating your ``Engine``::
   create_engine('mysql://localhost/test', use_ansiquotes=True)
 
 This is an engine-wide option and is not toggleable on a per-connection basis.
-SQLAlchemy does not presume to ``SET sql_mode`` for you with this option.
-For the best performance, set the quoting style server-wide in ``my.cnf`` or
-by supplying ``--sql-mode`` to ``mysqld``.  You can also use a ``Pool`` hook
-to issue a ``SET SESSION sql_mode='...'`` on connect to configure each
-connection.
+SQLAlchemy does not presume to ``SET sql_mode`` for you with this option.  For
+the best performance, set the quoting style server-wide in ``my.cnf`` or by
+supplying ``--sql-mode`` to ``mysqld``.  You can also use a
+:class:`sqlalchemy.pool.Pool` listener hook to issue a ``SET SESSION
+sql_mode='...'`` on connect to configure each connection.
 
-If you do not specify 'use_ansiquotes', the regular MySQL quoting style is
-used by default.  Table reflection operations will query the server 
+If you do not specify ``use_ansiquotes``, the regular MySQL quoting style is
+used by default.
 
-If you do issue a 'SET sql_mode' through SQLAlchemy, the dialect must be
+If you do issue a ``SET sql_mode`` through SQLAlchemy, the dialect must be
 updated if the quoting style is changed.  Again, this change will affect all
 connections::
 
   connection.execute('SET sql_mode="ansi"')
   connection.dialect.use_ansiquotes = True
 
-For normal SQLAlchemy usage, loading this module is unnescesary.  It will be
-loaded on-demand when a MySQL connection is needed.  The generic column types
-like ``String`` and ``Integer`` will automatically be adapted to the optimal
-matching MySQL column type.
-
-But if you would like to use one of the MySQL-specific or enhanced column
-types when creating tables with your ``Table`` definitions, then you will
-need to import them from this module::
-
-  from sqlalchemy.databases import mysql
-
-  Table('mytable', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('ittybittyblob', mysql.MSTinyBlob),
-        Column('biggy', mysql.MSBigInteger(unsigned=True)))
-
-All standard MySQL column types are supported.  The OpenGIS types are
-available for use via table reflection but have no special support or
-mapping to Python classes.  If you're using these types and have opinions
-about how OpenGIS can be smartly integrated into SQLAlchemy please join
-the mailing list!
+MySQL SQL Extensions
+--------------------
 
 Many of the MySQL SQL extensions are handled through SQLAlchemy's generic
 function and operator support::
@@ -133,10 +173,9 @@ function and operator support::
   table.select(table.c.password==func.md5('plaintext'))
   table.select(table.c.username.op('regexp')('^[a-d]'))
 
-And of course any valid statement can be executed as a string rather than
-through the SQL expression language.
+And of course any valid MySQL statement can be executed as a string as well.
 
-Some limited support for MySQL extensions to SQL expressions is currently
+Some limited direct support for MySQL extensions to SQL is currently
 available.
 
   * SELECT pragma::
@@ -147,10 +186,14 @@ available.
 
       update(..., mysql_limit=10)
 
+Troubleshooting
+---------------
+
 If you have problems that seem server related, first check that you are
 using the most recent stable MySQL-Python package available.  The Database
 Notes page on the wiki at http://www.sqlalchemy.org is a good resource for
 timely information affecting MySQL in SQLAlchemy.
+
 """
 
 import datetime, decimal, inspect, re, sys
@@ -304,22 +347,19 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
     def __init__(self, precision=10, scale=2, asdecimal=True, **kw):
         """Construct a NUMERIC.
 
-        precision
-          Total digits in this number.  If scale and precision are both
-          None, values are stored to limits allowed by the server.
+        :param precision: Total digits in this number.  If scale and precision
+          are both None, values are stored to limits allowed by the server.
 
-        scale
-          The number of digits after the decimal point.
+        :param scale: The number of digits after the decimal point.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         _NumericType.__init__(self, kw)
         sqltypes.Numeric.__init__(self, precision, scale, asdecimal=asdecimal, **kw)
 
@@ -350,22 +390,19 @@ class MSDecimal(MSNumeric):
     def __init__(self, precision=10, scale=2, asdecimal=True, **kw):
         """Construct a DECIMAL.
 
-        precision
-          Total digits in this number.  If scale and precision are both None,
-          values are stored to limits allowed by the server.
+        :param precision: Total digits in this number.  If scale and precision
+          are both None, values are stored to limits allowed by the server.
 
-        scale
-          The number of digits after the decimal point.
+        :param scale: The number of digits after the decimal point.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         super(MSDecimal, self).__init__(precision, scale, asdecimal=asdecimal, **kw)
 
     def get_col_spec(self):
@@ -383,22 +420,19 @@ class MSDouble(sqltypes.Float, _NumericType):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a DOUBLE.
 
-        precision
-          Total digits in this number.  If scale and precision are both None,
-          values are stored to limits allowed by the server.
+        :param precision: Total digits in this number.  If scale and precision
+          are both None, values are stored to limits allowed by the server.
 
-        scale
-          The number of digits after the decimal point.
+        :param scale: The number of digits after the decimal point.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         if ((precision is None and scale is not None) or
             (precision is not None and scale is None)):
             raise exc.ArgumentError(
@@ -425,20 +459,18 @@ class MSReal(MSDouble):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a REAL.
 
-        precision
-          Total digits in this number.  If scale and precision are both None,
-          values are stored to limits allowed by the server.
+        :param precision: Total digits in this number.  If scale and precision
+          are both None, values are stored to limits allowed by the server.
 
-        scale
-          The number of digits after the decimal point.
+        :param scale: The number of digits after the decimal point.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
         MSDouble.__init__(self, precision, scale, asdecimal, **kw)
 
@@ -457,22 +489,19 @@ class MSFloat(sqltypes.Float, _NumericType):
     def __init__(self, precision=None, scale=None, asdecimal=False, **kw):
         """Construct a FLOAT.
 
-        precision
-          Total digits in this number.  If scale and precision are both None,
-          values are stored to limits allowed by the server.
+        :param precision: Total digits in this number.  If scale and precision
+          are both None, values are stored to limits allowed by the server.
 
-        scale
-          The number of digits after the decimal point.
+        :param scale: The number of digits after the decimal point.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         _NumericType.__init__(self, kw)
         sqltypes.Float.__init__(self, asdecimal=asdecimal, **kw)
         self.scale = scale
@@ -496,18 +525,16 @@ class MSInteger(sqltypes.Integer, _NumericType):
     def __init__(self, display_width=None, **kw):
         """Construct an INTEGER.
 
-        display_width
-          Optional, maximum display width for this number.
+        :param display_width: Optional, maximum display width for this number.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         if 'length' in kw:
             util.warn_deprecated("'length' is deprecated for MSInteger and subclasses.  Use 'display_width'.")
             self.display_width = kw.pop('length')
@@ -529,18 +556,16 @@ class MSBigInteger(MSInteger):
     def __init__(self, display_width=None, **kw):
         """Construct a BIGINTEGER.
 
-        display_width
-          Optional, maximum display width for this number.
+        :param display_width: Optional, maximum display width for this number.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         super(MSBigInteger, self).__init__(display_width, **kw)
 
     def get_col_spec(self):
@@ -549,24 +574,23 @@ class MSBigInteger(MSInteger):
         else:
             return self._extend("BIGINT")
 
+
 class MSMediumInteger(MSInteger):
     """MySQL MEDIUMINTEGER type."""
 
     def __init__(self, display_width=None, **kw):
         """Construct a MEDIUMINTEGER
 
-        display_width
-          Optional, maximum display width for this number.
+        :param display_width: Optional, maximum display width for this number.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         super(MSMediumInteger, self).__init__(display_width, **kw)
 
     def get_col_spec(self):
@@ -587,18 +611,16 @@ class MSTinyInteger(MSInteger):
         reflected during Table(..., autoload=True) are treated as
         Boolean columns.
 
-        display_width
-          Optional, maximum display width for this number.
+        :param display_width: Optional, maximum display width for this number.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         super(MSTinyInteger, self).__init__(display_width, **kw)
 
     def get_col_spec(self):
@@ -614,18 +636,16 @@ class MSSmallInteger(sqltypes.Smallinteger, MSInteger):
     def __init__(self, display_width=None, **kw):
         """Construct a SMALLINTEGER.
 
-        display_width
-          Optional, maximum display width for this number.
+        :param display_width: Optional, maximum display width for this number.
 
-        unsigned
-          Optional.
+        :param unsigned: a boolean, optional.
 
-        zerofill
-          Optional. If true, values will be stored as strings left-padded with
-          zeros. Note that this does not effect the values returned by the
-          underlying database API, which continue to be numeric.
+        :param zerofill: Optional. If true, values will be stored as strings
+          left-padded with zeros. Note that this does not effect the values
+          returned by the underlying database API, which continue to be
+          numeric.
+
         """
-
         self.display_width = display_width
         _NumericType.__init__(self, kw)
         sqltypes.SmallInteger.__init__(self, **kw)
@@ -641,11 +661,17 @@ class MSBit(sqltypes.TypeEngine):
     """MySQL BIT type.
 
     This type is for MySQL 5.0.3 or greater for MyISAM, and 5.0.5 or greater for
-    MyISAM, MEMORY, InnoDB and BDB.  For older versions, use a MSTinyInteger(1)
+    MyISAM, MEMORY, InnoDB and BDB.  For older versions, use a MSTinyInteger()
     type.
+
     """
 
     def __init__(self, length=None):
+        """Construct a BIT.
+
+        :param length: Optional, number of bits.
+
+        """
         self.length = length
 
     def result_processor(self, dialect):
@@ -698,19 +724,22 @@ class MSTime(sqltypes.Time):
 class MSTimeStamp(sqltypes.TIMESTAMP):
     """MySQL TIMESTAMP type.
 
-    To signal the orm to automatically re-select modified rows to retrieve
-    the updated timestamp, add a DefaultClause to your column specification::
+    To signal the orm to automatically re-select modified rows to retrieve the
+    updated timestamp, add a ``server_default`` to your
+    :class:`~sqlalchemy.Column` specification::
 
         from sqlalchemy.databases import mysql
         Column('updated', mysql.MSTimeStamp,
-               server_default=sql.text('CURRENT_TIMESTAMP'))
+               server_default=sql.text('CURRENT_TIMESTAMP')
+              )
 
     The full range of MySQL 4.1+ TIMESTAMP defaults can be specified in
-    the the default:
+    the the default::
 
         server_default=sql.text('CURRENT TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
 
     """
+
     def get_col_spec(self):
         return "TIMESTAMP"
 
@@ -733,38 +762,31 @@ class MSText(_StringType, sqltypes.Text):
     def __init__(self, length=None, **kwargs):
         """Construct a TEXT.
 
-        length
-          Optional, if provided the server may optimize storage by
-          subsitituting the smallest TEXT type sufficient to store
+        :param length: Optional, if provided the server may optimize storage
+          by substituting the smallest TEXT type sufficient to store
           ``length`` characters.
 
-        charset
-          Optional, a column-level character set for this string
-          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+        :param charset: Optional, a column-level character set for this string
+          value.  Takes precedence to 'ascii' or 'unicode' short-hand.
 
-        collation
-          Optional, a column-level collation for this string value.
-          Takes precedence to 'binary' short-hand.
+        :param collation: Optional, a column-level collation for this string
+          value.  Takes precedence to 'binary' short-hand.
 
-        ascii
-          Defaults to False: short-hand for the ``latin1`` character set,
-          generates ASCII in schema.
+        :param ascii: Defaults to False: short-hand for the ``latin1``
+          character set, generates ASCII in schema.
 
-        unicode
-          Defaults to False: short-hand for the ``ucs2`` character set,
-          generates UNICODE in schema.
+        :param unicode: Defaults to False: short-hand for the ``ucs2``
+          character set, generates UNICODE in schema.
 
-        national
-          Optional. If true, use the server's configured national
-          character set.
+        :param national: Optional. If true, use the server's configured
+          national character set.
 
-        binary
-          Defaults to False: short-hand, pick the binary collation type
-          that matches the column's character set.  Generates BINARY in
-          schema.  This does not affect the type of data stored, only the
-          collation of character data.
+        :param binary: Defaults to False: short-hand, pick the binary
+          collation type that matches the column's character set.  Generates
+          BINARY in schema.  This does not affect the type of data stored,
+          only the collation of character data.
+
         """
-
         _StringType.__init__(self, **kwargs)
         sqltypes.Text.__init__(self, length,
                                kwargs.get('convert_unicode', False), kwargs.get('assert_unicode', None))
@@ -782,31 +804,26 @@ class MSTinyText(MSText):
     def __init__(self, **kwargs):
         """Construct a TINYTEXT.
 
-        charset
-          Optional, a column-level character set for this string
-          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+        :param charset: Optional, a column-level character set for this string
+          value.  Takes precedence to 'ascii' or 'unicode' short-hand.
 
-        collation
-          Optional, a column-level collation for this string value.
-          Takes precedence to 'binary' short-hand.
+        :param collation: Optional, a column-level collation for this string
+          value.  Takes precedence to 'binary' short-hand.
 
-        ascii
-          Defaults to False: short-hand for the ``latin1`` character set,
-          generates ASCII in schema.
+        :param ascii: Defaults to False: short-hand for the ``latin1``
+          character set, generates ASCII in schema.
 
-        unicode
-          Defaults to False: short-hand for the ``ucs2`` character set,
-          generates UNICODE in schema.
+        :param unicode: Defaults to False: short-hand for the ``ucs2``
+          character set, generates UNICODE in schema.
 
-        national
-          Optional. If true, use the server's configured national
-          character set.
+        :param national: Optional. If true, use the server's configured
+          national character set.
 
-        binary
-          Defaults to False: short-hand, pick the binary collation type
-          that matches the column's character set.  Generates BINARY in
-          schema.  This does not affect the type of data stored, only the
-          collation of character data.
+        :param binary: Defaults to False: short-hand, pick the binary
+          collation type that matches the column's character set.  Generates
+          BINARY in schema.  This does not affect the type of data stored,
+          only the collation of character data.
+
         """
 
         super(MSTinyText, self).__init__(**kwargs)
@@ -821,33 +838,27 @@ class MSMediumText(MSText):
     def __init__(self, **kwargs):
         """Construct a MEDIUMTEXT.
 
-        charset
-          Optional, a column-level character set for this string
-          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+        :param charset: Optional, a column-level character set for this string
+          value.  Takes precedence to 'ascii' or 'unicode' short-hand.
 
-        collation
-          Optional, a column-level collation for this string value.
-          Takes precedence to 'binary' short-hand.
+        :param collation: Optional, a column-level collation for this string
+          value.  Takes precedence to 'binary' short-hand.
 
-        ascii
-          Defaults to False: short-hand for the ``latin1`` character set,
-          generates ASCII in schema.
+        :param ascii: Defaults to False: short-hand for the ``latin1``
+          character set, generates ASCII in schema.
 
-        unicode
-          Defaults to False: short-hand for the ``ucs2`` character set,
-          generates UNICODE in schema.
+        :param unicode: Defaults to False: short-hand for the ``ucs2``
+          character set, generates UNICODE in schema.
 
-        national
-          Optional. If true, use the server's configured national
-          character set.
+        :param national: Optional. If true, use the server's configured
+          national character set.
 
-        binary
-          Defaults to False: short-hand, pick the binary collation type
-          that matches the column's character set.  Generates BINARY in
-          schema.  This does not affect the type of data stored, only the
-          collation of character data.
+        :param binary: Defaults to False: short-hand, pick the binary
+          collation type that matches the column's character set.  Generates
+          BINARY in schema.  This does not affect the type of data stored,
+          only the collation of character data.
+
         """
-
         super(MSMediumText, self).__init__(**kwargs)
 
     def get_col_spec(self):
@@ -860,33 +871,27 @@ class MSLongText(MSText):
     def __init__(self, **kwargs):
         """Construct a LONGTEXT.
 
-        charset
-          Optional, a column-level character set for this string
-          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+        :param charset: Optional, a column-level character set for this string
+          value.  Takes precedence to 'ascii' or 'unicode' short-hand.
 
-        collation
-          Optional, a column-level collation for this string value.
-          Takes precedence to 'binary' short-hand.
+        :param collation: Optional, a column-level collation for this string
+          value.  Takes precedence to 'binary' short-hand.
 
-        ascii
-          Defaults to False: short-hand for the ``latin1`` character set,
-          generates ASCII in schema.
+        :param ascii: Defaults to False: short-hand for the ``latin1``
+          character set, generates ASCII in schema.
 
-        unicode
-          Defaults to False: short-hand for the ``ucs2`` character set,
-          generates UNICODE in schema.
+        :param unicode: Defaults to False: short-hand for the ``ucs2``
+          character set, generates UNICODE in schema.
 
-        national
-          Optional. If true, use the server's configured national
-          character set.
+        :param national: Optional. If true, use the server's configured
+          national character set.
 
-        binary
-          Defaults to False: short-hand, pick the binary collation type
-          that matches the column's character set.  Generates BINARY in
-          schema.  This does not affect the type of data stored, only the
-          collation of character data.
+        :param binary: Defaults to False: short-hand, pick the binary
+          collation type that matches the column's character set.  Generates
+          BINARY in schema.  This does not affect the type of data stored,
+          only the collation of character data.
+
         """
-
         super(MSLongText, self).__init__(**kwargs)
 
     def get_col_spec(self):
@@ -899,36 +904,27 @@ class MSString(_StringType, sqltypes.String):
     def __init__(self, length=None, **kwargs):
         """Construct a VARCHAR.
 
-        length
-          Maximum data length, in characters.
+        :param charset: Optional, a column-level character set for this string
+          value.  Takes precedence to 'ascii' or 'unicode' short-hand.
 
-        charset
-          Optional, a column-level character set for this string
-          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+        :param collation: Optional, a column-level collation for this string
+          value.  Takes precedence to 'binary' short-hand.
 
-        collation
-          Optional, a column-level collation for this string value.
-          Takes precedence to 'binary' short-hand.
+        :param ascii: Defaults to False: short-hand for the ``latin1``
+          character set, generates ASCII in schema.
 
-        ascii
-          Defaults to False: short-hand for the ``latin1`` character set,
-          generates ASCII in schema.
+        :param unicode: Defaults to False: short-hand for the ``ucs2``
+          character set, generates UNICODE in schema.
 
-        unicode
-          Defaults to False: short-hand for the ``ucs2`` character set,
-          generates UNICODE in schema.
+        :param national: Optional. If true, use the server's configured
+          national character set.
 
-        national
-          Optional. If true, use the server's configured national
-          character set.
+        :param binary: Defaults to False: short-hand, pick the binary
+          collation type that matches the column's character set.  Generates
+          BINARY in schema.  This does not affect the type of data stored,
+          only the collation of character data.
 
-        binary
-          Defaults to False: short-hand, pick the binary collation type
-          that matches the column's character set.  Generates BINARY in
-          schema.  This does not affect the type of data stored, only the
-          collation of character data.
         """
-
         _StringType.__init__(self, **kwargs)
         sqltypes.String.__init__(self, length,
                                  kwargs.get('convert_unicode', False), kwargs.get('assert_unicode', None))
@@ -946,17 +942,15 @@ class MSChar(_StringType, sqltypes.CHAR):
     def __init__(self, length, **kwargs):
         """Construct an NCHAR.
 
-        length
-          Maximum data length, in characters.
+        :param length: Maximum data length, in characters.
 
-        binary
-          Optional, use the default binary collation for the national character
-          set.  This does not affect the type of data stored, use a BINARY
-          type for binary data.
+        :param binary: Optional, use the default binary collation for the
+          national character set.  This does not affect the type of data
+          stored, use a BINARY type for binary data.
 
-        collation
-          Optional, request a particular collation.  Must be compatibile
-          with the national character set.
+        :param collation: Optional, request a particular collation.  Must be
+          compatible with the national character set.
+
         """
         _StringType.__init__(self, **kwargs)
         sqltypes.CHAR.__init__(self, length,
@@ -976,19 +970,16 @@ class MSNVarChar(_StringType, sqltypes.String):
     def __init__(self, length=None, **kwargs):
         """Construct an NVARCHAR.
 
-        length
-          Maximum data length, in characters.
+        :param length: Maximum data length, in characters.
 
-        binary
-          Optional, use the default binary collation for the national character
-          set.  This does not affect the type of data stored, use a VARBINARY
-          type for binary data.
+        :param binary: Optional, use the default binary collation for the
+          national character set.  This does not affect the type of data
+          stored, use a BINARY type for binary data.
 
-        collation
-          Optional, request a particular collation.  Must be compatibile
-          with the national character set.
+        :param collation: Optional, request a particular collation.  Must be
+          compatible with the national character set.
+
         """
-
         kwargs['national'] = True
         _StringType.__init__(self, **kwargs)
         sqltypes.String.__init__(self, length,
@@ -1010,18 +1001,16 @@ class MSNChar(_StringType, sqltypes.CHAR):
     def __init__(self, length=None, **kwargs):
         """Construct an NCHAR.  Arguments are:
 
-        length
-          Maximum data length, in characters.
+        :param length: Maximum data length, in characters.
 
-        binary
-          Optional, request the default binary collation for the
-          national character set.
+        :param binary: Optional, use the default binary collation for the
+          national character set.  This does not affect the type of data
+          stored, use a BINARY type for binary data.
 
-        collation
-          Optional, request a particular collation.  Must be compatibile
-          with the national character set.
+        :param collation: Optional, request a particular collation.  Must be
+          compatible with the national character set.
+
         """
-
         kwargs['national'] = True
         _StringType.__init__(self, **kwargs)
         sqltypes.CHAR.__init__(self, length,
@@ -1054,8 +1043,8 @@ class MSVarBinary(_BinaryType):
     def __init__(self, length=None, **kw):
         """Construct a VARBINARY.  Arguments are:
 
-        length
-          Maximum data length, in bytes.
+        :param length: Maximum data length, in characters.
+
         """
         super(MSVarBinary, self).__init__(length, **kw)
 
@@ -1070,15 +1059,15 @@ class MSBinary(_BinaryType):
     """MySQL BINARY type, for fixed length binary data"""
 
     def __init__(self, length=None, **kw):
-        """Construct a BINARY.  This is a fixed length type, and short
-        values will be right-padded with a server-version-specific
-        pad value.
+        """Construct a BINARY.
 
-        length
-          Maximum data length, in bytes.  If length is not specified, this
-          will generate a BLOB.  This usage is deprecated.
+        This is a fixed length type, and short values will be right-padded
+        with a server-version-specific pad value.
+
+        :param length: Maximum data length, in bytes.  If length is not
+          specified, this will generate a BLOB.  This usage is deprecated.
+
         """
-
         super(MSBinary, self).__init__(length, **kw)
 
     def get_col_spec(self):
@@ -1101,12 +1090,11 @@ class MSBlob(_BinaryType):
     def __init__(self, length=None, **kw):
         """Construct a BLOB.  Arguments are:
 
-        length
-          Optional, if provided the server may optimize storage by
-          subsitituting the smallest TEXT type sufficient to store
+        :param length: Optional, if provided the server may optimize storage
+          by substituting the smallest TEXT type sufficient to store
           ``length`` characters.
-        """
 
+        """
         super(MSBlob, self).__init__(length, **kw)
 
     def get_col_spec(self):
@@ -1160,44 +1148,36 @@ class MSEnum(MSString):
 
         Arguments are:
 
-        enums
-          The range of valid values for this ENUM.  Values will be quoted
-          when generating the schema according to the quoting flag (see
+        :param enums: The range of valid values for this ENUM.  Values will be
+          quoted when generating the schema according to the quoting flag (see
           below).
 
-        strict
-          Defaults to False: ensure that a given value is in this ENUM's
-          range of permissible values when inserting or updating rows.
-          Note that MySQL will not raise a fatal error if you attempt to
-          store an out of range value- an alternate value will be stored
-          instead.  (See MySQL ENUM documentation.)
+        :param strict: Defaults to False: ensure that a given value is in this
+          ENUM's range of permissible values when inserting or updating rows.
+          Note that MySQL will not raise a fatal error if you attempt to store
+          an out of range value- an alternate value will be stored instead.
+          (See MySQL ENUM documentation.)
 
-        charset
-          Optional, a column-level character set for this string
-          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+        :param charset: Optional, a column-level character set for this string
+          value.  Takes precedence to 'ascii' or 'unicode' short-hand.
 
-        collation
-          Optional, a column-level collation for this string value.
-          Takes precedence to 'binary' short-hand.
+        :param collation: Optional, a column-level collation for this string
+          value.  Takes precedence to 'binary' short-hand.
 
-        ascii
-          Defaults to False: short-hand for the ``latin1`` character set,
-          generates ASCII in schema.
+        :param ascii: Defaults to False: short-hand for the ``latin1``
+          character set, generates ASCII in schema.
 
-        unicode
-          Defaults to False: short-hand for the ``ucs2`` character set,
-          generates UNICODE in schema.
+        :param unicode: Defaults to False: short-hand for the ``ucs2``
+          character set, generates UNICODE in schema.
 
-        binary
-          Defaults to False: short-hand, pick the binary collation type
-          that matches the column's character set.  Generates BINARY in
-          schema.  This does not affect the type of data stored, only the
-          collation of character data.
+        :param binary: Defaults to False: short-hand, pick the binary
+          collation type that matches the column's character set.  Generates
+          BINARY in schema.  This does not affect the type of data stored,
+          only the collation of character data.
 
-        quoting
-          Defaults to 'auto': automatically determine enum value quoting.  If
-          all enum values are surrounded by the same quoting character, then
-          use 'quoted' mode.  Otherwise, use 'unquoted' mode.
+        :param quoting: Defaults to 'auto': automatically determine enum value
+          quoting.  If all enum values are surrounded by the same quoting
+          character, then use 'quoted' mode.  Otherwise, use 'unquoted' mode.
 
           'quoted': values in enums are already quoted, they will be used
           directly when generating the schema.
@@ -1277,36 +1257,30 @@ class MSSet(MSString):
 
         Arguments are:
 
-        values
-          The range of valid values for this SET.  Values will be used
-          exactly as they appear when generating schemas.  Strings must
-          be quoted, as in the example above.  Single-quotes are suggested
-          for ANSI compatability and are required for portability to servers
-          with ANSI_QUOTES enabled.
+        :param values: The range of valid values for this SET.  Values will be
+          used exactly as they appear when generating schemas.  Strings must
+          be quoted, as in the example above.  Single-quotes are suggested for
+          ANSI compatibility and are required for portability to servers with
+          ANSI_QUOTES enabled.
 
-        charset
-          Optional, a column-level character set for this string
-          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+        :param charset: Optional, a column-level character set for this string
+          value.  Takes precedence to 'ascii' or 'unicode' short-hand.
 
-        collation
-          Optional, a column-level collation for this string value.
-          Takes precedence to 'binary' short-hand.
+        :param collation: Optional, a column-level collation for this string
+          value.  Takes precedence to 'binary' short-hand.
 
-        ascii
-          Defaults to False: short-hand for the ``latin1`` character set,
-          generates ASCII in schema.
+        :param ascii: Defaults to False: short-hand for the ``latin1``
+          character set, generates ASCII in schema.
 
-        unicode
-          Defaults to False: short-hand for the ``ucs2`` character set,
-          generates UNICODE in schema.
+        :param unicode: Defaults to False: short-hand for the ``ucs2``
+          character set, generates UNICODE in schema.
 
-        binary
-          Defaults to False: short-hand, pick the binary collation type
-          that matches the column's character set.  Generates BINARY in
-          schema.  This does not affect the type of data stored, only the
-          collation of character data.
+        :param binary: Defaults to False: short-hand, pick the binary
+          collation type that matches the column's character set.  Generates
+          BINARY in schema.  This does not affect the type of data stored,
+          only the collation of character data.
+
         """
-
         self.__ddl_values = values
 
         strip_values = []

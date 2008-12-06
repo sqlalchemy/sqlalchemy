@@ -1,0 +1,284 @@
+/* documentation section styles */
+
+body, td {
+	font-family: verdana, sans-serif;
+	font-size:.95em;
+}
+
+body {
+	background-color: #FDFBFC;
+	margin:20px 20px 20px 20px;
+}
+
+form {
+    display:inline;
+}
+
+p {
+	margin-top:10px;
+	margin-bottom:10px;
+}
+
+a {font-weight:normal; text-decoration:underline;}
+a:link {color:#0000FF;}
+a:visited {color:#0000FF;}
+a:active {color:#0000FF;}
+a:hover {color:#700000;}
+
+
+strong a {
+    font-weight: bold;
+}
+
+#search {
+    float:right;
+}
+
+#pagecontrol {
+    float:right;
+}
+
+.topnav
+{
+	background-color: #fbfbee;
+	border: solid 1px #ccc;
+	padding:10px;
+	margin:10px 0px 10px 0px;
+}
+
+.document {
+	border: solid 1px #ccc;
+}
+
+.topnav .prevnext {
+    padding: 5px 0px 0px 0px;
+    font-size: 0.8em
+}
+
+h1, h2, h3, h4, h5 {
+    font-family:arial,helvetica,sans-serif;
+    font-weight:bold;
+}
+
+.document h1, .document h2, .document h3, .document h4, .document h5 {
+    font-size: 1.4em;
+}
+
+.document h1 {
+    display:none;
+}
+
+h1 {
+    font: normal 20px/22px arial,helvetica,sans-serif;
+    color: #222;
+    padding:0px;
+    margin:0px;   
+}
+
+.topnav h2 {
+    margin:26px 4px 0px 5px;
+    font-family:arial,helvetica,sans-serif;
+    font-size:1.6em;
+    font-weight:normal;
+    line-height:1.6em;  
+}
+
+.topnav h3 {
+    font-weight: bold;
+    font-size: 1.4em;
+    margin:0px;
+    display:inline;
+    font-family:verdana,sans-serif;
+}
+
+.topnav li,
+li.toctree-l1,
+li.toctree-l1 li
+{
+    list-style-type:disc;
+    margin:0px;
+    padding:1px 8px;
+}
+
+
+.topnav li ul, 
+li.toctree-l1 ul
+{
+    padding:0px 0px 0px 20px;
+}
+
+.topnav li ul li li, 
+li.toctree-l1 ul li li
+{
+    /*font-size:.90em;*/
+}
+
+.sourcelink {
+    font-size:.8em;
+    text-align:right;
+    padding-top:10px;
+}
+
+.section {
+    line-height: 1.5em;
+    padding:8px 10px 20px 10px;
+    margin:10px 0px 0px;
+}
+
+.section .section {
+    margin:0px 0px 0px 0px;
+    padding: 0px;
+}
+
+.section .section .section {
+    margin:0px 0px 0px 20px;
+}
+
+.section .section .section .section {
+    margin:0px 0px 0px 20px;
+}
+
+
+.bottomnav {
+    background-color:#FBFBEE;
+    border:1px solid #CCCCCC;
+    float:right;
+    margin: 1em 0 1em 5px;
+    padding:10px;
+}
+
+.totoc {
+    
+}
+
+.doc_copyright {
+    font-size:.85em;
+    padding:10px 0px 10px 0px;
+}
+
+pre {
+	background-color: #f0f0f0;	
+	border: solid 1px #ccc;
+	padding:10px;
+	margin: 5px 5px 5px 5px;
+	overflow:auto;
+	line-height:1.3em;
+}
+
+.popup_sql, .show_sql
+{
+    background-color: #fbfbee;
+    padding:0px 10px;
+    margin:0px -10px;
+}
+
+.sql_link
+{
+	font-weight:normal;
+	font-family: arial, sans-serif;
+    text-transform: uppercase;
+	font-size: 0.9em;
+	color:#666;
+	border:1px solid;
+	padding:1px 2px 1px 2px;
+	margin:0px 10px 0px 15px;
+	float:right;
+	line-height:1.2em;
+}
+
+#docs a.sql_link, .sql_link
+{
+    text-decoration: none;
+    padding:1px 2px;
+}
+
+#docs a.sql_link:hover {
+    text-decoration: none;
+    color:#fff;
+    border:1px solid #900;
+    background-color: #900;
+}
+
+.versionheader {
+    margin-top: 0.5em;
+}
+.versionnum {
+    font-weight: bold;
+}
+
+.prerelease {
+    border: solid #c25757 2px;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    background-color: #c21a1a;
+    color: white;
+    padding: 0.05em 0.2em;
+}
+
+dl.function > dt,
+dl.class > dt
+{
+    background-color:#F0F0F0;
+    margin:0px -10px;
+    padding: 0px 10px;
+}
+
+dt:target {
+    background-color:#FBE54E;
+}
+
+a.headerlink {
+    font-size: 0.8em;
+    padding: 0 4px 0 4px;
+    text-decoration: none;
+    visibility: hidden;
+}
+
+h1:hover > a.headerlink,
+h2:hover > a.headerlink,
+h3:hover > a.headerlink,
+h4:hover > a.headerlink,
+h5:hover > a.headerlink,
+h6:hover > a.headerlink,
+dt:hover > a.headerlink {
+    visibility: visible;
+}
+
+a.headerlink:hover {
+    background-color: #00f;
+    color: white;
+}
+
+.clearboth {
+    clear:both;
+}
+
+tt.descname {
+    background-color:transparent;
+    font-size:1.2em;
+    font-weight:bold;
+}
+
+tt.descclassname {
+    background-color:transparent;
+}
+
+tt {
+    background-color:#ECF0F3;
+    padding:0 1px;
+}
+
+@media print {
+  #nav { display: none; }
+  #pagecontrol { display: none; }
+  .topnav .prevnext { display: none; }
+  .bottomnav { display: none; }
+  .totoc { display: none; }
+  .topnav ul li a { text-decoration: none; color: #000; }
+}
+
+/* syntax highlighting overrides */
+.k, .kn {color:#0908CE;}
+.o {color:#BF0005;}
+.go {color:#804049;}

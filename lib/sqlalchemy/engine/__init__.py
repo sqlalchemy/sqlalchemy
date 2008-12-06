@@ -110,62 +110,112 @@ def create_engine(*args, **kwargs):
     ``dialect://user:password@host/dbname[?key=value..]``, where
     ``dialect`` is a name such as ``mysql``, ``oracle``, ``postgres``,
     etc.  Alternatively, the URL can be an instance of
-    ``sqlalchemy.engine.url.URL``.
+    :class:`~sqlalchemy.engine.url.URL`.
 
-    `**kwargs` represents options to be sent to the Engine itself as
-    well as the components of the Engine, including the Dialect, the
-    ConnectionProvider, and the Pool.  A list of common options is as
-    follows:
+    `**kwargs` takes a wide variety of options which are routed 
+    towards their appropriate components.  Arguments may be 
+    specific to the Engine, the underlying Dialect, as well as the 
+    Pool.  Specific dialects also accept keyword arguments that
+    are unique to that dialect.   Here, we describe the parameters
+    that are common to most ``create_engine()`` usage.
+    
+    :param assert_unicode=False: When set to ``True`` alongside
+        convert_unicode=``True``, asserts that incoming string bind
+        parameters are instances of ``unicode``, otherwise raises an
+        error. Only takes effect when ``convert_unicode==True``. This
+        flag is also available on the ``String`` type and its
+        descendants. New in 0.4.2.
 
-    poolclass
-      a subclass of ``sqlalchemy.pool.Pool`` which will be used to
-      instantiate a connection pool.
+    :param connect_args: a dictionary of options which will be
+        passed directly to the DBAPI's ``connect()`` method as
+        additional keyword arguments.
 
-    pool
-      an instance of ``sqlalchemy.pool.DBProxy`` or
-      ``sqlalchemy.pool.Pool`` to be used as the underlying source for
-      connections (DBProxy/Pool is described in the previous section).
-      This argument supercedes "poolclass".
+    :param convert_unicode=False: if set to True, all
+        String/character based types will convert Unicode values to raw
+        byte values going into the database, and all raw byte values to
+        Python Unicode coming out in result sets. This is an
+        engine-wide method to provide unicode conversion across the
+        board. For unicode conversion on a column-by-column level, use
+        the ``Unicode`` column type instead, described in `types`.
 
-    echo
-      defaults to False: if True, the Engine will log all statements
-      as well as a repr() of their parameter lists to the engines
-      logger, which defaults to ``sys.stdout``.  A Engine instances'
-      `echo` data member can be modified at any time to turn logging
-      on and off.  If set to the string 'debug', result rows will be
-      printed to the standard output as well.
+    :param creator: a callable which returns a DBAPI connection.
+        This creation function will be passed to the underlying
+        connection pool and will be used to create all new database
+        connections. Usage of this function causes connection
+        parameters specified in the URL argument to be bypassed.
 
-    logger
-      defaults to None: a file-like object where logging output can be
-      sent, if `echo` is set to True.  This defaults to
-      ``sys.stdout``.
+    :param echo=False: if True, the Engine will log all statements
+        as well as a repr() of their parameter lists to the engines
+        logger, which defaults to sys.stdout. The ``echo`` attribute of
+        ``Engine`` can be modified at any time to turn logging on and
+        off. If set to the string ``"debug"``, result rows will be
+        printed to the standard output as well. This flag ultimately
+        controls a Python logger; see `dbengine_logging` at the end of
+        this chapter for information on how to configure logging
+        directly.
 
-    encoding
-      defaults to 'utf-8': the encoding to be used when
-      encoding/decoding Unicode strings.
+    :param echo_pool=False: if True, the connection pool will log
+        all checkouts/checkins to the logging stream, which defaults to
+        sys.stdout. This flag ultimately controls a Python logger; see
+        `dbengine_logging` for information on how to configure logging
+        directly.
 
-    convert_unicode
-      defaults to False: true if unicode conversion should be applied
-      to all str types.
+    :param encoding='utf-8': the encoding to use for all Unicode
+        translations, both by engine-wide unicode conversion as well as
+        the ``Unicode`` type object.
 
-    module
-      defaults to None: this is a reference to a DB-API 2.0 module to
-      be used instead of the dialect's default module.
+    :param label_length=None: optional integer value which limits
+        the size of dynamically generated column labels to that many
+        characters. If less than 6, labels are generated as
+        "_(counter)". If ``None``, the value of
+        ``dialect.max_identifier_length`` is used instead.
 
-    strategy
-      allows alternate Engine implementations to take effect.  Current
-      implementations include ``plain`` and ``threadlocal``.  The
-      default used by this function is ``plain``.
+    :param module=None: used by database implementations which
+        support multiple DBAPI modules, this is a reference to a DBAPI2
+        module to be used instead of the engine's default module. For
+        Postgres, the default is psycopg2. For Oracle, it's cx_Oracle.
 
-      ``plain`` provides support for a Connection object which can be
-      used to execute SQL queries with a specific underlying DB-API
-      connection.
+    :param pool=None: an already-constructed instance of
+        :class:`~sqlalchemy.pool.Pool`, such as a
+        :class:`~sqlalchemy.pool.QueuePool` instance. If non-None, this
+        pool will be used directly as the underlying connection pool
+        for the engine, bypassing whatever connection parameters are
+        present in the URL argument. For information on constructing
+        connection pools manually, see `pooling`.
 
-      ``threadlocal`` is similar to ``plain`` except that it adds
-      support for a thread-local connection and transaction context,
-      which allows a group of engine operations to participate using
-      the same underlying connection and transaction without the need
-      for explicitly passing a single Connection.
+    :param poolclass=None: a :class:`~sqlalchemy.pool.Pool`
+        subclass, which will be used to create a connection pool
+        instance using the connection parameters given in the URL. Note
+        this differs from ``pool`` in that you don't actually
+        instantiate the pool in this case, you just indicate what type
+        of pool to be used.
+
+    :param max_overflow=10: the number of connections to allow in
+        connection pool "overflow", that is connections that can be
+        opened above and beyond the pool_size setting, which defaults
+        to five. this is only used with :class:`~sqlalchemy.pool.QueuePool`.
+
+    :param pool_size=5: the number of connections to keep open
+        inside the connection pool. This used with :class:`~sqlalchemy.pool.QueuePool` as
+        well as :class:`~sqlalchemy.pool.SingletonThreadPool`.
+
+    :param pool_recycle=-1: this setting causes the pool to recycle
+        connections after the given number of seconds has passed. It
+        defaults to -1, or no timeout. For example, setting to 3600
+        means connections will be recycled after one hour. Note that
+        MySQL in particular will ``disconnect automatically`` if no
+        activity is detected on a connection for eight hours (although
+        this is configurable with the MySQLDB connection itself and the
+        server configuration as well).
+
+    :param pool_timeout=30: number of seconds to wait before giving
+        up on getting a connection from the pool. This is only used
+        with :class:`~sqlalchemy.pool.QueuePool`.
+
+    :param strategy='plain': used to invoke alternate :class:`~sqlalchemy.engine.base.Engine.`
+        implementations. Currently available is the ``threadlocal``
+        strategy, which is described in :ref:`threadlocal_strategy`.
+    
     """
 
     strategy = kwargs.pop('strategy', default_strategy)

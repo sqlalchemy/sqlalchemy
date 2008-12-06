@@ -8,6 +8,17 @@ CHANGES
 ========
 - new features
 - orm
+    - Documentation has been converted to Sphinx.
+      In particular, the generated API documentation
+      has been constructed into a full blown 
+      "API Reference" section which organizes 
+      editorial documentation combined with 
+      generated docstrings.   Cross linking between
+      sections and API docs are vastly improved,
+      a javascript-powered search feature is
+      provided, and a full index of all
+      classes, functions and members is provided.
+      
     - Query.with_polymorphic() now accepts a third
       argument "discriminator" which will replace
       the value of mapper.polymorphic_on for that

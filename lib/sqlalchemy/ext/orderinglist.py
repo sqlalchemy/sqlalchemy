@@ -60,7 +60,7 @@ Numbering and serialization are both highly configurable.  See the docstrings
 in this module and the main SQLAlchemy documentation for more information and
 examples.
 
-The [sqlalchemy.ext.orderinglist#ordering_list] factory function is the
+The :class:`~sqlalchemy.ext.orderinglist.ordering_list` factory function is the
 ORM-compatible constructor for `OrderingList` instances.
 
 """

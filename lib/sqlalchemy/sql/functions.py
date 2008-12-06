@@ -75,7 +75,7 @@ class random(GenericFunction):
         GenericFunction.__init__(self, args=args, **kwargs)
 
 class count(GenericFunction):
-    """The ANSI COUNT aggregate function.  With no arguments, emits COUNT *."""
+    """The ANSI COUNT aggregate function.  With no arguments, emits COUNT \*."""
 
     __return_type__ = sqltypes.Integer
 

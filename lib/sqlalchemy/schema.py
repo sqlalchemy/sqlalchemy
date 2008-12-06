@@ -10,19 +10,19 @@ Each element within this module describes a database entity which can be
 created and dropped, or is otherwise part of such an entity.  Examples include
 tables, columns, sequences, and indexes.
 
-All entities are subclasses of [sqlalchemy.schema#SchemaItem], and as defined
+All entities are subclasses of :class:`~sqlalchemy.schema.SchemaItem`, and as defined
 in this module they are intended to be agnostic of any vendor-specific
 constructs.
 
 A collection of entities are grouped into a unit called
-[sqlalchemy.schema#MetaData].  MetaData serves as a logical grouping of schema
+:class:`~sqlalchemy.schema.MetaData`.  MetaData serves as a logical grouping of schema
 elements, and can also be associated with an actual database connection such
 that operations involving the contained elements can contact the database as
 needed.
 
 Two of the elements here also build upon their "syntactic" counterparts, which
-are defined in [sqlalchemy.sql.expression#], specifically
-[sqlalchemy.schema#Table] and [sqlalchemy.schema#Column].  Since these objects
+are defined in :class:`~sqlalchemy.sql.expression.`, specifically
+:class:`~sqlalchemy.schema.Table` and :class:`~sqlalchemy.schema.Column`.  Since these objects
 are part of the SQL expression language, they are usable as components in SQL
 expressions.
 
@@ -38,7 +38,7 @@ __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
            'UniqueConstraint', 'DefaultGenerator', 'Constraint', 'MetaData',
            'ThreadLocalMetaData', 'SchemaVisitor', 'PassiveDefault',
            'DefaulClause', 'FetchedValue', 'ColumnDefault', 'DDL']
-
+__all__.sort()
 
 class SchemaItem(visitors.Visitable):
     """Base class for items that define a database schema."""
@@ -408,7 +408,7 @@ class Table(SchemaItem, expression.TableClause):
                 args.append(c.copy(schema=schema))
             return Table(self.name, metadata, schema=schema, *args)
 
-class Column(SchemaItem, expression._ColumnClause):
+class Column(SchemaItem, expression.ColumnClause):
     """Represent a column in a database table.
 
     This is a subclass of ``expression.ColumnClause`` and represents an actual
@@ -719,7 +719,7 @@ class Column(SchemaItem, expression._ColumnClause):
             return [x for x in (self.default, self.onupdate) if x is not None] + \
                 list(self.foreign_keys) + list(self.constraints)
         else:
-            return expression._ColumnClause.get_children(self, **kwargs)
+            return expression.ColumnClause.get_children(self, **kwargs)
 
 
 class ForeignKey(SchemaItem):
@@ -1416,7 +1416,7 @@ class MetaData(SchemaItem):
     """A collection of Tables and their associated schema constructs.
 
     Holds a collection of Tables and an optional binding to an ``Engine`` or
-    ``Connection``.  If bound, the [sqlalchemy.schema#Table] objects in the
+    ``Connection``.  If bound, the :class:`~sqlalchemy.schema.Table` objects in the
     collection and their columns may participate in implicit SQL execution.
 
     The `Table` objects themselves are stored in the `metadata.tables` 
@@ -1729,8 +1729,6 @@ class ThreadLocalMetaData(MetaData):
     ``connect()``.  You can also re-bind dynamically multiple times per
     thread, just like a regular ``MetaData``.
 
-    Use this type of MetaData when your tables are present in more than one
-    database and you need to address them simultanesouly.
     """
 
     __visit_name__ = 'metadata'

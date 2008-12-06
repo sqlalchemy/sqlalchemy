@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """defines genericized SQL types, each represented by a subclass of
-[sqlalchemy.types#AbstractType].  Dialects define further subclasses of these
+:class:`~sqlalchemy.types.AbstractType`.  Dialects define further subclasses of these
 types.
 
 For more information see the SQLAlchemy documentation on types.
@@ -49,17 +49,22 @@ class AbstractType(object):
         return None
 
     def compare_values(self, x, y):
-        """compare two values for equality."""
+        """Compare two values for equality."""
 
         return x == y
 
     def is_mutable(self):
-        """return True if the target Python type is 'mutable'.
+        """Return True if the target Python type is 'mutable'.
 
-        This allows systems like the ORM to know if an object
-        can be considered 'not changed' by identity alone.
+        This allows systems like the ORM to know if a column value can
+        be considered 'not changed' by comparing the identity of
+        objects alone.
+
+        Use the :class:`MutableType` mixin or override this method to
+        return True in custom types that hold mutable values such as
+        ``dict``, ``list`` and custom objects.
+
         """
-
         return False
 
     def get_dbapi_type(self, dbapi):
@@ -67,14 +72,14 @@ class AbstractType(object):
 
         This can be useful for calling ``setinputsizes()``, for example.
         """
-
         return None
 
     def adapt_operator(self, op):
-        """given an operator from the sqlalchemy.sql.operators package,
+        """Given an operator from the sqlalchemy.sql.operators package,
         translate it to a new operator based on the semantics of this type.
 
-        By default, returns the operator unchanged."""
+        By default, returns the operator unchanged.
+        """
         return op
 
     def __repr__(self):
@@ -84,6 +89,38 @@ class AbstractType(object):
                       for k in inspect.getargspec(self.__init__)[0][1:]))
 
 class TypeEngine(AbstractType):
+    """Base for built-in types.
+
+    May be sub-classed to create entirely new types.  Example::
+
+      import sqlalchemy.types as types
+
+      class MyType(types.TypeEngine):
+          def __init__(self, precision = 8):
+              self.precision = precision
+
+          def get_col_spec(self):
+              return "MYTYPE(%s)" % self.precision
+
+          def bind_processor(self, dialect):
+              def process(value):
+                  return value
+              return process
+
+          def result_processor(self, dialect):
+              def process(value):
+                  return value
+              return process
+
+    Once the type is made, it's immediately usable::
+
+      table = Table('foo', meta,
+          Column('id', Integer, primary_key=True),
+          Column('data', MyType(16))
+          )
+
+    """
+
     def dialect_impl(self, dialect, **kwargs):
         try:
             return self._impl_dict[dialect]
@@ -99,12 +136,31 @@ class TypeEngine(AbstractType):
         return d
 
     def get_col_spec(self):
+        """Return the DDL representation for this type."""
         raise NotImplementedError()
 
     def bind_processor(self, dialect):
+        """Return a conversion function for processing bind values.
+
+        Returns a callable which will receive a bind parameter value
+        as the sole positional argument and will return a value to
+        send to the DB-API.
+
+        If processing is not necessary, the method should return ``None``.
+
+        """
         return None
 
     def result_processor(self, dialect):
+        """Return a conversion function for processing result row values.
+
+        Returns a callable which will receive a result row column
+        value as the sole positional argument and will return a value
+        to return to the user.
+
+        If processing is not necessary, the method should return ``None``.
+
+        """
         return None
 
     def adapt(self, cls):
@@ -120,25 +176,44 @@ class TypeEngine(AbstractType):
 
 class TypeDecorator(AbstractType):
     """Allows the creation of types which add additional functionality
-    to an existing type.  Typical usage::
-    
-      class MyCustomType(TypeDecorator):
-          impl = String
-          
+    to an existing type.
+
+    Typical usage::
+
+      import sqlalchemy.types as types
+
+      class MyType(types.TypeDecorator):
+          # Prefixes Unicode values with "PREFIX:" on the way in and
+          # strips it off on the way out.
+
+          impl = types.Unicode
+
           def process_bind_param(self, value, dialect):
-              return value + "incoming string"
-              
+              return "PREFIX:" + value
+
           def process_result_value(self, value, dialect):
-              return value[0:-16]
-    
+              return value[7:]
+
+          def copy(self):
+              return MyType(self.impl.length)
+
     The class-level "impl" variable is required, and can reference any
-    TypeEngine class.  Alternatively, the load_dialect_impl() method can
-    be used to provide different type classes based on the dialect given; 
-    in this case, the "impl" variable can reference ``TypeEngine`` as a 
-    placeholder.
-        
+    TypeEngine class.  Alternatively, the load_dialect_impl() method
+    can be used to provide different type classes based on the dialect
+    given; in this case, the "impl" variable can reference
+    ``TypeEngine`` as a placeholder.
+
+    The reason that type behavior is modified using class decoration
+    instead of subclassing is due to the way dialect specific types
+    are used.  Such as with the example above, when using the mysql
+    dialect, the actual type in use will be a
+    ``sqlalchemy.databases.mysql.MSString`` instance.
+    ``TypeDecorator`` handles the mechanics of passing the values
+    between user-defined ``process_`` methods and the current
+    dialect-specific type in use.
+
     """
-    
+
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
             raise AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
@@ -162,7 +237,7 @@ class TypeDecorator(AbstractType):
         return tt
 
     def load_dialect_impl(self, dialect):
-        """loads the dialect-specific implementation of this type.
+        """Loads the dialect-specific implementation of this type.
 
         by default calls dialect.type_descriptor(self.impl), but
         can be overridden to provide different behavior.
@@ -233,15 +308,23 @@ class TypeDecorator(AbstractType):
         return self.impl.is_mutable()
 
 class MutableType(object):
-    """A mixin that marks a Type as holding a mutable object."""
+    """A mixin that marks a Type as holding a mutable object.
+
+    :meth:`copy_value` and :meth:`compare_values` should be customized
+    as needed to match the needs of the object.
+
+    """
 
     def is_mutable(self):
+        """Return True, mutable."""
         return True
 
     def copy_value(self, value):
+        """Unimplemented."""
         raise NotImplementedError()
 
     def compare_values(self, x, y):
+        """Compare *x* == *y*."""
         return x == y
 
 def to_instance(typeobj):
@@ -275,14 +358,29 @@ def adapt_type(typeobj, colspecs):
     return typeobj.adapt(impltype)
 
 class NullType(TypeEngine):
+    """An unknown type.
+
+    NullTypes will stand in if :class:`~sqlalchemy.Table` reflection
+    encounters a column data type unknown to SQLAlchemy.  The
+    resulting columns are nearly fully usable: the DB-API adapter will
+    handle all translation to and from the database data type.
+
+    NullType does not have sufficient information to particpate in a
+    ``CREATE TABLE`` statement and will raise an exception if
+    encountered during a :meth:`~sqlalchemy.Table.create` operation.
+
+    """
+
     def get_col_spec(self):
         raise NotImplementedError()
 
 NullTypeEngine = NullType
 
 class Concatenable(object):
-    """marks a type as supporting 'concatenation'"""
+    """A mixin that marks a type as supporting 'concatenation', typically strings."""
+
     def adapt_operator(self, op):
+        """Converts an add operator to concat."""
         from sqlalchemy.sql import operators
         if op == operators.add:
             return operators.concat_op
@@ -290,18 +388,51 @@ class Concatenable(object):
             return op
 
 class String(Concatenable, TypeEngine):
-    """A sized string type.
+    """The base for all string and character types.
 
     In SQL, corresponds to VARCHAR.  Can also take Python unicode objects
     and encode to the database's encoding in bind params (and the reverse for
     result sets.)
 
-    The `length` field is usually required when the `String` type is used within a 
-    CREATE TABLE statement, since VARCHAR requires a length on most databases.
-    Currently SQLite is an exception to this.
-    
+    The `length` field is usually required when the `String` type is
+    used within a CREATE TABLE statement, as VARCHAR requires a length
+    on most databases.
+
     """
+
     def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
+        """Create a string-holding type.
+
+        :param length: optional, a length for the column for use in
+          DDL statements.  May be safely omitted if no ``CREATE
+          TABLE`` will be issued.  Certain databases may require a
+          *length* for use in DDL, and will raise an exception when
+          the ``CREATE TABLE`` DDL is issued.  Whether the value is
+          interpreted as bytes or characters is database specific.
+
+        :param convert_unicode: defaults to False.  If True, convert
+          ``unicode`` data sent to the database to a ``str``
+          bytestring, and convert bytestrings coming back from the
+          database into ``unicode``.
+
+          Bytestrings are encoded using the dialect's
+          :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which
+          defaults to `utf-8`.
+
+          If False, may be overridden by
+          :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
+
+        :param assert_unicode:
+
+          If None (the default), no assertion will take place unless
+          overridden by :attr:`sqlalchemy.engine.base.Dialect.assert_unicode`.
+
+          If 'warn', will issue a runtime warning if a ``str``
+          instance is used as a bind value.
+
+          If true, will raise an :exc:`sqlalchemy.exc.InvalidRequestError`.
+
+        """
         self.length = length
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
@@ -346,13 +477,56 @@ class String(Concatenable, TypeEngine):
         return dbapi.STRING
 
 class Text(String):
+    """A variably sized string type.
+
+    In SQL, usually corresponds to CLOB or TEXT. Can also take Python
+    unicode objects and encode to the database's encoding in bind
+    params (and the reverse for result sets.)
+
+    """
     def dialect_impl(self, dialect, **kwargs):
         return TypeEngine.dialect_impl(self, dialect, **kwargs)
 
 class Unicode(String):
-    """A synonym for String(length, convert_unicode=True, assert_unicode='warn')."""
+    """A variable length Unicode string.
+
+    The ``Unicode`` type is a :class:`String` which converts Python
+    ``unicode`` objects (i.e., strings that are defined as
+    ``u'somevalue'``) into encoded bytestrings when passing the value
+    to the database driver, and similarly decodes values from the
+    database back into Python ``unicode`` objects.
+
+    When using the ``Unicode`` type, it is only appropriate to pass
+    Python ``unicode`` objects, and not plain ``str``.  If a
+    bytestring (``str``) is passed, a runtime warning is issued.  If
+    you notice your application raising these warnings but you're not
+    sure where, the Python ``warnings`` filter can be used to turn
+    these warnings into exceptions which will illustrate a stack
+    trace::
+
+      import warnings
+      warnings.simplefilter('error')
+
+    Bytestrings sent to and received from the database are encoded
+    using the dialect's
+    :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which defaults
+    to `utf-8`.
+
+    A synonym for String(length, convert_unicode=True, assert_unicode='warn').
+
+    """
 
     def __init__(self, length=None, **kwargs):
+        """Create a Unicode-converting String type.
+
+        :param length: optional, a length for the column for use in
+          DDL statements.  May be safely omitted if no ``CREATE
+          TABLE`` will be issued.  Certain databases may require a
+          *length* for use in DDL, and will raise an exception when
+          the ``CREATE TABLE`` DDL is issued.  Whether the value is
+          interpreted as bytes or characters is database specific.
+
+        """
         kwargs.setdefault('convert_unicode', True)
         kwargs.setdefault('assert_unicode', 'warn')
         super(Unicode, self).__init__(length=length, **kwargs)
@@ -361,25 +535,59 @@ class UnicodeText(Text):
     """A synonym for Text(convert_unicode=True, assert_unicode='warn')."""
 
     def __init__(self, length=None, **kwargs):
+        """Create a Unicode-converting Text type.
+
+        :param length: optional, a length for the column for use in
+          DDL statements.  May be safely omitted if no ``CREATE
+          TABLE`` will be issued.  Certain databases may require a
+          *length* for use in DDL, and will raise an exception when
+          the ``CREATE TABLE`` DDL is issued.  Whether the value is
+          interpreted as bytes or characters is database specific.
+
+        """
         kwargs.setdefault('convert_unicode', True)
         kwargs.setdefault('assert_unicode', 'warn')
         super(UnicodeText, self).__init__(length=length, **kwargs)
 
+
 class Integer(TypeEngine):
-    """Integer datatype."""
+    """A type for ``int`` integers."""
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
+
 class SmallInteger(Integer):
-    """Smallint datatype."""
+    """A type for smaller ``int`` integers.
+
+    Typically generates a ``SMALLINT`` in DDL, and otherwise acts like
+    a normal :class:`Integer` on the Python side.
+
+    """
 
 Smallinteger = SmallInteger
 
 class Numeric(TypeEngine):
-    """Numeric datatype, usually resolves to DECIMAL or NUMERIC."""
+    """A type for fixed precision numbers.
+
+    Typically generates DECIMAL or NUMERIC.  Returns
+    ``decimal.Decimal`` objects by default.
+
+    """
 
     def __init__(self, precision=10, scale=2, asdecimal=True, length=None):
+        """Construct a Numeric.
+
+        :param precision: the numeric precision for use in DDL ``CREATE TABLE``.
+
+        :param scale: the numeric scale for use in DDL ``CREATE TABLE``.
+
+        :param asdecimal: default True.  If False, values will be
+          returned as-is from the DB-API, and may be either
+          ``Decimal`` or ``float`` types depending on the DB-API in
+          use.
+
+        """
         if length:
             util.warn_deprecated("'length' is deprecated for Numeric.  Use 'scale'.")
             scale = length
@@ -412,16 +620,33 @@ class Numeric(TypeEngine):
         else:
             return None
 
+
 class Float(Numeric):
-    def __init__(self, precision = 10, asdecimal=False, **kwargs):
+    """A type for ``float`` numbers."""
+
+    def __init__(self, precision=10, asdecimal=False, **kwargs):
+        """Construct a Float.
+
+        :param precision: the numeric precision for use in DDL ``CREATE TABLE``.
+
+        """
         self.precision = precision
         self.asdecimal = asdecimal
 
     def adapt(self, impltype):
         return impltype(precision=self.precision, asdecimal=self.asdecimal)
 
+
 class DateTime(TypeEngine):
-    """Implement a type for ``datetime.datetime()`` objects."""
+    """A type for ``datetime.datetime()`` objects.
+
+    Date and time types return objects from the Python ``datetime``
+    module.  Most DBAPIs have built in support for the datetime
+    module, with the noted exception of SQLite.  In the case of
+    SQLite, date and time types are stored as strings which are then
+    converted back to datetime objects when rows are returned.
+
+    """
 
     def __init__(self, timezone=False):
         self.timezone = timezone
@@ -431,15 +656,17 @@ class DateTime(TypeEngine):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
+
 
 class Date(TypeEngine):
-    """Implement a type for ``datetime.date()`` objects."""
+    """A type for ``datetime.date()`` objects."""
 
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
+
 class Time(TypeEngine):
-    """Implement a type for ``datetime.time()`` objects."""
+    """A type for ``datetime.time()`` objects."""
 
     def __init__(self, timezone=False):
         self.timezone = timezone
@@ -450,8 +677,26 @@ class Time(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
+
 class Binary(TypeEngine):
+    """A type for binary byte data.
+
+    The Binary type generates BLOB or BYTEA when tables are created,
+    and also converts incoming values using the ``Binary`` callable
+    provided by each DB-API.
+
+    """
+
     def __init__(self, length=None):
+        """Construct a Binary type.
+
+        :param length: optional, a length for the column for use in
+          DDL statements.  May be safely omitted if no ``CREATE
+          TABLE`` will be issued.  Certain databases may require a
+          *length* for use in DDL, and will raise an exception when
+          the ``CREATE TABLE`` DDL is issued.
+
+        """
         self.length = length
 
     def bind_processor(self, dialect):
@@ -469,10 +714,37 @@ class Binary(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.BINARY
 
+
 class PickleType(MutableType, TypeDecorator):
+    """Holds Python objects.
+
+    PickleType builds upon the Binary type to apply Python's
+    ``pickle.dumps()`` to incoming objects, and ``pickle.loads()`` on
+    the way out, allowing any pickleable Python object to be stored as
+    a serialized binary field.
+
+    """
+
     impl = Binary
 
     def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, mutable=True, comparator=None):
+        """Construct a PickleType.
+
+        :param protocol: defaults to ``pickle.HIGHEST_PROTOCOL``.
+
+        :param pickler: defaults to cPickle.pickle or pickle.pickle if
+          cPickle is not available.  May be any object with
+          pickle-compatible ``dumps` and ``loads`` methods.
+
+        :param mutable: defaults to True; implements
+          :meth:`AbstractType.is_mutable`.
+
+        :param comparator: optional. a 2-arg callable predicate used
+          to compare values of this type.  Defaults to equality if
+          *mutable* is False or ``pickler.dumps()`` equality if
+          *mutable* is True.
+
+        """
         self.protocol = protocol
         self.pickler = pickler or pickle
         self.mutable = mutable
@@ -509,20 +781,24 @@ class PickleType(MutableType, TypeDecorator):
     def is_mutable(self):
         return self.mutable
 
+
 class Boolean(TypeEngine):
-    pass
+    """A bool datatype.
+
+    Boolean typically uses BOOLEAN or SMALLINT on the DDL side, and on
+    the Python side deals in ``True`` or ``False``.
+
+    """
+
 
 class Interval(TypeDecorator):
-    """Type to be used in Column statements to store python timedeltas.
+    """A type for ``datetime.timedelta()`` objects.
 
-        If it's possible it uses native engine features to store timedeltas
-        (now it's only PostgreSQL Interval type), if there is no such it
-        fallbacks to DateTime storage with converting from/to timedelta on the fly
+    The Interval type deals with ``datetime.timedelta`` objects.  In
+    PostgreSQL, the native ``INTERVAL`` type is used; for others, the
+    value is stored as a date which is relative to the "epoch"
+    (Jan. 1, 1970).
 
-        Converting is very simple - just use epoch(zero timestamp, 01.01.1970) as
-        base, so if we need to store timedelta = 1 day (24 hours) in database it
-        will be stored as DateTime = '2nd Jan 1970 00:00', see bind_processor
-        and result_processor to actual conversion code
     """
 
     impl = TypeEngine
