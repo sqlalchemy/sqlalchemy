@@ -10,7 +10,12 @@
 Defines the basic components used to interface DB-API modules with
 higher-level statement-construction, connection-management, execution
 and result contexts.
+
 """
+
+__all__ = ['BufferedColumnResultProxy', 'BufferedColumnRow', 'BufferedRowResultProxy', 'Compiled', 'Connectable', 
+        'Connection', 'DefaultRunner', 'Dialect', 'Engine', 'ExecutionContext', 'NestedTransaction', 'ResultProxy', 
+        'RootTransaction', 'RowProxy', 'SchemaIterator', 'StringIO', 'Transaction', 'TwoPhaseTransaction', 'connection_memoize']
 
 import inspect, StringIO
 from sqlalchemy import exc, schema, util, types, log
@@ -467,7 +472,12 @@ class Compiled(object):
 
 
 class Connectable(object):
-    """Interface for an object that can provide an Engine and a Connection object which correponds to that Engine."""
+    """Interface for an object which supports execution of SQL constructs.
+    
+    The two implementations of ``Connectable`` are :class:`Connection` and
+    :class:`Engine`.
+    
+    """
 
     def contextual_connect(self):
         """Return a Connection object which may be part of an ongoing context."""
