@@ -14,13 +14,15 @@ Creating Engines
 Connectables
 ------------
 
-.. autoclass:: sqlalchemy.engine.base.Engine
+.. currentmodule:: sqlalchemy.engine.base
+
+.. autoclass:: Engine
    :members:
 
-.. autoclass:: sqlalchemy.engine.base.Connection
+.. autoclass:: Connection
    :members:
 
-.. autoclass:: sqlalchemy.engine.base.Connectable
+.. autoclass:: Connectable
    :members:
 
 Result Objects
@@ -35,16 +37,16 @@ Result Objects
 Transactions
 ------------
 
-.. autoclass:: sqlalchemy.engine.base.Transaction
+.. autoclass:: Transaction
     :members:
     :undoc-members:
     
 Internals
 ---------
 
-.. autofunction:: sqlalchemy.engine.base.connection_memoize
+.. autofunction:: connection_memoize
 
-.. autoclass:: sqlalchemy.engine.base.Dialect
+.. autoclass:: Dialect
     :members:
     
 .. autoclass:: sqlalchemy.engine.default.DefaultDialect
@@ -55,14 +57,14 @@ Internals
     :members:
     :show-inheritance:
 
-.. autoclass:: sqlalchemy.engine.base.DefaultRunner
+.. autoclass:: DefaultRunner
     :members:
     :show-inheritance:
     
-.. autoclass:: sqlalchemy.engine.base.ExecutionContext
+.. autoclass:: ExecutionContext
     :members:
 
-.. autoclass:: sqlalchemy.engine.base.SchemaIterator
+.. autoclass:: SchemaIterator
     :members:
     :show-inheritance:
     
