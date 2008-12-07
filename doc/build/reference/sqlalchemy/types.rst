@@ -39,63 +39,48 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see `SQL
 Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: String
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Unicode
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Text
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: UnicodeText
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Integer
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: SmallInteger
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Numeric
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Float
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: DateTime
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Date
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Time
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Interval
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Boolean
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: Binary
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: PickleType
-   :members: __init__
    :show-inheritance:
 
 
@@ -107,71 +92,54 @@ name when ``CREATE TABLE`` is issued.  Some types may not be supported
 on all databases.
 
 .. autoclass:: INT
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: sqlalchemy.types.INTEGER
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: CHAR
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: VARCHAR
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: NCHAR
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: TEXT
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: FLOAT
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: NUMERIC
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: DECIMAL
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: TIMESTAMP
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: DATETIME
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: CLOB
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: BLOB
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: BOOLEAN
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: SMALLINT
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: DATE
-   :members: __init__
    :show-inheritance:
 
 .. autoclass:: TIME
-   :members: __init__
    :show-inheritance:
 
 

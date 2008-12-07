@@ -401,7 +401,8 @@ class String(Concatenable, TypeEngine):
     """
 
     def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
-        """Create a string-holding type.
+        """
+        Create a string-holding type.
 
         :param length: optional, a length for the column for use in
           DDL statements.  May be safely omitted if no ``CREATE
@@ -517,7 +518,8 @@ class Unicode(String):
     """
 
     def __init__(self, length=None, **kwargs):
-        """Create a Unicode-converting String type.
+        """
+        Create a Unicode-converting String type.
 
         :param length: optional, a length for the column for use in
           DDL statements.  May be safely omitted if no ``CREATE
@@ -535,7 +537,8 @@ class UnicodeText(Text):
     """A synonym for Text(convert_unicode=True, assert_unicode='warn')."""
 
     def __init__(self, length=None, **kwargs):
-        """Create a Unicode-converting Text type.
+        """
+        Create a Unicode-converting Text type.
 
         :param length: optional, a length for the column for use in
           DDL statements.  May be safely omitted if no ``CREATE
@@ -576,7 +579,8 @@ class Numeric(TypeEngine):
     """
 
     def __init__(self, precision=10, scale=2, asdecimal=True, length=None):
-        """Construct a Numeric.
+        """
+        Construct a Numeric.
 
         :param precision: the numeric precision for use in DDL ``CREATE TABLE``.
 
@@ -625,7 +629,8 @@ class Float(Numeric):
     """A type for ``float`` numbers."""
 
     def __init__(self, precision=10, asdecimal=False, **kwargs):
-        """Construct a Float.
+        """
+        Construct a Float.
 
         :param precision: the numeric precision for use in DDL ``CREATE TABLE``.
 
@@ -688,7 +693,8 @@ class Binary(TypeEngine):
     """
 
     def __init__(self, length=None):
-        """Construct a Binary type.
+        """
+        Construct a Binary type.
 
         :param length: optional, a length for the column for use in
           DDL statements.  May be safely omitted if no ``CREATE
@@ -728,7 +734,8 @@ class PickleType(MutableType, TypeDecorator):
     impl = Binary
 
     def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, mutable=True, comparator=None):
-        """Construct a PickleType.
+        """
+        Construct a PickleType.
 
         :param protocol: defaults to ``pickle.HIGHEST_PROTOCOL``.
 

@@ -74,11 +74,11 @@ Builtin Pool Implementations
 ----------------------------
 
 .. autoclass:: AssertionPool
-   :members: __init__
+   :members:
    :show-inheritance:
 
 .. autoclass:: NullPool
-   :members: __init__
+   :members:
    :show-inheritance:
 
 .. autoclass:: sqlalchemy.pool.Pool
@@ -87,18 +87,16 @@ Builtin Pool Implementations
    :undoc-members:
    :inherited-members:
 
-   .. automethod:: __init__
-
 .. autoclass:: sqlalchemy.pool.QueuePool
-   :members: __init__
+   :members:
    :show-inheritance:
 
 .. autoclass:: SingletonThreadPool
-   :members: __init__
+   :members:
    :show-inheritance:
 
 .. autoclass:: StaticPool
-   :members: __init__
+   :members:
    :show-inheritance:
 
 

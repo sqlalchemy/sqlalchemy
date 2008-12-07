@@ -60,7 +60,8 @@ class Pool(object):
 
     def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False,
                  reset_on_return=True, listeners=None):
-        """Construct a Pool.
+        """
+        Construct a Pool.
 
         :param creator: a callable function that returns a DB-API
           connection object.  The function will be called with
@@ -455,10 +456,11 @@ class SingletonThreadPool(Pool):
     default, and also requires a singleton connection if a :memory: database
     is being used.
 
-    Options are the same as those of Pool, as well as:
+    Options are the same as those of :class:`Pool`, as well as:
 
-    pool_size: 5
-      The number of threads in which to maintain connections at once.
+    :param pool_size: The number of threads in which to maintain connections 
+        at once.  Defaults to five.
+      
     """
 
     def __init__(self, creator, pool_size=5, **params):
@@ -529,7 +531,8 @@ class QueuePool(Pool):
 
     def __init__(self, creator, pool_size=5, max_overflow=10, timeout=30,
                  **params):
-        """Construct a QueuePool.
+        """
+        Construct a QueuePool.
 
         :param creator: a callable function that returns a DB-API
           connection object.  The function will be called with
@@ -692,7 +695,8 @@ class StaticPool(Pool):
     """A Pool of exactly one connection, used for all requests."""
 
     def __init__(self, creator, **params):
-        """Construct a StaticPool.
+        """
+        Construct a StaticPool.
 
         :param creator: a callable function that returns a DB-API
           connection object.  The function will be called with
@@ -766,7 +770,8 @@ class AssertionPool(Pool):
     ## TODO: modify this to handle an arbitrary connection count.
 
     def __init__(self, creator, **params):
-        """Construct an AssertionPool.
+        """
+        Construct an AssertionPool.
 
         :param creator: a callable function that returns a DB-API
           connection object.  The function will be called with

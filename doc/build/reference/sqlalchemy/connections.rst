@@ -24,6 +24,7 @@ Connectables
 
 .. autoclass:: Connectable
    :members:
+   :undoc-members:
 
 Result Objects
 --------------
