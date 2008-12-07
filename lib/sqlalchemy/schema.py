@@ -472,10 +472,12 @@ class Column(SchemaItem, expression.ColumnClause):
 
         :param default: A scalar, Python callable, or :class:`~sqlalchemy.sql.expression.ClauseElement`
           representing the *default value* for this column, which will be
-          invoked upon insert if this column is not present in the insert
-          list or is given a value of None.  Contrast this argument
-          to ``server_default`` which creates a default generator on the
-          database side.
+          invoked upon insert if this column is otherwise not specified
+          in the VALUES clause of the insert.  This is a shortcut
+          to using :class:`ColumnDefault` as a positional argument.
+          
+          Contrast this argument to ``server_default`` which creates a 
+          default generator on the database side.
 
         :param key: An optional string identifier which will identify this ``Column`` 
             object on the :class:`Table`.  When a key is provided, this is the
@@ -495,6 +497,12 @@ class Column(SchemaItem, expression.ColumnClause):
             will be rendered as allowing NULL, else it's rendered as NOT NULL.
             This parameter is only used when issuing CREATE TABLE statements.
 
+        :param onupdate: A scalar, Python callable, or :class:`~sqlalchemy.sql.expression.ClauseElement`
+            representing a default value to be applied to the column within UPDATE
+            statements, which wil be invoked upon update if this column is not present
+            in the SET clause of the update.  This is a shortcut to using 
+            :class:`ColumnDefault` as a positional argument with ``for_update=True``.
+            
         :param primary_key: If ``True``, marks this column as a primary key
             column.  Multiple columns can have this flag set to specify composite
             primary keys.  As an alternative, the primary key of a :class:`Table` can
@@ -519,6 +527,18 @@ class Column(SchemaItem, expression.ColumnClause):
 
           Strings and text() will be converted into a :class:`DefaultClause`
           object upon initialization.
+          
+          Use :class:`FetchedValue` to indicate that an already-existing column will generate
+          a default value on the database side which will be available to SQLAlchemy 
+          for post-fetch after inserts.  
+          This construct does not specify any DDL and the implementation is 
+          left to the database, such as via a trigger.
+
+        :param server_onupdate:   A :class:`FetchedValue` instance representing 
+            a database-side default generation function.  This indicates to 
+            SQLAlchemy that a newly generated value will be available after updates.
+            This construct does not specify any DDL and the implementation is 
+            left to the database, such as via a trigger.
 
         :param quote: Force quoting of this column's name on or off, corresponding
            to ``True`` or ``False``.  When left at its default of ``None``,
