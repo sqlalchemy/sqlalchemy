@@ -122,10 +122,24 @@ class PopupSQLFormatter(HtmlFormatter):
         for t, v in _strip_trailing_whitespace(HtmlFormatter._format_lines(self, iter(buf))):
             yield t, v
 
+class PopupLatexFormatter(LatexFormatter):
+    def _filter_tokens(self, tokensource):
+        for ttype, value in apply_filters(tokensource, [StripDocTestFilter()]):
+            if ttype in Token.Sql:
+                if ttype is not Token.Sql.Link and ttype is not Token.Sql.Open:
+                    yield Token.Literal, re.sub(r'(?:[{stop}|\n]*)$', '', value)
+                else:
+                    continue
+            else:
+                yield ttype, value
+        
+    def format(self, tokensource, outfile):
+        LatexFormatter.format(self, self._filter_tokens(tokensource), outfile)
+
 def setup(app):
     app.add_lexer('pycon+sql', PyConWithSQLLexer())
     app.add_lexer('python+sql', PythonWithSQLLexer())
     PygmentsBridge.html_formatter = PopupSQLFormatter
-    #PygmentsBridge.latex_formatter = LatexFormatter
+    PygmentsBridge.latex_formatter = PopupLatexFormatter
     
     

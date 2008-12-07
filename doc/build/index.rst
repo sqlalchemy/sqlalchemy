@@ -1,11 +1,7 @@
 Table of Contents
 =================
 
-Main Documentation
-------------------
-
 .. toctree::
-    :glob:
 
     intro
     ormtutorial
@@ -14,8 +10,19 @@ Main Documentation
     session
     dbengine
     metadata
-    reference/index
-    
+
+API Documentation
+-----------------
+
+.. toctree::
+    :glob:
+    :maxdepth: 3
+
+    reference/sqlalchemy/index
+    reference/orm/index
+    reference/ext/index
+    reference/dialects/index
+
 Indices and tables
 ------------------
 

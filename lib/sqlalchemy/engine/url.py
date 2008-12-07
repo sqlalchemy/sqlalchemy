@@ -102,14 +102,13 @@ class URL(object):
         used as the keys by default.  Unset or false attributes are omitted
         from the final dictionary.
 
-        :param \**kw: Optional, alternate key names for url 
-            attributes::
+        :param \**kw: Optional, alternate key names for url attributes::
 
-                # return 'username' as 'user'
-                username='user'
+          # return 'username' as 'user'
+          username='user'
 
-                # omit 'database'
-                database=None
+          # omit 'database'
+          database=None
         
         :param names: Deprecated.  Same purpose as the keyword-based alternate names,
             but correlates the name to the original positionally.
