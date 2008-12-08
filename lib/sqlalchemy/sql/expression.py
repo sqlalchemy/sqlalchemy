@@ -1649,7 +1649,7 @@ class ColumnCollection(util.OrderedProperties):
             e.g.::
 
                 t = Table('sometable', Column('col1', Integer))
-                t.replace_unalised(Column('col1', Integer, key='columnone'))
+                t.columns.replace(Column('col1', Integer, key='columnone'))
 
             will remove the original 'col1' from the collection, and add
             the new column under the name 'columnname'.
