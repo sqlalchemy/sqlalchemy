@@ -68,12 +68,12 @@ defined ``Table`` objects are collected.  This is accessed via the
     Base.metadata.create_all(engine)
 
 The ``Engine`` created above may also be directly associated with the
-declarative base class using the ``engine`` keyword argument, where it will be
+declarative base class using the ``bind`` keyword argument, where it will be
 associated with the underlying ``MetaData`` object and allow SQL operations
 involving that metadata and its tables to make use of that engine
 automatically::
 
-    Base = declarative_base(engine=create_engine('sqlite://'))
+    Base = declarative_base(bind=create_engine('sqlite://'))
 
 Or, as ``MetaData`` allows, at any time using the ``bind`` attribute::
 
@@ -112,7 +112,7 @@ defined once the mapper configuration is used::
 Column constructs, since they are just that, are immediately usable, as below
 where we define a primary join condition on the ``Address`` class using them::
 
-    class Address(Base)
+    class Address(Base):
         __tablename__ = 'addresses'
 
         id = Column(Integer, primary_key=True)
