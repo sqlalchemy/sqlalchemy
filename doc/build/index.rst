@@ -10,18 +10,7 @@ Table of Contents
     session
     dbengine
     metadata
-
-API Documentation
------------------
-
-.. toctree::
-    :glob:
-    :maxdepth: 3
-
-    reference/sqlalchemy/index
-    reference/orm/index
-    reference/ext/index
-    reference/dialects/index
+    reference/index
 
 Indices and tables
 ------------------

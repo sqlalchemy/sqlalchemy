@@ -11,7 +11,8 @@ from sqlalchemy import exc
 
 
 class URL(object):
-    """Represent the components of a URL used to connect to a database.
+    """
+    Represent the components of a URL used to connect to a database.
 
     This object is suitable to be passed directly to a
     ``create_engine()`` call.  The fields of the URL are parsed from a
@@ -21,8 +22,8 @@ class URL(object):
     All initialization parameters are available as public attributes.
     
     :param drivername: the name of the database backend.  
-        This name will correspond to a module in sqlalchemy/databases 
-        or a third party plug-in.
+      This name will correspond to a module in sqlalchemy/databases 
+      or a third party plug-in.
 
     :param username: The user name.
 
@@ -35,7 +36,7 @@ class URL(object):
     :param database: The database name.
 
     :param query: A dictionary of options to be passed to the 
-        dialect and/or the DBAPI upon connect.
+      dialect and/or the DBAPI upon connect.
         
     """
 
@@ -102,9 +103,10 @@ class URL(object):
         used as the keys by default.  Unset or false attributes are omitted
         from the final dictionary.
 
-        :param \**kw: Optional, alternate key names for url 
-          attributes::
+        :param \**kw: Optional, alternate key names for url attributes:
 
+          .. sourcecode:: python
+        
             # return 'username' as 'user'
             username='user'
 
