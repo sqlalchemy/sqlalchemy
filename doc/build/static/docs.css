@@ -34,6 +34,10 @@ strong a {
     float:right;
 }
 
+#searchform {
+    padding:20px;
+}
+
 #pagecontrol {
     float:right;
 }
@@ -224,7 +228,7 @@ dl.class > dt
     padding: 0px 10px;
 }
 
-dt:target {
+dt:target, span.highlight {
     background-color:#FBE54E;
 }
 

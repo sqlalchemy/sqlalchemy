@@ -44,7 +44,7 @@
         <div id="search">
         Search:
         <form class="search" action="${pathto('search')}" method="get">
-          <input type="text" name="q" size="18" /> <input type="submit" value="${_('Go')}" />
+          <input type="text" name="q" size="18" /> <input type="submit" value="${_('Search')}" />
           <input type="hidden" name="check_keywords" value="yes" />
           <input type="hidden" name="area" value="default" />
         </form>
@@ -89,7 +89,9 @@
         </div>
         
         <div class="document">
-            ${next.body()}
+            <div class="body">
+                ${next.body()}
+            </div>
         </div>
 
         <%def name="footer()">
