@@ -160,6 +160,8 @@ Validators also receive collection events, when items are added to a collection:
         def validate_address(self, key, address):
             assert '@' in address.email
             return address
+
+.. _synonyms:
     
 Using Descriptors 
 ~~~~~~~~~~~~~~~~~~

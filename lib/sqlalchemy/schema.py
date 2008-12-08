@@ -749,51 +749,51 @@ class Column(SchemaItem, expression.ColumnClause):
 class ForeignKey(SchemaItem):
     """Defines a column-level FOREIGN KEY constraint between two columns.
 
-    ``ForeignKey`` is specified as an argument to a ``Column`` object.
+    ``ForeignKey`` is specified as an argument to a :class:`Column` object, e.g.::
+    
+        t = Table("remote_table", metadata, 
+            Column("remote_id", ForeignKey("main_table.id"))
+        )
 
-    For a composite (multiple column) FOREIGN KEY, use a ForeignKeyConstraint
-    within the Table definition.
+    For a composite (multiple column) FOREIGN KEY, use a :class:`ForeignKeyConstraint`
+    object specified at the level of the :class:`Table`.
+    
+    Further examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
 
     """
     def __init__(self, column, constraint=None, use_alter=False, name=None, onupdate=None, ondelete=None, deferrable=None, initially=None):
-        """Construct a column-level FOREIGN KEY.
+        """
+        Construct a column-level FOREIGN KEY.
 
-        column
-          A single target column for the key relationship.  A ``Column``
+        :param column: A single target column for the key relationship.  A :class:`Column`
           object or a column name as a string: ``tablename.columnname`` or
           ``schema.tablename.columnname``.
 
-        constraint
-          Optional.  A parent ``ForeignKeyConstraint`` object.  If not
-          supplied, a ``ForeignKeyConstraint`` will be automatically created
+        :param constraint: Optional.  A parent :class:`ForeignKeyConstraint` object.  If not
+          supplied, a :class:`ForeignKeyConstraint` will be automatically created
           and added to the parent table.
 
-        name
-          Optional string.  An in-database name for the key if `constraint` is
+        :param name: Optional string.  An in-database name for the key if `constraint` is
           not provided.
 
-        onupdate
-          Optional string.  If set, emit ON UPDATE <value> when issuing DDL
+        :param onupdate: Optional string.  If set, emit ON UPDATE <value> when issuing DDL
           for this constraint.  Typical values include CASCADE, DELETE and
           RESTRICT.
 
-        ondelete
-          Optional string.  If set, emit ON DELETE <value> when issuing DDL
+        :param ondelete: Optional string.  If set, emit ON DELETE <value> when issuing DDL
           for this constraint.  Typical values include CASCADE, DELETE and
           RESTRICT.
 
-        deferrable
-          Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
+        :param deferrable: Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
           issuing DDL for this constraint.
 
-        initially
-          Optional string.  If set, emit INITIALLY <value> when issuing DDL
+        :param initially: Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
 
-        use_alter
-          If True, do not emit this key as part of the CREATE TABLE
+        :param use_alter: If True, do not emit this key as part of the CREATE TABLE
           definition.  Instead, use ALTER TABLE after table creation to add
           the key.  Useful for circular dependencies.
+          
         """
 
         self._colspec = column
@@ -1169,8 +1169,11 @@ class ForeignKeyConstraint(Constraint):
 
     Defines a single column or composite FOREIGN KEY ... REFERENCES
     constraint. For a no-frills, single column foreign key, adding a
-    ``ForeignKey`` to the definition of a ``Column`` is a shorthand equivalent
-    for an unnamed, single column ``ForeignKeyConstraint``.
+    :class:`ForeignKey` to the definition of a :class:`Column` is a shorthand equivalent
+    for an unnamed, single column :class:`ForeignKeyConstraint`.
+    
+    Examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
+    
     """
 
     def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, use_alter=False, deferrable=None, initially=None):

@@ -33,6 +33,11 @@ To represent a Table, use the ``Table`` class::
 
 The specific datatypes for each Column, such as Integer, String, etc. are described in `types`, and exist within the module ``sqlalchemy.types`` as well as the global ``sqlalchemy`` namespace.
 
+.. _metadata_foreignkeys:
+
+Defining Foreign Keys
+---------------------
+
 Foreign keys are most easily specified by the ``ForeignKey`` object within a ``Column`` object.  For a composite foreign key, i.e. a foreign key that contains multiple columns referencing multiple columns to a composite primary key, an explicit syntax is provided which allows the correct table CREATE statements to be generated::
 
     # a table with a composite primary key
@@ -52,6 +57,9 @@ Foreign keys are most easily specified by the ``ForeignKey`` object within a ``C
     )
     
 Above, the ``invoice_items`` table will have ``ForeignKey`` objects automatically added to the ``invoice_id`` and ``ref_num`` ``Column`` objects as a result of the additional ``ForeignKeyConstraint`` object.
+
+Accessing Tables and Columns
+----------------------------
 
 The ``MetaData`` object supports some handy methods, such as getting a list of Tables in the order (or reverse) of their dependency::
 

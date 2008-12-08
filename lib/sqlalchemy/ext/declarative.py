@@ -1,8 +1,11 @@
 """A simple declarative layer for SQLAlchemy ORM.
 
+Synopsis
+========
+
 SQLAlchemy object-relational configuration involves the usage of Table,
 mapper(), and class objects to define the three areas of configuration.
-declarative moves these three types of configuration underneath the individual
+``declarative`` moves these three types of configuration underneath the individual
 mapped class.  Regular SQLAlchemy schema and ORM constructs are used in most
 cases::
 
@@ -12,16 +15,30 @@ cases::
 
     class SomeClass(Base):
         __tablename__ = 'some_table'
-        id = Column('id', Integer, primary_key=True)
-        name =  Column('name', String(50))
+        id = Column(Integer, primary_key=True)
+        name =  Column(String(50))
 
 Above, the ``declarative_base`` callable produces a new base class from which
 all mapped classes inherit from.  When the class definition is completed, a
 new ``Table`` and ``mapper()`` have been generated, accessible via the
 ``__table__`` and ``__mapper__`` attributes on the ``SomeClass`` class.
 
-You may omit the names from the Column definitions.  Declarative will fill
-them in for you::
+Defining Attributes
+===================
+
+:class:`~sqlalchemy.schema.Column` objects may be explicitly named, 
+including using a different name than the attribute in which they are associated.
+The column will be assigned to the :class:`~sqlalchemy.schema.Table` using the
+given name, and mapped to the class using the attribute name::
+
+    class SomeClass(Base):
+        __tablename__ = 'some_table'
+        id = Column("some_table_id", Integer, primary_key=True)
+        name = Column("name", String(50))
+    
+Otherwise, you may omit the names from the Column definitions.  
+Declarative will set the ``name`` attribute on the column when the class
+is initialized::
 
     class SomeClass(Base):
         __tablename__ = 'some_table'
@@ -29,14 +46,19 @@ them in for you::
         name = Column(String(50))
 
 Attributes may be added to the class after its construction, and they will be
-added to the underlying ``Table`` and ``mapper()`` definitions as
+added to the underlying :class:`~sqlalchemy.schema.Table` and :func:`~sqlalchemy.orm.mapper()` definitions as
 appropriate::
 
     SomeClass.data = Column('data', Unicode)
     SomeClass.related = relation(RelatedInfo)
 
-Classes which are mapped explicitly using ``mapper()`` can interact freely
-with declarative classes.
+Classes which are mapped explicitly using :func:`~sqlalchemy.orm.mapper()` can interact freely
+with declarative classes.   It is recommended, though not required, that all tables 
+share the same underlying :class:`~sqlalchemy.schema.MetaData` object, so that 
+string-configured :class:`~sqlalchemy.schema.ForeignKey` references can be resolved without issue.
+
+Association of Metadata and Engine
+==================================
 
 The ``declarative_base`` base class contains a ``MetaData`` object where newly
 defined ``Table`` objects are collected.  This is accessed via the
@@ -63,6 +85,9 @@ traditional collection of ``Table`` objects::
 
     mymetadata = MetaData()
     Base = declarative_base(metadata=mymetadata)
+
+Configuring Relations
+=====================
 
 Relations to other classes are done in the usual way, with the added feature
 that the class specified to ``relation()`` may be a string name.  The "class
@@ -114,9 +139,12 @@ class after the fact::
 
     User.addresses = relation(Address, primaryjoin=Address.user_id == User.id)
 
-Synonyms are one area where ``declarative`` needs to slightly change the usual
-SQLAlchemy configurational syntax.  To define a getter/setter which proxies to
-an underlying attribute, use ``synonym`` with the ``descriptor`` argument::
+Defining Synonyms
+=================
+
+Synonyms are introduced in :ref:`synonyms`. To define a getter/setter which 
+proxies to an underlying attribute, use ``synonym`` with the 
+``descriptor`` argument::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
@@ -125,7 +153,7 @@ an underlying attribute, use ``synonym`` with the ``descriptor`` argument::
 
         def _get_attr(self):
             return self._some_attr
-        def _set_attr(self, attr)
+        def _set_attr(self, attr):
             self._some_attr = attr
         attr = synonym('_attr', descriptor=property(_get_attr, _set_attr))
 
@@ -136,7 +164,8 @@ class-level expression construct::
     x.attr = "some value"
     session.query(MyClass).filter(MyClass.attr == 'some other value').all()
 
-The `synonym_for` decorator can accomplish the same task::
+For simple getters, the :func:`synonym_for` decorator can be used in conjunction
+with ``@property``::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
@@ -148,7 +177,8 @@ The `synonym_for` decorator can accomplish the same task::
         def attr(self):
             return self._some_attr
 
-Similarly, `comparable_using` is a front end for the `comparable_property` ORM function::
+Similarly, :func:`comparable_using` is a front end for the :func:`~sqlalchemy.orm.comparable_property` 
+ORM function::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
@@ -159,6 +189,9 @@ Similarly, `comparable_using` is a front end for the `comparable_property` ORM f
         @property
         def uc_name(self):
             return self.name.upper()
+
+Table Configuration
+===================
 
 As an alternative to ``__tablename__``, a direct ``Table`` construct may be
 used.  The ``Column`` objects, which in this case require their names, will be
@@ -173,16 +206,19 @@ added to the mapping just like a regular mapping to a table::
 Other table-based attributes include ``__table_args__``, which is
 either a dictionary as in::
 
-    class MyClass(Base)
+    class MyClass(Base):
         __tablename__ = 'sometable'
         __table_args__ = {'mysql_engine':'InnoDB'}
         
 or a dictionary-containing tuple in the form 
 ``(arg1, arg2, ..., {kwarg1:value, ...})``, as in::
 
-    class MyClass(Base)
+    class MyClass(Base):
         __tablename__ = 'sometable'
         __table_args__ = (ForeignKeyConstraint(['id'], ['remote_table.id']), {'autoload':True})
+
+Mapper Configuration
+====================
 
 Mapper arguments are specified using the ``__mapper_args__`` class variable.
 Note that the column objects declared on the class are immediately usable, as
@@ -470,44 +506,44 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
     """Construct a base class for declarative class definitions.
 
     The new base class will be given a metaclass that invokes
-    `instrument_declarative()` upon each subclass definition, and routes
+    :func:`instrument_declarative()` upon each subclass definition, and routes
     later Column- and Mapper-related attribute assignments made on the class
-    into Table and Mapper assignments.  See the `declarative` module
-    documentation for examples.
+    into Table and Mapper assignments.  
 
-    bind
-      An optional `Connectable`, will be assigned to the `metadata.bind`.
+    :param bind: An optional :class:`~sqlalchemy.engine.base.Connectable`, will be assigned 
+      the ``bind`` attribute on the :class:`~sqlalchemy.schema.MetaData` instance.
       The `engine` keyword argument is a deprecated synonym for `bind`.
 
-    metadata
-      An optional `MetaData` instance.  All Tables implicitly declared by
+    :param metadata:
+      An optional :class:`~sqlalchemy.schema.MetaData` instance.  All :class:`~sqlalchemy.schema.Table` 
+      objects implicitly declared by
       subclasses of the base will share this MetaData.  A MetaData instance
       will be create if none is provided.  The MetaData instance will be
       available via the `metadata` attribute of the generated declarative
       base class.
 
-    mapper
-      An optional callable, defaults to `sqlalchemy.orm.mapper`.  Will be
+    :param mapper:
+      An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`.  Will be
       used to map subclasses to their Tables.
 
-    cls
-      Defaults to `object`.  A type to use as the base for the generated
+    :param cls:
+      Defaults to :class:`object`.  A type to use as the base for the generated
       declarative base class.  May be a type or tuple of types.
 
-    name
-      Defaults to 'Base', Python's internal display name for the generated
+    :param name:
+      Defaults to ``Base``.  The display name for the generated
       class.  Customizing this is not required, but can improve clarity in
       tracebacks and debugging.
 
-    constructor
+    :param constructor:
       Defaults to declarative._declarative_constructor, an __init__
       implementation that assigns \**kwargs for declared fields and relations
-      to an instance.  If `None` is supplied, no __init__ will be installed
+      to an instance.  If ``None`` is supplied, no __init__ will be installed
       and construction will fall back to cls.__init__ with normal Python
       semantics.
 
-    metaclass
-      Defaults to `DeclarativeMeta`.  A metaclass or __metaclass__
+    :param metaclass:
+      Defaults to :class:`DeclarativeMeta`.  A metaclass or __metaclass__
       compatible callable to use as the meta type of the generated
       declarative base class.
 

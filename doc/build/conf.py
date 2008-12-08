@@ -184,7 +184,8 @@ latex_documents = [
 #latex_use_parts = False
 
 # Additional stuff for the LaTeX preamble.
-#latex_preamble = ''
+# sets TOC depth to 2.
+latex_preamble = '\setcounter{tocdepth}{2}'
 
 # Documents to append as an appendix to all manuals.
 #latex_appendices = []
