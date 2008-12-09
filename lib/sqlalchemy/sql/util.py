@@ -141,9 +141,12 @@ class Annotated(object):
             return object.__new__(cls)
         else:
             element, values = args
-            # pull appropriate subclass from this module's 
-            # namespace (see below for rationale)
-            cls = eval("Annotated%s"  % element.__class__.__name__)
+            # pull appropriate subclass from registry of annotated
+            # classes
+            try:
+                cls = annotated_classes[element.__class__]
+            except KeyError:
+                raise KeyError("Class %s has not defined an Annotated subclass" % element.__class__)
             return object.__new__(cls)
 
     def __init__(self, element, values):
@@ -187,13 +190,15 @@ class Annotated(object):
 # hard-generate Annotated subclasses.  this technique
 # is used instead of on-the-fly types (i.e. type.__new__())
 # so that the resulting objects are pickleable.
+annotated_classes = {}
+
 from sqlalchemy.sql import expression
 for cls in expression.__dict__.values() + [schema.Column, schema.Table]:
     if isinstance(cls, type) and issubclass(cls, expression.ClauseElement):
         exec "class Annotated%s(Annotated, cls):\n" \
              "    __visit_name__ = cls.__visit_name__\n"\
              "    pass" % (cls.__name__, ) in locals()
-
+        exec "annotated_classes[cls] = Annotated%s" % (cls.__name__)
 
 def _deep_annotate(element, annotations, exclude=None):
     """Deep copy the given ClauseElement, annotating each element with the given annotations dictionary.
