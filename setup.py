@@ -2,6 +2,7 @@ from ez_setup import use_setuptools
 use_setuptools()
 import os
 import sys
+import re
 from os import path
 from setuptools import setup, find_packages
 from distutils.command.build_py import build_py as _build_py
@@ -10,48 +11,11 @@ from setuptools.command.sdist import sdist as _sdist
 if sys.version_info < (2, 4):
     raise Exception("SQLAlchemy requires Python 2.4 or higher.")
 
-v = open(path.join(path.dirname(__file__), 'VERSION'))
-VERSION = v.readline().strip()
+v = file(path.join(path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.py'))
+VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(v.read()).group(1)
 v.close()
 
-class build_py(_build_py):
-    def run(self):
-        init = path.join(self.build_lib, 'sqlalchemy', '__init__.py')
-        if path.exists(init):
-            os.unlink(init)
-        _build_py.run(self)
-        _stamp_version(init)
-        self.byte_compile([init])
-
-class sdist(_sdist):
-    def make_release_tree (self, base_dir, files):
-        _sdist.make_release_tree(self, base_dir, files)
-        orig = path.join('lib', 'sqlalchemy', '__init__.py')
-        assert path.exists(orig)
-        dest = path.join(base_dir, orig)
-        if hasattr(os, 'link') and path.exists(dest):
-            os.unlink(dest)
-        self.copy_file(orig, dest)
-        _stamp_version(dest)
-
-def _stamp_version(filename):
-    found, out = False, []
-    f = open(filename, 'r')
-    for line in f:
-        if '__version__ =' in line:
-            line = line.replace("'svn'", "'%s'" % VERSION)
-            found = True
-        out.append(line)
-    f.close()
-
-    if found:
-        f = open(filename, 'w')
-        f.writelines(out)
-        f.close()
-
-
 setup(name = "SQLAlchemy",
-      cmdclass={'build_py': build_py, 'sdist': sdist},
       version = VERSION,
       description = "Database Abstraction Library",
       author = "Mike Bayer",

@@ -42,6 +42,7 @@ site-mako:
 latex:
 	mkdir -p output/latex output/doctrees
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) output/latex
+	cp texinputs/* output/latex/
 	@echo
 	@echo "Build finished; the LaTeX files are in output/latex."
 	@echo "Run \`make all-pdf' or \`make all-ps' in that directory to" \
