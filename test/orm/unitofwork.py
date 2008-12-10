@@ -13,7 +13,7 @@ from testlib.testing import eq_, ne_
 from orm import _base, _fixtures
 from engine import _base as engine_base
 import pickleable
-
+from testlib.assertsql import AllOf, CompiledSQL
 
 class UnitOfWorkTest(object):
     pass
@@ -1602,33 +1602,22 @@ class ManyToOneTest(_fixtures.FixtureTest):
         objects[2].email_address = 'imnew@foo.bar'
         objects[3].user = User()
         objects[3].user.name = 'imnewlyadded'
-        self.assert_sql(testing.db,
+        self.assert_sql_execution(testing.db,
                         session.flush,
-                        [
-            ("INSERT INTO users (name) VALUES (:name)",
-             {'name': 'imnewlyadded'} ),
+                        CompiledSQL("INSERT INTO users (name) VALUES (:name)",
+                         {'name': 'imnewlyadded'} ),
 
-            {"UPDATE addresses SET email_address=:email_address "
-             "WHERE addresses.id = :addresses_id":
-             lambda ctx: {'email_address': 'imnew@foo.bar',
-                          'addresses_id': objects[2].id},
-             "UPDATE addresses SET user_id=:user_id "
-             "WHERE addresses.id = :addresses_id":
-             lambda ctx: {'user_id': objects[3].user.id,
-                          'addresses_id': objects[3].id}},
-                        ],
-                        with_sequences=[
-            ("INSERT INTO users (id, name) VALUES (:id, :name)",
-             lambda ctx:{'name': 'imnewlyadded',
-                         'id':ctx.last_inserted_ids()[0]}),
-            {"UPDATE addresses SET email_address=:email_address "
-             "WHERE addresses.id = :addresses_id":
-             lambda ctx: {'email_address': 'imnew@foo.bar',
-                          'addresses_id': objects[2].id},
-             ("UPDATE addresses SET user_id=:user_id "
-              "WHERE addresses.id = :addresses_id"):
-             lambda ctx: {'user_id': objects[3].user.id,
-                          'addresses_id': objects[3].id}}])
+                         AllOf(
+                            CompiledSQL("UPDATE addresses SET email_address=:email_address "
+                                        "WHERE addresses.id = :addresses_id",
+                                        lambda ctx: {'email_address': 'imnew@foo.bar',
+                                          'addresses_id': objects[2].id}),
+                            CompiledSQL("UPDATE addresses SET user_id=:user_id "
+                                          "WHERE addresses.id = :addresses_id",
+                                          lambda ctx: {'user_id': objects[3].user.id,
+                                                       'addresses_id': objects[3].id})
+                        )
+                    )
 
         l = sa.select([users, addresses],
                       sa.and_(users.c.id==addresses.c.user_id,
@@ -1813,44 +1802,40 @@ class ManyToManyTest(_fixtures.FixtureTest):
         k = Keyword()
         k.name = 'yellow'
         objects[5].keywords.append(k)
-        self.assert_sql(testing.db, session.flush, [
-            {"UPDATE items SET description=:description "
-             "WHERE items.id = :items_id":
-             {'description': 'item4updated',
-              'items_id': objects[4].id},
-             "INSERT INTO keywords (name) "
-             "VALUES (:name)":
-             {'name': 'yellow'}},
-            ("INSERT INTO item_keywords (item_id, keyword_id) "
-             "VALUES (:item_id, :keyword_id)",
-             lambda ctx: [{'item_id': objects[5].id,
-                           'keyword_id': k.id}])],
-                        with_sequences = [
-              {"UPDATE items SET description=:description "
-               "WHERE items.id = :items_id":
-               {'description': 'item4updated',
-                'items_id': objects[4].id},
-               "INSERT INTO keywords (id, name) "
-               "VALUES (:id, :name)":
-               lambda ctx: {'name': 'yellow',
-                            'id':ctx.last_inserted_ids()[0]}},
-              ("INSERT INTO item_keywords (item_id, keyword_id) "
-               "VALUES (:item_id, :keyword_id)",
-               lambda ctx: [{'item_id': objects[5].id,
-                             'keyword_id': k.id}])])
+        self.assert_sql_execution(
+            testing.db, 
+            session.flush, 
+            AllOf(
+                CompiledSQL("UPDATE items SET description=:description "
+                 "WHERE items.id = :items_id",
+                     {'description': 'item4updated',
+                      'items_id': objects[4].id},
+                ),
+                CompiledSQL("INSERT INTO keywords (name) "
+                    "VALUES (:name)",
+                    {'name': 'yellow'},
+                )
+            ),
+            CompiledSQL("INSERT INTO item_keywords (item_id, keyword_id) "
+                    "VALUES (:item_id, :keyword_id)",
+                     lambda ctx: [{'item_id': objects[5].id,
+                                   'keyword_id': k.id}])
+            )
 
         objects[2].keywords.append(k)
         dkid = objects[5].keywords[1].id
         del objects[5].keywords[1]
-        self.assert_sql(testing.db, session.flush, [
-            ("DELETE FROM item_keywords "
-             "WHERE item_keywords.item_id = :item_id AND "
-             "item_keywords.keyword_id = :keyword_id",
-             [{'item_id': objects[5].id, 'keyword_id': dkid}]),
-            ("INSERT INTO item_keywords (item_id, keyword_id) "
-             "VALUES (:item_id, :keyword_id)",
-             lambda ctx: [{'item_id': objects[2].id, 'keyword_id': k.id}]
-             )])
+        self.assert_sql_execution(
+            testing.db, 
+            session.flush, 
+            CompiledSQL("DELETE FROM item_keywords "
+                     "WHERE item_keywords.item_id = :item_id AND "
+                     "item_keywords.keyword_id = :keyword_id",
+                     [{'item_id': objects[5].id, 'keyword_id': dkid}]),
+            CompiledSQL("INSERT INTO item_keywords (item_id, keyword_id) "
+                    "VALUES (:item_id, :keyword_id)",
+                    lambda ctx: [{'item_id': objects[2].id, 'keyword_id': k.id}]
+             ))
 
         session.delete(objects[3])
         session.flush()
@@ -1999,33 +1984,20 @@ class SaveTest2(_fixtures.FixtureTest):
 
         session.add_all(fixture())
 
-        self.assert_sql(testing.db, session.flush, [
-            ("INSERT INTO users (name) VALUES (:name)",
+        self.assert_sql_execution(
+            testing.db, 
+            session.flush, 
+            CompiledSQL("INSERT INTO users (name) VALUES (:name)",
              {'name': 'u1'}),
-            ("INSERT INTO users (name) VALUES (:name)",
+            CompiledSQL("INSERT INTO users (name) VALUES (:name)",
              {'name': 'u2'}),
-            ("INSERT INTO addresses (user_id, email_address) "
+            CompiledSQL("INSERT INTO addresses (user_id, email_address) "
              "VALUES (:user_id, :email_address)",
              {'user_id': 1, 'email_address': 'a1'}),
-            ("INSERT INTO addresses (user_id, email_address) "
+            CompiledSQL("INSERT INTO addresses (user_id, email_address) "
              "VALUES (:user_id, :email_address)",
-             {'user_id': 2, 'email_address': 'a2'})],
-            with_sequences = [
-            ("INSERT INTO users (id, name) "
-             "VALUES (:id, :name)",
-             lambda ctx: {'name': 'u1', 'id':ctx.last_inserted_ids()[0]}),
-            ("INSERT INTO users (id, name) "
-             "VALUES (:id, :name)",
-             lambda ctx: {'name': 'u2', 'id':ctx.last_inserted_ids()[0]}),
-            ("INSERT INTO addresses (id, user_id, email_address) "
-             "VALUES (:id, :user_id, :email_address)",
-             lambda ctx:{'user_id': 1, 'email_address': 'a1',
-                         'id':ctx.last_inserted_ids()[0]}),
-            ("INSERT INTO addresses (id, user_id, email_address) "
-             "VALUES (:id, :user_id, :email_address)",
-             lambda ctx:{'user_id': 2, 'email_address': 'a2',
-                         'id':ctx.last_inserted_ids()[0]})])
-
+             {'user_id': 2, 'email_address': 'a2'}),
+        )
 
 class SaveTest3(_base.MappedTest):
     def define_tables(self, metadata):

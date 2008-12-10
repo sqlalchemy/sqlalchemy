@@ -6,6 +6,7 @@ from sqlalchemy.orm import eagerload, deferred, undefer
 from testlib.sa import Table, Column, Integer, String, ForeignKey, and_
 from testlib.sa.orm import mapper, relation, create_session, lazyload
 from testlib.testing import eq_
+from testlib.assertsql import CompiledSQL
 from orm import _base, _fixtures
 
 class EagerTest(_fixtures.FixtureTest):
@@ -1020,16 +1021,13 @@ class SelfReferentialEagerTest(_base.MappedTest):
             d = sess.query(Node).filter_by(data='n1').options(eagerload('children.children')).first()
 
         # test that the query isn't wrapping the initial query for eager loading.
-        # testing only sqlite for now since the query text is slightly different on other
-        # dialects
-        if testing.against('sqlite'):
-            self.assert_sql(testing.db, go, [
-                (
-                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data FROM nodes "
-                    "WHERE nodes.data = :data_1 ORDER BY nodes.id  LIMIT 1 OFFSET 0",
-                    {'data_1': 'n1'}
-                ),
-            ])
+        self.assert_sql_execution(testing.db, go, 
+            CompiledSQL(
+                "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data FROM nodes "
+                "WHERE nodes.data = :data_1 ORDER BY nodes.id  LIMIT 1 OFFSET 0",
+                {'data_1': 'n1'}
+            )
+        )
 
     @testing.fails_on('maxdb')
     @testing.resolve_artifact_names

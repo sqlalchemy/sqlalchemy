@@ -10,6 +10,7 @@ from testlib import testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import mapper, relation, backref, create_session
 from testlib.testing import eq_
+from testlib.assertsql import RegexSQL, ExactSQL, CompiledSQL
 from orm import _base
 
 
@@ -558,82 +559,31 @@ class OneToManyManyToOneTest(_base.MappedTest):
         sess.add(b)
         sess.add(p)
 
-        self.assert_sql(testing.db, sess.flush, [
-            ("INSERT INTO person (favorite_ball_id, data) "
-             "VALUES (:favorite_ball_id, :data)",
-             {'favorite_ball_id': None, 'data':'some data'}),
-
-            ("INSERT INTO ball (person_id, data) "
-             "VALUES (:person_id, :data)",
-             lambda ctx:{'person_id':p.id, 'data':'some data'}),
-
-            ("INSERT INTO ball (person_id, data) "
-             "VALUES (:person_id, :data)",
-             lambda ctx:{'person_id':p.id, 'data':'some data'}),
-
-            ("INSERT INTO ball (person_id, data) "
-             "VALUES (:person_id, :data)",
-                lambda ctx:{'person_id':p.id, 'data':'some data'}),
-
-            ("INSERT INTO ball (person_id, data) "
-             "VALUES (:person_id, :data)",
-             lambda ctx:{'person_id':p.id, 'data':'some data'}),
-
-            ("UPDATE person SET favorite_ball_id=:favorite_ball_id "
-             "WHERE person.id = :person_id",
-             lambda ctx:{'favorite_ball_id':p.favorite.id, 'person_id':p.id})
-            ],
-
-            with_sequences= [
-            ("INSERT INTO person (id, favorite_ball_id, data) "
-             "VALUES (:id, :favorite_ball_id, :data)",
-             lambda ctx: {'id':ctx.last_inserted_ids()[0],
-                          'favorite_ball_id': None,
-                          'data':'some data'}),
-
-            ("INSERT INTO ball (id, person_id, data) "
-             "VALUES (:id, :person_id, :data)",
-             lambda ctx: {'id':ctx.last_inserted_ids()[0],
-                          'person_id':p.id,
-                          'data':'some data'}),
-
-            ("INSERT INTO ball (id, person_id, data) "
-             "VALUES (:id, :person_id, :data)",
-             lambda ctx: {'id':ctx.last_inserted_ids()[0],
-                          'person_id':p.id,
-                          'data':'some data'}),
-
-            ("INSERT INTO ball (id, person_id, data) "
-             "VALUES (:id, :person_id, :data)",
-             lambda ctx: {'id':ctx.last_inserted_ids()[0],
-                          'person_id':p.id,
-                          'data':'some data'}),
-            ("INSERT INTO ball (id, person_id, data) "
-             "VALUES (:id, :person_id, :data)",
-             lambda ctx: {'id':ctx.last_inserted_ids()[0],
-                          'person_id':p.id,
-                          'data':'some data'}),
-            # heres the post update
-            ("UPDATE person SET favorite_ball_id=:favorite_ball_id "
-            "WHERE person.id = :person_id",
-            lambda ctx: {'favorite_ball_id':p.favorite.id, 'person_id':p.id})])
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            RegexSQL("^INSERT INTO person", {'data':'some data'}),
+            RegexSQL("^INSERT INTO ball", lambda c: {'person_id':p.id, 'data':'some data'}),
+            RegexSQL("^INSERT INTO ball", lambda c: {'person_id':p.id, 'data':'some data'}),
+            RegexSQL("^INSERT INTO ball", lambda c: {'person_id':p.id, 'data':'some data'}),
+            RegexSQL("^INSERT INTO ball", lambda c: {'person_id':p.id, 'data':'some data'}),
+            ExactSQL("UPDATE person SET favorite_ball_id=:favorite_ball_id "
+                        "WHERE person.id = :person_id",
+                        lambda ctx:{'favorite_ball_id':p.favorite.id, 'person_id':p.id}
+             ),
+        )
 
         sess.delete(p)
 
-        self.assert_sql(testing.db, sess.flush, [
-            # heres the post update (which is a pre-update with deletes)
-            ("UPDATE person SET favorite_ball_id=:favorite_ball_id "
-             "WHERE person.id = :person_id",
-             lambda ctx: {'person_id': p.id, 'favorite_ball_id': None}),
-
-            ("DELETE FROM ball WHERE ball.id = :id",
-             None),
-             # order cant be predicted, but something like:
-             #lambda ctx:[{'id': 1L}, {'id': 4L}, {'id': 3L}, {'id': 2L}]),
-
-            ("DELETE FROM person WHERE person.id = :id",
-             lambda ctx:[{'id': p.id}])])
-
+        self.assert_sql_execution(
+            testing.db, 
+            sess.flush, 
+            ExactSQL("UPDATE person SET favorite_ball_id=:favorite_ball_id "
+                "WHERE person.id = :person_id",
+                lambda ctx: {'person_id': p.id, 'favorite_ball_id': None}),
+            ExactSQL("DELETE FROM ball WHERE ball.id = :id", None), # lambda ctx:[{'id': 1L}, {'id': 4L}, {'id': 3L}, {'id': 2L}])
+            ExactSQL("DELETE FROM person WHERE person.id = :id", lambda ctx:[{'id': p.id}])
+        )
 
     @testing.resolve_artifact_names
     def testpostupdate_o2m(self):
@@ -664,112 +614,74 @@ class OneToManyManyToOneTest(_base.MappedTest):
         sess = create_session()
         sess.add_all((b,p,b2,b3,b4))
 
-        self.assert_sql(testing.db, sess.flush, [
-            ("INSERT INTO ball (person_id, data) "
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL("INSERT INTO ball (person_id, data) "
              "VALUES (:person_id, :data)",
              {'person_id':None, 'data':'some data'}),
 
-            ("INSERT INTO ball (person_id, data) "
+            CompiledSQL("INSERT INTO ball (person_id, data) "
              "VALUES (:person_id, :data)",
              {'person_id':None, 'data':'some data'}),
 
-            ("INSERT INTO ball (person_id, data) "
+            CompiledSQL("INSERT INTO ball (person_id, data) "
              "VALUES (:person_id, :data)",
              {'person_id':None, 'data':'some data'}),
 
-            ("INSERT INTO ball (person_id, data) "
+            CompiledSQL("INSERT INTO ball (person_id, data) "
              "VALUES (:person_id, :data)",
              {'person_id':None, 'data':'some data'}),
 
-            ("INSERT INTO person (favorite_ball_id, data) "
+            CompiledSQL("INSERT INTO person (favorite_ball_id, data) "
              "VALUES (:favorite_ball_id, :data)",
              lambda ctx:{'favorite_ball_id':b.id, 'data':'some data'}),
 
-            # heres the post update on each one-to-many item
-            ("UPDATE ball SET person_id=:person_id "
+            CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id':p.id,'ball_id':b.id}),
 
-            ("UPDATE ball SET person_id=:person_id "
+            CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id':p.id,'ball_id':b2.id}),
 
-            ("UPDATE ball SET person_id=:person_id "
+            CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id':p.id,'ball_id':b3.id}),
 
-            ("UPDATE ball SET person_id=:person_id "
+            CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b4.id})],
-
-            with_sequences=[
-            ("INSERT INTO ball (id, person_id, data) "
-             "VALUES (:id, :person_id, :data)",
-             lambda ctx: {'id':ctx.last_inserted_ids()[0],
-                          'person_id':None,
-                          'data':'some data'}),
-            ("INSERT INTO ball (id, person_id, data) "
-             "VALUES (:id, :person_id, :data)",
-             lambda ctx:{'id':ctx.last_inserted_ids()[0],
-                         'person_id':None,
-                         'data':'some data'}),
-            ("INSERT INTO ball (id, person_id, data) "
-             "VALUES (:id, :person_id, :data)",
-             lambda ctx:{'id':ctx.last_inserted_ids()[0],
-                         'person_id':None,
-                         'data':'some data'}),
-            ("INSERT INTO ball (id, person_id, data) "
-             "VALUES (:id, :person_id, :data)",
-             lambda ctx:{'id':ctx.last_inserted_ids()[0],
-                         'person_id':None,
-                         'data':'some data'}),
-            ("INSERT INTO person (id, favorite_ball_id, data) "
-             "VALUES (:id, :favorite_ball_id, :data)",
-             lambda ctx:{'id':ctx.last_inserted_ids()[0],
-                         'favorite_ball_id':b.id,
-                         'data':'some data'}),
-            ("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b.id}),
-
-            ("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b2.id}),
-
-            ("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b3.id}),
-
-            ("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b4.id})])
-
+             lambda ctx:{'person_id':p.id,'ball_id':b4.id}),
+        )
+        
         sess.delete(p)
-        self.assert_sql(testing.db, sess.flush, [
-            ("UPDATE ball SET person_id=:person_id "
+        
+        self.assert_sql_execution(testing.db, sess.flush, 
+            CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id': None, 'ball_id': b.id}),
 
-            ("UPDATE ball SET person_id=:person_id "
+            CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id': None, 'ball_id': b2.id}),
 
-            ("UPDATE ball SET person_id=:person_id "
+            CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id': None, 'ball_id': b3.id}),
 
-            ("UPDATE ball SET person_id=:person_id "
+            CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id': None, 'ball_id': b4.id}),
 
-            ("DELETE FROM person WHERE person.id = :id",
+            CompiledSQL("DELETE FROM person WHERE person.id = :id",
              lambda ctx:[{'id':p.id}]),
 
-            ("DELETE FROM ball WHERE ball.id = :id",
+            CompiledSQL("DELETE FROM ball WHERE ball.id = :id",
              lambda ctx:[{'id': b.id},
                          {'id': b2.id},
                          {'id': b3.id},
-                         {'id': b4.id}])])
+                         {'id': b4.id}])
+        )
 
 
 class SelfReferentialPostUpdateTest(_base.MappedTest):
@@ -859,20 +771,24 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
         remove_child(root, cats)
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
-        self.assert_sql(testing.db, lambda: session.flush(), [
-            ("UPDATE node SET prev_sibling_id=:prev_sibling_id "
+        self.assert_sql_execution(
+            testing.db, 
+            session.flush,
+            CompiledSQL("UPDATE node SET prev_sibling_id=:prev_sibling_id "
              "WHERE node.id = :node_id",
              lambda ctx:{'prev_sibling_id':about.id, 'node_id':stories.id}),
 
-            ("UPDATE node SET next_sibling_id=:next_sibling_id "
+            CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
              "WHERE node.id = :node_id",
              lambda ctx:{'next_sibling_id':stories.id, 'node_id':about.id}),
 
-            ("UPDATE node SET next_sibling_id=:next_sibling_id "
+            CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
              "WHERE node.id = :node_id",
              lambda ctx:{'next_sibling_id':None, 'node_id':cats.id}),
-            ("DELETE FROM node WHERE node.id = :id",
-             lambda ctx:[{'id':cats.id}])])
+             
+            CompiledSQL("DELETE FROM node WHERE node.id = :id",
+             lambda ctx:[{'id':cats.id}])
+        )
 
 
 class SelfReferentialPostUpdateTest2(_base.MappedTest):

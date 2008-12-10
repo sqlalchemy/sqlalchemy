@@ -906,12 +906,9 @@ class OptionsTest(_fixtures.FixtureTest):
 
         sess.clear()
 
-        # test that eager loading doesnt modify parent mapper
-        def go():
-            u = sess.query(User).filter_by(id=8).one()
-            eq_(u.id, 8)
-            eq_(len(u.addresses), 3)
-        assert "tbl_row_count" not in self.capture_sql(testing.db, go)
+        u = sess.query(User).filter_by(id=8).one()
+        eq_(u.id, 8)
+        eq_(len(u.addresses), 3)
 
     @testing.fails_on('maxdb')
     @testing.resolve_artifact_names
@@ -1396,7 +1393,10 @@ class DeferredTest(_fixtures.FixtureTest):
         sess = create_session()
         q = sess.query(Order).order_by(Order.id).options(defer('user_id'))
 
-        self.sql_eq_(q.all, [
+        def go():
+            q.all()[0].user_id
+                
+        self.sql_eq_(go, [
             ("SELECT orders.id AS orders_id, "
              "orders.address_id AS orders_address_id, "
              "orders.description AS orders_description, "
@@ -1404,7 +1404,7 @@ class DeferredTest(_fixtures.FixtureTest):
              "FROM orders ORDER BY orders.id", {}),
             ("SELECT orders.user_id AS orders_user_id "
              "FROM orders WHERE orders.id = :param_1",
-             {'param_1':3})])
+             {'param_1':1})])
         sess.clear()
 
         q2 = q.options(sa.orm.undefer('user_id'))
