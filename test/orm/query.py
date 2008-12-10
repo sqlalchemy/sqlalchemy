@@ -574,21 +574,6 @@ class SliceTest(QueryTest):
         ])
 
 
-class TextTest(QueryTest):
-    def test_fulltext(self):
-        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users").all()
-
-    def test_fragment(self):
-        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (8, 9)").all()
-
-        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter("id=9").all()
-
-        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(User.id==9).all()
-
-    def test_binds(self):
-        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()
-
-
 class FooTest(FixtureTest):
     keep_data = True
         
@@ -906,7 +891,10 @@ class YieldTest(QueryTest):
 
 class TextTest(QueryTest):
     def test_fulltext(self):
-        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users").all()
+        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users order by id").all()
+
+        assert User(id=7) == create_session().query(User).from_statement("select * from users order by id").first()
+        assert None == create_session().query(User).from_statement("select * from users where name='nonexistent'").first()
 
     def test_fragment(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (8, 9)").all()

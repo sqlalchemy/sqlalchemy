@@ -1035,13 +1035,13 @@ class Query(object):
 
         """
         if self._statement:
-            return list(self)[0]
+            ret = list(self)[0:1]
         else:
             ret = list(self[0:1])
-            if len(ret) > 0:
-                return ret[0]
-            else:
-                return None
+        if len(ret) > 0:
+            return ret[0]
+        else:
+            return None
 
     def one(self):
         """Return exactly one result or raise an exception.
