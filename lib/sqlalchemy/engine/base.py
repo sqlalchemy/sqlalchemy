@@ -507,8 +507,11 @@ class Connection(Connectable):
     as ClauseElement, Compiled and DefaultGenerator objects.  Provides
     a begin method to return Transaction objects.
 
-    The Connection object is **not** threadsafe.
-    
+    The Connection object is **not** thread-safe.
+
+    .. index::
+      single: thread safety; Connection
+
     """
 
     def __init__(self, engine, connection=None, close_with_result=False,
@@ -984,6 +987,10 @@ class Transaction(object):
     """Represent a Transaction in progress.
 
     The Transaction object is **not** threadsafe.
+
+    .. index::
+      single: thread safety; Transaction
+
     """
 
     def __init__(self, connection, parent):

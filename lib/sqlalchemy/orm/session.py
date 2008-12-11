@@ -214,7 +214,10 @@ class SessionTransaction(object):
     Direct usage of ``SessionTransaction`` is not necessary as of SQLAlchemy
     0.4; use the ``begin()`` and ``commit()`` methods on ``Session`` itself.
 
-    The ``SessionTransaction`` object is **not** threadsafe.
+    The ``SessionTransaction`` object is **not** thread-safe.
+
+    .. index::
+      single: thread safety; SessionTransaction
 
     """
 

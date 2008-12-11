@@ -176,9 +176,12 @@ Both ``Connection`` and ``Engine`` fulfill an interface known as ``Connectable``
     connection = engine.connect()
     table.drop(bind=connection)
 
+.. index::
+   single: thread safety; connections
+
 Connection facts:
 
-* the Connection object is **not threadsafe**.  While a Connection can be shared among threads using properly synchronized access, this is also not recommended as many DBAPIs have issues with, if not outright disallow, sharing of connection state between threads.
+* the Connection object is **not thread-safe**.  While a Connection can be shared among threads using properly synchronized access, this is also not recommended as many DBAPIs have issues with, if not outright disallow, sharing of connection state between threads.
 * The Connection object represents a single dbapi connection checked out from the connection pool.  In this state, the connection pool has no affect upon the connection, including its expiration or timeout state.  For the connection pool to properly manage connections, **connections should be returned to the connection pool (i.e. ``connection.close()``) whenever the connection is not in use**.  If your application has a need for management of multiple connections or is otherwise long running (this includes all web applications, threaded or not), don't hold a single connection open at the module level.
  
 Using Transactions with Connection 
@@ -229,9 +232,12 @@ Above, ``method_a`` is called first, which calls ``connection.begin()``.  Then i
 
 Note that SQLAlchemy's Object Relational Mapper also provides a way to control transaction scope at a higher level; this is described in `unitofwork_transaction`.
 
+.. index::
+   single: thread safety; transactions
+
 Transaction Facts:
 
-* the Transaction object, just like its parent Connection, is **not threadsafe**.
+* the Transaction object, just like its parent Connection, is **not thread-safe**.
 * SQLAlchemy 0.4 will feature transactions with two-phase commit capability as well as SAVEPOINT capability.
 
 Understanding Autocommit

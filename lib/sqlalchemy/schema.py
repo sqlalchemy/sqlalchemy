@@ -1443,12 +1443,13 @@ class MetaData(SchemaItem):
     """A collection of Tables and their associated schema constructs.
 
     Holds a collection of Tables and an optional binding to an ``Engine`` or
-    ``Connection``.  If bound, the :class:`~sqlalchemy.schema.Table` objects in the
-    collection and their columns may participate in implicit SQL execution.
+    ``Connection``.  If bound, the :class:`~sqlalchemy.schema.Table` objects
+    in the collection and their columns may participate in implicit SQL
+    execution.
 
-    The `Table` objects themselves are stored in the `metadata.tables` 
+    The `Table` objects themselves are stored in the `metadata.tables`
     dictionary.
-    
+
     The ``bind`` property may be assigned to dynamically.  A common pattern is
     to start unbound and then bind later when an engine is available::
 
@@ -1461,6 +1462,10 @@ class MetaData(SchemaItem):
 
     MetaData is a thread-safe object after tables have been explicitly defined
     or loaded via reflection.
+
+    .. index::
+      single: thread safety; MetaData
+
     """
 
     __visit_name__ = 'metadata'

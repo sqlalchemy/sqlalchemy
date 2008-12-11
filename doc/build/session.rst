@@ -151,7 +151,11 @@ Frequently Asked Questions
 
         session = Session.object_session(someobject)
 
-* Is the session threadsafe ?
+.. index::
+   single: thread safety; sessions
+   single: thread safety; Session
+
+* Is the session thread-safe?
 
     Nope.  It has no thread synchronization of any kind built in, and particularly when you do a flush operation, it definitely is not open to concurrent threads accessing it, because it holds onto a single database connection at that point.  If you use a session which is non-transactional for read operations only, it's still not thread-"safe", but you also wont get any catastrophic failures either, since it opens and closes connections on an as-needed basis; it's just that different threads might load the same objects independently of each other, but only one will wind up in the identity map (however, the other one might still live in a collection somewhere).
 
