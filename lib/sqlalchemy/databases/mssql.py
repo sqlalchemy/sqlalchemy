@@ -491,9 +491,6 @@ class MSSQLDialect(default.DefaultDialect):
             newobj.dialect = self
         return newobj
 
-    def last_inserted_ids(self):
-        return self.context.last_inserted_ids
-
     def get_default_schema_name(self, connection):
         return self.schema_name
 
