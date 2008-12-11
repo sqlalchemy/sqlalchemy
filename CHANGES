@@ -34,6 +34,10 @@ CHANGES
       
 - bugfixes, behavioral changes
 - orm
+    - Corrected problem with Query.delete() and
+      Query.update() not working properly with bind 
+      parameters. [ticket:1242]
+
     - Query.select_from(), from_statement() ensure
       that the given argument is a FromClause,
       or Text/Select/Union, respectively.
