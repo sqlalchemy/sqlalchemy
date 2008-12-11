@@ -28,21 +28,22 @@ __all__ = ['VisitableType', 'Visitable', 'ClauseVisitor',
     'cloned_traverse', 'replacement_traverse']
     
 class VisitableType(type):
-    """Metaclass which applies a `__visit_name__` attribute and 
-    `_compiler_dispatch` method to classes.
+    """Metaclass which checks for a `__visit_name__` attribute and
+    applies `_compiler_dispatch` method to classes.
     
     """
     
-    def __init__(cls, clsname, bases, dict):
-        if not '__visit_name__' in cls.__dict__:
-            m = re.match(r'_?(\w+?)(?:Expression|Clause|Element|$)', clsname)
-            x = m.group(1)
-            x = re.sub(r'(?!^)[A-Z]', lambda m:'_'+m.group(0).lower(), x)
-            cls.__visit_name__ = x.lower()
+    def __init__(cls, clsname, bases, clsdict):
+        if cls.__name__ == 'Visitable':
+            super(VisitableType, cls).__init__(clsname, bases, clsdict)
+            return
+        
+        assert hasattr(cls, '__visit_name__'), "`Visitable` descendants " \
+                                               "should define `__visit_name__`"
         
         # set up an optimized visit dispatch function
         # for use by the compiler
-        visit_name = cls.__dict__["__visit_name__"]
+        visit_name = cls.__visit_name__
         if isinstance(visit_name, str):
             getter = operator.attrgetter("visit_%s" % visit_name)
             def _compiler_dispatch(self, visitor, **kw):
@@ -53,7 +54,7 @@ class VisitableType(type):
     
         cls._compiler_dispatch = _compiler_dispatch
         
-        super(VisitableType, cls).__init__(clsname, bases, dict)
+        super(VisitableType, cls).__init__(clsname, bases, clsdict)
 
 class Visitable(object):
     """Base class for visitable objects, applies the

@@ -43,6 +43,7 @@ __all__.sort()
 class SchemaItem(visitors.Visitable):
     """Base class for items that define a database schema."""
 
+    __visit_name__ = 'schema_item'
     quote = None
 
     def _init_items(self, *args):
@@ -120,6 +121,8 @@ class Table(SchemaItem, expression.TableClause):
     """Represent a table in a database."""
 
     __metaclass__ = _TableSingleton
+
+    __visit_name__ = 'table'
 
     ddl_events = ('before-create', 'after-create', 'before-drop', 'after-drop')
 
@@ -407,6 +410,8 @@ class Table(SchemaItem, expression.TableClause):
 
 class Column(SchemaItem, expression.ColumnClause):
     """Represents a column in a database table."""
+
+    __visit_name__ = 'column'
 
     def __init__(self, *args, **kwargs):
         """
@@ -761,6 +766,9 @@ class ForeignKey(SchemaItem):
     Further examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
 
     """
+
+    __visit_name__ = 'foreign_key'
+
     def __init__(self, column, constraint=None, use_alter=False, name=None, onupdate=None, ondelete=None, deferrable=None, initially=None):
         """
         Construct a column-level FOREIGN KEY.
@@ -921,6 +929,8 @@ class ForeignKey(SchemaItem):
 class DefaultGenerator(SchemaItem):
     """Base class for column *default* values."""
 
+    __visit_name__ = 'default_generator'
+
     def __init__(self, for_update=False, metadata=None):
         self.for_update = for_update
         self.metadata = util.assert_arg_type(metadata, (MetaData, type(None)), 'metadata')
@@ -1001,6 +1011,8 @@ class ColumnDefault(DefaultGenerator):
 class Sequence(DefaultGenerator):
     """Represents a named database sequence."""
 
+    __visit_name__ = 'sequence'
+
     def __init__(self, name, start=None, increment=None, schema=None,
                  optional=False, quote=None, **kwargs):
         super(Sequence, self).__init__(**kwargs)
@@ -1077,6 +1089,8 @@ class Constraint(SchemaItem):
     Implements a hybrid of dict/setlike behavior with regards to the list of
     underying columns.
     """
+
+    __visit_name__ = 'constraint'
 
     def __init__(self, name=None, deferrable=None, initially=None):
         """Create a SQL constraint.
@@ -1175,6 +1189,7 @@ class ForeignKeyConstraint(Constraint):
     Examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
     
     """
+    __visit_name__ = 'foreign_key_constraint'
 
     def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, use_alter=False, deferrable=None, initially=None):
         """Construct a composite-capable FOREIGN KEY.
@@ -1252,6 +1267,8 @@ class PrimaryKeyConstraint(Constraint):
     multiple-column PrimaryKeyConstraint.
     """
 
+    __visit_name__ = 'primary_key_constraint'
+
     def __init__(self, *columns, **kwargs):
         """Construct a composite-capable PRIMARY KEY.
 
@@ -1315,6 +1332,8 @@ class UniqueConstraint(Constraint):
     UniqueConstraint.
     """
 
+    __visit_name__ = 'unique_constraint'
+
     def __init__(self, *columns, **kwargs):
         """Construct a UNIQUE constraint.
 
@@ -1364,6 +1383,8 @@ class Index(SchemaItem):
     column index, adding ``index=True`` to the ``Column`` definition is
     a shorthand equivalent for an unnamed, single column Index.
     """
+
+    __visit_name__ = 'index'
 
     def __init__(self, name, *columns, **kwargs):
         """Construct an index object.

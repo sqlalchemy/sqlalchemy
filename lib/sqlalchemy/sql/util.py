@@ -121,7 +121,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False):
     else:
         return sql.and_(*crit)
 
-    
+
 class Annotated(object):
     """clones a ClauseElement and applies an 'annotations' dictionary.
     
@@ -146,7 +146,9 @@ class Annotated(object):
             try:
                 cls = annotated_classes[element.__class__]
             except KeyError:
-                raise KeyError("Class %s has not defined an Annotated subclass" % element.__class__)
+                cls = annotated_classes[element.__class__] = type.__new__(type, 
+                        "Annotated%s" % element.__class__.__name__, 
+                        (Annotated, element.__class__), {})
             return object.__new__(cls)
 
     def __init__(self, element, values):

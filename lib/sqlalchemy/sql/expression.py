@@ -961,6 +961,8 @@ def is_column(col):
 class ClauseElement(Visitable):
     """Base class for elements of a programmatically constructed SQL expression."""
 
+    __visit_name__ = 'clause'
+
     _annotations = {}
     supports_execution = False
     _from_objects = []
@@ -1567,6 +1569,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
 
     """
 
+    __visit_name__ = 'column'
     primary_key = False
     foreign_keys = []
     quote = None
@@ -1734,6 +1737,7 @@ class ColumnSet(util.OrderedSet):
 
 class Selectable(ClauseElement):
     """mark a class as being selectable"""
+    __visit_name__ = 'selectable'
 
 class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM`` clause of a ``SELECT`` statement."""
@@ -2062,6 +2066,8 @@ class _Null(ColumnElement):
 
     """
 
+    __visit_name__ = 'null'
+
     def __init__(self):
         self.type = sqltypes.NULLTYPE
 
@@ -2211,6 +2217,8 @@ class _Function(_CalculatedClause, FromClause):
 
     """
 
+    __visit_name__ = 'function'
+
     def __init__(self, name, *clauses, **kwargs):
         self.packagenames = kwargs.get('packagenames', None) or []
         self.name = name
@@ -2237,6 +2245,8 @@ class _Function(_CalculatedClause, FromClause):
 
 class _Cast(ColumnElement):
 
+    __visit_name__ = 'cast'
+
     def __init__(self, clause, totype, **kwargs):
         self.type = sqltypes.to_instance(totype)
         self.clause = _literal_as_binds(clause, None)
@@ -2255,6 +2265,9 @@ class _Cast(ColumnElement):
 
 
 class _UnaryExpression(ColumnElement):
+
+    __visit_name__ = 'unary'
+
     def __init__(self, element, operator=None, modifier=None, type_=None, negate=None):
         self.operator = operator
         self.modifier = modifier
@@ -2303,6 +2316,8 @@ class _UnaryExpression(ColumnElement):
 
 class _BinaryExpression(ColumnElement):
     """Represent an expression that is ``LEFT <operator> RIGHT``."""
+
+    __visit_name__ = 'binary'
 
     def __init__(self, left, right, operator, type_=None, negate=None, modifiers=None):
         self.left = _literal_as_text(left).self_group(against=operator)
@@ -2408,6 +2423,7 @@ class Join(FromClause):
     off all ``FromClause`` subclasses.
 
     """
+    __visit_name__ = 'join'
 
     def __init__(self, left, right, onclause=None, isouter=False):
         self.left = _selectable(left)
@@ -2528,6 +2544,7 @@ class Alias(FromClause):
 
     """
 
+    __visit_name__ = 'alias'
     named_with_column = True
 
     def __init__(self, selectable, alias=None):
@@ -2583,6 +2600,8 @@ class Alias(FromClause):
 
 class _Grouping(ColumnElement):
     """Represent a grouping within a column expression"""
+
+    __visit_name__ = 'grouping'
 
     def __init__(self, element):
         self.element = element
@@ -2655,6 +2674,8 @@ class _Label(ColumnElement):
     ``ColumnElement`` subclasses.
 
     """
+
+    __visit_name__ = 'label'
 
     def __init__(self, name, element, type_=None):
         while isinstance(element, _Label):
@@ -2729,6 +2750,8 @@ class ColumnClause(_Immutable, ColumnElement):
       ``ColumnClause``.
 
     """
+    __visit_name__ = 'column'
+
     def __init__(self, text, selectable=None, type_=None, is_literal=False):
         self.key = self.name = text
         self.table = selectable
@@ -2800,6 +2823,8 @@ class TableClause(_Immutable, FromClause):
     functionality.
 
     """
+
+    __visit_name__ = 'table'
 
     named_with_column = True
 
@@ -2994,7 +3019,6 @@ class _SelectBaseMixin(object):
 
 
 class _ScalarSelect(_Grouping):
-    __visit_name__ = 'grouping'
     _from_objects = []
 
     def __init__(self, element):
@@ -3019,6 +3043,8 @@ class _ScalarSelect(_Grouping):
 
 class CompoundSelect(_SelectBaseMixin, FromClause):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other SELECT-based set operations."""
+
+    __visit_name__ = 'compound_select'
 
     def __init__(self, keyword, *selects, **kwargs):
         self._should_correlate = kwargs.pop('correlate', False)
@@ -3087,6 +3113,9 @@ class Select(_SelectBaseMixin, FromClause):
     ability to execute themselves and return a result set.
 
     """
+
+    __visit_name__ = 'select'
+
     def __init__(self, columns, whereclause=None, from_obj=None, distinct=False, having=None, correlate=True, prefixes=None, **kwargs):
         """Construct a Select object.
 
@@ -3444,6 +3473,8 @@ class Select(_SelectBaseMixin, FromClause):
 class _UpdateBase(ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
 
+    __visit_name__ = 'update_base'
+
     supports_execution = True
     _autocommit = True
 
@@ -3477,6 +3508,9 @@ class _UpdateBase(ClauseElement):
     bind = property(bind, _set_bind)
 
 class _ValuesBase(_UpdateBase):
+
+    __visit_name__ = 'values_base'
+
     def __init__(self, table, values):
         self.table = table
         self.parameters = self._process_colparams(values)
@@ -3512,6 +3546,8 @@ class Insert(_ValuesBase):
     The ``Insert`` object is created using the :func:`insert()` function.
 
     """
+    __visit_name__ = 'insert'
+
     def __init__(self, table, values=None, inline=False, bind=None, prefixes=None, **kwargs):
         _ValuesBase.__init__(self, table, values)
         self._bind = bind
@@ -3550,6 +3586,8 @@ class Update(_ValuesBase):
     The ``Update`` object is created using the :func:`update()` function.
 
     """
+    __visit_name__ = 'update'
+
     def __init__(self, table, whereclause, values=None, inline=False, bind=None, **kwargs):
         _ValuesBase.__init__(self, table, values)
         self._bind = bind
@@ -3589,6 +3627,8 @@ class Delete(_UpdateBase):
 
     """
 
+    __visit_name__ = 'delete'
+
     def __init__(self, table, whereclause, bind=None, **kwargs):
         self._bind = bind
         self.table = table
@@ -3619,6 +3659,7 @@ class Delete(_UpdateBase):
         self._whereclause = clone(self._whereclause)
 
 class _IdentifiedClause(ClauseElement):
+    __visit_name__ = 'identified'
     supports_execution = True
     _autocommit = False
     quote = None
@@ -3627,10 +3668,10 @@ class _IdentifiedClause(ClauseElement):
         self.ident = ident
 
 class SavepointClause(_IdentifiedClause):
-    pass
+    __visit_name__ = 'savepoint'
 
 class RollbackToSavepointClause(_IdentifiedClause):
-    pass
+    __visit_name__ = 'rollback_to_savepoint'
 
 class ReleaseSavepointClause(_IdentifiedClause):
-    pass
+    __visit_name__ = 'release_savepoint'

@@ -6,10 +6,6 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import VisitableType
 
 class _GenericMeta(VisitableType):
-    def __init__(cls, clsname, bases, dict):
-        cls.__visit_name__ = 'function'
-        type.__init__(cls, clsname, bases, dict)
-
     def __call__(self, *args, **kwargs):
         args = [_literal_as_binds(c) for c in args]
         return type.__call__(self, *args, **kwargs)
