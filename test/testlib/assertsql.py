@@ -1,8 +1,9 @@
+
 from sqlalchemy.interfaces import ConnectionProxy
-import re
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.base import Connection
 import testing
+import re
 
 class AssertRule(object):
     def process_execute(self, clauseelement, *multiparams, **params):

@@ -13,7 +13,6 @@ from cStringIO import StringIO
 
 import testlib.config as config
 from testlib.compat import _function_named
-from testlib import assertsql
 
 # Delayed imports
 MetaData = None
@@ -725,6 +724,7 @@ class AssertsExecutionResults(object):
         return True
 
     def assert_sql_execution(self, db, callable_, *rules):
+        from testlib import assertsql
         assertsql.asserter.add_rules(rules)
         try:
             callable_()
@@ -733,6 +733,8 @@ class AssertsExecutionResults(object):
             assertsql.asserter.clear_rules()
             
     def assert_sql(self, db, callable_, list_, with_sequences=None):
+        from testlib import assertsql
+
         if with_sequences is not None and config.db.name in ('firebird', 'oracle', 'postgres'):
             rules = with_sequences
         else:
@@ -751,6 +753,7 @@ class AssertsExecutionResults(object):
         self.assert_sql_execution(db, callable_, *newrules)
 
     def assert_sql_count(self, db, callable_, count):
+        from testlib import assertsql
         self.assert_sql_execution(db, callable_, assertsql.CountStatements(count))
 
 
