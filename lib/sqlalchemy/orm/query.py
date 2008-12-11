@@ -1371,11 +1371,11 @@ class Query(object):
         if synchronize_session == 'fetch':
             #TODO: use RETURNING when available
             select_stmt = context.statement.with_only_columns(primary_table.primary_key)
-            matched_rows = session.execute(select_stmt).fetchall()
+            matched_rows = session.execute(select_stmt, params=self._params).fetchall()
 
         if self._autoflush:
             session._autoflush()
-        result = session.execute(delete_stmt)
+        result = session.execute(delete_stmt, params=self._params)
 
         if synchronize_session == 'evaluate':
             target_cls = self._mapper_zero().class_
@@ -1456,11 +1456,11 @@ class Query(object):
 
         if synchronize_session == 'expire':
             select_stmt = context.statement.with_only_columns(primary_table.primary_key)
-            matched_rows = session.execute(select_stmt).fetchall()
+            matched_rows = session.execute(select_stmt, params=self._params).fetchall()
 
         if self._autoflush:
             session._autoflush()
-        result = session.execute(update_stmt)
+        result = session.execute(update_stmt, params=self._params)
 
         if synchronize_session == 'evaluate':
             target_cls = self._mapper_zero().class_

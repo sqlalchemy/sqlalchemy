@@ -2601,7 +2601,17 @@ class UpdateDeleteTest(_base.MappedTest):
         assert john not in sess and jill not in sess
         
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
-        
+
+    @testing.resolve_artifact_names
+    def test_delete_with_bindparams(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).filter('name = :name').params(name='john').delete()
+        assert john not in sess
+
+        eq_(sess.query(User).order_by(User.id).all(), [jack,jill,jane])
+
     @testing.resolve_artifact_names
     def test_delete_rollback(self):
         sess = sessionmaker()()
@@ -2661,6 +2671,17 @@ class UpdateDeleteTest(_base.MappedTest):
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='evaluate')
         
+        eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
+        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
+
+    @testing.resolve_artifact_names
+    def test_update_with_bindparams(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+
+        sess.query(User).filter('age > :x').params(x=29).update({'age': User.age - 10}, synchronize_session='evaluate')
+
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
