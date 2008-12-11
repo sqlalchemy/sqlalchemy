@@ -68,7 +68,7 @@ def savepoints(fn):
     return _chain_decorators_on(
         fn,
         emits_warning_on('mssql', 'Savepoint support in mssql is experimental and may lead to data loss.'),
-        no_support('access', 'FIXME: guessing, needs confirmation'),
+        no_support('access', 'not supported by database'),
         no_support('sqlite', 'not supported by database'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
@@ -96,7 +96,7 @@ def two_phase_transactions(fn):
     """Target database must support two-phase transactions."""
     return _chain_decorators_on(
         fn,
-        no_support('access', 'FIXME: guessing, needs confirmation'),
+        no_support('access', 'not supported by database'),
         no_support('firebird', 'no SA implementation'),
         no_support('maxdb', 'not supported by database'),
         no_support('mssql', 'FIXME: guessing, needs confirmation'),
