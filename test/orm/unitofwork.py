@@ -364,6 +364,7 @@ class MutableTypesTest(_base.MappedTest):
              "WHERE mutable_t.id = :mutable_t_id",
              {'mutable_t_id': f1.id, 'val': u'hi', 'data':f1.data})])
 
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_nocomparison(self):
         """Changes are detected on MutableTypes lacking an __eq__ method."""

@@ -307,13 +307,13 @@ def emits_warning(*messages):
             filters = [dict(action='ignore',
                             category=sa_exc.SAPendingDeprecationWarning)]
             if not messages:
-                filters.append([dict(action='ignore',
-                                     category=sa_exc.SAWarning)])
+                filters.append(dict(action='ignore',
+                                     category=sa_exc.SAWarning))
             else:
-                filters.extend([dict(action='ignore',
+                filters.extend(dict(action='ignore',
                                      message=message,
                                      category=sa_exc.SAWarning)
-                                for message in messages])
+                                for message in messages)
             for f in filters:
                 warnings.filterwarnings(**f)
             try:

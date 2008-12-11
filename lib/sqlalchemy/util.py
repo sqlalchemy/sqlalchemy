@@ -138,6 +138,17 @@ except ImportError:
             getattr(wrapper, attr).update(getattr(wrapped, attr, ()))
         return wrapper
 
+try:
+    from functools import partial
+except:
+    def partial(func, *args, **keywords):
+        def newfunc(*fargs, **fkeywords):
+            newkeywords = keywords.copy()
+            newkeywords.update(fkeywords)
+            return func(*(args + fargs), **newkeywords)
+        return newfunc
+
+
 def accepts_a_list_as_starargs(list_deprecation=None):
     def decorate(fn):
 

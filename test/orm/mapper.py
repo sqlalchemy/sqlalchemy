@@ -2284,44 +2284,6 @@ class MagicNamesTest(_base.MappedTest):
                   reserved: maps.c.state})
 
 
-class ScalarRequirementsTest(_base.MappedTest):
-
-    # TODO: is this needed here?
-    # what does this suite excercise that unitofwork doesn't?
-
-    def define_tables(self, metadata):
-        Table('t1', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('data', sa.PickleType()))
-
-    def setup_classes(self):
-        class Foo(_base.ComparableEntity):
-            pass
-
-    @testing.resolve_artifact_names
-    def test_correct_comparison(self):
-        mapper(Foo, t1)
-
-        f1 = Foo(data=pickleable.NotComparable('12345'))
-
-        session = create_session()
-        session.add(f1)
-        session.flush()
-        session.clear()
-
-        f1 = session.query(Foo).get(f1.id)
-        eq_(f1.data.data, '12345')
-
-        f2 = Foo(data=pickleable.BrokenComparable('abc'))
-
-        session.add(f2)
-        session.flush()
-        session.clear()
-
-        f2 = session.query(Foo).get(f2.id)
-        eq_(f2.data.data, 'abc')
-
 
 if __name__ == "__main__":
     testenv.main()

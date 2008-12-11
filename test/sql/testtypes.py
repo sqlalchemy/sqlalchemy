@@ -801,16 +801,53 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         print res2
         assert(res2==[(2, False)])
 
-try:
-    from functools import partial
-except:
-    def partial(func, *args, **keywords):
-        def newfunc(*fargs, **fkeywords):
-            newkeywords = keywords.copy()
-            newkeywords.update(fkeywords)
-            return func(*(args + fargs), **newkeywords)
-        return newfunc
+class PickleTest(TestBase):
+    def test_noeq_deprecation(self):
+        p1 = PickleType()
+        
+        self.assertRaises(DeprecationWarning, 
+            p1.compare_values, pickleable.BarWithoutCompare(1, 2), pickleable.BarWithoutCompare(1, 2)
+        )
 
+        self.assertRaises(DeprecationWarning, 
+            p1.compare_values, pickleable.OldSchoolWithoutCompare(1, 2), pickleable.OldSchoolWithoutCompare(1, 2)
+        )
+        
+        @testing.uses_deprecated()
+        def go():
+            # test actual dumps comparison
+            assert p1.compare_values(pickleable.BarWithoutCompare(1, 2), pickleable.BarWithoutCompare(1, 2))
+            assert p1.compare_values(pickleable.OldSchoolWithoutCompare(1, 2), pickleable.OldSchoolWithoutCompare(1, 2))
+        go()
+        
+        assert p1.compare_values({1:2, 3:4}, {3:4, 1:2})
+        
+        p2 = PickleType(mutable=False)
+        assert not p2.compare_values(pickleable.BarWithoutCompare(1, 2), pickleable.BarWithoutCompare(1, 2))
+        assert not p2.compare_values(pickleable.OldSchoolWithoutCompare(1, 2), pickleable.OldSchoolWithoutCompare(1, 2))
+        
+    def test_eq_comparison(self):
+        p1 = PickleType()
+        
+        for obj in (
+            {'1':'2'},
+            pickleable.Bar(5, 6),
+            pickleable.OldSchool(10, 11)
+        ):
+            assert p1.compare_values(p1.copy_value(obj), obj)
+
+        self.assertRaises(NotImplementedError, p1.compare_values, pickleable.BrokenComparable('foo'),pickleable.BrokenComparable('foo'))
+        
+    def test_nonmutable_comparison(self):
+        p1 = PickleType()
+
+        for obj in (
+            {'1':'2'},
+            pickleable.Bar(5, 6),
+            pickleable.OldSchool(10, 11)
+        ):
+            assert p1.compare_values(p1.copy_value(obj), obj)
+    
 class CallableTest(TestBase):
     def setUpAll(self):
         global meta
@@ -820,7 +857,7 @@ class CallableTest(TestBase):
         meta.drop_all()
 
     def test_callable_as_arg(self):
-        ucode = partial(Unicode, assert_unicode=None)
+        ucode = util.partial(Unicode, assert_unicode=None)
 
         thing_table = Table('thing', meta,
             Column('name', ucode(20))
@@ -829,7 +866,7 @@ class CallableTest(TestBase):
         thing_table.create()
 
     def test_callable_as_kwarg(self):
-        ucode = partial(Unicode, assert_unicode=None)
+        ucode = util.partial(Unicode, assert_unicode=None)
 
         thang_table = Table('thang', meta,
             Column('name', type_=ucode(20), primary_key=True)

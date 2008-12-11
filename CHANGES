@@ -108,6 +108,12 @@ CHANGES
           mapper since it's not needed.
       
 - sql
+    - PickleType now favors == comparison by default,
+      if the incoming object (such as a dict) implements
+      __eq__().  If the object does not implement 
+      __eq__() and mutable=True, a deprecation warning
+      is raised.
+      
     - Fixed the import weirdness in sqlalchemy.sql
       to not export __names__ [ticket:1215].
     
