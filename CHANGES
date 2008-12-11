@@ -161,6 +161,10 @@ CHANGES
     - Documented `comparator_factory` kwarg, added
       new doc section "Custom Comparators".
     
+- mssql
+    - Added experimental support of savepoints. It
+      currently does not work fully with sessions.
+
 - postgres
     - Calling alias.execute() in conjunction with
       server_side_cursors won't raise AttributeError.

@@ -322,6 +322,30 @@ def emits_warning(*messages):
         return _function_named(safe, fn.__name__)
     return decorate
 
+def emits_warning_on(db, *warnings):
+    """Mark a test as emitting a warning on a specific dialect.
+
+    With no arguments, squelches all SAWarning failures.  Or pass one or more
+    strings; these will be matched to the root of the warning description by
+    warnings.filterwarnings().
+    """
+    def decorate(fn):
+        def maybe(*args, **kw):
+            if isinstance(db, basestring):
+                if config.db.name != db:
+                    return fn(*args, **kw)
+                else:
+                    wrapped = emits_warning(*warnings)(fn)
+                    return wrapped(*args, **kw)
+            else:
+                if not _is_excluded(*db):
+                    return fn(*args, **kw)
+                else:
+                    wrapped = emits_warning(*warnings)(fn)
+                    return wrapped(*args, **kw)
+        return _function_named(maybe, fn.__name__)
+    return decorate
+
 def uses_deprecated(*messages):
     """Mark a test as immune from fatal deprecation warnings.
 
