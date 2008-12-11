@@ -245,6 +245,10 @@ CHANGES
     - Can now use a custom "inherit_condition" in 
       __mapper_args__ when using declarative.
       
+    - fixed string-based "remote_side", "order_by" and 
+      others not propagating correctly when used in 
+      backref().
+      
 0.5.0rc3
 ========
 - features

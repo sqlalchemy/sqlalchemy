@@ -805,7 +805,7 @@ class RelationProperty(StrategizedProperty):
                     self.local_remote_pairs = eq_pairs
         elif self.remote_side:
             raise sa_exc.ArgumentError("remote_side argument is redundant against more detailed _local_remote_side argument.")
-
+        
         for l, r in self.local_remote_pairs:
 
             if self.direction is ONETOMANY and not self._col_is_part_of_mappings(l):

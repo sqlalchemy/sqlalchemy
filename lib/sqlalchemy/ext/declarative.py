@@ -434,7 +434,7 @@ def _deferred_relation(cls, prop):
                 setattr(prop, attr, resolve_arg(v))
 
         if prop.backref:
-            for attr in ('primaryjoin', 'secondaryjoin'):
+            for attr in ('primaryjoin', 'secondaryjoin', 'secondary', '_foreign_keys', 'remote_side', 'order_by'):
                if attr in prop.backref.kwargs and isinstance(prop.backref.kwargs[attr], basestring):
                    prop.backref.kwargs[attr] = resolve_arg(prop.backref.kwargs[attr])
 
