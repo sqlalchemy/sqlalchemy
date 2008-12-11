@@ -113,6 +113,9 @@ CHANGES
       __eq__().  If the object does not implement 
       __eq__() and mutable=True, a deprecation warning
       is raised.
+    
+    - Connection.invalidate() checks for closed status 
+      to avoid attribute errors. [ticket:1246]
       
     - Fixed the import weirdness in sqlalchemy.sql
       to not export __names__ [ticket:1215].
