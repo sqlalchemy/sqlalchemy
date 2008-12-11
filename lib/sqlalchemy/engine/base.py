@@ -637,6 +637,8 @@ class Connection(Connectable):
         operations in a non-transactional state.
 
         """
+        if self.closed:
+            raise exceptions.InvalidRequestError("This Connection is closed")
 
         if self.__connection.is_valid:
             self.__connection.invalidate(exception)

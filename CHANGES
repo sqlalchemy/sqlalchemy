@@ -21,6 +21,10 @@ CHANGES
 
     - Fixed bug in composite types which prevented a primary-key
       composite type from being mutated [ticket:1213].
+
+- sql
+    - Connection.invalidate() checks for closed status 
+      to avoid attribute errors. [ticket:1246]
       
 0.4.8
 =====
