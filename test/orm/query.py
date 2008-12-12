@@ -1523,10 +1523,6 @@ class MixedEntitiesTest(QueryTest):
         q2 = q.values(func.count(User.name))
         assert q2.next() == (4,)
 
-        u2 = aliased(User)
-        q2 = q.select_from(sel).filter(u2.id>1).order_by([User.id, sel.c.id, u2.id]).values(User.name, sel.c.name, u2.name)
-        self.assertEquals(list(q2), [(u'jack', u'jack', u'jack'), (u'jack', u'jack', u'ed'), (u'jack', u'jack', u'fred'), (u'jack', u'jack', u'chuck'), (u'ed', u'ed', u'jack'), (u'ed', u'ed', u'ed'), (u'ed', u'ed', u'fred'), (u'ed', u'ed', u'chuck')])
-        
         q2 = q.select_from(sel).filter(User.id==8).values(User.name, sel.c.name, User.name)
         self.assertEquals(list(q2), [(u'ed', u'ed', u'ed')])
 
@@ -1537,6 +1533,18 @@ class MixedEntitiesTest(QueryTest):
         # whereas this uses users.c.xxx, is not aliased and creates a new join
         q2 = q.select_from(sel).filter(users.c.id==8).filter(users.c.id>sel.c.id).values(users.c.name, sel.c.name, User.name)
         self.assertEquals(list(q2), [(u'ed', u'jack', u'jack')])
+
+    @testing.fails_on('mssql')
+    def test_values_specific_order_by(self):
+        sess = create_session()
+
+        assert list(sess.query(User).values()) == list()
+
+        sel = users.select(User.id.in_([7, 8])).alias()
+        q = sess.query(User)
+        u2 = aliased(User)
+        q2 = q.select_from(sel).filter(u2.id>1).order_by([User.id, sel.c.id, u2.id]).values(User.name, sel.c.name, u2.name)
+        self.assertEquals(list(q2), [(u'jack', u'jack', u'jack'), (u'jack', u'jack', u'ed'), (u'jack', u'jack', u'fred'), (u'jack', u'jack', u'chuck'), (u'ed', u'ed', u'jack'), (u'ed', u'ed', u'ed'), (u'ed', u'ed', u'fred'), (u'ed', u'ed', u'chuck')])
 
     @testing.fails_on('mssql')
     def test_values_with_boolean_selects(self):
