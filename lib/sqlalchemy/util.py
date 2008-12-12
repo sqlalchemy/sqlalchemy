@@ -199,7 +199,8 @@ def array_as_starargs_decorator(func):
             return func(self, *to_list(args[0], []), **kwargs)
         else:
             return func(self, *args, **kwargs)
-    return starargs_as_list
+    starargs_as_list.__doc__ = func.__doc__
+    return function_named(starargs_as_list, func.__name__)
     
 def to_set(x):
     if x is None:
