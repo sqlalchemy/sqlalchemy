@@ -196,7 +196,7 @@ class InheritTest3(ORMTest):
         found = repr(l[0]) + repr(sorted([repr(o) for o in l[0].foos]))
         self.assertEqual(found, compare)
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testadvanced(self):
         class Foo(object):
             def __init__(self, data=None):

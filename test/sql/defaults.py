@@ -167,7 +167,7 @@ class DefaultTest(testing.TestBase):
         for fn in fn1, fn2, fn3, fn4, fn5, fn6, fn7, fn8:
             c = sa.ColumnDefault(fn)
 
-    @testing.fails_on('firebird') # 'Data type unknown'
+    @testing.fails_on('firebird', 'Data type unknown')
     def test_standalone(self):
         c = testing.db.engine.contextual_connect()
         x = c.execute(t.c.col1.default)
@@ -246,7 +246,7 @@ class DefaultTest(testing.TestBase):
         has_('col7', 'default', 'server_default', 'onupdate')
         has_('col8', 'default', 'server_default', 'onupdate', 'server_onupdate')
 
-    @testing.fails_on('firebird') # 'Data type unknown'
+    @testing.fails_on('firebird', 'Data type unknown')
     def test_insert(self):
         r = t.insert().execute()
         assert r.lastrow_has_defaults()
@@ -277,7 +277,7 @@ class DefaultTest(testing.TestBase):
             [(54, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, None)])
 
-    @testing.fails_on('firebird') # 'Data type unknown'
+    @testing.fails_on('firebird', 'Data type unknown')
     def test_insertmany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
         if (testing.against('mysql') and
@@ -302,7 +302,7 @@ class DefaultTest(testing.TestBase):
         l = t.select().execute()
         eq_(50, l.fetchone()['col3'])
 
-    @testing.fails_on('firebird') # 'Data type unknown'
+    @testing.fails_on('firebird', 'Data type unknown')
     def test_updatemany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
         if (testing.against('mysql') and
@@ -330,7 +330,7 @@ class DefaultTest(testing.TestBase):
              (53, 'im the update', f2, ts, ts, ctexec, True, False,
               13, today, 'py')])
 
-    @testing.fails_on('firebird') # 'Data type unknown'
+    @testing.fails_on('firebird', 'Data type unknown')
     def test_update(self):
         r = t.insert().execute()
         pk = r.last_inserted_ids()[0]
@@ -343,7 +343,7 @@ class DefaultTest(testing.TestBase):
              13, datetime.date.today(), 'py'))
         eq_(11, f2)
 
-    @testing.fails_on('firebird') # 'Data type unknown'
+    @testing.fails_on('firebird', 'Data type unknown')
     def test_update_values(self):
         r = t.insert().execute()
         pk = r.last_inserted_ids()[0]
@@ -396,7 +396,7 @@ class PKDefaultTest(_base.TablesTest):
                      default=sa.select([func.max(t2.c.nextid)]).as_scalar()),
               Column('data', String(30)))
 
-    @testing.fails_on('mssql')
+    @testing.fails_on('mssql', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_basic(self):
         t2.insert().execute(nextid=1)
@@ -419,7 +419,7 @@ class PKIncrementTest(_base.TablesTest):
               Column('str1', String(20)))
 
     # TODO: add coverage for increment on a secondary column in a key
-    @testing.fails_on('firebird') # data type unknown
+    @testing.fails_on('firebird', 'Data type unknown')
     @testing.resolve_artifact_names
     def _test_autoincrement(self, bind):
         ids = set()
@@ -475,7 +475,7 @@ class PKIncrementTest(_base.TablesTest):
 
 class EmptyInsertTest(testing.TestBase):
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no empty insert support')
-    @testing.fails_on('oracle')
+    @testing.fails_on('oracle', 'FIXME: unknown')
     def test_empty_insert(self):
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
@@ -518,7 +518,7 @@ class AutoIncrementTest(_base.TablesTest):
         id_ = r.last_inserted_ids()[0]
         nodes.insert().execute(data='bar', parent_id=id_)
 
-    @testing.fails_on('sqlite')
+    @testing.fails_on('sqlite', 'FIXME: unknown')
     def test_non_autoincrement(self):
         # sqlite INT primary keys can be non-unique! (only for ints)
         nonai = Table("nonaitest", self.metadata,
@@ -592,7 +592,7 @@ class SequenceTest(testing.TestBase):
 
         cartitems.select().execute().fetchall()
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     # maxdb db-api seems to double-execute NEXTVAL internally somewhere,
     # throwing off the numbers for these tests...
     def test_implicit_sequence_exec(self):
@@ -604,7 +604,7 @@ class SequenceTest(testing.TestBase):
         finally:
             s.drop()
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     def teststandalone_explicit(self):
         s = Sequence("my_sequence")
         s.create(bind=testing.db)
@@ -621,7 +621,7 @@ class SequenceTest(testing.TestBase):
         s.drop(testing.db, checkfirst=False)
         s.drop(testing.db, checkfirst=True)
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     def teststandalone2(self):
         x = cartitems.c.cart_id.sequence.execute()
         self.assert_(1 <= x <= 4)

@@ -140,7 +140,7 @@ class QueryTest(TestBase):
             l.append(row)
         self.assert_(len(l) == 3)
 
-    @testing.fails_on('firebird') # Data type unknown
+    @testing.fails_on('firebird', 'Data type unknown')
     @testing.requires.subqueries
     def test_anonymous_rows(self):
         users.insert().execute(
@@ -200,7 +200,8 @@ class QueryTest(TestBase):
         self.assert_(not (rp != equal))
         self.assert_(not (equal != equal))
 
-    @testing.fails_on('mssql', 'oracle')
+    @testing.fails_on('mssql', 'No support for boolean logic in column select.')
+    @testing.fails_on('oracle', 'FIXME: unknown')
     def test_or_and_as_columns(self):
         true, false = literal(True), literal(False)
         
@@ -590,7 +591,10 @@ class QueryTest(TestBase):
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
 
-    @testing.fails_on('firebird', 'maxdb', 'oracle', 'mssql')
+    @testing.fails_on('firebird', 'FIXME: unknown')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
+    @testing.fails_on('oracle', 'FIXME: unknown')
+    @testing.fails_on('mssql', 'FIXME: unknown')
     def test_in_filtering_advanced(self):
         """test the behavior of the in_() function when comparing against an empty collection."""
 
@@ -648,7 +652,7 @@ class LimitTest(TestBase):
         r = users.select(limit=3, order_by=[users.c.user_id]).execute().fetchall()
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_select_limit_offset(self):
         """Test the interaction between limit and offset"""
 
@@ -664,7 +668,7 @@ class LimitTest(TestBase):
         self.assert_(len(r) == 3, repr(r))
         self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
 
-    @testing.fails_on('mssql')
+    @testing.fails_on('mssql', 'FIXME: unknown')
     def test_select_distinct_offset(self):
         """Test the interaction between distinct and offset"""
 
@@ -756,7 +760,7 @@ class CompoundTest(TestBase):
                   ('ccc', 'aaa')]
         self.assertEquals(u.execute().fetchall(), wanted)
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.requires.subqueries
     def test_union_ordered_alias(self):
         (s1, s2) = (
@@ -772,8 +776,8 @@ class CompoundTest(TestBase):
         self.assertEquals(u.alias('bar').select().execute().fetchall(), wanted)
 
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
-    @testing.fails_on('mysql')
-    @testing.fails_on('sqlite')
+    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('sqlite', 'FIXME: unknown')
     def test_union_all(self):
         e = union_all(
             select([t1.c.col3]),
@@ -792,7 +796,7 @@ class CompoundTest(TestBase):
 
     @testing.crashes('firebird', 'Does not support intersect')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     def test_intersect(self):
         i = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -810,7 +814,7 @@ class CompoundTest(TestBase):
     @testing.crashes('firebird', 'Does not support except')
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     def test_except_style1(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -827,7 +831,7 @@ class CompoundTest(TestBase):
     @testing.crashes('firebird', 'Does not support except')
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     def test_except_style2(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -847,8 +851,8 @@ class CompoundTest(TestBase):
     @testing.crashes('firebird', 'Does not support except')
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
-    @testing.fails_on('mysql')
-    @testing.fails_on('sqlite')
+    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('sqlite', 'FIXME: unknown')
     def test_except_style3(self):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(
@@ -863,7 +867,7 @@ class CompoundTest(TestBase):
                           [('ccc',)])
 
     @testing.crashes('firebird', 'Does not support intersect')
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     def test_composite(self):
         u = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -879,7 +883,7 @@ class CompoundTest(TestBase):
         self.assertEquals(found, wanted)
 
     @testing.crashes('firebird', 'Does not support intersect')
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     def test_composite_alias(self):
         ua = intersect(
             select([t2.c.col3, t2.c.col4]),
@@ -1184,7 +1188,7 @@ class OperatorTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_modulo(self):
         self.assertEquals(
             select([flds.c.intcol % 3],

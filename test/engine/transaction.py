@@ -271,7 +271,7 @@ class TransactionTest(TestBase):
         connection.close()
 
     @testing.requires.two_phase_transactions
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     def test_two_phase_recover(self):
         # MySQL recovery doesn't currently seem to work correctly
         # Prepared transactions disappear when connections are closed and even
@@ -816,7 +816,7 @@ class ForUpdateTest(TestBase):
         self.assert_(len(errors) == 0)
 
     @testing.crashes('mssql', 'FIXME: unknown')
-    @testing.fails_on('mysql') # no support for NOWAIT
+    @testing.fails_on('mysql', 'No support for NOWAIT')
     @testing.crashes('firebird', 'FIXME: unknown')
     @testing.crashes('sybase', 'FIXME: unknown')
     @testing.crashes('access', 'FIXME: unknown')

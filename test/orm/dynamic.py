@@ -171,7 +171,7 @@ class FlushTest(_fixtures.FixtureTest):
         sess.rollback()
         eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_delete_nocascade(self):
         mapper(User, users, properties={
@@ -205,7 +205,7 @@ class FlushTest(_fixtures.FixtureTest):
 
         assert testing.db.scalar(addresses.count(addresses.c.user_id != None)) ==0
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_delete_cascade(self):
         mapper(User, users, properties={
@@ -239,7 +239,7 @@ class FlushTest(_fixtures.FixtureTest):
 
         assert testing.db.scalar(addresses.count()) ==0
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_remove_orphans(self):
         mapper(User, users, properties={

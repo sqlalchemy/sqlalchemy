@@ -344,7 +344,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         finally:
             unicode_engine.dispose()
 
-    @testing.fails_on('oracle')
+    @testing.fails_on('oracle', 'FIXME: unknown')
     def test_blank_strings(self):
         unicode_table.insert().execute(unicode_varchar=u'')
         assert select([unicode_table.c.unicode_varchar]).scalar() == u''
@@ -374,7 +374,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             testing.db.engine.dialect.convert_unicode = prev_assert
 
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
-    @testing.fails_on('firebird') # "Data type unknown" on the parameter
+    @testing.fails_on('firebird', 'Data type unknown')
     def test_length_function(self):
         """checks the database correctly understands the length of a unicode string"""
         teststr = u'aaa\x1234'
@@ -498,7 +498,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         assert expr.right.type.__class__ == test_table.c.avalue.type.__class__
         assert testing.db.execute(test_table.select().where(expr), {"somevalue":25}).fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
 
-    @testing.fails_on('firebird') # "Data type unknown" on the parameter
+    @testing.fails_on('firebird', 'Data type unknown on the parameter')
     def test_operator_adapt(self):
         """test type-based overloading of operators"""
 
@@ -657,7 +657,8 @@ class DateTest(TestBase, AssertsExecutionResults):
             t.drop(checkfirst=True)
 
 class StringTest(TestBase, AssertsExecutionResults):
-    @testing.fails_on('mysql', 'oracle')
+    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('oracle', 'FIXME: unknown')
     def test_nolength_string(self):
         metadata = MetaData(testing.db)
         foo = Table('foo', metadata, Column('one', String))

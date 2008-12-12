@@ -315,7 +315,7 @@ class InvalidateDuringResultTest(TestBase):
         meta.drop_all()
         engine.dispose()
 
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     def test_invalidate_on_results(self):
         conn = engine.connect()
 

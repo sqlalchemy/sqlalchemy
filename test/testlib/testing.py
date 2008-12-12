@@ -91,8 +91,9 @@ def future(fn):
                 "Unexpected success for future test '%s'" % fn_name)
     return _function_named(decorated, fn_name)
 
-def fails_on(*dbs):
-    """Mark a test as expected to fail on one or more database implementations.
+def fails_on(dbs, reason):
+    """Mark a test as expected to fail on the specified database 
+    implementation.
 
     Unlike ``crashes``, tests marked as ``fails_on`` will be run
     for the named databases.  The test is expected to fail and the unit test
@@ -103,7 +104,7 @@ def fails_on(*dbs):
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
-            if config.db.name not in dbs:
+            if config.db.name != dbs:
                 return fn(*args, **kw)
             else:
                 try:
@@ -111,7 +112,7 @@ def fails_on(*dbs):
                 except Exception, ex:
                     print ("'%s' failed as expected on DB implementation "
                            "'%s': %s" % (
-                        fn_name, config.db.name, str(ex)))
+                        fn_name, config.db.name, reason))
                     return True
                 else:
                     raise AssertionError(

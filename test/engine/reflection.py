@@ -675,9 +675,10 @@ class SchemaTest(TestBase):
             assert buf.index("CREATE TABLE someschema.table2") > -1
 
     @testing.crashes('firebird', 'No schema support')
-    @testing.fails_on('sqlite')
+    @testing.fails_on('sqlite', 'FIXME: unknown')
     # fixme: revisit these below.
-    @testing.fails_on('access', 'sybase')
+    @testing.fails_on('access', 'FIXME: unknown')
+    @testing.fails_on('sybase', 'FIXME: unknown')
     def test_explicit_default_schema(self):
         engine = testing.db
 

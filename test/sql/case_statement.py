@@ -27,7 +27,8 @@ class CaseTest(TestBase, AssertsCompiledSQL):
     def tearDownAll(self):
         info_table.drop()
 
-    @testing.fails_on('firebird', 'maxdb')
+    @testing.fails_on('firebird', 'FIXME: unknown')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.requires.subqueries
     def testcase(self):
         inner = select([case([
@@ -98,7 +99,8 @@ class CaseTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(case([(t.c.col1==7, "y")], else_="z"), "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END")
 
         
-    @testing.fails_on('firebird', 'maxdb')
+    @testing.fails_on('firebird', 'FIXME: unknown')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testcase_with_dict(self):
         query = select([case({
                     info_table.c.pk < 3: 'lessthan3',

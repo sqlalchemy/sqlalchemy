@@ -440,7 +440,7 @@ class EagerTest(_fixtures.FixtureTest):
         assert 'orders' not in noeagers[0].__dict__
         assert 'addresses' not in noeagers[0].__dict__
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
@@ -490,7 +490,7 @@ class EagerTest(_fixtures.FixtureTest):
             assert self.static.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_limit_2(self):
         mapper(Keyword, keywords)
@@ -505,7 +505,7 @@ class EagerTest(_fixtures.FixtureTest):
 
         assert self.static.item_keyword_result[1:3] == l
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_limit_3(self):
         """test that the ORDER BY is propagated from the inner select to the outer select, when using the
@@ -576,7 +576,7 @@ class EagerTest(_fixtures.FixtureTest):
             assert [User(id=7, address=Address(id=1))] == l
         self.assert_sql_count(testing.db, go, 1)
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_many_to_one(self):
         mapper(Address, addresses, properties = dict(
@@ -871,7 +871,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_basic(self):
         class Node(_base.ComparableEntity):
@@ -1029,7 +1029,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
             )
         )
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_no_depth(self):
         class Node(_base.ComparableEntity):

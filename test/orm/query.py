@@ -602,7 +602,7 @@ class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_limit(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).order_by(User.id).limit(2).offset(1).all()
 
@@ -1534,7 +1534,7 @@ class MixedEntitiesTest(QueryTest):
         q2 = q.select_from(sel).filter(users.c.id==8).filter(users.c.id>sel.c.id).values(users.c.name, sel.c.name, User.name)
         self.assertEquals(list(q2), [(u'ed', u'jack', u'jack')])
 
-    @testing.fails_on('mssql')
+    @testing.fails_on('mssql', 'FIXME: unknown')
     def test_values_specific_order_by(self):
         sess = create_session()
 
@@ -1546,7 +1546,7 @@ class MixedEntitiesTest(QueryTest):
         q2 = q.select_from(sel).filter(u2.id>1).order_by([User.id, sel.c.id, u2.id]).values(User.name, sel.c.name, u2.name)
         self.assertEquals(list(q2), [(u'jack', u'jack', u'jack'), (u'jack', u'jack', u'ed'), (u'jack', u'jack', u'fred'), (u'jack', u'jack', u'chuck'), (u'ed', u'ed', u'jack'), (u'ed', u'ed', u'ed'), (u'ed', u'ed', u'fred'), (u'ed', u'ed', u'chuck')])
 
-    @testing.fails_on('mssql')
+    @testing.fails_on('mssql', 'FIXME: unknown')
     def test_values_with_boolean_selects(self):
         """Tests a values clause that works with select boolean evaluations"""
         sess = create_session()
@@ -2660,7 +2660,7 @@ class UpdateDeleteTest(_base.MappedTest):
         
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
     
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_delete_fallback(self):
         sess = create_session(bind=testing.db, autocommit=False)

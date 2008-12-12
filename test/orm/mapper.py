@@ -509,7 +509,7 @@ class MapperTest(_fixtures.FixtureTest):
 
 
     # 'Raises a "expression evaluation not supported" error at prepare time
-    @testing.fails_on('firebird')
+    @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_function(self):
         """Mapping to a SELECT statement that has functions in it."""
@@ -853,7 +853,7 @@ class MapperTest(_fixtures.FixtureTest):
 
 class OptionsTest(_fixtures.FixtureTest):
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_synonym_options(self):
         mapper(User, users, properties=dict(
@@ -888,7 +888,7 @@ class OptionsTest(_fixtures.FixtureTest):
             eq_(l, self.static.user_address_result)
         self.sql_count_(0, go)
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_eager_options_with_limit(self):
         mapper(User, users, properties=dict(
@@ -910,7 +910,7 @@ class OptionsTest(_fixtures.FixtureTest):
         eq_(u.id, 8)
         eq_(len(u.addresses), 3)
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_lazy_options_with_limit(self):
         mapper(User, users, properties=dict(

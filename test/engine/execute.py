@@ -78,14 +78,14 @@ class ExecuteTest(TestBase):
             except tsa.exc.DBAPIError:
                 assert True
 
-    @testing.fails_on('mssql')
+    @testing.fails_on('mssql', 'rowcount returns -1')
     def test_empty_insert(self):
         """test that execute() interprets [] as a list with no params"""
         result = testing.db.execute(users.insert().values(user_name=bindparam('name')), [])
         self.assertEquals(result.rowcount, 1)
 
 class ProxyConnectionTest(TestBase):
-    @testing.fails_on('firebird') # Data type unknown
+    @testing.fails_on('firebird', 'Data type unknown')
     def test_proxy(self):
         
         stmts = []

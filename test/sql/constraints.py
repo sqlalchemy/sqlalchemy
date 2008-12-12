@@ -63,7 +63,7 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
             )
         metadata.create_all()
 
-    @testing.fails_on('mysql')
+    @testing.fails_on('mysql', 'FIXME: unknown')
     def test_check_constraint(self):
         foo = Table('foo', metadata,
             Column('id', Integer, primary_key=True),

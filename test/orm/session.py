@@ -392,7 +392,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert session.connection().execute("select count(1) from users").scalar() == 2
 
     @testing.crashes('mssql', 'test causes mssql to hang')
-    @testing.fails_on('sqlite')
+    @testing.fails_on('sqlite', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_transactions_isolated(self):
         mapper(User, users)

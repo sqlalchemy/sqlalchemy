@@ -34,7 +34,7 @@ class GenerativeQueryTest(_base.MappedTest):
         assert res.order_by([Foo.bar])[0].bar == 5
         assert res.order_by([sa.desc(Foo.bar)])[0].bar == 95
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_slice(self):
         sess = create_session()
@@ -76,14 +76,15 @@ class GenerativeQueryTest(_base.MappedTest):
         query = create_session().query(func.sum(foo.c.bar))
         assert query.filter(foo.c.bar<30).one() == (435,)
 
-    @testing.fails_on('firebird', 'mssql')
+    @testing.fails_on('firebird', 'FIXME: unknown')
+    @testing.fails_on('mssql', 'AVG produces an average as the original column type on mssql.')
     @testing.resolve_artifact_names
     def test_aggregate_2(self):
         query = create_session().query(func.avg(foo.c.bar))
         avg = query.filter(foo.c.bar < 30).one()[0]
         eq_(round(avg, 1), 14.5)
 
-    @testing.fails_on('mssql')
+    @testing.fails_on('mssql', 'AVG produces an average as the original column type on mssql.')
     @testing.resolve_artifact_names
     def test_aggregate_3(self):
         query = create_session().query(Foo)

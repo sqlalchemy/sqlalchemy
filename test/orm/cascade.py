@@ -364,7 +364,7 @@ class M2OCascadeTest(_base.MappedTest):
         sess.flush()
         sess.close()
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_orphan(self):
         sess = create_session()
@@ -376,7 +376,7 @@ class M2OCascadeTest(_base.MappedTest):
         assert prefs.count().scalar() == 2
         assert extra.count().scalar() == 2
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_orphan_on_update(self):
         sess = create_session()

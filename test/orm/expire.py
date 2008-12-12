@@ -827,7 +827,7 @@ class RefreshTest(_fixtures.FixtureTest):
         s.expire(u)
         assert len(u.addresses) == 3
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_refresh2(self):
         """test a hang condition that was occuring on expire/refresh"""

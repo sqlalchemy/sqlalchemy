@@ -292,7 +292,7 @@ class EagerLazyTest(ORMTest):
                         Column('foo_id', Integer, ForeignKey('foo.id'))
         )
 
-    @testing.fails_on('maxdb')
+    @testing.fails_on('maxdb', 'FIXME: unknown')
     def testbasic(self):
         class Foo(object): pass
         class Bar(Foo): pass

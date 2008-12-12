@@ -518,7 +518,7 @@ class PKTest(_base.MappedTest):
 
     # not supported on sqlite since sqlite's auto-pk generation only works with
     # single column primary keys
-    @testing.fails_on('sqlite')
+    @testing.fails_on('sqlite', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_primary_key(self):
         mapper(Entry, multipk1)
@@ -884,7 +884,7 @@ class DefaultTest(_base.MappedTest):
         class Secondary(_base.ComparableEntity):
             pass
 
-    @testing.fails_on('firebird') # "Data type unknown" on the parameter
+    @testing.fails_on('firebird', 'Data type unknown on the parameter')
     @testing.resolve_artifact_names
     def test_insert(self):
         mapper(Hoho, default_t)
@@ -929,7 +929,7 @@ class DefaultTest(_base.MappedTest):
         self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
         eq_(h5.foober, 'im the new foober')
 
-    @testing.fails_on('firebird') # "Data type unknown" on the parameter
+    @testing.fails_on('firebird', 'Data type unknown on the parameter')
     @testing.resolve_artifact_names
     def test_eager_defaults(self):
         mapper(Hoho, default_t, eager_defaults=True)
@@ -959,7 +959,7 @@ class DefaultTest(_base.MappedTest):
             eq_(h1.foober, "im foober")
         self.sql_count_(0, go)
 
-    @testing.fails_on('firebird') # "Data type unknown" on the parameter
+    @testing.fails_on('firebird', 'Data type unknown on the parameter')
     @testing.resolve_artifact_names
     def test_update(self):
         mapper(Hoho, default_t)
@@ -974,7 +974,7 @@ class DefaultTest(_base.MappedTest):
         session.flush()
         eq_(h1.foober, 'im the update')
 
-    @testing.fails_on('firebird') # "Data type unknown" on the parameter
+    @testing.fails_on('firebird', 'Data type unknown on the parameter')
     @testing.resolve_artifact_names
     def test_used_in_relation(self):
         """A server-side default can be used as the target of a foreign key"""
@@ -1451,7 +1451,7 @@ class SaveTest(_fixtures.FixtureTest):
 
     # why no support on oracle ?  because oracle doesn't save
     # "blank" strings; it saves a single space character.
-    @testing.fails_on('oracle')
+    @testing.fails_on('oracle', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_dont_update_blanks(self):
         mapper(User, users)
