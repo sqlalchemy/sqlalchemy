@@ -34,12 +34,11 @@ class GenerativeQueryTest(_base.MappedTest):
         assert res.order_by([Foo.bar])[0].bar == 5
         assert res.order_by([sa.desc(Foo.bar)])[0].bar == 95
 
-    @testing.crashes('mssql', 'FIXME: verify not fails_on()')
     @testing.fails_on('maxdb')
     @testing.resolve_artifact_names
     def test_slice(self):
         sess = create_session()
-        query = sess.query(Foo)
+        query = sess.query(Foo).order_by(Foo.id)
         orig = query.all()
         
         assert query[1] == orig[1]
@@ -84,6 +83,7 @@ class GenerativeQueryTest(_base.MappedTest):
         avg = query.filter(foo.c.bar < 30).one()[0]
         eq_(round(avg, 1), 14.5)
 
+    @testing.fails_on('mssql')
     @testing.resolve_artifact_names
     def test_aggregate_3(self):
         query = create_session().query(Foo)
