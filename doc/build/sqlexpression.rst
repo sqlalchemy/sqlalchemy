@@ -250,7 +250,7 @@ Above, we see that printing each row produces a simple tuple-like result.  We ha
     FROM users
     []
     
-    >>> row = result.fetchone()
+    {stop}>>> row = result.fetchone()
     >>> print "name:", row['name'], "; fullname:", row['fullname']
     name: jack ; fullname: Jack Jones
 
@@ -260,7 +260,7 @@ Integer indexes work as well:
 
     >>> row = result.fetchone()
     >>> print "name:", row[1], "; fullname:", row[2]
-    name: wendy ; fullname: Wendy Williams
+    name: jack ; fullname: Jack Jones
 
 But another way, whose usefulness will become apparent later on, is to use the ``Column`` objects directly as keys:
 
