@@ -14,7 +14,7 @@
 
    CREATE TABLE test (
      id INTEGER NOT NULL IDENTITY(100,10) PRIMARY KEY,
-     name VARCHAR(20)
+     name VARCHAR(20) NULL,
      )
 
   Note that the start & increment values for sequences are optional
@@ -28,6 +28,19 @@
 * ``select._limit`` implemented as ``SELECT TOP n``
 
 * Experimental implemention of LIMIT / OFFSET with row_number()
+
+* Support for three levels of column nullability provided. The default
+  nullability allows nulls::
+
+    name VARCHAR(20) NULL
+
+  If ``nullable=None`` is specified then no specification is made. In other
+  words the database's configured default is used. This will render::
+
+    name VARCHAR(20)
+
+  If ``nullable`` is True or False then the column will be ``NULL` or
+  ``NOT NULL`` respectively.
 
 Known issues / TODO:
 
@@ -1069,8 +1082,11 @@ class MSSQLSchemaGenerator(compiler.SchemaGenerator):
             if column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional):
                 column.sequence = schema.Sequence(column.name + '_seq')
 
-        if not column.nullable:
-            colspec += " NOT NULL"
+        if column.nullable is not None:
+            if not column.nullable:
+                colspec += " NOT NULL"
+            else:
+                colspec += " NULL"
 
         if hasattr(column, 'sequence'):
             column.table.has_sequence = column

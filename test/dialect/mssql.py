@@ -247,6 +247,48 @@ class GenerativeQueryTest(TestBase):
         assert list(query[:10]) == orig[:10]
         assert list(query[:10]) == orig[:10]
 
+
+class SchemaTest(TestBase):
+
+    def setUp(self):
+        self.column = Column('test_column', Integer)
+
+    def test_that_mssql_default_nullability_emits_null(self):
+        schemagenerator = \
+            mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
+        column_specification = \
+            schemagenerator.get_column_specification(self.column)
+        assert "test_column INTEGER NULL" == column_specification, \
+               column_specification
+
+    def test_that_mssql_none_nullability_does_not_emit_nullability(self):
+        schemagenerator = \
+            mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
+        self.column.nullable = None
+        column_specification = \
+            schemagenerator.get_column_specification(self.column)
+        assert "test_column INTEGER" == column_specification, \
+               column_specification
+
+    def test_that_mssql_specified_nullable_emits_null(self):
+        schemagenerator = \
+            mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
+        self.column.nullable = True
+        column_specification = \
+            schemagenerator.get_column_specification(self.column)
+        assert "test_column INTEGER NULL" == column_specification, \
+               column_specification
+
+    def test_that_mssql_specified_not_nullable_emits_not_null(self):
+        schemagenerator = \
+            mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
+        self.column.nullable = False
+        column_specification = \
+            schemagenerator.get_column_specification(self.column)
+        assert "test_column INTEGER NOT NULL" == column_specification, \
+               column_specification
+
+
 def full_text_search_missing():
     """Test if full text search is not implemented and return False if 
     it is and True otherwise."""
