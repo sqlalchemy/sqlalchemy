@@ -13,12 +13,21 @@ v = file(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.
 VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(v.read()).group(1)
 v.close()
 
+def find_packages(dir_):
+    packages = []
+    for _dir, subdirectories, files in os.walk(os.path.join(dir_, 'sqlalchemy')):
+        if '__init__.py' in files:
+            lib, fragment = _dir.split(os.sep, 1)
+            packages.append(fragment.replace(os.sep, '.'))
+    return packages
+
 setup(name = "SQLAlchemy",
       version = VERSION,
       description = "Database Abstraction Library",
       author = "Mike Bayer",
       author_email = "mike_mp@zzzcomputing.com",
       url = "http://www.sqlalchemy.org",
+      packages = find_packages('lib'),
       package_dir = {'':'lib'},
       license = "MIT License",
       long_description = """\
