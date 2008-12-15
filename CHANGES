@@ -33,6 +33,13 @@ CHANGES
       issues when used polymorphically in all cases.
       
 - bugfixes, behavioral changes
+- general
+    - setup.py no imports setuptools only optionally.
+      If not present, distutils is used.
+      The new "pip" installer is recommended over
+      easy_install as it installs in a more simplified
+      way.
+      
 - orm
     - Corrected problem with Query.delete() and
       Query.update() not working properly with bind 

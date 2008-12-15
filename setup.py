@@ -1,17 +1,15 @@
-from ez_setup import use_setuptools
-use_setuptools()
 import os
 import sys
 import re
-from os import path
-from setuptools import setup, find_packages
-from distutils.command.build_py import build_py as _build_py
-from setuptools.command.sdist import sdist as _sdist
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 if sys.version_info < (2, 4):
     raise Exception("SQLAlchemy requires Python 2.4 or higher.")
 
-v = file(path.join(path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.py'))
+v = file(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(v.read()).group(1)
 v.close()
 
@@ -21,12 +19,7 @@ setup(name = "SQLAlchemy",
       author = "Mike Bayer",
       author_email = "mike_mp@zzzcomputing.com",
       url = "http://www.sqlalchemy.org",
-      packages = find_packages('lib'),
       package_dir = {'':'lib'},
-      entry_points = { 
-        'sqlalchemy.databases': [
-            '%s = sqlalchemy.databases.%s:dialect' % (f,f) for f in 
-            ['sqlite', 'postgres', 'mysql', 'oracle', 'mssql', 'firebird']]},
       license = "MIT License",
       long_description = """\
 SQLAlchemy is:
