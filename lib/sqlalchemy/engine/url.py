@@ -103,15 +103,7 @@ class URL(object):
         used as the keys by default.  Unset or false attributes are omitted
         from the final dictionary.
 
-        :param \**kw: Optional, alternate key names for url attributes:
-
-          .. sourcecode:: python
-        
-            # return 'username' as 'user'
-            username='user'
-
-            # omit 'database'
-            database=None
+        :param \**kw: Optional, alternate key names for url attributes.
         
         :param names: Deprecated.  Same purpose as the keyword-based alternate names,
             but correlates the name to the original positionally.
@@ -136,8 +128,8 @@ def make_url(name_or_url):
 
     The given string is parsed according to the RFC 1738 spec.  If an
     existing URL object is passed, just returns the object.
+    
     """
-
     if isinstance(name_or_url, basestring):
         return _parse_rfc1738_args(name_or_url)
     else:

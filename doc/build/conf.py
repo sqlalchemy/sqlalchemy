@@ -157,7 +157,7 @@ html_use_modindex = False
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'FooBardoc'
 
-autoclass_content = 'both'
+#autoclass_content = 'both'
 
 # Options for LaTeX output
 # ------------------------

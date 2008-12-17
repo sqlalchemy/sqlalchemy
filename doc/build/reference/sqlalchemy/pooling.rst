@@ -22,7 +22,7 @@ Connection Pool Configuration
 -----------------------------
 
 The :class:`~sqlalchemy.engine.Engine` returned by the
-:func:`~sqlalchemy.create_engine` function has a :class:`QueuePool`
+:func:`~sqlalchemy.create_engine` function in most cases has a :class:`QueuePool`
 integrated, pre-configured with reasonable pooling defaults.  If
 you're reading this section to simply enable pooling- congratulations!
 You're already done.
@@ -34,6 +34,9 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
 
   engine = create_engine('postgres://me@localhost/mydb',
                          pool_size=20, max_overflow=0)
+
+In the case of SQLite, a :class:`SingletonThreadPool` is provided instead,
+to provide compatibility with SQLite's restricted threading model.
 
 
 Custom Pool Construction

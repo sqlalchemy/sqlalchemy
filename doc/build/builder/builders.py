@@ -1,5 +1,5 @@
 from sphinx.application import TemplateBridge
-from sphinx.builder import StandaloneHTMLBuilder
+from sphinx.builders.html import StandaloneHTMLBuilder
 from sphinx.highlighting import PygmentsBridge
 from pygments import highlight
 from pygments.lexer import RegexLexer, bygroups, using
@@ -136,9 +136,16 @@ class PopupLatexFormatter(LatexFormatter):
     def format(self, tokensource, outfile):
         LatexFormatter.format(self, self._filter_tokens(tokensource), outfile)
 
+def autodoc_skip_member(app, what, name, obj, skip, options):
+    if what == 'class' and skip and name == '__init__':
+        return False
+    else:
+        return skip
+
 def setup(app):
     app.add_lexer('pycon+sql', PyConWithSQLLexer())
     app.add_lexer('python+sql', PythonWithSQLLexer())
+    app.connect('autodoc-skip-member', autodoc_skip_member)
     PygmentsBridge.html_formatter = PopupSQLFormatter
     PygmentsBridge.latex_formatter = PopupLatexFormatter
     
