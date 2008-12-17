@@ -1004,7 +1004,38 @@ class ViewOnlyUniqueNames(_base.MappedTest):
         assert set([x.t2id for x in c1.t2s]) == set([c2a.t2id, c2b.t2id])
         assert set([x.t2id for x in c1.t2_view]) == set([c2b.t2id])
 
+class ViewOnlyLocalRemoteM2M(testing.TestBase):
+    """test that local-remote is correctly determined for m2m"""
+    
+    def test_local_remote(self):
+        meta = MetaData()
+        
+        t1 = Table('t1', meta,
+                Column('id', Integer, primary_key=True),
+            )
+        t2 = Table('t2', meta,
+                Column('id', Integer, primary_key=True),
+            )
+        t12 = Table('tab', meta,
+                Column('t1_id', Integer, ForeignKey('t1.id',)),
+                Column('t2_id', Integer, ForeignKey('t2.id',)),
+            )
+        
+        class A(object): pass
+        class B(object): pass
+        mapper( B, t2, )
+        m = mapper( A, t1, properties=dict(
+                b_view = relation( B, secondary=t12, viewonly=True),
+                b_plain= relation( B, secondary=t12),
+            )
+        )
+        compile_mappers()
+        assert m.get_property('b_view').local_remote_pairs == \
+            m.get_property('b_plain').local_remote_pairs == \
+            [(t1.c.id, t12.c.t1_id), (t12.c.t2_id, t2.c.id)]
 
+        
+    
 class ViewOnlyNonEquijoin(_base.MappedTest):
     """'viewonly' mappings based on non-equijoins."""
 

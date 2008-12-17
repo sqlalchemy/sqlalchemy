@@ -793,6 +793,8 @@ class RelationProperty(StrategizedProperty):
             else:
                 if self.viewonly:
                     eq_pairs = self.synchronize_pairs
+                    if self.secondaryjoin:
+                        eq_pairs += self.secondary_synchronize_pairs
                 else:
                     eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True)
                     if self.secondaryjoin:
