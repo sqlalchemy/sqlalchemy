@@ -497,7 +497,7 @@ class Connectable(object):
     def execute(self, object, *multiparams, **params):
         raise NotImplementedError()
 
-    def execute_clauseelement(self, elem, multiparams=None, params=None):
+    def _execute_clauseelement(self, elem, multiparams=None, params=None):
         raise NotImplementedError()
 
 class Connection(Connectable):
@@ -833,7 +833,7 @@ class Connection(Connectable):
             if params:
                 return [params]
             else:
-                return [{}]
+                return []
         elif len(multiparams) == 1:
             zero = multiparams[0]
             if isinstance(zero, (list, tuple)):
@@ -852,17 +852,17 @@ class Connection(Connectable):
                 return [multiparams]
 
     def _execute_function(self, func, multiparams, params):
-        return self.execute_clauseelement(func.select(), multiparams, params)
+        return self._execute_clauseelement(func.select(), multiparams, params)
 
-    def _execute_default(self, default, multiparams=None, params=None):
+    def _execute_default(self, default, multiparams, params):
         return self.engine.dialect.defaultrunner(self.__create_execution_context()).traverse_single(default)
 
-    def execute_clauseelement(self, elem, multiparams=None, params=None):
+    def _execute_clauseelement(self, elem, multiparams, params):
         params = self.__distill_params(multiparams, params)
         if params:
             keys = params[0].keys()
         else:
-            keys = None
+            keys = []
 
         context = self.__create_execution_context(
                         compiled=elem.compile(dialect=self.dialect, column_keys=keys, inline=len(params) > 1), 
@@ -870,7 +870,7 @@ class Connection(Connectable):
                     )
         return self.__execute_context(context)
 
-    def _execute_compiled(self, compiled, multiparams=None, params=None):
+    def _execute_compiled(self, compiled, multiparams, params):
         """Execute a sql.Compiled object."""
 
         context = self.__create_execution_context(
@@ -955,7 +955,7 @@ class Connection(Connectable):
     # poor man's multimethod/generic function thingy
     executors = {
         expression._Function: _execute_function,
-        expression.ClauseElement: execute_clauseelement,
+        expression.ClauseElement: _execute_clauseelement,
         Compiled: _execute_compiled,
         schema.SchemaItem: _execute_default,
         schema.DDL: _execute_ddl,
@@ -1128,7 +1128,7 @@ class Engine(Connectable):
     def _execute_default(self, default):
         connection = self.contextual_connect()
         try:
-            return connection._execute_default(default)
+            return connection._execute_default(default, (), {})
         finally:
             connection.close()
 
@@ -1196,9 +1196,9 @@ class Engine(Connectable):
     def scalar(self, statement, *multiparams, **params):
         return self.execute(statement, *multiparams, **params).scalar()
 
-    def execute_clauseelement(self, elem, multiparams=None, params=None):
+    def _execute_clauseelement(self, elem, multiparams=None, params=None):
         connection = self.contextual_connect(close_with_result=True)
-        return connection.execute_clauseelement(elem, multiparams, params)
+        return connection._execute_clauseelement(elem, multiparams, params)
 
     def _execute_compiled(self, compiled, multiparams, params):
         connection = self.contextual_connect(close_with_result=True)
@@ -1273,7 +1273,7 @@ def _proxy_connection_cls(cls, proxy):
         def execute(self, object, *multiparams, **params):
             return proxy.execute(self, super(ProxyConnection, self).execute, object, *multiparams, **params)
  
-        def execute_clauseelement(self, elem, multiparams=None, params=None):
+        def _execute_clauseelement(self, elem, multiparams=None, params=None):
             return proxy.execute(self, super(ProxyConnection, self).execute, elem, *(multiparams or []), **(params or {}))
             
         def _cursor_execute(self, cursor, statement, parameters, context=None):
@@ -1834,7 +1834,7 @@ class DefaultRunner(schema.SchemaVisitor):
     def exec_default_sql(self, default):
         conn = self.context.connection
         c = expression.select([default.arg]).compile(bind=conn)
-        return conn._execute_compiled(c).scalar()
+        return conn._execute_compiled(c, (), {}).scalar()
 
     def execute_string(self, stmt, params=None):
         """execute a string statement, using the raw cursor, and return a scalar result."""

@@ -151,11 +151,11 @@ class ProxyConnectionTest(TestBase):
                 ]
             else:
                 cursor = [
-                    ("CREATE TABLE t1", {}, None),
+                    ("CREATE TABLE t1", {}, ()),
                     ("INSERT INTO t1 (c1, c2)", {'c2': 'some data', 'c1': 5}, [5, 'some data']),
                     ("INSERT INTO t1 (c1, c2)", {'c1': 6, "lower_2":"Foo"}, [6, "Foo"]),  # bind param name 'lower_2' might be incorrect
-                    ("select * from t1", {}, None),
-                    ("DROP TABLE t1", {}, None)
+                    ("select * from t1", {}, ()),
+                    ("DROP TABLE t1", {}, ())
                 ]
                 
             assert_stmts(compiled, stmts)

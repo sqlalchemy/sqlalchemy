@@ -486,10 +486,10 @@ class QueryTest(TestBase):
         r = users.select().execute().fetchone()
         self.assertEqual(len(r), 2)
         r.close()
-        r = testing.db.execute('select user_name, user_id from query_users', {}).fetchone()
+        r = testing.db.execute('select user_name, user_id from query_users').fetchone()
         self.assertEqual(len(r), 2)
         r.close()
-        r = testing.db.execute('select user_name from query_users', {}).fetchone()
+        r = testing.db.execute('select user_name from query_users').fetchone()
         self.assertEqual(len(r), 1)
         r.close()
 
@@ -513,7 +513,7 @@ class QueryTest(TestBase):
     def test_column_order_with_text_query(self):
         # should return values in query order
         users.insert().execute(user_id=1, user_name='foo')
-        r = testing.db.execute('select user_name, user_id from query_users', {}).fetchone()
+        r = testing.db.execute('select user_name, user_id from query_users').fetchone()
         self.assertEqual(r[0], 'foo')
         self.assertEqual(r[1], 1)
         self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])

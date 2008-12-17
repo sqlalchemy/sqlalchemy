@@ -1510,9 +1510,6 @@ class MySQLDialect(default.DefaultDialect):
     def supports_unicode_statements(self):
         return True
 
-    def do_execute(self, cursor, statement, parameters, context=None):
-        cursor.execute(statement, parameters)
-
     def do_commit(self, connection):
         """Execute a COMMIT."""
 
@@ -1811,8 +1808,8 @@ class MySQLDialect(default.DefaultDialect):
             return
 
         row = _compat_fetchone(
-            connection.execute("SHOW VARIABLES LIKE 'sql_mode'",
-                               charset=charset))
+            connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
+                               charset=charset)
         if not row:
             mode = ''
         else:

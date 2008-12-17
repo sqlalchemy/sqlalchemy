@@ -1124,7 +1124,7 @@ class ClauseElement(Visitable):
                    'or the Metadata of its underlying tables to enable '
                    'implicit execution via this method.' % label)
             raise exc.UnboundExecutionError(msg)
-        return e.execute_clauseelement(self, multiparams, params)
+        return e._execute_clauseelement(self, multiparams, params)
 
     def scalar(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``, returning the result's scalar representation."""

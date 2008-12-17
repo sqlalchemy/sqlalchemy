@@ -155,7 +155,12 @@ CHANGES
       select() with order_by() (presumably to support
       LIMIT/OFFSET), you should also call self_group() 
       on it to apply parenthesis.
-      
+    
+    - _execute_clauseelement() goes back to being 
+      a private method.  Subclassing Connection
+      is not needed now that ConnectionProxy 
+      is available.
+
 - documentation
     - Tickets [ticket:1200] [ticket:1149].
       
