@@ -3,7 +3,7 @@
 Column and Data Types
 =====================
 
-.. module:: sqlalchemy
+.. module:: sqlalchemy.types
 
 SQLAlchemy provides abstractions for most common database data types,
 and a mechanism for specifying your own custom data types.
@@ -169,8 +169,6 @@ Or some PostgreSQL types::
         Column('elements', PGArray(str))
         )
 
-
-.. module:: sqlalchemy.types
 
 Custom Types
 ------------
