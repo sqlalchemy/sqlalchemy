@@ -1044,7 +1044,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
             and not isinstance(binary.right, expression._BindParamClause):
             return self.process(expression._BinaryExpression(binary.right, binary.left, binary.operator), **kwargs)
         else:
-            if (binary.operator in (operator.eq, operator.ne)) and (
+            if (binary.operator is operator.eq or binary.operator is operator.ne) and (
                 (isinstance(binary.left, expression._FromGrouping) and isinstance(binary.left.element, expression._ScalarSelect)) or \
                 (isinstance(binary.right, expression._FromGrouping) and isinstance(binary.right.element, expression._ScalarSelect)) or \
                  isinstance(binary.left, expression._ScalarSelect) or isinstance(binary.right, expression._ScalarSelect)):

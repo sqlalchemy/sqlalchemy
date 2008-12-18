@@ -4,7 +4,6 @@ and inheriting mappers."""
 # TODO: under construction !
 
 import testenv; testenv.configure_for_tests()
-import sets
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy import exc as sa_exc

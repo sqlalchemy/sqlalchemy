@@ -2128,7 +2128,7 @@ class ClauseList(ClauseElement):
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
     def self_group(self, against=None):
-        if self.group and self.operator != against and operators.is_precedent(self.operator, against):
+        if self.group and self.operator is not against and operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self

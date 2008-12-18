@@ -99,7 +99,6 @@ through the adapter, allowing for some very sophisticated behavior.
 import copy
 import inspect
 import operator
-import sets
 import sys
 import weakref
 
@@ -1128,7 +1127,11 @@ def _dict_decorators():
     l.pop('Unspecified')
     return l
 
-_set_binop_bases = (set, frozenset, sets.BaseSet)
+if util.py3k:
+    _set_binop_bases = (set, frozenset)
+else:
+    import sets
+    _set_binop_bases = (set, frozenset, sets.BaseSet)
 
 def _set_binops_check_strict(self, obj):
     """Allow only set, frozenset and self.__class__-derived objects in binops."""

@@ -36,6 +36,7 @@ __author__ = "Steve Purcell"
 __email__ = "stephen_purcell at yahoo dot com"
 __version__ = "#Revision: 1.63 $"[11:-2]
 
+from sqlalchemy.util import callable
 import time
 import sys
 import traceback
@@ -50,22 +51,6 @@ __all__ = ['TestResult', 'TestCase', 'TestSuite', 'TextTestRunner',
 
 # Expose obsolete functions for backwards compatibility
 __all__.extend(['getTestCaseNames', 'makeSuite', 'findTestCases'])
-
-
-##############################################################################
-# Backward compatibility
-##############################################################################
-if sys.version_info[:2] < (2, 2):
-    False, True = 0, 1
-    def isinstance(obj, clsinfo):
-        import __builtin__
-        if type(clsinfo) in (tuple, list):
-            for cls in clsinfo:
-                if cls is type: cls = types.ClassType
-                if __builtin__.isinstance(obj, cls):
-                    return 1
-            return 0
-        else: return __builtin__.isinstance(obj, clsinfo)
 
 
 ##############################################################################
@@ -482,7 +467,6 @@ class TestLoader:
     criteria and returning them wrapped in a Test
     """
     testMethodPrefix = 'test'
-    sortTestMethodsUsing = cmp
     suiteClass = TestSuite
 
     def loadTestsFromTestCase(self, testCaseClass):
@@ -556,6 +540,7 @@ class TestLoader:
     def getTestCaseNames(self, testCaseClass):
         """Return a sorted sequence of method names found within testCaseClass
         """
+
         def isTestMethod(attrname, testCaseClass=testCaseClass, prefix=self.testMethodPrefix):
             return attrname.startswith(prefix) and callable(getattr(testCaseClass, attrname))
         testFnNames = filter(isTestMethod, dir(testCaseClass))
@@ -563,8 +548,7 @@ class TestLoader:
             for testFnName in self.getTestCaseNames(baseclass):
                 if testFnName not in testFnNames:  # handle overridden methods
                     testFnNames.append(testFnName)
-        if self.sortTestMethodsUsing:
-            testFnNames.sort(self.sortTestMethodsUsing)
+        testFnNames.sort()
         return testFnNames
 
 
@@ -578,7 +562,6 @@ defaultTestLoader = TestLoader()
 
 def _makeLoader(prefix, sortUsing, suiteClass=None):
     loader = TestLoader()
-    loader.sortTestMethodsUsing = sortUsing
     loader.testMethodPrefix = prefix
     if suiteClass: loader.suiteClass = suiteClass
     return loader

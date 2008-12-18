@@ -222,6 +222,8 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
 
         class UCComparator(sa.orm.PropComparator):
+            __hash__ = None
+            
             def __eq__(self, other):
                 cls = self.prop.parent.class_
                 col = getattr(cls, 'name')
@@ -696,6 +698,7 @@ class MapperTest(_fixtures.FixtureTest):
                 return 'value'
 
         class UCComparator(sa.orm.PropComparator):
+            __hash__ = None
             def __eq__(self, other):
                 cls = self.prop.parent.class_
                 col = getattr(cls, 'name')
@@ -1158,6 +1161,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         from sqlalchemy.orm.properties import ColumnProperty
         
         class MyFactory(ColumnProperty.Comparator):
+            __hash__ = None
             def __eq__(self, other):
                 return func.foobar(self.__clause_element__()) == func.foobar(other)
         mapper(User, users, properties={'name':column_property(users.c.name, comparator_factory=MyFactory)})
@@ -1168,6 +1172,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_synonym(self):
         from sqlalchemy.orm.properties import ColumnProperty
         class MyFactory(ColumnProperty.Comparator):
+            __hash__ = None
             def __eq__(self, other):
                 return func.foobar(self.__clause_element__()) == func.foobar(other)
         mapper(User, users, properties={'name':synonym('_name', map_column=True, comparator_factory=MyFactory)})
@@ -1179,10 +1184,12 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         from sqlalchemy.orm.properties import PropertyLoader
 
         class MyFactory(PropertyLoader.Comparator):
+            __hash__ = None
             def __eq__(self, other):
                 return func.foobar(self.__clause_element__().c.user_id) == func.foobar(other.id)
 
         class MyFactory2(PropertyLoader.Comparator):
+            __hash__ = None
             def __eq__(self, other):
                 return func.foobar(self.__clause_element__().c.id) == func.foobar(other.user_id)
                 
@@ -1610,6 +1617,7 @@ class CompositeTypesTest(_base.MappedTest):
                 self.y = y
             def __composite_values__(self):
                 return [self.x, self.y]
+            __hash__ = None
             def __eq__(self, other):
                 return other.x == self.x and other.y == self.y
             def __ne__(self, other):
@@ -1689,6 +1697,7 @@ class CompositeTypesTest(_base.MappedTest):
                 self.version = version
             def __composite_values__(self):
                 return (self.id, self.version)
+            __hash__ = None
             def __eq__(self, other):
                 return other.id == self.id and other.version == self.version
             def __ne__(self, other):
@@ -1748,6 +1757,7 @@ class CompositeTypesTest(_base.MappedTest):
                 self.x4 = x4
             def __composite_values__(self):
                 return self.x1, self.x2, self.x3, self.x4
+            __hash__ = None
             def __eq__(self, other):
                 return other.x1 == self.x1 and other.x2 == self.x2 and other.x3 == self.x3 and other.x4 == self.x4
             def __ne__(self, other):
@@ -1783,6 +1793,7 @@ class CompositeTypesTest(_base.MappedTest):
                 self.x2val = x2
                 self.x3 = x3
                 self.x4 = x4
+            __hash__ = None
             def __eq__(self, other):
                 return other.x1val == self.x1val and other.x2val == self.x2val and other.x3 == self.x3 and other.x4 == self.x4
             def __ne__(self, other):
@@ -1814,6 +1825,7 @@ class CompositeTypesTest(_base.MappedTest):
                 self.y = y
             def __composite_values__(self):
                 return [self.x, self.y]
+            __hash__ = None
             def __eq__(self, other):
                 return other.x == self.x and other.y == self.y
             def __ne__(self, other):

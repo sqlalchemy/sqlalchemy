@@ -1,7 +1,6 @@
 """tests basic polymorphic mapper loading/saving, minimal relations"""
 
 import testenv; testenv.configure_for_tests()
-import sets
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
