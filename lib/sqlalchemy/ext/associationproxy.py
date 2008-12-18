@@ -16,33 +16,45 @@ from sqlalchemy.orm import collections
 
 
 def association_proxy(target_collection, attr, **kw):
-    """Convenience function for use in mapped classes.
+    """Return a Python property implementing a view of *attr* over a collection.
+
+    Implements a read/write view over an instance's *target_collection*,
+    extracting *attr* from each member of the collection.  The property acts
+    somewhat like this list comprehension::
+
+      [getattr(member, *attr*)
+       for member in getattr(instance, *target_collection*)]
+
+    Unlike the list comprehension, the collection returned by the property is
+    always in sync with *target_collection*, and mutations made to either
+    collection will be reflected in both.
 
     Implements a Python property representing a relation as a collection of
     simpler values.  The proxied property will mimic the collection type of
     the target (list, dict or set), or, in the case of a one to one relation,
     a simple scalar value.
 
-    target_collection
-      Name of the relation attribute we'll proxy to, usually created with
-      'relation()' in a mapper setup.
+    :param target_collection: Name of the relation attribute we'll proxy to,
+      usually created with :func:`~sqlalchemy.orm.relation`.
 
-    attr
-      Attribute on the associated instances we'll proxy for.  For example,
-      given a target collection of [obj1, obj2], a list created by this proxy
-      property would look like [getattr(obj1, attr), getattr(obj2, attr)]
+    :param attr: Attribute on the associated instances we'll proxy for.
+
+      For example, given a target collection of [obj1, obj2], a list created
+      by this proxy property would look like [getattr(obj1, *attr*),
+      getattr(obj2, *attr*)]
 
       If the relation is one-to-one or otherwise uselist=False, then simply:
-      getattr(obj, attr)
+      getattr(obj, *attr*)
 
-    creator (optional)
+    :param creator: optional.
+
       When new items are added to this proxied collection, new instances of
       the class collected by the target collection will be created.  For list
       and set collections, the target class constructor will be called with
       the 'value' for the new instance.  For dict types, two arguments are
       passed: key and value.
 
-      If you want to construct instances differently, supply a 'creator'
+      If you want to construct instances differently, supply a *creator*
       function that takes arguments as above and returns instances.
 
       For scalar relations, creator() will be called if the target is None.
@@ -55,7 +67,8 @@ def association_proxy(target_collection, attr, **kw):
       can be used to construct the scalar relation on-demand in this
       situation.
 
-    Passes along any other arguments to AssociationProxy
+    :param \*\*kw: Passes along any other keyword arguments to
+      :class:`AssociationProxy`.
 
     """
     return AssociationProxy(target_collection, attr, **kw)
@@ -151,7 +164,7 @@ class AssociationProxy(object):
         if self.owning_class is None:
             self.owning_class = class_ and class_ or type(obj)
         if obj is None:
-            return None
+            return self
         elif self.scalar is None:
             self.scalar = self._target_is_scalar()
             if self.scalar:

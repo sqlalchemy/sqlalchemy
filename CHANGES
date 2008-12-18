@@ -218,7 +218,13 @@ CHANGES
       two-phase commit.   We now have field reports
       of Oracle two-phase commit working properly
       with this change.
-      
+
+- associationproxy
+    - The association proxy properties are make themselves available
+      at the class level, e.g. MyClass.aproxy.  Previously this
+      evaluated to None.
+
+
 0.5.0rc4
 ========
 - features
