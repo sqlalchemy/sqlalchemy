@@ -402,9 +402,11 @@ def relation(argument, secondary=None, **kwargs):
     """
     return RelationProperty(argument, secondary=secondary, **kwargs)
 
-def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=None,
-    foreign_keys=None, backref=None, post_update=False, cascade=False, remote_side=None, enable_typechecks=True,
-    passive_deletes=False, order_by=None, comparator_factory=None):
+def dynamic_loader(argument, secondary=None, primaryjoin=None,
+                   secondaryjoin=None, foreign_keys=None, backref=None,
+                   post_update=False, cascade=False, remote_side=None,
+                   enable_typechecks=True, passive_deletes=False,
+                   order_by=None, comparator_factory=None, query_class=None):
     """Construct a dynamically-loading mapper property.
 
     This property is similar to :func:`relation`, except read
@@ -430,15 +432,20 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None, secondaryjoin=Non
       generally mutually exclusive with the use of the *secondary*
       keyword argument.
 
+    :param query_class:
+      Optional, a custom Query subclass to be used as the basis for
+      dynamic collection.
 
     """
     from sqlalchemy.orm.dynamic import DynaLoader
 
-    return RelationProperty(argument, secondary=secondary, primaryjoin=primaryjoin,
-            secondaryjoin=secondaryjoin, foreign_keys=foreign_keys, backref=backref,
-            post_update=post_update, cascade=cascade, remote_side=remote_side, enable_typechecks=enable_typechecks,
-            passive_deletes=passive_deletes, order_by=order_by, comparator_factory=comparator_factory,
-            strategy_class=DynaLoader)
+    return RelationProperty(
+        argument, secondary=secondary, primaryjoin=primaryjoin,
+        secondaryjoin=secondaryjoin, foreign_keys=foreign_keys, backref=backref,
+        post_update=post_update, cascade=cascade, remote_side=remote_side,
+        enable_typechecks=enable_typechecks, passive_deletes=passive_deletes,
+        order_by=order_by, comparator_factory=comparator_factory,
+        strategy_class=DynaLoader, query_class=query_class)
 
 def column_property(*args, **kwargs):
     """Provide a column-level property for use with a Mapper.

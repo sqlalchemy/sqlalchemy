@@ -254,22 +254,15 @@ class RelationProperty(StrategizedProperty):
     """
 
     def __init__(self, argument,
-        secondary=None, primaryjoin=None,
-        secondaryjoin=None, 
-        foreign_keys=None,
-        uselist=None,
-        order_by=False,
-        backref=None,
-        _is_backref=False,
-        post_update=False,
-        cascade=False, extension=None,
-        viewonly=False, lazy=True,
-        collection_class=None, passive_deletes=False,
-        passive_updates=True, remote_side=None,
-        enable_typechecks=True, join_depth=None,
-        comparator_factory=None,
-        strategy_class=None, _local_remote_pairs=None):
-
+                 secondary=None, primaryjoin=None, secondaryjoin=None,
+                 foreign_keys=None, uselist=None, order_by=False, backref=None,
+                 _is_backref=False, post_update=False, cascade=False,
+                 extension=None, viewonly=False, lazy=True,
+                 collection_class=None, passive_deletes=False,
+                 passive_updates=True, remote_side=None,
+                 enable_typechecks=True, join_depth=None,
+                 comparator_factory=None, strategy_class=None,
+                 _local_remote_pairs=None, query_class=None):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -285,7 +278,8 @@ class RelationProperty(StrategizedProperty):
         self.passive_updates = passive_updates
         self.remote_side = remote_side
         self.enable_typechecks = enable_typechecks
-        
+        self.query_class = query_class
+
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension

@@ -3,7 +3,7 @@ import operator
 from sqlalchemy.orm import dynamic_loader, backref
 from testlib import testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey, desc
-from testlib.sa.orm import mapper, relation, create_session
+from testlib.sa.orm import mapper, relation, create_session, Query
 from testlib.testing import eq_
 from testlib.compat import _function_named
 from orm import _base, _fixtures
@@ -113,6 +113,32 @@ class DynamicTest(_fixtures.FixtureTest):
         u1.addresses.append(Address())
         assert u1.addresses.count() == 1
         assert u1.addresses[0] == Address()
+
+    @testing.resolve_artifact_names
+    def test_custom_query(self):
+        class MyQuery(Query):
+            pass
+
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses),
+                                       query_class=MyQuery)
+        })
+        sess = create_session()
+        u = User()
+        sess.add(u)
+
+        col = u.addresses
+        assert isinstance(col, Query)
+        assert isinstance(col, MyQuery)
+        assert hasattr(col, 'append')
+        assert type(col).__name__ == 'AppenderMyQuery'
+
+        q = col.limit(1)
+        assert isinstance(q, Query)
+        assert isinstance(q, MyQuery)
+        assert not hasattr(q, 'append')
+        assert type(q).__name__ == 'MyQuery'
+
 
 class FlushTest(_fixtures.FixtureTest):
     run_inserts = None

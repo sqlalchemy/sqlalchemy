@@ -24,7 +24,7 @@ from sqlalchemy.orm.util import _state_has_identity, has_identity
 class DynaLoader(strategies.AbstractRelationLoader):
     def init_class_attribute(self):
         self.is_class_level = True
-        self._register_attribute(self.parent.class_, impl_class=DynamicAttributeImpl, target_mapper=self.parent_property.mapper, order_by=self.parent_property.order_by)
+        self._register_attribute(self.parent.class_, impl_class=DynamicAttributeImpl, target_mapper=self.parent_property.mapper, order_by=self.parent_property.order_by, query_class=self.parent_property.query_class)
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
@@ -34,12 +34,17 @@ log.class_logger(DynaLoader)
 class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True
     accepts_scalar_loader = False
-    
-    def __init__(self, class_, key, typecallable, class_manager, target_mapper, order_by, **kwargs):
-        super(DynamicAttributeImpl, self).__init__(class_, key, typecallable, class_manager, **kwargs)
+
+    def __init__(self, class_, key, typecallable, class_manager,
+                 target_mapper, order_by, query_class=None, **kwargs):
+        super(DynamicAttributeImpl, self).__init__(
+            class_, key, typecallable, class_manager, **kwargs)
         self.target_mapper = target_mapper
         self.order_by = order_by
-        self.query_class = AppenderQuery
+        if not query_class:
+            self.query_class = AppenderQuery
+        else:
+            self.query_class = mixin_user_query(query_class)
 
     def get(self, state, passive=False):
         if passive:
@@ -72,7 +77,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
         for ext in self.extensions:
             ext.remove(state, value, initiator or self)
-    
+
     def _modified_event(self, state):
         state.modified = True
         if self.key not in state.committed_state:
@@ -81,13 +86,12 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         # this is a hack to allow the _base.ComparableEntity fixture
         # to work
         state.dict[self.key] = True
-        
         return state.committed_state[self.key]
-        
+
     def set(self, state, value, initiator):
         if initiator is self:
             return
-        
+
         collection_history = self._modified_event(state)
         if _state_has_identity(state):
             old_collection = list(self.get(state))
@@ -97,11 +101,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
     def delete(self, *args, **kwargs):
         raise NotImplementedError()
-        
+
     def get_history(self, state, passive=False):
         c = self._get_collection_history(state, passive)
         return attributes.History(c.added_items, c.unchanged_items, c.deleted_items)
-        
+
     def _get_collection_history(self, state, passive=False):
         if self.key in state.committed_state:
             c = state.committed_state[self.key]
@@ -122,9 +126,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             self.fire_remove_event(state, value, initiator)
 
         
-class AppenderQuery(Query):
+class AppenderMixin(object):
+    query_class = None
+
     def __init__(self, attr, state):
-        super(AppenderQuery, self).__init__(attr.target_mapper, None)
+        Query.__init__(self, attr.target_mapper, None)
         self.instance = state.obj()
         self.attr = attr
     
@@ -167,21 +173,30 @@ class AppenderQuery(Query):
                 passive=True).added_items)
         else:
             return self._clone(sess).count()
-    
+
     def _clone(self, sess=None):
-        # note we're returning an entirely new Query class instance here
-        # without any assignment capabilities;
-        # the class of this query is determined by the session.
+        # note we're returning an entirely new Query class instance
+        # here without any assignment capabilities; the class of this
+        # query is determined by the session.
         instance = self.instance
         if sess is None:
             sess = object_session(instance)
             if sess is None:
-                raise sa_exc.UnboundExecutionError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (mapperutil.instance_str(instance), self.attr.key))
+                raise sa_exc.UnboundExecutionError(
+                    "Parent instance %s is not bound to a Session, and no "
+                    "contextual session is established; lazy load operation "
+                    "of attribute '%s' cannot proceed" % (
+                        mapperutil.instance_str(instance), self.attr.key))
 
-        q = sess.query(self.attr.target_mapper).with_parent(instance, self.attr.key)
+        if self.query_class:
+            query = self.query_class(self.attr.target_mapper, session=sess)
+        else:
+            query = sess.query(self.attr.target_mapper)
+        query = query.with_parent(instance, self.attr.key)
+
         if self.attr.order_by:
-            q = q.order_by(self.attr.order_by)
-        return q
+            query = query.order_by(self.attr.order_by)
+        return query
 
     def append(self, item):
         self.attr.append(attributes.instance_state(self.instance), item, None)
@@ -189,7 +204,16 @@ class AppenderQuery(Query):
     def remove(self, item):
         self.attr.remove(attributes.instance_state(self.instance), item, None)
 
-            
+
+class AppenderQuery(AppenderMixin, Query):
+    """A dynamic query that supports basic collection storage operations."""
+
+
+def mixin_user_query(cls):
+    """Return a new class with AppenderQuery functionality layered over."""
+    name = 'Appender' + cls.__name__
+    return type(name, (AppenderMixin, cls), {'query_class': cls})
+
 class CollectionHistory(object): 
     """Overrides AttributeHistory to receive append/remove events directly."""
 
