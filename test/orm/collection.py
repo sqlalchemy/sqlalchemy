@@ -1677,6 +1677,7 @@ class CustomCollectionsTest(_base.MappedTest):
 
         o = [Child()]
         control[1:3] = o
+        
         p.children[1:3] = o
         assert control == p.children
         assert control == list(p.children)

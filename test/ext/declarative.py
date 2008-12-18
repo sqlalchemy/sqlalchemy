@@ -544,6 +544,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         from sqlalchemy.orm.properties import ColumnProperty
         
         class CustomCompare(ColumnProperty.Comparator):
+            __hash__ = None
             def __eq__(self, other):
                 return self.__clause_element__() == other + ' FOO'
                 

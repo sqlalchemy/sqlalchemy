@@ -1,6 +1,6 @@
 """Tests exceptions and DB-API exception wrapping."""
 import testenv; testenv.configure_for_tests()
-import unittest
+from testlib import sa_unittest as unittest
 import exceptions as stdlib_exceptions
 from sqlalchemy import exc as sa_exceptions
 

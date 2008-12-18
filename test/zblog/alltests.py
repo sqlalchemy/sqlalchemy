@@ -1,5 +1,5 @@
 import testenv; testenv.configure_for_tests()
-import unittest
+from testlib import sa_unittest as unittest
 
 def suite():
     modules_to_test = (

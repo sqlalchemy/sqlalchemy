@@ -7,7 +7,7 @@ import operator
 import re
 import sys
 import types
-import unittest
+from testlib import sa_unittest as unittest
 import warnings
 from cStringIO import StringIO
 
@@ -865,17 +865,39 @@ class TTestSuite(unittest.TestSuite):
                 break
         unittest.TestSuite.__init__(self, tests)
 
-    def do_run(self, result):
-        # nice job unittest !  you switched __call__ and run() between py2.3
-        # and 2.4 thereby making straight subclassing impossible !
-        for test in self._tests:
-            if result.shouldStop:
-                break
-            test(result)
-        return result
-
     def run(self, result):
-        return self(result)
+        init = getattr(self, '_initTest', None)
+        if init is not None:
+            if (hasattr(init, '__whitelist__') and
+                config.db.name in init.__whitelist__):
+                pass
+            else:
+                if self.__should_skip_for(init):
+                    return True
+            try:
+                resetwarnings()
+                init.setUpAll()
+            except:
+                # skip tests if global setup fails
+                ex = self.__exc_info()
+                for test in self._tests:
+                    result.addError(test, ex)
+                return False
+        try:
+            resetwarnings()
+            for test in self._tests:
+                if result.shouldStop:
+                    break
+                test(result)
+            return result
+        finally:
+            try:
+                resetwarnings()
+                if init is not None:
+                    init.tearDownAll()
+            except:
+                result.addError(init, self.__exc_info())
+                pass
 
     def __should_skip_for(self, cls):
         if hasattr(cls, '__requires__'):
@@ -911,35 +933,6 @@ class TTestSuite(unittest.TestSuite):
                 return True
         return False
 
-    def __call__(self, result):
-        init = getattr(self, '_initTest', None)
-        if init is not None:
-            if (hasattr(init, '__whitelist__') and
-                config.db.name in init.__whitelist__):
-                pass
-            else:
-                if self.__should_skip_for(init):
-                    return True
-            try:
-                resetwarnings()
-                init.setUpAll()
-            except:
-                # skip tests if global setup fails
-                ex = self.__exc_info()
-                for test in self._tests:
-                    result.addError(test, ex)
-                return False
-        try:
-            resetwarnings()
-            return self.do_run(result)
-        finally:
-            try:
-                resetwarnings()
-                if init is not None:
-                    init.tearDownAll()
-            except:
-                result.addError(init, self.__exc_info())
-                pass
 
     def __exc_info(self):
         """Return a version of sys.exc_info() with the traceback frame

@@ -592,12 +592,14 @@ class PendingBackrefTest(_base.ORMTest):
         class Post(object):
             def __init__(self, name):
                 self.name = name
+            __hash__ = None
             def __eq__(self, other):
                 return other.name == self.name
 
         class Blog(object):
             def __init__(self, name):
                 self.name = name
+            __hash__ = None
             def __eq__(self, other):
                 return other.name == self.name
 

@@ -26,6 +26,8 @@ class TraversalTest(TestBase, AssertsExecutionResults):
             def is_other(self, other):
                 return other is self
 
+            __hash__ = ClauseElement.__hash__
+            
             def __eq__(self, other):
                 return other.expr == self.expr
 
@@ -48,6 +50,8 @@ class TraversalTest(TestBase, AssertsExecutionResults):
                     if i1 is not i2:
                         return False
                 return True
+
+            __hash__ = ClauseElement.__hash__
 
             def __eq__(self, other):
                 for i1, i2 in zip(self.items, other.items):
