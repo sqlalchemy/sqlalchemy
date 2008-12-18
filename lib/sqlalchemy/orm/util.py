@@ -4,8 +4,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import new
-
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import sql, util
 from sqlalchemy.sql import expression, util as sql_util, operators
@@ -329,7 +327,7 @@ class AliasedClass(object):
         if hasattr(attr, 'func_code'):
             is_method = getattr(self.__target, key, None)
             if is_method and is_method.im_self is not None:
-                return new.instancemethod(attr.im_func, self, self)
+                return util.types.MethodType(attr.im_func, self, self)
             else:
                 return None
         elif hasattr(attr, '__get__'):
@@ -570,7 +568,8 @@ def _is_mapped_class(cls):
     from sqlalchemy.orm import mapperlib as mapper
     if isinstance(cls, (AliasedClass, mapper.Mapper)):
         return True
-
+    if isinstance(cls, expression.ClauseElement):
+        return False
     manager = attributes.manager_of_class(cls)
     return manager and _INSTRUMENTOR in manager.info
 

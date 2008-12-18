@@ -3,7 +3,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy.ext import serializer
 from sqlalchemy import exc
 from testlib import sa, testing
-from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, select, desc, func
+from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, select, desc, func, util
 from testlib.sa.orm import relation, sessionmaker, scoped_session, class_mapper, mapper, eagerload, compile_mappers, aliased
 from testlib.testing import eq_
 from orm._base import ComparableEntity, MappedTest
@@ -88,7 +88,9 @@ class SerializeTest(testing.ORMTest):
             re_expr.execute().fetchall(),
             [(7, u'jack'), (8, u'ed'), (8, u'ed'), (8, u'ed'), (9, u'fred')]
         )
-        
+    
+    # fails due to pure Python pickle bug:  http://bugs.python.org/issue998998
+    @testing.fails_if(lambda: util.py3k) 
     def test_query(self):
         q = Session.query(User).filter(User.name=='ed').options(eagerload(User.addresses))
         eq_(q.all(), [User(name='ed', addresses=[Address(id=2), Address(id=3), Address(id=4)])])

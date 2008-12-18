@@ -574,7 +574,7 @@ class Column(SchemaItem, expression.ColumnClause):
             coltype = args[0]
             
             # adjust for partials
-            if callable(coltype):
+            if util.callable(coltype):
                 coltype = args[0]()
 
             if (isinstance(coltype, types.AbstractType) or
@@ -963,7 +963,7 @@ class ColumnDefault(DefaultGenerator):
         if isinstance(arg, FetchedValue):
             raise exc.ArgumentError(
                 "ColumnDefault may not be a server-side default type.")
-        if callable(arg):
+        if util.callable(arg):
             arg = self._maybe_wrap_callable(arg)
         self.arg = arg
 
@@ -1320,6 +1320,8 @@ class PrimaryKeyConstraint(Constraint):
     def copy(self, **kw):
         return PrimaryKeyConstraint(name=self.name, *[c.key for c in self])
 
+    __hash__ = Constraint.__hash__
+    
     def __eq__(self, other):
         return self.columns == other
 
@@ -1663,7 +1665,7 @@ class MetaData(SchemaItem):
 
         if only is None:
             load = [name for name in available if name not in current]
-        elif callable(only):
+        elif util.callable(only):
             load = [name for name in available
                     if name not in current and only(name, self)]
         else:
@@ -1940,7 +1942,7 @@ class DDL(object):
                 "Expected a string or unicode SQL statement, got '%r'" %
                 statement)
         if (on is not None and
-            (not isinstance(on, basestring) and not callable(on))):
+            (not isinstance(on, basestring) and not util.callable(on))):
             raise exc.ArgumentError(
                 "Expected the name of a database dialect or a callable for "
                 "'on' criteria, got type '%s'." % type(on).__name__)

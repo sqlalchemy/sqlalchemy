@@ -207,7 +207,7 @@ def traverse_depthfirst(obj, opts, visitors):
 def cloned_traverse(obj, opts, visitors):
     """clone the given expression structure, allowing modifications by visitors."""
     
-    cloned = {}
+    cloned = util.column_dict()
 
     def clone(element):
         if element not in cloned:
@@ -234,8 +234,8 @@ def cloned_traverse(obj, opts, visitors):
 def replacement_traverse(obj, opts, replace):
     """clone the given expression structure, allowing element replacement by a given replacement function."""
     
-    cloned = {}
-    stop_on = set(opts.get('stop_on', []))
+    cloned = util.column_dict()
+    stop_on = util.column_set(opts.get('stop_on', []))
 
     def clone(element):
         newelem = replace(element)

@@ -175,7 +175,7 @@ def proxied_attribute_factory(descriptor):
 
         @property
         def comparator(self):
-            if callable(self._comparator):
+            if util.callable(self._comparator):
                 self._comparator = self._comparator()
             return self._comparator
 
@@ -838,7 +838,7 @@ class InstanceState(object):
     
     @property
     def sort_key(self):
-        return self.key and self.key[1] or self.insert_order
+        return self.key and self.key[1] or (self.insert_order, )
 
     def check_modified(self):
         if self.modified:
@@ -958,7 +958,7 @@ class InstanceState(object):
         """a set of keys which have no uncommitted changes"""
 
         return set(
-            key for key in self.manager.keys()
+            key for key in self.manager.iterkeys()
             if (key not in self.committed_state or
                 (key in self.manager.mutable_attributes and
                  not self.manager[key].impl.check_mutable_modified(self))))
@@ -972,7 +972,7 @@ class InstanceState(object):
 
         """
         return set(
-            key for key in self.manager.keys()
+            key for key in self.manager.iterkeys()
             if key not in self.committed_state and key not in self.dict)
 
     def expire_attributes(self, attribute_names):

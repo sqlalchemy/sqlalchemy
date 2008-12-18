@@ -2,6 +2,7 @@ import sys, types, weakref
 from collections import deque
 from testlib import config
 from testlib.compat import _function_named
+from sqlalchemy.util import callable
 
 class ConnectionKiller(object):
     def __init__(self):

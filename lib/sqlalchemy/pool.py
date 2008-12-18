@@ -814,14 +814,14 @@ class AssertionPool(Pool):
         return "AssertionPool"
 
     def create_connection(self):
-        raise "Invalid"
+        raise AssertionError("Invalid")
 
     def do_return_conn(self, conn):
         assert conn is self._conn and self.connection is None
         self.connection = conn
 
     def do_return_invalid(self, conn):
-        raise "Invalid"
+        raise AssertionError("Invalid")
 
     def do_get(self):
         assert self.connection is not None

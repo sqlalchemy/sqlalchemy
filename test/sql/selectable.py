@@ -8,6 +8,7 @@ from testlib import *
 from sqlalchemy.sql import util as sql_util, visitors
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column
+from sqlalchemy import util
 
 metadata = MetaData()
 table1 = Table('table1', metadata,
@@ -288,13 +289,13 @@ class PrimaryKeyTest(TestBase, AssertsExecutionResults):
         )
 
         self.assertEquals(
-            set(employee.join(engineer, employee.c.id==engineer.c.id).primary_key),
-            set([employee.c.id])
+            util.column_set(employee.join(engineer, employee.c.id==engineer.c.id).primary_key),
+            util.column_set([employee.c.id])
         )
 
         self.assertEquals(
-            set(employee.join(engineer, engineer.c.id==employee.c.id).primary_key),
-            set([employee.c.id])
+            util.column_set(employee.join(engineer, engineer.c.id==employee.c.id).primary_key),
+            util.column_set([employee.c.id])
         )
 
 
@@ -313,8 +314,8 @@ class ReduceTest(TestBase, AssertsExecutionResults):
         
         
         self.assertEquals(
-            set(sql_util.reduce_columns([t1.c.t1id, t1.c.t1data, t2.c.t2id, t2.c.t2data, t3.c.t3id, t3.c.t3data])),
-            set([t1.c.t1id, t1.c.t1data, t2.c.t2data, t3.c.t3data])
+            util.column_set(sql_util.reduce_columns([t1.c.t1id, t1.c.t1data, t2.c.t2id, t2.c.t2data, t3.c.t3id, t3.c.t3data])),
+            util.column_set([t1.c.t1id, t1.c.t1data, t2.c.t2data, t3.c.t3data])
         )
     
     def test_reduce_selectable(self):
@@ -332,8 +333,8 @@ class ReduceTest(TestBase, AssertsExecutionResults):
 
        s = select([engineers, managers]).where(engineers.c.engineer_name==managers.c.manager_name)
        
-       self.assertEquals(set(sql_util.reduce_columns(list(s.c), s)),
-        set([s.c.engineer_id, s.c.engineer_name, s.c.manager_id])
+       self.assertEquals(util.column_set(sql_util.reduce_columns(list(s.c), s)),
+        util.column_set([s.c.engineer_id, s.c.engineer_name, s.c.manager_id])
         )
        
     def test_reduce_aliased_join(self):
@@ -358,8 +359,8 @@ class ReduceTest(TestBase, AssertsExecutionResults):
         
         pjoin = people.outerjoin(engineers).outerjoin(managers).select(use_labels=True).alias('pjoin')
         self.assertEquals(
-            set(sql_util.reduce_columns([pjoin.c.people_person_id, pjoin.c.engineers_person_id, pjoin.c.managers_person_id])),
-            set([pjoin.c.people_person_id])
+            util.column_set(sql_util.reduce_columns([pjoin.c.people_person_id, pjoin.c.engineers_person_id, pjoin.c.managers_person_id])),
+            util.column_set([pjoin.c.people_person_id])
         )
         
     def test_reduce_aliased_union(self):
@@ -382,8 +383,8 @@ class ReduceTest(TestBase, AssertsExecutionResults):
             }, None, 'item_join')
             
         self.assertEquals(
-            set(sql_util.reduce_columns([item_join.c.id, item_join.c.dummy, item_join.c.child_name])),
-            set([item_join.c.id, item_join.c.dummy, item_join.c.child_name])
+            util.column_set(sql_util.reduce_columns([item_join.c.id, item_join.c.dummy, item_join.c.child_name])),
+            util.column_set([item_join.c.id, item_join.c.dummy, item_join.c.child_name])
         )    
     
     def test_reduce_aliased_union_2(self):
@@ -407,8 +408,8 @@ class ReduceTest(TestBase, AssertsExecutionResults):
             }, None, 'page_join')
             
         self.assertEquals(
-            set(sql_util.reduce_columns([pjoin.c.id, pjoin.c.page_id, pjoin.c.magazine_page_id])),
-            set([pjoin.c.id])
+            util.column_set(sql_util.reduce_columns([pjoin.c.id, pjoin.c.page_id, pjoin.c.magazine_page_id])),
+            util.column_set([pjoin.c.id])
         )    
     
             

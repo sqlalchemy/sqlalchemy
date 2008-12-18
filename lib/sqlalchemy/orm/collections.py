@@ -105,15 +105,14 @@ import weakref
 
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.sql import expression
-from sqlalchemy import schema
-import sqlalchemy.util as sautil
+from sqlalchemy import schema, util
 
 
 __all__ = ['collection', 'collection_adapter',
            'mapped_collection', 'column_mapped_collection',
            'attribute_mapped_collection']
 
-__instrumentation_mutex = sautil.threading.Lock()
+__instrumentation_mutex = util.threading.Lock()
 
 
 def column_mapped_collection(mapping_spec):
@@ -131,7 +130,7 @@ def column_mapped_collection(mapping_spec):
     from sqlalchemy.orm.util import _state_mapper
     from sqlalchemy.orm.attributes import instance_state
 
-    cols = [expression._no_literals(q) for q in sautil.to_list(mapping_spec)]
+    cols = [expression._no_literals(q) for q in util.to_list(mapping_spec)]
     if len(cols) == 1:
         def keyfunc(value):
             state = instance_state(value)
@@ -511,8 +510,8 @@ class CollectionAdapter(object):
         if converter is not None:
             return converter(obj)
 
-        setting_type = sautil.duck_type_collection(obj)
-        receiving_type = sautil.duck_type_collection(self._data())
+        setting_type = util.duck_type_collection(obj)
+        receiving_type = util.duck_type_collection(self._data())
 
         if obj is None or setting_type != receiving_type:
             given = obj is None and 'None' or obj.__class__.__name__
@@ -637,7 +636,7 @@ def bulk_replace(values, existing_adapter, new_adapter):
     if not isinstance(values, list):
         values = list(values)
 
-    idset = sautil.IdentitySet
+    idset = util.IdentitySet
     constants = idset(existing_adapter or ()).intersection(values or ())
     additions = idset(values or ()).difference(constants)
     removals = idset(existing_adapter or ()).difference(constants)
@@ -739,7 +738,7 @@ def _instrument_class(cls):
             "Can not instrument a built-in type. Use a "
             "subclass, even a trivial one.")
 
-    collection_type = sautil.duck_type_collection(cls)
+    collection_type = util.duck_type_collection(cls)
     if collection_type in __interfaces:
         roles = __interfaces[collection_type].copy()
         decorators = roles.pop('_decorators', {})
@@ -753,7 +752,7 @@ def _instrument_class(cls):
 
     for name in dir(cls):
         method = getattr(cls, name, None)
-        if not callable(method):
+        if not util.callable(method):
             continue
 
         # note role declarations
@@ -825,7 +824,7 @@ def _instrument_membership_mutator(method, before, argument, after):
     """Route method args and/or return value through the collection adapter."""
     # This isn't smart enough to handle @adds(1) for 'def fn(self, (a, b))'
     if before:
-        fn_args = list(sautil.flatten_iterator(inspect.getargspec(method)[0]))
+        fn_args = list(util.flatten_iterator(inspect.getargspec(method)[0]))
         if type(argument) is int:
             pos_arg = argument
             named_arg = len(fn_args) > argument and fn_args[argument] or None
@@ -1040,7 +1039,7 @@ def _dict_decorators():
         setattr(fn, '_sa_instrumented', True)
         fn.__doc__ = getattr(getattr(dict, fn.__name__), '__doc__')
 
-    Unspecified = sautil.symbol('Unspecified')
+    Unspecified = util.symbol('Unspecified')
 
     def __setitem__(fn):
         def __setitem__(self, key, value, _sa_initiator=None):
@@ -1138,7 +1137,7 @@ def _set_binops_check_strict(self, obj):
 def _set_binops_check_loose(self, obj):
     """Allow anything set-like to participate in set binops."""
     return (isinstance(obj, _set_binop_bases + (self.__class__,)) or
-            sautil.duck_type_collection(obj) == set)
+            util.duck_type_collection(obj) == set)
 
 
 def _set_decorators():
@@ -1148,7 +1147,7 @@ def _set_decorators():
         setattr(fn, '_sa_instrumented', True)
         fn.__doc__ = getattr(getattr(set, fn.__name__), '__doc__')
 
-    Unspecified = sautil.symbol('Unspecified')
+    Unspecified = util.symbol('Unspecified')
 
     def add(fn):
         def add(self, value, _sa_initiator=None):
@@ -1405,7 +1404,7 @@ class MappedCollection(dict):
         have assigned for that value.
 
         """
-        for incoming_key, value in sautil.dictlike_iteritems(dictlike):
+        for incoming_key, value in util.dictlike_iteritems(dictlike):
             new_key = self.keyfunc(value)
             if incoming_key != new_key:
                 raise TypeError(

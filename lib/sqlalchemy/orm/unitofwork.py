@@ -269,7 +269,7 @@ class UOWTransaction(object):
     def elements(self):
         """Iterate UOWTaskElements."""
         
-        for task in self.tasks.values():
+        for task in self.tasks.itervalues():
             for elem in task.elements:
                 yield elem
 
@@ -288,7 +288,7 @@ class UOWTransaction(object):
 
     def _sort_dependencies(self):
         nodes = topological.sort_with_cycles(self.dependencies,
-            [t.mapper for t in self.tasks.values() if t.base_task is t]
+            [t.mapper for t in self.tasks.itervalues() if t.base_task is t]
         )
 
         ret = []
@@ -565,7 +565,7 @@ class UOWTask(object):
         # as part of the topological sort itself, which would
         # eliminate the need for this step (but may make the original
         # topological sort more expensive)
-        head = topological.sort_as_tree(tuples, object_to_original_task.keys())
+        head = topological.sort_as_tree(tuples, object_to_original_task.iterkeys())
         if head is not None:
             original_to_tasks = {}
             stack = [(head, t)]
@@ -585,7 +585,7 @@ class UOWTask(object):
                 task.append(state, originating_task._objects[state].listonly, isdelete=originating_task._objects[state].isdelete)
 
                 if state in dependencies:
-                    task.cyclical_dependencies.update(dependencies[state].values())
+                    task.cyclical_dependencies.update(dependencies[state].itervalues())
 
                 stack += [(n, task) for n in children]
 

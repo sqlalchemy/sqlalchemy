@@ -71,6 +71,9 @@ class URL(object):
             s += '?' + "&".join("%s=%s" % (k, self.query[k]) for k in keys)
         return s
     
+    def __hash__(self):
+        return hash(str(self))
+    
     def __eq__(self, other):
         return \
             isinstance(other, URL) and \

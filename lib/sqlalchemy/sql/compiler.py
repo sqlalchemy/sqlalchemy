@@ -162,7 +162,7 @@ class DefaultCompiler(engine.Compiled):
 
         # a dictionary of _BindParamClause instances to "compiled" names that are
         # actually present in the generated SQL
-        self.bind_names = {}
+        self.bind_names = util.column_dict()
 
         # stack which keeps track of nested SELECT statements
         self.stack = []
@@ -205,6 +205,7 @@ class DefaultCompiler(engine.Compiled):
         """return a dictionary of bind parameter keys and values"""
 
         if params:
+            params = util.column_dict(params)
             pd = {}
             for bindparam, name in self.bind_names.iteritems():
                 for paramname in (bindparam, bindparam.key, bindparam.shortname, name):
@@ -212,7 +213,7 @@ class DefaultCompiler(engine.Compiled):
                         pd[name] = params[paramname]
                         break
                 else:
-                    if callable(bindparam.value):
+                    if util.callable(bindparam.value):
                         pd[name] = bindparam.value()
                     else:
                         pd[name] = bindparam.value
@@ -220,7 +221,7 @@ class DefaultCompiler(engine.Compiled):
         else:
             pd = {}
             for bindparam in self.bind_names:
-                if callable(bindparam.value):
+                if util.callable(bindparam.value):
                     pd[self.bind_names[bindparam]] = bindparam.value()
                 else:
                     pd[self.bind_names[bindparam]] = bindparam.value
@@ -317,7 +318,7 @@ class DefaultCompiler(engine.Compiled):
         sep = clauselist.operator
         if sep is None:
             sep = " "
-        elif sep == operators.comma_op:
+        elif sep is operators.comma_op:
             sep = ', '
         else:
             sep = " " + self.operator_string(clauselist.operator) + " "
@@ -336,7 +337,7 @@ class DefaultCompiler(engine.Compiled):
 
         name = self.function_string(func)
 
-        if callable(name):
+        if util.callable(name):
             return name(*[self.process(x) for x in func.clauses])
         else:
             return ".".join(func.packagenames + [name]) % {'expr':self.function_argspec(func)}
@@ -377,7 +378,7 @@ class DefaultCompiler(engine.Compiled):
 
     def visit_binary(self, binary, **kwargs):
         op = self.operator_string(binary.operator)
-        if callable(op):
+        if util.callable(op):
             return op(self.process(binary.left), self.process(binary.right), **binary.modifiers)
         else:
             return self.process(binary.left) + " " + op + " " + self.process(binary.right)

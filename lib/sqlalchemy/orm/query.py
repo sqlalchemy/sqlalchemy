@@ -753,7 +753,7 @@ class Query(object):
         """
         aliased, from_joinpoint = kwargs.pop('aliased', False), kwargs.pop('from_joinpoint', False)
         if kwargs:
-            raise TypeError("unknown arguments: %s" % ','.join(kwargs.keys()))
+            raise TypeError("unknown arguments: %s" % ','.join(kwargs.iterkeys()))
         return self.__join(props, outerjoin=False, create_aliases=aliased, from_joinpoint=from_joinpoint)
 
     @util.accepts_a_list_as_starargs(list_deprecation='pending')
@@ -766,7 +766,7 @@ class Query(object):
         """
         aliased, from_joinpoint = kwargs.pop('aliased', False), kwargs.pop('from_joinpoint', False)
         if kwargs:
-            raise TypeError("unknown arguments: %s" % ','.join(kwargs.keys()))
+            raise TypeError("unknown arguments: %s" % ','.join(kwargs.iterkeys()))
         return self.__join(props, outerjoin=True, create_aliases=aliased, from_joinpoint=from_joinpoint)
 
     @_generative(__no_statement_condition, __no_limit_offset)

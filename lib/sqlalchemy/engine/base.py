@@ -1267,7 +1267,6 @@ class Engine(Connectable):
 
         return self.pool.unique_connection()
 
-
 def _proxy_connection_cls(cls, proxy):
     class ProxyConnection(cls):
         def execute(self, object, *multiparams, **params):
@@ -1319,6 +1318,8 @@ class RowProxy(object):
         for i in xrange(len(self.__row)):
             yield self.__parent._get_col(self.__row, i)
 
+    __hash__ = None
+    
     def __eq__(self, other):
         return ((other is self) or
                 (other == tuple(self.__parent._get_col(self.__row, key)
@@ -1347,18 +1348,23 @@ class RowProxy(object):
     def items(self):
         """Return a list of tuples, each tuple containing a key/value pair."""
 
-        return [(key, getattr(self, key)) for key in self.keys()]
+        return [(key, getattr(self, key)) for key in self.iterkeys()]
 
     def keys(self):
         """Return the list of keys as strings represented by this RowProxy."""
 
         return self.__parent.keys
-
+    
+    def iterkeys(self):
+        return iter(self.__parent.keys)
+        
     def values(self):
         """Return the values represented by this RowProxy as a list."""
 
         return list(self)
-
+    
+    def itervalues(self):
+        return iter(self)
 
 class BufferedColumnRow(RowProxy):
     def __init__(self, parent, row):
@@ -1425,7 +1431,7 @@ class ResultProxy(object):
             return
             
         self._rowcount = None
-        self._props = util.PopulateDict(None)
+        self._props = util.populate_column_dict(None)
         self._props.creator = self.__key_fallback()
         self.keys = []
 
@@ -1848,7 +1854,7 @@ class DefaultRunner(schema.SchemaVisitor):
     def visit_column_onupdate(self, onupdate):
         if isinstance(onupdate.arg, expression.ClauseElement):
             return self.exec_default_sql(onupdate)
-        elif callable(onupdate.arg):
+        elif util.callable(onupdate.arg):
             return onupdate.arg(self.context)
         else:
             return onupdate.arg
@@ -1856,7 +1862,7 @@ class DefaultRunner(schema.SchemaVisitor):
     def visit_column_default(self, default):
         if isinstance(default.arg, expression.ClauseElement):
             return self.exec_default_sql(default)
-        elif callable(default.arg):
+        elif util.callable(default.arg):
             return default.arg(self.context)
         else:
             return default.arg

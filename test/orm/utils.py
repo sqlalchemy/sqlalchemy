@@ -143,7 +143,7 @@ class AliasedClassTest(TestBase):
 
     def test_hybrid_descriptors(self):
         from sqlalchemy import Column  # override testlib's override
-        import new
+        import types
 
         class MethodDescriptor(object):
             def __init__(self, func):
@@ -153,7 +153,7 @@ class AliasedClassTest(TestBase):
                     args = (self.func, owner, owner.__class__)
                 else:
                     args = (self.func, instance, owner)
-                return new.instancemethod(*args)
+                return types.MethodType(*args)
 
         class PropertyDescriptor(object):
             def __init__(self, fget, fset, fdel):

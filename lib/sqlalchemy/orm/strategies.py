@@ -451,9 +451,9 @@ class LazyLoader(AbstractRelationLoader):
             return (new_execute, None)
 
     def _create_lazy_clause(cls, prop, reverse_direction=False):
-        binds = {}
-        lookup = {}
-        equated_columns = {}
+        binds = util.column_dict()
+        lookup = util.column_dict()
+        equated_columns = util.column_dict()
 
         if reverse_direction and not prop.secondaryjoin:
             for l, r in prop.local_remote_pairs:

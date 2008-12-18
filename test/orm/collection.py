@@ -148,7 +148,7 @@ class CollectionsTest(_base.ORMTest):
             control[0] = e
             assert_eq()
 
-            if reduce(and_, [hasattr(direct, a) for a in
+            if util.reduce(and_, [hasattr(direct, a) for a in
                              ('__delitem__', 'insert', '__len__')], True):
                 values = [creator(), creator(), creator(), creator()]
                 direct[slice(0,1)] = values
@@ -365,6 +365,7 @@ class CollectionsTest(_base.ORMTest):
                 assert False
             def __iter__(self):
                 return iter(self.data)
+            __hash__ = object.__hash__
             def __eq__(self, other):
                 return self.data == other
             def __repr__(self):
@@ -392,6 +393,7 @@ class CollectionsTest(_base.ORMTest):
                 assert False
             def __iter__(self):
                 return iter(self.data)
+            __hash__ = object.__hash__
             def __eq__(self, other):
                 return self.data == other
             def __repr__(self):
@@ -735,6 +737,7 @@ class CollectionsTest(_base.ORMTest):
                 self.data.update(other)
             def __iter__(self):
                 return iter(self.data)
+            __hash__ = object.__hash__
             def __eq__(self, other):
                 return self.data == other
 
@@ -760,6 +763,7 @@ class CollectionsTest(_base.ORMTest):
                 self.data.update(other)
             def __iter__(self):
                 return iter(self.data)
+            __hash__ = object.__hash__
             def __eq__(self, other):
                 return self.data == other
 
@@ -1037,6 +1041,7 @@ class CollectionsTest(_base.ORMTest):
             @collection.iterator
             def itervalues(self):
                 return self.data.itervalues()
+            __hash__ = object.__hash__
             def __eq__(self, other):
                 return self.data == other
             def __repr__(self):
@@ -1076,6 +1081,7 @@ class CollectionsTest(_base.ORMTest):
             @collection.iterator
             def itervalues(self):
                 return self.data.itervalues()
+            __hash__ = object.__hash__
             def __eq__(self, other):
                 return self.data == other
             def __repr__(self):
@@ -1153,6 +1159,7 @@ class CollectionsTest(_base.ORMTest):
             @collection.iterator
             def __iter__(self):
                 return iter(self.data)
+            __hash__ = object.__hash__
             def __eq__(self, other):
                 return self.data == other
 
@@ -1183,6 +1190,7 @@ class CollectionsTest(_base.ORMTest):
             @collection.iterator
             def __iter__(self):
                 return iter(self.data)
+            __hash__ = object.__hash__
             def __eq__(self, other):
                 return self.data == other
 

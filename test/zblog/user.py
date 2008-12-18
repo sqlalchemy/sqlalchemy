@@ -1,7 +1,7 @@
 """user.py - handles user login and validation"""
 
 import random, string
-from sha import sha
+from hashlib import sha1 as sha
 
 administrator = 'admin'
 user = 'user'

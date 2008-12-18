@@ -997,7 +997,7 @@ class ClauseElement(Visitable):
         of transformative operations.
 
         """
-        s = set()
+        s = util.column_set()
         f = self
         while f is not None:
             s.add(f)
@@ -1258,6 +1258,8 @@ class ColumnOperators(Operators):
     def __le__(self, other):
         return self.operate(operators.le, other)
 
+    __hash__ = Operators.__hash__
+    
     def __eq__(self, other):
         return self.operate(operators.eq, other)
 
@@ -1580,12 +1582,12 @@ class ColumnElement(ClauseElement, _CompareMixin):
 
     @util.memoized_property
     def base_columns(self):
-        return set(c for c in self.proxy_set
+        return util.column_set(c for c in self.proxy_set
                                      if not hasattr(c, 'proxies'))
 
     @util.memoized_property
     def proxy_set(self):
-        s = set([self])
+        s = util.column_set([self])
         if hasattr(self, 'proxies'):
             for c in self.proxies:
                 s.update(c.proxy_set)
@@ -1694,6 +1696,8 @@ class ColumnCollection(util.OrderedProperties):
         for c in iter:
             self.add(c)
 
+    __hash__ = None
+    
     def __eq__(self, other):
         l = []
         for c in other:
@@ -1711,9 +1715,9 @@ class ColumnCollection(util.OrderedProperties):
         # have to use a Set here, because it will compare the identity
         # of the column, not just using "==" for comparison which will always return a
         # "True" value (i.e. a BinaryClause...)
-        return col in set(self)
+        return col in util.column_set(self)
 
-class ColumnSet(util.OrderedSet):
+class ColumnSet(util.ordered_column_set):
     def contains_column(self, col):
         return col in self
 
@@ -1733,7 +1737,7 @@ class ColumnSet(util.OrderedSet):
         return and_(*l)
 
     def __hash__(self):
-        return hash(tuple(self._list))
+        return hash(tuple(x for x in self))
 
 class Selectable(ClauseElement):
     """mark a class as being selectable"""
@@ -1985,7 +1989,7 @@ class _BindParamClause(ColumnElement):
 
         d = self.__dict__.copy()
         v = self.value
-        if callable(v):
+        if util.callable(v):
             v = v()
         d['value'] = v
         return d
@@ -2369,7 +2373,7 @@ class _BinaryExpression(ColumnElement):
     def self_group(self, against=None):
         # use small/large defaults for comparison so that unknown
         # operators are always parenthesized
-        if self.operator != against and operators.is_precedent(self.operator, against):
+        if self.operator is not against and operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self

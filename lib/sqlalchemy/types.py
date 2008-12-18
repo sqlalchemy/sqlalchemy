@@ -382,7 +382,7 @@ class Concatenable(object):
     def adapt_operator(self, op):
         """Converts an add operator to concat."""
         from sqlalchemy.sql import operators
-        if op == operators.add:
+        if op is operators.add:
             return operators.concat_op
         else:
             return op

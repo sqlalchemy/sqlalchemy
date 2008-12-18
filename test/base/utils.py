@@ -116,6 +116,7 @@ class HashOverride(object):
 class EqOverride(object):
     def __init__(self, value=None):
         self.value = value
+    __hash__ = object.__hash__
     def __eq__(self, other):
         if isinstance(other, EqOverride):
             return self.value == other.value
@@ -259,6 +260,32 @@ class IdentitySetTest(unittest.TestCase):
         self.assertRaises(TypeError, lambda: os1 - [3, 4, 5])
         self.assertRaises(TypeError, lambda: s1 - os2)
         self.assertRaises(TypeError, lambda: s1 - [3, 4, 5])
+
+class OrderedIdentitySetTest(unittest.TestCase):
+    
+    def assert_eq(self, identityset, expected_iterable):
+        expected = [id(o) for o in expected_iterable]
+        found = [id(o) for o in identityset]
+        eq_(found, expected)
+
+    def test_add(self):
+        elem = object
+        s = util.OrderedIdentitySet()
+        s.add(elem())
+        s.add(elem())
+
+    def test_intersection(self):
+        elem = object
+        eq_ = self.assert_eq
+        
+        a, b, c, d, e, f, g = elem(), elem(), elem(), elem(), elem(), elem(), elem()
+        
+        s1 = util.OrderedIdentitySet([a, b, c])
+        s2 = util.OrderedIdentitySet([d, e, f])
+        s3 = util.OrderedIdentitySet([a, d, f, g])
+        eq_(s1.intersection(s2), [])
+        eq_(s1.intersection(s3), [a])
+        eq_(s1.union(s2).intersection(s3), [a, d, f])
 
 
 class DictlikeIteritemsTest(unittest.TestCase):

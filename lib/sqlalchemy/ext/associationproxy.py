@@ -487,7 +487,7 @@ class _AssociationList(object):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
     for func_name, func in locals().items():
-        if (callable(func) and func.func_name == func_name and
+        if (util.callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(list, func_name)):
             func.__doc__ = getattr(list, func_name).__doc__
     del func_name, func
@@ -663,7 +663,7 @@ class _AssociationDict(object):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
     for func_name, func in locals().items():
-        if (callable(func) and func.func_name == func_name and
+        if (util.callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(dict, func_name)):
             func.__doc__ = getattr(dict, func_name).__doc__
     del func_name, func
@@ -890,7 +890,7 @@ class _AssociationSet(object):
         raise TypeError("%s objects are unhashable" % type(self).__name__)
 
     for func_name, func in locals().items():
-        if (callable(func) and func.func_name == func_name and
+        if (util.callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(set, func_name)):
             func.__doc__ = getattr(set, func_name).__doc__
     del func_name, func

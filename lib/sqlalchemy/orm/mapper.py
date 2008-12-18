@@ -409,8 +409,8 @@ class Mapper(object):
         self._pks_by_table = {}
         self._cols_by_table = {}
 
-        all_cols = set(chain(*[col.proxy_set for col in self._columntoproperty]))
-        pk_cols = set(c for c in all_cols if c.primary_key)
+        all_cols = util.column_set(chain(*[col.proxy_set for col in self._columntoproperty]))
+        pk_cols = util.column_set(c for c in all_cols if c.primary_key)
 
         # identify primary key columns which are also mapped by this mapper.
         tables = set(self.tables + [self.mapped_table])
@@ -418,8 +418,8 @@ class Mapper(object):
         for t in tables:
             if t.primary_key and pk_cols.issuperset(t.primary_key):
                 # ordering is important since it determines the ordering of mapper.primary_key (and therefore query.get())
-                self._pks_by_table[t] = util.OrderedSet(t.primary_key).intersection(pk_cols)
-            self._cols_by_table[t] = util.OrderedSet(t.c).intersection(all_cols)
+                self._pks_by_table[t] = util.ordered_column_set(t.primary_key).intersection(pk_cols)
+            self._cols_by_table[t] = util.ordered_column_set(t.c).intersection(all_cols)
 
         # determine cols that aren't expressed within our tables; mark these
         # as "read only" properties which are refreshed upon INSERT/UPDATE
@@ -470,7 +470,7 @@ class Mapper(object):
         # table columns mapped to lists of MapperProperty objects
         # using a list allows a single column to be defined as
         # populating multiple object attributes
-        self._columntoproperty = {}
+        self._columntoproperty = util.column_dict()
 
         # load custom properties
         if self._init_properties:
@@ -891,7 +891,7 @@ class Mapper(object):
 
         """
         params = [(primary_key, sql.bindparam(None, type_=primary_key.type)) for primary_key in self.primary_key]
-        return sql.and_(*[k==v for (k, v) in params]), dict(params)
+        return sql.and_(*[k==v for (k, v) in params]), util.column_dict(params)
 
     @util.memoized_property
     def _equivalent_columns(self):
@@ -915,17 +915,17 @@ class Mapper(object):
 
         """
 
-        result = {}
+        result = util.column_dict()
         def visit_binary(binary):
             if binary.operator == operators.eq:
                 if binary.left in result:
                     result[binary.left].add(binary.right)
                 else:
-                    result[binary.left] = set((binary.right,))
+                    result[binary.left] = util.column_set((binary.right,))
                 if binary.right in result:
                     result[binary.right].add(binary.left)
                 else:
-                    result[binary.right] = set((binary.left,))
+                    result[binary.right] = util.column_set((binary.left,))
         for mapper in self.base_mapper.polymorphic_iterator():
             if mapper.inherit_condition:
                 visitors.traverse(mapper.inherit_condition, {}, {'binary':visit_binary})
@@ -1232,7 +1232,7 @@ class Mapper(object):
             for t in mapper.tables:
                 table_to_mapper[t] = mapper
 
-        for table in sqlutil.sort_tables(table_to_mapper.keys()):
+        for table in sqlutil.sort_tables(table_to_mapper.iterkeys()):
             insert = []
             update = []
 
@@ -1282,7 +1282,7 @@ class Mapper(object):
                         if col is mapper.version_id_col:
                             params[col._label] = mapper._get_state_attr_by_column(state, col)
                             params[col.key] = params[col._label] + 1
-                            for prop in mapper._columntoproperty.values():
+                            for prop in mapper._columntoproperty.itervalues():
                                 history = attributes.get_history(state, prop.key, passive=True)
                                 if history.added:
                                     hasdata = True
@@ -1432,7 +1432,7 @@ class Mapper(object):
             for t in mapper.tables:
                 table_to_mapper[t] = mapper
 
-        for table in reversed(sqlutil.sort_tables(table_to_mapper.keys())):
+        for table in reversed(sqlutil.sort_tables(table_to_mapper.iterkeys())):
             delete = {}
             for state, mapper, connection in tups:
                 if table not in mapper._pks_by_table:
@@ -1666,7 +1666,7 @@ class Mapper(object):
         """Produce a collection of attribute level row processor callables."""
         
         new_populators, existing_populators = [], []
-        for prop in self._props.values():
+        for prop in self._props.itervalues():
             newpop, existingpop = prop.create_row_processor(context, path, self, row, adapter)
             if newpop:
                 new_populators.append((prop.key, newpop))

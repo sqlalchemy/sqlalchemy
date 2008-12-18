@@ -25,6 +25,8 @@ class Base(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    __hash__  = object.__hash__
+    
     def __eq__(self, other):
         """'passively' compare this object to another.
 
