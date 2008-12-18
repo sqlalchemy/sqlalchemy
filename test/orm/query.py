@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import operator
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc, util
-from sqlalchemy.sql import compiler
+from sqlalchemy.sql import compiler, table, column
 from sqlalchemy.engine import default
 from sqlalchemy.orm import *
 from sqlalchemy.orm import attributes
@@ -574,29 +574,6 @@ class SliceTest(QueryTest):
         ])
 
 
-class FooTest(FixtureTest):
-    keep_data = True
-        
-    def test_filter_by(self):
-        clear_mappers()
-        sess = create_session(bind=testing.db)
-        from sqlalchemy.ext.declarative import declarative_base
-        Base = declarative_base(bind=testing.db)
-        class User(Base, _base.ComparableEntity):
-            __table__ = users
-        
-        class Address(Base, _base.ComparableEntity):
-            __table__ = addresses
-
-        compile_mappers()
-#        Address.user = relation(User, primaryjoin="User.id==Address.user_id")
-        Address.user = relation(User, primaryjoin=User.id==Address.user_id)
-#        Address.user = relation(User, primaryjoin=users.c.id==addresses.c.user_id)
-        compile_mappers()
-#        Address.user.property.primaryjoin = User.id==Address.user_id
-        user = sess.query(User).get(8)
-        print sess.query(Address).filter_by(user=user).all()
-        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).filter_by(user=user).all()
     
 class FilterTest(QueryTest):
     def test_basic(self):
@@ -906,6 +883,11 @@ class TextTest(QueryTest):
     def test_binds(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()
 
+    def test_as_column(self):
+        s = create_session()
+        self.assertRaises(sa_exc.InvalidRequestError, s.query, User.id, text("users.name"))
+
+        eq_(s.query(User.id, "name").order_by(User.id).all(), [(7, u'jack'), (8, u'ed'), (9, u'fred'), (10, u'chuck')])
 
 class ParentTest(QueryTest):
     def test_o2m(self):

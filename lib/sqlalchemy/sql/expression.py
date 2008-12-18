@@ -2099,6 +2099,10 @@ class ClauseList(ClauseElement):
     def __len__(self):
         return len(self.clauses)
 
+    @property
+    def _select_iterable(self):
+        return iter(self)
+
     def append(self, clause):
         # TODO: not sure if i like the 'group_contents' flag.  need to
         # define the difference between a ClauseList of ClauseLists,
@@ -2147,6 +2151,10 @@ class BooleanClauseList(ClauseList, ColumnElement):
     def __init__(self, *clauses, **kwargs):
         super(BooleanClauseList, self).__init__(*clauses, **kwargs)
         self.type = sqltypes.to_instance(kwargs.get('type_', sqltypes.Boolean))
+
+    @property
+    def _select_iterable(self):
+        return (self, )
 
 
 class _CalculatedClause(ColumnElement):

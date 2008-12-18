@@ -1633,7 +1633,7 @@ class _QueryEntity(object):
     def __new__(cls, *args, **kwargs):
         if cls is _QueryEntity:
             entity = args[1]
-            if _is_mapped_class(entity):
+            if not isinstance(entity, basestring) and _is_mapped_class(entity):
                 cls = _MapperEntity
             else:
                 cls = _ColumnEntity
@@ -1785,26 +1785,31 @@ class _ColumnEntity(_QueryEntity):
     """Column/expression based entity."""
 
     def __init__(self, query, column):
-        if isinstance(column, expression.FromClause) and not isinstance(column, expression.ColumnElement):
-            for c in column.c:
-                _ColumnEntity(query, c)
-            return
-
-        query._entities.append(self)
-
         if isinstance(column, basestring):
             column = sql.literal_column(column)
             self._result_label = column.name
         elif isinstance(column, (attributes.QueryableAttribute, mapper.Mapper._CompileOnAttr)):
             self._result_label = column.impl.key
             column = column.__clause_element__()
-        elif not isinstance(column, sql.ColumnElement):
-            raise sa_exc.InvalidRequestError("Invalid column expression '%r'" % column)
         else:
             self._result_label = getattr(column, 'key', None)
+        
+        if not isinstance(column, expression.ColumnElement) and hasattr(column, '_select_iterable'):
+            for c in column._select_iterable:
+                if c is column:
+                    break
+                _ColumnEntity(query, c)
+            
+            if c is not column:
+                return
+
+        if not isinstance(column, sql.ColumnElement):
+            raise sa_exc.InvalidRequestError("Invalid column expression '%r'" % column)
 
         if not hasattr(column, '_label'):
             column = column.label(None)
+
+        query._entities.append(self)
 
         self.column = column
         self.froms = set()

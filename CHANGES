@@ -50,6 +50,15 @@ CHANGES
       that the given argument is a FromClause,
       or Text/Select/Union, respectively.
 
+    - Query() can be passed a "composite" attribute
+      as a column expression and it will be expanded.
+      Somewhat related to [ticket:1253].
+      
+    - Query() is a little more robust when passed
+      various column expressions such as strings,
+      clauselists, text() constructs (which may mean
+      it just raises an error more nicely).
+      
     - first() works as expected with Query.from_statement().
     
     - Fixed bug introduced in 0.5rc4 involving eager 
@@ -146,6 +155,11 @@ CHANGES
       also would be a little misleading compared to
       values().
 
+    - select() can accept a ClauseList as a column
+      in the same way as a Table or other selectable
+      and the interior expressions will be used as
+      column elements. [ticket:1253]
+      
     - the "passive" flag on session.is_modified()
       is correctly propagated to the attribute manager.
 

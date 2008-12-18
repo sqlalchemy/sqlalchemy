@@ -1676,6 +1676,9 @@ class CompositeTypesTest(_base.MappedTest):
 
         eq_(sess.query(Edge).filter(Edge.start==None).all(), [])
 
+        # query by columns
+        eq_(sess.query(Edge.start, Edge.end).all(), [(3, 4, 5, 6), (14, 5, 19, 5)])
+
     @testing.resolve_artifact_names
     def test_pk(self):
         """Using a composite type as a primary key"""
