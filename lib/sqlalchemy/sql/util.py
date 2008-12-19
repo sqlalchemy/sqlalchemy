@@ -280,7 +280,7 @@ def reduce_columns(columns, *clauses, **kw):
     """
     ignore_nonexistent_tables = kw.pop('ignore_nonexistent_tables', False)
     
-    columns = util.column_set(columns)
+    columns = util.ordered_column_set(columns)
 
     omit = util.column_set()
     for col in columns:
