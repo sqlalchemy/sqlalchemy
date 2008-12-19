@@ -302,9 +302,6 @@ class FBDialect(default.DefaultDialect):
             self.dbapi.init(type_conv=type_conv, concurrency_level=concurrency_level)
         return ([], opts)
 
-    def create_execution_context(self, *args, **kwargs):
-        return FBExecutionContext(self, *args, **kwargs)
-
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
@@ -768,3 +765,4 @@ dialect.schemagenerator = FBSchemaGenerator
 dialect.schemadropper = FBSchemaDropper
 dialect.defaultrunner = FBDefaultRunner
 dialect.preparer = FBIdentifierPreparer
+dialect.execution_ctx_cls = FBExecutionContext

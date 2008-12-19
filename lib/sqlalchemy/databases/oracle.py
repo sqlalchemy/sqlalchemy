@@ -471,9 +471,6 @@ class OracleDialect(default.DefaultDialect):
     def do_recover_twophase(self, connection):
         pass
 
-    def create_execution_context(self, *args, **kwargs):
-        return OracleExecutionContext(self, *args, **kwargs)
-
     def has_table(self, connection, table_name, schema=None):
         if not schema:
             schema = self.get_default_schema_name(connection)
@@ -891,3 +888,4 @@ dialect.schemagenerator = OracleSchemaGenerator
 dialect.schemadropper = OracleSchemaDropper
 dialect.preparer = OracleIdentifierPreparer
 dialect.defaultrunner = OracleDefaultRunner
+dialect.execution_ctx_cls = OracleExecutionContext

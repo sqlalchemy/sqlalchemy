@@ -514,9 +514,6 @@ class MaxDBDialect(default.DefaultDialect):
         else:
             return sqltypes.adapt_type(typeobj, colspecs)
 
-    def create_execution_context(self, connection, **kw):
-        return MaxDBExecutionContext(self, connection, **kw)
-
     def do_execute(self, cursor, statement, parameters, context=None):
         res = cursor.execute(statement, parameters)
         if isinstance(res, int) and context is not None:
@@ -1099,3 +1096,4 @@ dialect.statement_compiler = MaxDBCompiler
 dialect.schemagenerator = MaxDBSchemaGenerator
 dialect.schemadropper = MaxDBSchemaDropper
 dialect.defaultrunner = MaxDBDefaultRunner
+dialect.execution_ctx_cls = MaxDBExecutionContext

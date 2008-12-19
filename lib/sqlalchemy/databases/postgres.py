@@ -340,7 +340,7 @@ class PGDialect(default.DefaultDialect):
     default_paramstyle = 'pyformat'
     supports_default_values = True
     supports_empty_insert = False
-
+    
     def __init__(self, server_side_cursors=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
@@ -356,9 +356,6 @@ class PGDialect(default.DefaultDialect):
             opts['port'] = int(opts['port'])
         opts.update(url.query)
         return ([], opts)
-
-    def create_execution_context(self, *args, **kwargs):
-        return PGExecutionContext(self, *args, **kwargs)
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
@@ -828,3 +825,4 @@ dialect.schemagenerator = PGSchemaGenerator
 dialect.schemadropper = PGSchemaDropper
 dialect.preparer = PGIdentifierPreparer
 dialect.defaultrunner = PGDefaultRunner
+dialect.execution_ctx_cls = PGExecutionContext

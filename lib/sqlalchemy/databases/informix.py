@@ -239,9 +239,6 @@ class InfoDialect(default.DefaultDialect):
 
         return ([dsn], opt)
 
-    def create_execution_context(self , *args, **kwargs):
-        return InfoExecutionContext(self, *args, **kwargs)
-
     def table_names(self, connection, schema):
         s = "select tabname from systables"
         return [row[0] for row in connection.execute(s)]
@@ -493,3 +490,4 @@ dialect.statement_compiler = InfoCompiler
 dialect.schemagenerator = InfoSchemaGenerator
 dialect.schemadropper = InfoSchemaDropper
 dialect.preparer = InfoIdentifierPreparer
+dialect.execution_ctx_cls = InfoExecutionContext

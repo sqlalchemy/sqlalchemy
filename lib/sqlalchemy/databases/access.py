@@ -209,9 +209,6 @@ class AccessDialect(default.DefaultDialect):
             connectors.append("PWD=%s" % opts.get("password", ""))
         return [[";".join(connectors)], {}]
 
-    def create_execution_context(self, *args, **kwargs):
-        return AccessExecutionContext(self, *args, **kwargs)
-
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
@@ -425,3 +422,4 @@ dialect.schemagenerator = AccessSchemaGenerator
 dialect.schemadropper = AccessSchemaDropper
 dialect.preparer = AccessIdentifierPreparer
 dialect.defaultrunner = AccessDefaultRunner
+dialect.execution_ctx_cls = AccessExecutionContext

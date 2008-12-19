@@ -377,6 +377,7 @@ class MSSQLDialect(default.DefaultDialect):
     name = 'mssql'
     supports_default_values = True
     supports_empty_insert = False
+    execution_ctx_cls = MSSQLExecutionContext
 
     colspecs = {
         sqltypes.Unicode : MSNVarchar,
@@ -493,9 +494,6 @@ class MSSQLDialect(default.DefaultDialect):
         if 'has_window_funcs' in opts:
             self.has_window_funcs =  bool(int(opts.pop('has_window_funcs')))
         return self.make_connect_string(opts)
-
-    def create_execution_context(self, *args, **kwargs):
-        return MSSQLExecutionContext(self, *args, **kwargs)
 
     def type_descriptor(self, typeobj):
         newobj = sqltypes.adapt_type(typeobj, self.colspecs)
@@ -774,6 +772,7 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
     # PyODBC unicode is broken on UCS-4 builds
     supports_unicode = sys.maxunicode == 65535
     supports_unicode_statements = supports_unicode
+    execution_ctx_cls = MSSQLExecutionContext_pyodbc
 
     def __init__(self, **params):
         super(MSSQLDialect_pyodbc, self).__init__(**params)
@@ -850,8 +849,6 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         else:
             return False
 
-    def create_execution_context(self, *args, **kwargs):
-        return MSSQLExecutionContext_pyodbc(self, *args, **kwargs)
 
     def do_execute(self, cursor, statement, parameters, context=None, **kwargs):
         super(MSSQLDialect_pyodbc, self).do_execute(cursor, statement, parameters, context=context, **kwargs)

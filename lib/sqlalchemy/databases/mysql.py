@@ -1496,9 +1496,6 @@ class MySQLDialect(default.DefaultDialect):
             opts['client_flag'] = client_flag
         return [[], opts]
 
-    def create_execution_context(self, connection, **kwargs):
-        return MySQLExecutionContext(self, connection, **kwargs)
-
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
@@ -2727,3 +2724,4 @@ dialect = MySQLDialect
 dialect.statement_compiler = MySQLCompiler
 dialect.schemagenerator = MySQLSchemaGenerator
 dialect.schemadropper = MySQLSchemaDropper
+dialect.execution_ctx_cls = MySQLExecutionContext

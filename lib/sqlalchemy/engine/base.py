@@ -177,11 +177,6 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def create_execution_context(self, connection, compiled=None, compiled_parameters=None, statement=None, parameters=None):
-        """Return a new :class:`~sqlalchemy.engine.ExecutionContext` object."""
-
-        raise NotImplementedError()
-
     def do_begin(self, connection):
         """Provide an implementation of *connection.begin()*, given a DB-API connection."""
 
@@ -314,9 +309,7 @@ class ExecutionContext(object):
      a list of Column objects for which a server-side default
      or inline SQL expression value was fired off.  applies to inserts and updates.
 
-    The Dialect should provide an ExecutionContext via the
-    create_execution_context() method.  The `pre_exec` and `post_exec`
-    methods will be called for compiled statements.
+
     """
 
     def create_cursor(self):
@@ -927,7 +920,8 @@ class Connection(Connectable):
 
     def __create_execution_context(self, **kwargs):
         try:
-            return self.engine.dialect.create_execution_context(connection=self, **kwargs)
+            dialect = self.engine.dialect
+            return dialect.execution_ctx_cls(dialect, connection=self, **kwargs)
         except Exception, e:
             self._handle_dbapi_exception(e, kwargs.get('statement', None), kwargs.get('parameters', None), None)
             raise

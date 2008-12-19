@@ -407,9 +407,6 @@ class SQLiteDialect(default.DefaultDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def create_execution_context(self, connection, **kwargs):
-        return SQLiteExecutionContext(self, connection, **kwargs)
-
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)
 
@@ -590,19 +587,6 @@ class SQLiteSchemaGenerator(compiler.SchemaGenerator):
             colspec += " NOT NULL"
         return colspec
 
-    # this doesnt seem to be needed, although i suspect older versions of sqlite might still
-    # not directly support composite primary keys
-    #def visit_primary_key_constraint(self, constraint):
-    #    if len(constraint) > 1:
-    #        self.append(", \n")
-    #        # put all PRIMARY KEYS in a UNIQUE index
-    #        self.append("\tUNIQUE (%s)" % string.join([c.name for c in constraint],', '))
-    #    else:
-    #        super(SQLiteSchemaGenerator, self).visit_primary_key_constraint(constraint)
-
-class SQLiteSchemaDropper(compiler.SchemaDropper):
-    pass
-
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = set([
         'add', 'after', 'all', 'alter', 'analyze', 'and', 'as', 'asc',
@@ -631,5 +615,5 @@ dialect = SQLiteDialect
 dialect.poolclass = pool.SingletonThreadPool
 dialect.statement_compiler = SQLiteCompiler
 dialect.schemagenerator = SQLiteSchemaGenerator
-dialect.schemadropper = SQLiteSchemaDropper
 dialect.preparer = SQLiteIdentifierPreparer
+dialect.execution_ctx_cls = SQLiteExecutionContext

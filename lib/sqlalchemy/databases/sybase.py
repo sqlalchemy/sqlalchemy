@@ -455,7 +455,8 @@ class SybaseSQLDialect(default.DefaultDialect):
     supports_unicode_statements = False
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
-
+    execution_ctx_cls = SybaseSQLExecutionContext
+    
     def __new__(cls, dbapi=None, *args, **kwargs):
         if cls != SybaseSQLDialect:
             return super(SybaseSQLDialect, cls).__new__(cls, *args, **kwargs)
@@ -488,9 +489,6 @@ class SybaseSQLDialect(default.DefaultDialect):
             else:
                 raise ImportError('No DBAPI module detected for SybaseSQL - please install mxodbc')
     dbapi = classmethod(dbapi)
-
-    def create_execution_context(self, *args, **kwargs):
-        return SybaseSQLExecutionContext(self, *args, **kwargs)
 
     def type_descriptor(self, typeobj):
         newobj = sqltypes.adapt_type(typeobj, self.colspecs)
@@ -628,6 +626,8 @@ class SybaseSQLDialect(default.DefaultDialect):
 
 
 class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
+    execution_ctx_cls = SybaseSQLExecutionContext_mxodbc
+    
     def __init__(self, **params):
         super(SybaseSQLDialect_mxodbc, self).__init__(**params)
 
@@ -656,9 +656,6 @@ class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
         #return True
         return False
 
-    def create_execution_context(self, *args, **kwargs):
-        return SybaseSQLExecutionContext_mxodbc(self, *args, **kwargs)
-
     def do_execute(self, cursor, statement, parameters, context=None, **kwargs):
         super(SybaseSQLDialect_mxodbc, self).do_execute(cursor, statement, parameters, context=context, **kwargs)
 
@@ -675,6 +672,8 @@ class SybaseSQLDialect_mxodbc(SybaseSQLDialect):
 
 
 class SybaseSQLDialect_pyodbc(SybaseSQLDialect):
+    execution_ctx_cls = SybaseSQLExecutionContext_pyodbc
+    
     def __init__(self, **params):
         super(SybaseSQLDialect_pyodbc, self).__init__(**params)
         self.dbapi_type_map = {'getdate' : SybaseDate_pyodbc()}
@@ -700,9 +699,6 @@ class SybaseSQLDialect_pyodbc(SybaseSQLDialect):
         #return isinstance(e, self.dbapi.Error) and '[08S01]' in str(e)
         #return True
         return False
-
-    def create_execution_context(self, *args, **kwargs):
-        return SybaseSQLExecutionContext_pyodbc(self, *args, **kwargs)
 
     def do_execute(self, cursor, statement, parameters, context=None, **kwargs):
         super(SybaseSQLDialect_pyodbc, self).do_execute(cursor, statement, parameters, context=context, **kwargs)
