@@ -1,7 +1,12 @@
 """user.py - handles user login and validation"""
 
 import random, string
-from hashlib import sha1 as sha
+
+import sys
+if sys.version_info < (2, 5):
+    import sha
+else:
+    from hashlib import sha1 as sha
 
 administrator = 'admin'
 user = 'user'
