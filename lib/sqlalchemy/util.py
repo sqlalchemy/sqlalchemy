@@ -49,11 +49,11 @@ else:
     except ImportError:
         import pickle
 
-if py3k:
-    def buffer(x):
-        return x # no-op until we figure out what MySQLdb is going to use
-else:
-    buffer = __builtin__.buffer
+# a controversial feature, required by MySQLdb currently
+def buffer(x):
+    return x 
+    
+buffer = getattr(__builtin__, 'buffer', buffer)
         
 if sys.version_info >= (2, 5):
     class PopulateDict(dict):
