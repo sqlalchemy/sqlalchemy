@@ -4,7 +4,7 @@ import random, string
 
 import sys
 if sys.version_info < (2, 5):
-    import sha
+    from sha import sha
 else:
     from hashlib import sha1 as sha
 
