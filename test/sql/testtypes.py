@@ -255,6 +255,10 @@ class ColumnsTest(TestBase, AssertsExecutionResults):
             expectedResults['numeric_column'] = (
                 expectedResults['numeric_column'].replace('NUMERIC', 'FIXED'))
 
+        if testing.against('mssql'):
+            for key, value in expectedResults.items():
+                expectedResults[key] = '%s NULL' % value
+
         print db.engine.__module__
         testTable = Table('testColumns', MetaData(db),
             Column('int_column', Integer),
