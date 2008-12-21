@@ -11,10 +11,8 @@ from testlib import sa_unittest as unittest
 import warnings
 from cStringIO import StringIO
 
-from sqlalchemy.util import callable
-
 import testlib.config as config
-from testlib.compat import _function_named
+from testlib.compat import _function_named, callable
 
 # Delayed imports
 MetaData = None

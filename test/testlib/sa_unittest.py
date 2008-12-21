@@ -36,12 +36,12 @@ __author__ = "Steve Purcell"
 __email__ = "stephen_purcell at yahoo dot com"
 __version__ = "#Revision: 1.63 $"[11:-2]
 
-from sqlalchemy.util import callable
 import time
 import sys
 import traceback
 import os
 import types
+from testlib.compat import callable
 
 ##############################################################################
 # Exported classes and functions
