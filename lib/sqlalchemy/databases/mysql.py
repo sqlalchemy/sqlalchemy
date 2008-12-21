@@ -2331,7 +2331,7 @@ class MySQLSchemaReflector(object):
                 raise exc.InvalidRequestError(
                     "Foreign key columns (%s) are not present on "
                     "foreign table %s" %
-                    (', '.join(ref_names), ref_table.fullname()))
+                    (', '.join(ref_names), ref_table.fullname))
             ref_columns = [ref_table.c[name] for name in ref_names]
 
             con_kw = {}

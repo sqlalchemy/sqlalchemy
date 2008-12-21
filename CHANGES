@@ -218,6 +218,10 @@ CHANGES
       of Oracle two-phase commit working properly
       with this change.
 
+- mysql
+    - Fixed bug in exception raise when FK columns not present
+      during reflection. [ticket:1241]
+      
 - associationproxy
     - The association proxy properties are make themselves available
       at the class level, e.g. MyClass.aproxy.  Previously this
