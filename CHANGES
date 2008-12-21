@@ -25,7 +25,11 @@ CHANGES
 - sql
     - Connection.invalidate() checks for closed status 
       to avoid attribute errors. [ticket:1246]
-      
+
+- mysql
+    - Fixed bug in exception raise when FK columns not present
+      during reflection. [ticket:1241]
+
 0.4.8
 =====
 - orm
