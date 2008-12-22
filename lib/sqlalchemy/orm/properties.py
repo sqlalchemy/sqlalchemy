@@ -788,6 +788,10 @@ class RelationProperty(StrategizedProperty):
                     ]
                 else:
                     self.local_remote_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self.remote_side, any_operator=True)
+
+                if not self.local_remote_pairs:
+                    raise sa_exc.ArgumentError("Relation %s could not determine any local/remote column pairs from remote side argument %r" % (self, self.remote_side))
+
             else:
                 if self.viewonly:
                     eq_pairs = self.synchronize_pairs

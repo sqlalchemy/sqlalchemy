@@ -227,7 +227,11 @@ CHANGES
       at the class level, e.g. MyClass.aproxy.  Previously this
       evaluated to None.
 
-
+- declarative
+    - The full list of arguments accepted as string by backref() 
+      includes 'primaryjoin', 'secondaryjoin', 'secondary', 
+      'foreign_keys', 'remote_side', 'order_by'.
+      
 0.5.0rc4
 ========
 - features
