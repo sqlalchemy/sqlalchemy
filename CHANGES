@@ -196,6 +196,10 @@ CHANGES
       new doc section "Custom Comparators".
     
 - mssql
+    - Changes to the connection string parameters favor DSN as the
+      default specification for pyodbc. See the mssql.py docstring
+      for detailed usage instructions.
+
     - Added experimental support of savepoints. It
       currently does not work fully with sessions.
 

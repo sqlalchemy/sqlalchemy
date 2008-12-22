@@ -59,7 +59,7 @@ class QueryTest(TestBase):
 
             result = table.insert().execute(**values)
             ret = values.copy()
-
+            
             for col, id in zip(table.primary_key, result.last_inserted_ids()):
                 ret[col.key] = id
 

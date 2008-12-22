@@ -350,6 +350,11 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
+    def handle_dbapi_exception(self, e):
+        """Receive a DBAPI exception which occured upon execute, result fetch, etc."""
+        
+        raise NotImplementedError()
+        
     def should_autocommit_text(self, statement):
         """Parse the given textual statement and return True if it refers to a "committable" statement"""
 
@@ -714,7 +719,7 @@ class Connection(Connectable):
         try:
             self.engine.dialect.do_begin(self.connection)
         except Exception, e:
-            self._handle_dbapi_exception(e, None, None, None)
+            self._handle_dbapi_exception(e, None, None, None, None)
             raise
 
     def _rollback_impl(self):
@@ -725,7 +730,7 @@ class Connection(Connectable):
                 self.engine.dialect.do_rollback(self.connection)
                 self.__transaction = None
             except Exception, e:
-                self._handle_dbapi_exception(e, None, None, None)
+                self._handle_dbapi_exception(e, None, None, None, None)
                 raise
         else:
             self.__transaction = None
@@ -737,7 +742,7 @@ class Connection(Connectable):
             self.engine.dialect.do_commit(self.connection)
             self.__transaction = None
         except Exception, e:
-            self._handle_dbapi_exception(e, None, None, None)
+            self._handle_dbapi_exception(e, None, None, None, None)
             raise
 
     def _savepoint_impl(self, name=None):
@@ -897,13 +902,17 @@ class Connection(Connectable):
             schema_item = None
         return ddl(None, schema_item, self, *params, **multiparams)
 
-    def _handle_dbapi_exception(self, e, statement, parameters, cursor):
+    def _handle_dbapi_exception(self, e, statement, parameters, cursor, context):
         if getattr(self, '_reentrant_error', False):
             raise exc.DBAPIError.instance(None, None, e)
         self._reentrant_error = True
         try:
             if not isinstance(e, self.dialect.dbapi.Error):
                 return
+                
+            if context:
+                context.handle_dbapi_exception(e)
+                
             is_disconnect = self.dialect.is_disconnect(e)
             if is_disconnect:
                 self.invalidate(e)
@@ -923,7 +932,7 @@ class Connection(Connectable):
             dialect = self.engine.dialect
             return dialect.execution_ctx_cls(dialect, connection=self, **kwargs)
         except Exception, e:
-            self._handle_dbapi_exception(e, kwargs.get('statement', None), kwargs.get('parameters', None), None)
+            self._handle_dbapi_exception(e, kwargs.get('statement', None), kwargs.get('parameters', None), None, None)
             raise
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):
@@ -933,7 +942,7 @@ class Connection(Connectable):
         try:
             self.dialect.do_execute(cursor, statement, parameters, context=context)
         except Exception, e:
-            self._handle_dbapi_exception(e, statement, parameters, cursor)
+            self._handle_dbapi_exception(e, statement, parameters, cursor, context)
             raise
 
     def _cursor_executemany(self, cursor, statement, parameters, context=None):
@@ -943,7 +952,7 @@ class Connection(Connectable):
         try:
             self.dialect.do_executemany(cursor, statement, parameters, context=context)
         except Exception, e:
-            self._handle_dbapi_exception(e, statement, parameters, cursor)
+            self._handle_dbapi_exception(e, statement, parameters, cursor, context)
             raise
 
     # poor man's multimethod/generic function thingy
@@ -1623,7 +1632,7 @@ class ResultProxy(object):
             self.close()
             return l
         except Exception, e:
-            self.connection._handle_dbapi_exception(e, None, None, self.cursor)
+            self.connection._handle_dbapi_exception(e, None, None, self.cursor, self.context)
             raise
 
     def fetchmany(self, size=None):
@@ -1636,7 +1645,7 @@ class ResultProxy(object):
                 self.close()
             return l
         except Exception, e:
-            self.connection._handle_dbapi_exception(e, None, None, self.cursor)
+            self.connection._handle_dbapi_exception(e, None, None, self.cursor, self.context)
             raise
 
     def fetchone(self):
@@ -1649,7 +1658,7 @@ class ResultProxy(object):
                 self.close()
                 return None
         except Exception, e:
-            self.connection._handle_dbapi_exception(e, None, None, self.cursor)
+            self.connection._handle_dbapi_exception(e, None, None, self.cursor, self.context)
             raise
 
     def scalar(self):
@@ -1657,7 +1666,7 @@ class ResultProxy(object):
         try:
             row = self._fetchone_impl()
         except Exception, e:
-            self.connection._handle_dbapi_exception(e, None, None, self.cursor)
+            self.connection._handle_dbapi_exception(e, None, None, self.cursor, self.context)
             raise
             
         try:

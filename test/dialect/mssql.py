@@ -251,7 +251,10 @@ class GenerativeQueryTest(TestBase):
 class SchemaTest(TestBase):
 
     def setUp(self):
-        self.column = Column('test_column', Integer)
+        t = Table('sometable', MetaData(), 
+            Column('test_column', Integer)
+        )
+        self.column = t.c.test_column
 
     def test_that_mssql_default_nullability_emits_null(self):
         schemagenerator = \
@@ -399,17 +402,72 @@ class MatchTest(TestBase, AssertsCompiledSQL):
 class ParseConnectTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'mssql'
 
+    def test_pyodbc_connect_dsn_trusted(self):
+        u = url.make_url('mssql://mydsn')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['dsn=mydsn;TrustedConnection=Yes'], {}], connection)
+
+    def test_pyodbc_connect_old_style_dsn_trusted(self):
+        u = url.make_url('mssql:///?dsn=mydsn')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['dsn=mydsn;TrustedConnection=Yes'], {}], connection)
+
+    def test_pyodbc_connect_dsn_non_trusted(self):
+        u = url.make_url('mssql://username:password@mydsn')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['dsn=mydsn;UID=username;PWD=password'], {}], connection)
+
+    def test_pyodbc_connect_dsn_extra(self):
+        u = url.make_url('mssql://username:password@mydsn/?LANGUAGE=us_english&foo=bar')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['dsn=mydsn;UID=username;PWD=password;LANGUAGE=us_english;foo=bar'], {}], connection)
+
     def test_pyodbc_connect(self):
         u = url.make_url('mssql://username:password@hostspec/database')
         dialect = mssql.MSSQLDialect_pyodbc()
         connection = dialect.create_connect_args(u)
         self.assertEquals([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password'], {}], connection)
 
+    def test_pyodbc_connect_comma_port(self):
+        u = url.make_url('mssql://username:password@hostspec:12345/database')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['DRIVER={SQL Server};Server=hostspec,12345;Database=database;UID=username;PWD=password'], {}], connection)
+
+    def test_pyodbc_connect_config_port(self):
+        u = url.make_url('mssql://username:password@hostspec/database?port=12345')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password;port=12345'], {}], connection)
+
     def test_pyodbc_extra_connect(self):
         u = url.make_url('mssql://username:password@hostspec/database?LANGUAGE=us_english&foo=bar')
         dialect = mssql.MSSQLDialect_pyodbc()
         connection = dialect.create_connect_args(u)
         self.assertEquals([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password;foo=bar;LANGUAGE=us_english'], {}], connection)
+
+    def test_pyodbc_odbc_connect(self):
+        u = url.make_url('mssql:///?odbc_connect=DRIVER%3D%7BSQL+Server%7D%3BServer%3Dhostspec%3BDatabase%3Ddatabase%3BUID%3Dusername%3BPWD%3Dpassword')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password'], {}], connection)
+
+    def test_pyodbc_odbc_connect_with_dsn(self):
+        u = url.make_url('mssql:///?odbc_connect=dsn%3Dmydsn%3BDatabase%3Ddatabase%3BUID%3Dusername%3BPWD%3Dpassword')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['dsn=mydsn;Database=database;UID=username;PWD=password'], {}], connection)
+
+    def test_pyodbc_odbc_connect_ignores_other_values(self):
+        u = url.make_url('mssql://userdiff:passdiff@localhost/dbdiff?odbc_connect=DRIVER%3D%7BSQL+Server%7D%3BServer%3Dhostspec%3BDatabase%3Ddatabase%3BUID%3Dusername%3BPWD%3Dpassword')
+        dialect = mssql.MSSQLDialect_pyodbc()
+        connection = dialect.create_connect_args(u)
+        self.assertEquals([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password'], {}], connection)
+
 
 class TypesTest(TestBase):
     __only_on__ = 'mssql'
@@ -443,7 +501,7 @@ class TypesTest(TestBase):
             numeric_table.insert().execute(numericcol=Decimal('1E-7'))
             numeric_table.insert().execute(numericcol=Decimal('1E-8'))
         except:
-            assert False 
+            assert False
 
 if __name__ == "__main__":
     testenv.main()
