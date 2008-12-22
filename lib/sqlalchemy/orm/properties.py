@@ -604,7 +604,7 @@ class RelationProperty(StrategizedProperty):
         # interact with Query in the same way as the original Table-bound Column objects
         for attr in ('primaryjoin', 'secondaryjoin'):
             val = getattr(self, attr)
-            if val:
+            if val is not None:
                 util.assert_arg_type(val, sql.ClauseElement, attr)
                 setattr(self, attr, _orm_deannotate(val))
         

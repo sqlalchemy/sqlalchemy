@@ -90,7 +90,7 @@ CHANGES
     - Extra checks added to ensure explicit 
       primaryjoin/secondaryjoin are ClauseElement 
       instances, to prevent more confusing errors later 
-      on.
+      on. [ticket:1087]
 
     - Improved mapper() check for non-class classes.
       [ticket:1236]

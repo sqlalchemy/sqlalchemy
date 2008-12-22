@@ -666,7 +666,21 @@ class JoinConditionErrorTest(testing.TestBase):
             c2 = relation(C1, primaryjoin=C1.id)
         
         self.assertRaises(sa.exc.ArgumentError, compile_mappers)
-            
+
+    def test_clauseelement_pj_false(self):
+        from sqlalchemy.ext.declarative import declarative_base
+        Base = declarative_base()
+        class C1(Base):
+            __tablename__ = 'c1'
+            id = Column('id', Integer, primary_key=True)
+        class C2(Base):
+            __tablename__ = 'c2'
+            id = Column('id', Integer, primary_key=True)
+            c1id = Column('c1id', Integer, ForeignKey('c1.id'))
+            c2 = relation(C1, primaryjoin="x"=="y")
+
+        self.assertRaises(sa.exc.ArgumentError, compile_mappers)
+        
     
     def test_fk_error_raised(self):
         m = MetaData()
