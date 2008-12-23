@@ -424,7 +424,7 @@ class DefaultCompiler(engine.Compiled):
         return truncname
     
     def _anonymize(self, name):
-        return name % self.anon_map
+        return self._trunc_re.sub(lambda m: self.anon_map[m.group(1)], name)
         
     def _process_anon(self, key):
         (ident, derived) = key.split(' ')
