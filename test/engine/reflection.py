@@ -418,7 +418,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
 
     @testing.crashes('oracle', 'FIXME: unknown, confirm not fails_on')
-    def testreserved(self):
+    def test_reserved(self):
         # check a table that uses an SQL reserved name doesn't cause an error
         meta = MetaData(testing.db)
         table_a = Table('select', meta,
@@ -525,6 +525,37 @@ class ReflectionTest(TestBase, ComparesTables):
             m9.reflect()
             self.assert_(not m9.tables)
 
+    @testing.fails_on_everything_except('postgres', 'mysql')
+    def test_index_reflection(self):
+        m1 = MetaData(testing.db)
+        t1 = Table('party', m1,
+            Column('id', Integer, nullable=False),
+            Column('name', String(20), index=True)
+            )
+        i1 = Index('idx1', t1.c.id, unique=True)
+        i2 = Index('idx2', t1.c.name, t1.c.id, unique=False)
+        m1.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('party', m2, autoload=True)
+
+            print len(t2.indexes), t2.indexes
+            assert len(t2.indexes) == 3
+            # Make sure indexes are in the order we expect them in
+            tmp = [(idx.name, idx) for idx in t2.indexes]
+            tmp.sort()
+            r1, r2, r3 = [idx[1] for idx in tmp]
+
+            assert r1.name == 'idx1'
+            assert r2.name == 'idx2'
+            assert r1.unique == True
+            assert r2.unique == False
+            assert r3.unique == False
+            assert [t2.c.id] == r1.columns
+            assert [t2.c.name, t2.c.id] == r2.columns
+            assert [t2.c.name] == r3.columns
+        finally:
+            m1.drop_all()
 
 class CreateDropTest(TestBase):
     def setUpAll(self):

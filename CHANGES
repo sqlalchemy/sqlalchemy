@@ -227,6 +227,10 @@ CHANGES
     - Calling alias.execute() in conjunction with
       server_side_cursors won't raise AttributeError.
 
+    - Added Index reflection support to Postgres, using a
+      great patch we long neglected, submitted by 
+      Ken Kuhlman. [ticket:714]
+
 - oracle
     - Adjusted the format of create_xid() to repair
       two-phase commit.   We now have field reports
