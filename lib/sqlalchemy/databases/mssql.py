@@ -955,7 +955,25 @@ class MSSQLDialect(default.DefaultDialect):
             newobj.dialect = self
         return newobj
 
+    @base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
+        query = "SELECT user_name() as user_name;"
+        user_name = connection.scalar(sql.text(query))
+        if user_name is not None:
+            # now, get the default schema
+            query = """
+            SELECT default_schema_name FROM
+            sys.database_principals
+            WHERE name = :user_name
+            AND type = 'S'
+            """
+            try:
+                default_schema_name = connection.scalar(sql.text(query),
+                                                    user_name=user_name)
+                if default_schema_name is not None:
+                    return default_schema_name
+            except:
+                pass
         return self.schema_name
 
     def table_names(self, connection, schema):

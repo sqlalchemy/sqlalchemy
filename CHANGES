@@ -202,6 +202,10 @@ CHANGES
       new doc section "Custom Comparators".
     
 - mssql
+    - ``get_default_schema_name`` is now reflected from the
+      database based on the user's default schema. This only works
+      with MSSQL 2005 and later. [ticket:1258]
+
     - Added collation support through the use of a new collation
       argument. This is supported on the following types: char,
       nchar, varchar, nvarchar, text, ntext. [ticket:1248]
