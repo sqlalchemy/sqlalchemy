@@ -407,11 +407,12 @@ class DefaultCompiler(engine.Compiled):
 
         return bind_name
 
+    _trunc_re = re.compile(r'%\((\d+ \w+)\)s', re.U)
     def _truncated_identifier(self, ident_class, name):
         if (ident_class, name) in self.truncated_names:
             return self.truncated_names[(ident_class, name)]
-        
-        anonname = name % self.anon_map
+
+        anonname = self._trunc_re.sub(lambda m: self.anon_map[m.group(1)], name)
 
         if len(anonname) > self.label_length:
             counter = self.truncated_names.get(ident_class, 1)

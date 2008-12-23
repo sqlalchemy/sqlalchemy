@@ -835,6 +835,20 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
                             "SELECT concat(:param_1, :param_2) "
                             "COLLATE somecol AS x")
 
+    def test_percent_chars(self):
+        t = table("table",
+            column("percent%"),
+            column("%(oneofthese)s"),
+            column("spaces % more spaces"),
+        )
+        self.assert_compile(
+            t.select(use_labels=True),
+            '''SELECT "table"."percent%" AS "table_percent%", '''\
+            '''"table"."%(oneofthese)s" AS "table_%(oneofthese)s", '''\
+            '''"table"."spaces % more spaces" AS "table_spaces % more spaces" FROM "table"'''
+        )
+        
+        
     def test_joins(self):
         self.assert_compile(
             join(table2, table1, table1.c.myid == table2.c.otherid).select(),

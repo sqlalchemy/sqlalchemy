@@ -132,6 +132,9 @@ CHANGES
           mapper since it's not needed.
       
 - sql
+    - Columns can again contain percent signs within their
+      names. [ticket:1256]
+      
     - PickleType now favors == comparison by default,
       if the incoming object (such as a dict) implements
       __eq__().  If the object does not implement 
