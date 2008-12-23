@@ -618,6 +618,54 @@ class MiscTest(TestBase, AssertsExecutionResults):
         finally:
             testing.db.execute("drop table speedy_users", None)
 
+    @testing.emits_warning()
+    def test_index_reflection(self):
+        """ Reflecting partial & expression-based indexes should warn """
+        import warnings
+        def capture_warnings(*args, **kw):
+            capture_warnings._orig_showwarning(*args, **kw)
+            capture_warnings.warnings.append(args)
+        capture_warnings._orig_showwarning = warnings.warn
+        capture_warnings.warnings = []
+
+        m1 = MetaData(testing.db)
+        t1 = Table('party', m1,
+            Column('id', String(10), nullable=False),
+            Column('name', String(20), index=True)
+            )
+        m1.create_all()
+        testing.db.execute("""
+          create index idx1 on party ((id || name))
+        """, None) 
+        testing.db.execute("""
+          create unique index idx2 on party (id) where name = 'test'
+        """, None)
+        try:
+            m2 = MetaData(testing.db)
+
+            warnings.warn = capture_warnings
+            t2 = Table('party', m2, autoload=True)
+      
+            wrn = capture_warnings.warnings
+            assert str(wrn[0][0]) == (
+              "Skipped unsupported reflection of expression-based index idx1")
+            assert str(wrn[1][0]) == (
+              "Predicate of partial index idx2 ignored during reflection")
+            assert len(t2.indexes) == 2
+            # Make sure indexes are in the order we expect them in
+            tmp = [(idx.name, idx) for idx in t2.indexes]
+            tmp.sort()
+            r1, r2 = [idx[1] for idx in tmp]
+
+            assert r1.name == 'idx2'
+            assert r1.unique == True
+            assert r2.unique == False
+            assert [t2.c.id] == r1.columns
+            assert [t2.c.name] == r2.columns
+        finally:
+            warnings.warn = capture_warnings._orig_showwarning
+            m1.drop_all()
+
     def test_create_partial_index(self):
         tbl = Table('testtbl', MetaData(), Column('data',Integer))
         idx = Index('test_idx1', tbl.c.data, postgres_where=and_(tbl.c.data > 5, tbl.c.data < 10))

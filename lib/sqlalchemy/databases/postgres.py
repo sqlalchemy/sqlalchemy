@@ -607,6 +607,44 @@ class PGDialect(default.DefaultDialect):
 
             table.append_constraint(schema.ForeignKeyConstraint(constrained_columns, refspec, conname))
 
+        # Indexes 
+        IDX_SQL = """
+          SELECT c.relname, i.indisunique, i.indexprs, i.indpred,
+            a.attname
+          FROM pg_index i, pg_class c, pg_attribute a
+          WHERE i.indrelid = :table AND i.indexrelid = c.oid
+            AND a.attrelid = i.indexrelid AND i.indisprimary = 'f'
+          ORDER BY c.relname, a.attnum
+        """
+        t = sql.text(IDX_SQL, typemap={'attname':sqltypes.Unicode})
+        c = connection.execute(t, table=table_oid)
+        indexes = {}
+        sv_idx_name = None
+        for row in c.fetchall():
+            idx_name, unique, expr, prd, col = row
+
+            if expr and not idx_name == sv_idx_name:
+                util.warn(
+                  "Skipped unsupported reflection of expression-based index %s"
+                  % idx_name)
+                sv_idx_name = idx_name
+                continue
+            if prd and not idx_name == sv_idx_name:
+                util.warn(
+                   "Predicate of partial index %s ignored during reflection"
+                   % idx_name)
+                sv_idx_name = idx_name
+
+            if not indexes.has_key(idx_name):
+                indexes[idx_name] = [unique, []]
+            indexes[idx_name][1].append(col)
+
+        for name, (unique, columns) in indexes.items():
+            schema.Index(name, *[table.columns[c] for c in columns], 
+                         **dict(unique=unique))
+ 
+
+
     def _load_domains(self, connection):
         ## Load data types for domains:
         SQL_DOMAINS = """

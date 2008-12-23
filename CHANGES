@@ -26,6 +26,11 @@ CHANGES
     - Connection.invalidate() checks for closed status 
       to avoid attribute errors. [ticket:1246]
 
+- postgres
+    - Added Index reflection support to Postgres, using a
+      great patch we long neglected, submitted by 
+      Ken Kuhlman. [ticket:714]
+    
 - mysql
     - Fixed bug in exception raise when FK columns not present
       during reflection. [ticket:1241]
