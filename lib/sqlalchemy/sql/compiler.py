@@ -407,7 +407,7 @@ class DefaultCompiler(engine.Compiled):
 
         return bind_name
 
-    _trunc_re = re.compile(r'%\((\d+ \w+)\)s', re.U)
+    _trunc_re = re.compile(r'%\((-?\d+ \w+)\)s', re.U)
     def _truncated_identifier(self, ident_class, name):
         if (ident_class, name) in self.truncated_names:
             return self.truncated_names[(ident_class, name)]
