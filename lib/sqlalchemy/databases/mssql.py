@@ -151,6 +151,21 @@ optional and will default to 1,1.
 * Support for auto-fetching of ``@@IDENTITY/@@SCOPE_IDENTITY()`` on
   ``INSERT``
 
+Collation Support
+-----------------
+
+MSSQL specific string types support a collation parameter that
+creates a column-level specific collation for the column. The
+collation parameter accepts a Windows Collation Name or a SQL
+Collation Name. Supported types are MSChar, MSNChar, MSString,
+MSNVarchar, MSText, and MSNText. For example::
+
+    Column('login', String(32, collation='Latin1_General_CI_AS'))
+
+will yield::
+
+    login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL
+
 LIMIT/OFFSET Support
 --------------------
 
@@ -194,7 +209,7 @@ Known Issues
   does **not** work around
 
 """
-import datetime, operator, re, sys, urllib
+import datetime, inspect, operator, re, sys, urllib
 
 from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.sql import compiler, expression, operators as sqlops, functions as sql_functions
@@ -205,6 +220,39 @@ from decimal import Decimal as _python_Decimal
 
 
 MSSQL_RESERVED_WORDS = set(['function'])
+
+class _StringType(object):
+    """Base for MSSQL string types."""
+
+    def __init__(self, collation=None, **kwargs):
+        self.collation = kwargs.get('collate', collation)
+
+    def _extend(self, spec):
+        """Extend a string-type declaration with standard SQL
+        COLLATE annotations.
+        """
+
+        if self.collation:
+            collation = 'COLLATE %s' % self.collation
+        else:
+            collation = None
+
+        return ' '.join([c for c in (spec, collation)
+                         if c is not None])
+
+    def __repr__(self):
+        attributes = inspect.getargspec(self.__init__)[0][1:]
+        attributes.extend(inspect.getargspec(_StringType.__init__)[0][1:])
+
+        params = {}
+        for attr in attributes:
+            val = getattr(self, attr)
+            if val is not None and val is not False:
+                params[attr] = val
+
+        return "%s(%s)" % (self.__class__.__name__,
+                           ', '.join(['%s=%r' % (k, params[k]) for k in params]))
+
 
 class MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect):
@@ -242,9 +290,13 @@ class MSNumeric(sqltypes.Numeric):
         else:
             return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': self.precision, 'scale' : self.scale}
 
+
 class MSFloat(sqltypes.Float):
     def get_col_spec(self):
-        return "FLOAT(%(precision)s)" % {'precision': self.precision}
+        if self.precision is None:
+            return "FLOAT"
+        else:
+            return "FLOAT(%(precision)s)" % {'precision': self.precision}
 
     def bind_processor(self, dialect):
         def process(value):
@@ -254,21 +306,51 @@ class MSFloat(sqltypes.Float):
             return None
         return process
 
+
+class MSReal(MSFloat):
+    """A type for ``real`` numbers."""
+
+    def __init__(self):
+        """
+        Construct a Real.
+
+        """
+        super(MSReal, self).__init__(precision=24)
+
+    def adapt(self, impltype):
+        return impltype()
+
+    def bind_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                return float(value)
+            else:
+                return value
+        return process
+
+    def get_col_spec(self):
+        return "REAL"
+
+
 class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
+
 
 class MSBigInteger(MSInteger):
     def get_col_spec(self):
         return "BIGINT"
 
+
 class MSTinyInteger(MSInteger):
     def get_col_spec(self):
         return "TINYINT"
 
+
 class MSSmallInteger(MSInteger):
     def get_col_spec(self):
         return "SMALLINT"
+
 
 class MSDateTime(sqltypes.DateTime):
     def __init__(self, *a, **kw):
@@ -276,6 +358,7 @@ class MSDateTime(sqltypes.DateTime):
 
     def get_col_spec(self):
         return "DATETIME"
+
 
 class MSSmallDate(sqltypes.Date):
     def __init__(self, *a, **kw):
@@ -292,6 +375,7 @@ class MSSmallDate(sqltypes.Date):
             return value
         return process
 
+
 class MSDate(sqltypes.Date):
     def __init__(self, *a, **kw):
         super(MSDate, self).__init__(False)
@@ -306,6 +390,7 @@ class MSDate(sqltypes.Date):
                 return value.date()
             return value
         return process
+
 
 class MSTime(sqltypes.Time):
     __zero_date = datetime.date(1900, 1, 1)
@@ -334,6 +419,7 @@ class MSTime(sqltypes.Time):
             return value
         return process
 
+
 class MSDateTime_adodbapi(MSDateTime):
     def result_processor(self, dialect):
         def process(value):
@@ -344,6 +430,7 @@ class MSDateTime_adodbapi(MSDateTime):
             return value
         return process
 
+
 class MSDateTime_pyodbc(MSDateTime):
     def bind_processor(self, dialect):
         def process(value):
@@ -351,6 +438,7 @@ class MSDateTime_pyodbc(MSDateTime):
                 return datetime.datetime(value.year, value.month, value.day)
             return value
         return process
+
 
 class MSDate_pyodbc(MSDate):
     def bind_processor(self, dialect):
@@ -360,41 +448,233 @@ class MSDate_pyodbc(MSDate):
             return value
         return process
 
-class MSText(sqltypes.Text):
+
+class MSText(_StringType, sqltypes.Text):
+    """MSSQL TEXT type, for variable-length text up to 2^31 characters."""
+
+    def __init__(self, *args, **kwargs):
+        """Construct a TEXT.
+
+        :param collation: Optional, a column-level collation for this string
+          value. Accepts a Windows Collation Name or a SQL Collation Name.
+
+        """
+        _StringType.__init__(self, **kwargs)
+        sqltypes.Text.__init__(self, None,
+                convert_unicode=kwargs.get('convert_unicode', False),
+                assert_unicode=kwargs.get('assert_unicode', None))
+
     def get_col_spec(self):
         if self.dialect.text_as_varchar:
-            return "VARCHAR(max)"
+            return self._extend("VARCHAR(max)")
         else:
-            return "TEXT"
+            return self._extend("TEXT")
 
-class MSString(sqltypes.String):
+
+class MSNText(_StringType, sqltypes.UnicodeText):
+    """MSSQL NTEXT type, for variable-length unicode text up to 2^30
+    characters."""
+
+    def __init__(self, *args, **kwargs):
+        """Construct a NTEXT.
+
+        :param collation: Optional, a column-level collation for this string
+          value. Accepts a Windows Collation Name or a SQL Collation Name.
+
+        """
+        _StringType.__init__(self, **kwargs)
+        sqltypes.UnicodeText.__init__(self, None,
+                convert_unicode=kwargs.get('convert_unicode', True),
+                assert_unicode=kwargs.get('assert_unicode', 'warn'))
+
     def get_col_spec(self):
-        return "VARCHAR" + (self.length and "(%d)" % self.length or "")
+        if self.dialect.text_as_varchar:
+            return self._extend("NVARCHAR(max)")
+        else:
+            return self._extend("NTEXT")
 
-class MSNVarchar(sqltypes.Unicode):
+
+class MSString(_StringType, sqltypes.String):
+    """MSSQL VARCHAR type, for variable-length non-Unicode data with a maximum
+    of 8,000 characters."""
+
+    def __init__(self, length=None, convert_unicode=False, assert_unicode=None, **kwargs):
+        """Construct a VARCHAR.
+
+        :param length: Optinal, maximum data length, in characters.
+
+        :param convert_unicode: defaults to False.  If True, convert
+          ``unicode`` data sent to the database to a ``str``
+          bytestring, and convert bytestrings coming back from the
+          database into ``unicode``.
+
+          Bytestrings are encoded using the dialect's
+          :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which
+          defaults to `utf-8`.
+
+          If False, may be overridden by
+          :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
+
+        :param assert_unicode:
+
+          If None (the default), no assertion will take place unless
+          overridden by :attr:`sqlalchemy.engine.base.Dialect.assert_unicode`.
+
+          If 'warn', will issue a runtime warning if a ``str``
+          instance is used as a bind value.
+
+          If true, will raise an :exc:`sqlalchemy.exc.InvalidRequestError`.
+
+        :param collation: Optional, a column-level collation for this string
+          value. Accepts a Windows Collation Name or a SQL Collation Name.
+
+        """
+        _StringType.__init__(self, **kwargs)
+        sqltypes.String.__init__(self, length=length,
+                convert_unicode=convert_unicode,
+                assert_unicode=assert_unicode)
+
     def get_col_spec(self):
         if self.length:
-            return "NVARCHAR(%(length)s)" % {'length' : self.length}
-        elif self.dialect.text_as_varchar:
-            return "NVARCHAR(max)"
+            return self._extend("VARCHAR(%s)" % self.length)
         else:
-            return "NTEXT"
+            return self._extend("VARCHAR")
 
-class AdoMSNVarchar(MSNVarchar):
+
+class MSNVarchar(_StringType, sqltypes.Unicode):
+    """MSSQL NVARCHAR type.
+
+    For variable-length unicode character data up to 4,000 characters."""
+
+    def __init__(self, length=None, **kwargs):
+        """Construct a NVARCHAR.
+
+        :param length: Optional, Maximum data length, in characters.
+
+        :param collation: Optional, a column-level collation for this string
+          value. Accepts a Windows Collation Name or a SQL Collation Name.
+
+        """
+        _StringType.__init__(self, **kwargs)
+        sqltypes.Unicode.__init__(self, length=length,
+                convert_unicode=kwargs.get('convert_unicode', True),
+                assert_unicode=kwargs.get('assert_unicode', 'warn'))
+
+    def adapt(self, impltype):
+        return impltype(length=self.length,
+                        convert_unicode=self.convert_unicode,
+                        assert_unicode=self.assert_unicode,
+                        collation=self.collation)
+
+    def get_col_spec(self):
+        if self.length:
+            return self._extend("NVARCHAR(%(length)s)" % {'length' : self.length})
+        else:
+            return self._extend("NVARCHAR")
+
+
+class AdoMSNVarchar(_StringType, sqltypes.Unicode):
     """overrides bindparam/result processing to not convert any unicode strings"""
+
+    def __init__(self, length=None, **kwargs):
+        """Construct a NVARCHAR.
+
+        :param length: Optional, Maximum data length, in characters.
+
+        :param collation: Optional, a column-level collation for this string
+          value. Accepts a Windows Collation Name or a SQL Collation Name.
+
+        """
+        _StringType.__init__(self, **kwargs)
+        sqltypes.Unicode.__init__(self, length=length,
+                convert_unicode=kwargs.get('convert_unicode', True),
+                assert_unicode=kwargs.get('assert_unicode', 'warn'))
+
     def bind_processor(self, dialect):
         return None
 
     def result_processor(self, dialect):
         return None
 
-class MSChar(sqltypes.CHAR):
     def get_col_spec(self):
-        return "CHAR(%(length)s)" % {'length' : self.length}
+        if self.length:
+            return self._extend("NVARCHAR(%(length)s)" % {'length' : self.length})
+        else:
+            return self._extend("NVARCHAR")
 
-class MSNChar(sqltypes.NCHAR):
+
+class MSChar(_StringType, sqltypes.CHAR):
+    """MSSQL CHAR type, for fixed-length non-Unicode data with a maximum
+    of 8,000 characters."""
+
+    def __init__(self, length=None, convert_unicode=False, assert_unicode=None, **kwargs):
+        """Construct a CHAR.
+
+        :param length: Optinal, maximum data length, in characters.
+
+        :param convert_unicode: defaults to False.  If True, convert
+          ``unicode`` data sent to the database to a ``str``
+          bytestring, and convert bytestrings coming back from the
+          database into ``unicode``.
+
+          Bytestrings are encoded using the dialect's
+          :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which
+          defaults to `utf-8`.
+
+          If False, may be overridden by
+          :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
+
+        :param assert_unicode:
+
+          If None (the default), no assertion will take place unless
+          overridden by :attr:`sqlalchemy.engine.base.Dialect.assert_unicode`.
+
+          If 'warn', will issue a runtime warning if a ``str``
+          instance is used as a bind value.
+
+          If true, will raise an :exc:`sqlalchemy.exc.InvalidRequestError`.
+
+        :param collation: Optional, a column-level collation for this string
+          value. Accepts a Windows Collation Name or a SQL Collation Name.
+
+        """
+        _StringType.__init__(self, **kwargs)
+        sqltypes.CHAR.__init__(self, length=length,
+                convert_unicode=convert_unicode,
+                assert_unicode=assert_unicode)
+
     def get_col_spec(self):
-        return "NCHAR(%(length)s)" % {'length' : self.length}
+        if self.length:
+            return self._extend("CHAR(%s)" % self.length)
+        else:
+            return self._extend("CHAR")
+
+
+class MSNChar(_StringType, sqltypes.NCHAR):
+    """MSSQL NCHAR type.
+
+    For fixed-length unicode character data up to 4,000 characters."""
+
+    def __init__(self, length=None, **kwargs):
+        """Construct an NCHAR.
+
+        :param length: Optional, Maximum data length, in characters.
+
+        :param collation: Optional, a column-level collation for this string
+          value. Accepts a Windows Collation Name or a SQL Collation Name.
+
+        """
+        _StringType.__init__(self, **kwargs)
+        sqltypes.NCHAR.__init__(self, length=length,
+                convert_unicode=kwargs.get('convert_unicode', True),
+                assert_unicode=kwargs.get('assert_unicode', 'warn'))
+
+    def get_col_spec(self):
+        if self.length:
+            return self._extend("NCHAR(%(length)s)" % {'length' : self.length})
+        else:
+            return self._extend("NCHAR")
+
 
 class MSBinary(sqltypes.Binary):
     def get_col_spec(self):
@@ -557,6 +837,7 @@ class MSSQLDialect(default.DefaultDialect):
         sqltypes.Binary : MSBinary,
         sqltypes.Boolean : MSBoolean,
         sqltypes.Text : MSText,
+        sqltypes.UnicodeText : MSNText,
         sqltypes.CHAR: MSChar,
         sqltypes.NCHAR: MSNChar,
         sqltypes.TIMESTAMP: MSTimeStamp,
@@ -572,7 +853,7 @@ class MSSQLDialect(default.DefaultDialect):
         'char' : MSChar,
         'nchar' : MSNChar,
         'text' : MSText,
-        'ntext' : MSText,
+        'ntext' : MSNText,
         'decimal' : MSNumeric,
         'numeric' : MSNumeric,
         'float' : MSFloat,
@@ -670,7 +951,7 @@ class MSSQLDialect(default.DefaultDialect):
     def type_descriptor(self, typeobj):
         newobj = sqltypes.adapt_type(typeobj, self.colspecs)
         # Some types need to know about the dialect
-        if isinstance(newobj, (MSText, MSNVarchar)):
+        if isinstance(newobj, (MSText, MSNText)):
             newobj.dialect = self
         return newobj
 
@@ -728,14 +1009,15 @@ class MSSQLDialect(default.DefaultDialect):
             if row is None:
                 break
             found_table = True
-            (name, type, nullable, charlen, numericprec, numericscale, default) = (
+            (name, type, nullable, charlen, numericprec, numericscale, default, collation) = (
                 row[columns.c.column_name],
                 row[columns.c.data_type],
                 row[columns.c.is_nullable] == 'YES',
                 row[columns.c.character_maximum_length],
                 row[columns.c.numeric_precision],
                 row[columns.c.numeric_scale],
-                row[columns.c.column_default]
+                row[columns.c.column_default],
+                row[columns.c.collation_name]
             )
             if include_columns and name not in include_columns:
                 continue
@@ -745,8 +1027,14 @@ class MSSQLDialect(default.DefaultDialect):
                 if a is not None:
                     args.append(a)
             coltype = self.ischema_names.get(type, None)
+
+            kwargs = {}
+            if coltype in (MSString, MSChar, MSNVarchar, AdoMSNVarchar, MSNChar, MSText, MSNText):
+                if collation:
+                    kwargs.update(collation=collation)
+
             if coltype == MSText or (coltype == MSString and charlen == -1):
-                coltype = MSText()
+                coltype = MSText(**kwargs)
             else:
                 if coltype is None:
                     util.warn("Did not recognize type '%s' of column '%s'" %
@@ -755,7 +1043,7 @@ class MSSQLDialect(default.DefaultDialect):
 
                 elif coltype in (MSNVarchar, AdoMSNVarchar) and charlen == -1:
                     args[0] = None
-                coltype = coltype(*args)
+                coltype = coltype(*args, **kwargs)
             colargs = []
             if default is not None:
                 colargs.append(schema.DefaultClause(sql.text(default)))
@@ -912,16 +1200,14 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         return module
 
     colspecs = MSSQLDialect.colspecs.copy()
-    if supports_unicode:
-        colspecs[sqltypes.Unicode] = AdoMSNVarchar
     colspecs[sqltypes.Date] = MSDate_pyodbc
     colspecs[sqltypes.DateTime] = MSDateTime_pyodbc
-
     ischema_names = MSSQLDialect.ischema_names.copy()
-    if supports_unicode:
-        ischema_names['nvarchar'] = AdoMSNVarchar
     ischema_names['smalldatetime'] = MSDate_pyodbc
     ischema_names['datetime'] = MSDateTime_pyodbc
+    if supports_unicode:
+        colspecs[sqltypes.Unicode] = AdoMSNVarchar
+        ischema_names['nvarchar'] = AdoMSNVarchar
 
     def make_connect_string(self, keys, query):
         if 'max_identifier_length' in keys:

@@ -7,6 +7,7 @@ from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 import sqlalchemy.engine.url as url
 from testlib import *
+from testlib.testing import eq_
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
@@ -502,6 +503,319 @@ class TypesTest(TestBase):
             numeric_table.insert().execute(numericcol=Decimal('1E-8'))
         except:
             assert False
+
+
+class TypesTest2(TestBase, AssertsExecutionResults):
+    "Test Microsoft SQL Server column types"
+
+    __only_on__ = 'mssql'
+
+    def test_money(self):
+        "Exercise type specification for money types."
+
+        columns = [
+            # column type, args, kwargs, expected ddl
+            (mssql.MSMoney, [], {},
+             'MONEY'),
+            (mssql.MSSmallMoney, [], {},
+             'SMALLMONEY'),
+           ]
+
+        table_args = ['test_mssql_money', MetaData(testing.db)]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res = spec
+            table_args.append(Column('c%s' % index, type_(*args, **kw), nullable=None))
+
+        money_table = Table(*table_args)
+        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+
+        for col in money_table.c:
+            index = int(col.name[1:])
+            testing.eq_(gen.get_column_specification(col),
+                           "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
+
+        try:
+            money_table.create(checkfirst=True)
+            assert True
+        except:
+            raise
+        money_table.drop()
+
+    def test_binary(self):
+        "Exercise type specification for binary types."
+
+        columns = [
+            # column type, args, kwargs, expected ddl
+            (mssql.MSBinary, [], {},
+             'IMAGE')
+           ]
+
+        table_args = ['test_mssql_binary', MetaData(testing.db)]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res = spec
+            table_args.append(Column('c%s' % index, type_(*args, **kw), nullable=None))
+
+        binary_table = Table(*table_args)
+        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+
+        for col in binary_table.c:
+            index = int(col.name[1:])
+            testing.eq_(gen.get_column_specification(col),
+                           "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
+
+        try:
+            binary_table.create(checkfirst=True)
+            assert True
+        except:
+            raise
+        binary_table.drop()
+
+    def test_boolean(self):
+        "Exercise type specification for boolean type."
+
+        columns = [
+            # column type, args, kwargs, expected ddl
+            (mssql.MSBoolean, [], {},
+             'BIT'),
+           ]
+
+        table_args = ['test_mssql_boolean', MetaData(testing.db)]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res = spec
+            table_args.append(Column('c%s' % index, type_(*args, **kw), nullable=None))
+
+        boolean_table = Table(*table_args)
+        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+
+        for col in boolean_table.c:
+            index = int(col.name[1:])
+            testing.eq_(gen.get_column_specification(col),
+                           "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
+
+        try:
+            boolean_table.create(checkfirst=True)
+            assert True
+        except:
+            raise
+        boolean_table.drop()
+
+    def test_numeric(self):
+        "Exercise type specification and options for numeric types."
+
+        columns = [
+            # column type, args, kwargs, expected ddl
+            (mssql.MSNumeric, [], {},
+             'NUMERIC(10, 2)'),
+            (mssql.MSNumeric, [None], {},
+             'NUMERIC'),
+            (mssql.MSNumeric, [12], {},
+             'NUMERIC(12, 2)'),
+            (mssql.MSNumeric, [12, 4], {},
+             'NUMERIC(12, 4)'),
+
+            (mssql.MSFloat, [], {},
+             'FLOAT(10)'),
+            (mssql.MSFloat, [None], {},
+             'FLOAT'),
+            (mssql.MSFloat, [12], {},
+             'FLOAT(12)'),
+            (mssql.MSReal, [], {},
+             'REAL'),
+
+            (mssql.MSInteger, [], {},
+             'INTEGER'),
+            (mssql.MSBigInteger, [], {},
+             'BIGINT'),
+            (mssql.MSTinyInteger, [], {},
+             'TINYINT'),
+            (mssql.MSSmallInteger, [], {},
+             'SMALLINT'),
+           ]
+
+        table_args = ['test_mssql_numeric', MetaData(testing.db)]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res = spec
+            table_args.append(Column('c%s' % index, type_(*args, **kw), nullable=None))
+
+        numeric_table = Table(*table_args)
+        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+
+        for col in numeric_table.c:
+            index = int(col.name[1:])
+            testing.eq_(gen.get_column_specification(col),
+                           "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
+
+        try:
+            numeric_table.create(checkfirst=True)
+            assert True
+        except:
+            raise
+        numeric_table.drop()
+
+    def test_char(self):
+        """Exercise COLLATE-ish options on string types."""
+
+        columns = [
+            (mssql.MSChar, [], {},
+             'CHAR'),
+            (mssql.MSChar, [1], {},
+             'CHAR(1)'),
+            (mssql.MSChar, [1], {'collation': 'Latin1_General_CI_AS'},
+             'CHAR(1) COLLATE Latin1_General_CI_AS'),
+
+            (mssql.MSNChar, [], {},
+             'NCHAR'),
+            (mssql.MSNChar, [1], {},
+             'NCHAR(1)'),
+            (mssql.MSNChar, [1], {'collation': 'Latin1_General_CI_AS'},
+             'NCHAR(1) COLLATE Latin1_General_CI_AS'),
+
+            (mssql.MSString, [], {},
+             'VARCHAR'),
+            (mssql.MSString, [1], {},
+             'VARCHAR(1)'),
+            (mssql.MSString, ['max'], {},
+             'VARCHAR(max)'),
+            (mssql.MSString, [1], {'collation': 'Latin1_General_CI_AS'},
+             'VARCHAR(1) COLLATE Latin1_General_CI_AS'),
+
+            (mssql.MSNVarchar, [], {},
+             'NVARCHAR'),
+            (mssql.MSNVarchar, [1], {},
+             'NVARCHAR(1)'),
+            (mssql.MSNVarchar, ['max'], {},
+             'NVARCHAR(max)'),
+            (mssql.MSNVarchar, [1], {'collation': 'Latin1_General_CI_AS'},
+             'NVARCHAR(1) COLLATE Latin1_General_CI_AS'),
+
+            (mssql.MSText, [], {},
+             'TEXT'),
+            (mssql.MSText, [], {'collation': 'Latin1_General_CI_AS'},
+             'TEXT COLLATE Latin1_General_CI_AS'),
+
+            (mssql.MSNText, [], {},
+             'NTEXT'),
+            (mssql.MSNText, [], {'collation': 'Latin1_General_CI_AS'},
+             'NTEXT COLLATE Latin1_General_CI_AS'),
+           ]
+
+        table_args = ['test_mssql_charset', MetaData(testing.db)]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res = spec
+            table_args.append(Column('c%s' % index, type_(*args, **kw), nullable=None))
+
+        charset_table = Table(*table_args)
+        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+
+        for col in charset_table.c:
+            index = int(col.name[1:])
+            testing.eq_(gen.get_column_specification(col),
+                           "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
+
+        try:
+            charset_table.create(checkfirst=True)
+            assert True
+        except:
+            raise
+        charset_table.drop()
+
+    def test_timestamp(self):
+        """Exercise TIMESTAMP column."""
+
+        meta = MetaData(testing.db)
+
+        try:
+            columns = [
+                (TIMESTAMP,
+                 'TIMESTAMP'),
+                (mssql.MSTimeStamp,
+                 'TIMESTAMP'),
+                ]
+            for idx, (spec, expected) in enumerate(columns):
+                t = Table('mssql_ts%s' % idx, meta,
+                          Column('id', Integer, primary_key=True),
+                          Column('t', spec, nullable=None))
+                testing.eq_(colspec(t.c.t), "t %s" % expected)
+                self.assert_(repr(t.c.t))
+                try:
+                    t.create(checkfirst=True)
+                    assert True
+                except:
+                    raise
+                t.drop()
+        finally:
+            meta.drop_all()
+
+    def test_autoincrement(self):
+        meta = MetaData(testing.db)
+        try:
+            Table('ai_1', meta,
+                  Column('int_y', Integer, primary_key=True),
+                  Column('int_n', Integer, DefaultClause('0'),
+                         primary_key=True))
+            Table('ai_2', meta,
+                  Column('int_y', Integer, primary_key=True),
+                  Column('int_n', Integer, DefaultClause('0'),
+                         primary_key=True))
+            Table('ai_3', meta,
+                  Column('int_n', Integer, DefaultClause('0'),
+                         primary_key=True, autoincrement=False),
+                  Column('int_y', Integer, primary_key=True))
+            Table('ai_4', meta,
+                  Column('int_n', Integer, DefaultClause('0'),
+                         primary_key=True, autoincrement=False),
+                  Column('int_n2', Integer, DefaultClause('0'),
+                         primary_key=True, autoincrement=False))
+            Table('ai_5', meta,
+                  Column('int_y', Integer, primary_key=True),
+                  Column('int_n', Integer, DefaultClause('0'),
+                         primary_key=True, autoincrement=False))
+            Table('ai_6', meta,
+                  Column('o1', String(1), DefaultClause('x'),
+                         primary_key=True),
+                  Column('int_y', Integer, primary_key=True))
+            Table('ai_7', meta,
+                  Column('o1', String(1), DefaultClause('x'),
+                         primary_key=True),
+                  Column('o2', String(1), DefaultClause('x'),
+                         primary_key=True),
+                  Column('int_y', Integer, primary_key=True))
+            Table('ai_8', meta,
+                  Column('o1', String(1), DefaultClause('x'),
+                         primary_key=True),
+                  Column('o2', String(1), DefaultClause('x'),
+                         primary_key=True))
+            meta.create_all()
+
+            table_names = ['ai_1', 'ai_2', 'ai_3', 'ai_4',
+                           'ai_5', 'ai_6', 'ai_7', 'ai_8']
+            mr = MetaData(testing.db)
+            mr.reflect(only=table_names)
+
+            for tbl in [mr.tables[name] for name in table_names]:
+                for c in tbl.c:
+                    if c.name.startswith('int_y'):
+                        assert c.autoincrement
+                    elif c.name.startswith('int_n'):
+                        assert not c.autoincrement
+                tbl.insert().execute()
+                if 'int_y' in tbl.c:
+                    assert select([tbl.c.int_y]).scalar() == 1
+                    assert list(tbl.select().execute().fetchone()).count(1) == 1
+                else:
+                    assert 1 not in list(tbl.select().execute().fetchone())
+        finally:
+            meta.drop_all()
+
+def colspec(c):
+    return testing.db.dialect.schemagenerator(testing.db.dialect,
+        testing.db, None, None).get_column_specification(c)
+
 
 if __name__ == "__main__":
     testenv.main()

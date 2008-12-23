@@ -38,6 +38,9 @@ CHANGES
       classes used for both the dynamic collection and the queries
       built from it.
 
+- mssql
+    - Added in the MSReal and MSNText types.
+
 - bugfixes, behavioral changes
 - general
 - orm
@@ -199,6 +202,10 @@ CHANGES
       new doc section "Custom Comparators".
     
 - mssql
+    - Added collation support through the use of a new collation
+      argument. This is supported on the following types: char,
+      nchar, varchar, nvarchar, text, ntext. [ticket:1248]
+
     - Changes to the connection string parameters favor DSN as the
       default specification for pyodbc. See the mssql.py docstring
       for detailed usage instructions.
@@ -206,14 +213,15 @@ CHANGES
     - Added experimental support of savepoints. It
       currently does not work fully with sessions.
 
-    - Support for three levels of column nullability: NULL, NOT NULL,
-      and the database's configured default.  The default Column
-      configuration (nullable=True) will now generate NULL in the DDL.
-      Previously no specification was emitted and the database default
-      would take effect (usually NULL, but not always).  To explicitly
-      request the database default, configure columns with
-      nullable=None and no specification will be emitted in DDL. This
-      is backwards incompatible behavior. [ticket:1243]
+    - Support for three levels of column nullability: NULL,
+      NOT NULL, and the database's configured default.  The default
+      Column configuration (nullable=True) will now generate NULL
+      in the DDL. Previously no specification was emitted and the
+      database default would take effect (usually NULL, but not
+      always).  To explicitly request the database default,
+      configure columns with nullable=None and no specification
+      will be emitted in DDL. This is backwards incompatible
+      behavior. [ticket:1243]
 
 - postgres
     - Calling alias.execute() in conjunction with

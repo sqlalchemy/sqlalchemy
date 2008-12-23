@@ -29,6 +29,7 @@ columns = Table("columns", ischema,
     Column("numeric_precision", Integer),
     Column("numeric_scale", Integer),
     Column("column_default", Integer),
+    Column("collation_name", String),
     schema="information_schema")
 
 constraints = Table("table_constraints", ischema,
