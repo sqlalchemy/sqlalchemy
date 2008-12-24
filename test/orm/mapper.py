@@ -4,7 +4,7 @@ import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, func
 from testlib.sa.engine import default
-from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper, reconstructor, validates, aliased
+from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
 from testlib.sa.orm import defer, deferred, synonym, attributes, column_property, composite, relation, dynamic_loader, comparable_property
 from testlib.testing import eq_, AssertsCompiledSQL
 import pickleable
@@ -37,6 +37,14 @@ class MapperTest(_fixtures.FixtureTest):
         self.assertRaises(sa.exc.ArgumentError,
                           relation, Address, cascade="fake, all, delete-orphan")
 
+    @testing.resolve_artifact_names
+    def test_exceptions_sticky(self):
+        mapper(Address, addresses, properties={
+            'user':relation(User)
+        })
+        hasattr(Address.id, 'in_')
+        self.assertRaisesMessage(sa.exc.InvalidRequestError, r"suppressed within a hasattr\(\)", compile_mappers)
+    
     @testing.resolve_artifact_names
     def test_column_prefix(self):
         mapper(User, users, column_prefix='_', properties={

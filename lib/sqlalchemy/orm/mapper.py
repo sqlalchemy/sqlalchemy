@@ -389,7 +389,8 @@ class Mapper(object):
         # Disable any attribute-based compilation.
         self.compiled = True
         manager = self.class_manager
-
+        if hasattr(self, '_compile_failed'):
+            del self._compile_failed
         if not self.non_primary and manager.mapper is self:
             manager.mapper = None
             manager.events.remove_listener('on_init', _event_on_init)
@@ -532,7 +533,7 @@ class Mapper(object):
                 return object.__getattribute__(self, key)
 
             class_mapper(cls)
-
+                
             if cls.__dict__.get(clskey) is self:
                 # if this warning occurs, it usually means mapper
                 # compilation has failed, but operations upon the mapped
@@ -659,29 +660,39 @@ class Mapper(object):
 
         _COMPILE_MUTEX.acquire()
         try:
-            global _already_compiling
-            if _already_compiling:
-                # re-entrance to compile() occurs rarely, when a class-mapped construct is
-                # used within a ForeignKey, something that is possible
-                # when using the declarative layer
-                self._post_configure_properties()
-                return
-            _already_compiling = True
             try:
+                global _already_compiling
+                if _already_compiling:
+                    # re-entrance to compile() occurs rarely, when a class-mapped construct is
+                    # used within a ForeignKey, something that is possible
+                    # when using the declarative layer
+                    self._post_configure_properties()
+                    return
+                _already_compiling = True
+                try:
 
-                # double-check inside mutex
-                if self.compiled and not _new_mappers:
+                    # double-check inside mutex
+                    if self.compiled and not _new_mappers:
+                        return self
+
+                    # initialize properties on all mappers
+                    for mapper in list(_mapper_registry):
+                        if getattr(mapper, '_compile_failed', False):
+                            raise sa_exc.InvalidRequestError("One or more mappers failed to compile.  Exception was probably "
+                                    "suppressed within a hasattr() call. "
+                                    "Message was: %s" % mapper._compile_failed)
+                        if not mapper.compiled:
+                            mapper._post_configure_properties()
+
+                    _new_mappers = False
                     return self
-
-                # initialize properties on all mappers
-                for mapper in list(_mapper_registry):
-                    if not mapper.compiled:
-                        mapper._post_configure_properties()
-
-                _new_mappers = False
-                return self
-            finally:
-                _already_compiling = False
+                finally:
+                    _already_compiling = False
+            except:
+                import sys
+                exc = sys.exc_info()[1]
+                self._compile_failed = exc
+                raise
         finally:
             _COMPILE_MUTEX.release()
 
@@ -693,6 +704,7 @@ class Mapper(object):
         to execute once all mappers have been constructed.
         
         """
+
         self._log("_post_configure_properties() started")
         l = [(key, prop) for key, prop in self._props.iteritems()]
         for key, prop in l:
@@ -701,7 +713,7 @@ class Mapper(object):
                 prop.init(key, self)
         self._log("_post_configure_properties() complete")
         self.compiled = True
-
+            
     def add_properties(self, dict_of_properties):
         """Add the given dictionary of properties to this mapper,
         using `add_property`.

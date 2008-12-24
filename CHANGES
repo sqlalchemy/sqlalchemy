@@ -44,6 +44,14 @@ CHANGES
 - bugfixes, behavioral changes
 - general
 - orm
+    - Exceptions raised during compile_mappers() are now
+      preserved to provide "sticky behavior" - if a hasattr()
+      call on a pre-compiled mapped attribute triggers a failing 
+      compile and suppresses the exception, subsequent compilation 
+      is blocked and the exception will be reiterated on the 
+      next compile() call.  This issue occurs frequently
+      when using declarative.
+      
     - Corrected problem with Query.delete() and
       Query.update() not working properly with bind 
       parameters. [ticket:1242]

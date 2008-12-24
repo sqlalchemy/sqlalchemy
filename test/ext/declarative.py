@@ -4,7 +4,7 @@ from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc
-from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref
+from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers
 from testlib.testing import eq_
 from orm._base import ComparableEntity, MappedTest
 
@@ -15,6 +15,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         Base = decl.declarative_base(testing.db)
 
     def tearDown(self):
+        clear_mappers()
         Base.metadata.drop_all()
 
     def test_basic(self):
@@ -184,6 +185,20 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
                 id = Column(Integer, primary_key=True)
                 foo = sa.orm.column_property(User.id == 5)
         self.assertRaises(sa.exc.InvalidRequestError, go)
+
+    def test_nice_dependency_error_works_with_hasattr(self):
+        class User(Base):
+            __tablename__ = 'users'
+            id = Column('id', Integer, primary_key=True)
+            addresses = relation("Addresss")
+
+        # doesn't raise, hasattr() squashes all exceptions 
+        # (except KeybaordInterrupt/SystemException in 2.6...whoopee)
+        # TODO: determine what hasattr() does on py3K
+        hasattr(User.id, 'in_')
+        # but the exception is saved, compile_mappers tells us what it is 
+        # as well as some explaination
+        self.assertRaisesMessage(sa.exc.InvalidRequestError, r"suppressed within a hasattr\(\)", compile_mappers)
 
     def test_custom_base(self):
         class MyBase(object):
