@@ -529,11 +529,11 @@ class ReflectionTest(TestBase, ComparesTables):
     def test_index_reflection(self):
         m1 = MetaData(testing.db)
         t1 = Table('party', m1,
-            Column('id', Integer, nullable=False),
-            Column('name', String(20), index=True)
+            Column('id', sa.Integer, nullable=False),
+            Column('name', sa.String(20), index=True)
             )
-        i1 = Index('idx1', t1.c.id, unique=True)
-        i2 = Index('idx2', t1.c.name, t1.c.id, unique=False)
+        i1 = sa.Index('idx1', t1.c.id, unique=True)
+        i2 = sa.Index('idx2', t1.c.name, t1.c.id, unique=False)
         m1.create_all()
         try:
             m2 = MetaData(testing.db)
