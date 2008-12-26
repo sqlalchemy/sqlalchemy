@@ -577,10 +577,11 @@ class PGDialect(default.DefaultDialect):
         c = connection.execute(t, table=table_oid)
         for row in c.fetchall():
             pk = row[0]
-            col = table.c[pk]
-            table.primary_key.add(col)
-            if col.default is None:
-                col.autoincrement = False
+            if pk in table.c:
+                col = table.c[pk]
+                table.primary_key.add(col)
+                if col.default is None:
+                    col.autoincrement = False
 
         # Foreign keys
         FK_SQL = """
@@ -617,7 +618,7 @@ class PGDialect(default.DefaultDialect):
                 for column in referred_columns:
                     refspec.append(".".join([referred_table, column]))
 
-            table.append_constraint(schema.ForeignKeyConstraint(constrained_columns, refspec, conname))
+            table.append_constraint(schema.ForeignKeyConstraint(constrained_columns, refspec, conname, link_to_name=True))
 
         # Indexes 
         IDX_SQL = """

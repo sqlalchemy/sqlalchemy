@@ -338,7 +338,7 @@ class InfoDialect(default.DefaultDialect):
                 fk[1].append(refspec)
 
         for name, value in fks.iteritems():
-            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1] , None ))
+            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1] , None, link_to_name=True ))
 
         # PK
         c = connection.execute("""select t1.constrname as cons_name , t1.constrtype as cons_type ,

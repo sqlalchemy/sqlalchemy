@@ -619,7 +619,7 @@ class SybaseSQLDialect(default.DefaultDialect):
                 foreignKeys[primary_table][1].append('%s.%s'%(primary_table, primary_column))
         for primary_table in foreignKeys.keys():
             #table.append_constraint(schema.ForeignKeyConstraint(['%s.%s'%(foreign_table, foreign_column)], ['%s.%s'%(primary_table,primary_column)]))
-            table.append_constraint(schema.ForeignKeyConstraint(foreignKeys[primary_table][0], foreignKeys[primary_table][1]))
+            table.append_constraint(schema.ForeignKeyConstraint(foreignKeys[primary_table][0], foreignKeys[primary_table][1], link_to_name=True))
 
         if not found_table:
             raise exc.NoSuchTableError(table.name)

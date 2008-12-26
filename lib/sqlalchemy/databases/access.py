@@ -312,7 +312,7 @@ class AccessDialect(default.DefaultDialect):
                     continue
                 scols = [c.ForeignName for c in fk.Fields]
                 rcols = ['%s.%s' % (fk.Table, c.Name) for c in fk.Fields]
-                table.append_constraint(schema.ForeignKeyConstraint(scols, rcols))
+                table.append_constraint(schema.ForeignKeyConstraint(scols, rcols, link_to_name=True))
 
         finally:
             dtbs.Close()

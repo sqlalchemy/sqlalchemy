@@ -102,12 +102,8 @@ class ReflectionTest(TestBase, ComparesTables):
         t.create()
         dialect_module.ischema_names = {}
         try:
-            try:
-                m2 = MetaData(testing.db)
-                t2 = Table("test", m2, autoload=True)
-                assert False
-            except tsa.exc.SAWarning:
-                assert True
+            m2 = MetaData(testing.db)
+            self.assertRaises(tsa.exc.SAWarning, Table, "test", m2, autoload=True)
 
             @testing.emits_warning('Did not recognize type')
             def warns():
@@ -238,6 +234,59 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
+    def test_override_keys(self):
+        """test that columns can be overridden with a 'key', 
+        and that ForeignKey targeting during reflection still works."""
+        
+
+        meta = MetaData(testing.db)
+        a1 = Table('a', meta,
+            Column('x', sa.Integer, primary_key=True),
+            Column('z', sa.Integer),
+            test_needs_fk=True
+        )
+        b1 = Table('b', meta,
+            Column('y', sa.Integer, sa.ForeignKey('a.x')),
+            test_needs_fk=True
+        )
+        meta.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            a2 = Table('a', m2, Column('x', sa.Integer, primary_key=True, key='x1'), autoload=True)
+            b2 = Table('b', m2, autoload=True)
+            
+            assert a2.join(b2).onclause.compare(a2.c.x1==b2.c.y)
+            assert b2.c.y.references(a2.c.x1)
+        finally:
+            meta.drop_all()
+    
+    def test_nonreflected_fk_raises(self):
+        """test that a NoReferencedColumnError is raised when reflecting
+        a table with an FK to another table which has not included the target
+        column in its reflection.
+        
+        """
+        meta = MetaData(testing.db)
+        a1 = Table('a', meta,
+            Column('x', sa.Integer, primary_key=True),
+            Column('z', sa.Integer),
+            test_needs_fk=True
+        )
+        b1 = Table('b', meta,
+            Column('y', sa.Integer, sa.ForeignKey('a.x')),
+            test_needs_fk=True
+        )
+        meta.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            a2 = Table('a', m2, include_columns=['z'], autoload=True)
+            b2 = Table('b', m2, autoload=True)
+            
+            self.assertRaises(tsa.exc.NoReferencedColumnError, a2.join, b2)
+        finally:
+            meta.drop_all()
+        
+        
     @testing.exclude('mysql', '<', (4, 1, 1), 'innodb funkiness')
     def test_override_existing_fk(self):
         """test that you can override columns and specify new foreign keys to other reflected tables,
@@ -351,11 +400,8 @@ class ReflectionTest(TestBase, ComparesTables):
             Column('pkg_id', sa.Integer, sa.ForeignKey('pkgs.pkg_id')),
             Column('slot', sa.String(128)),
             )
-        try:
-            metadata.create_all()
-            assert False
-        except tsa.exc.InvalidRequestError, err:
-            assert str(err) == "Could not find table 'pkgs' with which to generate a foreign key"
+            
+        self.assertRaisesMessage(tsa.exc.InvalidRequestError, "Could not find table 'pkgs' with which to generate a foreign key", metadata.create_all)
 
     def test_composite_pks(self):
         """test reflection of a composite primary key"""

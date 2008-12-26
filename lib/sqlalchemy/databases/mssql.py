@@ -1145,7 +1145,7 @@ class MSSQLDialect(default.DefaultDialect):
                 schema.Table(rtbl, table.metadata, schema=rschema, autoload=True, autoload_with=connection)
             if rfknm != fknm:
                 if fknm:
-                    table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, s, t, c) for s, t, c in rcols], fknm))
+                    table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, s, t, c) for s, t, c in rcols], fknm, link_to_name=True))
                 fknm, scols, rcols = (rfknm, [], [])
             if not scol in scols:
                 scols.append(scol)
@@ -1153,7 +1153,7 @@ class MSSQLDialect(default.DefaultDialect):
                 rcols.append((rschema, rtbl, rcol))
 
         if fknm and scols:
-            table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, s, t, c) for s, t, c in rcols], fknm))
+            table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, s, t, c) for s, t, c in rcols], fknm, link_to_name=True))
 
 
 class MSSQLDialect_pymssql(MSSQLDialect):

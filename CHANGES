@@ -168,6 +168,16 @@ CHANGES
       also would be a little misleading compared to
       values().
 
+    - Reflected foreign keys will properly locate 
+      their referenced column, even if the column
+      was given a "key" attribute different from
+      the reflected name.  This is achieved via a 
+      new flag on ForeignKey/ForeignKeyConstraint 
+      called "link_to_name", if True means the given 
+      name is the referred-to column's name, not its 
+      assigned key.
+      [ticket:650]
+      
     - select() can accept a ClauseList as a column
       in the same way as a Table or other selectable
       and the interior expressions will be used as

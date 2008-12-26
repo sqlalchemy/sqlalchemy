@@ -522,7 +522,7 @@ class SQLiteDialect(default.DefaultDialect):
             if refspec not in fk[1]:
                 fk[1].append(refspec)
         for name, value in fks.iteritems():
-            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1]))
+            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], link_to_name=True))
         # check for UNIQUE indexes
         c = connection.execute("%sindex_list(%s)" % (pragma, qtable))
         unique_indexes = []

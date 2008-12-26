@@ -2326,23 +2326,19 @@ class MySQLSchemaReflector(object):
                     autoload=True, autoload_with=connection)
 
             ref_names = spec['foreign']
-            if not set(ref_names).issubset(
-                set(c.name for c in ref_table.c)):
-                raise exc.InvalidRequestError(
-                    "Foreign key columns (%s) are not present on "
-                    "foreign table %s" %
-                    (', '.join(ref_names), ref_table.fullname))
-            ref_columns = [ref_table.c[name] for name in ref_names]
+
+            if ref_schema:
+                refspec = [".".join([ref_schema, ref_name, column]) for column in ref_names]
+            else:
+                refspec = [".".join([ref_name, column]) for column in ref_names]
 
             con_kw = {}
             for opt in ('name', 'onupdate', 'ondelete'):
                 if spec.get(opt, False):
                     con_kw[opt] = spec[opt]
 
-            key = schema.ForeignKeyConstraint([], [], **con_kw)
+            key = schema.ForeignKeyConstraint(loc_names, refspec, link_to_name=True, **con_kw)
             table.append_constraint(key)
-            for pair in zip(loc_names, ref_columns):
-                key.append_element(*pair)
 
     def _set_options(self, table, line):
         """Apply safe reflected table options to a ``Table``.

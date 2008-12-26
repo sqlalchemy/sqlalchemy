@@ -701,7 +701,7 @@ class MaxDBDialect(default.DefaultDialect):
                              autoload=True, autoload_with=connection,
                              **table_kw)
 
-            constraint = schema.ForeignKeyConstraint(columns, referants,
+            constraint = schema.ForeignKeyConstraint(columns, referants, link_to_name=True,
                                                      **constraint_kw)
             table.append_constraint(constraint)
 

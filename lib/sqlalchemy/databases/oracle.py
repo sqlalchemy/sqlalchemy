@@ -680,7 +680,7 @@ class OracleDialect(default.DefaultDialect):
                     fk[1].append(refspec)
 
         for name, value in fks.iteritems():
-            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
+            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name, link_to_name=True))
 
 
 class _OuterJoinColumn(sql.ClauseElement):
