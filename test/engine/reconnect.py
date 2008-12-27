@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 import sys, weakref
-from sqlalchemy import create_engine, exceptions, select, MetaData, Table, Column, Integer, String
+from sqlalchemy import create_engine, exceptions, select, MetaData, Table, Column, Integer, String, pool
 from testlib import *
 import time
 import gc
@@ -216,6 +216,23 @@ class RealReconnectTest(TestBase):
         assert not conn.invalidated
 
         conn.close()
+    
+    def test_null_pool(self):
+        engine = engines.reconnecting_engine(options=dict(poolclass=pool.NullPool))
+        conn = engine.connect()
+        self.assertEquals(conn.execute(select([1])).scalar(), 1)
+        assert not conn.closed
+        engine.test_shutdown()
+        try:
+            conn.execute(select([1]))
+            assert False
+        except exceptions.DBAPIError, e:
+            if not e.connection_invalidated:
+                raise
+        assert not conn.closed
+        assert conn.invalidated
+        self.assertEquals(conn.execute(select([1])).scalar(), 1)
+        assert not conn.invalidated
     
     def test_close(self):
         conn = engine.connect()

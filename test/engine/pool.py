@@ -608,10 +608,25 @@ class PoolTest(TestBase):
         c.close()
         assert counts == [1, 2, 3]
 
-
-
     def tearDown(self):
        pool.clear_managers()
+
+class NullPoolTest(TestBase):
+   def test_reconnect(self):
+       dbapi = MockDBAPI()
+       p = pool.NullPool(creator = lambda: dbapi.connect('foo.db'))
+       c1 = p.connect()
+       c_id = c1.connection.id
+       c1.close(); c1=None
+
+       c1 = p.connect()
+       dbapi.raise_error = True
+       c1.invalidate()
+       c1 = None
+
+       c1 = p.connect()
+       assert c1.connection.id != c_id
+
 
 
 if __name__ == "__main__":

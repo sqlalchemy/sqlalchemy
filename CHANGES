@@ -26,6 +26,9 @@ CHANGES
     - Connection.invalidate() checks for closed status 
       to avoid attribute errors. [ticket:1246]
 
+    - NullPool supports reconnect on failure behavior.
+      [ticket:1094]
+
 - postgres
     - Added Index reflection support to Postgres, using a
       great patch we long neglected, submitted by 
