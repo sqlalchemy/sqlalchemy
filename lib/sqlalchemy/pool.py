@@ -865,7 +865,8 @@ class _DBProxy(object):
         self.params = params
         self.poolclass = poolclass
         self.pools = {}
-
+        self._create_pool_mutex = threading.Lock()
+        
     def close(self):
         for key in self.pools.keys():
             del self.pools[key]
@@ -881,10 +882,17 @@ class _DBProxy(object):
         try:
             return self.pools[key]
         except KeyError:
-            pool = self.poolclass(lambda: self.module.connect(*args, **params), **self.params)
-            self.pools[key] = pool
-            return pool
-
+            self._create_pool_mutex.acquire()
+            try:
+                if key not in self.pools:
+                    pool = self.poolclass(lambda: self.module.connect(*args, **params), **self.params)
+                    self.pools[key] = pool
+                    return pool
+                else:
+                    return self.pools[key]
+            finally:
+                self._create_pool_mutex.release()
+                
     def connect(self, *args, **params):
         """Activate a connection to the database.
 
