@@ -172,6 +172,35 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
         self.assertEquals(a1, Address(email='two'))
         self.assertEquals(a1.user, User(name='u1'))
 
+    def test_eager_order_by(self):
+        class Address(Base, Fixture):
+            __tablename__ = 'addresses'
+
+            id = Column('id', Integer, primary_key=True)
+            email = Column('email', String(50))
+            user_id = Column('user_id', Integer, ForeignKey('users.id'))
+
+        class User(Base, Fixture):
+            __tablename__ = 'users'
+
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            addresses = relation("Address", order_by=Address.email)
+
+        Base.metadata.create_all()
+        u1 = User(name='u1', addresses=[
+            Address(email='two'),
+            Address(email='one'),
+        ])
+        sess = create_session()
+        sess.add(u1)
+        sess.flush()
+        sess.clear()
+        self.assertEquals(sess.query(User).options(eagerload(User.addresses)).all(), [User(name='u1', addresses=[
+            Address(email='one'),
+            Address(email='two'),
+        ])])
+
     
     def test_custom_mapper(self):
         class MyExt(MapperExtension):
@@ -208,7 +237,7 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
             assert Foo.__mapper__.compile().extension.create_instance() == 'CHECK'
 
 
-    def test_oops(self):
+    def test_errant_comma(self):
         def define():
             class User(Base, Fixture):
                 __tablename__ = 'users'
@@ -220,7 +249,7 @@ class DeclarativeTest(TestBase, AssertsExecutionResults):
             exceptions.ArgumentError,
             "Mapper Mapper|User|users could not assemble any primary key",
             define)
-    test_oops = testing.emits_warning('Ignoring declarative-like tuple value of attribute id')(test_oops)
+    test_errant_comma = testing.emits_warning('Ignoring declarative-like tuple value of attribute id')(test_errant_comma)
 
     def test_expression(self):
         class User(Base, Fixture):

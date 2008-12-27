@@ -501,6 +501,9 @@ class PropertyLoader(StrategizedProperty):
         self.target = self.mapper.mapped_table
         self.table = self.mapper.mapped_table
 
+        if self.order_by:
+            self.order_by = [expression._literal_as_column(x) for x in util.to_list(self.order_by)]
+
         if self.cascade.delete_orphan:
             if self.parent.class_ is self.mapper.class_:
                 raise exceptions.ArgumentError("In relationship '%s', can't establish 'delete-orphan' cascade "

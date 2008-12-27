@@ -23,6 +23,10 @@ CHANGES
       composite type from being mutated [ticket:1213].
 
     - Added ScopedSession.is_active accessor. [ticket:976]
+    
+    - Class-bound accessor can be used as the argument to 
+      relation() order_by.  [ticket:939]
+      
 - sql
     - Connection.invalidate() checks for closed status 
       to avoid attribute errors. [ticket:1246]
