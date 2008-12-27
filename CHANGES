@@ -143,6 +143,9 @@ CHANGES
           mapper since it's not needed.
       
 - sql
+    - NullPool supports reconnect on failure behavior.
+      [ticket:1094]
+      
     - Columns can again contain percent signs within their
       names. [ticket:1256]
       

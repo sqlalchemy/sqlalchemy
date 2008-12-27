@@ -695,6 +695,18 @@ class NullPool(Pool):
     def do_get(self):
         return self.create_connection()
 
+    def recreate(self):
+        self.log("Pool recreating")
+
+        return NullPool(self._creator, 
+            recycle=self._recycle, 
+            echo=self._should_log_info, 
+            use_threadlocal=self._use_threadlocal, 
+            listeners=self.listeners)
+
+    def dispose(self):
+        pass
+        
 class StaticPool(Pool):
     """A Pool of exactly one connection, used for all requests.
     

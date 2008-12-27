@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 import weakref
-from testlib.sa import select, MetaData, Table, Column, Integer, String
+from testlib.sa import select, MetaData, Table, Column, Integer, String, pool
 import testlib.sa as tsa
 from testlib import TestBase, testing, engines
 import time
@@ -219,6 +219,23 @@ class RealReconnectTest(TestBase):
 
         conn.close()
 
+    def test_null_pool(self):
+        engine = engines.reconnecting_engine(options=dict(poolclass=pool.NullPool))
+        conn = engine.connect()
+        self.assertEquals(conn.execute(select([1])).scalar(), 1)
+        assert not conn.closed
+        engine.test_shutdown()
+        try:
+            conn.execute(select([1]))
+            assert False
+        except tsa.exc.DBAPIError, e:
+            if not e.connection_invalidated:
+                raise
+        assert not conn.closed
+        assert conn.invalidated
+        self.assertEquals(conn.execute(select([1])).scalar(), 1)
+        assert not conn.invalidated
+        
     def test_close(self):
         conn = engine.connect()
         self.assertEquals(conn.execute(select([1])).scalar(), 1)

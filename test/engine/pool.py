@@ -572,6 +572,7 @@ class QueuePoolTest(PoolTestBase):
    def test_reconnect(self):
        """tests reconnect operations at the pool level.  SA's engine/dialect includes another
        layer of reconnect support for 'database was lost' errors."""
+       
        dbapi = MockDBAPI()
        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
        c1 = p.connect()
@@ -642,6 +643,24 @@ class SingletonThreadPoolTest(PoolTestBase):
             th.join()
             
         assert len(p._all_conns) == 3
+
+class NullPoolTest(PoolTestBase):
+    def test_reconnect(self):
+        dbapi = MockDBAPI()
+        p = pool.NullPool(creator = lambda: dbapi.connect('foo.db'))
+        c1 = p.connect()
+        c_id = c1.connection.id
+        c1.close(); c1=None
+
+        c1 = p.connect()
+        dbapi.raise_error = True
+        c1.invalidate()
+        c1 = None
+
+        c1 = p.connect()
+        assert c1.connection.id != c_id
+    
+        
     
 if __name__ == "__main__":
     testenv.main()
