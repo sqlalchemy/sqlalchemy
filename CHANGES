@@ -51,6 +51,8 @@ CHANGES
       is blocked and the exception will be reiterated on the 
       next compile() call.  This issue occurs frequently
       when using declarative.
+
+    - Added ScopedSession.is_active accessor. [ticket:976]
       
     - Corrected problem with Query.delete() and
       Query.update() not working properly with bind 
