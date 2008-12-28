@@ -1096,7 +1096,7 @@ class MSSQLDialect(default.DefaultDialect):
             if row is None:
                 break
             col_name, type_name = row[3], row[5]
-            if type_name.endswith("identity"):
+            if type_name.endswith("identity") and col_name in table.c:
                 ic = table.c[col_name]
                 ic.autoincrement = True
                 # setup a psuedo-sequence to represent the identity attribute - we interpret this at table.create() time as the identity attribute
@@ -1128,7 +1128,7 @@ class MSSQLDialect(default.DefaultDialect):
                                                                          C.c.table_schema == (table.schema or current_schema)))
         c = connection.execute(s)
         for row in c:
-            if 'PRIMARY' in row[TC.c.constraint_type.name]:
+            if 'PRIMARY' in row[TC.c.constraint_type.name] and row[0] in table.c:
                 table.primary_key.add(table.c[row[0]])
 
         # Foreign key constraints
