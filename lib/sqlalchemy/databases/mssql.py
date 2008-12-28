@@ -678,7 +678,24 @@ class MSNChar(_StringType, sqltypes.NCHAR):
 
 class MSBinary(sqltypes.Binary):
     def get_col_spec(self):
+        if self.length:
+            return "BINARY(%s)" % self.length
+        else:
+            return "BINARY"
+
+
+class MSVarBinary(MSBinary):
+    def get_col_spec(self):
+        if self.length:
+            return "VARBINARY(%s)" % self.length
+        else:
+            return "VARBINARY"
+
+
+class MSImage(MSBinary):
+    def get_col_spec(self):
         return "IMAGE"
+
 
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
@@ -861,10 +878,10 @@ class MSSQLDialect(default.DefaultDialect):
         'date': MSDate,
         'smalldatetime' : MSSmallDate,
         'binary' : MSBinary,
-        'varbinary' : MSBinary,
+        'varbinary' : MSVarBinary,
         'bit': MSBoolean,
         'real' : MSFloat,
-        'image' : MSBinary,
+        'image' : MSImage,
         'timestamp': MSTimeStamp,
         'money': MSMoney,
         'smallmoney': MSSmallMoney,

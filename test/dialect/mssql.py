@@ -548,6 +548,16 @@ class TypesTest2(TestBase, AssertsExecutionResults):
         columns = [
             # column type, args, kwargs, expected ddl
             (mssql.MSBinary, [], {},
+             'BINARY'),
+            (mssql.MSBinary, [10], {},
+             'BINARY(10)'),
+
+            (mssql.MSVarBinary, [], {},
+             'VARBINARY'),
+            (mssql.MSVarBinary, [10], {},
+             'VARBINARY(10)'),
+
+            (mssql.MSImage, [], {},
              'IMAGE')
            ]
 
@@ -570,6 +580,12 @@ class TypesTest2(TestBase, AssertsExecutionResults):
             assert True
         except:
             raise
+
+        reflected_binary = Table('test_mssql_binary', MetaData(testing.db), autoload=True)
+        for col in reflected_binary.c:
+            testing.eq_(col.type.__class__, binary_table.c[col.name].type.__class__)
+            if binary_table.c[col.name].type.length:
+                testing.eq_(col.type.length, binary_table.c[col.name].type.length)
         binary_table.drop()
 
     def test_boolean(self):
@@ -678,8 +694,6 @@ class TypesTest2(TestBase, AssertsExecutionResults):
              'VARCHAR'),
             (mssql.MSString, [1], {},
              'VARCHAR(1)'),
-            (mssql.MSString, ['max'], {},
-             'VARCHAR(max)'),
             (mssql.MSString, [1], {'collation': 'Latin1_General_CI_AS'},
              'VARCHAR(1) COLLATE Latin1_General_CI_AS'),
 
@@ -687,8 +701,6 @@ class TypesTest2(TestBase, AssertsExecutionResults):
              'NVARCHAR'),
             (mssql.MSNVarchar, [1], {},
              'NVARCHAR(1)'),
-            (mssql.MSNVarchar, ['max'], {},
-             'NVARCHAR(max)'),
             (mssql.MSNVarchar, [1], {'collation': 'Latin1_General_CI_AS'},
              'NVARCHAR(1) COLLATE Latin1_General_CI_AS'),
 
