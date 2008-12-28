@@ -1101,7 +1101,7 @@ class Query(object):
         return self._execute_and_instances(context)
 
     def _execute_and_instances(self, querycontext):
-        result = self.session.execute(querycontext.statement, params=self._params, mapper=self._mapper_zero_or_none(), _state=self._refresh_state)
+        result = self.session.execute(querycontext.statement, params=self._params, mapper=self._mapper_zero_or_none())
         return self.instances(result, querycontext)
 
     def instances(self, cursor, __context=None):

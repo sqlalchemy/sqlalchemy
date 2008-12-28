@@ -65,7 +65,7 @@ class ShardedSession(Session):
         else:
             return self.get_bind(mapper, shard_id=shard_id, instance=instance).contextual_connect(**kwargs)
     
-    def get_bind(self, mapper, shard_id=None, instance=None, clause=None):
+    def get_bind(self, mapper, shard_id=None, instance=None, clause=None, **kw):
         if shard_id is None:
             shard_id = self.shard_chooser(mapper, instance, clause=clause)
         return self.__binds[shard_id]

@@ -144,6 +144,9 @@ CHANGES
           queried against. The column won't be
           "pulled in" from a subclass or superclass
           mapper since it's not needed.
+
+    - Fixed shard_id argument on ShardedSession.execute().
+      [ticket:1072]
       
 - sql
     - Columns can again contain percent signs within their
