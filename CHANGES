@@ -26,6 +26,9 @@ CHANGES
     
     - Class-bound accessor can be used as the argument to 
       relation() order_by.  [ticket:939]
+
+    - Fixed shard_id argument on ShardedSession.execute().
+      [ticket:1072]
       
 - sql
     - Connection.invalidate() checks for closed status 

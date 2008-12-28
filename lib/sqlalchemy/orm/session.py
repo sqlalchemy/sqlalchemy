@@ -601,7 +601,7 @@ class Session(object):
         else:
             return engine.contextual_connect(**kwargs)
 
-    def execute(self, clause, params=None, mapper=None, instance=None):
+    def execute(self, clause, params=None, mapper=None, instance=None, **kw):
         """Execute the given clause, using the current transaction (if any).
 
         Returns a ``ResultProxy`` corresponding to the execution's results.
@@ -621,9 +621,14 @@ class Session(object):
         instance
             used by some Query operations to further identify
             the proper bind, in the case of ShardedSession.
+
+        \**kw
+          Additional keyword arguments are sent to ``get_bind()``
+          which locates a connectable to use for the execution.
+          Subclasses of ``Session`` may override this.
             
         """
-        engine = self.get_bind(mapper, clause=clause, instance=instance)
+        engine = self.get_bind(mapper, clause=clause, instance=instance, **kw)
 
         return self.__connection(engine, close_with_result=True).execute(clause, params or {})
 

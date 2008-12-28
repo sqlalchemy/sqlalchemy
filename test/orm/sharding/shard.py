@@ -144,6 +144,7 @@ class ShardTest(TestBase):
 
         assert db2.execute(weather_locations.select()).fetchall() == [(1, 'Asia', 'Tokyo')]
         assert db1.execute(weather_locations.select()).fetchall() == [(2, 'North America', 'New York'), (3, 'North America', 'Toronto')]
+        assert sess.execute(weather_locations.select(), shard_id='asia').fetchall() == [(1, 'Asia', 'Tokyo')]
 
         t = sess.query(WeatherLocation).get(tokyo.id)
         assert t.city == tokyo.city
