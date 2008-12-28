@@ -252,8 +252,9 @@ class GenerativeQueryTest(TestBase):
 class SchemaTest(TestBase):
 
     def setUp(self):
-        t = Table('sometable', MetaData(), 
-            Column('test_column', Integer)
+        t = Table('sometable', MetaData(),
+            Column('pk_column', Integer),
+            Column('test_column', String)
         )
         self.column = t.c.test_column
 
@@ -262,8 +263,7 @@ class SchemaTest(TestBase):
             mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
         column_specification = \
             schemagenerator.get_column_specification(self.column)
-        assert "test_column INTEGER NULL" == column_specification, \
-               column_specification
+        eq_("test_column VARCHAR NULL", column_specification)
 
     def test_that_mssql_none_nullability_does_not_emit_nullability(self):
         schemagenerator = \
@@ -271,8 +271,7 @@ class SchemaTest(TestBase):
         self.column.nullable = None
         column_specification = \
             schemagenerator.get_column_specification(self.column)
-        assert "test_column INTEGER" == column_specification, \
-               column_specification
+        eq_("test_column VARCHAR", column_specification)
 
     def test_that_mssql_specified_nullable_emits_null(self):
         schemagenerator = \
@@ -280,8 +279,7 @@ class SchemaTest(TestBase):
         self.column.nullable = True
         column_specification = \
             schemagenerator.get_column_specification(self.column)
-        assert "test_column INTEGER NULL" == column_specification, \
-               column_specification
+        eq_("test_column VARCHAR NULL", column_specification)
 
     def test_that_mssql_specified_not_nullable_emits_not_null(self):
         schemagenerator = \
@@ -289,8 +287,7 @@ class SchemaTest(TestBase):
         self.column.nullable = False
         column_specification = \
             schemagenerator.get_column_specification(self.column)
-        assert "test_column INTEGER NOT NULL" == column_specification, \
-               column_specification
+        eq_("test_column VARCHAR NOT NULL", column_specification)
 
 
 def full_text_search_missing():

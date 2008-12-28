@@ -1499,7 +1499,7 @@ class MSSQLSchemaGenerator(compiler.SchemaGenerator):
         colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
 
         if column.nullable is not None:
-            if not column.nullable:
+            if not column.nullable or column.primary_key:
                 colspec += " NOT NULL"
             else:
                 colspec += " NULL"

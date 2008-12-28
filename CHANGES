@@ -234,6 +234,10 @@ CHANGES
       new doc section "Custom Comparators".
     
 - mssql
+    - If the column is part of a ``primary_key`` it will be
+      ``NOT NULL`` since MSSQL doesn't allow ``NULL`` in primary_key
+      columns.
+
     - ``MSBinary`` now returns a ``BINARY`` instead of an
       ``IMAGE``. This is a backwards incompatible change in that
       ``BINARY`` is a fixed length data type whereas ``IMAGE`` is

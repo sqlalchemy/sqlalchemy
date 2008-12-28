@@ -29,7 +29,7 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
             ForeignKeyConstraint(['emp_id', 'emp_soc'], ['employees.id', 'employees.soc'])
             )
         metadata.create_all()
-    
+
     def test_double_fk_usage_raises(self):
         f = ForeignKey('b.id')
         
