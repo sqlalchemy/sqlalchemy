@@ -901,6 +901,13 @@ def _labeled(element):
     else:
         return element
 
+def _column_as_key(element):
+    if isinstance(element, basestring):
+        return element
+    if hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+    return element.key
+    
 def _literal_as_text(element):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
@@ -3496,10 +3503,6 @@ class _UpdateBase(ClauseElement):
         return s
 
     def _process_colparams(self, parameters):
-
-        if parameters is None:
-            return None
-
         if isinstance(parameters, (list, tuple)):
             pp = {}
             for i, c in enumerate(self.table.c):

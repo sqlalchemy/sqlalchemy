@@ -64,6 +64,14 @@ CHANGES
       when using declarative.
 
     - Added ScopedSession.is_active accessor. [ticket:976]
+    
+    - Can pass mapped attributes and column objects as keys
+      to query.update({}).  [ticket:1262]
+      
+    - Mapped attributes passed to the values() of an 
+      expression level insert() or update() will use the 
+      keys of the mapped columns, not that of the mapped 
+      attribute.
       
     - Corrected problem with Query.delete() and
       Query.update() not working properly with bind 

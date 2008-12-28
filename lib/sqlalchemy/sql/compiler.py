@@ -653,12 +653,12 @@ class DefaultCompiler(engine.Compiled):
         if self.column_keys is None:
             parameters = {}
         else:
-            parameters = dict((getattr(key, 'key', key), None)
+            parameters = dict((sql._column_as_key(key), None)
                               for key in self.column_keys)
 
         if stmt.parameters is not None:
             for k, v in stmt.parameters.iteritems():
-                parameters.setdefault(getattr(k, 'key', k), v)
+                parameters.setdefault(sql._column_as_key(k), v)
 
         # create a list of column assignment clauses as tuples
         values = []

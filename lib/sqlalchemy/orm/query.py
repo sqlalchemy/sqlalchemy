@@ -1448,6 +1448,7 @@ class Query(object):
 
                 value_evaluators = {}
                 for key,value in values.items():
+                    key = expression._column_as_key(key)
                     value_evaluators[key] = evaluator_compiler.process(expression._literal_as_binds(value))
             except evaluator.UnevaluatableError:
                 synchronize_session = 'expire'

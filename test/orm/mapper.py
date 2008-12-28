@@ -25,6 +25,21 @@ class MapperTest(_fixtures.FixtureTest):
         self.assertRaises(sa.exc.ArgumentError, sa.orm.compile_mappers)
 
     @testing.resolve_artifact_names
+    def test_update_attr_keys(self):
+        """test that update()/insert() use the correct key when given InstrumentedAttributes."""
+        
+        mapper(User, users, properties={
+            'foobar':users.c.name
+        })
+
+        users.insert().values({User.foobar:'name1'}).execute()
+        eq_(sa.select([User.foobar]).where(User.foobar=='name1').execute().fetchall(), [('name1',)])
+
+        users.update().values({User.foobar:User.foobar + 'foo'}).execute()
+        eq_(sa.select([User.foobar]).where(User.foobar=='name1foo').execute().fetchall(), [('name1foo',)])
+        
+
+    @testing.resolve_artifact_names
     def test_prop_accessor(self):
         mapper(User, users)
         self.assertRaises(NotImplementedError,
