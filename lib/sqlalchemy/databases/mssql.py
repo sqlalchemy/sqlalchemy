@@ -676,7 +676,23 @@ class MSNChar(_StringType, sqltypes.NCHAR):
             return self._extend("NCHAR")
 
 
-class MSBinary(sqltypes.Binary):
+class MSGenericBinary(sqltypes.Binary):
+    """The Binary type assumes that a Binary specification without a length
+    is an unbound Binary type whereas one with a length specification results
+    in a fixed length Binary type.
+
+    If you want standard MSSQL ``BINARY`` behavior use the ``MSBinary`` type.
+
+    """
+
+    def get_col_spec(self):
+        if self.length:
+            return "BINARY(%s)" % self.length
+        else:
+            return "IMAGE"
+
+
+class MSBinary(MSGenericBinary):
     def get_col_spec(self):
         if self.length:
             return "BINARY(%s)" % self.length
@@ -684,7 +700,7 @@ class MSBinary(sqltypes.Binary):
             return "BINARY"
 
 
-class MSVarBinary(MSBinary):
+class MSVarBinary(MSGenericBinary):
     def get_col_spec(self):
         if self.length:
             return "VARBINARY(%s)" % self.length
@@ -692,7 +708,7 @@ class MSVarBinary(MSBinary):
             return "VARBINARY"
 
 
-class MSImage(MSBinary):
+class MSImage(MSGenericBinary):
     def get_col_spec(self):
         return "IMAGE"
 
@@ -720,21 +736,26 @@ class MSBoolean(sqltypes.Boolean):
                 return value and True or False
         return process
 
+
 class MSTimeStamp(sqltypes.TIMESTAMP):
     def get_col_spec(self):
         return "TIMESTAMP"
+
 
 class MSMoney(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "MONEY"
 
+
 class MSSmallMoney(MSMoney):
     def get_col_spec(self):
         return "SMALLMONEY"
 
+
 class MSUniqueIdentifier(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "UNIQUEIDENTIFIER"
+
 
 class MSVariant(sqltypes.TypeEngine):
     def get_col_spec(self):
@@ -851,7 +872,7 @@ class MSSQLDialect(default.DefaultDialect):
         sqltypes.Date : MSDate,
         sqltypes.Time : MSTime,
         sqltypes.String : MSString,
-        sqltypes.Binary : MSBinary,
+        sqltypes.Binary : MSGenericBinary,
         sqltypes.Boolean : MSBoolean,
         sqltypes.Text : MSText,
         sqltypes.UnicodeText : MSNText,

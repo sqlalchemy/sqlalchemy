@@ -43,7 +43,13 @@ CHANGES
       sent to connection.execute() and friends.  [ticket:935]
       
 - mssql
+    - Added in a new MSGenericBinary type. This maps to the Binary
+      type so it can implement the specialized behavior of treating
+      length specified types as fixed-width Binary types and
+      non-length types as an unbound variable length Binary type.
+
     - Added in new types: MSVarBinary and MSImage. [ticket:1249]
+
     - Added in the MSReal and MSNText types.
 
 - bugfixes, behavioral changes
