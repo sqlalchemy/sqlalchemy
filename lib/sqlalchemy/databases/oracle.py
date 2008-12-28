@@ -202,6 +202,10 @@ class OracleString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
 
+class OracleNVarchar(sqltypes.Unicode, OracleString):
+    def get_col_spec(self):
+        return "NVARCHAR2(%(length)s)" % {'length' : self.length}
+
 class OracleText(sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
@@ -297,6 +301,7 @@ colspecs = {
 
 ischema_names = {
     'VARCHAR2' : OracleString,
+    'NVARCHAR2' : OracleNVarchar,
     'CHAR' : OracleString,
     'DATE' : OracleDateTime,
     'DATETIME' : OracleDateTime,

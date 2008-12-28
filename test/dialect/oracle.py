@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.sql import table, column
@@ -296,6 +298,22 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             )
         [[row[k] for k in row.keys()] for row in types_table.select().execute().fetchall()]
 
+    def test_reflect_nvarchar(self):
+        metadata = MetaData(testing.db)
+        t = Table('t', metadata,
+            Column('data', oracle.OracleNVarchar(255))
+        )
+        metadata.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('t', m2, autoload=True)
+            assert isinstance(t2.c.data.type, oracle.OracleNVarchar)
+            data = u'm’a réveillé.'
+            t2.insert().execute(data=data)
+            eq_(t2.select().execute().fetchone()['data'], data)
+        finally:
+            metadata.drop_all()
+        
     def test_longstring(self):
         metadata = MetaData(testing.db)
         testing.db.execute("""
