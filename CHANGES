@@ -38,6 +38,10 @@ CHANGES
       classes used for both the dynamic collection and the queries
       built from it.
 
+- sql
+    - RowProxy objects can be used in place of dictionary arguments 
+      sent to connection.execute() and friends.  [ticket:935]
+      
 - mssql
     - Added in new types: MSVarBinary and MSImage. [ticket:1249]
     - Added in the MSReal and MSNText types.

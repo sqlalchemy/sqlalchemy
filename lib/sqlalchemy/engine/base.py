@@ -835,16 +835,16 @@ class Connection(Connectable):
         elif len(multiparams) == 1:
             zero = multiparams[0]
             if isinstance(zero, (list, tuple)):
-                if not zero or isinstance(zero[0], (list, tuple, dict)):
+                if not zero or hasattr(zero[0], '__iter__'):
                     return zero
                 else:
                     return [zero]
-            elif isinstance(zero, dict):
+            elif hasattr(zero, 'keys'):
                 return [zero]
             else:
                 return [[zero]]
         else:
-            if isinstance(multiparams[0], (list, tuple, dict)):
+            if hasattr(multiparams[0], '__iter__'):
                 return multiparams
             else:
                 return [multiparams]
