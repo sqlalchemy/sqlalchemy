@@ -555,8 +555,13 @@ class TypesTest2(TestBase, AssertsExecutionResults):
              'VARBINARY(10)'),
 
             (mssql.MSImage, [], {},
-             'IMAGE')
-           ]
+             'IMAGE'),
+
+            (types.Binary, [], {},
+             'IMAGE'),
+            (types.Binary, [10], {},
+             'BINARY(10)')
+            ]
 
         table_args = ['test_mssql_binary', MetaData(testing.db)]
         for index, spec in enumerate(columns):
@@ -580,7 +585,11 @@ class TypesTest2(TestBase, AssertsExecutionResults):
 
         reflected_binary = Table('test_mssql_binary', MetaData(testing.db), autoload=True)
         for col in reflected_binary.c:
-            testing.eq_(col.type.__class__, binary_table.c[col.name].type.__class__)
+            # don't test the MSGenericBinary since it's a special case and
+            # reflected it will map to a MSImage or MSBinary depending
+            if not testing.db.dialect.type_descriptor(binary_table.c[col.name].type).__class__ == mssql.MSGenericBinary:
+                testing.eq_(testing.db.dialect.type_descriptor(col.type).__class__,
+                    testing.db.dialect.type_descriptor(binary_table.c[col.name].type).__class__)
             if binary_table.c[col.name].type.length:
                 testing.eq_(col.type.length, binary_table.c[col.name].type.length)
         binary_table.drop()
@@ -864,7 +873,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
     def tearDownAll(self):
         binary_table.drop()
 
-    def testbinary(self):
+    def test_binary(self):
         testobj1 = pickleable.Foo('im foo 1')
         testobj2 = pickleable.Foo('im foo 2')
         testobj3 = pickleable.Foo('im foo 3')
