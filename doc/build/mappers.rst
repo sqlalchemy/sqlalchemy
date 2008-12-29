@@ -1564,7 +1564,7 @@ It works just as well with an inline ``Query.join()`` or ``Query.outerjoin()``::
 
     session.query(User).outerjoin(User.addresses).options(contains_eager(User.addresses)).all()
 
-If the "eager" portion of the statement is "aliased", the ``alias`` keyword argument to ``contains_eager()`` may be used to indicate it.  This is a string alias name or reference to an actual ``Alias`` object:
+If the "eager" portion of the statement is "aliased", the ``alias`` keyword argument to ``contains_eager()`` may be used to indicate it.  This is a string alias name or reference to an actual ``Alias`` (or other selectable) object:
 
 .. sourcecode:: python+sql
 
@@ -1572,13 +1572,31 @@ If the "eager" portion of the statement is "aliased", the ``alias`` keyword argu
     adalias = aliased(Address)
 
     # construct a Query object which expects the "addresses" results
-    query = session.query(User).outerjoin((adalias, User.addresses)).options(contains_eager(User.addresses, alias=adalias))
+    query = session.query(User).\
+        outerjoin((adalias, User.addresses)).\
+        options(contains_eager(User.addresses, alias=adalias))
 
     # get results normally
     {sql}r = query.all()
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, adalias.address_id AS adalias_address_id,
     adalias.user_id AS adalias_user_id, adalias.email_address AS adalias_email_address, (...other columns...)
     FROM users LEFT OUTER JOIN email_addresses AS email_addresses_1 ON users.user_id = email_addresses_1.user_id
+
+The ``alias`` argument is used only as a source of columns to match up to the result set.  You can use it even to match up the result to arbitrary label names in a string SQL statement, by passing a selectable() which links those labels to the mapped ``Table``::
+
+    # label the columns of the addresses table
+    eager_columns = select([
+                        addresses.c.address_id.label('a1'), 
+                        addresses.c.email_address.label('a2'), 
+                        addresses.c.user_id.label('a3')])
+    
+    # select from a raw SQL statement which uses those label names for the
+    # addresses table.  contains_eager() matches them up.
+    query = session.query(User).\
+        from_statement("select users.*, addresses.address_id as a1, "
+                "addresses.email_address as a2, addresses.user_id as a3 "
+                "from users left outer join addresses on users.user_id=addresses.user_id").\
+        options(contains_eager(User.addresses, alias=eager_columns))
 
 The path given as the argument to ``contains_eager()`` needs to be a full path from the starting entity.  For example if we were loading ``Users->orders->Order->items->Item``, the string version would look like::
 

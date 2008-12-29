@@ -96,7 +96,7 @@ arguments on the URL, or as keyword argument to
 
 * *auto_identity_insert* - enables support for IDENTITY inserts by
   automatically turning IDENTITY INSERT ON and OFF as required.
-  Defaults to ``True`.
+  Defaults to ``True``.
 
 * *query_timeout* - allows you to override the default query timeout.
   Defaults to ``None``. This is only supported on pymssql.

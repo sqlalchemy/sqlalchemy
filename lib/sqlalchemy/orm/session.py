@@ -742,7 +742,7 @@ class Session(object):
           Optional, a ``mapper`` or mapped class
 
         \**kw
-          Additional keyword arguments are sent to :method:`get_bind()`
+          Additional keyword arguments are sent to :meth:`get_bind()`
           which locates a connectable to use for the execution.
           Subclasses of :class:`Session` may override this.
           
