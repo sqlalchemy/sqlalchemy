@@ -168,23 +168,6 @@ always possible.  If you hit a wall, join us on the mailing list or, better,
 IRC!
 
 
-ALTERNATE PYTHON IMPLEMENTATIONS
---------------------------------
-The test suite restricts itself to largely Python 2.3-level constructs and
-standard library features, with the notable exception of decorators, which are
-used extensively throughout the suite.
-
-A source transformation tool is included that allows testing on Python 2.3 or
-any other Python implementation that lacks @decorator support.
-
-To use it:
-
-  $ python test/clone.py -c --filter=py23 test23
-
-This will copy the test/ directory structure into test23/, with @decorators in
-the source code transformed into 2.3-friendly syntax.
-
-
 TIPS
 ----
 Postgres: The tests require an 'alt_schema' and 'alt_schema_2' to be present in

@@ -6,7 +6,7 @@ The Python SQL Toolkit and Object Relational Mapper
 Requirements
 ------------
 
-SQLAlchemy requires Python 2.3 or higher.  One or more DB-API implementations
+SQLAlchemy requires Python 2.4 or higher.  One or more DB-API implementations
 are also required for database access.  See docs/intro.html for more
 information on supported DB-API implementations.
 
