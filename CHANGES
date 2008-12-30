@@ -41,7 +41,12 @@ CHANGES
 - sql
     - RowProxy objects can be used in place of dictionary arguments 
       sent to connection.execute() and friends.  [ticket:935]
-      
+
+- dialect
+    - Added a new description_encoding attribute on the dialect
+      that is used for encoding the column name when processing
+      the metadata. This usually defaults to utf-8.
+
 - mssql
     - Added in a new MSGenericBinary type. This maps to the Binary
       type so it can implement the specialized behavior of treating

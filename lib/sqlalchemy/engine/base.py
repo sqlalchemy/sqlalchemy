@@ -107,6 +107,11 @@ class Dialect(object):
 
     supports_default_values
       Indicates if the construct ``INSERT INTO tablename DEFAULT VALUES`` is supported
+
+    description_encoding
+      type of encoding to use for unicode when working with metadata
+      descriptions. If set to ``None`` no encoding will be done.
+      This usually defaults to 'utf-8'.
     """
 
     def create_connect_args(self, url):
@@ -1441,7 +1446,9 @@ class ResultProxy(object):
         typemap = self.dialect.dbapi_type_map
 
         for i, item in enumerate(metadata):
-            colname = item[0].decode(self.dialect.encoding)
+            colname = item[0]
+            if self.dialect.description_encoding:
+                colname = colname.decode(self.dialect.description_encoding)
 
             if '.' in colname:
                 # sqlite will in some circumstances prepend table name to colnames, so strip

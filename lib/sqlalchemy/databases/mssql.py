@@ -922,9 +922,10 @@ class MSSQLDialect(default.DefaultDialect):
             return object.__new__(cls, *args, **kwargs)
 
     def __init__(self,
-                 auto_identity_insert=True, query_timeout=None, text_as_varchar=False,
-                 use_scope_identity=False,  has_window_funcs=False, max_identifier_length=None,
-                 schema_name="dbo", **opts):
+                 auto_identity_insert=True, query_timeout=None,
+                 text_as_varchar=False, use_scope_identity=False,
+                 has_window_funcs=False, max_identifier_length=None,
+                 schema_name="dbo", description_encoding='utf-8', **opts):
         self.auto_identity_insert = bool(auto_identity_insert)
         self.query_timeout = int(query_timeout or 0)
         self.schema_name = schema_name
@@ -934,7 +935,7 @@ class MSSQLDialect(default.DefaultDialect):
         self.use_scope_identity = bool(use_scope_identity)
         self.has_window_funcs =  bool(has_window_funcs)
         self.max_identifier_length = int(max_identifier_length or 0) or 128
-        super(MSSQLDialect, self).__init__(**opts)
+        super(MSSQLDialect, self).__init__(description_encoding=description_encoding, **opts)
 
     @classmethod
     def dbapi(cls, module_name=None):
@@ -1240,8 +1241,8 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
     supports_unicode_statements = supports_unicode
     execution_ctx_cls = MSSQLExecutionContext_pyodbc
 
-    def __init__(self, **params):
-        super(MSSQLDialect_pyodbc, self).__init__(**params)
+    def __init__(self, description_encoding='latin-1', **params):
+        super(MSSQLDialect_pyodbc, self).__init__(description_encoding=description_encoding, **params)
         # FIXME: scope_identity sniff should look at server version, not the ODBC driver
         # whether use_scope_identity will work depends on the version of pyodbc
         try:
@@ -1569,3 +1570,4 @@ dialect.statement_compiler = MSSQLCompiler
 dialect.schemagenerator = MSSQLSchemaGenerator
 dialect.schemadropper = MSSQLSchemaDropper
 dialect.preparer = MSSQLIdentifierPreparer
+
