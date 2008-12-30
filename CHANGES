@@ -22,6 +22,9 @@ CHANGES
       recommended over easy_install as it installs in a more
       simplified way.
 
+    - added an extremely basic illustration of a PostGIS
+      integration to the examples folder.
+      
 - orm
     - Query.with_polymorphic() now accepts a third argument
       "discriminator" which will replace the value of
