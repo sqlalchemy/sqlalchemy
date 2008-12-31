@@ -1616,7 +1616,6 @@ class Mapper(object):
                     if instance is EXT_CONTINUE:
                         instance = self.class_manager.new_instance()
                     else:
-                        # TODO: don't think theres coverage here
                         manager = attributes.manager_of_class(instance.__class__)
                         # TODO: if manager is None, raise a friendly error about
                         # returning instances of unmapped types

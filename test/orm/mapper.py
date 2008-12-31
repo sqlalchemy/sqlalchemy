@@ -2101,7 +2101,22 @@ class MapperExtensionTest(_fixtures.FixtureTest):
              'create_instance', 'populate_instance', 'reconstruct_instance',
              'append_result', 'before_update', 'after_update', 'before_delete',
              'after_delete'])
-
+        
+    @testing.resolve_artifact_names
+    def test_create_instance(self):
+        class CreateUserExt(sa.orm.MapperExtension):
+            def create_instance(self, mapper, selectcontext, row, class_):
+                return User.__new__(User)
+                
+        mapper(User, users, extension=CreateUserExt())
+        sess = create_session()
+        u1 = User()
+        u1.name = 'ed'
+        sess.add(u1)
+        sess.flush()
+        sess.clear()
+        assert sess.query(User).first()
+        
 
 class RequirementsTest(_base.MappedTest):
     """Tests the contract for user classes."""

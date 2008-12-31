@@ -1246,6 +1246,9 @@ class ClassManager(dict):
         setattr(instance, self.STATE_ATTR, state or self.instance_state_factory(instance, self))
         return instance
 
+    def setup_instance(self, instance, state=None):
+        setattr(instance, self.STATE_ATTR, state or self.instance_state_factory(instance, self))
+        
     def _new_state_if_none(self, instance):
         """Install a default InstanceState if none is present.
 
@@ -1333,7 +1336,7 @@ class _ClassInstrumentationAdapter(ClassManager):
 
     def new_instance(self, state=None):
         instance = self.class_.__new__(self.class_)
-        self._setup_instance(instance, state)
+        self.setup_instance(instance, state)
         return instance
 
     def _new_state_if_none(self, instance):
@@ -1344,9 +1347,9 @@ class _ClassInstrumentationAdapter(ClassManager):
         if self.has_state(instance):
             return False
         else:
-            return self._setup_instance(instance)
+            return self.setup_instance(instance)
 
-    def _setup_instance(self, instance, state=None):
+    def setup_instance(self, instance, state=None):
         self._adapted.initialize_instance_dict(self.class_, instance)
         
         if state is None:
