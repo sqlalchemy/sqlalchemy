@@ -52,6 +52,10 @@ class OrderedDictTest(TestBase):
         eq_(o.keys(), ['a', 'b', 'c', 'd', 'e', 'f'])
         eq_(o.values(), [1, 2, 3, 4, 5, 6])
 
+    def test_odict_constructor(self):
+        o = util.OrderedDict([('name', 'jbe'), ('fullname', 'jonathan'), ('password', '')])
+        eq_(o.keys(), ['name', 'fullname', 'password'])
+
 class OrderedSetTest(TestBase):
     def test_mutators_against_iter(self):
         # testing a set modified against an iterator
