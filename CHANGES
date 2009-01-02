@@ -71,6 +71,15 @@ CHANGES
       next compile() call.  This issue occurs frequently
       when using declarative.
 
+    - Custom comparator classes used in conjunction with 
+      column_property(), relation() etc. can define 
+      new comparison methods on the Comparator, which will
+      become available via __getattr__() on the 
+      InstrumentedAttribute.   In the case of synonym()
+      or comparable_property(), attributes are resolved first
+      on the user-defined descriptor, then on the user-defined
+      comparator.
+      
     - Added ScopedSession.is_active accessor. [ticket:976]
     
     - Can pass mapped attributes and column objects as keys

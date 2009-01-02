@@ -717,11 +717,22 @@ class MapperTest(_fixtures.FixtureTest):
     def test_comparable(self):
         class extendedproperty(property):
             attribute = 123
+            
+            def method1(self):
+                return "method1"
+            
             def __getitem__(self, key):
                 return 'value'
 
         class UCComparator(sa.orm.PropComparator):
             __hash__ = None
+            
+            def method1(self):
+                return "uccmethod1"
+                
+            def method2(self, other):
+                return "method2"
+                
             def __eq__(self, other):
                 cls = self.prop.parent.class_
                 col = getattr(cls, 'name')
@@ -754,6 +765,14 @@ class MapperTest(_fixtures.FixtureTest):
             assert hasattr(User, 'name')
             assert hasattr(User, 'uc_name')
 
+            eq_(User.uc_name.method1(), "method1")
+            eq_(User.uc_name.method2('x'), "method2")
+
+            self.assertRaisesMessage(
+                AttributeError, 
+                "Neither 'extendedproperty' object nor 'UCComparator' object has an attribute 'nonexistent'", 
+                getattr, User.uc_name, 'nonexistent')
+            
             # test compile
             assert not isinstance(User.uc_name == 'jack', bool)
             u = q.filter(User.uc_name=='JACK').one()
@@ -778,6 +797,30 @@ class MapperTest(_fixtures.FixtureTest):
             eq_(User.uc_name.attribute, 123)
             eq_(User.uc_name['key'], 'value')
             sess.rollback()
+
+    @testing.resolve_artifact_names
+    def test_comparable_column(self):
+        class MyComparator(sa.orm.properties.ColumnProperty.Comparator):
+            def __eq__(self, other):
+                # lower case comparison
+                return func.lower(self.__clause_element__()) == func.lower(other)
+                
+            def intersects(self, other):
+                # non-standard comparator
+                return self.__clause_element__().op('&=')(other)
+                
+        mapper(User, users, properties={
+            'name':sa.orm.column_property(users.c.name, comparator_factory=MyComparator)
+        })
+        
+        self.assertRaisesMessage(
+            AttributeError, 
+            "Neither 'InstrumentedAttribute' object nor 'MyComparator' object has an attribute 'nonexistent'", 
+            getattr, User.name, "nonexistent")
+
+        eq_(str((User.name == 'ed').compile(dialect=sa.engine.default.DefaultDialect())) , "lower(users.name) = lower(:lower_1)")
+        eq_(str((User.name.intersects('ed')).compile(dialect=sa.engine.default.DefaultDialect())), "users.name &= :name_1")
+        
 
     @testing.resolve_artifact_names
     def test_reconstructor(self):

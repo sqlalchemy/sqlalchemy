@@ -42,6 +42,7 @@ class ColumnProperty(StrategizedProperty):
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
         self.comparator_factory = kwargs.pop('comparator_factory', self.__class__.Comparator)
+        self.descriptor = kwargs.pop('descriptor', None)
         self.extension = kwargs.pop('extension', None)
         util.set_creation_order(self)
         if self.deferred:
@@ -206,6 +207,7 @@ class SynonymProperty(MapperProperty):
                     if obj is None:
                         return s
                     return getattr(obj, self.name)
+
             self.descriptor = SynonymProp()
 
         def comparator_callable(prop, mapper):

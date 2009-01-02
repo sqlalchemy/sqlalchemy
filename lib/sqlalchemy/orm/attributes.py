@@ -131,7 +131,17 @@ class QueryableAttribute(interfaces.PropComparator):
 
     def hasparent(self, state, optimistic=False):
         return self.impl.hasparent(state, optimistic=optimistic)
-
+    
+    def __getattr__(self, key):
+        try:
+            return getattr(self.comparator, key)
+        except AttributeError:
+            raise AttributeError('Neither %r object nor %r object has an attribute %r' % (
+                    type(self).__name__, 
+                    type(self.comparator).__name__, 
+                    key)
+            )
+        
     def __str__(self):
         return repr(self.parententity) + "." + self.property.key
 
@@ -195,8 +205,19 @@ def proxied_attribute_factory(descriptor):
             return descriptor.__delete__(instance)
 
         def __getattr__(self, attribute):
-            """Delegate __getattr__ to the original descriptor."""
-            return getattr(descriptor, attribute)
+            """Delegate __getattr__ to the original descriptor and/or comparator."""
+            
+            try:
+                return getattr(descriptor, attribute)
+            except AttributeError:
+                try:
+                    return getattr(self._comparator, attribute)
+                except AttributeError:
+                    raise AttributeError('Neither %r object nor %r object has an attribute %r' % (
+                            type(descriptor).__name__, 
+                            type(self._comparator).__name__, 
+                            attribute)
+                    )
 
         def _property(self):
             return self._parententity.get_property(self.key, resolve_synonyms=True)

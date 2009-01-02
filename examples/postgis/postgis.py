@@ -123,21 +123,14 @@ class GisComparator(ColumnProperty.ColumnComparator):
     """Intercepts standard Column operators on mapped class attributes
     and overrides their behavior.
     
-    The PropComparator API currently does not allow "custom"
-    operators to be added, so only those operators which
-    already exist on Column can be overridden here.  Additional
-    GIS-specific operators can be implemented as standalone 
-    functions.
     
     """
     
     def __eq__(self, other):
         return self.__clause_element__().op('~=')(_to_postgis(other))
 
-def intersects(x, y):
-    """An example standalone GIS-specific comparison operator."""
-    
-    return _to_postgis(x).op('&&')(_to_postgis(y))
+    def intersects(self, other):
+        return self.__clause_element__().op('&&')(_to_postgis(other))
     
 class gis_element(object):
     """Represents a geometry value.
@@ -219,7 +212,7 @@ if __name__ == '__main__':
     assert r1 is r2 is r3
 
     # illustrate the "intersects" operator
-    print session.query(Road).filter(intersects(Road.road_geom, r1.road_geom)).all()
+    print session.query(Road).filter(Road.road_geom.intersects(r1.road_geom)).all()
 
     # illustrate usage of the "wkt" accessor. this requires a DB
     # execution to call the AsText() function so we keep this explicit.
