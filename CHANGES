@@ -272,6 +272,8 @@ CHANGES
       new doc section "Custom Comparators".
     
 - mssql
+    - Mapped ``char_length`` to the ``LEN()`` function.
+
     - If an ``INSERT`` includes a subselect the ``INSERT`` is
       converted from an ``INSERT INTO VALUES`` construct to a
       ``INSERT INTO SELECT`` construct.

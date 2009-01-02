@@ -1377,7 +1377,8 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         {
             sql_functions.now: 'CURRENT_TIMESTAMP',
             sql_functions.current_date: 'GETDATE()',
-            'length': lambda x: "LEN(%s)" % x
+            'length': lambda x: "LEN(%s)" % x,
+            sql_functions.char_length: lambda x: "LEN(%s)" % x
         }
     )
 
