@@ -162,7 +162,6 @@ class SessionTest(_fixtures.FixtureTest):
         assert len(session.query(User).filter_by(name='Johnny').all()) == 0
         session.close()
 
-    @testing.crashes('mssql', 'test causes mssql to hang')
     @testing.requires.independent_connections
     @engines.close_open_connections
     @testing.resolve_artifact_names
@@ -182,7 +181,6 @@ class SessionTest(_fixtures.FixtureTest):
         assert testing.db.connect().execute("select count(1) from users").scalar() == 1
         sess.close()
 
-    @testing.crashes('mssql', 'test causes mssql to hang')
     @testing.requires.independent_connections
     @engines.close_open_connections
     @testing.resolve_artifact_names
@@ -232,7 +230,6 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(q.one(), Address(email_address='foo'))
 
 
-    @testing.crashes('mssql', 'test causes mssql to hang')
     @testing.requires.independent_connections
     @engines.close_open_connections
     @testing.resolve_artifact_names
@@ -391,7 +388,6 @@ class SessionTest(_fixtures.FixtureTest):
         session.commit()
         assert session.connection().execute("select count(1) from users").scalar() == 2
 
-    @testing.crashes('mssql', 'test causes mssql to hang')
     @testing.fails_on('sqlite', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_transactions_isolated(self):

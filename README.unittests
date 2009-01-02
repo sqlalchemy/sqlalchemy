@@ -177,3 +177,14 @@ Postgres: When running the tests on postgres, postgres can get slower and
 slower each time you run the tests.  This seems to be related to the constant
 creation/dropping of tables.  Running a "VACUUM FULL" on the database will
 speed it up again.
+
+MSSQL: Tests that involve multiple connections require Snapshot Isolation
+ability implented on the test database in order to prevent deadlocks that will
+occur with record locking isolation. This feature is only available with
+MSSQL 2005 and greater. For example::
+
+    ALTER DATABASE MyDatabase
+    SET ALLOW_SNAPSHOT_ISOLATION ON
+    
+    ALTER DATABASE MyDatabase
+    SET READ_COMMITTED_SNAPSHOT ON
