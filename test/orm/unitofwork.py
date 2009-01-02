@@ -658,7 +658,6 @@ class ClauseAttributesTest(_base.MappedTest):
         eq_(u.name, 'test2')
         eq_(u.counter,  2)
 
-    @testing.crashes('mssql', 'FIXME: unknown, verify not fails_on()')
     @testing.resolve_artifact_names
     def test_insert(self):
         u = User(name='test', counter=sa.select([5]))

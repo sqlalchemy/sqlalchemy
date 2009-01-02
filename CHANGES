@@ -272,6 +272,10 @@ CHANGES
       new doc section "Custom Comparators".
     
 - mssql
+    - If an ``INSERT`` includes a subselect the ``INSERT`` is
+      converted from an ``INSERT INTO VALUES`` construct to a
+      ``INSERT INTO SELECT`` construct.
+
     - If the column is part of a ``primary_key`` it will be
       ``NOT NULL`` since MSSQL doesn't allow ``NULL`` in primary_key
       columns.

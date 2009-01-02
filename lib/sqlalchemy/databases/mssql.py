@@ -1494,6 +1494,33 @@ class MSSQLCompiler(compiler.DefaultCompiler):
                 return self.process(expression._BinaryExpression(binary.left, binary.right, op), **kwargs)
             return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
+    def visit_insert(self, insert_stmt):
+        insert_select = False
+        if insert_stmt.parameters:
+            insert_select = [p for p in insert_stmt.parameters.values() if isinstance(p, sql.Select)]
+        if insert_select:
+            self.isinsert = True
+            colparams = self._get_colparams(insert_stmt)
+            preparer = self.preparer
+
+            insert = ' '.join(["INSERT"] +
+                              [self.process(x) for x in insert_stmt._prefixes])
+
+            if not colparams and not self.dialect.supports_default_values and not self.dialect.supports_empty_insert:
+                raise exc.NotSupportedError(
+                    "The version of %s you are using does not support empty inserts." % self.dialect.name)
+            elif not colparams and self.dialect.supports_default_values:
+                return (insert + " INTO %s DEFAULT VALUES" % (
+                    (preparer.format_table(insert_stmt.table),)))
+            else:
+                return (insert + " INTO %s (%s) SELECT %s" %
+                    (preparer.format_table(insert_stmt.table),
+                     ', '.join([preparer.format_column(c[0])
+                               for c in colparams]),
+                     ', '.join([c[1] for c in colparams])))
+        else:
+            return super(MSSQLCompiler, self).visit_insert(insert_stmt)
+
     def label_select_column(self, select, column, asfrom):
         if isinstance(column, expression._Function):
             return column.label(None)
