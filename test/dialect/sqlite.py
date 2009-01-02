@@ -116,6 +116,54 @@ class TestTypes(TestBase, AssertsExecutionResults):
         finally:
             m.drop_all()
 
+
+class TestDefaults(TestBase, AssertsExecutionResults):
+    __only_on__ = 'sqlite'
+
+    def test_default_reflection(self):
+        # (ask_for, roundtripped_as_if_different)
+        specs = [( String(3), '"foo"' ),
+                 ( NUMERIC(10,2), '100.50' ),
+                 ( Integer, '5' ),
+                 ( Boolean, 'False' ),
+                 ]
+        columns = [Column('c%i' % (i + 1), t[0], server_default=text(t[1])) for i, t in enumerate(specs)]
+
+        db = testing.db
+        m = MetaData(db)
+        t_table = Table('defaults', m, *columns)
+
+        try:
+            m.create_all()
+
+            m2 = MetaData(db)
+            rt = Table('defaults', m2, autoload=True)
+            expected = [c[1] for c in specs]
+            for i, reflected in enumerate(rt.c):
+                self.assertEquals(reflected.server_default.arg.text, expected[i])
+        finally:
+            m.drop_all()
+
+    def test_default_reflection_2(self):
+        db = testing.db
+        m = MetaData(db)
+
+        expected = ["'my_default'", '0']
+        table = """CREATE TABLE defaults (
+            data VARCHAR(40) DEFAULT 'my_default',
+            val INTEGER NOT NULL DEFAULT 0
+        )"""
+
+        try:
+            db.execute(table)
+
+            rt = Table('defaults', m, autoload=True)
+            for i, reflected in enumerate(rt.c):
+                self.assertEquals(reflected.server_default.arg.text, expected[i])
+        finally:
+            db.execute("DROP TABLE defaults")
+
+
 class DialectTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'sqlite'
 

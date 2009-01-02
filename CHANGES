@@ -60,6 +60,10 @@ CHANGES
 
     - Added in the MSReal and MSNText types.
 
+- sqlite
+    - Table reflection now stores the actual DefaultClause value
+      for the column. [ticket:1266]
+
 - bugfixes, behavioral changes
 - general
 - orm
