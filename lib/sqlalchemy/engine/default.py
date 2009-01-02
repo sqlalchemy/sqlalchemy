@@ -42,7 +42,7 @@ class DefaultDialect(base.Dialect):
 
     def __init__(self, convert_unicode=False, assert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None, 
-                 label_length=None, description_encoding='utf-8', **kwargs):
+                 label_length=None, **kwargs):
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
         self.encoding = encoding
@@ -60,7 +60,7 @@ class DefaultDialect(base.Dialect):
         if label_length and label_length > self.max_identifier_length:
             raise exc.ArgumentError("Label length of %d is greater than this dialect's maximum identifier length of %d" % (label_length, self.max_identifier_length))
         self.label_length = label_length
-        self.description_encoding = description_encoding
+        self.description_encoding = getattr(self, 'description_encoding', encoding)
 
     def type_descriptor(self, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given
