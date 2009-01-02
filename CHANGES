@@ -319,6 +319,10 @@ CHANGES
       behavior. [ticket:1243]
 
 - postgres
+    - "%" signs in text() constructs are automatically escaped to "%%".
+      Because of the backwards incompatible nature of this change, 
+      a warning is emitted if '%%' is detected in the string.  [ticket:1267]
+
     - Calling alias.execute() in conjunction with
       server_side_cursors won't raise AttributeError.
 
@@ -339,6 +343,10 @@ CHANGES
       convert_unicode=True flags.  [ticket:1233]
       
 - mysql
+    - "%" signs in text() constructs are automatically escaped to "%%".
+      Because of the backwards incompatible nature of this change, 
+      a warning is emitted if '%%' is detected in the string.
+      
     - Fixed bug in exception raise when FK columns not present
       during reflection. [ticket:1241]
       

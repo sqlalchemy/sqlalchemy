@@ -1952,6 +1952,11 @@ class MySQLCompiler(compiler.DefaultCompiler):
         return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)
 
 
+    def post_process_text(self, text):
+        if '%%' in text:
+            util.warn("The SQLAlchemy MySQLDB dialect now automatically escapes '%' in text() expressions to '%%'.")
+        return text.replace('%', '%%')
+
     def get_select_precolumns(self, select):
         if isinstance(select._distinct, basestring):
             return select._distinct.upper() + " "

@@ -294,6 +294,9 @@ class DefaultCompiler(engine.Compiled):
     def visit_typeclause(self, typeclause, **kwargs):
         return typeclause.type.dialect_impl(self.dialect).get_col_spec()
 
+    def post_process_text(self, text):
+        return text
+        
     def visit_textclause(self, textclause, **kwargs):
         if textclause.typemap is not None:
             for colname, type_ in textclause.typemap.iteritems():
@@ -308,7 +311,7 @@ class DefaultCompiler(engine.Compiled):
 
         # un-escape any \:params
         return BIND_PARAMS_ESC.sub(lambda m: m.group(1),
-            BIND_PARAMS.sub(do_bindparam, textclause.text)
+            BIND_PARAMS.sub(do_bindparam, self.post_process_text(textclause.text))
         )
 
     def visit_null(self, null, **kwargs):

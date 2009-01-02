@@ -4,7 +4,7 @@ from sqlalchemy import *
 from sqlalchemy import exc, sql
 from sqlalchemy.engine import default
 from testlib import *
-
+from testlib.testing import eq_
 
 class QueryTest(TestBase):
 
@@ -235,6 +235,35 @@ class QueryTest(TestBase):
             l.append(row)
         self.assert_(len(l) == 2, "fetchmany(size=2) got %s rows" % len(l))
 
+    def test_like_ops(self):
+        users.insert().execute(
+            {'user_id':1, 'user_name':'apples'},
+            {'user_id':2, 'user_name':'oranges'},
+            {'user_id':3, 'user_name':'bananas'},
+            {'user_id':4, 'user_name':'legumes'},
+            {'user_id':5, 'user_name':'hi % there'},
+        )
+
+        for expr, result in (
+            (select([users.c.user_id]).where(users.c.user_name.startswith('apple')), [(1,)]),
+            (select([users.c.user_id]).where(users.c.user_name.contains('i % t')), [(5,)]),
+            (select([users.c.user_id]).where(users.c.user_name.endswith('anas')), [(3,)]),
+        ):
+            eq_(expr.execute().fetchall(), result)
+    
+
+    @testing.emits_warning('.*now automatically escapes.*')
+    def test_percents_in_text(self):
+        for expr, result in (
+            (text("select 6 % 10"), 6),
+            (text("select 17 % 10"), 7),
+            (text("select '%'"), '%'),
+            (text("select '%%'"), '%%'),
+            (text("select '%%%'"), '%%%'),
+            (text("select 'hello % world'"), "hello % world")
+        ):
+            eq_(testing.db.scalar(expr), result)
+        
     def test_ilike(self):
         users.insert().execute(
             {'user_id':1, 'user_name':'one'},

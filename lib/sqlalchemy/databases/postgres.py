@@ -719,6 +719,11 @@ class PGCompiler(compiler.DefaultCompiler):
         else:
             return "nextval('%s')" % self.preparer.format_sequence(seq)
 
+    def post_process_text(self, text):
+        if '%%' in text:
+            util.warn("The SQLAlchemy psycopg2 dialect now automatically escapes '%' in text() expressions to '%%'.")
+        return text.replace('%', '%%')
+
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:
