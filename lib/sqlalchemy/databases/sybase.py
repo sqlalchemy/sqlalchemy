@@ -767,7 +767,7 @@ class SybaseSQLCompiler(compiler.DefaultCompiler):
             return super(SybaseSQLCompiler, self).visit_binary(binary)
 
     def label_select_column(self, select, column, asfrom):
-        if isinstance(column, expression._Function):
+        if isinstance(column, expression.Function):
             return column.label(None)
         else:
             return super(SybaseSQLCompiler, self).label_select_column(select, column, asfrom)

@@ -867,7 +867,7 @@ class MaxDBCompiler(compiler.DefaultCompiler):
 
         colparams = self._get_colparams(insert)
         for value in (insert.parameters or {}).itervalues():
-            if isinstance(value, sql_expr._Function):
+            if isinstance(value, sql_expr.Function):
                 self._safeserial = False
                 break
 

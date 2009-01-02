@@ -346,7 +346,7 @@ class AccessCompiler(compiler.DefaultCompiler):
         return binary.operator == '%' and 'mod' or binary.operator
 
     def label_select_column(self, select, column, asfrom):
-        if isinstance(column, expression._Function):
+        if isinstance(column, expression.Function):
             return column.label()
         else:
             return super(AccessCompiler, self).label_select_column(select, column, asfrom)
