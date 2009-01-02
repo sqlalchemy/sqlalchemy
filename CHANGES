@@ -186,6 +186,12 @@ CHANGES
 - sql
     - Columns can again contain percent signs within their
       names. [ticket:1256]
+    
+    - sqlalchemy.sql.expression.Function is now a public
+      class.  It can be subclassed to provide user-defined
+      SQL functions in an imperative style, including
+      with pre-established behaviors.  The postgis.py
+      example illustrates one usage of this.
       
     - PickleType now favors == comparison by default,
       if the incoming object (such as a dict) implements

@@ -962,7 +962,7 @@ class Connection(Connectable):
 
     # poor man's multimethod/generic function thingy
     executors = {
-        expression._Function: _execute_function,
+        expression.Function: _execute_function,
         expression.ClauseElement: _execute_clauseelement,
         Compiled: _execute_compiled,
         schema.SchemaItem: _execute_default,

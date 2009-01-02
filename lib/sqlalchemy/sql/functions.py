@@ -1,6 +1,6 @@
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql.expression import (
-    ClauseList, _Function, _literal_as_binds, text
+    ClauseList, Function, _literal_as_binds, text
     )
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import VisitableType
@@ -10,7 +10,7 @@ class _GenericMeta(VisitableType):
         args = [_literal_as_binds(c) for c in args]
         return type.__call__(self, *args, **kwargs)
 
-class GenericFunction(_Function):
+class GenericFunction(Function):
     __metaclass__ = _GenericMeta
 
     def __init__(self, type_=None, group=True, args=(), **kwargs):

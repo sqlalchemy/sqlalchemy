@@ -463,7 +463,7 @@ class DefaultCompiler(engine.Compiled):
             not isinstance(column.table, sql.Select):
             return _CompileLabel(column, sql._generated_label(column.name))
         elif not isinstance(column, (sql._UnaryExpression, sql._TextClause, sql._BindParamClause)) \
-                and (not hasattr(column, 'name') or isinstance(column, sql._Function)):
+                and (not hasattr(column, 'name') or isinstance(column, sql.Function)):
             return _CompileLabel(column, column.anon_label)
         else:
             return column

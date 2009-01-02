@@ -820,12 +820,12 @@ def text(text, bind=None, *args, **kwargs):
     return _TextClause(text, bind=bind, *args, **kwargs)
 
 def null():
-    """Return a ``_Null`` object, which compiles to ``NULL`` in a sql statement."""
+    """Return a :class:`_Null` object, which compiles to ``NULL`` in a sql statement."""
 
     return _Null()
 
 class _FunctionGenerator(object):
-    """Generate ``_Function`` objects based on getattr calls."""
+    """Generate :class:`Function` objects based on getattr calls."""
 
     def __init__(self, **opts):
         self.__names = []
@@ -856,7 +856,7 @@ class _FunctionGenerator(object):
             if func is not None:
                 return func(*c, **o)
 
-        return _Function(self.__names[-1], packagenames=self.__names[0:-1], *c, **o)
+        return Function(self.__names[-1], packagenames=self.__names[0:-1], *c, **o)
 
 # "func" global - i.e. func.count()
 func = _FunctionGenerator()
@@ -2228,7 +2228,7 @@ class _CalculatedClause(ColumnElement):
     def _compare_type(self, obj):
         return self.type
 
-class _Function(_CalculatedClause, FromClause):
+class Function(_CalculatedClause, FromClause):
     """Describe a SQL function.
 
     Extends ``_CalculatedClause``, turn the *clauselist* into function
