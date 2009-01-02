@@ -233,6 +233,7 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
         _base.MappedTest.tearDownAll(self)
         engine_base.AltEngineTest.tearDownAll(self)
 
+    @testing.fails_on('mssql', 'pyodbc returns a non unicode encoding of the results description.')
     @testing.resolve_artifact_names
     def test_mapping(self):
         class A(_base.ComparableEntity):
@@ -269,6 +270,7 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
         assert new_a1.t2s[0].d == b1.d
         session.clear()
 
+    @testing.fails_on('mssql', 'pyodbc returns a non unicode encoding of the results description.')
     @testing.resolve_artifact_names
     def test_inheritance_mapping(self):
         class A(_base.ComparableEntity):
