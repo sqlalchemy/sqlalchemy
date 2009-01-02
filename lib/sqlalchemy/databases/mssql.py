@@ -790,7 +790,6 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
 
         if self.compiled.isinsert:
             tbl = self.compiled.statement.table
-            
             seq_column = _table_sequence_column(tbl)
             self.HASIDENT = bool(seq_column)
             if self.dialect.auto_identity_insert and self.HASIDENT:
