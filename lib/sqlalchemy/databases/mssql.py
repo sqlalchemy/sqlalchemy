@@ -992,6 +992,10 @@ class MSSQLDialect(default.DefaultDialect):
             newobj.dialect = self
         return newobj
 
+    def do_begin(self, connection):
+        connection.execute("SET IMPLICIT_TRANSACTIONS OFF")
+        connection.execute("BEGIN TRANSACTION")
+
     @base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
         query = "SELECT user_name() as user_name;"
