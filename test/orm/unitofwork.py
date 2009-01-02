@@ -866,7 +866,7 @@ class DefaultTest(_base.MappedTest):
             Column('id', Integer, primary_key=True),
             Column('data', String(50)))
 
-        if testing.against('postgres', 'oracle'):
+        if testing.against('postgres', 'oracle', 'mssql'):
             dt.append_column(
                 Column('secondary_id', Integer, sa.Sequence('sec_id_seq'),
                        unique=True))
