@@ -681,6 +681,10 @@ class TypesTest2(TestBase, AssertsExecutionResults):
     def test_char(self):
         """Exercise COLLATE-ish options on string types."""
 
+        # modify the text_as_varchar setting since we are not testing that behavior here
+        text_as_varchar = testing.db.dialect.text_as_varchar
+        testing.db.dialect.text_as_varchar = False
+
         columns = [
             (mssql.MSChar, [], {},
              'CHAR'),
@@ -741,6 +745,8 @@ class TypesTest2(TestBase, AssertsExecutionResults):
         except:
             raise
         charset_table.drop()
+
+        testing.db.dialect.text_as_varchar = text_as_varchar
 
     def test_timestamp(self):
         """Exercise TIMESTAMP column."""
