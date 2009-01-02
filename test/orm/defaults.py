@@ -27,6 +27,10 @@ class TriggerDefaultsTest(_base.MappedTest):
                    "UPDATE dt SET col2='ins', col4='ins' "
                    "WHERE dt.id = NEW.id; END",
                    on='sqlite'),
+            sa.DDL("CREATE TRIGGER dt_ins ON dt AFTER INSERT AS "
+                   "UPDATE dt SET col2='ins', col4='ins' "
+                   "WHERE dt.id IN (SELECT id FROM inserted);",
+                   on='mssql'),
             ):
             if testing.against(ins.on):
                 break
@@ -44,6 +48,10 @@ class TriggerDefaultsTest(_base.MappedTest):
                    "UPDATE dt SET col3='up', col4='up' "
                    "WHERE dt.id = OLD.id; END",
                    on='sqlite'),
+            sa.DDL("CREATE TRIGGER dt_up ON dt AFTER UPDATE AS "
+                   "UPDATE dt SET col3='up', col4='up' "
+                   "WHERE dt.id IN (SELECT id FROM deleted);",
+                   on='mssql'),
             ):
             if testing.against(up.on):
                 break
