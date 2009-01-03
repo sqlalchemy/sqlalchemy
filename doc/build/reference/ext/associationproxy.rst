@@ -5,9 +5,6 @@ associationproxy
 
 .. module:: sqlalchemy.ext.associationproxy
 
-:author: Mike Bayer and Jason Kirtland
-:version: 0.3.1 or greater
-
 ``associationproxy`` is used to create a simplified, read/write view of a
 relationship.  It can be used to cherry-pick fields from a collection of
 related objects or to greatly simplify access to associated objects in an
@@ -205,18 +202,17 @@ Building Complex Views
 
 .. sourcecode:: python
 
-    stocks = Table("stocks", meta,
+    stocks_table = Table("stocks", meta,
        Column('symbol', String(10), primary_key=True),
-       Column('description', String(100), nullable=False),
        Column('last_price', Numeric)
     )
 
-    brokers = Table("brokers", meta,
+    brokers_table = Table("brokers", meta,
        Column('id', Integer,primary_key=True),
        Column('name', String(100), nullable=False)
     )
 
-    holdings = Table("holdings", meta,
+    holdings_table = Table("holdings", meta,
       Column('broker_id', Integer, ForeignKey('brokers.id'), primary_key=True),
       Column('symbol', String(10), ForeignKey('stocks.symbol'), primary_key=True),
       Column('shares', Integer)
@@ -245,9 +241,8 @@ each.  That's easy::
         holdings = association_proxy('by_stock', 'shares', creator=_create_holding)
 
     class Stock(object):
-        def __init__(self, symbol, description=None):
+        def __init__(self, symbol):
             self.symbol = symbol
-            self.description = description
             self.last_price = 0
 
     class Holding(object):
@@ -275,11 +270,11 @@ because of the complexity of the Holdings association object::
     stock = Stock('ZZK')
     broker = Broker('paj')
 
-    broker.holdings[stock] = Holding(broker, stock, 10)
-    print broker.holdings[stock].shares
+    broker.by_stock[stock] = Holding(broker, stock, 10)
+    print broker.by_stock[stock].shares
     # 10
 
-The ``by_stock`` proxy we've added to the ``Broker`` class hides the details
+The ``holdings`` proxy we've added to the ``Broker`` class hides the details
 of the ``Holding`` while also giving access to ``.shares``::
 
     for stock in (Stock('JEK'), Stock('STPZ')):
@@ -288,20 +283,15 @@ of the ``Holding`` while also giving access to ``.shares``::
     for stock, shares in broker.holdings.items():
         print stock, shares
 
+    session.add(broker)
+    session.commit()
+    
     # lets take a peek at that holdings_table after committing changes to the db
     print list(holdings_table.select().execute())
     # [(1, 'ZZK', 10), (1, 'JEK', 123), (1, 'STEPZ', 123)]
 
 Further examples can be found in the ``examples/`` directory in the
 SQLAlchemy distribution.
-
-The ``association_proxy`` convenience function is not present in SQLAlchemy
-versions 0.3.1 through 0.3.7, instead instantiate the class directly::
-
-    from sqlalchemy.ext.associationproxy import AssociationProxy
-
-    class Article(object):
-       keywords = AssociationProxy('keyword_associations', 'keyword')
 
 API
 ---
