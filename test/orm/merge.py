@@ -666,6 +666,24 @@ class MergeTest(_fixtures.FixtureTest):
         sess.merge(u)
 
     @testing.resolve_artifact_names
+    def test_cascade_doesnt_blowaway_manytoone(self):
+        """a merge test that was fixed by [ticket:1202]"""
+        
+        s = create_session(autoflush=True)
+        mapper(User, users, properties={
+            'addresses':relation(mapper(Address, addresses),backref='user')})
+
+        a1 = Address(user=s.merge(User(id=1, name='ed')), email_address='x')
+        before_id = id(a1.user)
+        a2 = Address(user=s.merge(User(id=1, name='jack')), email_address='x')
+        after_id = id(a1.user)
+        other_id = id(a2.user)
+        eq_(before_id, other_id)
+        eq_(after_id, other_id)
+        eq_(before_id, after_id)
+        eq_(a1.user, a2.user)
+            
+    @testing.resolve_artifact_names
     def test_cascades_dont_autoflush(self):
         sess = create_session(autoflush=True)
         m = mapper(User, users, properties={
