@@ -519,20 +519,23 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(l, [self.static.user_result[0]])
 
     @testing.resolve_artifact_names
-    def test_order_by(self):
-        """Ordering at the mapper and query level"""
+    def test_cancel_order_by(self):
+        mapper(User, users, order_by=users.c.name.desc())
 
-        # TODO: make a unit test out of these various combinations
-        #m = mapper(User, users, order_by=desc(users.c.name))
-        mapper(User, users, order_by=None)
-        #mapper(User, users)
+        assert "order by users.name desc" in str(create_session().query(User).statement).lower()
+        assert "order by" not in str(create_session().query(User).order_by(None).statement).lower()
+        assert "order by users.name asc" in str(create_session().query(User).order_by(User.name.asc()).statement).lower()
 
-        #l = create_session().query(User).select(order_by=[desc(users.c.name), asc(users.c.user_id)])
-        l = create_session().query(User).all()
-        #l = create_session().query(User).select(order_by=[])
-        #l = create_session().query(User).select(order_by=None)
+        eq_(
+            create_session().query(User).all(),
+            [User(id=7, name=u'jack'), User(id=9, name=u'fred'), User(id=8, name=u'ed'), User(id=10, name=u'chuck')]
+        )
 
-
+        eq_(
+            create_session().query(User).order_by(User.name).all(),
+            [User(id=10, name=u'chuck'), User(id=8, name=u'ed'), User(id=9, name=u'fred'), User(id=7, name=u'jack')]
+        )
+        
     # 'Raises a "expression evaluation not supported" error at prepare time
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.resolve_artifact_names

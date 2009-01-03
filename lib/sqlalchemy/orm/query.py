@@ -653,12 +653,15 @@ class Query(object):
     def order_by(self, *criterion):
         """apply one or more ORDER BY criterion to the query and return the newly resulting ``Query``"""
 
-        criterion = [self._adapt_clause(expression._literal_as_text(o), True, True) for o in criterion]
-
-        if self._order_by is False:
-            self._order_by = criterion
+        if len(criterion) == 1 and criterion[0] is None:
+            self._order_by = None
         else:
-            self._order_by = self._order_by + criterion
+            criterion = [self._adapt_clause(expression._literal_as_text(o), True, True) for o in criterion]
+
+            if self._order_by is False or self._order_by is None:
+                self._order_by = criterion
+            else:
+                self._order_by = self._order_by + criterion
 
     @_generative(__no_statement_condition, __no_limit_offset)
     @util.accepts_a_list_as_starargs(list_deprecation='pending')

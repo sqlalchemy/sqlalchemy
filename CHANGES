@@ -40,7 +40,13 @@ CHANGES
     - dynamic_loader accepts a query_class= to customize the Query
       classes used for both the dynamic collection and the queries
       built from it.
-
+    
+    - query.order_by() accepts None which will remove any pending
+      order_by state from the query, as well as cancel out any
+      mapper/relation configured ordering. This is primarily useful 
+      for overriding the ordering specified on a dynamic_loader().
+      [ticket:1079]
+      
 - sql
     - RowProxy objects can be used in place of dictionary arguments 
       sent to connection.execute() and friends.  [ticket:935]

@@ -42,6 +42,18 @@ class DynamicTest(_fixtures.FixtureTest):
         u = sess.query(User).get(8)
         eq_(list(u.addresses), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
 
+        # test cancellation of None, replacement with something else
+        eq_(
+            list(u.addresses.order_by(None).order_by(Address.email_address)),
+            [Address(email_address=u'ed@bettyboop.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@wood.com')]
+        )
+
+        # test cancellation of None, replacement with nothing
+        eq_(
+            set(u.addresses.order_by(None)),
+            set([Address(email_address=u'ed@bettyboop.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@wood.com')])
+        )
+
     @testing.resolve_artifact_names
     def test_count(self):
         mapper(User, users, properties={
