@@ -842,7 +842,7 @@ class DefaultTest(_base.MappedTest):
     """
 
     def define_tables(self, metadata):
-        use_string_defaults = testing.against('postgres', 'oracle', 'sqlite')
+        use_string_defaults = testing.against('postgres', 'oracle', 'sqlite', 'mssql')
 
         if use_string_defaults:
             hohotype = String(30)
@@ -868,13 +868,17 @@ class DefaultTest(_base.MappedTest):
             Column('id', Integer, primary_key=True),
             Column('data', String(50)))
 
-        if testing.against('postgres', 'oracle', 'mssql'):
+        if testing.against('postgres', 'oracle'):
             dt.append_column(
                 Column('secondary_id', Integer, sa.Sequence('sec_id_seq'),
                        unique=True))
             st.append_column(
                 Column('fk_val', Integer,
                        ForeignKey('default_t.secondary_id')))
+        elif testing.against('mssql'):
+            st.append_column(
+                Column('fk_val', Integer,
+                       ForeignKey('default_t.id')))
         else:
             st.append_column(
                 Column('hoho', hohotype, ForeignKey('default_t.hoho')))
