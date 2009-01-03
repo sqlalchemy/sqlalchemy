@@ -498,8 +498,9 @@ class TypesTest(TestBase):
             numeric_table.insert().execute(numericcol=Decimal('1E-6'))
             numeric_table.insert().execute(numericcol=Decimal('1E-7'))
             numeric_table.insert().execute(numericcol=Decimal('1E-8'))
-        except:
-            assert False
+            numeric_table.insert().execute(numericcol=10000)
+        except Exception, e:
+            raise e
 
 
 class TypesTest2(TestBase, AssertsExecutionResults):

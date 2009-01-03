@@ -289,6 +289,8 @@ CHANGES
       new doc section "Custom Comparators".
     
 - mssql
+    - Corrected an issue with Numerics to accept an int.
+
     - Mapped ``char_length`` to the ``LEN()`` function.
 
     - If an ``INSERT`` includes a subselect the ``INSERT`` is

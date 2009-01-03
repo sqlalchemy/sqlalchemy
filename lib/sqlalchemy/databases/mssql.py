@@ -220,7 +220,7 @@ Known Issues
   does **not** work around
 
 """
-import datetime, inspect, operator, re, sys, urllib
+import datetime, decimal, inspect, operator, re, sys, urllib
 
 from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.sql import compiler, expression, operators as sqlops, functions as sql_functions
@@ -313,7 +313,9 @@ class MSNumeric(sqltypes.Numeric):
                 # Not sure that this exception is needed
                 return value
             else:
-                if not isinstance(value, float) and value._exp < -6:
+                # FIXME: this will not correct a situation where a float
+                # gets converted to e-notation.
+                if isinstance(value, decimal.Decimal) and value._exp < -6:
                     value = ((value < 0 and '-' or '')
                         + '0.'
                         + '0' * -(value._exp+1)
