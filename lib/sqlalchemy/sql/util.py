@@ -346,7 +346,10 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None, consider_as_re
     return pairs
 
 def folded_equivalents(join, equivs=None):
-    """Returns the column list of the given Join with all equivalently-named,
+    """Return a list of uniquely named columns.
+    
+    The column list of the given Join will be narrowed 
+    down to a list of all equivalently-named,
     equated columns folded into one column, where 'equated' means they are
     equated to each other in the ON clause of this join.
 

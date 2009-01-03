@@ -2522,23 +2522,22 @@ class Join(FromClause):
         return sql_util.join_condition(primary, secondary)
 
     def select(self, whereclause=None, fold_equivalents=False, **kwargs):
-        """Create a ``Select`` from this ``Join``.
+        """Create a :class:`Select` from this :class:`Join`.
 
-        whereclause
-          the WHERE criterion that will be sent to the ``select()``
-          function
+        :param whereclause: the WHERE criterion that will be sent to 
+          the :func:`select()` function
 
-        fold_equivalents
-          based on the join criterion of this ``Join``, do not include
+        :param fold_equivalents: based on the join criterion of this 
+          :class:`Join`, do not include
           repeat column names in the column list of the resulting
           select, for columns that are calculated to be "equivalent"
-          based on the join criterion of this ``Join``. This will
+          based on the join criterion of this :class:`Join`. This will
           recursively apply to any joins directly nested by this one
-          as well.
+          as well.  This flag is specific to a particular use case
+          by the ORM and will be deprecated in 0.6.
 
-        \**kwargs
-          all other kwargs are sent to the underlying ``select()`` function.
-          See the ``select()`` module level function for details.
+        :param \**kwargs: all other kwargs are sent to the 
+          underlying :func:`select()` function.
 
         """
         if fold_equivalents:
