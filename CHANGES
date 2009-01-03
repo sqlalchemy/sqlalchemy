@@ -352,6 +352,10 @@ CHANGES
       NVARCHAR2 reflects into this type automatically so 
       these columns pass unicode on a reflected table with no explicit
       convert_unicode=True flags.  [ticket:1233]
+
+    - Fixed bug which was preventing out params of certain types 
+      from being received; thanks a ton to huddlej at wwu.edu ! 
+      [ticket:1265]
       
 - mysql
     - "%" signs in text() constructs are automatically escaped to "%%".

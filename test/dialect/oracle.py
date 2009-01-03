@@ -15,19 +15,19 @@ class OutParamTest(TestBase, AssertsExecutionResults):
 
     def setUpAll(self):
         testing.db.execute("""
-create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT number) IS
+create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT number, z_out OUT varchar) IS
   retval number;
     begin
     retval := 6;
     x_out := 10;
     y_out := x_in * 15;
+    z_out := NULL;
     end;
         """)
 
     def test_out_params(self):
-        result = testing.db.execute(text("begin foo(:x, :y, :z); end;", bindparams=[bindparam('x', Numeric), outparam('y', Numeric), outparam('z', Numeric)]), x=5)
-        assert result.out_parameters == {'y':10, 'z':75}, result.out_parameters
-        print result.out_parameters
+        result = testing.db.execute(text("begin foo(:x_in, :x_out, :y_out, :z_out); end;", bindparams=[bindparam('x_in', Numeric), outparam('x_out', Numeric), outparam('y_out', Numeric), outparam('z_out', String)]), x_in=5)
+        assert result.out_parameters == {'x_out':10, 'y_out':75, 'z_out':None}, result.out_parameters
 
     def tearDownAll(self):
          testing.db.execute("DROP PROCEDURE foo")

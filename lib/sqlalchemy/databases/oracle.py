@@ -345,7 +345,11 @@ class OracleExecutionContext(default.DefaultExecutionContext):
                 for bind, name in self.compiled.bind_names.iteritems():
                     if name in self.out_parameters:
                         type = bind.type
-                        self.out_parameters[name] = type.dialect_impl(self.dialect).result_processor(self.dialect)(self.out_parameters[name].getvalue())
+                        result_processor = type.dialect_impl(self.dialect).result_processor(self.dialect)
+                        if result_processor is not None:
+                            self.out_parameters[name] = result_processor(self.out_parameters[name].getvalue())
+                        else:
+                            self.out_parameters[name] = self.out_parameters[name].getvalue()
             else:
                 for k in self.out_parameters:
                     self.out_parameters[k] = self.out_parameters[k].getvalue()
