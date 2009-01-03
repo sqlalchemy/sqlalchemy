@@ -926,7 +926,6 @@ class Mapper(object):
         }
 
         """
-
         result = util.column_dict()
         def visit_binary(binary):
             if binary.operator == operators.eq:

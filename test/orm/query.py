@@ -1692,10 +1692,14 @@ class MixedEntitiesTest(QueryTest):
         
         sess = create_session()
         oalias = aliased(Order)
-        
+
         for q in [
             sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).order_by(Order.id, oalias.id),
             sess.query(Order, oalias)._from_self().filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).order_by(Order.id, oalias.id),
+            
+            # same thing, but reversed.  
+            sess.query(oalias, Order)._from_self().filter(oalias.user_id==Order.user_id).filter(oalias.user_id==7).filter(Order.id<oalias.id).order_by(oalias.id, Order.id),
+            
             # here we go....two layers of aliasing
             sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id)._from_self().order_by(Order.id, oalias.id).limit(10).options(eagerload(Order.items)),
 
@@ -2250,6 +2254,15 @@ class SelfReferentialTest(ORMTest):
                     filter(Node.data=='n122').filter(parent.data=='n12').\
                     filter(grandparent.data=='n1')._from_self().first(),
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
+        )
+
+        # same, change order around
+        self.assertEquals(
+            sess.query(parent, grandparent, Node).\
+                join((Node.parent, parent), (parent.parent, grandparent)).\
+                    filter(Node.data=='n122').filter(parent.data=='n12').\
+                    filter(grandparent.data=='n1')._from_self().first(),
+            (Node(data='n12'), Node(data='n1'), Node(data='n122'))
         )
 
         self.assertEquals(

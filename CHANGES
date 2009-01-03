@@ -75,6 +75,13 @@ CHANGES
       next compile() call.  This issue occurs frequently
       when using declarative.
 
+    - Fixed some deep "column correspondence" issues which could
+      impact a Query made against a selectable containing
+      multiple versions of the same table, as well as 
+      unions and similar which contained the same table columns
+      in different column positions at different levels.
+      [ticket:1268]
+      
     - Custom comparator classes used in conjunction with 
       column_property(), relation() etc. can define 
       new comparison methods on the Comparator, which will

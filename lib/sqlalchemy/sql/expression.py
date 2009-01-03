@@ -33,6 +33,7 @@ from sqlalchemy import util, exc
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import Visitable, cloned_traverse
 from sqlalchemy import types as sqltypes
+import operator
 
 functions, schema, sql_util = None, None, None
 DefaultDialect, ClauseAdapter, Annotated = None, None, None
@@ -1840,9 +1841,32 @@ class FromClause(Selectable):
         for c in cols:
             i = c.proxy_set.intersection(target_set)
             if i and \
-                (not require_embedded or c.proxy_set.issuperset(target_set)) and \
-                (intersect is None or len(i) > len(intersect)):
-                col, intersect = c, i
+                (not require_embedded or c.proxy_set.issuperset(target_set)):
+                
+                if col is None:
+                    # no corresponding column yet, pick this one.
+                    col, intersect = c, i
+                elif len(i) > len(intersect):
+                    # 'c' has a larger field of correspondence than 'col'.
+                    # i.e. selectable.c.a1_x->a1.c.x->table.c.x matches a1.c.x->table.c.x better than 
+                    # selectable.c.x->table.c.x does.
+                    col, intersect = c, i
+                elif i == intersect:
+                    # they have the same field of correspondence.
+                    # see which proxy_set has fewer columns in it, which indicates a
+                    # closer relationship with the root column.  Also take into account the 
+                    # "weight" attribute which CompoundSelect() uses to give higher precedence to
+                    # columns based on vertical position in the compound statement, and discard columns
+                    # that have no reference to the target column (also occurs with CompoundSelect)
+                    col_distance = util.reduce(operator.add, 
+                                        [sc._annotations.get('weight', 1) for sc in col.proxy_set if sc.shares_lineage(column)]
+                                    )
+                    c_distance = util.reduce(operator.add, 
+                                        [sc._annotations.get('weight', 1) for sc in c.proxy_set if sc.shares_lineage(column)]
+                                    )
+                    if \
+                        c_distance < col_distance:
+                        col, intersect = c, i
         return col
 
     @property
@@ -3097,8 +3121,12 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
     def _populate_column_collection(self):
         for cols in zip(*[s.c for s in self.selects]):
             proxy = cols[0]._make_proxy(self, name=self.use_labels and cols[0]._label or None)
-            proxy.proxies = cols
-
+            
+            # place a 'weight' annotation corresponding to how low in the list of select()s
+            # the column occurs, so that the corresponding_column() operation
+            # can resolve conflicts
+            proxy.proxies = [c._annotate({'weight':i + 1}) for i, c in enumerate(cols)]
+            
     def _copy_internals(self, clone=_clone):
         self._reset_exported()
         self.selects = [clone(s) for s in self.selects]
