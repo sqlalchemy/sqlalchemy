@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import pickle
 from testlib import sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation, create_session
+from testlib.sa.orm import mapper, relation, create_session, attributes
 from orm import _base, _fixtures
 
 
@@ -141,6 +141,21 @@ class PolymorphicDeferredTest(_base.MappedTest):
         assert 'email_address' not in eu2.__dict__
         self.assertEquals(eu2.email_address, 'foo@bar.com')
 
+class CustomSetupTeardowntest(_fixtures.FixtureTest):
+    @testing.resolve_artifact_names
+    def test_rebuild_state(self):
+        """not much of a 'test', but illustrate how to 
+        remove instance-level state before pickling.
+        
+        """
+        mapper(User, users)
 
+        u1 = User()
+        attributes.manager_of_class(User).teardown_instance(u1)
+        assert not u1.__dict__
+        u2 = pickle.loads(pickle.dumps(u1))
+        attributes.manager_of_class(User).setup_instance(u2)
+        assert attributes.instance_state(u2)
+    
 if __name__ == '__main__':
     testenv.main()

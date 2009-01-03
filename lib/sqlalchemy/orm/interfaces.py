@@ -889,5 +889,8 @@ class InstrumentationManager(object):
     def install_state(self, class_, instance, state):
         setattr(instance, '_default_state', state)
 
+    def remove_state(self, class_, instance):
+        delattr(instance, '_default_state', state)
+
     def state_getter(self, class_):
         return lambda instance: getattr(instance, '_default_state')

@@ -1269,6 +1269,9 @@ class ClassManager(dict):
 
     def setup_instance(self, instance, state=None):
         setattr(instance, self.STATE_ATTR, state or self.instance_state_factory(instance, self))
+    
+    def teardown_instance(self, instance):
+        delattr(instance, self.STATE_ATTR)
         
     def _new_state_if_none(self, instance):
         """Install a default InstanceState if none is present.
@@ -1380,6 +1383,9 @@ class _ClassInstrumentationAdapter(ClassManager):
         self._adapted.install_state(self.class_, instance, state)
         state.dict = self._adapted.get_instance_dict(self.class_, instance)
         return state
+
+    def teardown_instance(self, instance):
+        self._adapted.remove_state(self.class_, instance)
 
     def state_of(self, instance):
         if hasattr(self._adapted, 'state_of'):
