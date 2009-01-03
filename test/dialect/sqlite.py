@@ -131,13 +131,13 @@ class TestDefaults(TestBase, AssertsExecutionResults):
 
         db = testing.db
         m = MetaData(db)
-        t_table = Table('defaults', m, *columns)
+        t_table = Table('t_defaults', m, *columns)
 
         try:
             m.create_all()
 
             m2 = MetaData(db)
-            rt = Table('defaults', m2, autoload=True)
+            rt = Table('t_defaults', m2, autoload=True)
             expected = [c[1] for c in specs]
             for i, reflected in enumerate(rt.c):
                 self.assertEquals(reflected.server_default.arg.text, expected[i])
@@ -149,7 +149,7 @@ class TestDefaults(TestBase, AssertsExecutionResults):
         m = MetaData(db)
 
         expected = ["'my_default'", '0']
-        table = """CREATE TABLE defaults (
+        table = """CREATE TABLE r_defaults (
             data VARCHAR(40) DEFAULT 'my_default',
             val INTEGER NOT NULL DEFAULT 0
         )"""
@@ -157,11 +157,11 @@ class TestDefaults(TestBase, AssertsExecutionResults):
         try:
             db.execute(table)
 
-            rt = Table('defaults', m, autoload=True)
+            rt = Table('r_defaults', m, autoload=True)
             for i, reflected in enumerate(rt.c):
                 self.assertEquals(reflected.server_default.arg.text, expected[i])
         finally:
-            db.execute("DROP TABLE defaults")
+            db.execute("DROP TABLE r_defaults")
 
 
 class DialectTest(TestBase, AssertsExecutionResults):
