@@ -23,7 +23,7 @@ class EagerTest(_fixtures.FixtureTest):
         q = sess.query(User)
 
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
-        assert self.static.user_address_result == q.all()
+        assert self.static.user_address_result == q.order_by(User.id).all()
 
     @testing.resolve_artifact_names
     def test_late_compile(self):
@@ -287,7 +287,7 @@ class EagerTest(_fixtures.FixtureTest):
         assert sa.orm.class_mapper(Address).get_property('user').lazy is False
 
         sess = create_session()
-        assert self.static.user_address_result == sess.query(User).all()
+        assert self.static.user_address_result == sess.query(User).order_by(User.id).all()
 
     @testing.resolve_artifact_names
     def test_double(self):
@@ -343,7 +343,7 @@ class EagerTest(_fixtures.FixtureTest):
                 ),
                 User(id=10)
 
-            ] == q.all()
+            ] == q.order_by(User.id).all()
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
