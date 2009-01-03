@@ -427,6 +427,7 @@ class VersioningTest(ORMTest):
             Column('parent', Integer, ForeignKey('base.id'))
             )
 
+    @testing.fails_on('mssql', 'FIXME: the flush still happens with the concurrency issue.')
     @engines.close_open_connections
     def test_save_update(self):
         class Base(fixtures.Base):
@@ -475,6 +476,7 @@ class VersioningTest(ORMTest):
         s2.subdata = 'sess2 subdata'
         sess2.flush()
 
+    @testing.fails_on('mssql', 'FIXME: the flush still happens with the concurrency issue.')
     def test_delete(self):
         class Base(fixtures.Base):
             pass
