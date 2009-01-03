@@ -112,7 +112,7 @@ Above, the ``Keyword.__init__`` takes a single argument ``keyword``, which
 maps conveniently to the value being set through the proxy.  A ``creator``
 function could have been used instead if more flexibility was required.
 
-Because the proxies are backed a regular relation collection, all of the
+Because the proxies are backed by a regular relation collection, all of the
 usual hooks and patterns for using collections are still in effect.  The
 most convenient behavior is the automatic setting of "parent"-type
 relationships on assignment.  In the example above, nothing special had to
