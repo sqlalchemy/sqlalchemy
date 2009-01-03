@@ -109,7 +109,6 @@ class TestTypes(TestBase, AssertsExecutionResults):
                 expected = [len(c) > 1 and c[1] or c[0] for c in specs]
                 for table in rt, rv:
                     for i, reflected in enumerate(table.c):
-                        print reflected.type, type(expected[i])
                         assert isinstance(reflected.type, type(expected[i])), type(expected[i])
             finally:
                 db.execute('DROP VIEW types_v')
@@ -120,6 +119,8 @@ class TestTypes(TestBase, AssertsExecutionResults):
 class TestDefaults(TestBase, AssertsExecutionResults):
     __only_on__ = 'sqlite'
 
+    @testing.exclude('sqlite', '<', (3, 3, 8), 
+        "sqlite3 changesets 3353 and 3440 modified behavior of default displayed in pragma table_info()")
     def test_default_reflection(self):
         # (ask_for, roundtripped_as_if_different)
         specs = [( String(3), '"foo"' ),
@@ -144,6 +145,8 @@ class TestDefaults(TestBase, AssertsExecutionResults):
         finally:
             m.drop_all()
 
+    @testing.exclude('sqlite', '<', (3, 3, 8), 
+        "sqlite3 changesets 3353 and 3440 modified behavior of default displayed in pragma table_info()")
     def test_default_reflection_2(self):
         db = testing.db
         m = MetaData(db)
@@ -295,7 +298,6 @@ class InsertTest(TestBase, AssertsExecutionResults):
                 table.insert().execute()
 
                 rows = table.select().execute().fetchall()
-                print rows
                 self.assertEquals(len(rows), wanted)
         finally:
             table.drop()
