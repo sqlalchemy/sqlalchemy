@@ -490,7 +490,10 @@ class SQLiteDialect(default.DefaultDialect):
 
             colargs = []
             if has_default:
-                colargs.append(DefaultClause(sql.text(default)))
+                try:
+                    colargs.append(DefaultClause(sql.text(default)))
+                except:
+                    colargs.append(DefaultClause(sql.text("what the heck is this: %r" % default)))
             table.append_column(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable, *colargs))
 
         if not found_table:
