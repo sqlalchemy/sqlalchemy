@@ -200,6 +200,17 @@ render::
 If ``nullable`` is ``True`` or ``False`` then the column will be
 ``NULL` or ``NOT NULL`` respectively.
 
+Compatibility Levels
+--------------------
+MSSQL supports the notion of setting compatibility levels at the
+database level. This allows, for instance, to run a database that
+is compatibile with SQL2000 while running on a SQL2005 database
+server. ``server_version_info`` will always retrun the database
+server version information (in this case SQL2005) and not the
+compatibiility level information. Because of this, if running under
+a backwards compatibility mode SQAlchemy may attempt to use T-SQL
+statements that are unable to be parsed by the database server.
+
 Known Issues
 ------------
 
