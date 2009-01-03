@@ -1756,6 +1756,7 @@ class _MapperEntity(_QueryEntity):
         if context.order_by is False and self.mapper.order_by:
             context.order_by = self.mapper.order_by
 
+            # apply adaptation to the mapper's order_by if needed.
             if adapter:
                 context.order_by = adapter.adapt_list(util.to_list(context.order_by))
                     

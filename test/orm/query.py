@@ -713,6 +713,7 @@ class FilterTest(QueryTest):
         self.assertEquals([User(id=10)], sess.query(User).filter(User.addresses==None).all())
         self.assertEquals([User(id=7),User(id=8),User(id=9)], sess.query(User).filter(User.addresses!=None).order_by(User.id).all())
 
+
 class FromSelfTest(QueryTest):
     def test_filter(self):
 
@@ -1213,6 +1214,23 @@ class JoinTest(QueryTest):
         q = sess.query(User).join('orders', aliased=True).filter(Order.description=="order 3").join('orders', aliased=True).filter(Order.description=="order 5")
         assert q.count() == 1
         assert [User(id=7)] == q.all()
+
+    def test_aliased_order_by(self):
+        sess = create_session()
+
+        ualias = aliased(User)
+        self.assertEquals(
+            sess.query(User, ualias).filter(User.id > ualias.id).order_by(desc(ualias.id), User.name).all(),
+            [
+                (User(id=10,name=u'chuck'), User(id=9,name=u'fred')), 
+                (User(id=10,name=u'chuck'), User(id=8,name=u'ed')), 
+                (User(id=9,name=u'fred'), User(id=8,name=u'ed')), 
+                (User(id=10,name=u'chuck'), User(id=7,name=u'jack')), 
+                (User(id=8,name=u'ed'), User(id=7,name=u'jack')),
+                (User(id=9,name=u'fred'), User(id=7,name=u'jack'))
+            ]
+        )
+
 
 class MultiplePathTest(ORMTest):
     def define_tables(self, metadata):
@@ -1980,6 +1998,8 @@ class SelectFromTest(QueryTest):
         )
 
     def test_join_mapper_order_by(self):
+        """test that mapper-level order_by is adapted to a selectable."""
+        
         mapper(User, users, order_by=users.c.id)
 
         sel = users.select(users.c.id.in_([7, 8]))
