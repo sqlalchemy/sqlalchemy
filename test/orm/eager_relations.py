@@ -17,13 +17,13 @@ class EagerTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_basic(self):
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=False)
+            'addresses':relation(mapper(Address, addresses), lazy=False, order_by=Address.id)
         })
         sess = create_session()
         q = sess.query(User)
 
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
-        assert self.static.user_address_result == q.order_by(User.id).all()
+        self.assertEquals(self.static.user_address_result, q.order_by(User.id).all())
 
     @testing.resolve_artifact_names
     def test_late_compile(self):
@@ -281,13 +281,13 @@ class EagerTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
             addresses = relation(Address, lazy=False,
-                                 backref=sa.orm.backref('user', lazy=False))
+                                 backref=sa.orm.backref('user', lazy=False), order_by=Address.id)
         ))
         assert sa.orm.class_mapper(User).get_property('addresses').lazy is False
         assert sa.orm.class_mapper(Address).get_property('user').lazy is False
 
         sess = create_session()
-        assert self.static.user_address_result == sess.query(User).order_by(User.id).all()
+        self.assertEquals(self.static.user_address_result, sess.query(User).order_by(User.id).all())
 
     @testing.resolve_artifact_names
     def test_double(self):
@@ -343,7 +343,7 @@ class EagerTest(_fixtures.FixtureTest):
                 ),
                 User(id=10)
 
-            ] == q.order_by(User.id).all()
+            ] == q.all()
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
