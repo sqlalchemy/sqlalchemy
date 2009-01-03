@@ -309,10 +309,11 @@ class NaturalPKTest(_base.MappedTest):
         sess.flush()
         r = sess.query(Item).with_parent(u2).all()
         self.assertEquals(Item(itemname='item2'), r[0])
-        
-        
+
 
 class SelfRefTest(_base.MappedTest):
+    __unsupported_on__ = 'mssql' # mssql doesn't allow ON UPDATE on self-referential keys
+
     def define_tables(self, metadata):
         Table('nodes', metadata,
               Column('name', String(50), primary_key=True),
