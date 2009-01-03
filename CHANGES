@@ -46,6 +46,11 @@ CHANGES
     - Fixed bug in exception raise when FK columns not present
       during reflection. [ticket:1241]
 
+- oracle
+    - Fixed bug which was preventing out params of certain types
+      from being received; thanks a ton to huddlej at wwu.edu !
+      [ticket:1265]
+
 0.4.8
 =====
 - orm
