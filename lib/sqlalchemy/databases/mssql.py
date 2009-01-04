@@ -7,14 +7,23 @@ Driver
 
 The MSSQL dialect will work with three different available drivers:
 
-* *pymssql* - http://pymssql.sourceforge.net/
-
 * *pyodbc* - http://pyodbc.sourceforge.net/. This is the recommeded
   driver.
+
+* *pymssql* - http://pymssql.sourceforge.net/
 
 * *adodbapi* - http://adodbapi.sourceforge.net/
 
 Drivers are loaded in the order listed above based on availability.
+
+If you need to load a specific driver pass ``module_name`` when
+creating the engine::
+
+    engine = create_engine('mssql://dsn', module_name='pymssql')
+
+``module_name`` currently accepts: ``pyodbc``, ``pymssql``, and
+``adodbapi``.
+
 Currently the pyodbc driver offers the greatest level of
 compatibility.
 
