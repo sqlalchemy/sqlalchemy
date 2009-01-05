@@ -14,6 +14,7 @@ class IdentityMap(dict):
     def __init__(self):
         self._mutable_attrs = {}
         self.modified = False
+        self._wr = weakref.ref(self)
         
     def add(self, state):
         raise NotImplementedError()
@@ -28,12 +29,16 @@ class IdentityMap(dict):
         raise NotImplementedError("IdentityMap uses remove() to remove data")
         
     def _manage_incoming_state(self, state):
+        state._instance_dict = self._wr
+        
         if state.modified:  
             self.modified = True
         if state.manager.mutable_attributes:
             self._mutable_attrs[state] = True
     
     def _manage_removed_state(self, state):
+        del state._instance_dict
+        
         if state in self._mutable_attrs:
             del self._mutable_attrs[state]
             
@@ -72,10 +77,6 @@ class IdentityMap(dict):
         
 class WeakInstanceDict(IdentityMap):
 
-    def __init__(self):
-        IdentityMap.__init__(self)
-        self._wr = weakref.ref(self)
-
     def __getitem__(self, key):
         state = dict.__getitem__(self, key)
         o = state.obj()
@@ -107,7 +108,6 @@ class WeakInstanceDict(IdentityMap):
                 raise AssertionError("A conflicting state is already present in the identity map for key %r" % state.key)
         else:
             dict.__setitem__(self, state.key, state)
-            state._instance_dict = self._wr
             self._manage_incoming_state(state)
     
     def remove_key(self, key):
@@ -117,13 +117,11 @@ class WeakInstanceDict(IdentityMap):
     def remove(self, state):
         if dict.pop(self, state.key) is not state:
             raise AssertionError("State %s is not present in this identity map" % state)
-        del state._instance_dict
         self._manage_removed_state(state)
     
     def discard(self, state):
         if self.contains_state(state):
             dict.__delitem__(self, state.key)
-            del state._instance_dict
             self._manage_removed_state(state)
         
     def get(self, key, default=None):

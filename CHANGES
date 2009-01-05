@@ -81,6 +81,9 @@ CHANGES
       next compile() call.  This issue occurs frequently
       when using declarative.
 
+    - Fixed bug when using weak_instance_map=False where modified
+      events would not be intercepted for a flush(). [ticket:1272]
+      
     - Fixed some deep "column correspondence" issues which could
       impact a Query made against a selectable containing
       multiple versions of the same table, as well as 
