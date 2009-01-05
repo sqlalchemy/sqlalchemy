@@ -1,5 +1,5 @@
 import testenv; testenv.configure_for_tests()
-import os, pickleable, re
+import datetime, os, pickleable, re
 from sqlalchemy import *
 from sqlalchemy import types, exc
 from sqlalchemy.orm import *
@@ -539,6 +539,100 @@ class TypesTest2(TestBase, AssertsExecutionResults):
         except:
             raise
         money_table.drop()
+
+    def test_dates(self):
+        "Exercise type specification for date types."
+
+        columns = [
+            # column type, args, kwargs, expected ddl
+            (mssql.MSDateTime, [], {},
+             'DATETIME', []),
+
+            (mssql.MSDate, [], {},
+             'DATE', ['>=', (10,)]),
+            (mssql.MSDate, [], {},
+             'DATETIME', ['<', (10,)], mssql.MSDateTime),
+
+            (mssql.MSTime, [], {},
+             'TIME', ['>=', (10,)]),
+            (mssql.MSTime, [1], {},
+             'TIME(1)', ['>=', (10,)]),
+            (mssql.MSTime, [], {},
+             'DATETIME', ['<', (10,)], mssql.MSDateTime),
+
+            (mssql.MSSmallDateTime, [], {},
+             'SMALLDATETIME', []),
+
+            (mssql.MSDateTimeOffset, [], {},
+             'DATETIMEOFFSET', ['>=', (10,)]),
+            (mssql.MSDateTimeOffset, [1], {},
+             'DATETIMEOFFSET(1)', ['>=', (10,)]),
+
+            (mssql.MSDateTime2, [], {},
+             'DATETIME2', ['>=', (10,)]),
+            (mssql.MSDateTime2, [1], {},
+             'DATETIME2(1)', ['>=', (10,)]),
+
+            ]
+
+        table_args = ['test_mssql_dates', MetaData(testing.db)]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res, requires = spec[0:5]
+            if (requires and testing._is_excluded('mssql', *requires)) or not requires:
+                table_args.append(Column('c%s' % index, type_(*args, **kw), nullable=None))
+
+        dates_table = Table(*table_args)
+        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+
+        for col in dates_table.c:
+            index = int(col.name[1:])
+            testing.eq_(gen.get_column_specification(col),
+                           "%s %s" % (col.name, columns[index][3]))
+            self.assert_(repr(col))
+
+        try:
+            dates_table.create(checkfirst=True)
+            assert True
+        except:
+            raise
+
+        reflected_dates = Table('test_mssql_dates', MetaData(testing.db), autoload=True)
+        for col in reflected_dates.c:
+            index = int(col.name[1:])
+            testing.eq_(testing.db.dialect.type_descriptor(col.type).__class__,
+                len(columns[index]) > 5 and columns[index][5] or columns[index][0])
+        dates_table.drop()
+
+    def test_dates2(self):
+        meta = MetaData(testing.db)
+        t = Table('test_dates', meta,
+                  Column('id', Integer,
+                         Sequence('datetest_id_seq', optional=True),
+                         primary_key=True),
+                  Column('adate', Date),
+                  Column('atime', Time),
+                  Column('adatetime', DateTime))
+        t.create(checkfirst=True)
+        try:
+            d1 = datetime.date(2007, 10, 30)
+            t1 = datetime.time(11, 2, 32)
+            d2 = datetime.datetime(2007, 10, 30, 11, 2, 32)
+            t.insert().execute(adate=d1, adatetime=d2, atime=t1)
+            t.insert().execute(adate=d2, adatetime=d2, atime=d2)
+
+            x = t.select().execute().fetchall()[0]
+            self.assert_(x.adate.__class__ == datetime.date)
+            self.assert_(x.atime.__class__ == datetime.time)
+            self.assert_(x.adatetime.__class__ == datetime.datetime)
+
+            t.delete().execute()
+
+            t.insert().execute(adate=d1, adatetime=d2, atime=t1)
+
+            self.assertEquals(select([t.c.adate, t.c.atime, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, t1, d2)])
+
+        finally:
+            t.drop(checkfirst=True)
 
     def test_binary(self):
         "Exercise type specification for binary types."

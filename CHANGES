@@ -64,7 +64,8 @@ CHANGES
 
     - Added in new types: MSVarBinary and MSImage. [ticket:1249]
 
-    - Added in the MSReal and MSNText types.
+    - Added in the MSReal, MSNText, MSSmallDateTime, MSTime,
+      MSDateTimeOffset, and MSDateTime2 types
 
 - sqlite
     - Table reflection now stores the actual DefaultClause value
@@ -303,6 +304,10 @@ CHANGES
       new doc section "Custom Comparators".
     
 - mssql
+    - Refactored the Date/Time types. The ``smalldatetime``
+      data type no longer truncates to a date only, and will
+      now be mapped to the MSSmallDateTime type. [ticket:1254]
+
     - Corrected an issue with Numerics to accept an int.
 
     - Mapped ``char_length`` to the ``LEN()`` function.
