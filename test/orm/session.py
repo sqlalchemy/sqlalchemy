@@ -790,7 +790,7 @@ class SessionTest(_fixtures.FixtureTest):
         user.name = 'u2'
         assert s.identity_map.modified
         s.flush()
-        assert users.select().execute().fetchall() == [(1, 'u2')]
+        eq_(users.select().execute().fetchall(), [(user.id, 'u2')])
         
         
     @testing.resolve_artifact_names
