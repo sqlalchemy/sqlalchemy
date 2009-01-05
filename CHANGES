@@ -375,6 +375,9 @@ CHANGES
       
     - Fixed bug in exception raise when FK columns not present
       during reflection. [ticket:1241]
+    
+    - Fixed bug involving reflection of a remote-schema table with
+      a foreign key ref to another table in that schema.
       
 - associationproxy
     - The association proxy properties are make themselves available

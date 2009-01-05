@@ -2306,7 +2306,7 @@ class MySQLSchemaReflector(object):
         for spec in constraints:
             # only FOREIGN KEYs
             ref_name = spec['table'][-1]
-            ref_schema = len(spec['table']) > 1 and spec['table'][-2] or None
+            ref_schema = len(spec['table']) > 1 and spec['table'][-2] or table.schema
 
             if not ref_schema:
                 if default_schema is None:
