@@ -5,17 +5,22 @@ from testlib import *
 from testlib.fixtures import Base
 from orm._base import MappedTest, ComparableEntity
 
+
 class SingleInheritanceTest(MappedTest):
     def define_tables(self, metadata):
-        global employees_table
-        employees_table = Table('employees', metadata,
+        Table('employees', metadata,
             Column('employee_id', Integer, primary_key=True),
             Column('name', String(50)),
             Column('manager_data', String(50)),
             Column('engineer_info', String(50)),
-            Column('type', String(20))
+            Column('type', String(20)))
+
+        Table('reports', metadata,
+              Column('report_id', Integer, primary_key=True),
+              Column('employee_id', ForeignKey('employees.employee_id')),
+              Column('name', String(50)),
         )
-    
+
     def setup_classes(self):
         class Employee(ComparableEntity):
             pass
@@ -28,7 +33,7 @@ class SingleInheritanceTest(MappedTest):
 
     @testing.resolve_artifact_names
     def setup_mappers(self):
-        mapper(Employee, employees_table, polymorphic_on=employees_table.c.type)
+        mapper(Employee, employees, polymorphic_on=employees.c.type)
         mapper(Manager, inherits=Employee, polymorphic_identity='manager')
         mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
         mapper(JuniorEngineer, inherits=Engineer, polymorphic_identity='juniorengineer')
@@ -116,7 +121,7 @@ class SingleInheritanceTest(MappedTest):
         sess.flush()
         
         self.assertEquals(
-            sess.query(Manager).select_from(employees_table.select().limit(10)).all(), 
+            sess.query(Manager).select_from(employees.select().limit(10)).all(), 
             [m1, m2]
         )
         
@@ -136,6 +141,42 @@ class SingleInheritanceTest(MappedTest):
         
         self.assertEquals(sess.query(Manager).filter(Manager.name.like('%m%')).count(), 2)
         self.assertEquals(sess.query(Employee).filter(Employee.name.like('%m%')).count(), 3)
+
+    @testing.resolve_artifact_names
+    def test_type_filtering(self):
+        class Report(ComparableEntity): pass
+
+        mapper(Report, reports, properties={
+            'employee': relation(Employee, backref='reports')})
+        sess = create_session()
+
+        m1 = Manager(name='Tom', manager_data='data1')
+        r1 = Report(employee=m1)
+        sess.add_all([m1, r1])
+        sess.flush()
+        rq = sess.query(Report)
+
+        assert len(rq.filter(Report.employee.of_type(Manager).has()).all()) == 1
+        assert len(rq.filter(Report.employee.of_type(Engineer).has()).all()) == 0
+
+    @testing.resolve_artifact_names
+    def test_type_joins(self):
+        class Report(ComparableEntity): pass
+
+        mapper(Report, reports, properties={
+            'employee': relation(Employee, backref='reports')})
+        sess = create_session()
+
+        m1 = Manager(name='Tom', manager_data='data1')
+        r1 = Report(employee=m1)
+        sess.add_all([m1, r1])
+        sess.flush()
+
+        rq = sess.query(Report)
+
+        assert len(rq.join(Report.employee.of_type(Manager)).all()) == 1
+        assert len(rq.join(Report.employee.of_type(Engineer)).all()) == 0
+
 
 class RelationToSingleTest(MappedTest):
     def define_tables(self, metadata):
@@ -165,6 +206,42 @@ class RelationToSingleTest(MappedTest):
             pass
         class JuniorEngineer(Engineer):
             pass
+
+    @testing.resolve_artifact_names
+    def test_of_type(self):
+        mapper(Company, companies, properties={
+            'employees':relation(Employee, backref='company')
+        })
+        mapper(Employee, employees, polymorphic_on=employees.c.type)
+        mapper(Manager, inherits=Employee, polymorphic_identity='manager')
+        mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
+        mapper(JuniorEngineer, inherits=Engineer, polymorphic_identity='juniorengineer')
+        sess = sessionmaker()()
+        
+        c1 = Company(name='c1')
+        c2 = Company(name='c2')
+        
+        m1 = Manager(name='Tom', manager_data='data1', company=c1)
+        m2 = Manager(name='Tom2', manager_data='data2', company=c2)
+        e1 = Engineer(name='Kurt', engineer_info='knows how to hack', company=c2)
+        e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed', company=c1)
+        sess.add_all([c1, c2, m1, m2, e1, e2])
+        sess.commit()
+        sess.clear()
+        self.assertEquals(
+            sess.query(Company).filter(Company.employees.of_type(JuniorEngineer).any()).all(),
+            [
+                Company(name='c1'),
+            ]
+        )
+
+        self.assertEquals(
+            sess.query(Company).join(Company.employees.of_type(JuniorEngineer)).all(),
+            [
+                Company(name='c1'),
+            ]
+        )
+
 
     @testing.resolve_artifact_names
     def test_relation_to_subclass(self):

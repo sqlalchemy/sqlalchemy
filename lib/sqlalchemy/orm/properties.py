@@ -386,6 +386,13 @@ class RelationProperty(StrategizedProperty):
                 to_selectable = target_mapper._with_polymorphic_selectable
                 if self.prop._is_self_referential():
                     to_selectable = to_selectable.alias()
+
+                single_crit = target_mapper._single_table_criterion
+                if single_crit:
+                    if criterion is not None:
+                        criterion = single_crit & criterion
+                    else:
+                        criterion = single_crit
             else:
                 to_selectable = None
 
@@ -393,6 +400,7 @@ class RelationProperty(StrategizedProperty):
                 source_selectable = self.__clause_element__()
             else:
                 source_selectable = None
+                
             pj, sj, source, dest, secondary, target_adapter = \
                 self.prop._create_joins(dest_polymorphic=True, dest_selectable=to_selectable, source_selectable=source_selectable)
 
@@ -863,8 +871,8 @@ class RelationProperty(StrategizedProperty):
     def _is_self_referential(self):
         return self.mapper.common_parent(self.parent)
 
-    def _create_joins(self, source_polymorphic=False, source_selectable=None, dest_polymorphic=False, dest_selectable=None):
-        key = util.WeakCompositeKey(source_polymorphic, source_selectable, dest_polymorphic, dest_selectable)
+    def _create_joins(self, source_polymorphic=False, source_selectable=None, dest_polymorphic=False, dest_selectable=None, of_type=None):
+        key = util.WeakCompositeKey(source_polymorphic, source_selectable, dest_polymorphic, dest_selectable, of_type)
         try:
             return self.__join_cache[key]
         except KeyError:
@@ -896,14 +904,15 @@ class RelationProperty(StrategizedProperty):
         # in the case that the join is to a subclass
         # this is analgous to the "_adjust_for_single_table_inheritance()"
         # method in Query.
-        if self.mapper.single and self.mapper.inherits and self.mapper.polymorphic_on and self.mapper.polymorphic_identity is not None:
-            crit = self.mapper.polymorphic_on.in_(
-                m.polymorphic_identity
-                for m in self.mapper.polymorphic_iterator())
+
+        dest_mapper = of_type or self.mapper
+        
+        single_crit = dest_mapper._single_table_criterion
+        if single_crit:
             if secondaryjoin:
-                secondaryjoin = secondaryjoin & crit
+                secondaryjoin = secondaryjoin & single_crit
             else:
-                primaryjoin = primaryjoin & crit
+                primaryjoin = primaryjoin & single_crit
             
 
         if aliased:

@@ -81,6 +81,11 @@ CHANGES
       next compile() call.  This issue occurs frequently
       when using declarative.
 
+    - property.of_type() is now recognized on a single-table
+      inheriting target, when used in the context of 
+      prop.of_type(..).any()/has(), as well as 
+      query.join(prop.of_type(...)).
+      
     - Fixed bug when using weak_instance_map=False where modified
       events would not be intercepted for a flush(). [ticket:1272]
       

@@ -839,6 +839,19 @@ class Mapper(object):
 
         return from_obj
 
+    @property
+    def _single_table_criterion(self):
+        if self.single and \
+            self.inherits and \
+            self.polymorphic_on and \
+            self.polymorphic_identity is not None:
+            return self.polymorphic_on.in_(
+                m.polymorphic_identity
+                for m in self.polymorphic_iterator())
+        else:
+            return None
+        
+    
     @util.memoized_property
     def _with_polymorphic_mappers(self):
         if not self.with_polymorphic:
