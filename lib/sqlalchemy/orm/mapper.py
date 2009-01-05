@@ -161,7 +161,9 @@ class Mapper(object):
 
         if isinstance(self.local_table, expression._SelectBaseMixin):
             util.warn("mapper %s creating an alias for the given "
-                        "selectable - use Class attributes for queries." % self)
+                        "selectable.  References to the original selectable "
+                        "may be misinterpreted by queries, polymorphic_on, etc. "
+                        " Consider passing an explicit selectable.alias() construct instead." % self)
             self.local_table = self.local_table.alias()
 
         if self.with_polymorphic and isinstance(self.with_polymorphic[1], expression._SelectBaseMixin):
