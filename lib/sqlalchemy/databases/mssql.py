@@ -482,9 +482,6 @@ class MSDateTimeAsDate(_DateTimeType, MSDate):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        super(MSDate, self).__init__(False)
-
     def get_col_spec(self):
         return "DATETIME"
 
@@ -507,9 +504,6 @@ class MSDateTimeAsTime(MSTime):
     """
 
     __zero_date = datetime.date(1900, 1, 1)
-
-    def __init__(self, *a, **kw):
-        super(MSTime, self).__init__(False)
 
     def get_col_spec(self):
         return "DATETIME"
@@ -1287,6 +1281,13 @@ class MSSQLDialect_pymssql(MSSQLDialect):
             util.warn("pymssql does not support unicode")
             self.encoding = params.get('encoding', 'ascii')
 
+        self.colspecs = MSSQLDialect.colspecs.copy()
+        self.ischema_names = MSSQLDialect.ischema_names.copy()
+        self.ischema_names['date'] = MSDateTimeAsDate
+        self.colspecs[sqltypes.Date] = MSDateTimeAsDate
+        self.ischema_names['time'] = MSDateTimeAsTime
+        self.colspecs[sqltypes.Time] = MSDateTimeAsTime
+
     def create_connect_args(self, url):
         r = super(MSSQLDialect_pymssql, self).create_connect_args(url)
         if hasattr(self, 'query_timeout'):
@@ -1316,10 +1317,12 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         super(MSSQLDialect_pyodbc, self).__init__(**params)
         self.description_encoding = description_encoding
 
-        self.colspecs = MSSQLDialect.colspecs.copy()
-        self.ischema_names = MSSQLDialect.ischema_names.copy()
         if self.server_version_info < (10,):
+            self.colspecs = MSSQLDialect.colspecs.copy()
+            self.ischema_names = MSSQLDialect.ischema_names.copy()
+            self.ischema_names['date'] = MSDateTimeAsDate
             self.colspecs[sqltypes.Date] = MSDateTimeAsDate
+            self.ischema_names['time'] = MSDateTimeAsTime
             self.colspecs[sqltypes.Time] = MSDateTimeAsTime
 
         # FIXME: scope_identity sniff should look at server version, not the ODBC driver
