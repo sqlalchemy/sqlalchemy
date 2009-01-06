@@ -979,6 +979,38 @@ class JoinTest(QueryTest):
             []
         )
     
+    def test_backwards_join(self):
+        # a more controversial feature.  join from
+        # User->Address, but the onclause is Address.user.
+        
+        sess = create_session()
+
+        self.assertEquals(
+            sess.query(User).join(Address.user).filter(Address.email_address=='ed@wood.com').all(),
+            [User(id=8,name=u'ed')]
+        )
+
+        # its actually not so controversial if you view it in terms
+        # of multiple entities.
+        self.assertEquals(
+            sess.query(User, Address).join(Address.user).filter(Address.email_address=='ed@wood.com').all(),
+            [(User(id=8,name=u'ed'), Address(email_address='ed@wood.com'))]
+        )
+        
+        # this was the controversial part.  now, raise an error if the feature is abused.
+        # before the error raise was added, this would silently work.....
+        self.assertRaises(
+            sa_exc.InvalidRequestError,
+            sess.query(User).join, (Address, Address.user),
+        )
+
+        # but this one would silently fail 
+        adalias = aliased(Address)
+        self.assertRaises(
+            sa_exc.InvalidRequestError,
+            sess.query(User).join, (adalias, Address.user),
+        )
+        
     def test_multiple_with_aliases(self):
         sess = create_session()
         

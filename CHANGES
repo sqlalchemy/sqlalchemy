@@ -86,7 +86,12 @@ CHANGES
       inheriting target, when used in the context of 
       prop.of_type(..).any()/has(), as well as 
       query.join(prop.of_type(...)).
-      
+    
+    - query.join() raises an error when the target of the join
+      doesn't match the property-based attribute - while it's 
+      unlikely anyone is doing this, the SQLAlchemy author was
+      guilty of this particular loosey-goosey behavior.
+        
     - Fixed bug when using weak_instance_map=False where modified
       events would not be intercepted for a flush(). [ticket:1272]
       

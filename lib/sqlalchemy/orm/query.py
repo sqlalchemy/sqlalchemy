@@ -784,11 +784,10 @@ class Query(object):
         right_entity = None
 
         for arg1 in util.to_list(keys):
-            prop =  None
             aliased_entity = False
             alias_criterion = False
             left_entity = right_entity
-            right_entity = right_mapper = None
+            prop = of_type = right_entity = right_mapper = None
 
             if isinstance(arg1, tuple):
                 arg1, arg2 = arg1
@@ -827,6 +826,7 @@ class Query(object):
 
                 descriptor, prop = _entity_descriptor(left_entity, onclause)
                 right_mapper = prop.mapper
+
                 if not right_entity:
                     right_entity = right_mapper
             elif onclause is None:
@@ -849,7 +849,12 @@ class Query(object):
                 raise sa_exc.InvalidRequestError("Could not find a FROM clause to join from")
 
             mp, right_selectable, is_aliased_class = _entity_info(right_entity)
-
+            
+            if mp is not None and right_mapper is not None and not mp.common_parent(right_mapper):
+                raise sa_exc.InvalidRequestError(
+                    "Join target %s does not correspond to the right side of join condition %s" % (right_entity, onclause)
+                )
+            
             if not right_mapper and mp:
                 right_mapper = mp
 
@@ -886,8 +891,10 @@ class Query(object):
                     if prop.secondary:
                         self.__currenttables.add(prop.secondary)
                     self.__currenttables.add(prop.table)
-
-                    if not right_entity:
+                    
+                    if of_type:
+                        right_entity = of_type
+                    else:
                         right_entity = prop.mapper
 
             if alias_criterion:
