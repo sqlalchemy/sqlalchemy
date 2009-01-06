@@ -6,7 +6,6 @@ import sharding.alltests as sharding
 
 def suite():
     modules_to_test = (
-    'orm.memusage',
         'orm.attributes',
         'orm.bind',
         'orm.extendedattr',
