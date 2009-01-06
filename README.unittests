@@ -5,8 +5,7 @@ SQLALCHEMY UNIT TESTS
 SETUP
 -----
 SQLite support is required.  These instructions assume standard Python 2.4 or
-higher. See the section on alternate Python implementations for information on
-testing with 2.3 and other Pythons.
+higher. 
 
 The 'test' directory must be on the PYTHONPATH.
 

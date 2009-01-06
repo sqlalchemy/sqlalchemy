@@ -1,2 +1,2 @@
-include doc/*.html
-include doc/*.css
+recursive-include doc *.html *.css *.txt *.js
+prune doc/build/output

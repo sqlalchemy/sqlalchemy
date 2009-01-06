@@ -6,13 +6,6 @@ try:
 except ImportError:
     from distutils.core import setup
 
-if sys.version_info < (2, 4):
-    raise Exception("SQLAlchemy requires Python 2.4 or higher.")
-
-v = file(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.py'))
-VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(v.read()).group(1)
-v.close()
-
 def find_packages(dir_):
     packages = []
     for _dir, subdirectories, files in os.walk(os.path.join(dir_, 'sqlalchemy')):
@@ -20,6 +13,14 @@ def find_packages(dir_):
             lib, fragment = _dir.split(os.sep, 1)
             packages.append(fragment.replace(os.sep, '.'))
     return packages
+
+
+if sys.version_info < (2, 4):
+    raise Exception("SQLAlchemy requires Python 2.4 or higher.")
+
+v = file(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.py'))
+VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(v.read()).group(1)
+v.close()
 
 setup(name = "SQLAlchemy",
       version = VERSION,
