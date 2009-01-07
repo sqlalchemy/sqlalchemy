@@ -658,7 +658,7 @@ Upon select, the polymorphic union produces a query like this:
 Using Relations with Inheritance 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Both joined-table and single table inheritance scenarios produce mappings which are usable in relation() functions; that is, it's possible to map a parent object to a child object which is polymorphic.  Similarly, inheriting mappers can have ``relation()``s of their own at any level, which are inherited to each child class.  The only requirement for relations is that there is a table relationship between parent and child.  An example is the following modification to the joined table inheritance example, which sets a bi-directional relationship between ``Employee`` and ``Company``:
+Both joined-table and single table inheritance scenarios produce mappings which are usable in relation() functions; that is, it's possible to map a parent object to a child object which is polymorphic.  Similarly, inheriting mappers can have ``relation()`` objects of their own at any level, which are inherited to each child class.  The only requirement for relations is that there is a table relationship between parent and child.  An example is the following modification to the joined table inheritance example, which sets a bi-directional relationship between ``Employee`` and ``Company``:
 
 .. sourcecode:: python+sql
 
@@ -804,7 +804,7 @@ Multiple Mappers for One Class
 -------------------------------
 
 
-The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well on the "load side" - these are called **secondary mappers**.   This is a mapper that must be constructed with the keyword argument ``non_primary=True``, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new ``relation()``s to a non-primary mapper. To use this mapper with the Session, specify it to the ``query`` method:
+The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well on the "load side" - these are called **secondary mappers**.   This is a mapper that must be constructed with the keyword argument ``non_primary=True``, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new ``relation()`` objects to a non-primary mapper. To use this mapper with the Session, specify it to the ``query`` method:
 
 example:
 
