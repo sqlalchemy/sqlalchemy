@@ -1335,10 +1335,11 @@ class Query(object):
         session. Valid values are:
 
         False
-          don't synchronize the session. Use this when you don't need to use the
-          session after the delete or you can be sure that none of the matched objects
-          are in the session. The behavior of deleted objects still in the session is
-          undefined.
+          don't synchronize the session. This option is the most efficient and is reliable
+          once the session is expired, which typically occurs after a commit().   Before
+          the expiration, objects may still remain in the session which were in fact deleted
+          which can lead to confusing results if they are accessed via get() or already
+          loaded collections.
 
         'fetch'
           performs a select query before the delete to find objects that are matched
