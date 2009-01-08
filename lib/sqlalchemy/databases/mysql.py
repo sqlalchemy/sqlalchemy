@@ -255,7 +255,7 @@ RESERVED_WORDS = set(
      'using', 'utc_date', 'utc_time', 'utc_timestamp', 'values', 'varbinary',
      'varchar', 'varcharacter', 'varying', 'when', 'where', 'while', 'with',
      'write', 'x509', 'xor', 'year_month', 'zerofill', # 5.0
-     'fields', # 4.1
+     'columns', 'fields', 'privileges', 'soname', 'tables', # 4.1
      'accessible', 'linear', 'master_ssl_verify_server_cert', 'range',
      'read_only', 'read_write', # 5.1
      ])

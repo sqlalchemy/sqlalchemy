@@ -4,6 +4,10 @@
 CHANGES
 =======
 
+- mysql
+    - Added the missing keywords from MySQL 4.1 so they get escaped
+      properly.
+
 0.5.0
 ========
 
