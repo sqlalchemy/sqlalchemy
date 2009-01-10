@@ -1330,33 +1330,43 @@ class Query(object):
     def delete(self, synchronize_session='fetch'):
         """Perform a bulk delete query.
 
-        Deletes rows matched by this query from the database. The synchronize_session
-        parameter chooses the strategy for the removal of matched objects from the
-        session. Valid values are:
+        Deletes rows matched by this query from the database. 
+        
+        :param synchronize_session: chooses the strategy for the removal of matched 
+            objects from the session. Valid values are:
 
-        False
-          don't synchronize the session. This option is the most efficient and is reliable
-          once the session is expired, which typically occurs after a commit().   Before
-          the expiration, objects may still remain in the session which were in fact deleted
-          which can lead to confusing results if they are accessed via get() or already
-          loaded collections.
+            False
+              don't synchronize the session. This option is the most efficient and is reliable
+              once the session is expired, which typically occurs after a commit().   Before
+              the expiration, objects may still remain in the session which were in fact deleted
+              which can lead to confusing results if they are accessed via get() or already
+              loaded collections.
 
-        'fetch'
-          performs a select query before the delete to find objects that are matched
-          by the delete query and need to be removed from the session. Matched objects
-          are removed from the session. 'fetch' is the default strategy.
+            'fetch'
+              performs a select query before the delete to find objects that are matched
+              by the delete query and need to be removed from the session. Matched objects
+              are removed from the session. 'fetch' is the default strategy.
 
-        'evaluate'
-          experimental feature. Tries to evaluate the querys criteria in Python
-          straight on the objects in the session. If evaluation of the criteria isn't
-          implemented, the 'fetch' strategy will be used as a fallback.
+            'evaluate'
+              experimental feature. Tries to evaluate the querys criteria in Python
+              straight on the objects in the session. If evaluation of the criteria isn't
+              implemented, the 'fetch' strategy will be used as a fallback.
 
-          The expression evaluator currently doesn't account for differing string
-          collations between the database and Python.
+              The expression evaluator currently doesn't account for differing string
+              collations between the database and Python.
 
         Returns the number of rows deleted, excluding any cascades.
 
-        Warning - this currently doesn't account for any foreign key/relation cascades.
+        The method does *not* offer in-Python cascading of relations - it is assumed that
+        ON DELETE CASCADE is configured for any foreign key references which require it.
+        The Session needs to be expired (occurs automatically after commit(), or call expire_all())
+        in order for the state of dependent objects subject to delete or delete-orphan cascade to be 
+        correctly represented.
+        
+        Also, the ``before_delete()`` and ``after_delete()`` :class:`~sqlalchemy.orm.interfaces.MapperExtension` 
+        methods are not called from this method.  For a delete hook here, use the
+        ``after_bulk_delete()`` :class:`~sqlalchemy.orm.interfaces.MapperExtension` method.
+
         """
         #TODO: lots of duplication and ifs - probably needs to be refactored to strategies
         #TODO: cascades need handling.
@@ -1412,31 +1422,43 @@ class Query(object):
     def update(self, values, synchronize_session='expire'):
         """Perform a bulk update query.
 
-        Updates rows matched by this query in the database. The values parameter takes
-        a dictionary with object attributes as keys and literal values or sql expressions
-        as values. The synchronize_session parameter chooses the strategy to update the
-        attributes on objects in the session. Valid values are:
+        Updates rows matched by this query in the database. 
+        
+        :param values: a dictionary with attributes names as keys and literal values or sql expressions
+            as values. 
+        
+        :param synchronize_session: chooses the strategy to update the
+            attributes on objects in the session. Valid values are:
 
-        False
-          don't synchronize the session. Use this when you don't need to use the
-          session after the update or you can be sure that none of the matched objects
-          are in the session.
+            False
+              don't synchronize the session. Use this when you don't need to use the
+              session after the update or you can be sure that none of the matched objects
+              are in the session.
 
-        'expire'
-          performs a select query before the update to find objects that are matched
-          by the update query. The updated attributes are expired on matched objects.
+            'expire'
+              performs a select query before the update to find objects that are matched
+              by the update query. The updated attributes are expired on matched objects.
 
-        'evaluate'
-          experimental feature. Tries to evaluate the querys criteria in Python
-          straight on the objects in the session. If evaluation of the criteria isn't
-          implemented, the 'expire' strategy will be used as a fallback.
+            'evaluate'
+              experimental feature. Tries to evaluate the querys criteria in Python
+              straight on the objects in the session. If evaluation of the criteria isn't
+              implemented, the 'expire' strategy will be used as a fallback.
 
-          The expression evaluator currently doesn't account for differing string
-          collations between the database and Python.
+              The expression evaluator currently doesn't account for differing string
+              collations between the database and Python.
 
         Returns the number of rows matched by the update.
 
-        Warning - this currently doesn't account for any foreign key/relation cascades.
+        The method does *not* offer in-Python cascading of relations - it is assumed that
+        ON UPDATE CASCADE is configured for any foreign key references which require it.
+        The Session needs to be expired (occurs automatically after commit(), or call expire_all())
+        in order for the state of dependent objects subject foreign key cascade to be 
+        correctly represented.
+        
+        Also, the ``before_update()`` and ``after_update()`` :class:`~sqlalchemy.orm.interfaces.MapperExtension` 
+        methods are not called from this method.  For an update hook here, use the
+        ``after_bulk_update()`` :class:`~sqlalchemy.orm.interfaces.MapperExtension`  method.
+
         """
 
         #TODO: value keys need to be mapped to corresponding sql cols and instr.attr.s to string keys
