@@ -19,6 +19,9 @@ CHANGES
     - Modified the do_begin handling in mssql to use the Cursor not
       the Connection so it is DBAPI compatible.
 
+    - Corrected SAVEPOINT support on adodbapi by changing the
+      handling of savepoint_release, which is unsupported on mssql.
+
 0.5.0
 ========
 

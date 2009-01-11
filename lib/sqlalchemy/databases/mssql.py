@@ -1060,6 +1060,9 @@ class MSSQLDialect(default.DefaultDialect):
         cursor.execute("SET IMPLICIT_TRANSACTIONS OFF")
         cursor.execute("BEGIN TRANSACTION")
 
+    def do_release_savepoint(self, connection, name):
+        pass
+
     @base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
         query = "SELECT user_name() as user_name;"
@@ -1536,9 +1539,6 @@ class MSSQLCompiler(compiler.DefaultCompiler):
 
     def visit_rollback_to_savepoint(self, savepoint_stmt):
         return "ROLLBACK TRANSACTION %s" % self.preparer.format_savepoint(savepoint_stmt)
-
-    def visit_release_savepoint(self, savepoint_stmt):
-        pass
 
     def visit_column(self, column, result_map=None, **kwargs):
         if column.table is not None and \
