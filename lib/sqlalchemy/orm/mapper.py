@@ -281,9 +281,7 @@ class Mapper(object):
             self._identity_class = self.class_
 
         if self.mapped_table is None:
-            raise sa_exc.ArgumentError("Mapper '%s' does not have a mapped_table specified.  "
-                            "(Are you using the return value of table.create()?  "
-                            "It no longer has a return value.)" % self)
+            raise sa_exc.ArgumentError("Mapper '%s' does not have a mapped_table specified." % self)
 
     def _configure_extensions(self):
         """Go through the global_extensions list as well as the list

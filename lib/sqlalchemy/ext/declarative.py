@@ -361,6 +361,10 @@ def _as_declarative(cls, classname, dict_):
     else:
         mapper_cls = mapper
 
+    if not table and 'inherits' not in mapper_args:
+        raise exceptions.InvalidRequestError("Class %r does not have a __table__ or __tablename__ "
+                    "specified and does not inherit from an existing table-mapped class." % cls)
+        
     cls.__mapper__ = mapper_cls(cls, table, properties=our_stuff,
                                 **mapper_args)
 

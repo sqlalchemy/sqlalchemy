@@ -4,6 +4,13 @@
 CHANGES
 =======
 
+0.5.1
+========
+
+- orm
+    - Modernized the "no mapped table" exception and added a more
+      explicit __table__/__tablename__ exception to declarative.
+      
 - mysql
     - Added the missing keywords from MySQL 4.1 so they get escaped
       properly.

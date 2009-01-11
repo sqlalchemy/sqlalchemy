@@ -58,6 +58,12 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         eq_(a1, Address(email='two'))
         eq_(a1.user, User(name='u1'))
 
+    def test_no_table(self):
+        def go():
+            class User(Base):
+                id = Column('id', Integer, primary_key=True)
+        self.assertRaisesMessage(sa.exc.InvalidRequestError, "does not have a __table__", go)
+        
     def test_recompile_on_othermapper(self):
         """declarative version of the same test in mappers.py"""
 
