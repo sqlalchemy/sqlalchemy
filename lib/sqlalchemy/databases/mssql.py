@@ -1056,8 +1056,9 @@ class MSSQLDialect(default.DefaultDialect):
         return newobj
 
     def do_begin(self, connection):
-        connection.execute("SET IMPLICIT_TRANSACTIONS OFF")
-        connection.execute("BEGIN TRANSACTION")
+        cursor = connection.cursor()
+        cursor.execute("SET IMPLICIT_TRANSACTIONS OFF")
+        cursor.execute("BEGIN TRANSACTION")
 
     @base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
@@ -1304,6 +1305,9 @@ class MSSQLDialect_pymssql(MSSQLDialect):
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.DatabaseError) and "Error 10054" in str(e)
 
+    def do_begin(self, connection):
+        pass
+
 
 class MSSQLDialect_pyodbc(MSSQLDialect):
     supports_sane_rowcount = False
@@ -1429,6 +1433,7 @@ class MSSQLDialect_adodbapi(MSSQLDialect):
 
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.adodbapi.DatabaseError) and "'connection failure'" in str(e)
+
 
 dialect_mapping = {
     'pymssql':  MSSQLDialect_pymssql,
