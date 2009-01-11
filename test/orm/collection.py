@@ -73,7 +73,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -114,7 +114,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -284,7 +284,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -413,7 +413,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -671,7 +671,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -781,7 +781,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -903,7 +903,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -1102,7 +1102,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
         obj = Foo()
@@ -1238,7 +1238,7 @@ class CollectionsTest(_base.ORMTest):
             pass
         canary = Canary()
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary,
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=Custom, useobject=True)
 
         obj = Foo()
@@ -1308,7 +1308,7 @@ class CollectionsTest(_base.ORMTest):
         canary = Canary()
         creator = self.entity_maker
         attributes.register_class(Foo)
-        attributes.register_attribute(Foo, 'attr', True, extension=canary, useobject=True)
+        attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary, useobject=True)
 
         obj = Foo()
         col1 = obj.attr

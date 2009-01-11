@@ -97,7 +97,7 @@ You can defer or undefer columns at the ``Query`` level using the ``defer`` and 
     query.options(defer('summary')).all()
     query.options(undefer('excerpt')).all()
 
-And an entire "deferred group", i.e. which uses the ``group`` keyword argument to :func:`deferred()`, can be undeferred using :func:`undefer_group()`, sending in the group name::
+And an entire "deferred group", i.e. which uses the ``group`` keyword argument to :func:`~sqlalchemy.orm.deferred()`, can be undeferred using :func:`~sqlalchemy.orm.undefer_group()`, sending in the group name::
 
     query = session.query(Book)
     query.options(undefer_group('photos')).all()
@@ -105,7 +105,7 @@ And an entire "deferred group", i.e. which uses the ``group`` keyword argument t
 SQL Expressions as Mapped Attributes 
 -------------------------------------
 
-To add a SQL clause composed of local or external columns as a read-only, mapped column attribute, use the :func:`column_property()` function.  Any scalar-returning ``ClauseElement`` may be used, as long as it has a ``name`` attribute; usually, you'll want to call ``label()`` to give it a specific name::
+To add a SQL clause composed of local or external columns as a read-only, mapped column attribute, use the :func:`~sqlalchemy.orm.column_property()` function.  Any scalar-returning ``ClauseElement`` may be used, as long as it has a ``name`` attribute; usually, you'll want to call ``label()`` to give it a specific name::
 
     mapper(User, users_table, properties={
         'fullname': column_property(
@@ -658,7 +658,7 @@ Upon select, the polymorphic union produces a query like this:
 Using Relations with Inheritance 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Both joined-table and single table inheritance scenarios produce mappings which are usable in relation() functions; that is, it's possible to map a parent object to a child object which is polymorphic.  Similarly, inheriting mappers can have ``relation()`` objects of their own at any level, which are inherited to each child class.  The only requirement for relations is that there is a table relationship between parent and child.  An example is the following modification to the joined table inheritance example, which sets a bi-directional relationship between ``Employee`` and ``Company``:
+Both joined-table and single table inheritance scenarios produce mappings which are usable in :func:`~sqlalchemy.orm.relation` functions; that is, it's possible to map a parent object to a child object which is polymorphic.  Similarly, inheriting mappers can have :func:`~sqlalchemy.orm.relation` objects of their own at any level, which are inherited to each child class.  The only requirement for relations is that there is a table relationship between parent and child.  An example is the following modification to the joined table inheritance example, which sets a bi-directional relationship between ``Employee`` and ``Company``:
 
 .. sourcecode:: python+sql
 
@@ -679,7 +679,7 @@ Both joined-table and single table inheritance scenarios produce mappings which 
        'employees': relation(Employee, backref='company')
     })
 
-SQLAlchemy has a lot of experience in this area; the optimized "outer join" approach can be used freely for parent and child relationships, eager loads are fully useable, query aliasing and other tricks are fully supported as well.
+SQLAlchemy has a lot of experience in this area; the optimized "outer join" approach can be used freely for parent and child relationships, eager loads are fully useable, :func:`~sqlalchemy.orm.aliased` objects and other techniques are fully supported as well.
 
 In a concrete inheritance scenario, mapping relations is more difficult since the distinct classes do not share a table.  In this case, you *can* establish a relationship from parent to child if a join condition can be constructed from parent to child, if each child table contains a foreign key to the parent:
 
@@ -716,29 +716,30 @@ In a concrete inheritance scenario, mapping relations is more difficult since th
         'employees': relation(Employee)
     })
 
-Let's crank it up and try loading with an eager load:
+The big limitation with concrete table inheritance is that :func:`~sqlalchemy.orm.relation` objects placed on each concrete mapper do **not** propagate to child mappers.  If you want to have the same :func:`~sqlalchemy.orm.relation` objects set up on all concrete mappers, they must be configured manually on each.  To configure back references in such a configuration the ``back_populates`` keyword may be used instead of ``backref``, such as below where both ``A(object)`` and ``B(A)`` bidirectionally reference ``C``::
 
-.. sourcecode:: python+sql
-
-    session.query(Company).options(eagerload('employees')).all()
-    {opensql}
-    SELECT anon_1.type AS anon_1_type, anon_1.manager_data AS anon_1_manager_data, anon_1.engineer_info AS anon_1_engineer_info,
-    anon_1.employee_id AS anon_1_employee_id, anon_1.name AS anon_1_name, anon_1.company_id AS anon_1_company_id,
-    companies.id AS companies_id, companies.name AS companies_name
-    FROM companies LEFT OUTER JOIN (SELECT CAST(NULL AS VARCHAR(50)) AS engineer_info, employees.employee_id AS employee_id,
-    CAST(NULL AS VARCHAR(50)) AS manager_data, employees.name AS name, employees.company_id AS company_id, 'employee' AS type
-    FROM employees UNION ALL SELECT CAST(NULL AS VARCHAR(50)) AS engineer_info, managers.employee_id AS employee_id,
-    managers.manager_data AS manager_data, managers.name AS name, managers.company_id AS company_id, 'manager' AS type
-    FROM managers UNION ALL SELECT engineers.engineer_info AS engineer_info, engineers.employee_id AS employee_id,
-    CAST(NULL AS VARCHAR(50)) AS manager_data, engineers.name AS name, engineers.company_id AS company_id, 'engineer' AS type
-    FROM engineers) AS anon_1 ON companies.id = anon_1.company_id
-    []
-
-The big limitation with concrete table inheritance is that relation()s placed on each concrete mapper do **not** propagate to child mappers.  If you want to have the same relation()s set up on all concrete mappers, they must be configured manually on each.
+    ajoin = polymorphic_union({
+            'a':a_table,
+            'b':b_table
+        }, 'type', 'ajoin')
+        
+    mapper(A, a_table, with_polymorphic=('*', ajoin), 
+        polymorphic_on=ajoin.c.type, polymorphic_identity='a', 
+        properties={
+            'some_c':relation(C, back_populates='many_a')
+    })
+    mapper(B, b_table,inherits=A, concrete=True, 
+        polymorphic_identity='b', 
+        properties={
+            'some_c':relation(C, back_populates='many_a')
+    })
+    mapper(C, c_table, properties={
+        'many_a':relation(A, collection_class=set, back_populates='some_c'),
+    })
+    
 
 Mapping a Class against Multiple Tables 
 ----------------------------------------
-
 
 Mappers can be constructed against arbitrary relational units (called ``Selectables``) as well as plain ``Tables``.  For example, The ``join`` keyword from the SQL package creates a neat selectable unit comprised of multiple tables, complete with its own composite primary key, which can be passed in to a mapper as the table.
 
@@ -1542,9 +1543,9 @@ There are two other loader strategies available, **dynamic loading** and **no lo
 Routing Explicit Joins/Statements into Eagerly Loaded Collections 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The behavior of :func:`eagerload()` is such that joins are created automatically, the results of which are routed into collections and scalar references on loaded objects.  It is often the case that a query already includes the necessary joins which represent a particular collection or scalar reference, and the joins added by the eagerload feature are redundant - yet you'd still like the collections/references to be populated.
+The behavior of :func:`~sqlalchemy.orm.eagerload()` is such that joins are created automatically, the results of which are routed into collections and scalar references on loaded objects.  It is often the case that a query already includes the necessary joins which represent a particular collection or scalar reference, and the joins added by the eagerload feature are redundant - yet you'd still like the collections/references to be populated.
 
-For this SQLAlchemy supplies the :func:`contains_eager()` option.  This option is used in the same manner as the :func:`eagerload()` option except it is assumed that the ``Query`` will specify the appropriate joins explicitly.  Below it's used with a ``from_statement`` load::
+For this SQLAlchemy supplies the :func:`~sqlalchemy.orm.contains_eager()` option.  This option is used in the same manner as the :func:`~sqlalchemy.orm.eagerload()` option except it is assumed that the ``Query`` will specify the appropriate joins explicitly.  Below it's used with a ``from_statement`` load::
 
     # mapping is the users->addresses mapping
     mapper(User, users_table, properties={

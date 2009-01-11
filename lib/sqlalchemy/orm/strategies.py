@@ -18,37 +18,71 @@ from sqlalchemy.orm.interfaces import (
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 
+def _register_attribute(strategy, useobject,
+        compare_function=None, 
+        typecallable=None,
+        copy_function=None, 
+        mutable_scalars=False, 
+        uselist=False,
+        callable_=None, 
+        proxy_property=None, 
+        active_history=False,
+        impl_class=None, 
+        **kw        
+):
 
-class DefaultColumnLoader(LoaderStrategy):
-    def _register_attribute(self, compare_function, copy_function, mutable_scalars, 
-            comparator_factory, callable_=None, proxy_property=None, active_history=False):
-        self.logger.info("%s register managed attribute" % self)
-
-        attribute_ext = util.to_list(self.parent_property.extension) or []
-        if self.key in self.parent._validators:
-            attribute_ext.append(mapperutil.Validator(self.key, self.parent._validators[self.key]))
-
-        for mapper in self.parent.polymorphic_iterator():
-            if (mapper is self.parent or not mapper.concrete) and mapper.has_property(self.key):
-                sessionlib.register_attribute(
-                    mapper.class_, 
-                    self.key, 
-                    uselist=False, 
-                    useobject=False, 
-                    copy_function=copy_function, 
-                    compare_function=compare_function, 
-                    mutable_scalars=mutable_scalars, 
-                    comparator=comparator_factory(self.parent_property, mapper), 
-                    parententity=mapper,
-                    callable_=callable_,
-                    extension=attribute_ext,
-                    proxy_property=proxy_property,
-                    active_history=active_history
-                    )
-
-log.class_logger(DefaultColumnLoader)
+    prop = strategy.parent_property
+    attribute_ext = util.to_list(prop.extension) or []
+    if getattr(prop, 'backref', None):
+        attribute_ext.append(prop.backref.extension)
     
-class ColumnLoader(DefaultColumnLoader):
+    if prop.key in prop.parent._validators:
+        attribute_ext.append(mapperutil.Validator(prop.key, prop.parent._validators[prop.key]))
+    
+    if useobject:
+        attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
+
+    for mapper in prop.parent.polymorphic_iterator():
+        if (mapper is prop.parent or not mapper.concrete) and mapper.has_property(prop.key):
+            attributes.register_attribute_impl(
+                mapper.class_, 
+                prop.key, 
+                parent_token=prop,
+                mutable_scalars=mutable_scalars,
+                uselist=uselist, 
+                copy_function=copy_function, 
+                compare_function=compare_function, 
+                useobject=useobject, 
+                extension=attribute_ext, 
+                trackparent=useobject, 
+                typecallable=typecallable,
+                callable_=callable_, 
+                active_history=active_history,
+                impl_class=impl_class,
+                **kw
+                )
+
+class UninstrumentedColumnLoader(LoaderStrategy):
+    """Represent the strategy for a MapperProperty that doesn't instrument the class.
+    
+    The polymorphic_on argument of mapper() often results in this,
+    if the argument is against the with_polymorphic selectable.
+    
+    """
+    def init(self):
+        self.columns = self.parent_property.columns
+
+    def setup_query(self, context, entity, path, adapter, column_collection=None, **kwargs):
+        for c in self.columns:
+            if adapter:
+                c = adapter.columns[c]
+            column_collection.append(c)
+
+    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
+        return (None, None)
+
+class ColumnLoader(LoaderStrategy):
+    """Strategize the loading of a plain column-based MapperProperty."""
     
     def init(self):
         self.columns = self.parent_property.columns
@@ -64,14 +98,12 @@ class ColumnLoader(DefaultColumnLoader):
         self.is_class_level = True
         coltype = self.columns[0].type
         active_history = self.columns[0].primary_key  # TODO: check all columns ?  check for foreign Key as well?
-        
-        self._register_attribute(
-            coltype.compare_values,
-            coltype.copy_value,
-            self.columns[0].type.is_mutable(),
-            self.parent_property.comparator_factory,
+
+        _register_attribute(self, useobject=False,
+            compare_function=coltype.compare_values,
+            copy_function=coltype.copy_value,
+            mutable_scalars=self.columns[0].type.is_mutable(),
             active_history = active_history
-            
        )
         
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
@@ -99,6 +131,8 @@ class ColumnLoader(DefaultColumnLoader):
 log.class_logger(ColumnLoader)
 
 class CompositeColumnLoader(ColumnLoader):
+    """Strategize the loading of a composite column-based MapperProperty."""
+
     def init_class_attribute(self):
         self.is_class_level = True
         self.logger.info("%s register managed composite attribute" % self)
@@ -120,11 +154,11 @@ class CompositeColumnLoader(ColumnLoader):
             else:
                 return True
 
-        self._register_attribute(
-             compare,
-             copy,
-             True,
-             self.parent_property.comparator_factory
+        _register_attribute(self, useobject=False,
+            compare_function=compare,
+            copy_function=copy,
+            mutable_scalars=True
+            #active_history ?
         )
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
@@ -153,8 +187,8 @@ class CompositeColumnLoader(ColumnLoader):
 
 log.class_logger(CompositeColumnLoader)
     
-class DeferredColumnLoader(DefaultColumnLoader):
-    """Deferred column loader, a per-column or per-column-group lazy loader."""
+class DeferredColumnLoader(LoaderStrategy):
+    """Strategize the loading of a deferred column-based MapperProperty."""
     
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         col = self.columns[0]
@@ -184,11 +218,11 @@ class DeferredColumnLoader(DefaultColumnLoader):
 
     def init_class_attribute(self):
         self.is_class_level = True
-        self._register_attribute(
-             self.columns[0].type.compare_values,
-             self.columns[0].type.copy_value,
-             self.columns[0].type.is_mutable(),
-             self.parent_property.comparator_factory,
+    
+        _register_attribute(self, useobject=False,
+             compare_function=self.columns[0].type.compare_values,
+             copy_function=self.columns[0].type.copy_value,
+             mutable_scalars=self.columns[0].type.is_mutable(),
              callable_=self.class_level_loader,
         )
 
@@ -282,6 +316,8 @@ class UndeferGroupOption(MapperOption):
         query._attributes[('undefer', self.group)] = True
 
 class AbstractRelationLoader(LoaderStrategy):
+    """LoaderStratgies which deal with related objects as opposed to scalars."""
+
     def init(self):
         for attr in ['mapper', 'target', 'table', 'uselist']:
             setattr(self, attr, getattr(self.parent_property, attr))
@@ -291,37 +327,18 @@ class AbstractRelationLoader(LoaderStrategy):
             state.set_callable(self.key, callable_)
         else:
             state.initialize(self.key)
-        
-    def _register_attribute(self, class_, callable_=None, impl_class=None, **kwargs):
-        self.logger.info("%s register managed %s attribute" % (self, (self.uselist and "collection" or "scalar")))
-        
-        attribute_ext = util.to_list(self.parent_property.extension) or []
-        
-        if self.parent_property.backref:
-            attribute_ext.append(self.parent_property.backref.extension)
-        
-        if self.key in self.parent._validators:
-            attribute_ext.append(mapperutil.Validator(self.key, self.parent._validators[self.key]))
-            
-        sessionlib.register_attribute(
-            class_, 
-            self.key, 
-            uselist=self.uselist, 
-            useobject=True, 
-            extension=attribute_ext, 
-            trackparent=True, 
-            typecallable=self.parent_property.collection_class, 
-            callable_=callable_, 
-            comparator=self.parent_property.comparator, 
-            parententity=self.parent,
-            impl_class=impl_class,
-            **kwargs
-            )
 
 class NoLoader(AbstractRelationLoader):
+    """Strategize a relation() that doesn't load data automatically."""
+
     def init_class_attribute(self):
         self.is_class_level = True
-        self._register_attribute(self.parent.class_)
+
+        _register_attribute(self, 
+            useobject=True, 
+            uselist=self.parent_property.uselist,
+            typecallable = self.parent_property.collection_class,
+        )
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         def new_execute(state, row, **flags):
@@ -336,6 +353,8 @@ class NoLoader(AbstractRelationLoader):
 log.class_logger(NoLoader)
         
 class LazyLoader(AbstractRelationLoader):
+    """Strategize a relation() that loads when first accessed."""
+
     def init(self):
         super(LazyLoader, self).init()
         (self.__lazywhere, self.__bind_to_col, self._equated_columns) = self._create_lazy_clause(self.parent_property)
@@ -351,7 +370,14 @@ class LazyLoader(AbstractRelationLoader):
 
     def init_class_attribute(self):
         self.is_class_level = True
-        self._register_attribute(self.parent.class_, callable_=self.class_level_loader)
+        
+        
+        _register_attribute(self, 
+                useobject=True,
+                callable_=self.class_level_loader,
+                uselist = self.parent_property.uselist,
+                typecallable = self.parent_property.collection_class,
+                )
 
     def lazy_clause(self, state, reverse_direction=False, alias_secondary=False, adapt_source=None):
         if state is None:
@@ -564,7 +590,7 @@ class LoadLazyAttribute(object):
                 return None
 
 class EagerLoader(AbstractRelationLoader):
-    """Loads related objects inline with a parent query."""
+    """Strategize a relation() that loads within the process of the parent object being selected."""
     
     def init(self):
         super(EagerLoader, self).init()

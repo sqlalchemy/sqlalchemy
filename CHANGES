@@ -10,6 +10,37 @@ CHANGES
 - orm
     - Modernized the "no mapped table" exception and added a more
       explicit __table__/__tablename__ exception to declarative.
+
+    - Concrete inheriting mappers now instrument attributes which
+      are inherited from the superclass, but are not defined for
+      the concrete mapper itself, with an InstrumentedAttribute that
+      issues a descriptive error when accessed. [ticket:1237]
+
+    - Added a new `relation()` keyword `back_populates`. This
+      allows configuation of backreferences using explicit
+      relations. [ticket:781] This is required when creating
+      bidirectional relations between a hierarchy of concrete
+      mappers and another class. [ticket:1237]
+
+    - Test coverage added for `relation()` objects specified on
+      concrete mappers. [ticket:1237]
+
+    - A short documentation example added for bidirectional
+      relations specified on concrete mappers. [ticket:1237]
+
+    - Mappers now instrument class attributes upon construction
+      with the final InstrumentedAttribute object which remains
+      persistent. The `_CompileOnAttr`/`__getattribute__()`
+      methodology has been removed. The net effect is that
+      Column-based mapped class attributes can now be used fully
+      at the class level without invoking a mapper compilation
+      operation, greatly simplifying typical usage patterns
+      within declarative. [ticket:1269]
+
+- schema
+    - Index now accepts column-oriented InstrumentedAttributes
+      (i.e. column-based mapped class attributes) as column
+      arguments. [ticket:1214]
       
 - mysql
     - Added the missing keywords from MySQL 4.1 so they get escaped

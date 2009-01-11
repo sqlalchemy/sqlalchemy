@@ -10,7 +10,7 @@ from testlib import testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey
 from testlib.sa.orm import mapper, relation, backref, create_session
 from testlib.testing import eq_
-from testlib.assertsql import RegexSQL, ExactSQL, CompiledSQL
+from testlib.assertsql import RegexSQL, ExactSQL, CompiledSQL, AllOf
 from orm import _base
 
 
@@ -637,6 +637,7 @@ class OneToManyManyToOneTest(_base.MappedTest):
              "VALUES (:favorite_ball_id, :data)",
              lambda ctx:{'favorite_ball_id':b.id, 'data':'some data'}),
 
+            AllOf(
             CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id':p.id,'ball_id':b.id}),
@@ -651,13 +652,14 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
             CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b4.id}),
+             lambda ctx:{'person_id':p.id,'ball_id':b4.id})
+            ),
         )
         
         sess.delete(p)
         
         self.assert_sql_execution(testing.db, sess.flush, 
-            CompiledSQL("UPDATE ball SET person_id=:person_id "
+            AllOf(CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
              lambda ctx:{'person_id': None, 'ball_id': b.id}),
 
@@ -671,7 +673,7 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
             CompiledSQL("UPDATE ball SET person_id=:person_id "
              "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id': None, 'ball_id': b4.id}),
+             lambda ctx:{'person_id': None, 'ball_id': b4.id})),
 
             CompiledSQL("DELETE FROM person WHERE person.id = :id",
              lambda ctx:[{'id':p.id}]),

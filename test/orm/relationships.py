@@ -4,7 +4,7 @@ from testlib import sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey, MetaData
 from testlib.sa.orm import mapper, relation, backref, create_session, compile_mappers, clear_mappers
 from testlib.testing import eq_, startswith_
-from orm import _base
+from orm import _base, _fixtures
 
 
 class RelationTest(_base.MappedTest):
@@ -650,7 +650,63 @@ class RelationTest6(_base.MappedTest):
             [TagInstance(data='iplc_case'), TagInstance(data='not_iplc_case')]
         )
 
+class ManualBackrefTest(_fixtures.FixtureTest):
+    """Test explicit relations that are backrefs to each other."""
 
+    run_inserts = None
+    
+    @testing.resolve_artifact_names
+    def test_o2m(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, back_populates='user')
+        })
+        
+        mapper(Address, addresses, properties={
+            'user':relation(User, back_populates='addresses')
+        })
+        
+        sess = create_session()
+        
+        u1 = User(name='u1')
+        a1 = Address(email_address='foo')
+        u1.addresses.append(a1)
+        assert a1.user is u1
+        
+        sess.add(u1)
+        sess.flush()
+        sess.expire_all()
+        assert sess.query(Address).one() is a1
+        assert a1.user is u1
+        assert a1 in u1.addresses
+
+    @testing.resolve_artifact_names
+    def test_invalid_key(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, back_populates='userr')
+        })
+        
+        mapper(Address, addresses, properties={
+            'user':relation(User, back_populates='addresses')
+        })
+        
+        self.assertRaises(sa.exc.InvalidRequestError, compile_mappers)
+        
+    @testing.resolve_artifact_names
+    def test_invalid_target(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, back_populates='dingaling'),
+        })
+        
+        mapper(Dingaling, dingalings)
+        mapper(Address, addresses, properties={
+            'dingaling':relation(Dingaling)
+        })
+        
+        self.assertRaisesMessage(sa.exc.ArgumentError, 
+            r"reverse_property 'dingaling' on relation User.addresses references "
+            "relation Address.dingaling, which does not reference mapper Mapper\|User\|users", 
+            compile_mappers)
+        
 class JoinConditionErrorTest(testing.TestBase):
     
     def test_clauseelement_pj(self):

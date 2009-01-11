@@ -58,6 +58,8 @@ _COMPILE_MUTEX = util.threading.RLock()
 ColumnProperty = None
 SynonymProperty = None
 ComparableProperty = None
+RelationProperty = None
+ConcreteInheritedProperty = None
 _expire_state = None
 _state_session = None
 
@@ -113,7 +115,7 @@ class Mapper(object):
             self.order_by = util.to_list(order_by)
         else:
             self.order_by = order_by
-
+        
         self.always_refresh = always_refresh
         self.version_id_col = version_id_col
         self.concrete = concrete
@@ -476,13 +478,13 @@ class Mapper(object):
         # load custom properties
         if self._init_properties:
             for key, prop in self._init_properties.iteritems():
-                self._compile_property(key, prop, False)
+                self._configure_property(key, prop, False)
 
         # pull properties from the inherited mapper if any.
         if self.inherits:
             for key, prop in self.inherits._props.iteritems():
                 if key not in self._props and not self._should_exclude(key, local=False):
-                    self._adapt_inherited_property(key, prop)
+                    self._adapt_inherited_property(key, prop, False)
 
         # create properties for each column in the mapped table,
         # for those columns which don't already map to a property
@@ -501,53 +503,29 @@ class Mapper(object):
                 if column in mapper._columntoproperty:
                     column_key = mapper._columntoproperty[column].key
 
-            self._compile_property(column_key, column, init=False, setparent=True)
+            self._configure_property(column_key, column, init=False, setparent=True)
 
         # do a special check for the "discriminiator" column, as it may only be present
         # in the 'with_polymorphic' selectable but we need it for the base mapper
         if self.polymorphic_on and self.polymorphic_on not in self._columntoproperty:
-            col = self.mapped_table.corresponding_column(self.polymorphic_on) or self.polymorphic_on
+            col = self.mapped_table.corresponding_column(self.polymorphic_on)
+            if not col:
+                dont_instrument = True
+                col = self.polymorphic_on
+            else:
+                dont_instrument = False
             if self._should_exclude(col.key, local=False):
                 raise sa_exc.InvalidRequestError("Cannot exclude or override the discriminator column %r" % col.key)
-            self._compile_property(col.key, ColumnProperty(col), init=False, setparent=True)
+            self._configure_property(col.key, ColumnProperty(col, _no_instrument=dont_instrument), init=False, setparent=True)
 
-    def _adapt_inherited_property(self, key, prop):
+    def _adapt_inherited_property(self, key, prop, init):
         if not self.concrete:
-            self._compile_property(key, prop, init=False, setparent=False)
-        # TODO: concrete properties dont adapt at all right now....will require copies of relations() etc.
-
-    class _CompileOnAttr(PropComparator):
-        """A placeholder descriptor which triggers compilation on access."""
-
-        def __init__(self, class_, key):
-            self.class_ = class_
-            self.key = key
-            self.existing_prop = getattr(class_, key, None)
-
-        def __getattribute__(self, key):
-            cls = object.__getattribute__(self, 'class_')
-            clskey = object.__getattribute__(self, 'key')
-
-            # ugly hack
-            if key.startswith('__') and key != '__clause_element__':
-                return object.__getattribute__(self, key)
-
-            class_mapper(cls)
-                
-            if cls.__dict__.get(clskey) is self:
-                # if this warning occurs, it usually means mapper
-                # compilation has failed, but operations upon the mapped
-                # classes have proceeded.
-                util.warn(
-                    ("Attribute '%s' on class '%s' was not replaced during "
-                     "mapper compilation operation") % (clskey, cls.__name__))
-                # clean us up explicitly
-                delattr(cls, clskey)
-
-            return getattr(getattr(cls, clskey), key)
-
-    def _compile_property(self, key, prop, init=True, setparent=True):
-        self._log("_compile_property(%s, %s)" % (key, prop.__class__.__name__))
+            self._configure_property(key, prop, init=False, setparent=False)
+        elif key not in self._props:
+            self._configure_property(key, ConcreteInheritedProperty(), init=init, setparent=True)
+            
+    def _configure_property(self, key, prop, init=True, setparent=True):
+        self._log("_configure_property(%s, %s)" % (key, prop.__class__.__name__))
 
         if not isinstance(prop, MapperProperty):
             # we were passed a Column or a list of Columns; generate a ColumnProperty
@@ -568,7 +546,7 @@ class Mapper(object):
                     prop = prop.copy()
                 prop.columns.append(column)
                 self._log("appending to existing ColumnProperty %s" % (key))
-            elif prop is None:
+            elif prop is None or isinstance(prop, ConcreteInheritedProperty):
                 mapped_column = []
                 for c in columns:
                     mc = self.mapped_table.corresponding_column(c)
@@ -619,8 +597,6 @@ class Mapper(object):
         elif isinstance(prop, (ComparableProperty, SynonymProperty)) and setparent:
             if prop.descriptor is None:
                 desc = getattr(self.class_, key, None)
-                if isinstance(desc, Mapper._CompileOnAttr):
-                    desc = object.__getattribute__(desc, 'existing_prop')
                 if self._is_userland_descriptor(desc):
                     prop.descriptor = desc
             if getattr(prop, 'map_column', False):
@@ -628,7 +604,7 @@ class Mapper(object):
                     raise sa_exc.ArgumentError(
                         "Can't compile synonym '%s': no column on table '%s' named '%s'" 
                          % (prop.name, self.mapped_table.description, key))
-                self._compile_property(prop.name, ColumnProperty(self.mapped_table.c[key]), init=init, setparent=setparent)
+                self._configure_property(prop.name, ColumnProperty(self.mapped_table.c[key]), init=init, setparent=setparent)
 
         self._props[key] = prop
         prop.key = key
@@ -636,15 +612,15 @@ class Mapper(object):
         if setparent:
             prop.set_parent(self)
 
-            if not self.non_primary:
-                self.class_manager.install_descriptor(
-                    key, Mapper._CompileOnAttr(self.class_, key))
-
-        if init:
-            prop.init(key, self)
+        if not self.non_primary:
+            prop.instrument_class(self)
 
         for mapper in self._inheriting_mappers:
-            mapper._adapt_inherited_property(key, prop)
+            mapper._adapt_inherited_property(key, prop, init)
+
+        if init:
+            prop.init()
+
 
     def compile(self):
         """Compile this mapper and all other non-compiled mappers.
@@ -710,7 +686,7 @@ class Mapper(object):
         for key, prop in l:
             if not getattr(prop, '_compiled', False):
                 self._log("initialize prop " + key)
-                prop.init(key, self)
+                prop.init()
         self._log("_post_configure_properties() complete")
         self.compiled = True
             
@@ -732,7 +708,7 @@ class Mapper(object):
 
         """
         self._init_properties[key] = prop
-        self._compile_property(key, prop, init=self.compiled)
+        self._configure_property(key, prop, init=self.compiled)
 
 
     # class formatting / logging.
@@ -828,6 +804,7 @@ class Mapper(object):
         construct an outerjoin amongst those mapper's mapped tables.
 
         """
+        
         from_obj = self.mapped_table
         for m in mappers:
             if m is self:

@@ -3,6 +3,8 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
 from testlib import *
+from testlib import sa, testing
+from orm import _base
 from sqlalchemy.orm import attributes
 from testlib.testing import eq_
 
@@ -39,7 +41,7 @@ class Company(object):
    pass
 
 
-class ConcreteTest(ORMTest):
+class ConcreteTest(_base.MappedTest):
     def define_tables(self, metadata):
         global managers_table, engineers_table, hackers_table, companies, employees_table
 
@@ -74,6 +76,8 @@ class ConcreteTest(ORMTest):
             Column('company_id', Integer, ForeignKey('companies.id')),
             Column('nickname', String(50))
         )
+        
+        
 
     def test_basic(self):
         pjoin = polymorphic_union({
@@ -146,6 +150,10 @@ class ConcreteTest(ORMTest):
         
         session.clear()
 
+        assert repr(session.query(Employee).filter(Employee.name=='Tom').one()) == "Manager Tom knows how to manage things"
+        assert repr(session.query(Manager).filter(Manager.name=='Tom').one()) == "Manager Tom knows how to manage things"
+        
+        
         assert set([repr(x) for x in session.query(Employee).all()]) == set(["Engineer Jerry knows how to program", "Manager Tom knows how to manage things", "Hacker Kurt 'Badass' knows how to hack"])
         assert set([repr(x) for x in session.query(Manager).all()]) == set(["Manager Tom knows how to manage things"])
         assert set([repr(x) for x in session.query(Engineer).all()]) == set(["Engineer Jerry knows how to program", "Hacker Kurt 'Badass' knows how to hack"])
@@ -282,7 +290,7 @@ class ConcreteTest(ORMTest):
         }, 'type', 'pjoin')
 
         mapper(Company, companies, properties={
-            'employees':relation(Employee, lazy=False)
+            'employees':relation(Employee)
         })
         employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
         manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
@@ -299,9 +307,159 @@ class ConcreteTest(ORMTest):
         def go():
             c2 = session.query(Company).get(c.id)
             assert set([repr(x) for x in c2.employees]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
+        self.assert_sql_count(testing.db, go, 2)
+        session.clear()
+        def go():
+            c2 = session.query(Company).options(eagerload(Company.employees)).get(c.id)
+            assert set([repr(x) for x in c2.employees]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
         self.assert_sql_count(testing.db, go, 1)
 
-class ColKeysTest(ORMTest):
+class PropertyInheritanceTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table('a_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('some_c_id', Integer, ForeignKey('c_table.id')),
+            Column('aname', String(50)),
+        )
+        Table('b_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('some_c_id', Integer, ForeignKey('c_table.id')),
+            Column('bname', String(50)),
+        )
+        Table('c_table', metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        
+    def setup_classes(self):
+        class A(_base.ComparableEntity):
+            pass
+
+        class B(A):
+            pass
+
+        class C(_base.ComparableEntity):
+            pass
+    
+    @testing.resolve_artifact_names    
+    def test_noninherited_warning(self):
+        mapper(A, a_table, properties={
+            'some_c':relation(C)
+        })
+        mapper(B, b_table,inherits=A, concrete=True)
+        mapper(C, c_table)
+
+        b = B()
+        c = C()
+        self.assertRaises(AttributeError, setattr, b, 'some_c', c)
+
+        clear_mappers()
+        mapper(A, a_table, properties={
+            'a_id':a_table.c.id
+        })
+        mapper(B, b_table,inherits=A, concrete=True)
+        mapper(C, c_table)
+        b = B()
+        self.assertRaises(AttributeError, setattr, b, 'a_id', 3)
+
+        clear_mappers()
+        mapper(A, a_table, properties={
+            'a_id':a_table.c.id
+        })
+        mapper(B, b_table,inherits=A, concrete=True)
+        mapper(C, c_table)
+        
+    @testing.resolve_artifact_names    
+    def test_inheriting(self):
+        mapper(A, a_table, properties={
+            'some_c':relation(C, back_populates='many_a')
+        })
+        mapper(B, b_table,inherits=A, concrete=True, properties={
+            'some_c':relation(C, back_populates='many_b')
+        })
+        mapper(C, c_table, properties={
+            'many_a':relation(A, back_populates='some_c'),
+            'many_b':relation(B, back_populates='some_c'),
+        })
+        
+        sess = sessionmaker()()
+        
+        c1 = C()
+        c2 = C()
+        a1 = A(some_c=c1, aname='a1')
+        a2 = A(some_c=c2, aname='a2')
+        b1 = B(some_c=c1, bname='b1')
+        b2 = B(some_c=c1, bname='b2')
+        
+        self.assertRaises(AttributeError, setattr, b1, 'aname', 'foo')
+        self.assertRaises(AttributeError, getattr, A, 'bname')
+        
+        assert c2.many_a == [a2]
+        assert c1.many_a == [a1]
+        assert c1.many_b == [b1, b2]
+        
+        sess.add_all([c1, c2])
+        sess.commit()
+
+        assert sess.query(C).filter(C.many_a.contains(a2)).one() is c2
+        assert c2.many_a == [a2]
+        assert c1.many_a == [a1]
+        assert c1.many_b == [b1, b2]
+
+        assert sess.query(B).filter(B.bname=='b1').one() is b1
+        
+    @testing.resolve_artifact_names    
+    def test_polymorphic_backref(self):
+        """test multiple backrefs to the same polymorphically-loading attribute."""
+        
+        ajoin = polymorphic_union(
+            {'a':a_table,
+            'b':b_table
+            }, 'type', 'ajoin'
+        )
+        mapper(A, a_table, with_polymorphic=('*', ajoin), 
+            polymorphic_on=ajoin.c.type, polymorphic_identity='a', 
+            properties={
+            'some_c':relation(C, back_populates='many_a')
+        })
+        mapper(B, b_table,inherits=A, concrete=True, 
+            polymorphic_identity='b', 
+            properties={
+            'some_c':relation(C, back_populates='many_a')
+        })
+        mapper(C, c_table, properties={
+            'many_a':relation(A, collection_class=set, back_populates='some_c'),
+        })
+        
+        sess = sessionmaker()()
+        
+        c1 = C()
+        c2 = C()
+        a1 = A(some_c=c1)
+        a2 = A(some_c=c2)
+        b1 = B(some_c=c1)
+        b2 = B(some_c=c1)
+        
+        assert c2.many_a == set([a2])
+        assert set(c1.many_a) == set([a1, b1, b2]) # TODO: not sure whats going on with the set comparison here
+        
+        sess.add_all([c1, c2])
+        sess.commit()
+
+        assert sess.query(C).filter(C.many_a.contains(a2)).one() is c2
+        assert sess.query(C).filter(C.many_a.contains(b1)).one() is c1
+        assert c2.many_a == set([a2])
+        assert c1.many_a == set([a1, b1, b2])
+        
+        sess.expire_all()
+        def go():
+            eq_(
+                sess.query(C).options(eagerload(C.many_a)).all(),
+                [C(many_a=set([a1, b1, b2])), C(many_a=set([a2]))]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+        
+    
+class ColKeysTest(_base.MappedTest):
     def define_tables(self, metadata):
         global offices_table, refugees_table
         refugees_table = Table('refugee', metadata,
@@ -321,7 +479,7 @@ class ColKeysTest(ORMTest):
             dict(office_fid=1, name=u"office1"),
             dict(office_fid=2, name=u"office2")
         )
-        
+    
     def test_keys(self):
         pjoin = polymorphic_union({
            'refugee': refugees_table,

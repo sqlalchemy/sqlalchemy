@@ -419,7 +419,7 @@ class TableClassType(SelectableClassType):
         cls._table.update(whereclause, values).execute(**kwargs)
 
     def relate(cls, propname, *args, **kwargs):
-        class_mapper(cls)._compile_property(propname, relation(*args, **kwargs))
+        class_mapper(cls)._configure_property(propname, relation(*args, **kwargs))
 
 def _is_outer_join(selectable):
     if not isinstance(selectable, sql.Join):

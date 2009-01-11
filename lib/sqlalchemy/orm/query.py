@@ -1822,8 +1822,8 @@ class _ColumnEntity(_QueryEntity):
         if isinstance(column, basestring):
             column = sql.literal_column(column)
             self._result_label = column.name
-        elif isinstance(column, (attributes.QueryableAttribute, mapper.Mapper._CompileOnAttr)):
-            self._result_label = column.impl.key
+        elif isinstance(column, attributes.QueryableAttribute):
+            self._result_label = column.property.key
             column = column.__clause_element__()
         else:
             self._result_label = getattr(column, 'key', None)

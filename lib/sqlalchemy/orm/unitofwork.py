@@ -69,23 +69,6 @@ class UOWEventHandler(interfaces.AttributeExtension):
                 sess.expunge(oldvalue)
         return newvalue
 
-def register_attribute(class_, key, *args, **kwargs):
-    """Register an attribute with the attributes module.
-    
-    Overrides attributes.register_attribute() to add 
-    unitofwork-specific event handlers.
-    
-    """
-    useobject = kwargs.get('useobject', False)
-    if useobject:
-        # for object-holding attributes, instrument UOWEventHandler
-        # to process per-attribute cascades
-        extension = util.to_list(kwargs.pop('extension', None) or [])
-        extension.append(UOWEventHandler(key))
-        
-        kwargs['extension'] = extension
-    return attributes.register_attribute(class_, key, *args, **kwargs)
-
 
 class UOWTransaction(object):
     """Handles the details of organizing and executing transaction

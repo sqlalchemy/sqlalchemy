@@ -3,7 +3,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 from testlib import sa, testing
-from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc
+from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc, Index
 from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers
 from testlib.testing import eq_
 from orm._base import ComparableEntity, MappedTest
@@ -184,26 +184,25 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             id = Column('id', Integer, primary_key=True)
             addresses = relation("Address")
 
-        def go():
-            class Address(Base):
-                __tablename__ = 'addresses'
+        class Address(Base):
+            __tablename__ = 'addresses'
 
-                id = Column(Integer, primary_key=True)
-                foo = sa.orm.column_property(User.id == 5)
-        self.assertRaises(sa.exc.InvalidRequestError, go)
+            id = Column(Integer, primary_key=True)
+            foo = sa.orm.column_property(User.id == 5)
 
+        # this used to raise an error when accessing User.id but that's no longer the case
+        # since we got rid of _CompileOnAttr.
+        self.assertRaises(sa.exc.ArgumentError, compile_mappers)
+        
     def test_nice_dependency_error_works_with_hasattr(self):
         class User(Base):
             __tablename__ = 'users'
             id = Column('id', Integer, primary_key=True)
             addresses = relation("Addresss")
 
-        # doesn't raise, hasattr() squashes all exceptions 
-        # (except KeybaordInterrupt/SystemException in 2.6...whoopee)
-        # TODO: determine what hasattr() does on py3K
-        hasattr(User.id, 'in_')
-        # but the exception is saved, compile_mappers tells us what it is 
-        # as well as some explaination
+        # hasattr() on a compile-loaded attribute
+        hasattr(User.addresses, 'property')
+        # the exeption is preserved
         self.assertRaisesMessage(sa.exc.InvalidRequestError, r"suppressed within a hasattr\(\)", compile_mappers)
 
     def test_custom_base(self):
@@ -213,6 +212,26 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         Base = decl.declarative_base(cls=MyBase)
         assert hasattr(Base, 'metadata')
         assert Base().foobar() == "foobar"
+        
+    def test_index_doesnt_compile(self):
+        class User(Base):
+            __tablename__ = 'users'
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String)
+            error = relation("Address")
+            
+        i = Index('my_index', User.name)
+        
+        # compile fails due to the nonexistent Addresses relation
+        self.assertRaises(sa.exc.InvalidRequestError, compile_mappers)
+        
+        # index configured
+        assert i in User.__table__.indexes
+        assert User.__table__.c.id not in set(i.columns)
+        assert User.__table__.c.name in set(i.columns)
+        
+        # tables create fine
+        Base.metadata.create_all()
         
     def test_add_prop(self):
         class User(Base, ComparableEntity):
