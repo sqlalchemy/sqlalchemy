@@ -10,9 +10,10 @@ fixture_metadata = MetaData()
 def fixture_table(table, columns, *rows):
     def load_fixture(bind=None):
         bind = bind or table.bind
-        bind.execute(
-            table.insert(),
-            [dict(zip(columns, column_values)) for column_values in rows])
+        if rows:
+            bind.execute(
+                table.insert(),
+                [dict(zip(columns, column_values)) for column_values in rows])
     table.info[('fixture', 'loader')] = load_fixture
     table.info[('fixture', 'columns')] = columns
     table.info[('fixture', 'rows')] = rows
