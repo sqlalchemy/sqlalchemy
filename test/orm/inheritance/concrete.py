@@ -451,9 +451,10 @@ class PropertyInheritanceTest(_base.MappedTest):
         assert c1.many_a == set([a1, b1, b2])
         
         sess.expire_all()
+        
         def go():
             eq_(
-                sess.query(C).options(eagerload(C.many_a)).all(),
+                sess.query(C).options(eagerload(C.many_a)).order_by(C.id).all(),
                 [C(many_a=set([a1, b1, b2])), C(many_a=set([a2]))]
             )
         self.assert_sql_count(testing.db, go, 1)
