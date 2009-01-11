@@ -160,11 +160,11 @@ class SybaseTypeError(sqltypes.TypeEngine):
 
     def bind_processor(self, dialect):
         def process(value):
-            raise exc.NotSupportedError("Data type not supported", [value])
+            raise exc.InvalidRequestError("Data type not supported", [value])
         return process
 
     def get_col_spec(self):
-        raise exc.NotSupportedError("Data type not supported")
+        raise exc.CompileError("Data type not supported")
 
 class SybaseNumeric(sqltypes.Numeric):
     def get_col_spec(self):

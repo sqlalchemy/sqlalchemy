@@ -1585,7 +1585,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
                               [self.process(x) for x in insert_stmt._prefixes])
 
             if not colparams and not self.dialect.supports_default_values and not self.dialect.supports_empty_insert:
-                raise exc.NotSupportedError(
+                raise exc.CompileError(
                     "The version of %s you are using does not support empty inserts." % self.dialect.name)
             elif not colparams and self.dialect.supports_default_values:
                 return (insert + " INTO %s DEFAULT VALUES" % (
