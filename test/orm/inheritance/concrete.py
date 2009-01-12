@@ -327,7 +327,9 @@ class PropertyInheritanceTest(_base.MappedTest):
             Column('bname', String(50)),
         )
         Table('c_table', metadata,
-            Column('id', Integer, primary_key=True)
+            Column('id', Integer, primary_key=True),
+            Column('cname', String(50)),
+            
         )
         
     def setup_classes(self):
@@ -383,8 +385,8 @@ class PropertyInheritanceTest(_base.MappedTest):
         
         sess = sessionmaker()()
         
-        c1 = C()
-        c2 = C()
+        c1 = C(cname='c1')
+        c2 = C(cname='c2')
         a1 = A(some_c=c1, aname='a1')
         a2 = A(some_c=c2, aname='a2')
         b1 = B(some_c=c1, bname='b1')
@@ -432,8 +434,8 @@ class PropertyInheritanceTest(_base.MappedTest):
         
         sess = sessionmaker()()
         
-        c1 = C()
-        c2 = C()
+        c1 = C(cname='c1')
+        c2 = C(cname='c2')
         a1 = A(some_c=c1, aname='a1')
         a2 = A(some_c=c2, aname='a2')
         b1 = B(some_c=c1, bname='b1')
