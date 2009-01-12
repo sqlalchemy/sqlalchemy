@@ -217,7 +217,7 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         class User(Base):
             __tablename__ = 'users'
             id = Column('id', Integer, primary_key=True)
-            name = Column('name', String)
+            name = Column('name', String(50))
             error = relation("Address")
             
         i = Index('my_index', User.name)

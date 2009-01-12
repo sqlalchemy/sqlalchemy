@@ -434,10 +434,10 @@ class PropertyInheritanceTest(_base.MappedTest):
         
         c1 = C()
         c2 = C()
-        a1 = A(some_c=c1)
-        a2 = A(some_c=c2)
-        b1 = B(some_c=c1)
-        b2 = B(some_c=c1)
+        a1 = A(some_c=c1, aname='a1')
+        a2 = A(some_c=c2, aname='a2')
+        b1 = B(some_c=c1, bname='b1')
+        b2 = B(some_c=c1, bname='b2')
         
         assert c2.many_a == set([a2])
         assert set(c1.many_a) == set([a1, b1, b2]) # TODO: not sure whats going on with the set comparison here
@@ -454,8 +454,8 @@ class PropertyInheritanceTest(_base.MappedTest):
         
         def go():
             eq_(
+                [C(many_a=set([A(aname='a1'), B(bname='b1'), B(bname='b2')])), C(many_a=set([A(aname='a2')]))],
                 sess.query(C).options(eagerload(C.many_a)).order_by(C.id).all(),
-                [C(many_a=set([a1, b1, b2])), C(many_a=set([a2]))]
             )
         self.assert_sql_count(testing.db, go, 1)
         
