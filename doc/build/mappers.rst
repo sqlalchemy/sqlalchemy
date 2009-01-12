@@ -583,6 +583,8 @@ Single table inheritance is where the attributes of the base class as well as al
 
 Note that the mappers for the derived classes Manager and Engineer omit the specification of their associated table, as it is inherited from the employee_mapper. Omitting the table specification for derived mappers in single-table inheritance is required.
 
+.. _concrete_inheritance:
+
 Concrete Table Inheritance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -41,6 +41,25 @@ CHANGES
     - Index now accepts column-oriented InstrumentedAttributes
       (i.e. column-based mapped class attributes) as column
       arguments. [ticket:1214]
+
+- declarative
+    - Can now specify Column objects on subclasses which have no
+      table of their own (i.e. use single table inheritance).  
+      The columns will be appended to the base table, but only
+      mapped by the subclass.
+
+    - For both joined and single inheriting subclasses, the subclass
+      will only map those columns which are already mapped on the 
+      superclass and those explicit on the subclass.  Other 
+      columns that are present on the `Table` will be excluded
+      from the mapping by default, which can be disabled
+      by passing a blank `exclude_properties` collection to the
+      `__mapper_args__`.  This is so that single-inheriting
+      classes which define their own columns are the only classes
+      to map those columns.   The effect is actually a more organized
+      mapping than you'd normally get with explicit `mapper()`
+      calls unless you set up the `exclude_properties` arguments
+      explicitly.
       
 - mysql
     - Added the missing keywords from MySQL 4.1 so they get escaped

@@ -4,12 +4,11 @@ from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc, Index
-from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers
+from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union
 from testlib.testing import eq_
 from orm._base import ComparableEntity, MappedTest
 
-
-class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
+class DeclarativeTestBase(testing.TestBase, testing.AssertsExecutionResults):
     def setUp(self):
         global Base
         Base = decl.declarative_base(testing.db)
@@ -17,7 +16,8 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
     def tearDown(self):
         clear_mappers()
         Base.metadata.drop_all()
-
+    
+class DeclarativeTest(DeclarativeTestBase):
     def test_basic(self):
         class User(Base, ComparableEntity):
             __tablename__ = 'users'
@@ -625,113 +625,6 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         sess.flush()
         eq_(sess.query(User).filter(User.name == "SOMENAME someuser").one(), u1)
 
-    def test_custom_inh(self):
-        class Foo(Base):
-            __tablename__ = 'foo'
-            id = Column('id', Integer, primary_key=True)
-
-        class Bar(Foo):
-            __tablename__ = 'bar'
-            id = Column('id', Integer, primary_key=True)
-            foo_id = Column('foo_id', Integer)
-            __mapper_args__ = {'inherit_condition':foo_id==Foo.id}
-        
-        # compile succeeds because inherit_condition is honored
-        compile_mappers()
-
-    def test_joined_inheritance(self):
-        class Company(Base, ComparableEntity):
-            __tablename__ = 'companies'
-            id = Column('id', Integer, primary_key=True)
-            name = Column('name', String(50))
-            employees = relation("Person")
-
-        class Person(Base, ComparableEntity):
-            __tablename__ = 'people'
-            id = Column('id', Integer, primary_key=True)
-            company_id = Column('company_id', Integer,
-                                ForeignKey('companies.id'))
-            name = Column('name', String(50))
-            discriminator = Column('type', String(50))
-            __mapper_args__ = {'polymorphic_on':discriminator}
-
-        class Engineer(Person):
-            __tablename__ = 'engineers'
-            __mapper_args__ = {'polymorphic_identity':'engineer'}
-            id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
-            primary_language = Column('primary_language', String(50))
-
-        class Manager(Person):
-            __tablename__ = 'managers'
-            __mapper_args__ = {'polymorphic_identity':'manager'}
-            id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
-            golf_swing = Column('golf_swing', String(50))
-
-        Base.metadata.create_all()
-
-        sess = create_session()
-        c1 = Company(name="MegaCorp, Inc.", employees=[
-            Engineer(name="dilbert", primary_language="java"),
-            Engineer(name="wally", primary_language="c++"),
-            Manager(name="dogbert", golf_swing="fore!")
-        ])
-
-        c2 = Company(name="Elbonia, Inc.", employees=[
-            Engineer(name="vlad", primary_language="cobol")
-        ])
-
-        sess.add(c1)
-        sess.add(c2)
-        sess.flush()
-        sess.clear()
-
-        eq_((sess.query(Company).
-             filter(Company.employees.of_type(Engineer).
-                    any(Engineer.primary_language == 'cobol')).first()),
-            c2)
-
-        # ensure that the Manager mapper was compiled
-        # with the Person id column as higher priority.
-        # this ensures that "id" will get loaded from the Person row
-        # and not the possibly non-present Manager row
-        assert Manager.id.property.columns == [Person.__table__.c.id, Manager.__table__.c.id]
-        
-        # assert that the "id" column is available without a second load.
-        # this would be the symptom of the previous step not being correct.
-        sess.clear()
-        def go():
-            assert sess.query(Manager).filter(Manager.name=='dogbert').one().id
-        self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
-        def go():
-            assert sess.query(Person).filter(Manager.name=='dogbert').one().id
-        self.assert_sql_count(testing.db, go, 1)
-        
-    def test_inheritance_with_undefined_relation(self):
-        class Parent(Base):
-           __tablename__ = 'parent'
-           id = Column('id', Integer, primary_key=True)
-           tp = Column('type', String(50))
-           __mapper_args__ = dict(polymorphic_on = tp)
-
-
-        class Child1(Parent):
-           __tablename__ = 'child1'
-           id = Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
-           related_child2 = Column('c2', Integer, ForeignKey('child2.id'))
-           __mapper_args__ = dict(polymorphic_identity = 'child1')
-
-        # no exception is raised by the ForeignKey to "child2" even though
-        # child2 doesn't exist yet
-
-        class Child2(Parent):
-           __tablename__ = 'child2'
-           id = Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
-           related_child1 = Column('c1', Integer)
-           __mapper_args__ = dict(polymorphic_identity = 'child2')
-
-        sa.orm.compile_mappers()  # no exceptions here
-
     def test_reentrant_compile_via_foreignkey(self):
         class User(Base, ComparableEntity):
             __tablename__ = 'users'
@@ -747,8 +640,9 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
             email = Column('email', String(50))
             user_id = Column('user_id', Integer, ForeignKey(User.id))
 
-        # this forces a re-entrant compile() due to the User.id within the
-        # ForeignKey
+        # previous versions would force a re-entrant mapper compile
+        # via the User.id inside the ForeignKey but this is no
+        # longer the case
         sa.orm.compile_mappers()
 
         Base.metadata.create_all()
@@ -818,7 +712,137 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
         assert Bar.__mapper__.primary_key[0] is Bar.__table__.c.id
         assert Bar.__mapper__.primary_key[1] is Bar.__table__.c.ex
         
-    def test_single_inheritance(self):
+
+    def test_with_explicit_autoloaded(self):
+        meta = MetaData(testing.db)
+        t1 = Table('t1', meta,
+                   Column('id', String(50), primary_key=True),
+                   Column('data', String(50)))
+        meta.create_all()
+        try:
+            class MyObj(Base):
+                __table__ = Table('t1', Base.metadata, autoload=True)
+
+            sess = create_session()
+            m = MyObj(id="someid", data="somedata")
+            sess.add(m)
+            sess.flush()
+
+            eq_(t1.select().execute().fetchall(), [('someid', 'somedata')])
+        finally:
+            meta.drop_all()
+
+class DeclarativeInheritanceTest(DeclarativeTestBase):
+    def test_custom_join_condition(self):
+        class Foo(Base):
+            __tablename__ = 'foo'
+            id = Column('id', Integer, primary_key=True)
+
+        class Bar(Foo):
+            __tablename__ = 'bar'
+            id = Column('id', Integer, primary_key=True)
+            foo_id = Column('foo_id', Integer)
+            __mapper_args__ = {'inherit_condition':foo_id==Foo.id}
+        
+        # compile succeeds because inherit_condition is honored
+        compile_mappers()
+
+    def test_joined(self):
+        class Company(Base, ComparableEntity):
+            __tablename__ = 'companies'
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            employees = relation("Person")
+
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column('id', Integer, primary_key=True)
+            company_id = Column('company_id', Integer,
+                                ForeignKey('companies.id'))
+            name = Column('name', String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        class Engineer(Person):
+            __tablename__ = 'engineers'
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+            primary_language = Column('primary_language', String(50))
+
+        class Manager(Person):
+            __tablename__ = 'managers'
+            __mapper_args__ = {'polymorphic_identity':'manager'}
+            id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+            golf_swing = Column('golf_swing', String(50))
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+        
+        c1 = Company(name="MegaCorp, Inc.", employees=[
+            Engineer(name="dilbert", primary_language="java"),
+            Engineer(name="wally", primary_language="c++"),
+            Manager(name="dogbert", golf_swing="fore!")
+        ])
+
+        c2 = Company(name="Elbonia, Inc.", employees=[
+            Engineer(name="vlad", primary_language="cobol")
+        ])
+
+        sess.add(c1)
+        sess.add(c2)
+        sess.flush()
+        sess.clear()
+
+        eq_((sess.query(Company).
+             filter(Company.employees.of_type(Engineer).
+                    any(Engineer.primary_language == 'cobol')).first()),
+            c2)
+
+        # ensure that the Manager mapper was compiled
+        # with the Person id column as higher priority.
+        # this ensures that "id" will get loaded from the Person row
+        # and not the possibly non-present Manager row
+        assert Manager.id.property.columns == [Person.__table__.c.id, Manager.__table__.c.id]
+        
+        # assert that the "id" column is available without a second load.
+        # this would be the symptom of the previous step not being correct.
+        sess.clear()
+        def go():
+            assert sess.query(Manager).filter(Manager.name=='dogbert').one().id
+        self.assert_sql_count(testing.db, go, 1)
+        sess.clear()
+        def go():
+            assert sess.query(Person).filter(Manager.name=='dogbert').one().id
+        self.assert_sql_count(testing.db, go, 1)
+        
+    def test_with_undefined_foreignkey(self):
+        class Parent(Base):
+           __tablename__ = 'parent'
+           id = Column('id', Integer, primary_key=True)
+           tp = Column('type', String(50))
+           __mapper_args__ = dict(polymorphic_on = tp)
+
+        class Child1(Parent):
+           __tablename__ = 'child1'
+           id = Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
+           related_child2 = Column('c2', Integer, ForeignKey('child2.id'))
+           __mapper_args__ = dict(polymorphic_identity = 'child1')
+
+        # no exception is raised by the ForeignKey to "child2" even though
+        # child2 doesn't exist yet
+
+        class Child2(Parent):
+           __tablename__ = 'child2'
+           id = Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
+           related_child1 = Column('c1', Integer)
+           __mapper_args__ = dict(polymorphic_identity = 'child2')
+
+        sa.orm.compile_mappers()  # no exceptions here
+
+    def test_single_colsonbase(self):
+        """test single inheritance where all the columns are on the base class."""
+        
         class Company(Base, ComparableEntity):
             __tablename__ = 'companies'
             id = Column('id', Integer, primary_key=True)
@@ -868,25 +892,308 @@ class DeclarativeTest(testing.TestBase, testing.AssertsExecutionResults):
                     any(Engineer.primary_language == 'cobol')).first()),
             c2)
 
-    def test_with_explicit_autoloaded(self):
-        meta = MetaData(testing.db)
-        t1 = Table('t1', meta,
-                   Column('id', String(50), primary_key=True),
-                   Column('data', String(50)))
-        meta.create_all()
-        try:
-            class MyObj(Base):
-                __table__ = Table('t1', Base.metadata, autoload=True)
+    def test_single_colsonsub(self):
+        """test single inheritance where the columns are local to their class.
+        
+        this is a newer usage.
+        
+        """
 
-            sess = create_session()
-            m = MyObj(id="someid", data="somedata")
-            sess.add(m)
-            sess.flush()
+        class Company(Base, ComparableEntity):
+            __tablename__ = 'companies'
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            employees = relation("Person")
 
-            eq_(t1.select().execute().fetchall(), [('someid', 'somedata')])
-        finally:
-            meta.drop_all()
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            company_id = Column(Integer,
+                                ForeignKey('companies.id'))
+            name = Column(String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
 
+        class Engineer(Person):
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            primary_language = Column(String(50))
+
+        class Manager(Person):
+            __mapper_args__ = {'polymorphic_identity':'manager'}
+            golf_swing = Column(String(50))
+
+        # we have here a situation that is somewhat unique.
+        # the Person class is mapped to the "people" table, but it
+        # was mapped when the table did not include the "primary_language"
+        # or "golf_swing" columns.  declarative will also manipulate
+        # the exclude_properties collection so that sibling classes
+        # don't cross-pollinate.
+
+        assert Person.__table__.c.company_id
+        assert Person.__table__.c.golf_swing
+        assert Person.__table__.c.primary_language
+        assert Engineer.primary_language
+        assert Manager.golf_swing
+        assert not hasattr(Person, 'primary_language')
+        assert not hasattr(Person, 'golf_swing')
+        assert not hasattr(Engineer, 'golf_swing')
+        assert not hasattr(Manager, 'primary_language')
+        
+        Base.metadata.create_all()
+
+        sess = create_session()
+        
+        e1 = Engineer(name="dilbert", primary_language="java")
+        e2 = Engineer(name="wally", primary_language="c++")
+        m1 = Manager(name="dogbert", golf_swing="fore!")
+        c1 = Company(name="MegaCorp, Inc.", employees=[e1, e2, m1])
+
+        e3 =Engineer(name="vlad", primary_language="cobol") 
+        c2 = Company(name="Elbonia, Inc.", employees=[e3])
+        sess.add(c1)
+        sess.add(c2)
+        sess.flush()
+        sess.clear()
+
+        eq_((sess.query(Person).
+             filter(Engineer.primary_language == 'cobol').first()),
+            Engineer(name='vlad'))
+        eq_((sess.query(Company).
+             filter(Company.employees.of_type(Engineer).
+                    any(Engineer.primary_language == 'cobol')).first()),
+            c2)
+            
+        eq_(
+            sess.query(Engineer).filter_by(primary_language='cobol').one(),
+            Engineer(name="vlad", primary_language="cobol") 
+        )
+
+    def test_joined_from_single(self):
+        class Company(Base, ComparableEntity):
+            __tablename__ = 'companies'
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            employees = relation("Person")
+        
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            company_id = Column(Integer, ForeignKey('companies.id'))
+            name = Column(String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        class Manager(Person):
+            __mapper_args__ = {'polymorphic_identity':'manager'}
+            golf_swing = Column(String(50))
+
+        class Engineer(Person):
+            __tablename__ = 'engineers'
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            id = Column(Integer, ForeignKey('people.id'), primary_key=True)
+            primary_language = Column(String(50))
+
+        assert Person.__table__.c.golf_swing
+        assert not Person.__table__.c.has_key('primary_language')
+        assert Engineer.__table__.c.primary_language
+        assert Engineer.primary_language
+        assert Manager.golf_swing
+        assert not hasattr(Person, 'primary_language')
+        assert not hasattr(Person, 'golf_swing')
+        assert not hasattr(Engineer, 'golf_swing')
+        assert not hasattr(Manager, 'primary_language')
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+
+        e1 = Engineer(name="dilbert", primary_language="java")
+        e2 = Engineer(name="wally", primary_language="c++")
+        m1 = Manager(name="dogbert", golf_swing="fore!")
+        c1 = Company(name="MegaCorp, Inc.", employees=[e1, e2, m1])
+        e3 =Engineer(name="vlad", primary_language="cobol") 
+        c2 = Company(name="Elbonia, Inc.", employees=[e3])
+        sess.add(c1)
+        sess.add(c2)
+        sess.flush()
+        sess.clear()
+
+        eq_((sess.query(Person).with_polymorphic(Engineer).
+             filter(Engineer.primary_language == 'cobol').first()),
+            Engineer(name='vlad'))
+        eq_((sess.query(Company).
+             filter(Company.employees.of_type(Engineer).
+                    any(Engineer.primary_language == 'cobol')).first()),
+            c2)
+
+        eq_(
+            sess.query(Engineer).filter_by(primary_language='cobol').one(),
+            Engineer(name="vlad", primary_language="cobol") 
+        )
+
+    def test_single_fksonsub(self):
+        """test single inheritance with a foreign key-holding column on a subclass.
+
+        """
+
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        class Engineer(Person):
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            primary_language_id = Column(String(50), ForeignKey('languages.id'))
+            primary_language = relation("Language")
+            
+        class Language(Base, ComparableEntity):
+            __tablename__ = 'languages'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        assert not hasattr(Person, 'primary_language_id')
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+
+        java, cpp, cobol = Language(name='java'),Language(name='cpp'), Language(name='cobol')
+        e1 = Engineer(name="dilbert", primary_language=java)
+        e2 = Engineer(name="wally", primary_language=cpp)
+        e3 =Engineer(name="vlad", primary_language=cobol) 
+        sess.add_all([e1, e2, e3])
+        sess.flush()
+        sess.clear()
+
+        eq_((sess.query(Person).
+             filter(Engineer.primary_language.has(Language.name=='cobol')).first()),
+            Engineer(name='vlad', primary_language=Language(name='cobol')))
+
+        eq_(
+            sess.query(Engineer).filter(Engineer.primary_language.has(Language.name=='cobol')).one(),
+            Engineer(name="vlad", primary_language=Language(name='cobol')) 
+        )
+        
+        eq_(
+            sess.query(Person).join(Engineer.primary_language).order_by(Language.name).all(),
+            [
+                Engineer(name='vlad', primary_language=Language(name='cobol')),
+                Engineer(name='wally', primary_language=Language(name='cpp')),
+                Engineer(name='dilbert', primary_language=Language(name='java')),
+            ]
+        )
+        
+    def test_single_three_levels(self):
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        class Engineer(Person):
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            primary_language = Column(String(50))
+
+        class JuniorEngineer(Engineer):
+            __mapper_args__ = {'polymorphic_identity':'junior_engineer'}
+            nerf_gun = Column(String(50))
+
+        class Manager(Person):
+            __mapper_args__ = {'polymorphic_identity':'manager'}
+            golf_swing = Column(String(50))
+
+        assert JuniorEngineer.nerf_gun
+        assert JuniorEngineer.primary_language
+        assert JuniorEngineer.name
+        assert Manager.golf_swing
+        assert Engineer.primary_language
+        assert not hasattr(Engineer, 'golf_swing')
+        assert not hasattr(Engineer, 'nerf_gun')
+        assert not hasattr(Manager, 'nerf_gun')
+        assert not hasattr(Manager, 'primary_language')
+            
+    def test_single_no_special_cols(self):
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        def go():
+            class Engineer(Person):
+                __mapper_args__ = {'polymorphic_identity':'engineer'}
+                primary_language = Column('primary_language', String(50))
+                foo_bar = Column(Integer, primary_key=True)
+        self.assertRaisesMessage(sa.exc.ArgumentError, "place primary key", go)
+        
+    def test_single_no_table_args(self):
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        def go():
+            class Engineer(Person):
+                __mapper_args__ = {'polymorphic_identity':'engineer'}
+                primary_language = Column('primary_language', String(50))
+                __table_args__ = ()
+        self.assertRaisesMessage(sa.exc.ArgumentError, "place __table_args__", go)
+        
+    def test_concrete(self):
+        engineers = Table('engineers', Base.metadata,
+                        Column('id', Integer, primary_key=True),
+                        Column('name', String(50)),
+                        Column('primary_language', String(50))
+                    )
+        managers = Table('managers', Base.metadata,
+                        Column('id', Integer, primary_key=True),
+                        Column('name', String(50)),
+                        Column('golf_swing', String(50))
+                    )
+
+        punion = polymorphic_union({
+            'engineer':engineers,
+            'manager':managers
+        }, 'type', 'punion')
+
+        class Person(Base, ComparableEntity):
+            __table__ = punion
+            __mapper_args__ = {'polymorphic_on':punion.c.type}
+
+        class Engineer(Person):
+            __table__ = engineers
+            __mapper_args__ = {'polymorphic_identity':'engineer', 'concrete':True}
+
+        class Manager(Person):
+            __table__ = managers
+            __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
+        
+        Base.metadata.create_all()
+        sess = create_session()
+        
+        e1 = Engineer(name="dilbert", primary_language="java")
+        e2 = Engineer(name="wally", primary_language="c++")
+        m1 = Manager(name="dogbert", golf_swing="fore!")
+        e3 = Engineer(name="vlad", primary_language="cobol") 
+        
+        sess.add_all([e1, e2, m1, e3])
+        sess.flush()
+        sess.clear()
+        eq_(
+            sess.query(Person).order_by(Person.name).all(),
+            [
+                Engineer(name='dilbert'), Manager(name='dogbert'), 
+                Engineer(name='vlad'), Engineer(name='wally')
+            ]
+        )
+        
+        
 def produce_test(inline, stringbased):
     class ExplicitJoinTest(testing.ORMTest):
     

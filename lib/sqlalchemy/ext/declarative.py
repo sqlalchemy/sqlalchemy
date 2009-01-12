@@ -3,8 +3,8 @@
 Synopsis
 ========
 
-SQLAlchemy object-relational configuration involves the usage of Table,
-mapper(), and class objects to define the three areas of configuration.
+SQLAlchemy object-relational configuration involves the usage of :class:`~sqlalchemy.schema.Table`,
+:func:`~sqlalchemy.orm.mapper`, and class objects to define the three areas of configuration.
 ``declarative`` moves these three types of configuration underneath the individual
 mapped class.  Regular SQLAlchemy schema and ORM constructs are used in most
 cases::
@@ -18,9 +18,9 @@ cases::
         id = Column(Integer, primary_key=True)
         name =  Column(String(50))
 
-Above, the ``declarative_base`` callable produces a new base class from which
+Above, the :func:`declarative_base` callable produces a new base class from which
 all mapped classes inherit from.  When the class definition is completed, a
-new ``Table`` and ``mapper()`` have been generated, accessible via the
+new :class:`~sqlalchemy.schema.Table` and :class:`~sqlalchemy.orm.mapper` have been generated, accessible via the
 ``__table__`` and ``__mapper__`` attributes on the ``SomeClass`` class.
 
 Defining Attributes
@@ -60,28 +60,28 @@ string-configured :class:`~sqlalchemy.schema.ForeignKey` references can be resol
 Association of Metadata and Engine
 ==================================
 
-The ``declarative_base`` base class contains a ``MetaData`` object where newly
-defined ``Table`` objects are collected.  This is accessed via the
-``metadata`` class level accessor, so to create tables we can say::
+The :func:`declarative_base` base class contains a :class:`~sqlalchemy.schema.MetaData` object where newly
+defined :class:`~sqlalchemy.schema.Table` objects are collected.  This is accessed via the
+:class:`~sqlalchemy.schema.MetaData` class level accessor, so to create tables we can say::
 
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
 
-The ``Engine`` created above may also be directly associated with the
+The :class:`~sqlalchemy.engine.base.Engine` created above may also be directly associated with the
 declarative base class using the ``bind`` keyword argument, where it will be
-associated with the underlying ``MetaData`` object and allow SQL operations
+associated with the underlying :class:`~sqlalchemy.schema.MetaData` object and allow SQL operations
 involving that metadata and its tables to make use of that engine
 automatically::
 
     Base = declarative_base(bind=create_engine('sqlite://'))
 
-Or, as ``MetaData`` allows, at any time using the ``bind`` attribute::
+Or, as :class:`~sqlalchemy.schema.MetaData` allows, at any time using the ``bind`` attribute::
 
     Base.metadata.bind = create_engine('sqlite://')
 
-The ``declarative_base`` can also receive a pre-created ``MetaData`` object,
+The :func:`declarative_base` can also receive a pre-created :class:`~sqlalchemy.schema.MetaData` object,
 which allows a declarative setup to be associated with an already existing
-traditional collection of ``Table`` objects::
+traditional collection of :class:`~sqlalchemy.schema.Table` objects::
 
     mymetadata = MetaData()
     Base = declarative_base(metadata=mymetadata)
@@ -90,7 +90,7 @@ Configuring Relations
 =====================
 
 Relations to other classes are done in the usual way, with the added feature
-that the class specified to ``relation()`` may be a string name.  The "class
+that the class specified to :func:`~sqlalchemy.orm.relation()` may be a string name.  The "class
 registry" associated with ``Base`` is used at mapper compilation time to
 resolve the name into the actual class object, which is expected to have been
 defined once the mapper configuration is used::
@@ -120,13 +120,13 @@ where we define a primary join condition on the ``Address`` class using them::
         user_id = Column(Integer, ForeignKey('users.id'))
         user = relation(User, primaryjoin=user_id == User.id)
 
-In addition to the main argument for ``relation``, other arguments
+In addition to the main argument for :func:`~sqlalchemy.orm.relation`, other arguments
 which depend upon the columns present on an as-yet undefined class
 may also be specified as strings.  These strings are evaluated as
 Python expressions.  The full namespace available within this 
 evaluation includes all classes mapped for this declarative base,
 as well as the contents of the ``sqlalchemy`` package, including 
-expression functions like ``desc`` and ``func``::
+expression functions like :func:`~sqlalchemy.sql.expression.desc` and :attr:`~sqlalchemy.sql.expression.func`::
 
     class User(Base):
         # ....
@@ -139,11 +139,32 @@ class after the fact::
 
     User.addresses = relation(Address, primaryjoin=Address.user_id == User.id)
 
+Configuring Many-to-Many Relations
+==================================
+
+There's nothing special about many-to-many with declarative.  The ``secondary``
+argument to :func:`~sqlalchemy.orm.relation` still requires a :class:`~sqlalchemy.schema.Table` object, not a declarative class.
+The :class:`~sqlalchemy.schema.Table` should share the same :class:`~sqlalchemy.schema.MetaData` object used by the declarative base::
+
+    keywords = Table('keywords', Base.metadata,
+                        Column('author_id', Integer, ForeignKey('authors.id')),
+                        Column('keyword_id', Integer, ForeignKey('keywords.id'))
+                )
+                
+    class Author(Base):
+        __tablename__ = 'authors'
+        id = Column(Integer, primary_key=True)
+        keywords = relation("Keyword", secondary=keywords)
+
+You should generally **not** map a class and also specify its table in a many-to-many
+relation, since the ORM may issue duplicate INSERT and DELETE statements.
+
+
 Defining Synonyms
 =================
 
 Synonyms are introduced in :ref:`synonyms`. To define a getter/setter which 
-proxies to an underlying attribute, use ``synonym`` with the 
+proxies to an underlying attribute, use :func:`~sqlalchemy.orm.synonym` with the 
 ``descriptor`` argument::
 
     class MyClass(Base):
@@ -193,8 +214,8 @@ ORM function::
 Table Configuration
 ===================
 
-As an alternative to ``__tablename__``, a direct ``Table`` construct may be
-used.  The ``Column`` objects, which in this case require their names, will be
+As an alternative to ``__tablename__``, a direct :class:`~sqlalchemy.schema.Table` construct may be
+used.  The :class:`~sqlalchemy.schema.Column` objects, which in this case require their names, will be
 added to the mapping just like a regular mapping to a table::
 
     class MyClass(Base):
@@ -220,14 +241,34 @@ or a dictionary-containing tuple in the form
 Mapper Configuration
 ====================
 
-Mapper arguments are specified using the ``__mapper_args__`` class variable.
-Note that the column objects declared on the class are immediately usable, as
-in this joined-table inheritance example::
+Mapper arguments are specified using the ``__mapper_args__`` class variable,
+which is a dictionary that accepts the same names as the :class:`~sqlalchemy.orm.mapper`
+function accepts as keywords::
+
+    class Widget(Base):
+        __tablename__ = 'widgets'
+        id = Column(Integer, primary_key=True)
+        
+        __mapper_args__ = {'extension': MyWidgetExtension()}
+
+Inheritance Configuration
+=========================
+
+Declarative supports all three forms of inheritance as intuitively
+as possible.  The ``inherits`` mapper keyword argument is not needed,
+as declarative will determine this from the class itself.   The various
+"polymorphic" keyword arguments are specified using ``__mapper_args__``.
+
+Joined Table Inheritance
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Joined table inheritance is defined as a subclass that defines its own 
+table::
 
     class Person(Base):
         __tablename__ = 'people'
         id = Column(Integer, primary_key=True)
-        discriminator = Column(String(50))
+        discriminator = Column('type', String(50))
         __mapper_args__ = {'polymorphic_on': discriminator}
 
     class Engineer(Person):
@@ -236,11 +277,105 @@ in this joined-table inheritance example::
         id = Column(Integer, ForeignKey('people.id'), primary_key=True)
         primary_language = Column(String(50))
 
-For single-table inheritance, the ``__tablename__`` and ``__table__`` class
-variables are optional on a class when the class inherits from another mapped
-class.
+Note that above, the ``Engineer.id`` attribute, since it shares the same
+attribute name as the ``Person.id`` attribute, will in fact represent the ``people.id``
+and ``engineers.id`` columns together, and will render inside a query as ``"people.id"``.
+To provide the ``Engineer`` class with an attribute that represents only the
+``engineers.id`` column, give it a different attribute name::
 
-As a convenience feature, the ``declarative_base()`` sets a default
+    class Engineer(Person):
+        __tablename__ = 'engineers'
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        engineer_id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+        primary_language = Column(String(50))
+
+Single Table Inheritance
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Single table inheritance is defined as a subclass that does not have its 
+own table; you just leave out the ``__table__`` and ``__tablename__`` attributes::
+
+    class Person(Base):
+        __tablename__ = 'people'
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        primary_language = Column(String(50))
+
+When the above mappers are configured, the ``Person`` class is mapped to the ``people``
+table *before* the ``primary_language`` column is defined, and this column will not be included
+in its own mapping.   When ``Engineer`` then defines the ``primary_language`` 
+column, the column is added to the ``people`` table so that it is included in the mapping 
+for ``Engineer`` and is also part of the table's full set of columns.   
+Columns which are not mapped to ``Person`` are also excluded from any other 
+single or joined inheriting classes using the ``exclude_properties`` mapper argument.
+Below, ``Manager`` will have all the attributes of ``Person`` and ``Manager`` but *not*
+the ``primary_language`` attribute of ``Engineer``::
+
+    class Manager(Person):
+        __mapper_args__ = {'polymorphic_identity': 'manager'}
+        golf_swing = Column(String(50))
+
+The attribute exclusion logic is provided by the ``exclude_properties`` mapper argument,
+and declarative's default behavior can be disabled by passing an explicit 
+``exclude_properties`` collection (empty or otherwise) to the ``__mapper_args__``.
+
+Concrete Table Inheritance
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Concrete is defined as a subclass which has its own table and sets the 
+``concrete`` keyword argument to ``True``::
+
+    class Person(Base):
+        __tablename__ = 'people'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        
+    class Engineer(Person):
+        __tablename__ = 'engineers'
+        __mapper_args__ = {'concrete':True}
+        id = Column(Integer, primary_key=True)
+        primary_language = Column(String(50))
+        name = Column(String(50))
+
+Usage of an abstract base class is a little less straightforward as it requires 
+usage of :func:`~sqlalchemy.orm.util.polymorphic_union`::
+
+    engineers = Table('engineers', Base.metadata,
+                    Column('id', Integer, primary_key=True),
+                    Column('name', String(50)),
+                    Column('primary_language', String(50))
+                )
+    managers = Table('managers', Base.metadata,
+                    Column('id', Integer, primary_key=True),
+                    Column('name', String(50)),
+                    Column('golf_swing', String(50))
+                )
+    
+    punion = polymorphic_union({
+        'engineer':engineers,
+        'manager':managers
+    }, 'type', 'punion')
+    
+    class Person(Base):
+        __table__ = punion
+        __mapper_args__ = {'polymorphic_on':punion.c.type}
+        
+    class Engineer(Person):
+        __table__ = engineers
+        __mapper_args__ = {'polymorphic_identity':'engineer', 'concrete':True}
+
+    class Manager(Person):
+        __table__ = managers
+        __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
+    
+Class Usage
+===========
+
+As a convenience feature, the :func:`declarative_base` sets a default
 constructor on classes which takes keyword arguments, and assigns them to the
 named attributes::
 
@@ -248,7 +383,7 @@ named attributes::
 
 Note that ``declarative`` has no integration built in with sessions, and is
 only intended as an optional syntax for the regular usage of mappers and Table
-objects.  A typical application setup using ``scoped_session`` might look
+objects.  A typical application setup using :func:`~sqlalchemy.orm.scoped_session` might look
 like::
 
     engine = create_engine('postgres://scott:tiger@localhost/test')
@@ -257,9 +392,10 @@ like::
                                           bind=engine))
     Base = declarative_base()
 
-Mapped instances then make usage of ``Session`` in the usual way.
+Mapped instances then make usage of :class:`~sqlalchemy.orm.session.Session` in the usual way.
 
 """
+
 from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property, class_mapper
 from sqlalchemy.orm.interfaces import MapperProperty
@@ -301,6 +437,25 @@ def _as_declarative(cls, classname, dict_):
     # set up attributes in the order they were created
     our_stuff.sort(key=lambda key: our_stuff[key]._creation_order)
 
+    # extract columns from the class dict
+    cols = []
+    for key, c in our_stuff.iteritems():
+        if isinstance(c, ColumnProperty):
+            for col in c.columns:
+                if isinstance(col, Column) and col.table is None:
+                    _undefer_column_name(key, col)
+                    cols.append(col)
+        elif isinstance(c, Column):
+            _undefer_column_name(key, c)
+            cols.append(c)
+            # if the column is the same name as the key, 
+            # remove it from the explicit properties dict.
+            # the normal rules for assigning column-based properties
+            # will take over, including precedence of columns
+            # in multi-column ColumnProperties.
+            if key == c.key:
+                del our_stuff[key]
+
     table = None
     if '__table__' not in cls.__dict__:
         if '__tablename__' in cls.__dict__:
@@ -319,23 +474,6 @@ def _as_declarative(cls, classname, dict_):
             if autoload:
                 table_kw['autoload'] = True
 
-            cols = []
-            for key, c in our_stuff.iteritems():
-                if isinstance(c, ColumnProperty):
-                    for col in c.columns:
-                        if isinstance(col, Column) and col.table is None:
-                            _undefer_column_name(key, col)
-                            cols.append(col)
-                elif isinstance(c, Column):
-                    _undefer_column_name(key, c)
-                    cols.append(c)
-                    # if the column is the same name as the key, 
-                    # remove it from the explicit properties dict.
-                    # the normal rules for assigning column-based properties
-                    # will take over, including precedence of columns
-                    # in multi-column ColumnProperties.
-                    if key == c.key:
-                        del our_stuff[key]
             cls.__table__ = table = Table(tablename, cls.metadata,
                                           *(tuple(cols) + tuple(args)), **table_kw)
     else:
@@ -364,9 +502,36 @@ def _as_declarative(cls, classname, dict_):
     if not table and 'inherits' not in mapper_args:
         raise exceptions.InvalidRequestError("Class %r does not have a __table__ or __tablename__ "
                     "specified and does not inherit from an existing table-mapped class." % cls)
+
+    elif 'inherits' in mapper_args and not mapper_args.get('concrete', False):
+        inherited_mapper = class_mapper(mapper_args['inherits'], compile=False)
+        inherited_table = inherited_mapper.local_table
+
+        if not table:
+            # single table inheritance.
+            # ensure no table args
+            table_args = cls.__dict__.get('__table_args__')
+            if table_args is not None:
+                raise exceptions.ArgumentError("Can't place __table_args__ on an inherited class with no table.")
         
-    cls.__mapper__ = mapper_cls(cls, table, properties=our_stuff,
-                                **mapper_args)
+            # add any columns declared here to the inherited table.
+            for c in cols:
+                if c.primary_key:
+                    raise exceptions.ArgumentError("Can't place primary key columns on an inherited class with no table.")
+                inherited_table.append_column(c)
+    
+        # single or joined inheritance
+        # exclude any cols on the inherited table which are not mapped on the parent class, to avoid
+        # mapping columns specific to sibling/nephew classes
+        inherited_mapper = class_mapper(mapper_args['inherits'], compile=False)
+        inherited_table = inherited_mapper.local_table
+        
+        if 'exclude_properties' not in mapper_args:
+            mapper_args['exclude_properties'] = exclude_properties = \
+                set([c.key for c in inherited_table.c if c not in inherited_mapper._columntoproperty])
+            exclude_properties.difference_update([c.key for c in cols])
+        
+    cls.__mapper__ = mapper_cls(cls, table, properties=our_stuff, **mapper_args)
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
@@ -515,11 +680,11 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
     into Table and Mapper assignments.  
 
     :param bind: An optional :class:`~sqlalchemy.engine.base.Connectable`, will be assigned 
-      the ``bind`` attribute on the :class:`~sqlalchemy.schema.MetaData` instance.
+      the ``bind`` attribute on the :class:`~sqlalchemy.MetaData` instance.
       The `engine` keyword argument is a deprecated synonym for `bind`.
 
     :param metadata:
-      An optional :class:`~sqlalchemy.schema.MetaData` instance.  All :class:`~sqlalchemy.schema.Table` 
+      An optional :class:`~sqlalchemy.MetaData` instance.  All :class:`~sqlalchemy.schema.Table` 
       objects implicitly declared by
       subclasses of the base will share this MetaData.  A MetaData instance
       will be create if none is provided.  The MetaData instance will be

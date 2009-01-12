@@ -78,7 +78,7 @@ class Validator(AttributeExtension):
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     """Create a ``UNION`` statement used by a polymorphic mapper.
 
-    See the `SQLAlchemy` advanced mapping docs for an example of how
+    See  :ref:`concrete_inheritance` for an example of how
     this is used.
     """
 
