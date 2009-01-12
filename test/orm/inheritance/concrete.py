@@ -436,10 +436,10 @@ class PropertyInheritanceTest(_base.MappedTest):
         
         c1 = C(cname='c1')
         c2 = C(cname='c2')
-        a1 = A(some_c=c1, aname='a1')
-        a2 = A(some_c=c2, aname='a2')
-        b1 = B(some_c=c1, bname='b1')
-        b2 = B(some_c=c1, bname='b2')
+        a1 = A(some_c=c1, aname='a1', id=1)
+        a2 = A(some_c=c2, aname='a2', id=2)
+        b1 = B(some_c=c1, bname='b1', id=3)
+        b2 = B(some_c=c1, bname='b2', id=4)
         
         eq_([a2], c2.many_a)
         eq_([a1, b1, b2], c1.many_a)
@@ -449,8 +449,8 @@ class PropertyInheritanceTest(_base.MappedTest):
 
         assert sess.query(C).filter(C.many_a.contains(a2)).one() is c2
         assert sess.query(C).filter(C.many_a.contains(b1)).one() is c1
-        eq_([A(aname='a2')], c2.many_a)
-        eq_([A(aname='a1'), B(bname='b1'), B(bname='b2')], c1.many_a)
+        eq_(c2.many_a, [a2])
+        eq_(c1.many_a, [a1, b1, b2])
         
         sess.expire_all()
         
