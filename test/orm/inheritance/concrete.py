@@ -429,7 +429,7 @@ class PropertyInheritanceTest(_base.MappedTest):
             'some_c':relation(C, back_populates='many_a')
         })
         mapper(C, c_table, properties={
-            'many_a':relation(A, collection_class=set, back_populates='some_c'),
+            'many_a':relation(A, back_populates='some_c', order_by=ajoin.c.id),
         })
         
         sess = sessionmaker()()
@@ -441,22 +441,22 @@ class PropertyInheritanceTest(_base.MappedTest):
         b1 = B(some_c=c1, bname='b1')
         b2 = B(some_c=c1, bname='b2')
         
-        assert c2.many_a == set([a2])
-        assert set(c1.many_a) == set([a1, b1, b2]) # TODO: not sure whats going on with the set comparison here
+        assert c2.many_a == [a2]
+        assert c1.many_a == [a1, b1, b2]
         
         sess.add_all([c1, c2])
         sess.commit()
 
         assert sess.query(C).filter(C.many_a.contains(a2)).one() is c2
         assert sess.query(C).filter(C.many_a.contains(b1)).one() is c1
-        assert c2.many_a == set([a2])
-        assert c1.many_a == set([a1, b1, b2])
+        assert c2.many_a == [a2]
+        assert c1.many_a == [a1, b1, b2]
         
         sess.expire_all()
         
         def go():
             eq_(
-                [C(many_a=set([A(aname='a1'), B(bname='b1'), B(bname='b2')])), C(many_a=set([A(aname='a2')]))],
+                [C(many_a=[A(aname='a1'), B(bname='b1'), B(bname='b2')]), C(many_a=[A(aname='a2')])],
                 sess.query(C).options(eagerload(C.many_a)).order_by(C.id).all(),
             )
         self.assert_sql_count(testing.db, go, 1)
