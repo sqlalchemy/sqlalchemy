@@ -99,7 +99,7 @@ class QueryableAttribute(interfaces.PropComparator):
           comparator
             a sql.Comparator to which class-level compare/math events will be sent
         """
-
+        self.key = key
         self.impl = impl
         self.comparator = comparator
         self.parententity = parententity
@@ -182,7 +182,7 @@ def proxied_attribute_factory(descriptor):
             self._parententity = parententity
             self.impl = _ProxyImpl(key)
 
-        @property
+        @util.memoized_property
         def comparator(self):
             if util.callable(self._comparator):
                 self._comparator = self._comparator()
@@ -217,10 +217,6 @@ def proxied_attribute_factory(descriptor):
                             type(self._comparator).__name__, 
                             attribute)
                     )
-
-        def _property(self):
-            return self._parententity.get_property(self.key, resolve_synonyms=True)
-        property = property(_property)
 
     Proxy.__name__ = type(descriptor).__name__ + 'Proxy'
 

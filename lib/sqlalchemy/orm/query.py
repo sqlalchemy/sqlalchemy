@@ -1823,7 +1823,7 @@ class _ColumnEntity(_QueryEntity):
             column = sql.literal_column(column)
             self._result_label = column.name
         elif isinstance(column, attributes.QueryableAttribute):
-            self._result_label = column.property.key
+            self._result_label = column.key
             column = column.__clause_element__()
         else:
             self._result_label = getattr(column, 'key', None)

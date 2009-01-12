@@ -658,6 +658,11 @@ class MapperTest(_fixtures.FixtureTest):
         assert User.adlist.property
         
         sess = create_session()
+        
+        # test RowTuple names
+        row = sess.query(User.id, User.uname).first()
+        assert row.uname == row[1]
+        
         u = sess.query(User).filter(User.uname=='jack').one()
 
         fixture = self.static.user_address_result[0].addresses
