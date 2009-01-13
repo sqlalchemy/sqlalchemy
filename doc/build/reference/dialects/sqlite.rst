@@ -1,5 +1,9 @@
 SQLite
 ======
 
-.. automodule:: sqlalchemy.databases.sqlite
+.. automodule:: sqlalchemy.dialects.sqlite.base
 
+Pysqlite
+--------
+
+.. automodule:: sqlalchemy.dialects.sqlite.pysqlite

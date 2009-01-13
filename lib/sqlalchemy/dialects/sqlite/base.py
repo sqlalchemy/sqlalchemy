@@ -3,6 +3,25 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
+"""Support for the SQLite database.
+
+For information on connecting using a specific driver, see the documentation
+section regarding that driver.
+
+Date and Time Types
+-------------------
+
+SQLite does not have built-in DATE, TIME, or DATETIME types, and pysqlite does not provide 
+out of the box functionality for translating values between Python `datetime` objects
+and a SQLite-supported format.  SQLAlchemy's own :class:`~sqlalchemy.types.DateTime`
+and related types provide date formatting and parsing functionality when SQlite is used.
+The implementation classes are :class:`SLDateTime`, :class:`SLDate` and :class:`SLTime`.
+These types represent dates and times as ISO formatted strings, which also nicely
+support ordering.   There's no reliance on typical "libc" internals for these functions
+so historical dates are fully supported.
+
+
+"""
 
 import datetime, re, time
 

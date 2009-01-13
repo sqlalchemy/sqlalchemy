@@ -1,5 +1,8 @@
 """Support for the SQLite database via pysqlite.
 
+Note that pysqlite is the same driver as the ``sqlite3``
+module included with the Python distribution.
+
 Driver
 ------
 
@@ -85,18 +88,6 @@ Two optional pool implementations that may be appropriate for particular SQLite 
    efficiency, so this option may actually perform better without the extra overhead
    of :class:`SingletonThreadPool`.  NullPool will of course render a ``:memory:`` connection
    useless since the database would be lost as soon as the connection is "returned" to the pool.
-
-Date and Time Types
--------------------
-
-SQLite does not have built-in DATE, TIME, or DATETIME types, and pysqlite does not provide 
-out of the box functionality for translating values between Python `datetime` objects
-and a SQLite-supported format.  SQLAlchemy's own :class:`~sqlalchemy.types.DateTime`
-and related types provide date formatting and parsing functionality when SQlite is used.
-The implementation classes are :class:`SLDateTime`, :class:`SLDate` and :class:`SLTime`.
-These types represent dates and times as ISO formatted strings, which also nicely
-support ordering.   There's no reliance on typical "libc" internals for these functions
-so historical dates are fully supported.
 
 Unicode
 -------

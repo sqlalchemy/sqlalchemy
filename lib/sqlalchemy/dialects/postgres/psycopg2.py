@@ -24,57 +24,6 @@ psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.cre
   uses special row-buffering behavior when this feature is enabled, such that groups of 100 rows 
   at a time are fetched over the wire to reduce conversational overhead.
 
-Sequences/SERIAL
-----------------
-
-Postgres supports sequences, and SQLAlchemy uses these as the default means of creating
-new primary key values for integer-based primary key columns.   When creating tables, 
-SQLAlchemy will issue the ``SERIAL`` datatype for integer-based primary key columns, 
-which generates a sequence corresponding to the column and associated with it based on
-a naming convention.
-
-To specify a specific named sequence to be used for primary key generation, use the
-:func:`~sqlalchemy.schema.Sequence` construct::
-
-    Table('sometable', metadata, 
-            Column('id', Integer, Sequence('some_id_seq'), primary_key=True)
-        )
-
-Currently, when SQLAlchemy issues a single insert statement, to fulfill the contract of
-having the "last insert identifier" available, the sequence is executed independently
-beforehand and the new value is retrieved, to be used in the subsequent insert.  Note
-that when an :func:`~sqlalchemy.sql.expression.insert()` construct is executed using 
-"executemany" semantics, the sequence is not pre-executed and normal PG SERIAL behavior
-is used.
-
-Postgres 8.3 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy supports 
-as well.  A future release of SQLA will use this feature by default in lieu of 
-sequence pre-execution in order to retrieve new primary key values, when available.
-
-INSERT/UPDATE...RETURNING
--------------------------
-
-The dialect supports PG 8.3's ``INSERT..RETURNING`` and ``UPDATE..RETURNING`` syntaxes, 
-but must be explicitly enabled on a per-statement basis::
-
-    # INSERT..RETURNING
-    result = table.insert(postgres_returning=[table.c.col1, table.c.col2]).\\
-        values(name='foo')
-    print result.fetchall()
-    
-    # UPDATE..RETURNING
-    result = table.update(postgres_returning=[table.c.col1, table.c.col2]).\\
-        where(table.c.name=='foo').values(name='bar')
-    print result.fetchall()
-
-Indexes
--------
-
-PostgreSQL supports partial indexes. To create them pass a postgres_where
-option to the Index constructor::
-
-  Index('my_index', my_table.c.id, postgres_where=tbl.c.value > 10)
-
 Transactions
 ------------
 
