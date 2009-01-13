@@ -40,6 +40,12 @@ CHANGES
     - ColumnProperty (and front-end helpers such as ``deferred``) no
       longer ignores unknown **keyword arguments.
 
+    - Fixed a bug with the unitofwork's "row switch" mechanism,
+      i.e. the conversion of INSERT/DELETE into an UPDATE, when
+      combined with joined-table inheritance and an object
+      which contained no defined values for the child table where
+      an UPDATE with no SET clause would be rendered.
+      
 - schema
     - Index now accepts column-oriented InstrumentedAttributes
       (i.e. column-based mapped class attributes) as column
