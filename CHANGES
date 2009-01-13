@@ -73,6 +73,9 @@ CHANGES
       mapping than you'd normally get with explicit `mapper()`
       calls unless you set up the `exclude_properties` arguments
       explicitly.
+
+    - It's an error to add new Column objects to a declarative class
+      that specified an existing table using __table__.
       
 - mysql
     - Added the missing keywords from MySQL 4.1 so they get escaped

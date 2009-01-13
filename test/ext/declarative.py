@@ -63,6 +63,14 @@ class DeclarativeTest(DeclarativeTestBase):
             class User(Base):
                 id = Column('id', Integer, primary_key=True)
         self.assertRaisesMessage(sa.exc.InvalidRequestError, "does not have a __table__", go)
+
+    def test_cant_add_columns(self):
+        t = Table('t', Base.metadata, Column('id', Integer, primary_key=True))
+        def go():
+            class User(Base):
+                __table__ = t
+                foo = Column(Integer, primary_key=True)
+        self.assertRaisesMessage(sa.exc.ArgumentError, "add additional columns", go)
     
     def test_undefer_column_name(self):
         # TODO: not sure if there was an explicit
