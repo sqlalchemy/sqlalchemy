@@ -739,4 +739,3 @@ def _undefer_column_name(key, column):
         column.key = key
     if column.name is None:
         column.name = key
-    util.reset_memoized(column, 'description')

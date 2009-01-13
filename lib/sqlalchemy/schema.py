@@ -609,20 +609,15 @@ class Column(SchemaItem, expression.ColumnClause):
                 "Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
     def __str__(self):
-        if self.table is not None:
+        if self.name is None:
+            return "(no name)"
+        elif self.table is not None:
             if self.table.named_with_column:
                 return (self.table.description + "." + self.description)
             else:
                 return self.description
         else:
             return self.description
-
-    @util.memoized_property
-    def description(self):
-        if not self.name:
-            return "(no name)"
-        else:
-            return self.name.encode('ascii', 'backslashreplace')
 
     @property
     def bind(self):
