@@ -32,12 +32,24 @@ class ColumnProperty(StrategizedProperty):
     """Describes an object attribute that corresponds to a table column."""
 
     def __init__(self, *columns, **kwargs):
-        """The list of `columns` describes a single object
-        property. If there are multiple tables joined together for the
-        mapper, this list represents the equivalent column as it
-        appears across each table.
-        """
+        """Construct a ColumnProperty.
 
+        :param \*columns: The list of `columns` describes a single
+          object property. If there are multiple tables joined
+          together for the mapper, this list represents the equivalent
+          column as it appears across each table.
+
+        :param group:
+
+        :param deferred:
+
+        :param comparator_factory:
+
+        :param descriptor:
+
+        :param extension:
+
+        """
         self.columns = [expression._labeled(c) for c in columns]
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
@@ -45,6 +57,11 @@ class ColumnProperty(StrategizedProperty):
         self.comparator_factory = kwargs.pop('comparator_factory', self.__class__.Comparator)
         self.descriptor = kwargs.pop('descriptor', None)
         self.extension = kwargs.pop('extension', None)
+        if kwargs:
+            raise TypeError(
+                "%s received unexpected keyword argument(s): %s" % (
+                    self.__class__.__name__, ', '.join(sorted(kwargs.keys()))))
+
         util.set_creation_order(self)
         if self.no_instrument:
             self.strategy_class = strategies.UninstrumentedColumnLoader

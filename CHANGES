@@ -37,6 +37,9 @@ CHANGES
       operation, greatly simplifying typical usage patterns
       within declarative. [ticket:1269]
 
+    - ColumnProperty (and front-end helpers such as ``deferred``) no
+      longer ignores unknown **keyword arguments.
+
 - schema
     - Index now accepts column-oriented InstrumentedAttributes
       (i.e. column-based mapped class attributes) as column
