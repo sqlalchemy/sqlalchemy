@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from testlib.sa import MetaData, Table, Column, Integer, String
 import testlib.sa as tsa
 from testlib import TestBase, testing, engines
-
+from testlib.testing import AssertsCompiledSQL
 
 class DDLEventTest(TestBase):
     class Canary(object):
@@ -284,7 +284,7 @@ class DDLExecutionTest(TestBase):
                 r = eval(py)
                 assert list(r) == [(1,)], py
 
-class DDLTest(TestBase):
+class DDLTest(TestBase, AssertsCompiledSQL):
     def mock_engine(self):
         executor = lambda *a, **kw: None
         engine = create_engine(testing.db.name + '://',
@@ -303,20 +303,21 @@ class DDLTest(TestBase):
 
         ddl = DDL('%(schema)s-%(table)s-%(fullname)s')
 
-        self.assertEquals(ddl._expand(sane_alone, bind), '-t-t')
-        self.assertEquals(ddl._expand(sane_schema, bind), 's-t-s.t')
-        self.assertEquals(ddl._expand(insane_alone, bind), '-"t t"-"t t"')
-        self.assertEquals(ddl._expand(insane_schema, bind),
-                          '"s s"-"t t"-"s s"."t t"')
+        dialect = bind.dialect
+        self.assert_compile(ddl.against(sane_alone), '-t-t', dialect=dialect)
+        self.assert_compile(ddl.against(sane_schema), 's-t-s.t', dialect=dialect)
+        self.assert_compile(ddl.against(insane_alone), '-"t t"-"t t"', dialect=dialect)
+        self.assert_compile(ddl.against(insane_schema), '"s s"-"t t"-"s s"."t t"', dialect=dialect)
 
         # overrides are used piece-meal and verbatim.
         ddl = DDL('%(schema)s-%(table)s-%(fullname)s-%(bonus)s',
                   context={'schema':'S S', 'table': 'T T', 'bonus': 'b'})
-        self.assertEquals(ddl._expand(sane_alone, bind), 'S S-T T-t-b')
-        self.assertEquals(ddl._expand(sane_schema, bind), 'S S-T T-s.t-b')
-        self.assertEquals(ddl._expand(insane_alone, bind), 'S S-T T-"t t"-b')
-        self.assertEquals(ddl._expand(insane_schema, bind),
-                          'S S-T T-"s s"."t t"-b')
+
+        self.assert_compile(ddl.against(sane_alone), 'S S-T T-t-b', dialect=dialect)
+        self.assert_compile(ddl.against(sane_schema), 'S S-T T-s.t-b', dialect=dialect)
+        self.assert_compile(ddl.against(insane_alone), 'S S-T T-"t t"-b', dialect=dialect)
+        self.assert_compile(ddl.against(insane_schema), 'S S-T T-"s s"."t t"-b', dialect=dialect)
+
     def test_filter(self):
         cx = self.mock_engine()
 

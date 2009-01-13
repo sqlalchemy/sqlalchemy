@@ -46,7 +46,7 @@ class AcTinyInteger(types.Integer):
     def get_col_spec(self):
         return "TINYINT"
 
-class AcSmallInteger(types.Smallinteger):
+class AcSmallInteger(types.SmallInteger):
     def get_col_spec(self):
         return "SMALLINT"
 
@@ -155,7 +155,7 @@ class AccessDialect(default.DefaultDialect):
     colspecs = {
         types.Unicode : AcUnicode,
         types.Integer : AcInteger,
-        types.Smallinteger: AcSmallInteger,
+        types.SmallInteger: AcSmallInteger,
         types.Numeric : AcNumeric,
         types.Float : AcFloat,
         types.DateTime : AcDateTime,
@@ -327,7 +327,7 @@ class AccessDialect(default.DefaultDialect):
         return names
 
 
-class AccessCompiler(compiler.DefaultCompiler):
+class AccessCompiler(compiler.SQLCompiler):
     def visit_select_precolumns(self, select):
         """Access puts TOP, it's version of LIMIT here """
         s = select.distinct and "DISTINCT " or ""

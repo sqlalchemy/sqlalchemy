@@ -123,7 +123,7 @@ class _CompileLabel(visitors.Visitable):
     def quote(self):
         return self.element.quote
 
-class DefaultCompiler(engine.Compiled):
+class SQLCompiler(engine.Compiled):
     """Default implementation of Compiled.
 
     Compiles ClauseElements into SQL strings.   Uses a similar visit
@@ -134,8 +134,9 @@ class DefaultCompiler(engine.Compiled):
     operators = OPERATORS
     functions = FUNCTIONS
 
-    # if we are insert/update/delete. 
-    # set to true when we visit an INSERT, UPDATE or DELETE
+    # class-level defaults which can be set at the instance
+    # level to define if this Compiled instance represents
+    # INSERT/UPDATE/DELETE
     isdelete = isinsert = isupdate = False
 
     def __init__(self, dialect, statement, column_keys=None, inline=False, **kwargs):
@@ -152,7 +153,9 @@ class DefaultCompiler(engine.Compiled):
           statement.
 
         """
-        engine.Compiled.__init__(self, dialect, statement, column_keys, **kwargs)
+        engine.Compiled.__init__(self, dialect, statement, **kwargs)
+
+        self.column_keys = column_keys
 
         # compile INSERT/UPDATE defaults/sequences inlined (no pre-execute)
         self.inline = inline or getattr(statement, 'inline', False)
@@ -191,12 +194,6 @@ class DefaultCompiler(engine.Compiled):
         # a map which tracks "truncated" names based on dialect.label_length
         # or dialect.max_identifier_length
         self.truncated_names = {}
-
-    def compile(self):
-        self.string = self.process(self.statement)
-
-    def process(self, obj, **kwargs):
-        return obj._compiler_dispatch(self, **kwargs)
 
     def is_subquery(self):
         return len(self.stack) > 1
@@ -292,7 +289,7 @@ class DefaultCompiler(engine.Compiled):
         return index.name
 
     def visit_typeclause(self, typeclause, **kwargs):
-        return typeclause.type.dialect_impl(self.dialect).get_col_spec()
+        return self.dialect.type_compiler.process(typeclause.type)
 
     def post_process_text(self, text):
         return text
@@ -739,21 +736,104 @@ class DefaultCompiler(engine.Compiled):
     def visit_release_savepoint(self, savepoint_stmt):
         return "RELEASE SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt)
 
-    def __str__(self):
-        return self.string or ''
 
-class DDLBase(engine.SchemaIterator):
-    def find_alterables(self, tables):
-        alterables = []
-        class FindAlterables(schema.SchemaVisitor):
-            def visit_foreign_key_constraint(self, constraint):
-                if constraint.use_alter and constraint.table in tables:
-                    alterables.append(constraint)
-        findalterables = FindAlterables()
-        for table in tables:
-            for c in table.constraints:
-                findalterables.traverse(c)
-        return alterables
+class DDLCompiler(engine.Compiled):
+    @property
+    def preparer(self):
+        return self.dialect.identifier_preparer
+        
+    def visit_ddl(self, ddl, **kwargs):
+        # table events can substitute table and schema name
+        context = ddl.context
+        if isinstance(ddl.schema_item, schema.Table):
+            context = context.copy()
+
+            preparer = self.dialect.identifier_preparer
+            path = preparer.format_table_seq(ddl.schema_item)
+            if len(path) == 1:
+                table, sch = path[0], ''
+            else:
+                table, sch = path[-1], path[0]
+
+            context.setdefault('table', table)
+            context.setdefault('schema', sch)
+            context.setdefault('fullname', preparer.format_table(ddl.schema_item))
+        
+        return ddl.statement % context
+
+    def visit_create_table(self, create):
+        table = create.element
+        preparer = self.dialect.identifier_preparer
+
+        text = "\n" + " ".join(['CREATE'] + \
+                                    table._prefixes + \
+                                    ['TABLE',
+                                     preparer.format_table(table),
+                                     "("])
+        separator = "\n"
+
+        # if only one primary key, specify it along with the column
+        first_pk = False
+        for column in table.columns:
+            text += separator
+            separator = ", \n"
+            text += "\t" + self.get_column_specification(column, first_pk=column.primary_key and not first_pk)
+            if column.primary_key:
+                first_pk = True
+            for constraint in column.constraints:
+                text += self.process(constraint)
+
+        # On some DB order is significant: visit PK first, then the
+        # other constraints (engine.ReflectionTest.testbasic failed on FB2)
+        if table.primary_key:
+            text += self.process(table.primary_key)
+
+        for constraint in [c for c in table.constraints if c is not table.primary_key]:
+            text += self.process(constraint)
+
+        text += "\n)%s\n\n" % self.post_create_table(table)
+        return text
+        
+    def visit_drop_table(self, drop):
+        return "\nDROP TABLE " + self.preparer.format_table(drop.element)
+        
+    def visit_add_foreignkey(self, add):
+        return "ALTER TABLE %s ADD " % self.preparer.format_table(add.element.table) + \
+            self.define_foreign_key(add.element)
+
+    def visit_drop_foreignkey(self, drop):
+        return "ALTER TABLE %s DROP CONSTRAINT %s" % (
+            self.preparer.format_table(drop.element.table),
+            self.preparer.format_constraint(drop.element))
+
+    def visit_create_index(self, create):
+        index = create.element
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+        text += "INDEX %s ON %s (%s)" \
+                    % (preparer.quote(self._validate_identifier(index.name, True), index.quote),
+                       preparer.format_table(index.table),
+                       ', '.join(preparer.quote(c.name, c.quote)
+                                 for c in index.columns))
+        return text
+
+    def visit_drop_index(self, drop):
+        index = drop.element
+        return "\nDROP INDEX " + self.preparer.quote(self._validate_identifier(index.name, False), index.quote)
+
+    def get_column_specification(self, column, first_pk=False):
+        raise NotImplementedError()
+
+    def post_create_table(self, table):
+        return ''
+
+    def _compile(self, tocompile, parameters):
+        """compile the given string/parameters using this SchemaGenerator's dialect."""
+        compiler = self.dialect.statement_compiler(self.dialect, tocompile, parameters)
+        compiler.compile()
+        return compiler
 
     def _validate_identifier(self, ident, truncate):
         if truncate:
@@ -767,82 +847,6 @@ class DDLBase(engine.SchemaIterator):
             self.dialect.validate_identifier(ident)
             return ident
 
-
-class SchemaGenerator(DDLBase):
-    def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
-        super(SchemaGenerator, self).__init__(connection, **kwargs)
-        self.checkfirst = checkfirst
-        self.tables = tables and set(tables) or None
-        self.preparer = dialect.identifier_preparer
-        self.dialect = dialect
-
-    def get_column_specification(self, column, first_pk=False):
-        raise NotImplementedError()
-
-    def _can_create(self, table):
-        self.dialect.validate_identifier(table.name)
-        if table.schema:
-            self.dialect.validate_identifier(table.schema)
-        return not self.checkfirst or not self.dialect.has_table(self.connection, table.name, schema=table.schema)
-
-    def visit_metadata(self, metadata):
-        if self.tables:
-            tables = self.tables
-        else:
-            tables = metadata.tables.values()
-        collection = [t for t in sql_util.sort_tables(tables) if self._can_create(t)]
-        for table in collection:
-            self.traverse_single(table)
-        if self.dialect.supports_alter:
-            for alterable in self.find_alterables(collection):
-                self.add_foreignkey(alterable)
-
-    def visit_table(self, table):
-        for listener in table.ddl_listeners['before-create']:
-            listener('before-create', table, self.connection)
-
-        for column in table.columns:
-            if column.default is not None:
-                self.traverse_single(column.default)
-
-        self.append("\n" + " ".join(['CREATE'] +
-                                    table._prefixes +
-                                    ['TABLE',
-                                     self.preparer.format_table(table),
-                                     "("]))
-        separator = "\n"
-
-        # if only one primary key, specify it along with the column
-        first_pk = False
-        for column in table.columns:
-            self.append(separator)
-            separator = ", \n"
-            self.append("\t" + self.get_column_specification(column, first_pk=column.primary_key and not first_pk))
-            if column.primary_key:
-                first_pk = True
-            for constraint in column.constraints:
-                self.traverse_single(constraint)
-
-        # On some DB order is significant: visit PK first, then the
-        # other constraints (engine.ReflectionTest.testbasic failed on FB2)
-        if table.primary_key:
-            self.traverse_single(table.primary_key)
-        for constraint in [c for c in table.constraints if c is not table.primary_key]:
-            self.traverse_single(constraint)
-
-        self.append("\n)%s\n\n" % self.post_create_table(table))
-        self.execute()
-
-        if hasattr(table, 'indexes'):
-            for index in table.indexes:
-                self.traverse_single(index)
-
-        for listener in table.ddl_listeners['after-create']:
-            listener('after-create', table, self.connection)
-
-    def post_create_table(self, table):
-        return ''
-
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
             if isinstance(column.server_default.arg, basestring):
@@ -852,149 +856,174 @@ class SchemaGenerator(DDLBase):
         else:
             return None
 
-    def _compile(self, tocompile, parameters):
-        """compile the given string/parameters using this SchemaGenerator's dialect."""
-        compiler = self.dialect.statement_compiler(self.dialect, tocompile, parameters)
-        compiler.compile()
-        return compiler
-
     def visit_check_constraint(self, constraint):
-        self.append(", \n\t")
+        text = ", \n\t"
         if constraint.name is not None:
-            self.append("CONSTRAINT %s " %
-                        self.preparer.format_constraint(constraint))
-        self.append(" CHECK (%s)" % constraint.sqltext)
-        self.define_constraint_deferrability(constraint)
+            text += "CONSTRAINT %s " % \
+                        self.preparer.format_constraint(constraint)
+        text += " CHECK (%s)" % constraint.sqltext
+        text += self.define_constraint_deferrability(constraint)
+        return text
 
     def visit_column_check_constraint(self, constraint):
-        self.append(" CHECK (%s)" % constraint.sqltext)
-        self.define_constraint_deferrability(constraint)
+        text = " CHECK (%s)" % constraint.sqltext
+        text += self.define_constraint_deferrability(constraint)
+        return text
 
     def visit_primary_key_constraint(self, constraint):
         if len(constraint) == 0:
-            return
-        self.append(", \n\t")
+            return ''
+        text = ", \n\t"
         if constraint.name is not None:
-            self.append("CONSTRAINT %s " % self.preparer.format_constraint(constraint))
-        self.append("PRIMARY KEY ")
-        self.append("(%s)" % ', '.join(self.preparer.quote(c.name, c.quote)
-                                       for c in constraint))
-        self.define_constraint_deferrability(constraint)
+            text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
+        text += "PRIMARY KEY "
+        text += "(%s)" % ', '.join(self.preparer.quote(c.name, c.quote)
+                                       for c in constraint)
+        text += self.define_constraint_deferrability(constraint)
+        return text
 
     def visit_foreign_key_constraint(self, constraint):
         if constraint.use_alter and self.dialect.supports_alter:
-            return
-        self.append(", \n\t ")
-        self.define_foreign_key(constraint)
-
-    def add_foreignkey(self, constraint):
-        self.append("ALTER TABLE %s ADD " % self.preparer.format_table(constraint.table))
-        self.define_foreign_key(constraint)
-        self.execute()
+            return ''
+        
+        return ", \n\t " + self.define_foreign_key(constraint)
 
     def define_foreign_key(self, constraint):
-        preparer = self.preparer
+        preparer = self.dialect.identifier_preparer
+        text = ""
         if constraint.name is not None:
-            self.append("CONSTRAINT %s " %
-                        preparer.format_constraint(constraint))
+            text += "CONSTRAINT %s " % \
+                        preparer.format_constraint(constraint)
         table = list(constraint.elements)[0].column.table
-        self.append("FOREIGN KEY(%s) REFERENCES %s (%s)" % (
+        text += "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
             ', '.join(preparer.quote(f.parent.name, f.parent.quote)
                       for f in constraint.elements),
             preparer.format_table(table),
             ', '.join(preparer.quote(f.column.name, f.column.quote)
                       for f in constraint.elements)
-        ))
+        )
         if constraint.ondelete is not None:
-            self.append(" ON DELETE %s" % constraint.ondelete)
+            text += " ON DELETE %s" % constraint.ondelete
         if constraint.onupdate is not None:
-            self.append(" ON UPDATE %s" % constraint.onupdate)
-        self.define_constraint_deferrability(constraint)
+            text += " ON UPDATE %s" % constraint.onupdate
+        text += self.define_constraint_deferrability(constraint)
+        return text
 
     def visit_unique_constraint(self, constraint):
-        self.append(", \n\t")
+        text = ", \n\t"
         if constraint.name is not None:
-            self.append("CONSTRAINT %s " %
-                        self.preparer.format_constraint(constraint))
-        self.append(" UNIQUE (%s)" % (', '.join(self.preparer.quote(c.name, c.quote) for c in constraint)))
-        self.define_constraint_deferrability(constraint)
+            text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
+        text += " UNIQUE (%s)" % (', '.join(self.preparer.quote(c.name, c.quote) for c in constraint))
+        text += self.define_constraint_deferrability(constraint)
+        return text
 
     def define_constraint_deferrability(self, constraint):
+        text = ""
         if constraint.deferrable is not None:
             if constraint.deferrable:
-                self.append(" DEFERRABLE")
+                text += " DEFERRABLE"
             else:
-                self.append(" NOT DEFERRABLE")
+                text += " NOT DEFERRABLE"
         if constraint.initially is not None:
-            self.append(" INITIALLY %s" % constraint.initially)
+            text += " INITIALLY %s" % constraint.initially
+        return text
+        
+        
+# PLACEHOLDERS to get non-converted dialects to compile
+class SchemaGenerator(object):
+    pass
+    
+class SchemaDropper(object):
+    pass
+    
+    
+class GenericTypeCompiler(engine.TypeCompiler):
+    def visit_CHAR(self, type_):
+        return "CHAR" + (type_.length and "(%d)" % type_.length or "")
 
-    def visit_column(self, column):
-        pass
+    def visit_NCHAR(self, type_):
+        return "NCHAR" + (type_.length and "(%d)" % type_.length or "")
+    
+    def visit_FLOAT(self, type_):
+        return "FLOAT"
 
-    def visit_index(self, index):
-        preparer = self.preparer
-        self.append("CREATE ")
-        if index.unique:
-            self.append("UNIQUE ")
-        self.append("INDEX %s ON %s (%s)" \
-                    % (preparer.quote(self._validate_identifier(index.name, True), index.quote),
-                       preparer.format_table(index.table),
-                       ', '.join(preparer.quote(c.name, c.quote)
-                                 for c in index.columns)))
-        self.execute()
-
-
-class SchemaDropper(DDLBase):
-    def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
-        super(SchemaDropper, self).__init__(connection, **kwargs)
-        self.checkfirst = checkfirst
-        self.tables = tables
-        self.preparer = dialect.identifier_preparer
-        self.dialect = dialect
-
-    def visit_metadata(self, metadata):
-        if self.tables:
-            tables = self.tables
+    def visit_NUMERIC(self, type_):
+        if type_.precision is None:
+            return "NUMERIC"
         else:
-            tables = metadata.tables.values()
-        collection = [t for t in reversed(sql_util.sort_tables(tables)) if self._can_drop(t)]
-        if self.dialect.supports_alter:
-            for alterable in self.find_alterables(collection):
-                self.drop_foreignkey(alterable)
-        for table in collection:
-            self.traverse_single(table)
+            return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : type_.scale}
 
-    def _can_drop(self, table):
-        self.dialect.validate_identifier(table.name)
-        if table.schema:
-            self.dialect.validate_identifier(table.schema)
-        return not self.checkfirst or self.dialect.has_table(self.connection, table.name, schema=table.schema)
+    def visit_DECIMAL(self, type_):
+        return "DECIMAL"
+        
+    def visit_INTEGER(self, type_):
+        return "INTEGER"
 
-    def visit_index(self, index):
-        self.append("\nDROP INDEX " + self.preparer.quote(self._validate_identifier(index.name, False), index.quote))
-        self.execute()
+    def visit_SMALLINT(self, type_):
+        return "SMALLINT"
 
-    def drop_foreignkey(self, constraint):
-        self.append("ALTER TABLE %s DROP CONSTRAINT %s" % (
-            self.preparer.format_table(constraint.table),
-            self.preparer.format_constraint(constraint)))
-        self.execute()
+    def visit_TIMESTAMP(self, type_):
+        return 'TIMESTAMP'
 
-    def visit_table(self, table):
-        for listener in table.ddl_listeners['before-drop']:
-            listener('before-drop', table, self.connection)
+    def visit_DATETIME(self, type_):
+        return "DATETIME"
 
-        for column in table.columns:
-            if column.default is not None:
-                self.traverse_single(column.default)
+    def visit_DATE(self, type_):
+        return "DATE"
 
-        self.append("\nDROP TABLE " + self.preparer.format_table(table))
-        self.execute()
+    def visit_TIME(self, type_):
+        return "TIME"
 
-        for listener in table.ddl_listeners['after-drop']:
-            listener('after-drop', table, self.connection)
+    def visit_CLOB(self, type_):
+        return "CLOB"
 
+    def visit_VARCHAR(self, type_):
+        return "VARCHAR" + (type_.length and "(%d)" % type_.length or "")
 
+    def visit_BLOB(self, type_):
+        return "BLOB"
+    
+    def visit_BINARY(self, type_):
+        return "BINARY"
+        
+    def visit_BOOLEAN(self, type_):
+        return "BOOLEAN"
+    
+    def visit_TEXT(self, type_):
+        return "TEXT"
+    
+    def visit_binary(self, type_):
+        return self.visit_BINARY(type_)
+    def visit_boolean(self, type_): 
+        return self.visit_BOOLEAN(type_)
+    def visit_time(self, type_): 
+        return self.visit_TIME(type_)
+    def visit_datetime(self, type_): 
+        return self.visit_DATETIME(type_)
+    def visit_date(self, type_): 
+        return self.visit_DATE(type_)
+    def visit_small_integer(self, type_): 
+        return self.visit_SMALLINT(type_)
+    def visit_integer(self, type_): 
+        return self.visit_INTEGER(type_)
+    def visit_float(self, type_): 
+        return self.visit_FLOAT(type_)
+    def visit_numeric(self, type_): 
+        return self.visit_NUMERIC(type_)
+    def visit_string(self, type_): 
+        return self.visit_VARCHAR(type_)
+    def visit_text(self, type_): 
+        return self.visit_TEXT(type_)
+    
+    def visit_null(self, type_):
+        raise NotImplementedError("Can't generate DDL for the null type")
+        
+    def visit_type_decorator(self, type_):
+        return self.process(type_.dialect_impl(self.dialect).impl)
+        
+    def visit_user_defined(self, type_):
+        return type_.get_col_spec()
+    
 class IdentifierPreparer(object):
     """Handle quoting and case-folding of identifiers based on options."""
 

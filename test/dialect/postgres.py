@@ -2,12 +2,12 @@ import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy import exc
-from sqlalchemy.databases import postgres
+from sqlalchemy import exc, schema
+from sqlalchemy.dialects.postgres import base as postgres
 from sqlalchemy.engine.strategies import MockEngineStrategy
 from testlib import *
 from sqlalchemy.sql import table, column
-
+from testlib.testing import eq_
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
@@ -57,6 +57,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
         i = insert(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
+
+    def test_create_partial_index(self):
+        tbl = Table('testtbl', MetaData(), Column('data',Integer))
+        idx = Index('test_idx1', tbl.c.data, postgres_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+
+        self.assert_compile(schema.CreateIndex(idx), 
+            "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgres.dialect())
+
 
 class ReturningTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
@@ -406,7 +414,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer']), "Columns of reflected table didn't equal expected columns")
-        self.assertEquals(table.c.answer.type.__class__, postgres.PGInteger)
+        assert isinstance(table.c.answer.type, Integer)
 
     def test_domain_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -418,7 +426,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True, schema='alt_schema')
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer', 'anything']), "Columns of reflected table didn't equal expected columns")
-        self.assertEquals(table.c.anything.type.__class__, postgres.PGInteger)
+        assert isinstance(table.c.anything.type, Integer)
 
     def test_schema_domain_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -432,7 +440,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         self.assertEquals(str(table.columns.answer.server_default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
 
-class MiscTest(TestBase, AssertsExecutionResults):
+class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     __only_on__ = 'postgres'
 
     def test_date_reflection(self):
@@ -666,17 +674,6 @@ class MiscTest(TestBase, AssertsExecutionResults):
             warnings.warn = capture_warnings._orig_showwarning
             m1.drop_all()
 
-    def test_create_partial_index(self):
-        tbl = Table('testtbl', MetaData(), Column('data',Integer))
-        idx = Index('test_idx1', tbl.c.data, postgres_where=and_(tbl.c.data > 5, tbl.c.data < 10))
-
-        executed_sql = []
-        mock_strategy = MockEngineStrategy()
-        mock_conn = mock_strategy.create('postgres://', executed_sql.append)
-
-        idx.create(mock_conn)
-
-        assert executed_sql == ['CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10']
 
 class TimezoneTest(TestBase, AssertsExecutionResults):
     """Test timezone-aware datetimes.

@@ -609,9 +609,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 "Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
     def __str__(self):
-        if self.name is None:
-            return "(no name)"
-        elif self.table is not None:
+        if self.table is not None:
             if self.table.named_with_column:
                 return (self.table.description + "." + self.description)
             else:
@@ -619,9 +617,9 @@ class Column(SchemaItem, expression.ColumnClause):
         else:
             return self.description
 
-    @property
     def bind(self):
         return self.table.bind
+    bind = property(bind)
 
     def references(self, column):
         """Return True if this Column references the given column via foreign key."""
@@ -1884,7 +1882,30 @@ class SchemaVisitor(visitors.ClauseVisitor):
     __traverse_options__ = {'schema_visitor':True}
 
 
-class DDL(object):
+class DDLElement(expression.ClauseElement):
+    """Base class for DDL expression constructs."""
+    
+    supports_execution = True
+    _autocommit = True
+
+    def bind(self):
+        if self._bind:
+            return self._bind
+    def _set_bind(self, bind):
+        self._bind = bind
+    bind = property(bind, _set_bind)
+
+    def _generate(self):
+        s = self.__class__.__new__(self.__class__)
+        s.__dict__ = self.__dict__.copy()
+        return s
+    
+    def _compiler(self, dialect, **kw):
+        """Return a compiler appropriate for this ClauseElement, given a Dialect."""
+        
+        return dialect.ddl_compiler(dialect, self, **kw)
+
+class DDL(DDLElement):
     """A literal DDL statement.
 
     Specifies literal SQL DDL to be executed by the database.  DDL objects can
@@ -1905,6 +1926,8 @@ class DDL(object):
       connection.execute(drop_spow)
     """
 
+    __visit_name__ = "ddl"
+    
     def __init__(self, statement, on=None, context=None, bind=None):
         """Create a DDL statement.
 
@@ -1964,6 +1987,7 @@ class DDL(object):
         self.on = on
         self.context = context or {}
         self._bind = bind
+        self.schema_item = None
 
     def execute(self, bind=None, schema_item=None):
         """Execute this DDL immediately.
@@ -1985,10 +2009,9 @@ class DDL(object):
 
         if bind is None:
             bind = _bind_or_error(self)
-        # no SQL bind params are supported
+
         if self._should_execute(None, schema_item, bind):
-            executable = expression.text(self._expand(schema_item, bind))
-            return bind.execute(executable)
+            return bind.execute(self.against(schema_item))
         else:
             bind.engine.logger.info("DDL execution skipped, criteria not met.")
 
@@ -2040,39 +2063,18 @@ class DDL(object):
                 (', '.join(schema_item.ddl_events), event))
         schema_item.ddl_listeners[event].append(self)
         return self
-
-    def bind(self):
-        """An Engine or Connection to which this DDL is bound.
-
-        This property may be assigned an ``Engine`` or ``Connection``, or
-        assigned a string or URL to automatically create a basic ``Engine``
-        for this bind with ``create_engine()``.
-        """
-        return self._bind
-
-    def _bind_to(self, bind):
-        """Bind this MetaData to an Engine, Connection, string or URL."""
-
-        global URL
-        if URL is None:
-            from sqlalchemy.engine.url import URL
-
-        if isinstance(bind, (basestring, URL)):
-            from sqlalchemy import create_engine
-            self._bind = create_engine(bind)
-        else:
-            self._bind = bind
-    bind = property(bind, _bind_to)
-
+    
+    @expression._generative
+    def against(self, schema_item):
+        """Return a copy of this DDL against a specific schema item."""
+        
+        self.schema_item = schema_item
+        
     def __call__(self, event, schema_item, bind):
         """Execute the DDL as a ddl_listener."""
 
         if self._should_execute(event, schema_item, bind):
-            statement = expression.text(self._expand(schema_item, bind))
-            return bind.execute(statement)
-
-    def _expand(self, schema_item, bind):
-        return self.statement % self._prepare_context(schema_item, bind)
+            return bind.execute(self.against(schema_item))
 
     def _should_execute(self, event, schema_item, bind):
         if self.on is None:
@@ -2081,25 +2083,6 @@ class DDL(object):
             return self.on == bind.engine.name
         else:
             return self.on(event, schema_item, bind)
-
-    def _prepare_context(self, schema_item, bind):
-        # table events can substitute table and schema name
-        if isinstance(schema_item, Table):
-            context = self.context.copy()
-
-            preparer = bind.dialect.identifier_preparer
-            path = preparer.format_table_seq(schema_item)
-            if len(path) == 1:
-                table, schema = path[0], ''
-            else:
-                table, schema = path[-1], path[0]
-
-            context.setdefault('table', table)
-            context.setdefault('schema', schema)
-            context.setdefault('fullname', preparer.format_table(schema_item))
-            return context
-        else:
-            return self.context
 
     def __repr__(self):
         return '<%s@%s; %s>' % (
@@ -2110,11 +2093,76 @@ class DDL(object):
                        if getattr(self, key)]))
 
 def _to_schema_column(element):
-    if hasattr(element, '__clause_element__'):
-        element = element.__clause_element__()
-    if not isinstance(element, Column):
-        raise exc.ArgumentError("schema.Column object expected")
-    return element
+   if hasattr(element, '__clause_element__'):
+       element = element.__clause_element__()
+   if not isinstance(element, Column):
+       raise exc.ArgumentError("schema.Column object expected")
+   return element
+
+class _CreateDropBase(DDLElement):
+    """Base class for DDL constucts that represent CREATE and DROP or equivalents.
+
+    The common theme of _CreateDropBase is a single
+    ``element`` attribute which refers to the element
+    to be created or dropped.
+    
+    """
+    
+    def __init__(self, element):
+        self.element = element
+        
+    def bind(self):
+        if self._bind:
+            return self._bind
+        if self.element:
+            e = self.element.bind
+            if e:
+                return e
+        return None
+
+    def _set_bind(self, bind):
+        self._bind = bind
+    bind = property(bind, _set_bind)
+
+class CreateTable(_CreateDropBase):
+    """Represent a CREATE TABLE statement."""
+    
+    __visit_name__ = "create_table"
+    
+class DropTable(_CreateDropBase):
+    """Represent a DROP TABLE statement."""
+
+    __visit_name__ = "drop_table"
+
+class AddForeignKey(_CreateDropBase):
+    """Represent an ALTER TABLE ADD FOREIGN KEY statement."""
+    
+    __visit_name__ = "add_foreignkey"
+    
+class DropForeignKey(_CreateDropBase):
+    """Represent an ALTER TABLE DROP FOREIGN KEY statement."""
+    
+    __visit_name__ = "drop_foreignkey"
+
+class CreateSequence(_CreateDropBase):
+    """Represent a CREATE SEQUENCE statement."""
+    
+    __visit_name__ = "create_sequence"
+
+class DropSequence(_CreateDropBase):
+    """Represent a DROP SEQUENCE statement."""
+
+    __visit_name__ = "drop_sequence"
+    
+class CreateIndex(_CreateDropBase):
+    """Represent a CREATE INDEX statement."""
+    
+    __visit_name__ = "create_index"
+
+class DropIndex(_CreateDropBase):
+    """Represent a DROP INDEX statement."""
+
+    __visit_name__ = "drop_index"
     
 def _bind_or_error(schemaitem):
     bind = schemaitem.bind

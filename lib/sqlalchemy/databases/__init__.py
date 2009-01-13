@@ -13,7 +13,5 @@ __all__ = (
     'mssql',
     'mysql',
     'oracle',
-    'postgres',
-    'sqlite',
     'sybase',
     )

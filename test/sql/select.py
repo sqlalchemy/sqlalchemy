@@ -5,7 +5,9 @@ from sqlalchemy import exc, sql, util
 from sqlalchemy.sql import table, column, label, compiler
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.engine import default
-from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
+from sqlalchemy.databases import mysql, oracle, firebird, mssql
+from sqlalchemy.dialects.sqlite import pysqlite as sqlite
+from sqlalchemy.dialects.postgres import psycopg2 as postgres
 from testlib import *
 
 table1 = table('mytable',

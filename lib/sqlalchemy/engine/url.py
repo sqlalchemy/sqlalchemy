@@ -88,7 +88,15 @@ class URL(object):
         """Return the SQLAlchemy database dialect class corresponding to this URL's driver name."""
         
         try:
-            module = getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
+            if '+' in self.drivername:
+                dialect, driver = self.drivername.split('+')
+            else:
+                dialect, driver = self.drivername, 'base'
+
+            module = __import__('sqlalchemy.dialects.%s.%s' % (dialect, driver)).dialects
+            module = getattr(module, dialect)
+            module = getattr(module, driver)
+            
             return module.dialect
         except ImportError:
             if sys.exc_info()[2].tb_next is None:
@@ -140,7 +148,7 @@ def make_url(name_or_url):
 
 def _parse_rfc1738_args(name):
     pattern = re.compile(r'''
-            (?P<name>\w+)://
+            (?P<name>[\w\+]+)://
             (?:
                 (?P<username>[^:/]*)
                 (?::(?P<password>[^/]*))?

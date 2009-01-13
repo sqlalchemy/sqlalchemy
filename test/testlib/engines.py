@@ -71,6 +71,10 @@ def all_dialects():
     for name in d.__all__:
         mod = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
         yield mod.dialect()
+    import sqlalchemy.dialects as d
+    for name in d.__all__:
+        mod = getattr(__import__('sqlalchemy.dialects.%s.base' % name).dialects, name).base
+        yield mod.dialect()
         
 class ReconnectFixture(object):
     def __init__(self, dbapi):

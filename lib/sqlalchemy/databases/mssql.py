@@ -923,7 +923,7 @@ class MSSQLDialect(default.DefaultDialect):
     colspecs = {
         sqltypes.Unicode : MSNVarchar,
         sqltypes.Integer : MSInteger,
-        sqltypes.Smallinteger: MSSmallInteger,
+        sqltypes.SmallInteger: MSSmallInteger,
         sqltypes.Numeric : MSNumeric,
         sqltypes.Float : MSFloat,
         sqltypes.DateTime : MSDateTime,
@@ -1445,14 +1445,14 @@ dialect_mapping = {
     }
 
 
-class MSSQLCompiler(compiler.DefaultCompiler):
+class MSSQLCompiler(compiler.SQLCompiler):
     operators = compiler.OPERATORS.copy()
     operators.update({
         sql_operators.concat_op: '+',
         sql_operators.match_op: lambda x, y: "CONTAINS (%s, %s)" % (x, y)
     })
 
-    functions = compiler.DefaultCompiler.functions.copy()
+    functions = compiler.SQLCompiler.functions.copy()
     functions.update (
         {
             sql_functions.now: 'CURRENT_TIMESTAMP',
@@ -1478,7 +1478,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
                     if not self.dialect.has_window_funcs:
                         raise exc.InvalidRequestError('MSSQL does not support LIMIT with an offset')
             return s
-        return compiler.DefaultCompiler.get_select_precolumns(self, select)
+        return compiler.SQLCompiler.get_select_precolumns(self, select)
 
     def limit_clause(self, select):
         # Limit in mssql is after the select keyword
@@ -1506,7 +1506,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
                 limitselect.append_whereclause("mssql_rn<=%d" % (_limit + _offset))
             return self.process(limitselect, iswrapper=True, **kwargs)
         else:
-            return compiler.DefaultCompiler.visit_select(self, select, **kwargs)
+            return compiler.SQLCompiler.visit_select(self, select, **kwargs)
 
     def _schema_aliased_table(self, table):
         if getattr(table, 'schema', None) is not None:

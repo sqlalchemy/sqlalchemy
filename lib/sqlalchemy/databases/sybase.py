@@ -727,8 +727,8 @@ dialect_mapping = {
     }
 
 
-class SybaseSQLCompiler(compiler.DefaultCompiler):
-    operators = compiler.DefaultCompiler.operators.copy()
+class SybaseSQLCompiler(compiler.SQLCompiler):
+    operators = compiler.SQLCompiler.operators.copy()
     operators.update({
         sql_operators.mod: lambda x, y: "MOD(%s, %s)" % (x, y),
     })

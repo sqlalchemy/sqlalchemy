@@ -66,9 +66,9 @@ from sqlalchemy.engine.base import (
     ResultProxy,
     RootTransaction,
     RowProxy,
-    SchemaIterator,
     Transaction,
-    TwoPhaseTransaction
+    TwoPhaseTransaction,
+    TypeCompiler
     )
 from sqlalchemy.engine import strategies
 from sqlalchemy import util
@@ -89,9 +89,9 @@ __all__ = (
     'ResultProxy',
     'RootTransaction',
     'RowProxy',
-    'SchemaIterator',
     'Transaction',
     'TwoPhaseTransaction',
+    'TypeCompiler',
     'create_engine',
     'engine_from_config',
     )

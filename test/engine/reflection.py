@@ -1,6 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import StringIO, unicodedata
 import sqlalchemy as sa
+from sqlalchemy import schema
 from testlib.sa import MetaData, Table, Column
 from testlib import TestBase, ComparesTables, testing, engines, sa as tsa
 
@@ -49,8 +50,7 @@ class ReflectionTest(TestBase, ComparesTables):
             self.assert_tables_equal(users, reflected_users)
             self.assert_tables_equal(addresses, reflected_addresses)
         finally:
-            addresses.drop()
-            users.drop()
+            meta.drop_all()
 
     def test_include_columns(self):
         meta = MetaData(testing.db)
@@ -87,20 +87,9 @@ class ReflectionTest(TestBase, ComparesTables):
         t = Table("test", meta,
             Column('foo', sa.DateTime))
 
-        import sys
-        dialect_module = sys.modules[testing.db.dialect.__module__]
-
-        # we're relying on the presence of "ischema_names" in the
-        # dialect module, else we can't test this.  we need to be able
-        # to get the dialect to not be aware of some type so we temporarily
-        # monkeypatch.  not sure what a better way for this could be,
-        # except for an established dialect hook or dialect-specific tests
-        if not hasattr(dialect_module, 'ischema_names'):
-            return
-
-        ischema_names = dialect_module.ischema_names
+        ischema_names = testing.db.dialect.ischema_names
         t.create()
-        dialect_module.ischema_names = {}
+        testing.db.dialect.ischema_names = {}
         try:
             m2 = MetaData(testing.db)
             self.assertRaises(tsa.exc.SAWarning, Table, "test", m2, autoload=True)
@@ -112,7 +101,7 @@ class ReflectionTest(TestBase, ComparesTables):
                 assert t3.c.foo.type.__class__ == sa.types.NullType
 
         finally:
-            dialect_module.ischema_names = ischema_names
+            testing.db.dialect.ischema_names = ischema_names
             t.drop()
 
     def test_basic_override(self):
@@ -718,8 +707,9 @@ class UnicodeReflectionTest(TestBase):
             r.drop_all()
             r.create_all()
         finally:
-            metadata.drop_all()
-            bind.dispose()
+            pass
+#            metadata.drop_all()
+#            bind.dispose()
 
 
 class SchemaTest(TestBase):
@@ -733,23 +723,15 @@ class SchemaTest(TestBase):
             Column('col1', sa.Integer, primary_key=True),
             Column('col2', sa.Integer, sa.ForeignKey('someschema.table1.col1')),
             schema='someschema')
-        # ensure this doesnt crash
-        print [t for t in metadata.sorted_tables]
-        buf = StringIO.StringIO()
-        def foo(s, p=None):
-            buf.write(s)
-        gen = sa.create_engine(testing.db.name + "://", strategy="mock", executor=foo)
-        gen = gen.dialect.schemagenerator(gen.dialect, gen)
-        gen.traverse(table1)
-        gen.traverse(table2)
-        buf = buf.getvalue()
-        print buf
+
+        t1 = str(schema.CreateTable(table1).compile(bind=testing.db))
+        t2 = str(schema.CreateTable(table2).compile(bind=testing.db))
         if testing.db.dialect.preparer(testing.db.dialect).omit_schema:
-            assert buf.index("CREATE TABLE table1") > -1
-            assert buf.index("CREATE TABLE table2") > -1
+            assert t1.index("CREATE TABLE table1") > -1
+            assert t2.index("CREATE TABLE table2") > -1
         else:
-            assert buf.index("CREATE TABLE someschema.table1") > -1
-            assert buf.index("CREATE TABLE someschema.table2") > -1
+            assert t1.index("CREATE TABLE someschema.table1") > -1
+            assert t2.index("CREATE TABLE someschema.table2") > -1
 
     @testing.crashes('firebird', 'No schema support')
     @testing.fails_on('sqlite', 'FIXME: unknown')

@@ -51,7 +51,7 @@ class InfoInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
 
-class InfoSmallInteger(sqltypes.Smallinteger):
+class InfoSmallInteger(sqltypes.SmallInteger):
     def get_col_spec(self):
         return "SMALLINT"
 
@@ -141,7 +141,7 @@ class InfoBoolean(sqltypes.Boolean):
 
 colspecs = {
     sqltypes.Integer : InfoInteger,
-    sqltypes.Smallinteger : InfoSmallInteger,
+    sqltypes.SmallInteger : InfoSmallInteger,
     sqltypes.Numeric : InfoNumeric,
     sqltypes.Float : InfoNumeric,
     sqltypes.DateTime : InfoDateTime,
@@ -352,7 +352,7 @@ class InfoDialect(default.DefaultDialect):
         for cons_name, cons_type, local_column in rows:
             table.primary_key.add( table.c[local_column] )
 
-class InfoCompiler(compiler.DefaultCompiler):
+class InfoCompiler(compiler.SQLCompiler):
     """Info compiler modifies the lexical structure of Select statements to work under
     non-ANSI configured Oracle databases, if the use_ansi flag is False."""
 
@@ -360,7 +360,7 @@ class InfoCompiler(compiler.DefaultCompiler):
         self.limit = 0
         self.offset = 0
 
-        compiler.DefaultCompiler.__init__( self , *args, **kwargs )
+        compiler.SQLCompiler.__init__( self , *args, **kwargs )
 
     def default_from(self):
         return " from systables where tabname = 'systables' "
@@ -393,7 +393,7 @@ class InfoCompiler(compiler.DefaultCompiler):
             if ( __label(c) not in a ):
                 select.append_column( c )
 
-        return compiler.DefaultCompiler.visit_select(self, select)
+        return compiler.SQLCompiler.visit_select(self, select)
 
     def limit_clause(self, select):
         return ""
@@ -406,7 +406,7 @@ class InfoCompiler(compiler.DefaultCompiler):
         elif func.name.lower() in ( 'current_timestamp' , 'now' ):
             return "CURRENT YEAR TO SECOND"
         else:
-            return compiler.DefaultCompiler.visit_function( self , func )
+            return compiler.SQLCompiler.visit_function( self , func )
 
     def visit_clauselist(self, list, **kwargs):
         return ', '.join([s for s in [self.process(c) for c in list.clauses] if s is not None])

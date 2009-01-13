@@ -4,7 +4,7 @@ import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exc
-from sqlalchemy.databases import sqlite
+from sqlalchemy.dialects.sqlite import base as sqlite, pysqlite as pysqlite_dialect
 from testlib import *
 
 
@@ -50,23 +50,18 @@ class TestTypes(TestBase, AssertsExecutionResults):
     @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
-        specs = [( String(), sqlite.SLString(), ),
-                 ( String(1), sqlite.SLString(1), ),
-                 ( String(3), sqlite.SLString(3), ),
-                 ( Text(), sqlite.SLText(), ),
-                 ( Unicode(), sqlite.SLString(), ),
-                 ( Unicode(1), sqlite.SLString(1), ),
-                 ( Unicode(3), sqlite.SLString(3), ),
-                 ( UnicodeText(), sqlite.SLText(), ),
-                 ( CLOB, sqlite.SLText(), ),
-                 ( sqlite.SLChar(1), ),
-                 ( CHAR(3), sqlite.SLChar(3), ),
-                 ( NCHAR(2), sqlite.SLChar(2), ),
-                 ( SmallInteger(), sqlite.SLSmallInteger(), ),
-                 ( sqlite.SLSmallInteger(), ),
-                 ( Binary(3), sqlite.SLBinary(), ),
-                 ( Binary(), sqlite.SLBinary() ),
-                 ( sqlite.SLBinary(3), sqlite.SLBinary(), ),
+        specs = [( String(), pysqlite_dialect.SLString(), ),
+                 ( String(1), pysqlite_dialect.SLString(1), ),
+                 ( String(3), pysqlite_dialect.SLString(3), ),
+                 ( Text(), pysqlite_dialect.SLText(), ),
+                 ( Unicode(), pysqlite_dialect.SLString(), ),
+                 ( Unicode(1), pysqlite_dialect.SLString(1), ),
+                 ( Unicode(3), pysqlite_dialect.SLString(3), ),
+                 ( UnicodeText(), pysqlite_dialect.SLText(), ),
+                 ( CLOB, pysqlite_dialect.SLText(), ),
+                 ( pysqlite_dialect.SLChar(1), ),
+                 ( CHAR(3), pysqlite_dialect.SLChar(3), ),
+                 ( NCHAR(2), pysqlite_dialect.SLChar(2), ),
                  ( NUMERIC, sqlite.SLNumeric(), ),
                  ( NUMERIC(10,2), sqlite.SLNumeric(10,2), ),
                  ( Numeric, sqlite.SLNumeric(), ),
@@ -75,9 +70,6 @@ class TestTypes(TestBase, AssertsExecutionResults):
                  ( DECIMAL(10, 2), sqlite.SLNumeric(10, 2), ),
                  ( Float, sqlite.SLNumeric(), ),
                  ( sqlite.SLNumeric(), ),
-                 ( INT, sqlite.SLInteger(), ),
-                 ( Integer, sqlite.SLInteger(), ),
-                 ( sqlite.SLInteger(), ),
                  ( TIMESTAMP, sqlite.SLDateTime(), ),
                  ( DATETIME, sqlite.SLDateTime(), ),
                  ( DateTime, sqlite.SLDateTime(), ),
@@ -113,7 +105,8 @@ class TestTypes(TestBase, AssertsExecutionResults):
             finally:
                 db.execute('DROP VIEW types_v')
         finally:
-            m.drop_all()
+            pass
+            #m.drop_all()
 
 
 class TestDefaults(TestBase, AssertsExecutionResults):

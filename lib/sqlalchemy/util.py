@@ -299,6 +299,7 @@ def get_cls_kwargs(cls):
         class_ = stack.pop()
         ctr = class_.__dict__.get('__init__', False)
         if not ctr or not isinstance(ctr, types.FunctionType):
+            stack.update(class_.__bases__)
             continue
         names, _, has_kw, _ = inspect.getargspec(ctr)
         args.update(names)

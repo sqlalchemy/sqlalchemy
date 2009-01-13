@@ -34,7 +34,11 @@ class Dialect(object):
     All Dialects implement the following attributes:
     
     name
-      identifying name for the dialect (i.e. 'sqlite')
+      identifying name for the dialect from a DBAPI-neutral point of view
+      (i.e. 'sqlite')
+    
+    driver
+      identitfying name for the dialect's DBAPI 
       
     positional
       True if the paramstyle for this Dialect is positional.
@@ -51,20 +55,20 @@ class Dialect(object):
       type of encoding to use for unicode, usually defaults to
       'utf-8'.
 
-    schemagenerator
-      a :class:`~sqlalchemy.schema.SchemaVisitor` class which generates
-      schemas.
-
-    schemadropper
-      a :class:`~sqlalchemy.schema.SchemaVisitor` class which drops schemas.
-
     defaultrunner
       a :class:`~sqlalchemy.schema.SchemaVisitor` class which executes
       defaults.
 
     statement_compiler
-      a :class:`~sqlalchemy.engine.base.Compiled` class used to compile SQL
+      a :class:`~Compiled` class used to compile SQL
       statements
+
+    ddl_compiler
+      a :class:`~Compiled` class used to compile DDL
+      statements
+
+    execution_ctx_cls
+      a :class:`ExecutionContext` class used to handle statement execution
 
     preparer
       a :class:`~sqlalchemy.sql.compiler.IdentifierPreparer` class used to
@@ -107,11 +111,6 @@ class Dialect(object):
 
     supports_default_values
       Indicates if the construct ``INSERT INTO tablename DEFAULT VALUES`` is supported
-
-    description_encoding
-      type of encoding to use for unicode when working with metadata
-      descriptions. If set to ``None`` no encoding will be done.
-      This usually defaults to 'utf-8'.
     """
 
     def create_connect_args(self, url):
@@ -401,7 +400,7 @@ class ExecutionContext(object):
 
 
 class Compiled(object):
-    """Represent a compiled SQL expression.
+    """Represent a compiled SQL or DDL expression.
 
     The ``__str__`` method of the ``Compiled`` object should produce
     the actual text of the statement.  ``Compiled`` objects are
@@ -411,9 +410,10 @@ class Compiled(object):
     ``Compiled`` object be dependent on the actual values of those
     bind parameters, even though it may reference those values as
     defaults.
+    
     """
 
-    def __init__(self, dialect, statement, column_keys=None, bind=None):
+    def __init__(self, dialect, statement, bind=None):
         """Construct a new ``Compiled`` object.
 
         dialect
@@ -422,41 +422,40 @@ class Compiled(object):
         statement
           ``ClauseElement`` to be compiled.
 
-        column_keys
-          a list of column names to be compiled into an INSERT or UPDATE
-          statement.
-
         bind
           Optional Engine or Connection to compile this statement against.
           
         """
         self.dialect = dialect
         self.statement = statement
-        self.column_keys = column_keys
         self.bind = bind
         self.can_execute = statement.supports_execution
 
     def compile(self):
         """Produce the internal string representation of this element."""
 
-        raise NotImplementedError()
+        self.string = self.process(self.statement)
+
+    def process(self, obj, **kwargs):
+        return obj._compiler_dispatch(self, **kwargs)
 
     def __str__(self):
-        """Return the string text of the generated SQL statement."""
+        """Return the string text of the generated SQL or DDL."""
 
-        raise NotImplementedError()
+        return self.string or ''
 
     @util.deprecated('Deprecated. Use construct_params(). '
                      '(supports Unicode key names.)')
     def get_params(self, **params):
         return self.construct_params(params)
 
-    def construct_params(self, params):
+    def construct_params(self, params=None):
         """Return the bind params for this compiled object.
 
         `params` is a dict of string/object pairs whos
         values will override bind values compiled in
         to the statement.
+        
         """
         raise NotImplementedError()
 
@@ -473,12 +472,24 @@ class Compiled(object):
 
         return self.execute(*multiparams, **params).scalar()
 
+class TypeCompiler(object):
+    """Produces DDL specification for TypeEngine objects."""
+    
+    def __init__(self, dialect):
+        self.dialect = dialect
+        
+    def process(self, type_):
+        return type_._compiler_dispatch(self)
+        
 
 class Connectable(object):
     """Interface for an object which supports execution of SQL constructs.
     
     The two implementations of ``Connectable`` are :class:`Connection` and
     :class:`Engine`.
+    
+    Connectable must also implement the 'dialect' member which references a
+    :class:`Dialect` instance.
     
     """
 
@@ -813,9 +824,6 @@ class Connection(Connectable):
 
         return self.execute(object, *multiparams, **params).scalar()
 
-    def statement_compiler(self, statement, **kwargs):
-        return self.dialect.statement_compiler(self.dialect, statement, bind=self, **kwargs)
-
     def execute(self, object, *multiparams, **params):
         """Executes and returns a ResultProxy."""
 
@@ -860,6 +868,13 @@ class Connection(Connectable):
     def _execute_default(self, default, multiparams, params):
         return self.engine.dialect.defaultrunner(self.__create_execution_context()).traverse_single(default)
 
+    def _execute_ddl(self, ddl, params, multiparams):
+        context = self.__create_execution_context(
+                        compiled_ddl=ddl.compile(dialect=self.dialect), 
+                        parameters=None
+                    )
+        return self.__execute_context(context)
+
     def _execute_clauseelement(self, elem, multiparams, params):
         params = self.__distill_params(multiparams, params)
         if params:
@@ -868,7 +883,7 @@ class Connection(Connectable):
             keys = []
 
         context = self.__create_execution_context(
-                        compiled=elem.compile(dialect=self.dialect, column_keys=keys, inline=len(params) > 1), 
+                        compiled_sql=elem.compile(dialect=self.dialect, column_keys=keys, inline=len(params) > 1), 
                         parameters=params
                     )
         return self.__execute_context(context)
@@ -877,7 +892,7 @@ class Connection(Connectable):
         """Execute a sql.Compiled object."""
 
         context = self.__create_execution_context(
-                    compiled=compiled, 
+                    compiled_sql=compiled, 
                     parameters=self.__distill_params(multiparams, params)
                 )
         return self.__execute_context(context)
@@ -900,13 +915,6 @@ class Connection(Connectable):
             self._commit_impl()
         return context.get_result_proxy()
         
-    def _execute_ddl(self, ddl, params, multiparams):
-        if params:
-            schema_item, params = params[0], params[1:]
-        else:
-            schema_item = None
-        return ddl(None, schema_item, self, *params, **multiparams)
-
     def _handle_dbapi_exception(self, e, statement, parameters, cursor, context):
         if getattr(self, '_reentrant_error', False):
             raise exc.DBAPIError.instance(None, None, e)
@@ -966,7 +974,7 @@ class Connection(Connectable):
         expression.ClauseElement: _execute_clauseelement,
         Compiled: _execute_compiled,
         schema.SchemaItem: _execute_default,
-        schema.DDL: _execute_ddl,
+        schema.DDLElement: _execute_ddl,
         basestring: _execute_text
     }
 
@@ -1126,12 +1134,16 @@ class Engine(Connectable):
     def create(self, entity, connection=None, **kwargs):
         """Create a table or index within this engine's database connection given a schema.Table object."""
 
-        self._run_visitor(self.dialect.schemagenerator, entity, connection=connection, **kwargs)
+        from sqlalchemy.engine import ddl
+
+        self._run_visitor(ddl.SchemaGenerator, entity, connection=connection, **kwargs)
 
     def drop(self, entity, connection=None, **kwargs):
         """Drop a table or index within this engine's database connection given a schema.Table object."""
 
-        self._run_visitor(self.dialect.schemadropper, entity, connection=connection, **kwargs)
+        from sqlalchemy.engine import ddl
+
+        self._run_visitor(ddl.SchemaDropper, entity, connection=connection, **kwargs)
 
     def _execute_default(self, default):
         connection = self.contextual_connect()
@@ -1211,9 +1223,6 @@ class Engine(Connectable):
     def _execute_compiled(self, compiled, multiparams, params):
         connection = self.contextual_connect(close_with_result=True)
         return connection._execute_compiled(compiled, multiparams, params)
-
-    def statement_compiler(self, statement, **kwargs):
-        return self.dialect.statement_compiler(self.dialect, statement, bind=self, **kwargs)
 
     def connect(self, **kwargs):
         """Return a newly allocated Connection object."""
@@ -1789,29 +1798,6 @@ class BufferedColumnResultProxy(ResultProxy):
                 break
             l.append(row)
         return l
-
-
-class SchemaIterator(schema.SchemaVisitor):
-    """A visitor that can gather text into a buffer and execute the contents of the buffer."""
-
-    def __init__(self, connection):
-        """Construct a new SchemaIterator."""
-        
-        self.connection = connection
-        self.buffer = StringIO.StringIO()
-
-    def append(self, s):
-        """Append content to the SchemaIterator's query buffer."""
-
-        self.buffer.write(s)
-
-    def execute(self):
-        """Execute the contents of the SchemaIterator's buffer."""
-
-        try:
-            return self.connection.execute(self.buffer.getvalue())
-        finally:
-            self.buffer.truncate(0)
 
 class DefaultRunner(schema.SchemaVisitor):
     """A visitor which accepts ColumnDefault objects, produces the

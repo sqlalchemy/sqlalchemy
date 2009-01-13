@@ -344,7 +344,7 @@ class MaxBlob(sqltypes.Binary):
 
 colspecs = {
     sqltypes.Integer: MaxInteger,
-    sqltypes.Smallinteger: MaxSmallInteger,
+    sqltypes.SmallInteger: MaxSmallInteger,
     sqltypes.Numeric: MaxNumeric,
     sqltypes.Float: MaxFloat,
     sqltypes.DateTime: MaxTimestamp,
@@ -717,8 +717,8 @@ class MaxDBDialect(default.DefaultDialect):
         return found
 
 
-class MaxDBCompiler(compiler.DefaultCompiler):
-    operators = compiler.DefaultCompiler.operators.copy()
+class MaxDBCompiler(compiler.SQLCompiler):
+    operators = compiler.SQLCompiler.operators.copy()
     operators[sql_operators.mod] = lambda x, y: 'mod(%s, %s)' % (x, y)
 
     function_conversion = {

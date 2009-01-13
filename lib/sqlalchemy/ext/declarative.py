@@ -478,9 +478,7 @@ def _as_declarative(cls, classname, dict_):
                                           *(tuple(cols) + tuple(args)), **table_kw)
     else:
         table = cls.__table__
-        if cols:
-            raise exceptions.ArgumentError("Can't add additional columns when specifying __table__")
-            
+
     mapper_args = getattr(cls, '__mapper_args__', {})
     if 'inherits' not in mapper_args:
         inherits = cls.__mro__[1]
@@ -532,7 +530,7 @@ def _as_declarative(cls, classname, dict_):
             mapper_args['exclude_properties'] = exclude_properties = \
                 set([c.key for c in inherited_table.c if c not in inherited_mapper._columntoproperty])
             exclude_properties.difference_update([c.key for c in cols])
-    
+        
     cls.__mapper__ = mapper_cls(cls, table, properties=our_stuff, **mapper_args)
 
 class DeclarativeMeta(type):

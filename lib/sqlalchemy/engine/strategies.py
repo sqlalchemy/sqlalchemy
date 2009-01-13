@@ -201,11 +201,14 @@ class MockEngineStrategy(EngineStrategy):
 
         def create(self, entity, **kwargs):
             kwargs['checkfirst'] = False
-            self.dialect.schemagenerator(self.dialect, self, **kwargs).traverse(entity)
+            from sqlalchemy.engine import ddl
+            
+            ddl.SchemaGenerator(self.dialect, self, **kwargs).traverse(entity)
 
         def drop(self, entity, **kwargs):
             kwargs['checkfirst'] = False
-            self.dialect.schemadropper(self.dialect, self, **kwargs).traverse(entity)
+            from sqlalchemy.engine import ddl
+            ddl.SchemaDropper(self.dialect, self, **kwargs).traverse(entity)
 
         def execute(self, object, *multiparams, **params):
             raise NotImplementedError()

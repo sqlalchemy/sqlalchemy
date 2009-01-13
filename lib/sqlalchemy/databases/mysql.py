@@ -630,7 +630,7 @@ class MSTinyInteger(MSInteger):
             return self._extend("TINYINT")
 
 
-class MSSmallInteger(sqltypes.Smallinteger, MSInteger):
+class MSSmallInteger(sqltypes.SmallInteger, MSInteger):
     """MySQL SMALLINTEGER type."""
 
     def __init__(self, display_width=None, **kw):
@@ -1363,7 +1363,7 @@ class MSBoolean(sqltypes.Boolean):
 
 colspecs = {
     sqltypes.Integer: MSInteger,
-    sqltypes.Smallinteger: MSSmallInteger,
+    sqltypes.SmallInteger: MSSmallInteger,
     sqltypes.Numeric: MSNumeric,
     sqltypes.Float: MSFloat,
     sqltypes.DateTime: MSDateTime,
@@ -1901,14 +1901,14 @@ class _MySQLPythonRowProxy(object):
             return item
 
 
-class MySQLCompiler(compiler.DefaultCompiler):
-    operators = compiler.DefaultCompiler.operators.copy()
+class MySQLCompiler(compiler.SQLCompiler):
+    operators = compiler.SQLCompiler.operators.copy()
     operators.update({
         sql_operators.concat_op: lambda x, y: "concat(%s, %s)" % (x, y),
         sql_operators.mod: '%%',
         sql_operators.match_op: lambda x, y: "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (x, y)
     })
-    functions = compiler.DefaultCompiler.functions.copy()
+    functions = compiler.SQLCompiler.functions.copy()
     functions.update ({
         sql_functions.random: 'rand%(expr)s',
         "utc_timestamp":"UTC_TIMESTAMP"
@@ -2013,7 +2013,8 @@ class MySQLCompiler(compiler.DefaultCompiler):
         self.isupdate = True
         colparams = self._get_colparams(update_stmt)
 
-        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + ', '.join(["%s=%s" % (self.preparer.format_column(c[0]), c[1]) for c in colparams])
+        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + \
+                " SET " + ', '.join(["%s=%s" % (self.preparer.format_column(c[0]), c[1]) for c in colparams])
 
         if update_stmt._whereclause:
             text += " WHERE " + self.process(update_stmt._whereclause)

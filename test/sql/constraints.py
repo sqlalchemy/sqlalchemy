@@ -1,10 +1,13 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
-from sqlalchemy import exc
+from sqlalchemy import exc, schema
 from testlib import *
 from testlib import config, engines
+from sqlalchemy.engine import ddl
+from testlib.testing import eq_
+from testlib.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
 
-class ConstraintTest(TestBase, AssertsExecutionResults):
+class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def setUp(self):
         global metadata
@@ -37,7 +40,6 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
             Column('x', Integer, f),
             Column('y', Integer, f)
         )
-        
         
     def test_circular_constraint(self):
         a = Table("a", metadata,
@@ -78,18 +80,9 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
 
         metadata.create_all()
         foo.insert().execute(id=1,x=9,y=5)
-        try:
-            foo.insert().execute(id=2,x=5,y=9)
-            assert False
-        except exc.SQLError:
-            assert True
-
+        self.assertRaises(exc.SQLError, foo.insert().execute, id=2,x=5,y=9)
         bar.insert().execute(id=1,x=10)
-        try:
-            bar.insert().execute(id=2,x=5)
-            assert False
-        except exc.SQLError:
-            assert True
+        self.assertRaises(exc.SQLError, bar.insert().execute, id=2,x=5)
 
     def test_unique_constraint(self):
         foo = Table('foo', metadata,
@@ -106,16 +99,8 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         foo.insert().execute(id=2, value='value2')
         bar.insert().execute(id=1, value='a', value2='a')
         bar.insert().execute(id=2, value='a', value2='b')
-        try:
-            foo.insert().execute(id=3, value='value1')
-            assert False
-        except exc.SQLError:
-            assert True
-        try:
-            bar.insert().execute(id=3, value='a', value2='b')
-            assert False
-        except exc.SQLError:
-            assert True
+        self.assertRaises(exc.SQLError, foo.insert().execute, id=3, value='value1')
+        self.assertRaises(exc.SQLError, bar.insert().execute, id=3, value='a', value2='b')
 
     def test_index_create(self):
         employees = Table('employees', metadata,
@@ -174,35 +159,22 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         Index('sport_announcer', events.c.sport, events.c.announcer, unique=True)
         Index('idx_winners', events.c.winner)
 
-        index_names = [ ix.name for ix in events.indexes ]
-        assert 'ix_events_name' in index_names
-        assert 'ix_events_location' in index_names
-        assert 'sport_announcer' in index_names
-        assert 'idx_winners' in index_names
-        assert len(index_names) == 4
+        eq_(
+            set([ ix.name for ix in events.indexes ]),
+            set(['ix_events_name', 'ix_events_location', 'sport_announcer', 'idx_winners'])
+        )
 
-        capt = []
-        connection = testing.db.connect()
-        # TODO: hacky, put a real connection proxy in
-        ex = connection._Connection__execute_context
-        def proxy(context):
-            capt.append(context.statement)
-            capt.append(repr(context.parameters))
-            ex(context)
-        connection._Connection__execute_context = proxy
-        schemagen = testing.db.dialect.schemagenerator(testing.db.dialect, connection)
-        schemagen.traverse(events)
-
-        assert capt[0].strip().startswith('CREATE TABLE events')
-
-        s = set([capt[x].strip() for x in [2,4,6,8]])
-
-        assert s == set([
-            'CREATE UNIQUE INDEX ix_events_name ON events (name)',
-            'CREATE INDEX ix_events_location ON events (location)',
-            'CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)',
-            'CREATE INDEX idx_winners ON events (winner)'
-            ])
+        self.assert_sql_execution(
+            testing.db,
+            lambda: events.create(testing.db),
+            RegexSQL("^CREATE TABLE events"),
+            AllOf(
+                ExactSQL('CREATE UNIQUE INDEX ix_events_name ON events (name)'),
+                ExactSQL('CREATE INDEX ix_events_location ON events (location)'),
+                ExactSQL('CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)'),
+                ExactSQL('CREATE INDEX idx_winners ON events (winner)')
+            )
+        )
 
         # verify that the table is functional
         events.insert().execute(id=1, name='hockey finals', location='rink',
@@ -214,84 +186,57 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         dialect = testing.db.dialect.__class__()
         dialect.max_identifier_length = 20
 
-        schemagen = dialect.schemagenerator(dialect, None)
-        schemagen.execute = lambda : None
-
         t1 = Table("sometable", MetaData(), Column("foo", Integer))
-        schemagen.visit_index(Index("this_name_is_too_long_for_what_were_doing", t1.c.foo))
-        self.assertEquals(schemagen.buffer.getvalue(), "CREATE INDEX this_name_is_t_1 ON sometable (foo)")
-        schemagen.buffer.truncate(0)
-        schemagen.visit_index(Index("this_other_name_is_too_long_for_what_were_doing", t1.c.foo))
-        self.assertEquals(schemagen.buffer.getvalue(), "CREATE INDEX this_other_nam_2 ON sometable (foo)")
-
-        schemadrop = dialect.schemadropper(dialect, None)
-        schemadrop.execute = lambda: None
-        self.assertRaises(exc.IdentifierError, schemadrop.visit_index, Index("this_name_is_too_long_for_what_were_doing", t1.c.foo))
+        self.assert_compile(
+            schema.CreateIndex(Index("this_name_is_too_long_for_what_were_doing", t1.c.foo)),
+            "CREATE INDEX this_name_is_t_1 ON sometable (foo)",
+            dialect=dialect
+        )
+        
+        self.assert_compile(
+            schema.CreateIndex(Index("this_other_name_is_too_long_for_what_were_doing", t1.c.foo)),
+            "CREATE INDEX this_other_nam_1 ON sometable (foo)",
+            dialect=dialect
+        )
 
     
-class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
-    class accum(object):
-        def __init__(self):
-            self.statements = []
-        def __call__(self, sql, *a, **kw):
-            self.statements.append(sql)
-        def __contains__(self, substring):
-            for s in self.statements:
-                if substring in s:
-                    return True
-            return False
-        def __str__(self):
-            return '\n'.join([repr(x) for x in self.statements])
-        def clear(self):
-            del self.statements[:]
-
-    def setUp(self):
-        self.sql = self.accum()
-        opts = config.db_opts.copy()
-        opts['strategy'] = 'mock'
-        opts['executor'] = self.sql
-        self.engine = engines.testing_engine(options=opts)
-
+class ConstraintCompilationTest(TestBase):
 
     def _test_deferrable(self, constraint_factory):
-        meta = MetaData(self.engine)
-        t = Table('tbl', meta,
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True))
-        t.create()
-        assert 'DEFERRABLE' in self.sql, self.sql
-        assert 'NOT DEFERRABLE' not in self.sql, self.sql
-        self.sql.clear()
-        meta.clear()
-
-        t = Table('tbl', meta,
+                  
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        assert 'DEFERRABLE' in sql, sql
+        assert 'NOT DEFERRABLE' not in sql, sql
+        
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=False))
-        t.create()
-        assert 'NOT DEFERRABLE' in self.sql
-        self.sql.clear()
-        meta.clear()
 
-        t = Table('tbl', meta,
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        assert 'NOT DEFERRABLE' in sql
+
+
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True, initially='IMMEDIATE'))
-        t.create()
-        assert 'NOT DEFERRABLE' not in self.sql
-        assert 'INITIALLY IMMEDIATE' in self.sql
-        self.sql.clear()
-        meta.clear()
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        assert 'NOT DEFERRABLE' not in sql
+        assert 'INITIALLY IMMEDIATE' in sql
 
-        t = Table('tbl', meta,
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True, initially='DEFERRED'))
-        t.create()
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
 
-        assert 'NOT DEFERRABLE' not in self.sql
-        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+        assert 'NOT DEFERRABLE' not in sql
+        assert 'INITIALLY DEFERRED' in sql
 
     def test_deferrable_pk(self):
         factory = lambda **kw: PrimaryKeyConstraint('a', **kw)
@@ -302,15 +247,15 @@ class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
         self._test_deferrable(factory)
 
     def test_deferrable_column_fk(self):
-        meta = MetaData(self.engine)
-        t = Table('tbl', meta,
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer,
                          ForeignKey('tbl.a', deferrable=True,
                                     initially='DEFERRED')))
-        t.create()
-        assert 'DEFERRABLE' in self.sql, self.sql
-        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        assert 'DEFERRABLE' in sql
+        assert 'INITIALLY DEFERRED' in sql
 
     def test_deferrable_unique(self):
         factory = lambda **kw: UniqueConstraint('b', **kw)
@@ -321,16 +266,15 @@ class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
         self._test_deferrable(factory)
 
     def test_deferrable_column_check(self):
-        meta = MetaData(self.engine)
-        t = Table('tbl', meta,
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer,
                          CheckConstraint('a < b',
                                          deferrable=True,
                                          initially='DEFERRED')))
-        t.create()
-        assert 'DEFERRABLE' in self.sql, self.sql
-        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        assert 'DEFERRABLE' in sql
+        assert 'INITIALLY DEFERRED' in sql
 
 
 if __name__ == "__main__":

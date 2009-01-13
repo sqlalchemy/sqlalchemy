@@ -15,7 +15,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'Text', 'FLOAT',
             'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
             'BOOLEAN', 'SMALLINT', 'DATE', 'TIME',
-            'String', 'Integer', 'SmallInteger','Smallinteger',
+            'String', 'Integer', 'SmallInteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
             'Boolean', 'Unicode', 'MutableType', 'Concatenable', 'UnicodeText', 'PickleType', 'Interval',
             'type_map'
@@ -27,10 +27,14 @@ from decimal import Decimal as _python_Decimal
 
 from sqlalchemy import exc
 from sqlalchemy.util import pickle
+from sqlalchemy.sql.visitors import Visitable
+from sqlalchemy.sql import expression
+import sys
+expression.sqltypes = sys.modules[__name__]
 import sqlalchemy.util as util
 NoneType = type(None)
     
-class AbstractType(object):
+class AbstractType(Visitable):
 
     def __init__(self, *args, **kwargs):
         pass
@@ -89,37 +93,7 @@ class AbstractType(object):
                       for k in inspect.getargspec(self.__init__)[0][1:]))
 
 class TypeEngine(AbstractType):
-    """Base for built-in types.
-
-    May be sub-classed to create entirely new types.  Example::
-
-      import sqlalchemy.types as types
-
-      class MyType(types.TypeEngine):
-          def __init__(self, precision = 8):
-              self.precision = precision
-
-          def get_col_spec(self):
-              return "MYTYPE(%s)" % self.precision
-
-          def bind_processor(self, dialect):
-              def process(value):
-                  return value
-              return process
-
-          def result_processor(self, dialect):
-              def process(value):
-                  return value
-              return process
-
-    Once the type is made, it's immediately usable::
-
-      table = Table('foo', meta,
-          Column('id', Integer, primary_key=True),
-          Column('data', MyType(16))
-          )
-
-    """
+    """Base for built-in types."""
 
     def dialect_impl(self, dialect, **kwargs):
         try:
@@ -134,10 +108,6 @@ class TypeEngine(AbstractType):
         d = self.__dict__.copy()
         d['_impl_dict'] = {}
         return d
-
-    def get_col_spec(self):
-        """Return the DDL representation for this type."""
-        raise NotImplementedError()
 
     def bind_processor(self, dialect):
         """Return a conversion function for processing bind values.
@@ -174,6 +144,42 @@ class TypeEngine(AbstractType):
 
         return self.__class__.__mro__[0:-1]
 
+class UserDefinedType(TypeEngine):
+    """Base for user defined types.
+    
+    This should be the base of new types.  Note that
+    for most cases, :class:`TypeDecorator` is probably
+    more appropriate.
+
+      import sqlalchemy.types as types
+
+      class MyType(types.UserDefinedType):
+          def __init__(self, precision = 8):
+              self.precision = precision
+
+          def get_col_spec(self):
+              return "MYTYPE(%s)" % self.precision
+
+          def bind_processor(self, dialect):
+              def process(value):
+                  return value
+              return process
+
+          def result_processor(self, dialect):
+              def process(value):
+                  return value
+              return process
+
+    Once the type is made, it's immediately usable::
+
+      table = Table('foo', meta,
+          Column('id', Integer, primary_key=True),
+          Column('data', MyType(16))
+          )
+
+    """
+    __visit_name__ = "user_defined"
+    
 class TypeDecorator(AbstractType):
     """Allows the creation of types which add additional functionality
     to an existing type.
@@ -214,6 +220,8 @@ class TypeDecorator(AbstractType):
 
     """
 
+    __visit_name__ = "type_decorator"
+    
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
             raise AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
@@ -252,9 +260,6 @@ class TypeDecorator(AbstractType):
         """Proxy all other undefined accessors to the underlying implementation."""
 
         return getattr(self.impl, key)
-
-    def get_col_spec(self):
-        return self.impl.get_col_spec()
 
     def process_bind_param(self, value, dialect):
         raise NotImplementedError()
@@ -370,9 +375,7 @@ class NullType(TypeEngine):
     encountered during a :meth:`~sqlalchemy.Table.create` operation.
 
     """
-
-    def get_col_spec(self):
-        raise NotImplementedError()
+    __visit_name__ = 'null'
 
 NullTypeEngine = NullType
 
@@ -400,6 +403,8 @@ class String(Concatenable, TypeEngine):
 
     """
 
+    __visit_name__ = 'string'
+    
     def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
         """
         Create a string-holding type.
@@ -485,6 +490,9 @@ class Text(String):
     params (and the reverse for result sets.)
 
     """
+    
+    __visit_name__ = 'text'
+    
     def dialect_impl(self, dialect, **kwargs):
         return TypeEngine.dialect_impl(self, dialect, **kwargs)
 
@@ -555,7 +563,9 @@ class UnicodeText(Text):
 
 class Integer(TypeEngine):
     """A type for ``int`` integers."""
-
+    
+    __visit_name__ = 'integer'
+    
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
@@ -568,7 +578,7 @@ class SmallInteger(Integer):
 
     """
 
-Smallinteger = SmallInteger
+    __visit_name__ = 'small_integer'
 
 class Numeric(TypeEngine):
     """A type for fixed precision numbers.
@@ -578,6 +588,8 @@ class Numeric(TypeEngine):
 
     """
 
+    __visit_name__ = 'numeric'
+    
     def __init__(self, precision=10, scale=2, asdecimal=True, length=None):
         """
         Construct a Numeric.
@@ -628,6 +640,8 @@ class Numeric(TypeEngine):
 class Float(Numeric):
     """A type for ``float`` numbers."""
 
+    __visit_name__ = 'float'
+    
     def __init__(self, precision=10, asdecimal=False, **kwargs):
         """
         Construct a Float.
@@ -652,7 +666,9 @@ class DateTime(TypeEngine):
     converted back to datetime objects when rows are returned.
 
     """
-
+    
+    __visit_name__ = 'datetime'
+    
     def __init__(self, timezone=False):
         self.timezone = timezone
 
@@ -666,12 +682,16 @@ class DateTime(TypeEngine):
 class Date(TypeEngine):
     """A type for ``datetime.date()`` objects."""
 
+    __visit_name__ = 'date'
+    
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
 
 class Time(TypeEngine):
     """A type for ``datetime.time()`` objects."""
+
+    __visit_name__ = 'time'
 
     def __init__(self, timezone=False):
         self.timezone = timezone
@@ -691,6 +711,8 @@ class Binary(TypeEngine):
     provided by each DB-API.
 
     """
+
+    __visit_name__ = 'binary'
 
     def __init__(self, length=None):
         """
@@ -806,6 +828,7 @@ class Boolean(TypeEngine):
 
     """
 
+    __visit_name__ = 'boolean'
 
 class Interval(TypeDecorator):
     """A type for ``datetime.timedelta()`` objects.
@@ -821,7 +844,7 @@ class Interval(TypeDecorator):
 
     def __init__(self):
         super(Interval, self).__init__()
-        import sqlalchemy.databases.postgres as pg
+        import sqlalchemy.dialects.postgres.base as pg
         self.__supported = {pg.PGDialect:pg.PGInterval}
         del pg
 
@@ -850,65 +873,95 @@ class Interval(TypeDecorator):
 class FLOAT(Float):
     """The SQL FLOAT type."""
 
+    __visit_name__ = 'FLOAT'
 
 class NUMERIC(Numeric):
     """The SQL NUMERIC type."""
+
+    __visit_name__ = 'NUMERIC'
 
 
 class DECIMAL(Numeric):
     """The SQL DECIMAL type."""
 
+    __visit_name__ = 'DECIMAL'
 
-class INT(Integer):
+
+class INTEGER(Integer):
     """The SQL INT or INTEGER type."""
 
+    __visit_name__ = 'INTEGER'
+INT = INTEGER
 
-INTEGER = INT
 
-class SMALLINT(Smallinteger):
+class SMALLINT(SmallInteger):
     """The SQL SMALLINT type."""
+
+    __visit_name__ = 'SMALLINT'
 
 
 class TIMESTAMP(DateTime):
     """The SQL TIMESTAMP type."""
 
+    __visit_name__ = 'TIMESTAMP'
+
 
 class DATETIME(DateTime):
     """The SQL DATETIME type."""
+
+    __visit_name__ = 'DATETIME'
 
 
 class DATE(Date):
     """The SQL DATE type."""
 
+    __visit_name__ = 'DATE'
+
 
 class TIME(Time):
     """The SQL TIME type."""
 
+    __visit_name__ = 'TIME'
 
-TEXT = Text
+class TEXT(Text):
+    """The SQL TEXT type."""
+    
+    __visit_name__ = 'TEXT'
 
 class CLOB(Text):
     """The SQL CLOB type."""
+
+    __visit_name__ = 'CLOB'
 
 
 class VARCHAR(String):
     """The SQL VARCHAR type."""
 
+    __visit_name__ = 'VARCHAR'
+
 
 class CHAR(String):
     """The SQL CHAR type."""
+
+    __visit_name__ = 'CHAR'
 
 
 class NCHAR(Unicode):
     """The SQL NCHAR type."""
 
+    __visit_name__ = 'NCHAR'
+
 
 class BLOB(Binary):
     """The SQL BLOB type."""
 
+    __visit_name__ = 'BLOB'
+
 
 class BOOLEAN(Boolean):
     """The SQL BOOLEAN type."""
+
+    __visit_name__ = 'BOOLEAN'
 
 NULLTYPE = NullType()
 
@@ -927,3 +980,4 @@ type_map = {
     dt.timedelta : Interval,
     type(None): NullType
 }
+

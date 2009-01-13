@@ -2,11 +2,14 @@ import decimal
 import testenv; testenv.configure_for_tests()
 import datetime, os, pickleable, re
 from sqlalchemy import *
-from sqlalchemy import exc, types, util
+from sqlalchemy import exc, types, util, schema
 from sqlalchemy.sql import operators
 from testlib.testing import eq_
 import sqlalchemy.engine.url as url
-from sqlalchemy.databases import mssql, oracle, mysql, postgres, firebird
+from sqlalchemy.databases import mssql, oracle, mysql, firebird
+from sqlalchemy.dialects.sqlite import pysqlite as sqlite
+from sqlalchemy.dialects.postgres import psycopg2 as postgres
+
 from testlib import *
 
 
@@ -80,12 +83,12 @@ class AdaptTest(TestBase):
             (mysql_dialect, Unicode(), mysql.MSString),
             (mysql_dialect, UnicodeText(), mysql.MSText),
             (mysql_dialect, NCHAR(), mysql.MSNChar),
-            (postgres_dialect, String(), postgres.PGString),
-            (postgres_dialect, VARCHAR(), postgres.PGString),
-            (postgres_dialect, String(50), postgres.PGString),
-            (postgres_dialect, Unicode(), postgres.PGString),
-            (postgres_dialect, UnicodeText(), postgres.PGText),
-            (postgres_dialect, NCHAR(), postgres.PGString),
+            (postgres_dialect, String(), String),
+            (postgres_dialect, VARCHAR(), String),
+            (postgres_dialect, String(50), String),
+            (postgres_dialect, Unicode(), String),
+            (postgres_dialect, UnicodeText(), Text),
+            (postgres_dialect, NCHAR(), String),
             (firebird_dialect, String(), firebird.FBString),
             (firebird_dialect, VARCHAR(), firebird.FBString),
             (firebird_dialect, String(50), firebird.FBString),
@@ -99,11 +102,6 @@ class AdaptTest(TestBase):
 
 class UserDefinedTest(TestBase):
     """tests user-defined types."""
-
-    def testbasic(self):
-        print users.c.goofy4.type
-        print users.c.goofy4.type.dialect_impl(testing.db.dialect)
-        print users.c.goofy4.type.dialect_impl(testing.db.dialect).get_col_spec()
 
     def testprocessing(self):
 
@@ -135,7 +133,7 @@ class UserDefinedTest(TestBase):
     def setUpAll(self):
         global users, metadata
 
-        class MyType(types.TypeEngine):
+        class MyType(types.UserDefinedType):
             def get_col_spec(self):
                 return "VARCHAR(100)"
             def bind_processor(self, dialect):
@@ -259,7 +257,6 @@ class ColumnsTest(TestBase, AssertsExecutionResults):
             for key, value in expectedResults.items():
                 expectedResults[key] = '%s NULL' % value
 
-        print db.engine.__module__
         testTable = Table('testColumns', MetaData(db),
             Column('int_column', Integer),
             Column('smallint_column', SmallInteger),
@@ -271,7 +268,7 @@ class ColumnsTest(TestBase, AssertsExecutionResults):
         for aCol in testTable.c:
             self.assertEquals(
                 expectedResults[aCol.name],
-                db.dialect.schemagenerator(db.dialect, db, None, None).\
+                db.dialect.ddl_compiler(db.dialect, schema.CreateTable(testTable)).\
                   get_column_specification(aCol))
 
 class UnicodeTest(TestBase, AssertsExecutionResults):
@@ -469,7 +466,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         global test_table, meta
 
-        class MyCustomType(types.TypeEngine):
+        class MyCustomType(types.UserDefinedType):
             def get_col_spec(self):
                 return "INT"
             def bind_processor(self, dialect):
@@ -712,6 +709,7 @@ class NumericTest(TestBase, AssertsExecutionResults):
         from decimal import Decimal
         numeric_table.insert().execute(
             numericcol=3.5, floatcol=5.6, ncasdec=12.4, fcasdec=15.75)
+            
         numeric_table.insert().execute(
             numericcol=Decimal("3.5"), floatcol=Decimal("5.6"),
             ncasdec=Decimal("12.4"), fcasdec=Decimal("15.75"))
@@ -753,7 +751,7 @@ class NumericTest(TestBase, AssertsExecutionResults):
             eq_(n2.scale, 12, dialect.name)
             
             # test colspec generates successfully using 'scale'
-            assert n2.get_col_spec()
+            assert dialect.type_compiler.process(n2)
             
             # test constructor of the dialect-specific type
             n3 = n2.__class__(scale=5)

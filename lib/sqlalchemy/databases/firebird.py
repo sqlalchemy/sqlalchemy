@@ -150,7 +150,7 @@ class FBInteger(sqltypes.Integer):
         return "INTEGER"
 
 
-class FBSmallInteger(sqltypes.Smallinteger):
+class FBSmallInteger(sqltypes.SmallInteger):
     """Handle ``SMALLINT`` datatype."""
 
     def get_col_spec(self):
@@ -231,7 +231,7 @@ class FBBoolean(sqltypes.Boolean):
 
 colspecs = {
     sqltypes.Integer : FBInteger,
-    sqltypes.Smallinteger : FBSmallInteger,
+    sqltypes.SmallInteger : FBSmallInteger,
     sqltypes.Numeric : FBNumeric,
     sqltypes.Float : FBFloat,
     sqltypes.DateTime : FBDateTime,
@@ -564,12 +564,12 @@ def _substring(s, start, length=None):
         return "SUBSTRING(%s FROM %s FOR %s)" % (s, start, length)
 
 
-class FBCompiler(sql.compiler.DefaultCompiler):
+class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosincrasies"""
 
     # Firebird lacks a builtin modulo operator, but there is
     # an equivalent function in the ib_udf library.
-    operators = sql.compiler.DefaultCompiler.operators.copy()
+    operators = sql.compiler.SQLCompiler.operators.copy()
     operators.update({
         sql.operators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
         })
@@ -581,7 +581,7 @@ class FBCompiler(sql.compiler.DefaultCompiler):
         else:
             return self.process(alias.original, **kwargs)
 
-    functions = sql.compiler.DefaultCompiler.functions.copy()
+    functions = sql.compiler.SQLCompiler.functions.copy()
     functions['substring'] = _substring
 
     def function_argspec(self, func):

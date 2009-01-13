@@ -32,10 +32,9 @@ from operator import attrgetter
 from sqlalchemy import util, exc
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import Visitable, cloned_traverse
-from sqlalchemy import types as sqltypes
 import operator
 
-functions, schema, sql_util = None, None, None
+functions, schema, sql_util, sqltypes = None, None, None, None
 DefaultDialect, ClauseAdapter, Annotated = None, None, None
 
 __all__ = [
@@ -974,7 +973,8 @@ class ClauseElement(Visitable):
     _annotations = {}
     supports_execution = False
     _from_objects = []
-
+    _bind = None
+    
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
 
@@ -1106,11 +1106,9 @@ class ClauseElement(Visitable):
     def bind(self):
         """Returns the Engine or Connection to which this ClauseElement is bound, or None if none found."""
 
-        try:
-            if self._bind is not None:
-                return self._bind
-        except AttributeError:
-            pass
+        if self._bind is not None:
+            return self._bind
+
         for f in _from_objects(self):
             if f is self:
                 continue
@@ -1139,7 +1137,7 @@ class ClauseElement(Visitable):
 
         return self.execute(*multiparams, **params).scalar()
 
-    def compile(self, bind=None, column_keys=None, compiler=None, dialect=None, inline=False):
+    def compile(self, bind=None, dialect=None, **kw):
         """Compile this SQL expression.
 
         The return value is a :class:`~sqlalchemy.engine.Compiled` object.
@@ -1154,52 +1152,57 @@ class ClauseElement(Visitable):
           takes precedence over this ``ClauseElement``'s
           bound engine, if any.
 
-        column_keys
-          Used for INSERT and UPDATE statements, a list of
-          column names which should be present in the VALUES clause
-          of the compiled statement.  If ``None``, all columns
-          from the target table object are rendered.
-
-        compiler
-          A ``Compiled`` instance which will be used to compile
-          this expression.  This argument takes precedence
-          over the `bind` and `dialect` arguments as well as
-          this ``ClauseElement``'s bound engine, if
-          any.
-
         dialect
           A ``Dialect`` instance frmo which a ``Compiled``
           will be acquired.  This argument takes precedence
           over the `bind` argument as well as this
           ``ClauseElement``'s bound engine, if any.
 
-        inline
-          Used for INSERT statements, for a dialect which does
-          not support inline retrieval of newly generated
-          primary key columns, will force the expression used
-          to create the new primary key value to be rendered
-          inline within the INSERT statement's VALUES clause.
-          This typically refers to Sequence execution but
-          may also refer to any server-side default generation
-          function associated with a primary key `Column`.
+        \**kw
+        
+          Keyword arguments are passed along to the compiler, 
+          which can affect the string produced.
+          
+          Keywords for a statement compiler are:
+        
+          column_keys
+            Used for INSERT and UPDATE statements, a list of
+            column names which should be present in the VALUES clause
+            of the compiled statement.  If ``None``, all columns
+            from the target table object are rendered.
+
+          inline
+            Used for INSERT statements, for a dialect which does
+            not support inline retrieval of newly generated
+            primary key columns, will force the expression used
+            to create the new primary key value to be rendered
+            inline within the INSERT statement's VALUES clause.
+            This typically refers to Sequence execution but
+            may also refer to any server-side default generation
+            function associated with a primary key `Column`.
 
         """
-        if compiler is None:
-            if dialect is not None:
-                compiler = dialect.statement_compiler(dialect, self, column_keys=column_keys, inline=inline)
-            elif bind is not None:
-                compiler = bind.statement_compiler(self, column_keys=column_keys, inline=inline)
-            elif self.bind is not None:
-                compiler = self.bind.statement_compiler(self, column_keys=column_keys, inline=inline)
+        
+        if not dialect:
+            if bind:
+                dialect = bind.dialect
+            elif self.bind:
+                dialect = self.bind.dialect
+                bind = self.bind
             else:
                 global DefaultDialect
                 if DefaultDialect is None:
                     from sqlalchemy.engine.default import DefaultDialect
                 dialect = DefaultDialect()
-                compiler = dialect.statement_compiler(dialect, self, column_keys=column_keys, inline=inline)
+        compiler = self._compiler(dialect, bind=bind, **kw)
         compiler.compile()
         return compiler
-
+    
+    def _compiler(self, dialect, **kw):
+        """Return a compiler appropriate for this ClauseElement, given a Dialect."""
+        
+        return dialect.statement_compiler(dialect, self, **kw)
+        
     def __str__(self):
         return unicode(self.compile()).encode('ascii', 'backslashreplace')
 
@@ -1229,6 +1232,12 @@ class ClauseElement(Visitable):
 
 class _Immutable(object):
     """mark a ClauseElement as 'immutable' when expressions are cloned."""
+
+    def unique_params(self, *optionaldict, **kwargs):
+        raise NotImplementedError("Immutable objects do not support copying")
+
+    def params(self, *optionaldict, **kwargs):
+        raise NotImplementedError("Immutable objects do not support copying")
 
     def _clone(self):
         return self

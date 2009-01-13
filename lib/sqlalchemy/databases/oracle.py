@@ -143,7 +143,7 @@ class OracleInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
 
-class OracleSmallInteger(sqltypes.Smallinteger):
+class OracleSmallInteger(sqltypes.SmallInteger):
     def get_col_spec(self):
         return "SMALLINT"
 
@@ -286,7 +286,7 @@ class OracleBoolean(sqltypes.Boolean):
 
 colspecs = {
     sqltypes.Integer : OracleInteger,
-    sqltypes.Smallinteger : OracleSmallInteger,
+    sqltypes.SmallInteger : OracleSmallInteger,
     sqltypes.Numeric : OracleNumeric,
     sqltypes.Float : OracleNumeric,
     sqltypes.DateTime : OracleDateTime,
@@ -698,13 +698,13 @@ class _OuterJoinColumn(sql.ClauseElement):
     def __init__(self, column):
         self.column = column
 
-class OracleCompiler(compiler.DefaultCompiler):
+class OracleCompiler(compiler.SQLCompiler):
     """Oracle compiler modifies the lexical structure of Select
     statements to work under non-ANSI configured Oracle databases, if
     the use_ansi flag is False.
     """
 
-    operators = compiler.DefaultCompiler.operators.copy()
+    operators = compiler.SQLCompiler.operators.copy()
     operators.update(
         {
             sql_operators.mod : lambda x, y:"mod(%s, %s)" % (x, y),
@@ -712,7 +712,7 @@ class OracleCompiler(compiler.DefaultCompiler):
         }
     )
 
-    functions = compiler.DefaultCompiler.functions.copy()
+    functions = compiler.SQLCompiler.functions.copy()
     functions.update (
         {
             sql_functions.now : 'CURRENT_TIMESTAMP'
@@ -736,7 +736,7 @@ class OracleCompiler(compiler.DefaultCompiler):
 
     def visit_join(self, join, **kwargs):
         if self.dialect.use_ansi:
-            return compiler.DefaultCompiler.visit_join(self, join, **kwargs)
+            return compiler.SQLCompiler.visit_join(self, join, **kwargs)
         else:
             return self.process(join.left, asfrom=True) + ", " + self.process(join.right, asfrom=True)
 
@@ -846,7 +846,7 @@ class OracleCompiler(compiler.DefaultCompiler):
                      select = offsetselect
 
         kwargs['iswrapper'] = getattr(select, '_is_wrapper', False)
-        return compiler.DefaultCompiler.visit_select(self, select, **kwargs)
+        return compiler.SQLCompiler.visit_select(self, select, **kwargs)
 
     def limit_clause(self, select):
         return ""

@@ -615,14 +615,13 @@ class AssertsCompiledSQL(object):
         if dialect is None:
             dialect = getattr(self, '__dialect__', None)
 
-        if params is None:
-            keys = None
-        else:
-            keys = params.keys()
+        kw = {}
+        if params is not None:
+            kw['column_keys'] = params.keys()
 
-        c = clause.compile(column_keys=keys, dialect=dialect)
+        c = clause.compile(dialect=dialect, **kw)
 
-        print "\nSQL String:\n" + str(c) + repr(c.params)
+        print "\nSQL String:\n" + str(c) + repr(getattr(c, 'params', {}))
 
         cc = re.sub(r'\n', '', str(c))
 

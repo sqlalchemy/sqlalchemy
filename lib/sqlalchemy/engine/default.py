@@ -23,12 +23,14 @@ AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
 
-    schemagenerator = compiler.SchemaGenerator
-    schemadropper = compiler.SchemaDropper
-    statement_compiler = compiler.DefaultCompiler
+    statement_compiler = compiler.SQLCompiler
+    ddl_compiler = compiler.DDLCompiler
+    type_compiler = compiler.GenericTypeCompiler
     preparer = compiler.IdentifierPreparer
     defaultrunner = base.DefaultRunner
     supports_alter = True
+    supports_sequences = False
+    sequences_optional = False
     supports_unicode_statements = False
     max_identifier_length = 9999
     supports_sane_rowcount = True
@@ -57,6 +59,8 @@ class DefaultDialect(base.Dialect):
             self.paramstyle = self.default_paramstyle
         self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
+        self.type_compiler = self.type_compiler(self)
+        
         if label_length and label_length > self.max_identifier_length:
             raise exc.ArgumentError("Label length of %d is greater than this dialect's maximum identifier length of %d" % (label_length, self.max_identifier_length))
         self.label_length = label_length
@@ -67,8 +71,9 @@ class DefaultDialect(base.Dialect):
         the generic object which comes from the types module.
 
         Subclasses will usually use the ``adapt_type()`` method in the
-        types module to make this job easy."""
-
+        types module to make this job easy.
+        
+        """
         if type(typeobj) is type:
             typeobj = typeobj()
         return typeobj
@@ -126,13 +131,29 @@ class DefaultDialect(base.Dialect):
 
 
 class DefaultExecutionContext(base.ExecutionContext):
-    def __init__(self, dialect, connection, compiled=None, statement=None, parameters=None):
+    def __init__(self, dialect, connection, compiled_sql=None, compiled_ddl=None, statement=None, parameters=None):
         self.dialect = dialect
         self._connection = self.root_connection = connection
-        self.compiled = compiled
         self.engine = connection.engine
 
-        if compiled is not None:
+        if compiled_ddl is not None:
+            self.compiled = compiled = compiled_ddl
+            if not dialect.supports_unicode_statements:
+                self.statement = unicode(compiled).encode(self.dialect.encoding)
+            else:
+                self.statement = unicode(compiled)
+            self.isinsert = self.isupdate = self.executemany = False
+            self.should_autocommit = True
+            self.result_map = None
+            self.cursor = self.create_cursor()
+            self.compiled_parameters = []
+            if self.dialect.positional:
+                self.parameters = [()]
+            else:
+                self.parameters = [{}]
+        elif compiled_sql is not None:
+            self.compiled = compiled = compiled_sql
+
             # compiled clauseelement.  process bind params, process table defaults,
             # track collections used by ResultProxy to target and process results
 
@@ -172,8 +193,8 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.parameters = self.__convert_compiled_params(self.compiled_parameters)
 
         elif statement is not None:
-            # plain text statement.
-            self.result_map = None
+            # plain text statement
+            self.result_map = self.compiled = None
             self.parameters = self.__encode_param_keys(parameters)
             self.executemany = len(parameters) > 1
             if isinstance(statement, unicode) and not dialect.supports_unicode_statements:
@@ -185,7 +206,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.should_autocommit = self.should_autocommit_text(statement)
         else:
             # no statement. used for standalone ColumnDefault execution.
-            self.statement = None
+            self.statement = self.compiled = None
             self.isinsert = self.isupdate = self.executemany = self.should_autocommit = False
             self.cursor = self.create_cursor()
 
