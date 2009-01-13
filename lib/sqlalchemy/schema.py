@@ -617,9 +617,16 @@ class Column(SchemaItem, expression.ColumnClause):
         else:
             return self.description
 
+    @util.memoized_property
+    def description(self):
+        if not self.name:
+            return "(no name)"
+        else:
+            return self.name.encode('ascii', 'backslashreplace')
+
+    @property
     def bind(self):
         return self.table.bind
-    bind = property(bind)
 
     def references(self, column):
         """Return True if this Column references the given column via foreign key."""

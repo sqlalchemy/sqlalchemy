@@ -51,6 +51,10 @@ CHANGES
       (i.e. column-based mapped class attributes) as column
       arguments. [ticket:1214]
 
+    - Column with no name (as in declarative) won't raise a 
+      NoneType error when it's string output is requsted
+      (such as in a stack trace).
+      
 - declarative
     - Can now specify Column objects on subclasses which have no
       table of their own (i.e. use single table inheritance).  
