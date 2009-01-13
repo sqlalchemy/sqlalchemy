@@ -63,6 +63,26 @@ class DeclarativeTest(DeclarativeTestBase):
             class User(Base):
                 id = Column('id', Integer, primary_key=True)
         self.assertRaisesMessage(sa.exc.InvalidRequestError, "does not have a __table__", go)
+
+    def test_cant_add_columns(self):
+        t = Table('t', Base.metadata, Column('id', Integer, primary_key=True))
+        def go():
+            class User(Base):
+                __table__ = t
+                foo = Column(Integer, primary_key=True)
+        self.assertRaisesMessage(sa.exc.ArgumentError, "add additional columns", go)
+    
+    def test_undefer_column_name(self):
+        # TODO: not sure if there was an explicit
+        # test for this elsewhere
+        foo = Column(Integer)
+        eq_(str(foo), '(no name)')
+        eq_(foo.key, None)
+        eq_(foo.name, None)
+        decl._undefer_column_name('foo', foo)
+        eq_(str(foo), 'foo')
+        eq_(foo.key, 'foo')
+        eq_(foo.name, 'foo')
         
     def test_recompile_on_othermapper(self):
         """declarative version of the same test in mappers.py"""

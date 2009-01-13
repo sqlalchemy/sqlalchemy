@@ -609,7 +609,9 @@ class Column(SchemaItem, expression.ColumnClause):
                 "Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
     def __str__(self):
-        if self.table is not None:
+        if self.name is None:
+            return "(no name)"
+        elif self.table is not None:
             if self.table.named_with_column:
                 return (self.table.description + "." + self.description)
             else:
@@ -617,9 +619,9 @@ class Column(SchemaItem, expression.ColumnClause):
         else:
             return self.description
 
+    @property
     def bind(self):
         return self.table.bind
-    bind = property(bind)
 
     def references(self, column):
         """Return True if this Column references the given column via foreign key."""

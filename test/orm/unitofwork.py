@@ -2216,6 +2216,49 @@ class RowSwitchTest(_base.MappedTest):
         assert list(sess.execute(t5.select(), mapper=T5)) == [(2, 'some other t5')]
         assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some other t6', 2)]
 
+class InheritingRowSwitchTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table('parent', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('pdata', String(30))
+        )
+        Table('child', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('pid', Integer, ForeignKey('parent.id')),
+            Column('cdata', String(30))
+        )
+
+    def setup_classes(self):
+        class P(_base.ComparableEntity):
+            pass
+
+        class C(P):
+            pass
+    
+    @testing.resolve_artifact_names
+    def test_row_switch_no_child_table(self):
+        mapper(P, parent)
+        mapper(C, child, inherits=P)
+        
+        sess = create_session()
+        c1 = C(id=1, pdata='c1', cdata='c1')
+        sess.add(c1)
+        sess.flush()
+        
+        # establish a row switch between c1 and c2.
+        # c2 has no value for the "child" table
+        c2 = C(id=1, pdata='c2')
+        sess.add(c2)
+        sess.delete(c1)
+
+        self.assert_sql_execution(testing.db, sess.flush,
+            CompiledSQL("UPDATE parent SET pdata=:pdata WHERE parent.id = :parent_id",
+                {'pdata':'c2', 'parent_id':1}
+            )
+        )
+        
+        
+
 class TransactionTest(_base.MappedTest):
     __requires__ = ('deferrable_constraints',)
 
