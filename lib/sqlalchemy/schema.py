@@ -28,7 +28,7 @@ expressions.
 
 """
 import re, inspect
-from sqlalchemy import types, exc, util, databases
+from sqlalchemy import types, exc, util, dialects
 from sqlalchemy.sql import expression, visitors
 
 URL = None
@@ -282,7 +282,7 @@ class Table(SchemaItem, expression.TableClause):
     def __extra_kwargs(self, **kwargs):
         # validate remaining kwargs that they all specify DB prefixes
         if len([k for k in kwargs
-                if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
+                if not re.match(r'^(?:%s)_' % '|'.join(dialects.__all__), k)]):
             raise TypeError(
                 "Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
         self.kwargs.update(kwargs)

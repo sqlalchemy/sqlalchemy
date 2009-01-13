@@ -11,7 +11,6 @@ __all__ = (
     'informix',
     'maxdb',
     'mssql',
-    'mysql',
     'oracle',
     'sybase',
     )

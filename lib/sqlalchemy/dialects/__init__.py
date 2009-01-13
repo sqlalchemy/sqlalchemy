@@ -4,7 +4,7 @@ __all__ = (
 #    'informix',
 #    'maxdb',
 #    'mssql',
-#    'mysql',
+    'mysql',
 #    'oracle',
     'postgres',
     'sqlite',

@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import sets
 from sqlalchemy import *
 from sqlalchemy import sql, exc
-from sqlalchemy.databases import mysql
+from sqlalchemy.dialects.mysql import base as mysql
 from testlib.testing import eq_
 from testlib import *
 

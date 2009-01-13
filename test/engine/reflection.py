@@ -707,9 +707,8 @@ class UnicodeReflectionTest(TestBase):
             r.drop_all()
             r.create_all()
         finally:
-            pass
-#            metadata.drop_all()
-#            bind.dispose()
+            metadata.drop_all()
+            bind.dispose()
 
 
 class SchemaTest(TestBase):
