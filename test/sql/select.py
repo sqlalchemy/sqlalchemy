@@ -5,9 +5,7 @@ from sqlalchemy import exc, sql, util
 from sqlalchemy.sql import table, column, label, compiler
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.engine import default
-from sqlalchemy.databases import mysql, oracle, firebird, mssql
-from sqlalchemy.dialects.sqlite import pysqlite as sqlite
-from sqlalchemy.dialects.postgres import psycopg2 as postgres
+from sqlalchemy.databases import *
 from testlib import *
 
 table1 = table('mytable',
@@ -1311,7 +1309,6 @@ UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
         s1 = select([table1.c.myid, table1.c.myid.label('foobar'), func.hoho(table1.c.name), func.lala(table1.c.name).label('gg')])
         assert s1.c.keys() == ['myid', 'foobar', 'hoho(mytable.name)', 'gg']
 
-        from sqlalchemy.databases.sqlite import SLNumeric
         meta = MetaData()
         t1 = Table('mytable', meta, Column('col1', Integer))
         
@@ -1319,7 +1316,7 @@ UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
             (table1.c.name, 'name', 'mytable.name', None),
             (table1.c.myid==12, 'mytable.myid = :myid_1', 'mytable.myid = :myid_1', 'anon_1'),
             (func.hoho(table1.c.myid), 'hoho(mytable.myid)', 'hoho(mytable.myid)', 'hoho_1'),
-            (cast(table1.c.name, SLNumeric), 'CAST(mytable.name AS NUMERIC(10, 2))', 'CAST(mytable.name AS NUMERIC(10, 2))', 'anon_1'),
+            (cast(table1.c.name, sqlite.SLNumeric), 'CAST(mytable.name AS NUMERIC(10, 2))', 'CAST(mytable.name AS NUMERIC(10, 2))', 'anon_1'),
             (t1.c.col1, 'col1', 'mytable.col1', None),
             (column('some wacky thing'), 'some wacky thing', '"some wacky thing"', '')
         ):

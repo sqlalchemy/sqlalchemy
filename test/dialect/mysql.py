@@ -178,7 +178,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         numeric_table = Table(*table_args)
-        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+        gen = testing.db.dialect.ddl_compiler(testing.db.dialect, numeric_table)
 
         for col in numeric_table.c:
             index = int(col.name[1:])
@@ -262,7 +262,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         charset_table = Table(*table_args)
-        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+        gen = testing.db.dialect.ddl_compiler(testing.db.dialect, charset_table)
 
         for col in charset_table.c:
             index = int(col.name[1:])
@@ -741,7 +741,8 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
                 for table in tables:
                     for i, reflected in enumerate(table.c):
-                        assert isinstance(reflected.type, type(expected[i]))
+                        assert isinstance(reflected.type, type(expected[i])), \
+                                "element %d: %r not instance of %r" % (i, reflected.type, type(expected[i]))
             finally:
                 db.execute('DROP VIEW mysql_types_v')
         finally:
@@ -986,8 +987,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 class RawReflectionTest(TestBase):
     def setUp(self):
         self.dialect = mysql.dialect()
-        self.reflector = mysql.MySQLSchemaReflector(
-            self.dialect.identifier_preparer)
+        self.reflector = mysql.MySQLSchemaReflector(self.dialect)
 
     def test_key_reflection(self):
         regex = self.reflector._re_key
@@ -1147,8 +1147,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
 
 
 def colspec(c):
-    return testing.db.dialect.schemagenerator(testing.db.dialect,
-        testing.db, None, None).get_column_specification(c)
+    return testing.db.dialect.ddl_compiler(testing.db.dialect, c.table).get_column_specification(c)
 
 if __name__ == "__main__":
     testenv.main()

@@ -368,6 +368,7 @@ class PGDialect(default.DefaultDialect):
     supports_pk_autoincrement = False
     supports_default_values = True
     supports_empty_insert = False
+    default_paramstyle = 'pyformat'
 
     statement_compiler = PGCompiler
     ddl_compiler = PGDDLCompiler

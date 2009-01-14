@@ -1127,7 +1127,7 @@ class MSSet(MSString):
           only the collation of character data.
 
         """
-        self.__ddl_values = values
+        self._ddl_values = values
 
         strip_values = []
         for a in values:
@@ -1545,7 +1545,6 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self._extend_numeric(type_, 'REAL')
     
-    
     def visit_FLOAT(self, type_):
         if self._mysql_type(type_) and type_.scale is not None and type_.precision is not None:
             return self._extend_numeric(type_, "FLOAT(%s, %s)" % (type_.precision, type_.scale))
@@ -1647,6 +1646,9 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self.visit_BLOB(type_)
     
+    def visit_binary(self, type_):
+        return self.visit_BLOB(type_)
+        
     def visit_BINARY(self, type_):
         if type_.length:
             return "BINARY(%d)" % type_.length
@@ -1675,9 +1677,9 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend_string(type_, "ENUM(%s)" % ",".join(quoted_enums))
         
     def visit_SET(self, type_):
-        return self._extend_string("SET(%s)" % ",".join(type_._ddl_values))
+        return self._extend_string(type_, "SET(%s)" % ",".join(type_._ddl_values))
 
-    def visit_BOOL(self, type):
+    def visit_BOOLEAN(self, type):
         return "BOOL"
         
 
@@ -1819,6 +1821,7 @@ class MySQLDialect(default.DefaultDialect):
             if rs:
                 rs.close()
 
+    @engine_base.connection_memoize(('mysql', 'server_version_info'))
     def server_version_info(self, connection):
         """A tuple of the database server version.
 
@@ -1831,9 +1834,9 @@ class MySQLDialect(default.DefaultDialect):
         cached per-Connection.
         """
 
+        # TODO: do we need to bypass ConnectionFairy here?  other calls
+        # to this seem to not do that.
         return self._server_version_info(connection.connection.connection)
-    server_version_info = engine_base.connection_memoize(
-        ('mysql', 'server_version_info'))(server_version_info)
 
     def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""
@@ -1850,7 +1853,7 @@ class MySQLDialect(default.DefaultDialect):
                 # ANSI_QUOTES doesn't affect SHOW CREATE TABLE on < 4.1
                 preparer = MySQLIdentifierPreparer(self)
 
-            self.reflector = reflector = MySQLSchemaReflector(self)
+            self.reflector = reflector = MySQLSchemaReflector(self, preparer)
 
         sql = self._show_create_table(connection, table, charset)
         if sql.startswith('CREATE ALGORITHM'):
@@ -2047,7 +2050,7 @@ class MySQLDialect(default.DefaultDialect):
 class MySQLSchemaReflector(object):
     """Parses SHOW CREATE TABLE output."""
 
-    def __init__(self, dialect):
+    def __init__(self, dialect, preparer=None):
         """Construct a MySQLSchemaReflector.
 
         identifier_preparer
@@ -2056,7 +2059,7 @@ class MySQLSchemaReflector(object):
         """
 
         self.dialect = dialect
-        self.preparer = dialect.identifier_preparer
+        self.preparer = preparer or dialect.identifier_preparer
         self._prep_regexes()
 
     def reflect(self, connection, table, show_create, charset, only=None):

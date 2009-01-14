@@ -69,11 +69,10 @@ def close_open_connections(fn):
 def all_dialects():
     import sqlalchemy.databases as d
     for name in d.__all__:
-        mod = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
-        yield mod.dialect()
-    import sqlalchemy.dialects as d
-    for name in d.__all__:
-        mod = getattr(__import__('sqlalchemy.dialects.%s.base' % name).dialects, name).base
+        # TEMPORARY
+        mod = getattr(d, name, None)
+        if not mod:
+            mod = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
         yield mod.dialect()
         
 class ReconnectFixture(object):

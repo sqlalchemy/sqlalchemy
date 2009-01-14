@@ -50,7 +50,9 @@ url.py
     within a URL.
 """
 
-import sqlalchemy.databases
+# not sure what this was used for
+#import sqlalchemy.databases  
+
 from sqlalchemy.engine.base import (
     BufferedColumnResultProxy,
     BufferedColumnRow,

@@ -6,9 +6,7 @@ from sqlalchemy import exc, types, util, schema
 from sqlalchemy.sql import operators
 from testlib.testing import eq_
 import sqlalchemy.engine.url as url
-from sqlalchemy.databases import mssql, oracle, mysql, firebird
-from sqlalchemy.dialects.sqlite import pysqlite as sqlite
-from sqlalchemy.dialects.postgres import psycopg2 as postgres
+from sqlalchemy.databases import *
 
 from testlib import *
 
