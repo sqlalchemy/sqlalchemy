@@ -61,6 +61,12 @@ CHANGES
       NoneType error when it's string output is requsted
       (such as in a stack trace).
       
+    - Fixed bug when overriding a Column with a ForeignKey
+      on a reflected table, where derived columns (i.e. the 
+      "virtual" columns of a select, etc.) would inadvertently
+      call upon schema-level cleanup logic intended only
+      for the original column. [ticket:1278]
+      
 - declarative
     - Can now specify Column objects on subclasses which have no
       table of their own (i.e. use single table inheritance).  
