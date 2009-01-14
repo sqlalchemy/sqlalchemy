@@ -1115,7 +1115,7 @@ The declarative setup is as follows:
     ...     def __init__(self, keyword):
     ...         self.keyword = keyword
 
-Above, the many-to-many relation above is ``BlogPost.keywords``.  The defining feature of a many to many relation is the ``secondary`` keyword argument which references a ``Table`` object representing the association table.  This table only contains columns which reference the two sides of the relation; if it has *any* other columns, such as its own primary key, or foreign keys to other tables, SQLAlchemy requires a different usage pattern called the "association object", described at `association_pattern`.
+Above, the many-to-many relation above is ``BlogPost.keywords``.  The defining feature of a many to many relation is the ``secondary`` keyword argument which references a ``Table`` object representing the association table.  This table only contains columns which reference the two sides of the relation; if it has *any* other columns, such as its own primary key, or foreign keys to other tables, SQLAlchemy requires a different usage pattern called the "association object", described at :ref:`association_pattern`.
 
 The many-to-many relation is also bi-directional using the ``backref`` keyword.  This is the one case where usage of ``backref`` is generally required, since if a separate ``posts`` relation were added to the ``Keyword`` entity, both relations would independently add and remove rows from the ``post_keywords`` table and produce conflicts.
 
