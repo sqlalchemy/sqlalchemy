@@ -666,7 +666,9 @@ class Column(SchemaItem, expression.ColumnClause):
         if getattr(self, 'table', None) is not None:
             raise exc.ArgumentError("this Column already has a table!")
 
-        self._pre_existing_column = table._columns.get(self.key)
+        if self.key in table._columns:
+            # note the column being replaced, if any
+            self._pre_existing_column = table._columns.get(self.key)
         table._columns.replace(self)
 
         if self.primary_key:
@@ -734,11 +736,17 @@ class Column(SchemaItem, expression.ColumnClause):
         (such as an alias or select statement).
 
         """
-        fk = [ForeignKey(f._colspec) for f in self.foreign_keys]
-        c = Column(name or self.name, self.type, self.default, key = name or self.key, primary_key = self.primary_key, nullable = self.nullable, quote=self.quote, *fk)
+        fk = [ForeignKey(f.column) for f in self.foreign_keys]
+        c = Column(
+            name or self.name, 
+            self.type, 
+            self.default, 
+            key = name or self.key, 
+            primary_key = self.primary_key, 
+            nullable = self.nullable, 
+            quote=self.quote, *fk)
         c.table = selectable
         c.proxies = [self]
-        c._pre_existing_column = self._pre_existing_column
         selectable.columns.add(c)
         if self.primary_key:
             selectable.primary_key.add(c)
@@ -924,10 +932,10 @@ class ForeignKey(SchemaItem):
             raise exc.InvalidRequestError("This ForeignKey already has a parent !")
         self.parent = column
 
-        if self.parent._pre_existing_column is not None:
+        if hasattr(self.parent, '_pre_existing_column'):
             # remove existing FK which matches us
             for fk in self.parent._pre_existing_column.foreign_keys:
-                if fk._colspec == self._colspec:
+                if fk.target_fullname == self.target_fullname:
                     self.parent.table.foreign_keys.remove(fk)
                     self.parent.table.constraints.remove(fk.constraint)
 

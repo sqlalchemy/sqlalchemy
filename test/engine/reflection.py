@@ -300,6 +300,8 @@ class ReflectionTest(TestBase, ComparesTables):
                 autoload=True)
             u2 = Table('users', meta2, autoload=True)
 
+            s = sa.select([a2])
+            assert s.c.user_id
             assert len(a2.foreign_keys) == 1
             assert len(a2.c.user_id.foreign_keys) == 1
             assert len(a2.constraints) == 2
@@ -317,6 +319,8 @@ class ReflectionTest(TestBase, ComparesTables):
                 Column('user_id', sa.Integer, sa.ForeignKey('users.id')),
                 autoload=True)
 
+            s = sa.select([a2])
+            assert s.c.user_id
             assert len(a2.foreign_keys) == 1
             assert len(a2.c.user_id.foreign_keys) == 1
             assert len(a2.constraints) == 2

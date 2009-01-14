@@ -664,7 +664,72 @@ class QueryTest(TestBase):
         r = s.execute().fetchall()
         assert len(r) == 1
 
-
+class PercentSchemaNamesTest(TestBase):
+    """tests using percent signs, spaces in table and column names.
+    
+    Doesn't pass for mysql, postgres, but this is really a 
+    SQLAlchemy bug - we should be escaping out %% signs for this
+    operation the same way we do for text() and column labels.
+    
+    """
+    @testing.crashes('mysql', 'mysqldb calls name % (params)')
+    @testing.crashes('postgres', 'postgres calls name % (params)')
+    def setUpAll(self):
+        global percent_table, metadata
+        metadata = MetaData(testing.db)
+        percent_table = Table('percent%table', metadata,
+            Column("percent%", Integer),
+            Column("%(oneofthese)s", Integer),
+            Column("spaces % more spaces", Integer),
+        )
+        metadata.create_all()
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+    
+    @testing.crashes('mysql', 'mysqldb calls name % (params)')
+    @testing.crashes('postgres', 'postgres calls name % (params)')
+    def test_roundtrip(self):
+        percent_table.insert().execute(
+            {'percent%':5, '%(oneofthese)s':7, 'spaces % more spaces':12},
+        )
+        percent_table.insert().execute(
+            {'percent%':7, '%(oneofthese)s':8, 'spaces % more spaces':11},
+            {'percent%':9, '%(oneofthese)s':9, 'spaces % more spaces':10},
+            {'percent%':11, '%(oneofthese)s':10, 'spaces % more spaces':9},
+        )
+        eq_(
+            percent_table.select().order_by(percent_table.c['%(oneofthese)s']).execute().fetchall(),
+            [
+                (5, 7, 12),
+                (7, 8, 11),
+                (9, 9, 10),
+                (11, 10, 9)
+            ]
+        )
+        result = percent_table.select().order_by(percent_table.c['%(oneofthese)s']).execute()
+        row = result.fetchone()
+        eq_(row[percent_table.c['percent%']], 5)
+        eq_(row[percent_table.c['%(oneofthese)s']], 7)
+        eq_(row[percent_table.c['spaces % more spaces']], 12)
+        row = result.fetchone()
+        eq_(row['percent%'], 7)
+        eq_(row['%(oneofthese)s'], 8)
+        eq_(row['spaces % more spaces'], 11)
+        result.close()
+        percent_table.update().values({percent_table.c['%(oneofthese)s']:9, percent_table.c['spaces % more spaces']:15}).execute()
+        eq_(
+            percent_table.select().order_by(percent_table.c['%(oneofthese)s']).execute().fetchall(),
+            [
+                (5, 9, 15),
+                (7, 9, 15),
+                (9, 9, 15),
+                (11, 9, 15)
+            ]
+        )
+        
+        
+        
 class LimitTest(TestBase):
 
     def setUpAll(self):

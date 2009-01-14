@@ -45,6 +45,12 @@ CHANGES
       combined with joined-table inheritance and an object
       which contained no defined values for the child table where
       an UPDATE with no SET clause would be rendered.
+
+- sql
+    - Improved the methodology to handling percent signs in column
+      names from [ticket:1256].  Added more tests.  MySQL and
+      Postgres dialects still do not issue correct CREATE TABLE
+      statements for identifiers with percent signs in them.
       
 - schema
     - Index now accepts column-oriented InstrumentedAttributes
@@ -54,6 +60,12 @@ CHANGES
     - Column with no name (as in declarative) won't raise a 
       NoneType error when it's string output is requsted
       (such as in a stack trace).
+      
+    - Fixed bug when overriding a Column with a ForeignKey
+      on a reflected table, where derived columns (i.e. the 
+      "virtual" columns of a select, etc.) would inadvertently
+      call upon schema-level cleanup logic intended only
+      for the original column. [ticket:1278]
       
 - declarative
     - Can now specify Column objects on subclasses which have no
