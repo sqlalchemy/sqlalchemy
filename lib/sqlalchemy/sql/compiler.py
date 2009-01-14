@@ -277,7 +277,10 @@ class DefaultCompiler(engine.Compiled):
                 schema_prefix = self.preparer.quote(column.table.schema, column.table.quote_schema) + '.'
             else:
                 schema_prefix = ''
-            return schema_prefix + self.preparer.quote(column.table.name % self.anon_map, column.table.quote) + "." + name
+            tablename = column.table.name
+            if isinstance(tablename, sql._generated_label):
+                tablename = tablename % self.anon_map
+            return schema_prefix + self.preparer.quote(tablename, column.table.quote) + "." + name
 
     def escape_literal_column(self, text):
         """provide escaping for the literal_column() construct."""
@@ -410,12 +413,11 @@ class DefaultCompiler(engine.Compiled):
 
         return bind_name
 
-    _trunc_re = re.compile(r'%\((-?\d+ \w+)\)s', re.U)
     def _truncated_identifier(self, ident_class, name):
         if (ident_class, name) in self.truncated_names:
             return self.truncated_names[(ident_class, name)]
 
-        anonname = self._trunc_re.sub(lambda m: self.anon_map[m.group(1)], name)
+        anonname = name % self.anon_map 
 
         if len(anonname) > self.label_length:
             counter = self.truncated_names.get(ident_class, 1)
@@ -427,7 +429,7 @@ class DefaultCompiler(engine.Compiled):
         return truncname
     
     def _anonymize(self, name):
-        return self._trunc_re.sub(lambda m: self.anon_map[m.group(1)], name)
+        return name % self.anon_map
         
     def _process_anon(self, key):
         (ident, derived) = key.split(' ')

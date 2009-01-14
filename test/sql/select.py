@@ -836,16 +836,16 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
                             "COLLATE somecol AS x")
 
     def test_percent_chars(self):
-        t = table("table",
+        t = table("table%name",
             column("percent%"),
             column("%(oneofthese)s"),
             column("spaces % more spaces"),
         )
         self.assert_compile(
             t.select(use_labels=True),
-            '''SELECT "table"."percent%" AS "table_percent%", '''\
-            '''"table"."%(oneofthese)s" AS "table_%(oneofthese)s", '''\
-            '''"table"."spaces % more spaces" AS "table_spaces % more spaces" FROM "table"'''
+            '''SELECT "table%name"."percent%" AS "table%name_percent%", '''\
+            '''"table%name"."%(oneofthese)s" AS "table%name_%(oneofthese)s", '''\
+            '''"table%name"."spaces % more spaces" AS "table%name_spaces % more spaces" FROM "table%name"'''
         )
         
         

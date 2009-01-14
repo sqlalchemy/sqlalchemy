@@ -45,6 +45,12 @@ CHANGES
       combined with joined-table inheritance and an object
       which contained no defined values for the child table where
       an UPDATE with no SET clause would be rendered.
+
+- sql
+    - Improved the methodology to handling percent signs in column
+      names from [ticket:1256].  Added more tests.  MySQL and
+      Postgres dialects still do not issue correct CREATE TABLE
+      statements for identifiers with percent signs in them.
       
 - schema
     - Index now accepts column-oriented InstrumentedAttributes
