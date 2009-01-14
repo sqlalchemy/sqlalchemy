@@ -202,7 +202,7 @@ def _block_unconditionally(db, reason):
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
-            if spec(db):
+            if spec(config.db):
                 msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
                     fn_name, config.db.name, config.db.driver, reason)
                 print msg
@@ -447,11 +447,11 @@ def against(*queries):
 
     for query in queries:
         if isinstance(query, basestring):
-            if config.db.name == query:
+            if db_spec(query)(config.db):
                 return True
         else:
             name, op, spec = query
-            if config.db.name != name:
+            if not db_spec(name)(config.db):
                 continue
 
             have = config.db.dialect.server_version_info(

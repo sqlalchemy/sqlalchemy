@@ -183,6 +183,7 @@ from sqlalchemy import exc, log, schema, sql, util
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy.sql import functions as sql_functions
 from sqlalchemy.sql import compiler
+from array import array as _array
 
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import types as sqltypes
@@ -1330,12 +1331,6 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)
 
-
-    def post_process_text(self, text):
-        if '%%' in text:
-            util.warn("The SQLAlchemy MySQLDB dialect now automatically escapes '%' in text() expressions to '%%'.")
-        return text.replace('%', '%%')
-
     def get_select_precolumns(self, select):
         if isinstance(select._distinct, basestring):
             return select._distinct.upper() + " "
@@ -1739,23 +1734,23 @@ class MySQLDialect(default.DefaultDialect):
             raise
 
     def do_begin_twophase(self, connection, xid):
-        connection.execute("XA BEGIN %s", xid)
+        connection.execute(sql.text("XA BEGIN :xid"), xid=xid)
 
     def do_prepare_twophase(self, connection, xid):
-        connection.execute("XA END %s", xid)
-        connection.execute("XA PREPARE %s", xid)
+        connection.execute(sql.text("XA END :xid"), xid=xid)
+        connection.execute(sql.text("XA PREPARE :xid"), xid=xid)
 
     def do_rollback_twophase(self, connection, xid, is_prepared=True,
                              recover=False):
         if not is_prepared:
-            connection.execute("XA END %s", xid)
-        connection.execute("XA ROLLBACK %s", xid)
+            connection.execute(sql.text("XA END :xid"), xid=xid)
+        connection.execute(sql.text("XA ROLLBACK :xid"), xid=xid)
 
     def do_commit_twophase(self, connection, xid, is_prepared=True,
                            recover=False):
         if not is_prepared:
             self.do_prepare_twophase(connection, xid)
-        connection.execute("XA COMMIT %s", xid)
+        connection.execute(sql.text("XA COMMIT :xid"), xid=xid)
 
     def do_recover_twophase(self, connection):
         resultset = connection.execute("XA RECOVER")
@@ -1770,10 +1765,14 @@ class MySQLDialect(default.DefaultDialect):
             return False
 
     def _compat_fetchall(self, rp, charset=None):
-        return rp.fetchall()
+        """Proxy result rows to smooth over MySQL-Python driver inconsistencies."""
+
+        return [_DecodingRowProxy(row, charset) for row in rp.fetchall()]
 
     def _compat_fetchone(self, rp, charset=None):
-        return rp.fetchone()
+        """Proxy a result row to smooth over MySQL-Python driver inconsistencies."""
+
+        return _DecodingRowProxy(rp.fetchone(), charset)
 
     def _extract_error_code(self, exception):
         raise NotImplementedError()
@@ -1881,33 +1880,7 @@ class MySQLDialect(default.DefaultDialect):
             table.metadata.tables[lc_alias] = table
 
     def _detect_charset(self, connection):
-        """Sniff out the character set in use for connection results."""
-
-        # Allow user override, won't sniff if force_charset is set.
-        if ('mysql', 'force_charset') in connection.info:
-            return connection.info[('mysql', 'force_charset')]
-
-        # Prefer 'character_set_results' for the current connection over the
-        # value in the driver.  SET NAMES or individual variable SETs will
-        # change the charset without updating the driver's view of the world.
-        #
-        # If it's decided that issuing that sort of SQL leaves you SOL, then
-        # this can prefer the driver value.
-        rs = connection.execute("SHOW VARIABLES LIKE 'character_set%%'")
-        opts = dict([(row[0], row[1]) for row in self._compat_fetchall(rs)])
-
-        if 'character_set_results' in opts:
-            return opts['character_set_results']
-        # Still no charset on < 1.2.1 final...
-        if 'character_set' in opts:
-            return opts['character_set']
-        else:
-            util.warn(
-                "Could not detect the connection character set.  Assuming latin1.")
-            return 'latin1'
-    _detect_charset = engine_base.connection_memoize(
-        ('mysql', 'charset'))(_detect_charset)
-
+        raise NotImplementedError()
 
     def _detect_casing(self, connection):
         """Sniff out identifier case sensitivity.
@@ -2629,6 +2602,40 @@ class MySQLSchemaReflector(object):
         return self._re_keyexprs.findall(identifiers)
 
 log.class_logger(MySQLSchemaReflector)
+
+
+class _DecodingRowProxy(object):
+    """Return unicode-decoded values based on type inspection.
+
+    Smooth over data type issues (esp. with alpha driver versions) and
+    normalize strings as Unicode regardless of user-configured driver
+    encoding settings.
+
+    """
+
+    # Some MySQL-python versions can return some columns as
+    # sets.Set(['value']) (seriously) but thankfully that doesn't
+    # seem to come up in DDL queries.
+
+    def __init__(self, rowproxy, charset):
+        self.rowproxy = rowproxy
+        self.charset = charset
+    def __getitem__(self, index):
+        item = self.rowproxy[index]
+        if isinstance(item, _array):
+            item = item.tostring()
+        if self.charset and isinstance(item, str):
+            return item.decode(self.charset)
+        else:
+            return item
+    def __getattr__(self, attr):
+        item = getattr(self.rowproxy, attr)
+        if isinstance(item, _array):
+            item = item.tostring()
+        if self.charset and isinstance(item, str):
+            return item.decode(self.charset)
+        else:
+            return item
 
 
 class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):

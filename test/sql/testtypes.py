@@ -302,7 +302,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
         if isinstance(x['plain_varchar'], unicode):
             # SQLLite and MSSQL return non-unicode data as unicode
-            self.assert_(testing.against('sqlite', 'mssql'))
+            self.assert_(testing.against('sqlite', '+pyodbc'))
             if not testing.against('sqlite'):
                 self.assert_(x['plain_varchar'] == unicodedata)
             print "it's %s!" % testing.db.name

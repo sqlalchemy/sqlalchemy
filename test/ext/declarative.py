@@ -1065,7 +1065,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         class Engineer(Person):
             __mapper_args__ = {'polymorphic_identity':'engineer'}
-            primary_language_id = Column(String(50), ForeignKey('languages.id'))
+            primary_language_id = Column(Integer, ForeignKey('languages.id'))
             primary_language = relation("Language")
             
         class Language(Base, ComparableEntity):

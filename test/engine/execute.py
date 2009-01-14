@@ -23,7 +23,7 @@ class ExecuteTest(TestBase):
     def tearDownAll(self):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except('firebird', 'maxdb', 'sqlite')
+    @testing.fails_on_everything_except('firebird', 'maxdb', 'sqlite', 'mysql+pyodbc')
     def test_raw_qmark(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (?, ?)", (1,"jack"))
@@ -35,7 +35,7 @@ class ExecuteTest(TestBase):
             assert res.fetchall() == [(1, "jack"), (2, "fred"), (3, "ed"), (4, "horse"), (5, "barney"), (6, "donkey"), (7, 'sally')]
             conn.execute("delete from users")
 
-    @testing.fails_on_everything_except('mysql', 'postgres')
+    @testing.fails_on_everything_except('mysql+mysqldb', 'postgres')
     # some psycopg2 versions bomb this.
     def test_raw_sprintf(self):
         for conn in (testing.db, testing.db.connect()):
@@ -49,7 +49,7 @@ class ExecuteTest(TestBase):
 
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
-    @testing.skip_if(lambda: testing.against('mysql'), 'db-api flaky')
+    @testing.skip_if(lambda: testing.against('mysql+mysqldb'), 'db-api flaky')
     @testing.fails_on_everything_except('postgres')
     def test_raw_python(self):
         for conn in (testing.db, testing.db.connect()):

@@ -20,21 +20,27 @@ strings, also pass ``use_unicode=0`` in the connection arguments::
   create_engine('mysql:///mydb?charset=utf8&use_unicode=0')
 """
 
-from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext
+from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext, MySQLCompiler
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import exc, log, schema, sql, util
 import re
-from array import array as _array
 
 class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
     def _lastrowid(self, cursor):
         return cursor.lastrowid
 
+class MySQL_mysqldbCompiler(MySQLCompiler):
+    def post_process_text(self, text):
+        if '%%' in text:
+            util.warn("The SQLAlchemy mysql+mysqldb dialect now automatically escapes '%' in text() expressions to '%%'.")
+        return text.replace('%', '%%')
+    
 class MySQL_mysqldb(MySQLDialect):
     driver = 'mysqldb'
     supports_unicode_statements = False
     default_paramstyle = 'format'
     execution_ctx_cls = MySQL_mysqldbExecutionContext
+    sql_compiler = MySQL_mysqldbCompiler
     
     @classmethod
     def dbapi(cls):
@@ -98,6 +104,7 @@ class MySQL_mysqldb(MySQLDialect):
     def _extract_error_code(self, exception):
         return exception.orig.args[0]
 
+    @engine_base.connection_memoize(('mysql', 'charset'))
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
 
@@ -138,51 +145,6 @@ class MySQL_mysqldb(MySQLDialect):
                     "combination of MySQL server and MySQL-python. "
                     "MySQL-python >= 1.2.2 is recommended.  Assuming latin1.")
                 return 'latin1'
-    _detect_charset = engine_base.connection_memoize(
-        ('mysql', 'charset'))(_detect_charset)
-
-
-    def _compat_fetchall(self, rp, charset=None):
-        """Proxy result rows to smooth over MySQL-Python driver inconsistencies."""
-
-        return [_MySQLPythonRowProxy(row, charset) for row in rp.fetchall()]
-
-    def _compat_fetchone(self, rp, charset=None):
-        """Proxy a result row to smooth over MySQL-Python driver inconsistencies."""
-
-        return _MySQLPythonRowProxy(rp.fetchone(), charset)
-
-class _MySQLPythonRowProxy(object):
-    """Return consistent column values for all versions of MySQL-python.
-
-    Smooth over data type issues (esp. with alpha driver versions) and
-    normalize strings as Unicode regardless of user-configured driver
-    encoding settings.
-    """
-
-    # Some MySQL-python versions can return some columns as
-    # sets.Set(['value']) (seriously) but thankfully that doesn't
-    # seem to come up in DDL queries.
-
-    def __init__(self, rowproxy, charset):
-        self.rowproxy = rowproxy
-        self.charset = charset
-    def __getitem__(self, index):
-        item = self.rowproxy[index]
-        if isinstance(item, _array):
-            item = item.tostring()
-        if self.charset and isinstance(item, str):
-            return item.decode(self.charset)
-        else:
-            return item
-    def __getattr__(self, attr):
-        item = getattr(self.rowproxy, attr)
-        if isinstance(item, _array):
-            item = item.tostring()
-        if self.charset and isinstance(item, str):
-            return item.decode(self.charset)
-        else:
-            return item
 
 
 dialect = MySQL_mysqldb

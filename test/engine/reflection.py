@@ -744,7 +744,7 @@ class SchemaTest(TestBase):
     def test_explicit_default_schema(self):
         engine = testing.db
 
-        if testing.against('mysql'):
+        if testing.against('mysql+mysqldb'):
             schema = testing.db.url.database
         elif testing.against('postgres'):
             schema = 'public'
