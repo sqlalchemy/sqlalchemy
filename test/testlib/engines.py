@@ -126,7 +126,7 @@ def utf8_engine(url=None, options=None):
 
     from sqlalchemy.engine import url as engine_url
 
-    if config.db.name == 'mysql':
+    if config.db.driver == 'mysqldb':
         dbapi_ver = config.db.dialect.dbapi.version_info
         if (dbapi_ver < (1, 2, 1) or
             dbapi_ver in ((1, 2, 1, 'gamma', 1), (1, 2, 1, 'gamma', 2),

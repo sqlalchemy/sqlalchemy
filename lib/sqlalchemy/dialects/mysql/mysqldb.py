@@ -95,6 +95,9 @@ class MySQL_mysqldb(MySQLDialect):
                 version.append(n)
         return tuple(version)
 
+    def _extract_error_code(self, exception):
+        return exception.orig.args[0]
+
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
 

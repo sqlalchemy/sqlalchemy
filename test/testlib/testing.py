@@ -91,6 +91,19 @@ def future(fn):
                 "Unexpected success for future test '%s'" % fn_name)
     return _function_named(decorated, fn_name)
 
+def db_spec(*dbs):
+    dialects = set([x for x in dbs if '+' not in x])
+    drivers = set([x[1:] for x in dbs if x.startswith('+')])
+    specs = set([tuple(x.split('+')) for x in dbs if '+' in x and x not in drivers])
+
+    def check(engine):
+        return engine.name in dialects or \
+            engine.driver in drivers or \
+            (engine.name, engine.driver) in specs
+    
+    return check
+        
+
 def fails_on(dbs, reason):
     """Mark a test as expected to fail on the specified database 
     implementation.
@@ -101,23 +114,25 @@ def fails_on(dbs, reason):
     succeeds, a failure is reported.
     """
 
+    spec = db_spec(dbs)
+    
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
-            if config.db.name != dbs:
+            if not spec(config.db):
                 return fn(*args, **kw)
             else:
                 try:
                     fn(*args, **kw)
                 except Exception, ex:
                     print ("'%s' failed as expected on DB implementation "
-                           "'%s': %s" % (
-                        fn_name, config.db.name, reason))
+                           "'%s+%s': %s" % (
+                        fn_name, config.db.name, config.db.driver, reason))
                     return True
                 else:
                     raise AssertionError(
-                        "Unexpected success for '%s' on DB implementation '%s'" %
-                        (fn_name, config.db.name))
+                        "Unexpected success for '%s' on DB implementation '%s+%s'" %
+                        (fn_name, config.db.name, config.db.driver))
         return _function_named(maybe, fn_name)
     return decorate
 
@@ -128,23 +143,25 @@ def fails_on_everything_except(*dbs):
     databases except those listed.
     """
 
+    spec = db_spec(*dbs)
+    
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
-            if config.db.name in dbs:
+            if spec(config.db):
                 return fn(*args, **kw)
             else:
                 try:
                     fn(*args, **kw)
                 except Exception, ex:
                     print ("'%s' failed as expected on DB implementation "
-                           "'%s': %s" % (
-                        fn_name, config.db.name, str(ex)))
+                           "'%s+%s': %s" % (
+                        fn_name, config.db.name, config.db.driver, str(ex)))
                     return True
                 else:
                     raise AssertionError(
-                        "Unexpected success for '%s' on DB implementation '%s'" %
-                        (fn_name, config.db.name))
+                        "Unexpected success for '%s' on DB implementation '%s+%s'" %
+                        (fn_name, config.db.name, config.db.driver))
         return _function_named(maybe, fn_name)
     return decorate
 
@@ -156,12 +173,13 @@ def crashes(db, reason):
 
     """
     carp = _should_carp_about_exclusion(reason)
+    spec = db_spec(db)
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
-            if config.db.name == db:
-                msg = "'%s' unsupported on DB implementation '%s': %s" % (
-                    fn_name, config.db.name, reason)
+            if spec(config.db):
+                msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
+                    fn_name, config.db.name, config.db.driver, reason)
                 print msg
                 if carp:
                     print >> sys.stderr, msg
@@ -180,12 +198,13 @@ def _block_unconditionally(db, reason):
 
     """
     carp = _should_carp_about_exclusion(reason)
+    spec = db_spec(db)
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
-            if config.db.name == db:
-                msg = "'%s' unsupported on DB implementation '%s': %s" % (
-                    fn_name, config.db.name, reason)
+            if spec(db):
+                msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
+                    fn_name, config.db.name, config.db.driver, reason)
                 print msg
                 if carp:
                     print >> sys.stderr, msg
@@ -209,6 +228,7 @@ def exclude(db, op, spec, reason):
 
     """
     carp = _should_carp_about_exclusion(reason)
+    
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
@@ -253,7 +273,9 @@ def _is_excluded(db, op, spec):
       _is_excluded('yikesdb', 'in', ((0, 3, 'alpha2'), (0, 3, 'alpha3')))
     """
 
-    if config.db.name != db:
+    spec = db_spec(db)
+
+    if not spec(config.db):
         return False
 
     version = _server_version()
@@ -330,10 +352,12 @@ def emits_warning_on(db, *warnings):
     strings; these will be matched to the root of the warning description by
     warnings.filterwarnings().
     """
+    spec = db_spec(db)
+    
     def decorate(fn):
         def maybe(*args, **kw):
             if isinstance(db, basestring):
-                if config.db.name != db:
+                if not spec(config.db):
                     return fn(*args, **kw)
                 else:
                     wrapped = emits_warning(*warnings)(fn)

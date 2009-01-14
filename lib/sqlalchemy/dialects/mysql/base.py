@@ -1763,7 +1763,7 @@ class MySQLDialect(default.DefaultDialect):
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):
-            return e.args[0] in (2006, 2013, 2014, 2045, 2055)
+            return self._extract_error_code(e) in (2006, 2013, 2014, 2045, 2055)
         elif isinstance(e, self.dbapi.InterfaceError):  # if underlying connection is closed, this is the error you get
             return "(0, '')" in str(e)
         else:
@@ -1775,6 +1775,9 @@ class MySQLDialect(default.DefaultDialect):
     def _compat_fetchone(self, rp, charset=None):
         return rp.fetchone()
 
+    def _extract_error_code(self, exception):
+        raise NotImplementedError()
+        
     def get_default_schema_name(self, connection):
         return connection.execute('SELECT DATABASE()').scalar()
     get_default_schema_name = engine_base.connection_memoize(
@@ -1814,7 +1817,7 @@ class MySQLDialect(default.DefaultDialect):
                 rs.close()
                 return have
             except exc.SQLError, e:
-                if e.orig.args[0] == 1146:
+                if self._extract_error_code(e) == 1146:
                     return False
                 raise
         finally:

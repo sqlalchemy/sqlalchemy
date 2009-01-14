@@ -1122,6 +1122,12 @@ class Engine(Connectable):
         
         return self.dialect.name
 
+    @property
+    def driver(self):
+        "Driver name of the :class:`~sqlalchemy.engine.Dialect` in use by this ``Engine``."
+
+        return self.dialect.driver
+
     echo = log.echo_property()
 
     def __repr__(self):
@@ -1456,6 +1462,7 @@ class ResultProxy(object):
 
         for i, item in enumerate(metadata):
             colname = item[0]
+
             if self.dialect.description_encoding:
                 colname = colname.decode(self.dialect.description_encoding)
 
