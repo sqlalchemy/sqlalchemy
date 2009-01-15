@@ -603,6 +603,9 @@ class EagerLoader(AbstractRelationLoader):
     def setup_query(self, context, entity, path, adapter, column_collection=None, parentmapper=None, **kwargs):
         """Add a left outer join to the statement thats being constructed."""
 
+        if not context.enable_eagerloads:
+            return
+            
         path = path + (self.key,)
 
         # check for user-defined eager alias
@@ -649,7 +652,7 @@ class EagerLoader(AbstractRelationLoader):
         # whether or not the Query will wrap the selectable in a subquery,
         # and then attach eager load joins to that (i.e., in the case of LIMIT/OFFSET etc.)
         should_nest_selectable = context.query._should_nest_selectable
-    
+        
         if entity in context.eager_joins:
             entity_key, default_towrap = entity, entity.selectable
         elif should_nest_selectable or not context.from_clause or not sql_util.search(context.from_clause, entity.selectable):

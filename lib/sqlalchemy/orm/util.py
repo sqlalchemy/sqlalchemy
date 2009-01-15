@@ -378,6 +378,10 @@ class _ORMJoin(expression.Join):
             if isinstance(onclause, basestring):
                 prop = left_mapper.get_property(onclause)
             elif isinstance(onclause, attributes.QueryableAttribute):
+                # TODO: we might want to honor the current adapt_from,
+                # if already set.  we would need to adjust how we calculate
+                # adapt_from though since it is present in too many cases
+                # at the moment (query tests illustrate that).
                 adapt_from = onclause.__clause_element__()
                 prop = onclause.property
             elif isinstance(onclause, MapperProperty):

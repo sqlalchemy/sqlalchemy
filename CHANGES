@@ -24,7 +24,21 @@ CHANGES
 
     - Test coverage added for `relation()` objects specified on
       concrete mappers. [ticket:1237]
+    
+    - Query.from_self() as well as query.subquery() both disable 
+      the rendering of eager joins inside the subquery produced.
+      The "disable all eager joins" feature is available publically
+      via a new query.enable_eagerloads() generative. [ticket:1276]
+      
+    - Added a rudimental series of set operations to Query that
+      receive Query objects as arguments, including union(),
+      union_all(), intersect(), except_(), insertsect_all(),
+      except_all().  See the API documentation for
+      Query.union() for examples. 
 
+    - Fixed bug that prevented Query.join() and eagerloads from 
+      attaching to a query that selected from a union or aliased union.
+      
     - A short documentation example added for bidirectional
       relations specified on concrete mappers. [ticket:1237]
 

@@ -73,6 +73,7 @@ class Query(object):
         self._correlate = set()
         self._joinpoint = None
         self._with_labels = False
+        self._enable_eagerloads = True
         self.__joinable_tables = None
         self._having = None
         self._populate_existing = False
@@ -131,16 +132,14 @@ class Query(object):
 
     def __set_select_from(self, from_obj):
         if isinstance(from_obj, expression._SelectBaseMixin):
-            # alias SELECTs and unions
             from_obj = from_obj.alias()
 
         self._from_obj = from_obj
         equivs = self.__all_equivs()
 
         if isinstance(from_obj, expression.Alias):
-            # dont alias a regular join (since its not an alias itself)
             self._from_obj_alias = sql_util.ColumnAdapter(self._from_obj, equivs)
-
+            
     def _get_polymorphic_adapter(self, entity, selectable):
         self.__mapper_loads_polymorphically_with(entity.mapper, sql_util.ColumnAdapter(selectable, entity.mapper._equivalent_columns))
 
@@ -318,13 +317,37 @@ class Query(object):
     @property
     def statement(self):
         """The full SELECT statement represented by this Query."""
+        
         return self._compile_context(labels=self._with_labels).statement._annotate({'_halt_adapt': True})
 
+    @property
+    def _nested_statement(self):
+        return self.with_labels().enable_eagerloads(False).statement.correlate(None)
+
     def subquery(self):
-        """return the full SELECT statement represented by this Query, embedded within an Alias."""
+        """return the full SELECT statement represented by this Query, embedded within an Alias.
+        
+        Eager JOIN generation within the query is disabled.
+        
+        """
 
-        return self.statement.alias()
+        return self.enable_eagerloads(False).statement.alias()
 
+    @_generative()
+    def enable_eagerloads(self, value):
+        """Control whether or not eager joins are rendered.
+        
+        When set to False, the returned Query will not render 
+        eager joins regardless of eagerload() options
+        or mapper-level lazy=False configurations.
+        
+        This is used primarily when nesting the Query's
+        statement into a subquery or other
+        selectable.
+        
+        """
+        self._enable_eagerloads = value
+        
     @_generative()
     def with_labels(self):
         """Apply column labels to the return value of Query.statement.
@@ -524,23 +547,27 @@ class Query(object):
         m = _MapperEntity(self, entity)
         self.__setup_aliasizers([m])
 
-    @_generative()
     def from_self(self, *entities):
         """return a Query that selects from this Query's SELECT statement.
 
         \*entities - optional list of entities which will replace
         those being selected.
-        """
 
-        fromclause = self.with_labels().statement.correlate(None)
+        """
+        fromclause = self._nested_statement
+        q = self._from_selectable(fromclause)
+        if entities:
+            q._set_entities(entities)
+        return q
+
+    _from_self = from_self
+
+    @_generative()
+    def _from_selectable(self, fromclause):
         self._statement = self._criterion = None
         self._order_by = self._group_by = self._distinct = False
         self._limit = self._offset = None
         self.__set_select_from(fromclause)
-        if entities:
-            self._set_entities(entities)
-
-    _from_self = from_self
 
     def values(self, *columns):
         """Return an iterator yielding result tuples corresponding to the given list of columns"""
@@ -691,6 +718,92 @@ class Query(object):
             self._having = self._having & criterion
         else:
             self._having = criterion
+
+    def union(self, *q):
+        """Produce a UNION of this Query against one or more queries.
+
+        e.g.::
+
+            q1 = sess.query(SomeClass).filter(SomeClass.foo=='bar')
+            q2 = sess.query(SomeClass).filter(SomeClass.bar=='foo')
+
+            q3 = q1.union(q2)
+            
+        The method accepts multiple Query objects so as to control
+        the level of nesting.  A series of ``union()`` calls such as::
+        
+            x.union(y).union(z).all()
+            
+        will nest on each ``union()``, and produces::
+        
+            SELECT * FROM (SELECT * FROM (SELECT * FROM X UNION SELECT * FROM y) UNION SELECT * FROM Z)
+            
+        Whereas::
+        
+            x.union(y, z).all()
+            
+        produces::
+
+            SELECT * FROM (SELECT * FROM X UNION SELECT * FROM y UNION SELECT * FROM Z)
+
+        """
+        return self._from_selectable(
+                    expression.union(*([self._nested_statement]+ [x._nested_statement for x in q])))
+
+    def union_all(self, *q):
+        """Produce a UNION ALL of this Query against one or more queries.
+
+        Works the same way as :method:`union`.  See that
+        method for usage examples.
+
+        """
+        return self._from_selectable(
+                    expression.union_all(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                )
+
+    def intersect(self, *q):
+        """Produce an INTERSECT of this Query against one or more queries.
+
+        Works the same way as :method:`union`.  See that
+        method for usage examples.
+
+        """
+        return self._from_selectable(
+                    expression.intersect(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                )
+
+    def intersect_all(self, *q):
+        """Produce an INTERSECT ALL of this Query against one or more queries.
+
+        Works the same way as :method:`union`.  See that
+        method for usage examples.
+
+        """
+        return self._from_selectable(
+                    expression.intersect_all(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                )
+
+    def except_(self, *q):
+        """Produce an EXCEPT of this Query against one or more queries.
+
+        Works the same way as :method:`union`.  See that
+        method for usage examples.
+
+        """
+        return self._from_selectable(
+                    expression.except_(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                )
+
+    def except_all(self, *q):
+        """Produce an EXCEPT ALL of this Query against one or more queries.
+
+        Works the same way as :method:`union`.  See that
+        method for usage examples.
+
+        """
+        return self._from_selectable(
+                    expression.except_all(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                )
 
     @util.accepts_a_list_as_starargs(list_deprecation='pending')
     def join(self, *props, **kwargs):
@@ -1929,7 +2042,7 @@ class QueryContext(object):
         self.primary_columns = []
         self.secondary_columns = []
         self.eager_order_by = []
-
+        self.enable_eagerloads = query._enable_eagerloads
         self.eager_joins = {}
         self.froms = []
         self.adapter = None

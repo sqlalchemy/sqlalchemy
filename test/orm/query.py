@@ -714,7 +714,7 @@ class FilterTest(QueryTest):
         self.assertEquals([User(id=7),User(id=8),User(id=9)], sess.query(User).filter(User.addresses!=None).order_by(User.id).all())
 
 
-class FromSelfTest(QueryTest):
+class FromSelfTest(QueryTest, AssertsCompiledSQL):
     def test_filter(self):
 
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().all()
@@ -728,8 +728,22 @@ class FromSelfTest(QueryTest):
             (User(id=8), Address(id=3)),
             (User(id=8), Address(id=4)),
             (User(id=9), Address(id=5))
-        ] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().join('addresses').add_entity(Address).order_by(User.id, Address.id).all()
+        ] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().\
+            join('addresses').add_entity(Address).order_by(User.id, Address.id).all()
     
+    def test_no_eagerload(self):
+        """test that eagerloads are pushed outwards and not rendered in subqueries."""
+        
+        s = create_session()
+        
+        self.assert_compile(
+            s.query(User).options(eagerload(User.addresses)).from_self().statement,
+            "SELECT anon_1.users_id, anon_1.users_name, addresses_1.id, addresses_1.user_id, "\
+            "addresses_1.email_address FROM (SELECT users.id AS users_id, users.name AS users_name FROM users) AS anon_1 "\
+            "LEFT OUTER JOIN addresses AS addresses_1 ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id"
+        )
+            
+        
     def test_multiple_entities(self):
         sess = create_session()
 
@@ -748,6 +762,56 @@ class FromSelfTest(QueryTest):
             #    order_by(User.id, Address.id).first(),
             (User(id=8, addresses=[Address(), Address(), Address()]), Address(id=2)),
         )
+    
+class SetOpsTest(QueryTest, AssertsCompiledSQL):
+    
+    def test_union(self):
+        s = create_session()
+        
+        fred = s.query(User).filter(User.name=='fred')
+        ed = s.query(User).filter(User.name=='ed')
+        jack = s.query(User).filter(User.name=='jack')
+        
+        self.assertEquals(fred.union(ed).order_by(User.name).all(), 
+            [User(name='ed'), User(name='fred')]
+        )
+
+        self.assertEquals(fred.union(ed, jack).order_by(User.name).all(), 
+            [User(name='ed'), User(name='fred'), User(name='jack')]
+        )
+        
+    @testing.fails_on('mysql', "mysql doesn't support intersect")
+    def test_intersect(self):
+        s = create_session()
+
+        fred = s.query(User).filter(User.name=='fred')
+        ed = s.query(User).filter(User.name=='ed')
+        jack = s.query(User).filter(User.name=='jack')
+        self.assertEquals(fred.intersect(ed, jack).all(), 
+            []
+        )
+
+        self.assertEquals(fred.union(ed).intersect(ed.union(jack)).all(), 
+            [User(name='ed')]
+        )
+    
+    def test_eager_load(self):
+        s = create_session()
+
+        fred = s.query(User).filter(User.name=='fred')
+        ed = s.query(User).filter(User.name=='ed')
+        jack = s.query(User).filter(User.name=='jack')
+
+        def go():
+            self.assertEquals(
+                fred.union(ed).order_by(User.name).options(eagerload(User.addresses)).all(), 
+                [
+                    User(name='ed', addresses=[Address(), Address(), Address()]), 
+                    User(name='fred', addresses=[Address()])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+        
         
 class AggregateTest(QueryTest):
 

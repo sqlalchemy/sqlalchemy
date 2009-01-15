@@ -3123,6 +3123,12 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
     def self_group(self, against=None):
         return _FromGrouping(self)
 
+    def is_derived_from(self, fromclause):
+        for s in self.selects:
+            if s.is_derived_from(fromclause):
+                return True
+        return False
+
     def _populate_column_collection(self):
         for cols in zip(*[s.c for s in self.selects]):
             proxy = cols[0]._make_proxy(self, name=self.use_labels and cols[0]._label or None)
