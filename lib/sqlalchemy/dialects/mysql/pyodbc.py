@@ -14,6 +14,8 @@ class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
     execution_ctx_cls = MySQL_pyodbcExecutionContext
     
     def __init__(self, **kw):
+        # deal with http://code.google.com/p/pyodbc/issues/detail?id=25
+        kw.setdefault('convert_unicode', True)
         MySQLDialect.__init__(self, **kw)
         PyODBCConnector.__init__(self, **kw)
 

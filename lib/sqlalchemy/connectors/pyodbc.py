@@ -53,7 +53,6 @@ class PyODBCConnector(Connector):
                 connectors.append("AutoTranslate=%s" % keys.pop("odbc_autotranslate"))
 
             connectors.extend(['%s=%s' % (k,v) for k,v in keys.iteritems()])
-
         return [[";".join (connectors)], {}]
 
     def is_disconnect(self, e):
