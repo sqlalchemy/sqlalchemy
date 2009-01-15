@@ -2160,7 +2160,7 @@ class RowSwitchTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_manytomany(self):
         mapper(T5, t5, properties={
-            't7s':relation(T7, secondary=t5t7, cascade="all, delete-orphan")
+            't7s':relation(T7, secondary=t5t7, cascade="all")
         })
         mapper(T7, t7)
 

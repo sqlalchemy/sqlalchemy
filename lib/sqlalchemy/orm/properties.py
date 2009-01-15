@@ -910,7 +910,11 @@ class RelationProperty(StrategizedProperty):
                     "- foreign key columns are present in both the parent and "
                     "the child's mapped tables.  Specify 'foreign_keys' "
                     "argument." % (str(self)))
-
+        
+        if self.cascade.delete_orphan and self.direction is MANYTOMANY:
+            util.warn("On %s, delete-orphan cascade is not supported on a "
+                    "many-to-many relation.  This will raise an error in 0.6." % self)
+        
     def _determine_local_remote_pairs(self):
         if not self.local_remote_pairs:
             if self.remote_side:

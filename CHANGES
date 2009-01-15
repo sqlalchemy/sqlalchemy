@@ -60,6 +60,17 @@ CHANGES
       which contained no defined values for the child table where
       an UPDATE with no SET clause would be rendered.
 
+    - Using delete-orphan on a many-to-many relation is deprecated.
+      This produces misleading or erroneous results since SQLA does 
+      not retrieve the full list of "parents" for m2m.  To get delete-orphan
+      behavior with an m2m table, use an explcit association class
+      so that the individual association row is treated as a parent.
+      [ticket:1281]
+    
+    - delete-orphan cascade always requires delete cascade.  Specifying
+      delete-orphan without delete now raises a deprecation warning.
+      [ticket:1281]
+      
 - sql
     - Improved the methodology to handling percent signs in column
       names from [ticket:1256].  Added more tests.  MySQL and

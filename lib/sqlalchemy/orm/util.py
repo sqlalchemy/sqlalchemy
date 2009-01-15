@@ -31,6 +31,11 @@ class CascadeOptions(object):
         self.merge = "merge" in values or "all" in values
         self.expunge = "expunge" in values or "all" in values
         self.refresh_expire = "refresh-expire" in values or "all" in values
+        
+        if self.delete_orphan and not self.delete:
+            util.warn("The 'delete-orphan' cascade option requires "
+                        "'delete'.  This will raise an error in 0.6.")
+            
         for x in values:
             if x not in all_cascades:
                 raise sa_exc.ArgumentError("Invalid cascade option '%s'" % x)
