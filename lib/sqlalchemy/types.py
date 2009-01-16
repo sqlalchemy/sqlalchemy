@@ -485,8 +485,6 @@ class Text(String):
     params (and the reverse for result sets.)
 
     """
-    def dialect_impl(self, dialect, **kwargs):
-        return TypeEngine.dialect_impl(self, dialect, **kwargs)
 
 class Unicode(String):
     """A variable length Unicode string.
