@@ -22,6 +22,8 @@ strings, also pass ``use_unicode=0`` in the connection arguments::
 
 from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext, MySQLCompiler
 from sqlalchemy.engine import base as engine_base, default
+from sqlalchemy.sql import operators as sql_operators
+
 from sqlalchemy import exc, log, schema, sql, util
 import re
 
@@ -30,6 +32,13 @@ class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
         return cursor.lastrowid
 
 class MySQL_mysqldbCompiler(MySQLCompiler):
+    operators = util.update_copy(
+        MySQLCompiler.operators,
+        {
+            sql_operators.mod: '%%',
+        }
+    )
+    
     def post_process_text(self, text):
         if '%%' in text:
             util.warn("The SQLAlchemy mysql+mysqldb dialect now automatically escapes '%' in text() expressions to '%%'.")
@@ -40,7 +49,7 @@ class MySQL_mysqldb(MySQLDialect):
     supports_unicode_statements = False
     default_paramstyle = 'format'
     execution_ctx_cls = MySQL_mysqldbExecutionContext
-    sql_compiler = MySQL_mysqldbCompiler
+    statement_compiler = MySQL_mysqldbCompiler
     
     @classmethod
     def dbapi(cls):
@@ -102,7 +111,10 @@ class MySQL_mysqldb(MySQLDialect):
         return tuple(version)
 
     def _extract_error_code(self, exception):
-        return exception.orig.args[0]
+        try:
+            return exception.orig.args[0]
+        except AttributeError:
+            return None
 
     @engine_base.connection_memoize(('mysql', 'charset'))
     def _detect_charset(self, connection):

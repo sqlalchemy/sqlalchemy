@@ -86,6 +86,14 @@ class AbstractType(Visitable):
         """
         return op
 
+    def get_search_list(self):
+        """return a list of classes to test for a match
+        when adapting this type to a dialect-specific type.
+
+        """
+
+        return self.__class__.__mro__[0:-1]
+
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
@@ -135,14 +143,6 @@ class TypeEngine(AbstractType):
 
     def adapt(self, cls):
         return cls()
-
-    def get_search_list(self):
-        """return a list of classes to test for a match
-        when adapting this type to a dialect-specific type.
-
-        """
-
-        return self.__class__.__mro__[0:-1]
 
 class UserDefinedType(TypeEngine):
     """Base for user defined types.
@@ -227,7 +227,7 @@ class TypeDecorator(AbstractType):
             raise AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
         self.impl = self.__class__.impl(*args, **kwargs)
 
-    def dialect_impl(self, dialect, **kwargs):
+    def dialect_impl(self, dialect):
         try:
             return self._impl_dict[dialect]
         except AttributeError:
@@ -235,6 +235,17 @@ class TypeDecorator(AbstractType):
         except KeyError:
             pass
 
+        # adapt the TypeDecorator first, in 
+        # the case that the dialect maps the TD
+        # to one of its native types (i.e. PGInterval)
+        adapted = dialect.type_descriptor(self)
+        if adapted is not self:
+            self._impl_dict[dialect] = adapted
+            return adapted
+        
+        # otherwise adapt the impl type, link
+        # to a copy of this TypeDecorator and return
+        # that.
         typedesc = self.load_dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
@@ -244,13 +255,20 @@ class TypeDecorator(AbstractType):
         self._impl_dict[dialect] = tt
         return tt
 
+    def type_engine(self, dialect):
+        impl = self.dialect_impl(dialect)
+        if not isinstance(impl, TypeDecorator):
+            return impl
+        else:
+            return impl.impl
+
     def load_dialect_impl(self, dialect):
         """Loads the dialect-specific implementation of this type.
 
         by default calls dialect.type_descriptor(self.impl), but
         can be overridden to provide different behavior.
+        
         """
-
         if isinstance(self.impl, TypeDecorator):
             return self.impl.dialect_impl(dialect)
         else:
@@ -452,18 +470,33 @@ class String(Concatenable, TypeEngine):
                 assert_unicode = dialect.assert_unicode
             else:
                 assert_unicode = self.assert_unicode
-            def process(value):
-                if isinstance(value, unicode):
-                    return value.encode(dialect.encoding)
-                elif assert_unicode and not isinstance(value, (unicode, NoneType)):
-                    if assert_unicode == 'warn':
-                        util.warn("Unicode type received non-unicode bind "
-                                  "param value %r" % value)
-                        return value
+            
+            if dialect.supports_unicode_binds and assert_unicode:
+                def process(value):
+                    if not isinstance(value, (unicode, NoneType)):
+                        if assert_unicode == 'warn':
+                            util.warn("Unicode type received non-unicode bind "
+                                      "param value %r" % value)
+                            return value
+                        else:
+                            raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
                     else:
-                        raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
-                else:
-                    return value
+                        return value
+            elif dialect.supports_unicode_binds:
+                return None
+            else:
+                def process(value):
+                    if isinstance(value, unicode):
+                        return value.encode(dialect.encoding)
+                    elif assert_unicode and not isinstance(value, (unicode, NoneType)):
+                        if assert_unicode == 'warn':
+                            util.warn("Unicode type received non-unicode bind "
+                                      "param value %r" % value)
+                            return value
+                        else:
+                            raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
+                    else:
+                        return value
             return process
         else:
             return None
@@ -492,9 +525,6 @@ class Text(String):
     """
     
     __visit_name__ = 'text'
-    
-    def dialect_impl(self, dialect, **kwargs):
-        return TypeEngine.dialect_impl(self, dialect, **kwargs)
 
 class Unicode(String):
     """A variable length Unicode string.
@@ -840,35 +870,17 @@ class Interval(TypeDecorator):
 
     """
 
-    impl = TypeEngine
-
-    def __init__(self):
-        super(Interval, self).__init__()
-        import sqlalchemy.dialects.postgres.base as pg
-        self.__supported = {pg.PGDialect:pg.PGInterval}
-        del pg
-
-    def load_dialect_impl(self, dialect):
-        if dialect.__class__ in self.__supported:
-            return self.__supported[dialect.__class__]()
-        else:
-            return dialect.type_descriptor(DateTime)
+    impl = DateTime
 
     def process_bind_param(self, value, dialect):
-        if dialect.__class__ in self.__supported:
-            return value
-        else:
-            if value is None:
-                return None
-            return dt.datetime.utcfromtimestamp(0) + value
+        if value is None:
+            return None
+        return dt.datetime.utcfromtimestamp(0) + value
 
     def process_result_value(self, value, dialect):
-        if dialect.__class__ in self.__supported:
-            return value
-        else:
-            if value is None:
-                return None
-            return value - dt.datetime.utcfromtimestamp(0)
+        if value is None:
+            return None
+        return value - dt.datetime.utcfromtimestamp(0)
 
 class FLOAT(Float):
     """The SQL FLOAT type."""

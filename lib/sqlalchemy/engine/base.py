@@ -83,6 +83,9 @@ class Dialect(object):
     supports_unicode_statements
       Indicate whether the DB-API can receive SQL statements as Python unicode strings
 
+    supports_unicode_binds
+      Indicate whether the DB-API can receive string bind parameters as Python unicode strings
+
     supports_sane_rowcount
       Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements.
 

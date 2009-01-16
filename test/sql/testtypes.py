@@ -291,7 +291,8 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         assert unicode_table.c.unicode_varchar.type.length == 250
         rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
         unicodedata = rawdata.decode('utf-8')
-        if testing.against('sqlite'):
+        
+        if testing.against('sqlite', '>' '2.4'):
             rawdata = "something"
             
         unicode_table.insert().execute(unicode_varchar=unicodedata,
@@ -300,12 +301,12 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         x = unicode_table.select().execute().fetchone()
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
+
         if isinstance(x['plain_varchar'], unicode):
             # SQLLite and MSSQL return non-unicode data as unicode
             self.assert_(testing.against('sqlite', '+pyodbc'))
             if not testing.against('sqlite'):
                 self.assert_(x['plain_varchar'] == unicodedata)
-            print "it's %s!" % testing.db.name
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
 
@@ -778,6 +779,7 @@ class IntervalTest(TestBase, AssertsExecutionResults):
     def tearDownAll(self):
         metadata.drop_all()
 
+    @testing.fails_on("+pg8000", "Not yet known how to pass values of the INTERVAL type")
     def test_roundtrip(self):
         delta = datetime.datetime(2006, 10, 5) - datetime.datetime(2005, 8, 17)
         interval_table.insert().execute(interval=delta)

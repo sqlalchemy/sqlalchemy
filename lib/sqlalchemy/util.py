@@ -265,6 +265,15 @@ else:
     def decode_slice(slc):
         return (slc.start, slc.stop, slc.step)
 
+def update_copy(d, _new=None, **kw):
+    """Copy the given dict and update with the given values."""
+    
+    d = d.copy()
+    if _new:
+        d.update(_new)
+    d.update(**kw)
+    return d
+    
 def flatten_iterator(x):
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.

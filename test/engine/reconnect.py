@@ -332,7 +332,8 @@ class InvalidateDuringResultTest(TestBase):
         meta.drop_all()
         engine.dispose()
 
-    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('+mysqldb', "Buffers the result set and doesn't check for connection close")
+    @testing.fails_on('+pg8000', "Buffers the result set and doesn't check for connection close")
     def test_invalidate_on_results(self):
         conn = engine.connect()
 
@@ -342,7 +343,7 @@ class InvalidateDuringResultTest(TestBase):
 
         engine.test_shutdown()
         try:
-            result.fetchone()
+            print "ghost result: %r" % result.fetchone()
             assert False
         except tsa.exc.DBAPIError, e:
             if not e.connection_invalidated:

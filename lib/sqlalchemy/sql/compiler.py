@@ -1021,7 +1021,7 @@ class GenericTypeCompiler(engine.TypeCompiler):
         raise NotImplementedError("Can't generate DDL for the null type")
         
     def visit_type_decorator(self, type_):
-        return self.process(type_.dialect_impl(self.dialect).impl)
+        return self.process(type_.type_engine(self.dialect))
         
     def visit_user_defined(self, type_):
         return type_.get_col_spec()

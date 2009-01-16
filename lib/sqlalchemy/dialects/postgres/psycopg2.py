@@ -39,8 +39,8 @@ from sqlalchemy.engine import base, default
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgres.base import PGDialect, PGInet, PGCidr, PGMacAddr, PGArray, \
- PGBigInteger, PGInterval
+from sqlalchemy.dialects.postgres.base import PGDialect, PGCompiler, PGInet, PGCidr, PGMacAddr, PGArray, \
+ PGBigInteger, PGInterval, colspecs
 
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -58,36 +58,11 @@ class PGNumeric(sqltypes.Numeric):
             return process
 
 
-colspecs = {
+colspecs = PGDialect.colspecs.copy()
+colspecs.update({
     sqltypes.Numeric : PGNumeric,
     sqltypes.Float: sqltypes.Float,  # prevents PGNumeric from being used
-}
-
-ischema_names = {
-    'integer' : sqltypes.Integer,
-    'bigint' : PGBigInteger,
-    'smallint' : sqltypes.SmallInteger,
-    'character varying' : sqltypes.String,
-    'character' : sqltypes.CHAR,
-    'text' : sqltypes.Text,
-    'numeric' : PGNumeric,
-    'float' : sqltypes.Float,
-    'real' : sqltypes.Float,
-    'inet': PGInet,
-    'cidr': PGCidr,
-    'macaddr': PGMacAddr,
-    'double precision' : sqltypes.Float,
-    'timestamp' : sqltypes.DateTime,
-    'timestamp with time zone' : sqltypes.DateTime,
-    'timestamp without time zone' : sqltypes.DateTime,
-    'time with time zone' : sqltypes.Time,
-    'time without time zone' : sqltypes.Time,
-    'date' : sqltypes.Date,
-    'time': sqltypes.Time,
-    'bytea' : sqltypes.Binary,
-    'boolean' : sqltypes.Boolean,
-    'interval':PGInterval,
-}
+})
 
 # TODO: filter out 'FOR UPDATE' statements
 SERVER_SIDE_CURSOR_RE = re.compile(
@@ -122,13 +97,26 @@ class Postgres_psycopg2ExecutionContext(default.DefaultExecutionContext):
         else:
             return base.ResultProxy(self)
 
+class Postgres_psycopg2Compiler(PGCompiler):
+    operators = util.update_copy(
+        PGCompiler.operators, 
+        {
+            sql_operators.mod : '%%',
+        }
+    )
+    
+    def post_process_text(self, text):
+        if '%%' in text:
+            util.warn("The SQLAlchemy postgres dialect now automatically escapes '%' in text() expressions to '%%'.")
+        return text.replace('%', '%%')
+
 class Postgres_psycopg2(PGDialect):
     driver = 'psycopg2'
     supports_unicode_statements = False
     default_paramstyle = 'pyformat'
     supports_sane_multi_rowcount = False
     execution_ctx_cls = Postgres_psycopg2ExecutionContext
-    ischema_names = ischema_names
+    statement_compiler = Postgres_psycopg2Compiler
     
     def __init__(self, server_side_cursors=False, **kwargs):
         PGDialect.__init__(self, **kwargs)

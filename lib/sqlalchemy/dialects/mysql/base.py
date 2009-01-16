@@ -1283,16 +1283,19 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
         return AUTOCOMMIT_RE.match(statement)
 
 class MySQLCompiler(compiler.SQLCompiler):
-    operators = compiler.SQLCompiler.operators.copy()
-    operators.update({
-        sql_operators.concat_op: lambda x, y: "concat(%s, %s)" % (x, y),
-        sql_operators.mod: '%%',
-        sql_operators.match_op: lambda x, y: "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (x, y)
-    })
-    functions = compiler.SQLCompiler.functions.copy()
-    functions.update ({
-        sql_functions.random: 'rand%(expr)s',
-        "utc_timestamp":"UTC_TIMESTAMP"
+    operators = util.update_copy(
+        compiler.SQLCompiler.operators,
+        {
+            sql_operators.concat_op: lambda x, y: "concat(%s, %s)" % (x, y),
+            sql_operators.match_op: lambda x, y: "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (x, y)
+        }
+    )
+
+    functions = util.update_copy(
+        compiler.SQLCompiler.functions,
+        {
+            sql_functions.random: 'rand%(expr)s',
+            "utc_timestamp":"UTC_TIMESTAMP"
         })
 
     def visit_typeclause(self, typeclause):

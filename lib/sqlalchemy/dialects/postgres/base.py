@@ -150,37 +150,68 @@ class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         return process
 
 
+colspecs = {
+    sqltypes.Interval:PGInterval
+}
+
+ischema_names = {
+    'integer' : sqltypes.Integer,
+    'bigint' : PGBigInteger,
+    'smallint' : sqltypes.SmallInteger,
+    'character varying' : sqltypes.String,
+    'character' : sqltypes.CHAR,
+    'text' : sqltypes.Text,
+    'numeric' : sqltypes.Numeric,
+    'float' : sqltypes.Float,
+    'real' : sqltypes.Float,
+    'inet': PGInet,
+    'cidr': PGCidr,
+    'macaddr': PGMacAddr,
+    'double precision' : sqltypes.Float,
+    'timestamp' : sqltypes.DateTime,
+    'timestamp with time zone' : sqltypes.DateTime,
+    'timestamp without time zone' : sqltypes.DateTime,
+    'time with time zone' : sqltypes.Time,
+    'time without time zone' : sqltypes.Time,
+    'date' : sqltypes.Date,
+    'time': sqltypes.Time,
+    'bytea' : sqltypes.Binary,
+    'boolean' : sqltypes.Boolean,
+    'interval':PGInterval,
+}
 
 
 
 class PGCompiler(compiler.SQLCompiler):
-    operators = compiler.SQLCompiler.operators.copy()
-    operators.update(
+    
+    operators = util.update_copy(
+        compiler.SQLCompiler.operators,
         {
             sql_operators.mod : '%%',
+        
             sql_operators.ilike_op: lambda x, y, escape=None: '%s ILIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
             sql_operators.notilike_op: lambda x, y, escape=None: '%s NOT ILIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
             sql_operators.match_op: lambda x, y: '%s @@ to_tsquery(%s)' % (x, y),
         }
     )
 
-    functions = compiler.SQLCompiler.functions.copy()
-    functions.update (
+    functions = util.update_copy(
+        compiler.SQLCompiler.functions,
         {
             'TIMESTAMP':lambda x:'TIMESTAMP %s' % x,
         }
     )
+
+    def post_process_text(self, text):
+        if '%%' in text:
+            util.warn("The SQLAlchemy postgres dialect now automatically escapes '%' in text() expressions to '%%'.")
+        return text.replace('%', '%%')
 
     def visit_sequence(self, seq):
         if seq.optional:
             return None
         else:
             return "nextval('%s')" % self.preparer.format_sequence(seq)
-
-    def post_process_text(self, text):
-        if '%%' in text:
-            util.warn("The SQLAlchemy postgres dialect now automatically escapes '%' in text() expressions to '%%'.")
-        return text.replace('%', '%%')
 
     def limit_clause(self, select):
         text = ""
@@ -369,7 +400,9 @@ class PGDialect(default.DefaultDialect):
     supports_default_values = True
     supports_empty_insert = False
     default_paramstyle = 'pyformat'
-
+    ischema_names = ischema_names
+    colspecs = colspecs
+    
     statement_compiler = PGCompiler
     ddl_compiler = PGDDLCompiler
     type_compiler = PGTypeCompiler
@@ -456,6 +489,9 @@ class PGDialect(default.DefaultDialect):
         if not m:
             raise AssertionError("Could not determine version from string '%s'" % v)
         return tuple([int(x) for x in m.group(1, 2, 3)])
+
+    def type_descriptor(self, typeobj):
+        return sqltypes.adapt_type(typeobj, self.colspecs)
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer

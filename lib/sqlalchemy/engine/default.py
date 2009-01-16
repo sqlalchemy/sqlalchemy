@@ -32,6 +32,8 @@ class DefaultDialect(base.Dialect):
     supports_sequences = False
     sequences_optional = False
     supports_unicode_statements = False
+    supports_unicode_binds = False
+    
     max_identifier_length = 9999
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True

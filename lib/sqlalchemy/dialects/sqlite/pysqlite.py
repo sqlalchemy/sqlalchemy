@@ -104,84 +104,12 @@ always represented by an actual database result string.
 
 """
 
-from sqlalchemy.dialects.sqlite.base import SLNumeric, SLFloat, SQLiteDialect, SLBoolean, SLDate, SLDateTime, SLTime
+from sqlalchemy.dialects.sqlite.base import SQLiteDialect
 from sqlalchemy import schema, exc, pool
 from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from types import NoneType
-
-class SLUnicodeMixin(object):
-    def bind_processor(self, dialect):
-        if self.convert_unicode or dialect.convert_unicode:
-            if self.assert_unicode is None:
-                assert_unicode = dialect.assert_unicode
-            else:
-                assert_unicode = self.assert_unicode
-                
-            if not assert_unicode:
-                return None
-                
-            def process(value):
-                if not isinstance(value, (unicode, NoneType)):
-                    if assert_unicode == 'warn':
-                        util.warn("Unicode type received non-unicode bind "
-                                  "param value %r" % value)
-                        return value
-                    else:
-                        raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
-                else:
-                    return value
-            return process
-        else:
-            return None
-
-    def result_processor(self, dialect):
-        return None
-    
-class SLText(SLUnicodeMixin, sqltypes.Text):
-    pass
-
-class SLString(SLUnicodeMixin, sqltypes.String):
-    pass
-
-class SLChar(SLUnicodeMixin, sqltypes.CHAR):
-    pass
-
-
-colspecs = {
-    sqltypes.Boolean: SLBoolean,
-    sqltypes.CHAR: SLChar,
-    sqltypes.Date: SLDate,
-    sqltypes.DateTime: SLDateTime,
-    sqltypes.Float: SLFloat,
-    sqltypes.NCHAR: SLChar,
-    sqltypes.Numeric: SLNumeric,
-    sqltypes.String: SLString,
-    sqltypes.Text: SLText,
-    sqltypes.Time: SLTime,
-}
-
-ischema_names = {
-    'BLOB': sqltypes.Binary,
-    'BOOL': SLBoolean,
-    'BOOLEAN': SLBoolean,
-    'CHAR': SLChar,
-    'DATE': SLDate,
-    'DATETIME': SLDateTime,
-    'DECIMAL': SLNumeric,
-    'FLOAT': SLNumeric,
-    'INT': sqltypes.Integer,
-    'INTEGER': sqltypes.Integer,
-    'NUMERIC': SLNumeric,
-    'REAL': SLNumeric,
-    'SMALLINT': sqltypes.SmallInteger,
-    'TEXT': SLText,
-    'TIME': SLTime,
-    'TIMESTAMP': SLDateTime,
-    'VARCHAR': SLString,
-}
-
 
 class SQLite_pysqliteExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
@@ -195,7 +123,6 @@ class SQLite_pysqlite(SQLiteDialect):
     poolclass = pool.SingletonThreadPool
     execution_ctx_cls = SQLite_pysqliteExecutionContext
     driver = 'pysqlite'
-    ischema_names = ischema_names
     
     def __init__(self, **kwargs):
         SQLiteDialect.__init__(self, **kwargs)
@@ -245,9 +172,6 @@ class SQLite_pysqlite(SQLiteDialect):
         util.coerce_kw_type(opts, 'cached_statements', int)
 
         return ([filename], opts)
-
-    def type_descriptor(self, typeobj):
-        return sqltypes.adapt_type(typeobj, colspecs)
 
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)

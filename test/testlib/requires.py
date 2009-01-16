@@ -98,6 +98,7 @@ def two_phase_transactions(fn):
         fn,
         no_support('access', 'not supported by database'),
         no_support('firebird', 'no SA implementation'),
+        no_support('+pg8000', 'FIXME: not sure how to accomplish'),
         no_support('maxdb', 'not supported by database'),
         no_support('mssql', 'FIXME: guessing, needs confirmation'),
         no_support('oracle', 'no SA implementation'),

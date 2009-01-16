@@ -136,6 +136,36 @@ class SLBoolean(sqltypes.Boolean):
             return value and True or False
         return process
 
+colspecs = {
+    sqltypes.Boolean: SLBoolean,
+    sqltypes.Date: SLDate,
+    sqltypes.DateTime: SLDateTime,
+    sqltypes.Float: SLFloat,
+    sqltypes.Numeric: SLNumeric,
+    sqltypes.Time: SLTime,
+}
+
+ischema_names = {
+    'BLOB': sqltypes.Binary,
+    'BOOL': sqltypes.Boolean,
+    'BOOLEAN': sqltypes.Boolean,
+    'CHAR': sqltypes.CHAR,
+    'DATE': sqltypes.Date,
+    'DATETIME': sqltypes.DateTime,
+    'DECIMAL': sqltypes.Numeric,
+    'FLOAT': sqltypes.Numeric,
+    'INT': sqltypes.Integer,
+    'INTEGER': sqltypes.Integer,
+    'NUMERIC': sqltypes.Numeric,
+    'REAL': sqltypes.Numeric,
+    'SMALLINT': sqltypes.SmallInteger,
+    'TEXT': sqltypes.Text,
+    'TIME': sqltypes.Time,
+    'TIMESTAMP': sqltypes.DateTime,
+    'VARCHAR': sqltypes.String,
+}
+
+
 
 class SQLiteCompiler(compiler.SQLCompiler):
     functions = compiler.SQLCompiler.functions.copy()
@@ -216,6 +246,7 @@ class SQLiteDialect(default.DefaultDialect):
     name = 'sqlite'
     supports_alter = False
     supports_unicode_statements = True
+    supports_unicode_binds = True
     supports_default_values = True
     supports_empty_insert = False
     supports_cast = True
@@ -224,6 +255,10 @@ class SQLiteDialect(default.DefaultDialect):
     ddl_compiler = SQLiteDDLCompiler
     type_compiler = SQLiteTypeCompiler
     preparer = SQLiteIdentifierPreparer
+    ischema_names = ischema_names
+
+    def type_descriptor(self, typeobj):
+        return sqltypes.adapt_type(typeobj, colspecs)
 
     def table_names(self, connection, schema):
         if schema is not None:
