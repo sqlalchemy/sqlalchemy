@@ -58,12 +58,6 @@ class PGNumeric(sqltypes.Numeric):
             return process
 
 
-colspecs = PGDialect.colspecs.copy()
-colspecs.update({
-    sqltypes.Numeric : PGNumeric,
-    sqltypes.Float: sqltypes.Float,  # prevents PGNumeric from being used
-})
-
 # TODO: filter out 'FOR UPDATE' statements
 SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
@@ -117,6 +111,15 @@ class Postgres_psycopg2(PGDialect):
     supports_sane_multi_rowcount = False
     execution_ctx_cls = Postgres_psycopg2ExecutionContext
     statement_compiler = Postgres_psycopg2Compiler
+
+    colspecs = util.update_copy(
+        PGDialect.colspecs,
+        {
+            sqltypes.Numeric : PGNumeric,
+            sqltypes.Float: sqltypes.Float,  # prevents PGNumeric from being used
+        }
+    )
+
     
     def __init__(self, server_side_cursors=False, **kwargs):
         PGDialect.__init__(self, **kwargs)
@@ -133,9 +136,6 @@ class Postgres_psycopg2(PGDialect):
             opts['port'] = int(opts['port'])
         opts.update(url.query)
         return ([], opts)
-
-    def type_descriptor(self, typeobj):
-        return sqltypes.adapt_type(typeobj, colspecs)
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):

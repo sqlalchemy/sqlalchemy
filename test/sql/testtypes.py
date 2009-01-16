@@ -292,7 +292,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
         unicodedata = rawdata.decode('utf-8')
         
-        if testing.against('sqlite', '>' '2.4'):
+        if testing.db.dialect.supports_unicode_binds:
             rawdata = "something"
             
         unicode_table.insert().execute(unicode_varchar=unicodedata,
@@ -303,10 +303,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
 
         if isinstance(x['plain_varchar'], unicode):
-            # SQLLite and MSSQL return non-unicode data as unicode
-            self.assert_(testing.against('sqlite', '+pyodbc'))
-            if not testing.against('sqlite'):
-                self.assert_(x['plain_varchar'] == unicodedata)
+            assert testing.db.dialect.supports_unicode_binds
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
 
@@ -315,7 +312,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
 
         rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
         unicodedata = rawdata.decode('utf-8')
-        if testing.against('sqlite'):
+        if testing.db.dialect.supports_unicode_binds:
             rawdata = "something"
         unicode_table.insert().execute(unicode_varchar=unicodedata,
                                        unicode_text=unicodedata,
@@ -325,20 +322,16 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
 
     def test_assertions(self):
-        try:
-            unicode_table.insert().execute(unicode_varchar='not unicode')
-            assert False
-        except exc.SAWarning, e:
-            assert str(e) == "Unicode type received non-unicode bind param value 'not unicode'", str(e)
+        self.assertRaisesMessage(exc.SAWarning, "Unicode type received non-unicode bind param value 'not unicode'", 
+            unicode_table.insert().execute, unicode_varchar='not unicode'
+        )
 
         unicode_engine = engines.utf8_engine(options={'convert_unicode':True,
                                                       'assert_unicode':True})
         try:
-            try:
-                unicode_engine.execute(unicode_table.insert(), plain_varchar='im not unicode')
-                assert False
-            except exc.InvalidRequestError, e:
-                assert str(e) == "Unicode type received non-unicode bind param value 'im not unicode'"
+            self.assertRaisesMessage(exc.InvalidRequestError, "Unicode type received non-unicode bind param value 'im not unicode'", 
+                unicode_engine.execute, unicode_table.insert(), plain_varchar='im not unicode'
+            )
 
             @testing.emits_warning('.*non-unicode bind')
             def warns():
@@ -357,6 +350,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
 
     def test_engine_parameter(self):
         """tests engine-wide unicode conversion"""
+        
         prev_unicode = testing.db.engine.dialect.convert_unicode
         prev_assert = testing.db.engine.dialect.assert_unicode
         try:
@@ -364,7 +358,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             testing.db.engine.dialect.assert_unicode = False
             rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
             unicodedata = rawdata.decode('utf-8')
-            if testing.against('sqlite', 'mssql'):
+            if testing.db.dialect.supports_unicode_binds:
                 rawdata = "something"
             unicode_table.insert().execute(unicode_varchar=unicodedata,
                                            unicode_text=unicodedata,
@@ -376,7 +370,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             print 3, repr(x['plain_varchar'])
             self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
             self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
-            if not testing.against('sqlite', 'mssql'):
+            if not testing.db.dialect.supports_unicode_binds:
                 self.assert_(isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == unicodedata)
         finally:
             testing.db.engine.dialect.convert_unicode = prev_unicode

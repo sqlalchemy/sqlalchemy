@@ -8,9 +8,9 @@ URLs are of the form `postgres+pg8000://user@password@host:port/dbname[?key=valu
 Unicode
 -------
 
-Unicode data which contains non-ascii characters don't seem to be supported yet.  non-ascii
-schema identifiers though *are* supported, if you set the client_encoding=utf8 in the postgresql.conf 
-file.
+pg8000 requires that the postgres client encoding be configured in the postgresql.conf file
+in order to use encodings other than ascii.  Set this value to the same value as 
+the "encoding" parameter on create_engine(), usually "utf-8".
 
 Interval
 --------
@@ -52,13 +52,18 @@ class Postgres_pg8000(PGDialect):
 
     supports_unicode_statements = False #True
     
-    # this one doesn't matter, cant pass non-ascii through
-    # pending further investigation
-    supports_unicode_binds = False #True
+    supports_unicode_binds = True
     
     default_paramstyle = 'format'
     supports_sane_multi_rowcount = False
     execution_ctx_cls = Postgres_pg8000ExecutionContext
+    colspecs = util.update_copy(
+        PGDialect.colspecs,
+        {
+            sqltypes.Numeric : PGNumeric,
+            sqltypes.Float: sqltypes.Float,  # prevents PGNumeric from being used
+        }
+    )
     
     @classmethod
     def dbapi(cls):
