@@ -128,6 +128,9 @@ CHANGES
       properly.
 
 - mssql
+    - Corrected handling of large decimal values with more robust
+      tests. Removed string manipulation on floats. [ticket:1280]
+
     - Modified the do_begin handling in mssql to use the Cursor not
       the Connection so it is DBAPI compatible.
 
