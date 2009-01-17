@@ -12,6 +12,10 @@ class PyODBCConnector(Connector):
     supports_unicode_statements = supports_unicode
     default_paramstyle = 'named'
     
+    # for non-DSN connections, this should
+    # hold the desired driver name
+    pyodbc_driver_name = None
+    
     @classmethod
     def dbapi(cls):
         return __import__('pyodbc')
@@ -34,7 +38,7 @@ class PyODBCConnector(Connector):
                 if 'port' in keys and not 'port' in query:
                     port = ',%d' % int(keys.pop('port'))
 
-                connectors = ["DRIVER={%s}" % keys.pop('driver'),
+                connectors = ["DRIVER={%s}" % keys.pop('driver', self.pyodbc_driver_name),
                               'Server=%s%s' % (keys.pop('host', ''), port),
                               'Database=%s' % keys.pop('database', '') ]
 

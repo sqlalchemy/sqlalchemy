@@ -16,4 +16,5 @@ core behavior.
     orderinglist
     serializer
     sqlsoup
+    compiler
 

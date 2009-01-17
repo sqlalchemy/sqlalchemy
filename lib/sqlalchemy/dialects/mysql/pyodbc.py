@@ -12,6 +12,8 @@ class MySQL_pyodbcExecutionContext(MySQLExecutionContext):
 class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
     supports_unicode_statements = False
     execution_ctx_cls = MySQL_pyodbcExecutionContext
+
+    pyodbc_driver_name = "MySQL"
     
     def __init__(self, **kw):
         # deal with http://code.google.com/p/pyodbc/issues/detail?id=25
