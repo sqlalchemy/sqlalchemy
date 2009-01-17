@@ -8,6 +8,10 @@ CHANGES
 ========
 
 - orm
+    - Removed an internal join cache which could potentially leak 
+      memory when issuing query.join() repeatedly to ad-hoc 
+      selectables.
+  
     - Modernized the "no mapped table" exception and added a more
       explicit __table__/__tablename__ exception to declarative.
 

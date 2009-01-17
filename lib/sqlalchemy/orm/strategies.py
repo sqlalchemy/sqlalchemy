@@ -594,7 +594,6 @@ class EagerLoader(AbstractRelationLoader):
     
     def init(self):
         super(EagerLoader, self).init()
-        self.clauses = {}
         self.join_depth = self.parent_property.join_depth
 
     def init_class_attribute(self):
@@ -669,14 +668,8 @@ class EagerLoader(AbstractRelationLoader):
     
         towrap = context.eager_joins.setdefault(entity_key, default_towrap)
     
-        # create AliasedClauses object to build up the eager query.  this is cached after 1st creation.
-        # this also allows ORMJoin to cache the aliased joins it produces since we pass the same
-        # args each time in the typical case.
-        path_key = util.WeakCompositeKey(*path)
-        try:
-            clauses = self.clauses[path_key]
-        except KeyError:
-            self.clauses[path_key] = clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
+        # create AliasedClauses object to build up the eager query.  
+        clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
                     equivalents=self.mapper._equivalent_columns)
 
         if adapter:

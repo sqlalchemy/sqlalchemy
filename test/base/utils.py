@@ -4,7 +4,6 @@ from sqlalchemy import util, sql, exc
 from testlib import TestBase
 from testlib.testing import eq_, is_, ne_
 
-
 class OrderedDictTest(TestBase):
     def test_odict(self):
         o = util.OrderedDict()
@@ -943,5 +942,6 @@ class TestClassHierarchy(TestBase):
         eq_(set(util.class_hierarchy(Mixin)), set())
         eq_(set(util.class_hierarchy(A)), set((A, B, object)))
 
+        
 if __name__ == "__main__":
     testenv.main()

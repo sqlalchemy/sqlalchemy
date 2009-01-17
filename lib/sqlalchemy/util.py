@@ -1178,38 +1178,6 @@ class _TLocalRegistry(ScopedRegistry):
         except AttributeError:
             pass
 
-class WeakCompositeKey(object):
-    """an weak-referencable, hashable collection which is strongly referenced
-    until any one of its members is garbage collected.
-
-    """
-    keys = set()
-
-    __slots__ = 'args', '__weakref__'
-    
-    def __init__(self, *args):
-        self.args = [self.__ref(arg) for arg in args]
-        WeakCompositeKey.keys.add(self)
-
-    def __ref(self, arg):
-        if isinstance(arg, type):
-            return weakref.ref(arg, self.__remover)
-        else:
-            return lambda: arg
-
-    def __remover(self, wr):
-        WeakCompositeKey.keys.discard(self)
-
-    def __hash__(self):
-        return hash(tuple(self))
-
-    def __cmp__(self, other):
-        return cmp(tuple(self), tuple(other))
-
-    def __iter__(self):
-        return iter(arg() for arg in self.args)
-
-
 class _symbol(object):
     def __init__(self, name):
         """Construct a new named symbol."""
