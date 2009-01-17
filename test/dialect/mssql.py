@@ -234,7 +234,7 @@ class GenerativeQueryTest(TestBase):
 
         sess = create_session(bind=testing.db)
         for i in range(100):
-            sess.save(Foo(bar=i, range=i%10))
+            sess.add(Foo(bar=i, range=i%10))
         sess.flush()
 
     def tearDownAll(self):

@@ -791,32 +791,32 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         foo = Foo()
         foo.id = 1
         foo.intarr = [1,2,3]
-        sess.save(foo)
+        sess.add(foo)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         foo = sess.query(Foo).get(1)
         self.assertEquals(foo.intarr, [1,2,3])
 
         foo.intarr.append(4)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         foo = sess.query(Foo).get(1)
         self.assertEquals(foo.intarr, [1,2,3,4])
 
         foo.intarr = []
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(foo.intarr, [])
 
         foo.intarr = None
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(foo.intarr, None)
 
         # Errors in r4217:
         foo = Foo()
         foo.id = 2
-        sess.save(foo)
+        sess.add(foo)
         sess.flush()
 
 class TimeStampTest(TestBase, AssertsExecutionResults):
