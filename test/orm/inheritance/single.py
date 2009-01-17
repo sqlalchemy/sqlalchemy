@@ -227,7 +227,7 @@ class RelationToSingleTest(MappedTest):
         e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed', company=c1)
         sess.add_all([c1, c2, m1, m2, e1, e2])
         sess.commit()
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(
             sess.query(Company).filter(Company.employees.of_type(JuniorEngineer).any()).all(),
             [
@@ -269,7 +269,7 @@ class RelationToSingleTest(MappedTest):
         self.assertEquals(c1.engineers, [e2])
         self.assertEquals(c2.engineers, [e1])
         
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(Company).order_by(Company.name).all(), 
             [
                 Company(name='c1', engineers=[JuniorEngineer(name='Ed')]),
@@ -278,7 +278,7 @@ class RelationToSingleTest(MappedTest):
         )
 
         # eager load join should limit to only "Engineer"
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(Company).options(eagerload('engineers')).order_by(Company.name).all(), 
             [
                 Company(name='c1', engineers=[JuniorEngineer(name='Ed')]),
@@ -287,7 +287,7 @@ class RelationToSingleTest(MappedTest):
        )
 
         # join() to Company.engineers, Employee as the requested entity
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(Company, Employee).join(Company.engineers).order_by(Company.name).all(),
             [
                 (Company(name='c1'), JuniorEngineer(name='Ed')),
@@ -297,7 +297,7 @@ class RelationToSingleTest(MappedTest):
         
         # join() to Company.engineers, Engineer as the requested entity.
         # this actually applies the IN criterion twice which is less than ideal.
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(Company, Engineer).join(Company.engineers).order_by(Company.name).all(),
             [
                 (Company(name='c1'), JuniorEngineer(name='Ed')),
@@ -306,7 +306,7 @@ class RelationToSingleTest(MappedTest):
         )
 
         # join() to Company.engineers without any Employee/Engineer entity
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(Company).join(Company.engineers).filter(Engineer.name.in_(['Tom', 'Kurt'])).all(),
             [
                 Company(name='c2')
@@ -321,7 +321,7 @@ class RelationToSingleTest(MappedTest):
         # section to "inheritance" laying out all the various behaviors Query has.
         @testing.fails_on_everything_except()
         def go():
-            sess.clear()
+            sess.expunge_all()
             self.assertEquals(sess.query(Company).\
                 filter(Company.company_id==Engineer.company_id).filter(Engineer.name.in_(['Tom', 'Kurt'])).all(),
                 [
@@ -359,29 +359,29 @@ class SingleOnJoinedTest(ORMTest):
         mapper(Manager, inherits=Employee,polymorphic_identity='manager')
         
         sess = create_session()
-        sess.save(Person(name='p1'))
-        sess.save(Employee(name='e1', employee_data='ed1'))
-        sess.save(Manager(name='m1', employee_data='ed2', manager_data='md1'))
+        sess.add(Person(name='p1'))
+        sess.add(Employee(name='e1', employee_data='ed1'))
+        sess.add(Manager(name='m1', employee_data='ed2', manager_data='md1'))
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         
         self.assertEquals(sess.query(Person).order_by(Person.person_id).all(), [
             Person(name='p1'),
             Employee(name='e1', employee_data='ed1'),
             Manager(name='m1', employee_data='ed2', manager_data='md1')
         ])
-        sess.clear()
+        sess.expunge_all()
 
         self.assertEquals(sess.query(Employee).order_by(Person.person_id).all(), [
             Employee(name='e1', employee_data='ed1'),
             Manager(name='m1', employee_data='ed2', manager_data='md1')
         ])
-        sess.clear()
+        sess.expunge_all()
 
         self.assertEquals(sess.query(Manager).order_by(Person.person_id).all(), [
             Manager(name='m1', employee_data='ed2', manager_data='md1')
         ])
-        sess.clear()
+        sess.expunge_all()
         
         def go():
             self.assertEquals(sess.query(Person).with_polymorphic('*').order_by(Person.person_id).all(), [

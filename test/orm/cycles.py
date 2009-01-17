@@ -80,7 +80,7 @@ class SelfReferentialTest(_base.MappedTest):
         sess = create_session()
         sess.add(c1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         c1 = sess.query(C1).get(c1.c1)
         c2 = C1()
         c2.parent = c1
@@ -141,7 +141,7 @@ class SelfReferentialNoPKTest(_base.MappedTest):
         s = create_session()
         s.add(t1)
         s.flush()
-        s.clear()
+        s.expunge_all()
         t = s.query(TT).filter_by(id=t1.id).one()
         eq_(t.children[0].parent_uuid, t1.uuid)
 
@@ -153,7 +153,7 @@ class SelfReferentialNoPKTest(_base.MappedTest):
         t1.children.append(t2)
         s.add(t1)
         s.flush()
-        s.clear()
+        s.expunge_all()
 
         t = s.query(TT).filter_by(id=t2.id).one()
         eq_(t.uuid, t2.uuid)
@@ -207,7 +207,7 @@ class InheritTestOne(_base.MappedTest):
         c1.child1_data = "qwerty"
         session.add(c1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         c1 = session.query(Child1).filter_by(child1_data="qwerty").one()
         c2 = Child2()
@@ -831,7 +831,7 @@ class SelfReferentialPostUpdateTest2(_base.MappedTest):
         # to fire off anyway
         session.add(f2)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         f1 = session.query(A).get(f1.id)
         f2 = session.query(A).get(f2.id)

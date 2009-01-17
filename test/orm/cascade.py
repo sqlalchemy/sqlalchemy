@@ -31,7 +31,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
                  Order(description='someotherorder')])
         sess.add(u)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         u = sess.query(User).get(u.id)
         eq_(u, User(name='jack',
@@ -40,7 +40,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
 
         u.orders=[Order(description="order 3"), Order(description="order 4")]
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         u = sess.query(User).get(u.id)
         eq_(u, User(name='jack',
@@ -82,7 +82,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
                             Address(email_address="address2")])
         sess.add(u)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         assert addresses.count().scalar() == 2
         assert users.count().scalar() == 1
 
@@ -116,7 +116,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         u2 = User(name='newuser', orders=[o])
         sess.add(u2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         assert users.count().scalar() == 1
         assert orders.count().scalar() == 1
         eq_(sess.query(User).all(),
@@ -231,7 +231,7 @@ class NoSaveCascadeTest(_fixtures.FixtureTest):
         assert u1 not in sess
         assert o1 in sess
         
-        sess.clear()
+        sess.expunge_all()
         
         o1 = Order()
         u1 = User(orders=[o1])
@@ -255,7 +255,7 @@ class NoSaveCascadeTest(_fixtures.FixtureTest):
         assert o1 not in sess
         assert u1 in sess
         
-        sess.clear()
+        sess.expunge_all()
 
         u1 = User()
         o1 = Order()
@@ -280,7 +280,7 @@ class NoSaveCascadeTest(_fixtures.FixtureTest):
         assert i1 in sess
         assert k1 not in sess
         
-        sess.clear()
+        sess.expunge_all()
         
         i1 = Item()
         k1 = Keyword()
@@ -383,12 +383,12 @@ class M2OCascadeTest(_base.MappedTest):
         jack = sess.query(User).filter_by(name="jack").one()
         p = jack.pref
         e = jack.pref.extra[0]
-        sess.clear()
+        sess.expunge_all()
 
         jack.pref = None
-        sess.update(jack)
-        sess.update(p)
-        sess.update(e)
+        sess.add(jack)
+        sess.add(p)
+        sess.add(e)
         assert p in sess
         assert e in sess
         sess.flush()
@@ -840,7 +840,7 @@ class UnsavedOrphansTest(_base.MappedTest):
         u.addresses.remove(a1)
         assert a1 in s
         s.flush()
-        s.clear()
+        s.expunge_all()
         eq_(s.query(Address).all(), [Address(email_address='ad1')])
 
 
@@ -1008,7 +1008,7 @@ class DoubleParentOrphanTest(_base.MappedTest):
         b1 = Business(description='business1', address=Address(street='address2'))
         session.add_all((h1,b1))
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         eq_(session.query(Home).get(h1.id), Home(description='home1', address=Address(street='address1')))
         eq_(session.query(Business).get(b1.id), Business(description='business1', address=Address(street='address2')))
@@ -1066,7 +1066,7 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
         sess.add(a1)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(A).get(a1.id),
             A(name='a1', bs=[B(name='b1'), B(name='b2'), B(name='b3')]))
@@ -1078,7 +1078,7 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
         a1.bs[1].foo='b3modified'
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
         eq_(sess.query(A).get(a1.id),
             A(name='a1', bs=[B(name='b1'), B(name='b2'), B(name='b3')]))
 

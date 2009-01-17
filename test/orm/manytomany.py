@@ -105,7 +105,7 @@ class M2MTest(_base.MappedTest):
         p3.places.append(p4)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
         l = sess.query(Place).order_by(place.c.place_id).all()
         (p1, p2, p3, p4, p5, p6, p7) = l
         assert p1.places == [p2,p3,p5]
@@ -146,7 +146,7 @@ class M2MTest(_base.MappedTest):
         sess.add(tran)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
         r = sess.query(Transition).all()
         self.assert_unordered_result(r, Transition,
             {'name': 'transition1',
@@ -227,7 +227,7 @@ class M2MTest2(_base.MappedTest):
         self.assert_(len(c1.students) == 1)
         sess.add(s1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         s = sess.query(Student).filter_by(name='Student1').one()
         c = sess.query(Course).filter_by(name='Course3').one()
         self.assert_(len(s.courses) == 3)

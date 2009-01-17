@@ -57,7 +57,7 @@ class NaturalPKTest(_base.MappedTest):
 
         assert sess.query(User).get('jack') is None
 
-        sess.clear()
+        sess.expunge_all()
         u1 = sess.query(User).get('ed')
         self.assertEquals(User(username='ed', fullname='jack'), u1)
 
@@ -80,7 +80,7 @@ class NaturalPKTest(_base.MappedTest):
         sess.expire(u1)
         self.assertRaises(sa.orm.exc.ObjectDeletedError, getattr, u1, 'username')
 
-        sess.clear()
+        sess.expunge_all()
         assert sess.query(User).get('jack') is None
         assert sess.query(User).get('ed').fullname == 'jack'
 
@@ -97,7 +97,7 @@ class NaturalPKTest(_base.MappedTest):
         sess.expire(u1)
         u1.username = 'ed'
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         assert sess.query(User).get('ed').fullname == 'jack'
         
 
@@ -129,7 +129,7 @@ class NaturalPKTest(_base.MappedTest):
         sess.flush()
         assert u1.addresses[0].username == 'ed'
 
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals([Address(username='ed'), Address(username='ed')], sess.query(Address).all())
 
         u1 = sess.query(User).get('ed')
@@ -140,14 +140,14 @@ class NaturalPKTest(_base.MappedTest):
             self.assert_sql_count(testing.db, go, 4) # test passive_updates=False; load addresses, update user, update 2 addresses
         else:
             self.assert_sql_count(testing.db, go, 1) # test passive_updates=True; update user
-        sess.clear()
+        sess.expunge_all()
         assert User(username='jack', addresses=[Address(username='jack'), Address(username='jack')]) == sess.query(User).get('jack')
 
         u1 = sess.query(User).get('jack')
         u1.addresses = []
         u1.username = 'fred'
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         assert sess.query(Address).get('jack1').username is None
         u1 = sess.query(User).get('fred')
         self.assertEquals(User(username='fred', fullname='jack'), u1)
@@ -195,7 +195,7 @@ class NaturalPKTest(_base.MappedTest):
         self.assert_sql_count(testing.db, go, 0)
 
         assert a1.username == a2.username == 'ed'
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals([Address(username='ed'), Address(username='ed')], sess.query(Address).all())
 
     @testing.fails_on('sqlite', 'FIXME: unknown')
@@ -234,7 +234,7 @@ class NaturalPKTest(_base.MappedTest):
         else:
             self.assert_sql_count(testing.db, go, 3)
         self.assertEquals([Address(username='ed'), Address(username='ed')], [ad1, ad2])
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals([Address(username='ed'), Address(username='ed')], sess.query(Address).all())
 
         u1 = sess.query(User).get('ed')
@@ -248,7 +248,7 @@ class NaturalPKTest(_base.MappedTest):
             self.assert_sql_count(testing.db, go, 1)
         else:
             self.assert_sql_count(testing.db, go, 3)
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals([Address(username='fred'), Address(username='fred')], sess.query(Address).all())
 
 
@@ -296,14 +296,14 @@ class NaturalPKTest(_base.MappedTest):
             sess.flush()
         self.assert_sql_count(testing.db, go, 0)
 
-        sess.clear()
+        sess.expunge_all()
         r = sess.query(Item).all()
         self.assertEquals(Item(itemname='item1'), r[0])
         self.assertEquals(['jack'], [u.username for u in r[0].users])
         self.assertEquals(Item(itemname='item2'), r[1])
         self.assertEquals(['ed', 'jack'], sorted([u.username for u in r[1].users]))
         
-        sess.clear()
+        sess.expunge_all()
         u2 = sess.query(User).get(u2.username)
         u2.username='wendy'
         sess.flush()
@@ -400,7 +400,7 @@ class NonPKCascadeTest(_base.MappedTest):
         assert u1.addresses[0].username == 'ed'
         self.assertEquals(sa.select([addresses.c.username]).execute().fetchall(), [('ed',), ('ed',)])
 
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals([Address(username='ed'), Address(username='ed')], sess.query(Address).all())
 
         u1 = sess.query(User).get(u1.id)
@@ -411,15 +411,15 @@ class NonPKCascadeTest(_base.MappedTest):
             self.assert_sql_count(testing.db, go, 4) # test passive_updates=False; load addresses, update user, update 2 addresses
         else:
             self.assert_sql_count(testing.db, go, 1) # test passive_updates=True; update user
-        sess.clear()
+        sess.expunge_all()
         assert User(username='jack', addresses=[Address(username='jack'), Address(username='jack')]) == sess.query(User).get(u1.id)
-        sess.clear()
+        sess.expunge_all()
 
         u1 = sess.query(User).get(u1.id)
         u1.addresses = []
         u1.username = 'fred'
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         a1 = sess.query(Address).get(a1.id)
         self.assertEquals(a1.username, None)
 

@@ -54,7 +54,7 @@ class ExpireTest(_fixtures.FixtureTest):
         mapper(User, users)
         s = create_session()
         u = s.query(User).get(7)
-        s.clear()
+        s.expunge_all()
 
         self.assertRaisesMessage(sa.exc.InvalidRequestError, r"is not persistent within this Session", s.expire, u)
 
@@ -162,7 +162,7 @@ class ExpireTest(_fixtures.FixtureTest):
             u.name = 'somenewname'
         self.assert_sql_count(testing.db, go, 0)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         assert sess.query(User).get(7).name == 'somenewname'
 
     @testing.resolve_artifact_names
@@ -585,7 +585,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sa.orm.clear_mappers()
 
         mapper(Order, orders)
-        sess.clear()
+        sess.expunge_all()
 
         # same tests, using deferred at the options level
         o = sess.query(Order).options(sa.orm.defer('description')).get(3)
@@ -780,7 +780,7 @@ class RefreshTest(_fixtures.FixtureTest):
         mapper(User, users)
         s = create_session()
         u = s.query(User).get(7)
-        s.clear()
+        s.expunge_all()
         self.assertRaisesMessage(sa.exc.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
 
     @testing.resolve_artifact_names
@@ -844,7 +844,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
         s.add(u)
         s.flush()
-        s.clear()
+        s.expunge_all()
         u = s.query(User).filter(User.name=='Justin').one()
 
         s.expire(u)

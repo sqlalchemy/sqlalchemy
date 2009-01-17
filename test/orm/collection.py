@@ -1373,7 +1373,7 @@ class DictHelpersTest(_base.MappedTest):
         session.add(p)
         session.flush()
         pid = p.id
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Parent).get(pid)
 
@@ -1385,7 +1385,7 @@ class DictHelpersTest(_base.MappedTest):
             Child('foo', 'newvalue'))
 
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Parent).get(pid)
 
@@ -1394,7 +1394,7 @@ class DictHelpersTest(_base.MappedTest):
 
         self.assert_(len(list(collections.collection_adapter(p.children))) == 2)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Parent).get(pid)
         self.assert_(len(list(collections.collection_adapter(p.children))) == 2)
@@ -1404,7 +1404,7 @@ class DictHelpersTest(_base.MappedTest):
 
         self.assert_(len(list(collections.collection_adapter(p.children))) == 1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Parent).get(pid)
         self.assert_(len(list(collections.collection_adapter(p.children))) == 1)
@@ -1412,7 +1412,7 @@ class DictHelpersTest(_base.MappedTest):
         del p.children['bar']
         self.assert_(len(list(collections.collection_adapter(p.children))) == 0)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Parent).get(pid)
         self.assert_(len(list(collections.collection_adapter(p.children))) == 0)
@@ -1434,7 +1434,7 @@ class DictHelpersTest(_base.MappedTest):
         session.add(p)
         session.flush()
         pid = p.id
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Parent).get(pid)
 
@@ -1445,7 +1445,7 @@ class DictHelpersTest(_base.MappedTest):
             Child('foo', '1', 'newvalue'))
 
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Parent).get(pid)
 
@@ -1562,7 +1562,7 @@ class CustomCollectionsTest(_base.MappedTest):
         sess = create_session()
         sess.add(f)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         f = sess.query(Foo).get(f.col1)
         assert len(list(f.bars)) == 2
         f.bars.clear()
@@ -1594,7 +1594,7 @@ class CustomCollectionsTest(_base.MappedTest):
         sess = create_session()
         sess.add(f)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         f = sess.query(Foo).get(f.col1)
         assert len(list(f.bars)) == 2
         f.bars.clear()
@@ -1622,7 +1622,7 @@ class CustomCollectionsTest(_base.MappedTest):
         sess = create_session()
         sess.add(f)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         f = sess.query(Foo).get(f.col1)
         assert len(list(f.bars)) == 2
 
@@ -1632,7 +1632,7 @@ class CustomCollectionsTest(_base.MappedTest):
         col.append_with_event(Bar('b'))
         f.bars['a'] = Bar('a')
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         f = sess.query(Foo).get(f.col1)
         assert len(list(f.bars)) == 2
 
@@ -1807,7 +1807,7 @@ class CustomCollectionsTest(_base.MappedTest):
         sess = create_session()
         sess.add(p1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         p2 = sess.query(Parent).get(p1.col1)
         o = list(p2.children)

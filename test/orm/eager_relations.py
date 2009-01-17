@@ -32,7 +32,7 @@ class EagerTest(_fixtures.FixtureTest):
         sess.query(User).all()
         m.add_property("addresses", relation(mapper(Address, addresses)))
         
-        sess.clear()
+        sess.expunge_all()
         def go():
             eq_(
                [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])],
@@ -163,7 +163,7 @@ class EagerTest(_fixtures.FixtureTest):
             sess.query(Address).filter(Address.id.in_([1, 4, 5])),
             sess.query(Address).filter(Address.id.in_([1, 4, 5])).limit(3)
         ]:
-            sess.clear()
+            sess.expunge_all()
             eq_(q.all(),
                 [Address(id=1, user=User(id=7)),
                  Address(id=4, user=User(id=8)),
@@ -193,12 +193,12 @@ class EagerTest(_fixtures.FixtureTest):
             sess.query(User).filter(User.id==7),
             sess.query(User).filter(User.id==7).limit(1)
         ]:
-            sess.clear()
+            sess.expunge_all()
             eq_(q.all(),
                 [User(id=7, addresses=[Address(id=1)])]
             )
 
-        sess.clear()
+        sess.expunge_all()
         u = sess.query(User).get(7)
         def go():
             assert u.addresses[0].user_id==7
@@ -215,7 +215,7 @@ class EagerTest(_fixtures.FixtureTest):
             'dingalings':relation(Dingaling, lazy=False)})
         mapper(Dingaling, dingalings, properties={
             'address_id':deferred(dingalings.c.address_id)})
-        sess.clear()
+        sess.expunge_all()
         def go():
             u = sess.query(User).get(8)
             eq_(User(id=8,
@@ -618,7 +618,7 @@ class EagerTest(_fixtures.FixtureTest):
             self.assertEquals(o1.address, None)
         self.assert_sql_count(testing.db, go, 2)
         
-        sess.clear()
+        sess.expunge_all()
         def go():
             o1 = sess.query(Order).filter(Order.id==5).one()
             self.assertEquals(o1.address, None)
@@ -810,7 +810,7 @@ class AddEntityTest(_fixtures.FixtureTest):
             eq_(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 6)
 
-        sess.clear()
+        sess.expunge_all()
         def go():
             ret = sess.query(User, oalias).options(eagerload('addresses'), eagerload(oalias.items)).join(('orders', oalias)).order_by(User.id, oalias.id).all()
             eq_(ret, self._assert_result())
@@ -890,9 +890,9 @@ class SelfReferentialEagerTest(_base.MappedTest):
         n1.children[1].append(Node(data='n121'))
         n1.children[1].append(Node(data='n122'))
         n1.children[1].append(Node(data='n123'))
-        sess.save(n1)
+        sess.add(n1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').first()
             assert Node(data='n1', children=[
@@ -924,9 +924,9 @@ class SelfReferentialEagerTest(_base.MappedTest):
         n1.children[1].append(Node(data='n121'))
         n1.children[1].append(Node(data='n122'))
         n1.children[1].append(Node(data='n123'))
-        sess.save(n1)
+        sess.add(n1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         # eager load with join depth 1.  when eager load of 'n1' hits the
         # children of 'n12', no columns are present, eager loader degrades to
@@ -961,9 +961,9 @@ class SelfReferentialEagerTest(_base.MappedTest):
         n1 = Node(data='n1')
         n1.append(Node(data='n11'))
         n1.append(Node(data='n12'))
-        sess.save(n1)
+        sess.add(n1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             self.assertEquals( 
@@ -972,13 +972,13 @@ class SelfReferentialEagerTest(_base.MappedTest):
                 )
         self.assert_sql_count(testing.db, go, 4)
 
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             assert Node(data='n1', children=[Node(data='n11'), Node(data='n12')]) == sess.query(Node).options(undefer('data')).order_by(Node.id).first()
         self.assert_sql_count(testing.db, go, 3)
 
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             assert Node(data='n1', children=[Node(data='n11'), Node(data='n12')]) == sess.query(Node).options(undefer('data'), undefer('children.data')).first()
@@ -1002,9 +1002,9 @@ class SelfReferentialEagerTest(_base.MappedTest):
         n1.children[1].append(Node(data='n121'))
         n1.children[1].append(Node(data='n122'))
         n1.children[1].append(Node(data='n123'))
-        sess.save(n1)
+        sess.add(n1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').options(eagerload('children.children')).first()
             assert Node(data='n1', children=[
@@ -1048,9 +1048,9 @@ class SelfReferentialEagerTest(_base.MappedTest):
         n1.children[1].append(Node(data='n121'))
         n1.children[1].append(Node(data='n122'))
         n1.children[1].append(Node(data='n123'))
-        sess.save(n1)
+        sess.add(n1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').first()
             assert Node(data='n1', children=[
@@ -1094,9 +1094,9 @@ class SelfReferentialM2MEagerTest(_base.MappedTest):
         w1 = Widget(name=u'w1')
         w2 = Widget(name=u'w2')
         w1.children.append(w2)
-        sess.save(w1)
+        sess.add(w1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         assert [Widget(name='w1', children=[Widget(name='w2')])] == sess.query(Widget).filter(Widget.name==u'w1').all()
 
@@ -1297,10 +1297,10 @@ class SubqueryTest(_base.MappedTest):
             })
 
             session = create_session()
-            session.save(User(name='joe', tags=[Tag(score1=5.0, score2=3.0), Tag(score1=55.0, score2=1.0)]))
-            session.save(User(name='bar', tags=[Tag(score1=5.0, score2=4.0), Tag(score1=50.0, score2=1.0), Tag(score1=15.0, score2=2.0)]))
+            session.add(User(name='joe', tags=[Tag(score1=5.0, score2=3.0), Tag(score1=55.0, score2=1.0)]))
+            session.add(User(name='bar', tags=[Tag(score1=5.0, score2=4.0), Tag(score1=50.0, score2=1.0), Tag(score1=15.0, score2=2.0)]))
             session.flush()
-            session.clear()
+            session.expunge_all()
 
             for user in session.query(User).all():
                 eq_(user.query_score, user.prop_score)

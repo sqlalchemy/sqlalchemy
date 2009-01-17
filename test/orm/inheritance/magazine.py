@@ -24,7 +24,7 @@ class Location(BaseObject):
     def _set_name(self, name):
         session = create_session()
         s = session.query(LocationName).filter(LocationName.name==name).first()
-        session.clear()
+        session.expunge_all()
         if s is not None:
             self._name = s
 
@@ -193,14 +193,14 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
         page = ClassifiedPage(magazine=magazine,page_no=1)
         page2 = MagazinePage(magazine=magazine,page_no=2)
         page3 = ClassifiedPage(magazine=magazine,page_no=3)
-        session.save(pub)
+        session.add(pub)
 
         session.flush()
         print [x for x in session]
-        session.clear()
+        session.expunge_all()
 
         session.flush()
-        session.clear()
+        session.expunge_all()
         p = session.query(Publication).filter(Publication.name=="Test").one()
 
         print p.issues[0].locations[0].magazine.pages

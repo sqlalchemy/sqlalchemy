@@ -11,7 +11,12 @@ CHANGES
     - Removed an internal join cache which could potentially leak 
       memory when issuing query.join() repeatedly to ad-hoc 
       selectables.
-  
+
+    - The "clear()", "save()", "update()", "save_or_update()"
+      Session methods have been deprecated, replaced by 
+      "expunge_all()" and "add()".  "expunge_all()" has also
+      been added to ScopedSession.
+      
     - Modernized the "no mapped table" exception and added a more
       explicit __table__/__tablename__ exception to declarative.
 

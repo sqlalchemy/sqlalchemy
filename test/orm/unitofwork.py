@@ -42,7 +42,7 @@ class HistoryTest(_fixtures.FixtureTest):
 
         self.assert_(u.addresses == [a])
         session.commit()
-        session.clear()
+        session.expunge_all()
 
         u = session.query(m).one()
         assert u.addresses[0].user == u
@@ -252,23 +252,23 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
         session = create_session()
         session.add(a1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         new_a1 = session.query(A).filter(t1.c.a == a1.a).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d
-        session.clear()
+        session.expunge_all()
 
         new_a1 = (session.query(A).options(sa.orm.eagerload('t2s')).
                   filter(t1.c.a == a1.a)).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d
-        session.clear()
+        session.expunge_all()
 
         new_a1 = session.query(A).filter(A.a == a1.a).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d
-        session.clear()
+        session.expunge_all()
 
     @testing.fails_on('mssql', 'pyodbc returns a non unicode encoding of the results description.')
     @testing.resolve_artifact_names
@@ -290,7 +290,7 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
         session = create_session()
         session.add_all((a1, b1))
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         eq_([A(b=5), B(e=7)], session.query(A).all())
 
@@ -322,7 +322,7 @@ class MutableTypesTest(_base.MappedTest):
         session = create_session()
         session.add(f1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         f2 = session.query(Foo).filter_by(id=f1.id).one()
         assert 'data' in sa.orm.attributes.instance_state(f2).unmodified
@@ -332,7 +332,7 @@ class MutableTypesTest(_base.MappedTest):
         assert f2 in session.dirty
         assert 'data' not in sa.orm.attributes.instance_state(f2).unmodified
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         f3 = session.query(Foo).filter_by(id=f1.id).one()
         ne_(f3.data,f1.data)
@@ -403,7 +403,7 @@ class MutableTypesTest(_base.MappedTest):
         session = create_session(autocommit=False)
         session.add(f1)
         session.commit()
-        session.clear()
+        session.expunge_all()
 
         f1 = session.query(Foo).get(f1.id)
         f1.val = u'hi'
@@ -474,7 +474,7 @@ class PickledDicts(_base.MappedTest):
         f1.data[0]['personne']['VenSoir']= False
         self.sql_count_(1, session.commit)
 
-        session.clear()
+        session.expunge_all()
         f = session.query(Foo).get(f1.id)
         eq_(f.data,
             [ {
@@ -530,7 +530,7 @@ class PKTest(_base.MappedTest):
         session = create_session()
         session.add(e)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         e2 = session.query(Entry).get((e.multi_id, 2))
         self.assert_(e is not e2)
@@ -655,7 +655,7 @@ class ClauseAttributesTest(_base.MappedTest):
             assert (u.counter == 2) is True
         self.sql_count_(1, go)
 
-        session.clear()
+        session.expunge_all()
         u = session.query(User).get(u.id)
         eq_(u.name, 'test2')
         eq_(u.counter,  2)
@@ -711,7 +711,7 @@ class PassiveDeletesTest(_base.MappedTest):
 
         session.add(mc)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         assert myothertable.count().scalar() == 4
         mc = session.query(MyClass).get(mc.id)
@@ -801,7 +801,7 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         mc.children.append(MyOtherClass())
         session.add(mc)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         assert myothertable.count().scalar() == 4
         mc = session.query(MyClass).get(mc.id)
@@ -821,7 +821,7 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         mc.children.append(MyOtherClass())
         session.add(mc)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         assert myothertable.count().scalar() == 1
 
@@ -922,7 +922,7 @@ class DefaultTest(_base.MappedTest):
             self.assert_(h5.foober == 'im the new foober')
         self.sql_count_(0, go)
 
-        session.clear()
+        session.expunge_all()
 
         (h1, h2, h3, h4, h5) = session.query(Hoho).order_by(Hoho.id).all()
 
@@ -995,7 +995,7 @@ class DefaultTest(_base.MappedTest):
         session = create_session()
         session.add(h1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         eq_(session.query(Hoho).get(h1.id),
             Hoho(hoho=hohoval,
@@ -1005,7 +1005,7 @@ class DefaultTest(_base.MappedTest):
         h1 = session.query(Hoho).get(h1.id)
         h1.secondaries.append(Secondary(data='s2'))
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         eq_(session.query(Hoho).get(h1.id),
             Hoho(hoho=hohoval,
@@ -1189,7 +1189,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         session.delete(u1)
 
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         u2 = session.query(User).get(u2.id)
         eq_(len(u2.addresses), 1)
@@ -1212,7 +1212,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         u2.addresses.append(a)
 
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         u2 = session.query(User).get(u2.id)
         eq_(len(u2.addresses), 1)
@@ -1317,7 +1317,7 @@ class SaveTest(_fixtures.FixtureTest):
         assert u is nu
 
         # clear out the identity map, so next get forces a SELECT
-        session.clear()
+        session.expunge_all()
 
         # check it again, identity should be different but ids the same
         nu = session.query(m).get(u.id)
@@ -1325,7 +1325,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         # change first users name and save
         session = create_session()
-        session.update(u)
+        session.add(u)
         u.name = 'modifiedname'
         assert u in session.dirty
         session.flush()
@@ -1358,7 +1358,7 @@ class SaveTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(u)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         u = session.query(SUser).first()
         eq_(u.syn_name, 'User:some name:User')
@@ -1383,7 +1383,7 @@ class SaveTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(u)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         u = session.query(User).one()
         u.name = 'newname'
@@ -1407,7 +1407,7 @@ class SaveTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(au)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         rt = session.query(AddressUser).one()
         eq_(au.user_id, rt.user_id)
@@ -1432,7 +1432,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         eq_(list(session.execute(orders.select(), mapper=Order)),
             [(42, None, None, 'foo', None)])
-        session.clear()
+        session.expunge_all()
 
         # assert that a set operation doesn't trigger a load operation
         o = session.query(Order).filter(Order.description == 'foo').one()
@@ -1444,7 +1444,7 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(list(session.execute(orders.select(), mapper=Order)),
             [(42, None, None, 'hoho', None)])
 
-        session.clear()
+        session.expunge_all()
 
         # test assigning None to an unloaded deferred also works
         o = session.query(Order).filter(Order.description == 'hoho').one()
@@ -1465,7 +1465,7 @@ class SaveTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(u)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         u = session.query(User).get(u.id)
         u.name = ''
@@ -1490,7 +1490,7 @@ class SaveTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(u)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         id = m.primary_key_from_instance(u)
 
@@ -1511,7 +1511,7 @@ class SaveTest(_fixtures.FixtureTest):
         address_rows = addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
         eq_(address_rows[0].values(), [u.id, u.foo_id, 'lala@hey.com'])
 
-        session.clear()
+        session.expunge_all()
         u = session.query(User).get(id)
         assert u.name == 'imnew'
 
@@ -1528,7 +1528,7 @@ class SaveTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(u)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         u = session.query(User).get(u.id)
         session.delete(u)
@@ -1565,7 +1565,7 @@ class SaveTest(_fixtures.FixtureTest):
         
         # test insert ordering is maintained
         assert names == ['user1', 'user2', 'user4', 'user5', 'user3']
-        session.clear()
+        session.expunge_all()
         
         sa.orm.clear_mappers()
 
@@ -1643,7 +1643,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(a1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Address).get(a1.id)
         u1 = session.query(User).get(u1.id)
@@ -1651,7 +1651,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
 
         a1.user = None
         session.flush()
-        session.clear()
+        session.expunge_all()
         a1 = session.query(Address).get(a1.id)
         u1 = session.query(User).get(u1.id)
         assert a1.user is None
@@ -1669,7 +1669,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         session = create_session()
         session.add_all((a1, a2))
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Address).get(a1.id)
         a2 = session.query(Address).get(a2.id)
@@ -1679,7 +1679,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         a1.user = None
         a2.user = u1
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Address).get(a1.id)
         a2 = session.query(Address).get(a2.id)
@@ -1700,7 +1700,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         session = create_session()
         session.add_all((a1, u1, u2))
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Address).get(a1.id)
         u1 = session.query(User).get(u1.id)
@@ -1709,7 +1709,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
 
         a1.user = u2
         session.flush()
-        session.clear()
+        session.expunge_all()
         a1 = session.query(Address).get(a1.id)
         u1 = session.query(User).get(u1.id)
         u2 = session.query(User).get(u2.id)
@@ -1729,13 +1729,13 @@ class ManyToOneTest(_fixtures.FixtureTest):
         session = create_session()
         session.add(u1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Address).get(a1.id)
 
         a1.user = None
         session.flush()
-        session.clear()
+        session.expunge_all()
         assert session.query(Address).get(a1.id).user is None
         assert session.query(User).get(u1.id).addresses == []
 
@@ -1916,7 +1916,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         item.keywords.append(k2)
         session.flush()
 
-        session.clear()
+        session.expunge_all()
         item = session.query(Item).get(item.id)
         assert item.keywords == [k1, k2]
 
@@ -2076,13 +2076,13 @@ class BooleanColTest(_base.MappedTest):
 
         for clear in (False, True):
             if clear:
-                sess.clear()
+                sess.expunge_all()
             eq_(sess.query(T).all(), [T(value=True, name="t1"), T(value=False, name="t2"), T(value=True, name="t3")])
             if clear:
-                sess.clear()
+                sess.expunge_all()
             eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
             if clear:
-                sess.clear()
+                sess.expunge_all()
             eq_(sess.query(T).filter(T.value==False).all(), [T(value=False, name="t2")])
 
         t2 = sess.query(T).get(t2.id)

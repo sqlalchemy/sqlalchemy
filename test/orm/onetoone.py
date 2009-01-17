@@ -52,7 +52,7 @@ class O2OTest(_base.MappedTest):
         p.jack = None
         assert j.port is None
 
-        ctx.clear()
+        ctx.expunge_all()
 
         j = ctx.query(Jack).get(jid)
         p = ctx.query(Port).get(pid)

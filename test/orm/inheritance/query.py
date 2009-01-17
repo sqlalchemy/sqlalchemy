@@ -166,10 +166,10 @@ def make_test(select_type):
         
             c2.employees = [e3]
             sess = create_session()
-            sess.save(c1)
-            sess.save(c2)
+            sess.add(c1)
+            sess.add(c2)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             all_employees = [e1, e2, b1, m1, e3]
             c1_employees = [e1, e2, b1, m1]
@@ -239,13 +239,13 @@ def make_test(select_type):
             sess = create_session()
 
             for aliased in (True, False):
-                sess.clear()
+                sess.expunge_all()
                 self.assertEquals(sess.query(Person).with_polymorphic(Manager).join('paperwork', aliased=aliased).filter(Paperwork.description.like('%review%')).all(), [b1, m1])
 
-                sess.clear()
+                sess.expunge_all()
                 self.assertEquals(sess.query(Person).with_polymorphic([Manager, Engineer]).join('paperwork', aliased=aliased).filter(Paperwork.description.like('%#2%')).all(), [e1, m1])
 
-                sess.clear()
+                sess.expunge_all()
                 self.assertEquals(sess.query(Person).with_polymorphic([Manager, Engineer]).join('paperwork', aliased=aliased).filter(Person.name.like('%dog%')).filter(Paperwork.description.like('%#2%')).all(), [m1])
     
         def test_join_to_polymorphic(self):
@@ -340,22 +340,22 @@ def make_test(select_type):
                 self.assertEquals(sess.query(Person).with_polymorphic(Engineer).filter(Engineer.primary_language=='java').all(), emps_without_relations[0:1])
             self.assert_sql_count(testing.db, go, 1)
             
-            sess.clear()
+            sess.expunge_all()
             def go():
                 self.assertEquals(sess.query(Person).with_polymorphic('*').all(), emps_without_relations)
             self.assert_sql_count(testing.db, go, 1)
 
-            sess.clear()
+            sess.expunge_all()
             def go():
                 self.assertEquals(sess.query(Person).with_polymorphic(Engineer).all(), emps_without_relations)
             self.assert_sql_count(testing.db, go, 3)
 
-            sess.clear()
+            sess.expunge_all()
             def go():
                 self.assertEquals(sess.query(Person).with_polymorphic(Engineer, people.outerjoin(engineers)).all(), emps_without_relations)
             self.assert_sql_count(testing.db, go, 3)
             
-            sess.clear()
+            sess.expunge_all()
             def go():
                 # limit the polymorphic join down to just "Person", overriding select_table
                 self.assertEquals(sess.query(Person).with_polymorphic(Person).all(), emps_without_relations)
@@ -719,10 +719,10 @@ class SelfReferentialTestJoinedToBase(ORMTest):
         p1 = Person(name='dogbert')
         e1 = Engineer(name='dilbert', primary_language='java', reports_to=p1)
         sess = create_session()
-        sess.save(p1)
-        sess.save(e1)
+        sess.add(p1)
+        sess.add(e1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         
         self.assertEquals(sess.query(Engineer).filter(Engineer.reports_to.has(Person.name=='dogbert')).first(), Engineer(name='dilbert'))
 
@@ -739,10 +739,10 @@ class SelfReferentialTestJoinedToBase(ORMTest):
         p1 = Person(name='dogbert')
         e1 = Engineer(name='dilbert', primary_language='java', reports_to=p1)
         sess = create_session()
-        sess.save(p1)
-        sess.save(e1)
+        sess.add(p1)
+        sess.add(e1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         
         self.assertEquals(
             sess.query(Engineer).join('reports_to', aliased=True).filter(Person.name=='dogbert').first(), 
@@ -781,10 +781,10 @@ class SelfReferentialTestJoinedToJoined(ORMTest):
         m1 = Manager(name='dogbert')
         e1 = Engineer(name='dilbert', primary_language='java', reports_to=m1)
         sess = create_session()
-        sess.save(m1)
-        sess.save(e1)
+        sess.add(m1)
+        sess.add(e1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         self.assertEquals(sess.query(Engineer).filter(Engineer.reports_to.has(Manager.name=='dogbert')).first(), Engineer(name='dilbert'))
 
@@ -792,10 +792,10 @@ class SelfReferentialTestJoinedToJoined(ORMTest):
         m1 = Manager(name='dogbert')
         e1 = Engineer(name='dilbert', primary_language='java', reports_to=m1)
         sess = create_session()
-        sess.save(m1)
-        sess.save(e1)
+        sess.add(m1)
+        sess.add(e1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         self.assertEquals(
             sess.query(Engineer).join('reports_to', aliased=True).filter(Manager.name=='dogbert').first(), 
@@ -847,8 +847,8 @@ class M2MFilterTest(ORMTest):
         org2 = Organization(name='org2', engineers=[e3, e4])
         
         sess = create_session()
-        sess.save(org1)
-        sess.save(org2)
+        sess.add(org1)
+        sess.add(org2)
         sess.flush()
         
     def test_not_contains(self):

@@ -150,7 +150,7 @@ class PolymorphicCircularTest(ORMTest):
             obj = newobj
 
         # save to DB
-        sess.save(t)
+        sess.add(t)
         sess.flush()
 
         # string version of the saved list
@@ -166,7 +166,7 @@ class PolymorphicCircularTest(ORMTest):
 
 
         # clear and query forwards
-        sess.clear()
+        sess.expunge_all()
         node = sess.query(Table1).filter(Table1.id==t.id).first()
         assertlist = []
         while (node):
@@ -178,7 +178,7 @@ class PolymorphicCircularTest(ORMTest):
         forwards = repr(assertlist)
 
         # clear and query backwards
-        sess.clear()
+        sess.expunge_all()
         node = sess.query(Table1).filter(Table1.id==obj.id).first()
         assertlist = []
         while (node):

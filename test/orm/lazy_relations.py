@@ -329,7 +329,7 @@ class M2OGetTest(_fixtures.FixtureTest):
         ad1 = Address(email_address='somenewaddress', id=12)
         sess.add(ad1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         ad2 = sess.query(Address).get(1)
         ad3 = sess.query(Address).get(ad1.id)

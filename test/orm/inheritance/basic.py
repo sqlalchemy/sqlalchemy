@@ -50,14 +50,14 @@ class O2MTest(ORMTest):
         b1 = Blub("blub #1")
         b2 = Blub("blub #2")
         f = Foo("foo #1")
-        sess.save(b1)
-        sess.save(b2)
-        sess.save(f)
+        sess.add(b1)
+        sess.add(b2)
+        sess.add(f)
         b1.parent_foo = f
         b2.parent_foo = f
         sess.flush()
         compare = ','.join([repr(b1), repr(b2), repr(b1.parent_foo), repr(b2.parent_foo)])
-        sess.clear()
+        sess.expunge_all()
         l = sess.query(Blub).all()
         result = ','.join([repr(l[0]), repr(l[1]), repr(l[0].parent_foo), repr(l[1].parent_foo)])
         print compare
@@ -77,10 +77,10 @@ class FalseDiscriminatorTest(ORMTest):
         mapper(Bar, inherits=Foo, polymorphic_identity=0)
         sess = create_session()
         f1 = Bar()
-        sess.save(f1)
+        sess.add(f1)
         sess.flush()
         assert f1.type == 0
-        sess.clear()
+        sess.expunge_all()
         assert isinstance(sess.query(Foo).one(), Bar)
         
 class PolymorphicSynonymTest(ORMTest):
@@ -111,10 +111,10 @@ class PolymorphicSynonymTest(ORMTest):
         sess = create_session()
         at1 = T1(info='at1')
         at2 = T2(info='at2', data='t2 data')
-        sess.save(at1)
-        sess.save(at2)
+        sess.add(at1)
+        sess.add(at2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(T2).filter(T2.info=='at2').one(), at2)
         self.assertEquals(at2.info, "THE INFO IS:at2")
         
@@ -177,7 +177,7 @@ class CascadeTest(ORMTest):
         t4_1 = T4(data='t4')
         t3_1.t4s.append(t4_1)
 
-        sess.save(t1_1)
+        sess.add(t1_1)
 
 
         assert t4_1 in sess.new
@@ -230,9 +230,9 @@ class GetTest(ORMTest):
             f = Foo()
             b = Bar()
             bl = Blub()
-            sess.save(f)
-            sess.save(b)
-            sess.save(bl)
+            sess.add(f)
+            sess.add(b)
+            sess.add(bl)
             sess.flush()
 
             if polymorphic:
@@ -357,7 +357,7 @@ class FlushTest(ORMTest):
         admin_mapper = mapper(Admin, admins, inherits=user_mapper)
         sess = create_session()
         adminrole = Role()
-        sess.save(adminrole)
+        sess.add(adminrole)
         sess.flush()
 
         # create an Admin, and append a Role.  the dependency processors
@@ -367,7 +367,7 @@ class FlushTest(ORMTest):
         a = Admin()
         a.roles.append(adminrole)
         a.password = 'admin'
-        sess.save(a)
+        sess.add(a)
         sess.flush()
 
         assert user_roles.count().scalar() == 1
@@ -396,13 +396,13 @@ class FlushTest(ORMTest):
         adminrole = Role('admin')
 
         sess = create_session()
-        sess.save(adminrole)
+        sess.add(adminrole)
         sess.flush()
 
         # create admin user
         a = Admin(email='tim', password='admin')
         a.roles.append(adminrole)
-        sess.save(a)
+        sess.add(a)
         sess.flush()
 
         a.password = 'sadmin'
@@ -446,8 +446,8 @@ class VersioningTest(ORMTest):
 
         b1 = Base(value='b1')
         s1 = Sub(value='sub1', subdata='some subdata')
-        sess.save(b1)
-        sess.save(s1)
+        sess.add(b1)
+        sess.add(s1)
 
         sess.flush()
 
@@ -491,9 +491,9 @@ class VersioningTest(ORMTest):
         b1 = Base(value='b1')
         s1 = Sub(value='sub1', subdata='some subdata')
         s2 = Sub(value='sub2', subdata='some other subdata')
-        sess.save(b1)
-        sess.save(s1)
-        sess.save(s2)
+        sess.add(b1)
+        sess.add(s1)
+        sess.add(s2)
 
         sess.flush()
 
@@ -637,16 +637,16 @@ class SyncCompileTest(ORMTest):
         session = create_session()
 
         a = A(data1='a1')
-        session.save(a)
+        session.add(a)
 
         b = B(data1='b1', data2='b2')
-        session.save(b)
+        session.add(b)
 
         c = C(data1='c1', data2='c2', data3='c3')
-        session.save(c)
+        session.add(c)
 
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         assert len(session.query(A).all()) == 3
         assert len(session.query(B).all()) == 2
@@ -852,7 +852,7 @@ class OverrideColKeyTest(ORMTest):
 
         sess.add_all([s1, b1])
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         
         assert sess.query(Base).get(b1.base_id).subdata == "this is base"
         assert sess.query(Sub).get(s1.base_id).subdata == "this is sub"
@@ -877,7 +877,7 @@ class OverrideColKeyTest(ORMTest):
 
         sess.add_all([s1, b1])
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         assert sess.query(Base).get(b1.base_id).data == "this is base"
         assert sess.query(Sub).get(s1.base_id).data == "this is base"
@@ -914,9 +914,9 @@ class OptimizedLoadTest(ORMTest):
         s1 = Sub()
         s1.data = 's1data'
         s1.sub = 's1sub'
-        sess.save(s1)
+        sess.add(s1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         
         # load s1 via Base.  s1.id won't populate since it's relative to 
         # the "sub" table.  The optimized load kicks in and tries to 

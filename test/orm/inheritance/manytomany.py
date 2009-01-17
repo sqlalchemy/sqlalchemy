@@ -59,7 +59,7 @@ class InheritTest(ORMTest):
         g = Group(name="group1")
         g.users.append(User(name="user1", password="pw", email="foo@bar.com", login_id="lg1"))
         sess = create_session()
-        sess.save(g)
+        sess.add(g)
         sess.flush()
         # TODO: put an assertion
 
@@ -94,9 +94,9 @@ class InheritTest2(ORMTest):
         print class_mapper(Bar).primary_key
         b = Bar('somedata')
         sess = create_session()
-        sess.save(b)
+        sess.add(b)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         # test that "bar.bid" does not need to be referenced in a get
         # (ticket 185)
@@ -117,7 +117,7 @@ class InheritTest2(ORMTest):
 
         sess = create_session()
         b = Bar('barfoo')
-        sess.save(b)
+        sess.add(b)
         sess.flush()
 
         f1 = Foo('subfoo1')
@@ -126,7 +126,7 @@ class InheritTest2(ORMTest):
         b.foos.append(f2)
 
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         l = sess.query(Bar).all()
         print l[0]
@@ -185,12 +185,12 @@ class InheritTest3(ORMTest):
 
         sess = create_session()
         b = Bar('bar #1')
-        sess.save(b)
+        sess.add(b)
         b.foos.append(Foo("foo #1"))
         b.foos.append(Foo("foo #2"))
         sess.flush()
         compare = repr(b) + repr(sorted([repr(o) for o in b.foos]))
-        sess.clear()
+        sess.expunge_all()
         l = sess.query(Bar).all()
         print repr(l[0]) + repr(l[0].foos)
         found = repr(l[0]) + repr(sorted([repr(o) for o in l[0].foos]))
@@ -225,18 +225,18 @@ class InheritTest3(ORMTest):
         b2 = Bar("bar #2")
         bl1 = Blub("blub #1")
         for o in (f1, b1, b2, bl1):
-            sess.save(o)
+            sess.add(o)
         bl1.foos.append(f1)
         bl1.bars.append(b2)
         sess.flush()
         compare = repr(bl1)
         blubid = bl1.id
-        sess.clear()
+        sess.expunge_all()
 
         l = sess.query(Blub).all()
         print l
         self.assert_(repr(l[0]) == compare)
-        sess.clear()
+        sess.expunge_all()
         x = sess.query(Blub).filter_by(id=blubid).one()
         print x
         self.assert_(repr(x) == compare)

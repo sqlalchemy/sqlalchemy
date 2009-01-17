@@ -35,7 +35,7 @@ class MergeTest(_fixtures.FixtureTest):
         assert u2 in sess
         eq_(u2, User(id=7, name='fred'))
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         eq_(sess.query(User).first(), User(id=7, name='fred'))
 
     @testing.resolve_artifact_names
@@ -62,7 +62,7 @@ class MergeTest(_fixtures.FixtureTest):
         assert merged_users[0] is not u
 
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).one(),
             User(id=7, name='fred', addresses=OrderedSet([
@@ -80,7 +80,7 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(id=7, name='fred')
         sess.add(u)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(on_load.called, 0)
 
@@ -90,7 +90,7 @@ class MergeTest(_fixtures.FixtureTest):
         assert u2 is not _u2
         eq_(on_load.called, 1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         eq_(sess.query(User).first(), User(id=7, name='fred jones'))
         eq_(on_load.called, 2)
 
@@ -114,7 +114,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess = create_session()
         sess.add(u)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(on_load.called, 0)
 
@@ -138,7 +138,7 @@ class MergeTest(_fixtures.FixtureTest):
             ]))
         )
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         eq_(sess.query(User).one(),
             User(id=7, name='fred', addresses=OrderedSet([
                 Address(id=3, email_address='fred3'),
@@ -164,7 +164,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess = create_session()
         sess.add(u)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         u.name='fred jones'
         u.addresses.add(Address(id=3, email_address='fred3'))
@@ -174,7 +174,7 @@ class MergeTest(_fixtures.FixtureTest):
         u = sess.merge(u)
         eq_(on_load.called, 4)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).first(),
             User(id=7, name='fred jones', addresses=OrderedSet([
@@ -212,7 +212,7 @@ class MergeTest(_fixtures.FixtureTest):
               Address(email_address='hoho@bar.com')]))
 
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         u2 = sess.query(User).get(7)
 
         eq_(u2, User(id=7, name='fred', addresses=[
@@ -267,7 +267,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess3.flush()
 
         # assert modified/merged data was saved
-        sess.clear()
+        sess.expunge_all()
         u = sess.query(User).get(7)
         eq_(u, User(id=7, name='fred2', addresses=[
             Address(email_address='foo@bar.com'),
@@ -605,7 +605,7 @@ class MergeTest(_fixtures.FixtureTest):
         assert not sa.orm.object_mapper(a2)._is_orphan(
             sa.orm.attributes.instance_state(a2))
         sess2.flush()
-        sess2.clear()
+        sess2.expunge_all()
 
         eq_(sess2.query(User).get(u2.id).addresses[0].email_address,
             'somenewaddress')
@@ -631,7 +631,7 @@ class MergeTest(_fixtures.FixtureTest):
             assert not sa.orm.object_mapper(a2)._is_orphan(
                 sa.orm.attributes.instance_state(a2))
             sess2.flush()
-            sess2.clear()
+            sess2.expunge_all()
             eq_(sess2.query(User).get(u2.id).addresses[0].email_address,
                 'somenewaddress')
         except sa.exc.InvalidRequestError, e:
@@ -660,7 +660,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess = create_session()
         u = User()
         u.name = 'ed'
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         sess.expunge(u)
         sess.merge(u)

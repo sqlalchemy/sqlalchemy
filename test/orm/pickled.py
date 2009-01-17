@@ -26,7 +26,7 @@ class PickleTest(_fixtures.FixtureTest):
         sess.add(u2)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
 
         self.assertEquals(u1, sess.query(User).get(u2.id))
 
@@ -44,14 +44,14 @@ class PickleTest(_fixtures.FixtureTest):
         u1.addresses.append(Address(email_address='ed@bar.com'))
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         u1 = sess.query(User).get(u1.id)
         assert 'name' not in u1.__dict__
         assert 'addresses' not in u1.__dict__
 
         u2 = pickle.loads(pickle.dumps(u1))
         sess2 = create_session()
-        sess2.update(u2)
+        sess2.add(u2)
         self.assertEquals(u2.name, 'ed')
         self.assertEquals(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
@@ -73,7 +73,7 @@ class PickleTest(_fixtures.FixtureTest):
         u1.addresses.append(Address(email_address='ed@bar.com'))
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         u1 = sess.query(User).options(sa.orm.defer('name'), sa.orm.defer('addresses.email_address')).get(u1.id)
         assert 'name' not in u1.__dict__
@@ -81,7 +81,7 @@ class PickleTest(_fixtures.FixtureTest):
 
         u2 = pickle.loads(pickle.dumps(u1))
         sess2 = create_session()
-        sess2.update(u2)
+        sess2.add(u2)
         self.assertEquals(u2.name, 'ed')
         assert 'addresses' not in u2.__dict__
         ad = u2.addresses[0]
@@ -132,12 +132,12 @@ class PolymorphicDeferredTest(_base.MappedTest):
         sess = create_session()
         sess.add(eu)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eu = sess.query(User).first()
         eu2 = pickle.loads(pickle.dumps(eu))
         sess2 = create_session()
-        sess2.update(eu2)
+        sess2.add(eu2)
         assert 'email_address' not in eu2.__dict__
         self.assertEquals(eu2.email_address, 'foo@bar.com')
 
