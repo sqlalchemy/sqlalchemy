@@ -330,8 +330,9 @@ class MemUsageTest(EnsureZeroed):
         @profile_memory
         def go():
             s = table2.select()
-            session().query(Foo).join((s, Foo.bars)).all()
-            
+            sess = session()
+            sess.query(Foo).join((s, Foo.bars)).all()
+            sess.rollback()
         try:
             go()
         finally:
