@@ -64,7 +64,7 @@ option to the Index constructor::
 
 """
 
-import decimal, random, re, string
+import re, string
 
 from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.engine import base, default

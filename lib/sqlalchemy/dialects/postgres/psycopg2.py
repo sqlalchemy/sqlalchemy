@@ -32,15 +32,13 @@ The psycopg2 dialect fully supports SAVEPOINT and two-phase commit operations.
 
 """
 
-import decimal, random, re, string
-
-from sqlalchemy import sql, schema, exc, util
+import decimal, random, re
+from sqlalchemy import util
 from sqlalchemy.engine import base, default
-from sqlalchemy.sql import compiler, expression
+from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgres.base import PGDialect, PGCompiler, PGInet, PGCidr, PGMacAddr, PGArray, \
- PGBigInteger, PGInterval, colspecs
+from sqlalchemy.dialects.postgres.base import PGDialect, PGCompiler
 
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):

@@ -18,16 +18,11 @@ Interval
 Passing data from/to the Interval type is not supported as of yet.
 
 """
-
-import decimal, random, re, string
-
-from sqlalchemy import sql, schema, exc, util
-from sqlalchemy.engine import base, default
-from sqlalchemy.sql import compiler, expression
-from sqlalchemy.sql import operators as sql_operators
+from sqlalchemy.engine import default
+import decimal
+from sqlalchemy import util
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgres.base import PGDialect, PGInet, PGCidr, PGMacAddr, PGArray, \
- PGBigInteger, PGInterval
+from sqlalchemy.dialects.postgres.base import PGDialect
 
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -50,7 +45,7 @@ class Postgres_pg8000ExecutionContext(default.DefaultExecutionContext):
 class Postgres_pg8000(PGDialect):
     driver = 'pg8000'
 
-    supports_unicode_statements = False #True
+    supports_unicode_statements = False
     
     supports_unicode_binds = True
     
