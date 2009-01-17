@@ -40,8 +40,6 @@ class MySQL_mysqldbCompiler(MySQLCompiler):
     )
     
     def post_process_text(self, text):
-        if '%%' in text:
-            util.warn("The SQLAlchemy mysql+mysqldb dialect now automatically escapes '%' in text() expressions to '%%'.")
         return text.replace('%', '%%')
     
 class MySQL_mysqldb(MySQLDialect):

@@ -917,6 +917,8 @@ class TIMESTAMP(DateTime):
 
     __visit_name__ = 'TIMESTAMP'
 
+    def get_dbapi_type(self, dbapi):
+        return dbapi.TIMESTAMP
 
 class DATETIME(DateTime):
     """The SQL DATETIME type."""
@@ -951,6 +953,10 @@ class VARCHAR(String):
 
     __visit_name__ = 'VARCHAR'
 
+class NVARCHAR(Unicode):
+    """The SQL NVARCHAR type."""
+
+    __visit_name__ = 'NVARCHAR'
 
 class CHAR(String):
     """The SQL CHAR type."""

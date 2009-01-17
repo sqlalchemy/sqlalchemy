@@ -146,23 +146,23 @@ colspecs = {
 }
 
 ischema_names = {
-    'BLOB': sqltypes.Binary,
-    'BOOL': sqltypes.Boolean,
-    'BOOLEAN': sqltypes.Boolean,
+    'BLOB': sqltypes.BLOB,
+    'BOOL': sqltypes.BOOLEAN,
+    'BOOLEAN': sqltypes.BOOLEAN,
     'CHAR': sqltypes.CHAR,
-    'DATE': sqltypes.Date,
-    'DATETIME': sqltypes.DateTime,
-    'DECIMAL': sqltypes.Numeric,
-    'FLOAT': sqltypes.Numeric,
-    'INT': sqltypes.Integer,
-    'INTEGER': sqltypes.Integer,
-    'NUMERIC': sqltypes.Numeric,
+    'DATE': sqltypes.DATE,
+    'DATETIME': sqltypes.DATETIME,
+    'DECIMAL': sqltypes.DECIMAL,
+    'FLOAT': sqltypes.FLOAT,
+    'INT': sqltypes.INTEGER,
+    'INTEGER': sqltypes.INTEGER,
+    'NUMERIC': sqltypes.NUMERIC,
     'REAL': sqltypes.Numeric,
-    'SMALLINT': sqltypes.SmallInteger,
-    'TEXT': sqltypes.Text,
-    'TIME': sqltypes.Time,
-    'TIMESTAMP': sqltypes.DateTime,
-    'VARCHAR': sqltypes.String,
+    'SMALLINT': sqltypes.SMALLINT,
+    'TEXT': sqltypes.TEXT,
+    'TIME': sqltypes.TIME,
+    'TIMESTAMP': sqltypes.TIMESTAMP,
+    'VARCHAR': sqltypes.VARCHAR,
 }
 
 
@@ -256,10 +256,8 @@ class SQLiteDialect(default.DefaultDialect):
     type_compiler = SQLiteTypeCompiler
     preparer = SQLiteIdentifierPreparer
     ischema_names = ischema_names
-
-    def type_descriptor(self, typeobj):
-        return sqltypes.adapt_type(typeobj, colspecs)
-
+    colspecs = colspecs
+    
     def table_names(self, connection, schema):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)

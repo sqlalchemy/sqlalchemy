@@ -5,7 +5,7 @@ __all__ = (
 #    'maxdb',
 #    'mssql',
     'mysql',
-#    'oracle',
+    'oracle',
     'postgres',
     'sqlite',
 #    'sybase',

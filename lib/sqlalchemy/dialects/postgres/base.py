@@ -155,28 +155,28 @@ colspecs = {
 }
 
 ischema_names = {
-    'integer' : sqltypes.Integer,
+    'integer' : sqltypes.INTEGER,
     'bigint' : PGBigInteger,
-    'smallint' : sqltypes.SmallInteger,
-    'character varying' : sqltypes.String,
+    'smallint' : sqltypes.SMALLINT,
+    'character varying' : sqltypes.VARCHAR,
     'character' : sqltypes.CHAR,
-    'text' : sqltypes.Text,
-    'numeric' : sqltypes.Numeric,
-    'float' : sqltypes.Float,
+    'text' : sqltypes.TEXT,
+    'numeric' : sqltypes.NUMERIC,
+    'float' : sqltypes.FLOAT,
     'real' : sqltypes.Float,
     'inet': PGInet,
     'cidr': PGCidr,
     'macaddr': PGMacAddr,
     'double precision' : sqltypes.Float,
-    'timestamp' : sqltypes.DateTime,
-    'timestamp with time zone' : sqltypes.DateTime,
-    'timestamp without time zone' : sqltypes.DateTime,
-    'time with time zone' : sqltypes.Time,
-    'time without time zone' : sqltypes.Time,
-    'date' : sqltypes.Date,
-    'time': sqltypes.Time,
+    'timestamp' : sqltypes.TIMESTAMP,
+    'timestamp with time zone' : sqltypes.TIMESTAMP,
+    'timestamp without time zone' : sqltypes.TIMESTAMP,
+    'time with time zone' : sqltypes.TIME,
+    'time without time zone' : sqltypes.TIME,
+    'date' : sqltypes.DATE,
+    'time': sqltypes.TIME,
     'bytea' : sqltypes.Binary,
-    'boolean' : sqltypes.Boolean,
+    'boolean' : sqltypes.BOOLEAN,
     'interval':PGInterval,
 }
 
@@ -489,9 +489,6 @@ class PGDialect(default.DefaultDialect):
         if not m:
             raise AssertionError("Could not determine version from string '%s'" % v)
         return tuple([int(x) for x in m.group(1, 2, 3)])
-
-    def type_descriptor(self, typeobj):
-        return sqltypes.adapt_type(typeobj, self.colspecs)
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer

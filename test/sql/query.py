@@ -12,11 +12,11 @@ class QueryTest(TestBase):
         global users, users2, addresses, metadata
         metadata = MetaData(testing.db)
         users = Table('query_users', metadata,
-            Column('user_id', INT, primary_key = True),
+            Column('user_id', INT, Sequence('user_id_seq', optional=True), primary_key = True),
             Column('user_name', VARCHAR(20)),
         )
         addresses = Table('query_addresses', metadata,
-            Column('address_id', Integer, primary_key=True),
+            Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key=True),
             Column('user_id', Integer, ForeignKey('query_users.user_id')),
             Column('address', String(30)))
             
@@ -252,6 +252,7 @@ class QueryTest(TestBase):
             eq_(expr.execute().fetchall(), result)
     
 
+    @testing.fails_on("oracle", "neither % nor %% are accepted")
     @testing.fails_on("+pg8000", "can't interpret result column from '%%'")
     @testing.emits_warning('.*now automatically escapes.*')
     def test_percents_in_text(self):
@@ -484,13 +485,15 @@ class QueryTest(TestBase):
         self.assert_(r['query_users.user_id']) == 1
         self.assert_(r['query_users.user_name']) == "john"
 
+    @testing.fails_on('oracle', 'oracle result keys() are all uppercase, not getting into this.')
     def test_row_as_args(self):
         users.insert().execute(user_id=1, user_name='john')
         r = users.select(users.c.user_id==1).execute().fetchone()
         users.delete().execute()
         users.insert().execute(r)
-        assert users.select().execute().fetchall() == [(1, 'john')]
+        eq_(users.select().execute().fetchall(), [(1, 'john')])
     
+    @testing.fails_on('oracle', 'oracle result keys() are all uppercase, not getting into this.')
     def test_result_as_args(self):
         users.insert().execute([dict(user_id=1, user_name='john'), dict(user_id=2, user_name='ed')])
         r = users.select().execute()
@@ -720,7 +723,7 @@ class PercentSchemaNamesTest(TestBase):
         result.close()
         percent_table.update().values({percent_table.c['%(oneofthese)s']:9, percent_table.c['spaces % more spaces']:15}).execute()
         eq_(
-            percent_table.select().order_by(percent_table.c['%(oneofthese)s']).execute().fetchall(),
+            percent_table.select().order_by(percent_table.c['percent%']).execute().fetchall(),
             [
                 (5, 9, 15),
                 (7, 9, 15),

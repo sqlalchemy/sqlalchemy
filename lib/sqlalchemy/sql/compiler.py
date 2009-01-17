@@ -982,6 +982,9 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_VARCHAR(self, type_):
         return "VARCHAR" + (type_.length and "(%d)" % type_.length or "")
 
+    def visit_NVARCHAR(self, type_):
+        return "NVARCHAR" + (type_.length and "(%d)" % type_.length or "")
+
     def visit_BLOB(self, type_):
         return "BLOB"
     

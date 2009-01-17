@@ -2,6 +2,7 @@
 
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
+from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import oracle
 from testlib import *
@@ -301,13 +302,13 @@ class TypesTest(TestBase, AssertsCompiledSQL):
     def test_reflect_nvarchar(self):
         metadata = MetaData(testing.db)
         t = Table('t', metadata,
-            Column('data', oracle.OracleNVarchar(255))
+            Column('data', sqltypes.NVARCHAR(255))
         )
         metadata.create_all()
         try:
             m2 = MetaData(testing.db)
             t2 = Table('t', m2, autoload=True)
-            assert isinstance(t2.c.data.type, oracle.OracleNVarchar)
+            assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
             data = u'm’a réveillé.'
             t2.insert().execute(data=data)
             eq_(t2.select().execute().fetchone()['data'], data)

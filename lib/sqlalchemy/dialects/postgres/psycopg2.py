@@ -100,8 +100,6 @@ class Postgres_psycopg2Compiler(PGCompiler):
     )
     
     def post_process_text(self, text):
-        if '%%' in text:
-            util.warn("The SQLAlchemy postgres dialect now automatically escapes '%' in text() expressions to '%%'.")
         return text.replace('%', '%%')
 
 class Postgres_psycopg2(PGDialect):

@@ -1689,7 +1689,8 @@ class MySQLDialect(default.DefaultDialect):
     max_identifier_length = 255
     supports_sane_rowcount = True
     default_paramstyle = 'format'
-
+    colspecs = colspecs
+    
     statement_compiler = MySQLCompiler
     ddl_compiler = MySQLDDLCompiler
     type_compiler = MySQLTypeCompiler
@@ -1698,9 +1699,6 @@ class MySQLDialect(default.DefaultDialect):
     def __init__(self, use_ansiquotes=None, **kwargs):
         self.use_ansiquotes = use_ansiquotes
         default.DefaultDialect.__init__(self, **kwargs)
-
-    def type_descriptor(self, typeobj):
-        return sqltypes.adapt_type(typeobj, colspecs)
 
     def do_executemany(self, cursor, statement, parameters, context=None):
         rowcount = cursor.executemany(statement, parameters)

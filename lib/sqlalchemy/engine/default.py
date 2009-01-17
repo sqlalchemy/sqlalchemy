@@ -15,7 +15,7 @@ as the base class for their own corresponding classes.
 import re, random
 from sqlalchemy.engine import base
 from sqlalchemy.sql import compiler, expression
-from sqlalchemy import exc
+from sqlalchemy import exc, types as sqltypes
 
 AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
                                re.I | re.UNICODE)
@@ -72,13 +72,12 @@ class DefaultDialect(base.Dialect):
         """Provide a database-specific ``TypeEngine`` object, given
         the generic object which comes from the types module.
 
-        Subclasses will usually use the ``adapt_type()`` method in the
-        types module to make this job easy.
+        This method looks for a dictionary called 
+        ``colspecs`` as a class or instance-level variable,
+        and passes on to ``types.adapt_type()``.
         
         """
-        if type(typeobj) is type:
-            typeobj = typeobj()
-        return typeobj
+        return sqltypes.adapt_type(typeobj, self.colspecs)
 
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
@@ -315,12 +314,16 @@ class DefaultExecutionContext(base.ExecutionContext):
     def lastrow_has_defaults(self):
         return hasattr(self, 'postfetch_cols') and len(self.postfetch_cols)
 
-    def set_input_sizes(self):
+    def set_input_sizes(self, translate=None):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
+        
         """
 
+        if not hasattr(self.compiled, 'bind_names'):
+            return
+            
         types = dict(
                 (self.compiled.bind_names[bindparam], bindparam.type)
                  for bindparam in self.compiled.bind_names)
@@ -343,6 +346,8 @@ class DefaultExecutionContext(base.ExecutionContext):
                 typeengine = types[key]
                 dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
                 if dbtype is not None:
+                    if translate:
+                        key = translate.get(key, key)
                     inputsizes[key.encode(self.dialect.encoding)] = dbtype
             try:
                 self.cursor.setinputsizes(**inputsizes)
