@@ -753,7 +753,7 @@ class Query(object):
     def union_all(self, *q):
         """Produce a UNION ALL of this Query against one or more queries.
 
-        Works the same way as :method:`union`.  See that
+        Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`.  See that
         method for usage examples.
 
         """
@@ -764,7 +764,7 @@ class Query(object):
     def intersect(self, *q):
         """Produce an INTERSECT of this Query against one or more queries.
 
-        Works the same way as :method:`union`.  See that
+        Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`.  See that
         method for usage examples.
 
         """
@@ -775,7 +775,7 @@ class Query(object):
     def intersect_all(self, *q):
         """Produce an INTERSECT ALL of this Query against one or more queries.
 
-        Works the same way as :method:`union`.  See that
+        Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`.  See that
         method for usage examples.
 
         """
@@ -786,7 +786,7 @@ class Query(object):
     def except_(self, *q):
         """Produce an EXCEPT of this Query against one or more queries.
 
-        Works the same way as :method:`union`.  See that
+        Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`.  See that
         method for usage examples.
 
         """
@@ -797,7 +797,7 @@ class Query(object):
     def except_all(self, *q):
         """Produce an EXCEPT ALL of this Query against one or more queries.
 
-        Works the same way as :method:`union`.  See that
+        Works the same way as :meth:`~sqlalchemy.orm.query.Query.union`.  See that
         method for usage examples.
 
         """
