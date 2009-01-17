@@ -88,7 +88,7 @@ class ZooMarkTest(TestBase):
                            LastEscape=datetime.datetime(2004, 7, 29, 5, 6, 7),
                            Admission=4.95,
                            )
-        session.save(wap)
+        session.add(wap)
         sdz = Zoo(Name =u'San Diego Zoo',
                            # This early date should play havoc with a number
                            # of implementations.
@@ -96,7 +96,7 @@ class ZooMarkTest(TestBase):
                            Opens = datetime.time(9, 0, 0),
                            Admission = 0,
                            )
-        session.save(sdz)
+        session.add(sdz)
         
         bio = Zoo(
                   Name = u'Montr\xe9al Biod\xf4me',
@@ -104,11 +104,11 @@ class ZooMarkTest(TestBase):
                   Opens = datetime.time(9, 0, 0),
                   Admission = 11.75,
                   )
-        session.save(bio)
+        session.add(bio)
         
         seaworld = Zoo(
                 Name =u'Sea_World', Admission = 60)
-        session.save(seaworld)
+        session.add(seaworld)
         
         # Let's add a crazy futuristic Zoo to test large date values.
         lp = Zoo(Name =u'Luna Park',
@@ -116,40 +116,40 @@ class ZooMarkTest(TestBase):
                                   Opens = datetime.time(0, 0, 0),
                                   Admission = 134.95,
                                   )
-        session.save(lp)
+        session.add(lp)
         session.flush()
         
         # Animals
         leopard = Animal(Species=u'Leopard', Lifespan=73.5,)
-        session.save(leopard)
+        session.add(leopard)
         leopard.ZooID = wap.ID
         leopard.LastEscape = datetime.datetime(2004, 12, 21, 8, 15, 0, 999907)
         
-        session.save(Animal(Species=u'Lion', ZooID=wap.ID))
-        session.save(Animal(Species=u'Slug', Legs=1, Lifespan=.75))
-        session.save(Animal(Species=u'Tiger', ZooID=sdz.ID))
+        session.add(Animal(Species=u'Lion', ZooID=wap.ID))
+        session.add(Animal(Species=u'Slug', Legs=1, Lifespan=.75))
+        session.add(Animal(Species=u'Tiger', ZooID=sdz.ID))
         
         # Override Legs.default with itself just to make sure it works.
-        session.save(Animal(Species=u'Bear', Legs=4))
-        session.save(Animal(Species=u'Ostrich', Legs=2, Lifespan=103.2))
-        session.save(Animal(Species=u'Centipede', Legs=100))
+        session.add(Animal(Species=u'Bear', Legs=4))
+        session.add(Animal(Species=u'Ostrich', Legs=2, Lifespan=103.2))
+        session.add(Animal(Species=u'Centipede', Legs=100))
         
-        session.save(Animal(Species=u'Emperor Penguin', Legs=2, ZooID=seaworld.ID))
-        session.save(Animal(Species=u'Adelie Penguin', Legs=2, ZooID=seaworld.ID))
+        session.add(Animal(Species=u'Emperor Penguin', Legs=2, ZooID=seaworld.ID))
+        session.add(Animal(Species=u'Adelie Penguin', Legs=2, ZooID=seaworld.ID))
         
-        session.save(Animal(Species=u'Millipede', Legs=1000000, ZooID=sdz.ID))
+        session.add(Animal(Species=u'Millipede', Legs=1000000, ZooID=sdz.ID))
         
         # Add a mother and child to test relationships
         bai_yun = Animal(Species=u'Ape', Nameu=u'Bai Yun', Legs=2)
-        session.save(bai_yun)
-        session.save(Animal(Species=u'Ape', Name=u'Hua Mei', Legs=2,
+        session.add(bai_yun)
+        session.add(Animal(Species=u'Ape', Name=u'Hua Mei', Legs=2,
                          MotherID=bai_yun.ID))
         session.flush()
         session.commit()
 
     def test_baseline_2_insert(self):
         for x in xrange(ITERATIONS):
-            session.save(Animal(Species=u'Tick', Name=u'Tick %d' % x, Legs=8))
+            session.add(Animal(Species=u'Tick', Name=u'Tick %d' % x, Legs=8))
         session.flush()
 
     def test_baseline_3_properties(self):

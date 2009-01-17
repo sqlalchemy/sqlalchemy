@@ -34,8 +34,8 @@ class SavePostTest(ZBlogTest):
         user = User('zbloguser', "Zblog User", "hello", group=administrator)
         blog = Blog(owner=user)
         blog.name = "this is a blog"
-        s.save(user)
-        s.save(blog)
+        s.add(user)
+        s.add(blog)
         s.flush()
         blog_id = blog.id
         user_id = user.id
@@ -55,7 +55,7 @@ class SavePostTest(ZBlogTest):
         try:
             blog = s.query(Blog).get(blog_id)
             post = Post(headline="asdf asdf", summary="asdfasfd")
-            s.save(post)
+            s.add(post)
             post.blog_id=blog_id
             post.blog = blog
             assert post in blog.posts
@@ -74,9 +74,9 @@ class SavePostTest(ZBlogTest):
             post.blog = blog
             user = s.query(User).get(user_id)
             post.user = user
-            s.save(post)
+            s.add(post)
             s.flush()
-            s.clear()
+            s.expunge_all()
 
             user = s.query(User).get(user_id)
             blog = s.query(Blog).get(blog_id)
@@ -85,7 +85,7 @@ class SavePostTest(ZBlogTest):
             comment.post = post
             comment.user = user
             s.flush()
-            s.clear()
+            s.expunge_all()
 
             assert s.query(Post).get(post.id) is not None
 

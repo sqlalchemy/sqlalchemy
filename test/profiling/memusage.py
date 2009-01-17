@@ -101,7 +101,7 @@ class MemUsageTest(EnsureZeroed):
             for x in [a1,a2,a3]:
                 sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             alist = sess.query(A).all()
             self.assertEquals(
@@ -152,7 +152,7 @@ class MemUsageTest(EnsureZeroed):
             for x in [a1,a2,a3]:
                 sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
@@ -212,7 +212,7 @@ class MemUsageTest(EnsureZeroed):
             for x in [a1,a2,b1, b2]:
                 sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
@@ -276,7 +276,7 @@ class MemUsageTest(EnsureZeroed):
             for x in [a1,a2]:
                 sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
