@@ -683,7 +683,9 @@ class PercentSchemaNamesTest(TestBase):
             Column("spaces % more spaces", Integer),
         )
         metadata.create_all()
-        
+
+    @testing.crashes('mysql', 'mysqldb calls name % (params)')
+    @testing.crashes('postgres', 'postgres calls name % (params)')
     def tearDownAll(self):
         metadata.drop_all()
     
@@ -698,26 +700,41 @@ class PercentSchemaNamesTest(TestBase):
             {'percent%':9, '%(oneofthese)s':9, 'spaces % more spaces':10},
             {'percent%':11, '%(oneofthese)s':10, 'spaces % more spaces':9},
         )
-        eq_(
-            percent_table.select().order_by(percent_table.c['%(oneofthese)s']).execute().fetchall(),
-            [
-                (5, 7, 12),
-                (7, 8, 11),
-                (9, 9, 10),
-                (11, 10, 9)
-            ]
-        )
-        result = percent_table.select().order_by(percent_table.c['%(oneofthese)s']).execute()
-        row = result.fetchone()
-        eq_(row[percent_table.c['percent%']], 5)
-        eq_(row[percent_table.c['%(oneofthese)s']], 7)
-        eq_(row[percent_table.c['spaces % more spaces']], 12)
-        row = result.fetchone()
-        eq_(row['percent%'], 7)
-        eq_(row['%(oneofthese)s'], 8)
-        eq_(row['spaces % more spaces'], 11)
-        result.close()
+        
+        for table in (percent_table, percent_table.alias()):
+            eq_(
+                table.select().order_by(table.c['%(oneofthese)s']).execute().fetchall(),
+                [
+                    (5, 7, 12),
+                    (7, 8, 11),
+                    (9, 9, 10),
+                    (11, 10, 9)
+                ]
+            )
+
+            eq_(
+                table.select().
+                    where(table.c['spaces % more spaces'].in_([9, 10])).
+                    order_by(table.c['%(oneofthese)s']).execute().fetchall(),
+                    [
+                        (9, 9, 10),
+                        (11, 10, 9)
+                    ]
+            )
+
+            result = table.select().order_by(table.c['%(oneofthese)s']).execute()
+            row = result.fetchone()
+            eq_(row[table.c['percent%']], 5)
+            eq_(row[table.c['%(oneofthese)s']], 7)
+            eq_(row[table.c['spaces % more spaces']], 12)
+            row = result.fetchone()
+            eq_(row['percent%'], 7)
+            eq_(row['%(oneofthese)s'], 8)
+            eq_(row['spaces % more spaces'], 11)
+            result.close()
+
         percent_table.update().values({percent_table.c['%(oneofthese)s']:9, percent_table.c['spaces % more spaces']:15}).execute()
+
         eq_(
             percent_table.select().order_by(percent_table.c['%(oneofthese)s']).execute().fetchall(),
             [

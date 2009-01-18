@@ -3,7 +3,13 @@
 =======
 CHANGES
 =======
+0.5.2
+======
 
+- sql
+    - Further fixes to the "percent signs and spaces in column/table
+       names" functionality. [ticket:1284]
+       
 0.5.1
 ========
 
