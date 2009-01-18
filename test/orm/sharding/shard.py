@@ -138,10 +138,10 @@ class ShardTest(TestBase):
 
         sess = create_session()
         for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
-            sess.save(c)
+            sess.add(c)
         sess.commit()
         tokyo.city   # reload 'city' attribute on tokyo
-        sess.clear()
+        sess.expunge_all()
 
         eq_(db2.execute(weather_locations.select()).fetchall(), [(1, 'Asia', 'Tokyo')])
         eq_(db1.execute(weather_locations.select()).fetchall(), [(2, 'North America', 'New York'), (3, 'North America', 'Toronto')])

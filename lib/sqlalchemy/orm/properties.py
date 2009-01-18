@@ -381,7 +381,6 @@ class RelationProperty(StrategizedProperty):
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension
-        self.__join_cache = {}
         self.comparator_factory = comparator_factory or RelationProperty.Comparator
         self.comparator = self.comparator_factory(self, None)
         util.set_creation_order(self)
@@ -910,7 +909,11 @@ class RelationProperty(StrategizedProperty):
                     "- foreign key columns are present in both the parent and "
                     "the child's mapped tables.  Specify 'foreign_keys' "
                     "argument." % (str(self)))
-
+        
+        if self.cascade.delete_orphan and self.direction is MANYTOMANY:
+            util.warn("On %s, delete-orphan cascade is not supported on a "
+                    "many-to-many relation.  This will raise an error in 0.6." % self)
+        
     def _determine_local_remote_pairs(self):
         if not self.local_remote_pairs:
             if self.remote_side:
@@ -1000,12 +1003,6 @@ class RelationProperty(StrategizedProperty):
         return self.mapper.common_parent(self.parent)
 
     def _create_joins(self, source_polymorphic=False, source_selectable=None, dest_polymorphic=False, dest_selectable=None, of_type=None):
-        key = util.WeakCompositeKey(source_polymorphic, source_selectable, dest_polymorphic, dest_selectable, of_type)
-        try:
-            return self.__join_cache[key]
-        except KeyError:
-            pass
-
         if source_selectable is None:
             if source_polymorphic and self.parent.with_polymorphic:
                 source_selectable = self.parent._with_polymorphic_selectable
@@ -1072,10 +1069,9 @@ class RelationProperty(StrategizedProperty):
         else:
             target_adapter = None
 
-        self.__join_cache[key] = ret = (primaryjoin, secondaryjoin, 
+        return (primaryjoin, secondaryjoin, 
                 (source_selectable or self.parent.local_table), 
                 (dest_selectable or self.mapper.local_table), secondary, target_adapter)
-        return ret
 
     def _get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
         """deprecated.  use primary_join_against(), secondary_join_against(), full_join_against()"""

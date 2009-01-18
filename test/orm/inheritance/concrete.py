@@ -92,10 +92,10 @@ class ConcreteTest(_base.MappedTest):
             concrete=True, polymorphic_identity='engineer')
 
         session = create_session()
-        session.save(Manager('Tom', 'knows how to manage things'))
-        session.save(Engineer('Kurt', 'knows how to hack'))
+        session.add(Manager('Tom', 'knows how to manage things'))
+        session.add(Engineer('Kurt', 'knows how to hack'))
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         assert set([repr(x) for x in session.query(Employee)]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
         assert set([repr(x) for x in session.query(Manager)]) == set(["Manager Tom knows how to manage things"])
@@ -148,7 +148,7 @@ class ConcreteTest(_base.MappedTest):
             self.assertEquals(hacker.nickname, "Badass")
         self.assert_sql_count(testing.db, go, 0)
         
-        session.clear()
+        session.expunge_all()
 
         assert repr(session.query(Employee).filter(Employee.name=='Tom').one()) == "Manager Tom knows how to manage things"
         assert repr(session.query(Manager).filter(Manager.name=='Tom').one()) == "Manager Tom knows how to manage things"
@@ -198,7 +198,7 @@ class ConcreteTest(_base.MappedTest):
             self.assertEquals(hacker.nickname, "Badass")
         self.assert_sql_count(testing.db, go, 0)
 
-        session.clear()
+        session.expunge_all()
 
         # check that we aren't getting a cartesian product in the raw SQL.
         # this requires that Engineer's polymorphic discriminator is not rendered
@@ -300,15 +300,15 @@ class ConcreteTest(_base.MappedTest):
         c = Company()
         c.employees.append(Manager('Tom', 'knows how to manage things'))
         c.employees.append(Engineer('Kurt', 'knows how to hack'))
-        session.save(c)
+        session.add(c)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         def go():
             c2 = session.query(Company).get(c.id)
             assert set([repr(x) for x in c2.employees]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
         self.assert_sql_count(testing.db, go, 2)
-        session.clear()
+        session.expunge_all()
         def go():
             c2 = session.query(Company).options(eagerload(Company.employees)).get(c.id)
             assert set([repr(x) for x in c2.employees]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])

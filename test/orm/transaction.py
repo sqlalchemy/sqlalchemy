@@ -283,6 +283,19 @@ class SavepointTest(TransactionTest):
         self.assertEquals(s.query(User.name).order_by(User.id).all(), [('ed',), ('jack',)])
 
     @testing.requires.savepoints
+    def test_savepoint_delete(self):
+        s = self.session()
+        u1 = User(name='ed')
+        s.add(u1)
+        s.commit()
+        self.assertEquals(s.query(User).filter_by(name='ed').count(), 1)
+        s.begin_nested()
+        s.delete(u1)
+        s.commit()
+        self.assertEquals(s.query(User).filter_by(name='ed').count(), 0)
+        s.commit()
+
+    @testing.requires.savepoints
     def test_savepoint_commit(self):
         s = self.session()
         u1 = User(name='ed')

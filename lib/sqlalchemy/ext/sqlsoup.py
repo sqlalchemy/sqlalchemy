@@ -316,7 +316,7 @@ Boring tests here.  Nothing of real expository value.
     >>> db.loans.count()
     1
     >>> _ = db.loans.insert(book_id=1, user_name='Bhargan Basepair')
-    >>> db.clear()
+    >>> db.expunge_all()
     >>> db.flush()
     >>> db.loans.count()
     1
@@ -516,7 +516,10 @@ class SqlSoup:
         Session.flush()
 
     def clear(self):
-        Session.clear()
+        Session.expunge_all()
+
+    def expunge_all(self):
+        Session.expunge_all()
 
     def map(self, selectable, **kwargs):
         try:

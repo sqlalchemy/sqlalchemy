@@ -284,6 +284,11 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         assert str(u) == str(u2) == str(u3)
         assert u2.compile().params == {'id_param':7}
         assert u3.compile().params == {'id_param':10}
+    
+    def test_adapt_union(self):
+        u = union(t1.select().where(t1.c.col1==4), t1.select().where(t1.c.col1==5)).alias()
+        
+        assert sql_util.ClauseAdapter(u).traverse(t1) is u
         
     def test_binds(self):
         """test that unique bindparams change their name upon clone() to prevent conflicts"""

@@ -101,7 +101,7 @@ class MemUsageTest(EnsureZeroed):
             for x in [a1,a2,a3]:
                 sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             alist = sess.query(A).all()
             self.assertEquals(
@@ -152,7 +152,7 @@ class MemUsageTest(EnsureZeroed):
             for x in [a1,a2,a3]:
                 sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
@@ -212,7 +212,7 @@ class MemUsageTest(EnsureZeroed):
             for x in [a1,a2,b1, b2]:
                 sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
@@ -276,7 +276,7 @@ class MemUsageTest(EnsureZeroed):
             for x in [a1,a2]:
                 sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             alist = sess.query(A).order_by(A.col1).all()
             self.assertEquals(
@@ -300,6 +300,45 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
         assert_no_mappers()
 
+    def test_join_cache(self):
+        metadata = MetaData(testing.db)
+
+        table1 = Table("table1", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30))
+            )
+
+        table2 = Table("table2", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            Column('t1id', Integer, ForeignKey('table1.id'))
+            )
+        
+        class Foo(object):
+            pass
+            
+        class Bar(object):
+            pass
+            
+        mapper(Foo, table1, properties={
+            'bars':relation(mapper(Bar, table2))
+        })
+        metadata.create_all()
+
+        session = sessionmaker()
+        
+        @profile_memory
+        def go():
+            s = table2.select()
+            sess = session()
+            sess.query(Foo).join((s, Foo.bars)).all()
+            sess.rollback()
+        try:
+            go()
+        finally:
+            metadata.drop_all()
+            
+            
     def test_mutable_identity(self):
         metadata = MetaData(testing.db)
 

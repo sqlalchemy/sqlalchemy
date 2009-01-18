@@ -113,10 +113,10 @@ class InheritTest(ORMTest):
         d1 = Detail(name='d1')
         a1.specification.append(SpecLine(slave=d1))
 
-        session.save(a1)
+        session.add(a1)
         orig = repr(a1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
@@ -145,11 +145,11 @@ class InheritTest(ORMTest):
 
         s = SpecLine(slave=Product(name='p1'))
         s2 = SpecLine(slave=Detail(name='d1'))
-        session.save(s)
-        session.save(s2)
+        session.add(s)
+        session.add(s2)
         orig = repr([s, s2])
         session.flush()
-        session.clear()
+        session.expunge_all()
         new = repr(session.query(SpecLine).all())
         print orig
         print new
@@ -197,10 +197,10 @@ class InheritTest(ORMTest):
         a1.specification.append(SpecLine(slave=Detail(name='d1')))
         a1.documents.append(Document('doc1'))
         a1.documents.append(RasterDocument('doc2'))
-        session.save(a1)
+        session.add(a1)
         orig = repr(a1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
@@ -235,10 +235,10 @@ class InheritTest(ORMTest):
 
         a1 = Assembly(name='a1')
         a1.documents.append(RasterDocument('doc2'))
-        session.save(a1)
+        session.add(a1)
         orig = repr(a1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)
@@ -248,7 +248,7 @@ class InheritTest(ORMTest):
 
         del a1.documents[0]
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Product).filter_by(name='a1').one()
         assert len(session.query(Document).all()) == 0
@@ -302,10 +302,10 @@ class InheritTest(ORMTest):
         a1.specification.append(SpecLine(slave=Detail(name='d1')))
         a1.documents.append(Document('doc1'))
         a1.documents.append(RasterDocument('doc2'))
-        session.save(a1)
+        session.add(a1)
         orig = repr(a1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         a1 = session.query(Product).filter_by(name='a1').one()
         new = repr(a1)

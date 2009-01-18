@@ -31,6 +31,11 @@ class CascadeOptions(object):
         self.merge = "merge" in values or "all" in values
         self.expunge = "expunge" in values or "all" in values
         self.refresh_expire = "refresh-expire" in values or "all" in values
+        
+        if self.delete_orphan and not self.delete:
+            util.warn("The 'delete-orphan' cascade option requires "
+                        "'delete'.  This will raise an error in 0.6.")
+            
         for x in values:
             if x not in all_cascades:
                 raise sa_exc.ArgumentError("Invalid cascade option '%s'" % x)
@@ -378,6 +383,10 @@ class _ORMJoin(expression.Join):
             if isinstance(onclause, basestring):
                 prop = left_mapper.get_property(onclause)
             elif isinstance(onclause, attributes.QueryableAttribute):
+                # TODO: we might want to honor the current adapt_from,
+                # if already set.  we would need to adjust how we calculate
+                # adapt_from though since it is present in too many cases
+                # at the moment (query tests illustrate that).
                 adapt_from = onclause.__clause_element__()
                 prop = onclause.property
             elif isinstance(onclause, MapperProperty):

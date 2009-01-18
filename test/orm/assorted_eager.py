@@ -260,7 +260,7 @@ class EagerTest2(_base.MappedTest):
         session = create_session()
         session.add(p)
         session.flush()
-        session.clear()
+        session.expunge_all()
         obj = session.query(Left).filter_by(data='l1').one()
 
 
@@ -463,13 +463,13 @@ class EagerTest5(_base.MappedTest):
         d2.comments = [Comment('uid2', 'comment')]
         sess.add_all((d, d2))
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         # this eager load sets up an AliasedClauses for the "comment"
         # relationship, then stores it in clauses_by_lead_mapper[mapper for
         # Derived]
         d = sess.query(Derived).get('uid1')
-        sess.clear()
+        sess.expunge_all()
         assert len([c for c in d.comments]) == 1
 
         # this eager load sets up an AliasedClauses for the "comment"
@@ -477,7 +477,7 @@ class EagerTest5(_base.MappedTest):
         # for DerivedII].  the bug was that the previous AliasedClause create
         # prevented this population from occurring.
         d2 = sess.query(DerivedII).get('uid2')
-        sess.clear()
+        sess.expunge_all()
 
         # object is not in the session; therefore the lazy load cant trigger
         # here, eager load had to succeed
@@ -546,7 +546,7 @@ class EagerTest6(_base.MappedTest):
         sess = create_session()
         sess.add(d)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         x = sess.query(Design).get(1)
         x.inheritedParts
 
@@ -630,10 +630,10 @@ class EagerTest7(_base.MappedTest):
         company_id = c1.company_id
         invoice_id = i1.invoice_id
 
-        session.clear()
+        session.expunge_all()
         c = session.query(Company).get(company_id)
 
-        session.clear()
+        session.expunge_all()
         i = session.query(Invoice).get(invoice_id)
 
         eq_(c, i.company)
@@ -674,7 +674,7 @@ class EagerTest7(_base.MappedTest):
 
         company_id = c1.company_id
 
-        session.clear()
+        session.expunge_all()
 
         a = session.query(Company).get(company_id)
 
@@ -688,10 +688,10 @@ class EagerTest7(_base.MappedTest):
         session.flush()
         invoice_id = i1.invoice_id
 
-        session.clear()
+        session.expunge_all()
         c = session.query(Company).get(company_id)
 
-        session.clear()
+        session.expunge_all()
         i = session.query(Invoice).get(invoice_id)
 
         eq_(c, i.company)
@@ -849,7 +849,7 @@ class EagerTest9(_base.MappedTest):
 
         session.add(acc1)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         def go():
             # load just the first Account.  eager loading will actually load

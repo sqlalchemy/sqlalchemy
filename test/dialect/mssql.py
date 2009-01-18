@@ -234,7 +234,7 @@ class GenerativeQueryTest(TestBase):
 
         sess = create_session(bind=testing.db)
         for i in range(100):
-            sess.save(Foo(bar=i, range=i%10))
+            sess.add(Foo(bar=i, range=i%10))
         sess.flush()
 
     def tearDownAll(self):
@@ -473,32 +473,51 @@ class TypesTest(TestBase):
     def setUpAll(self):
         global numeric_table, metadata
         metadata = MetaData(testing.db)
+
+    def tearDown(self):
+        metadata.drop_all()
+
+    def test_decimal_notation(self):
+        import decimal
         numeric_table = Table('numeric_table', metadata,
             Column('id', Integer, Sequence('numeric_id_seq', optional=True), primary_key=True),
-            Column('numericcol', Numeric(asdecimal=False))
+            Column('numericcol', Numeric(precision=38, scale=20, asdecimal=True))
         )
         metadata.create_all()
 
-    def tearDownAll(self):
-        metadata.drop_all()
+        try:
+            test_items = [decimal.Decimal(d) for d in '1500000.00000000000000000000',
+                          '-1500000.00000000000000000000', '1500000',
+                          '0.0000000000000000002', '0.2', '-0.0000000000000000002',
+                          '156666.458923543', '-156666.458923543', '1', '-1', '1234',
+                          '2E-12', '4E8', '3E-6', '3E-7', '4.1', '1E-1', '1E-2', '1E-3',
+                          '1E-4', '1E-5', '1E-6', '1E-7', '1E-8']
+            for value in test_items:
+                numeric_table.insert().execute(numericcol=value)
 
-    def tearDown(self):
-        numeric_table.delete().execute()
+            for value in select([numeric_table.c.numericcol]).execute():
+                self.assertTrue(value[0] in test_items, "%s not in test_items" % value[0])
 
-    def test_decimal_e_notation(self):
-        from decimal import Decimal
+        except Exception, e:
+            raise e
+
+    def test_float(self):
+        float_table = Table('float_table', metadata,
+            Column('id', Integer, Sequence('numeric_id_seq', optional=True), primary_key=True),
+            Column('floatcol', Float())
+        )
+        metadata.create_all()
 
         try:
-            numeric_table.insert().execute(numericcol=Decimal('4.1'))
-            numeric_table.insert().execute(numericcol=Decimal('1E-1'))
-            numeric_table.insert().execute(numericcol=Decimal('1E-2'))
-            numeric_table.insert().execute(numericcol=Decimal('1E-3'))
-            numeric_table.insert().execute(numericcol=Decimal('1E-4'))
-            numeric_table.insert().execute(numericcol=Decimal('1E-5'))
-            numeric_table.insert().execute(numericcol=Decimal('1E-6'))
-            numeric_table.insert().execute(numericcol=Decimal('1E-7'))
-            numeric_table.insert().execute(numericcol=Decimal('1E-8'))
-            numeric_table.insert().execute(numericcol=10000)
+            test_items = [float(d) for d in '1500000.00000000000000000000',
+                          '-1500000.00000000000000000000', '1500000',
+                          '0.0000000000000000002', '0.2', '-0.0000000000000000002',
+                          '156666.458923543', '-156666.458923543', '1', '-1', '1234',
+                          '2E-12', '4E8', '3E-6', '3E-7', '4.1', '1E-1', '1E-2', '1E-3',
+                          '1E-4', '1E-5', '1E-6', '1E-7', '1E-8']
+            for value in test_items:
+                float_table.insert().execute(floatcol=value)
+
         except Exception, e:
             raise e
 

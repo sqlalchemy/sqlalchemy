@@ -37,7 +37,7 @@ class SelectableNoFromsTest(_base.MappedTest):
         sess = create_session(bind=testing.db)
         sess.add(Subset(data=1))
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(Subset).all(), [Subset(data=1)])
         eq_(sess.query(Subset).filter(Subset.data==1).one(), Subset(data=1))

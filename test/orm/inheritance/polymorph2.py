@@ -59,9 +59,9 @@ class RelationTest1(ORMTest):
         p = Person(name='some person')
         m = Manager(name='some manager')
         p.manager = m
-        session.save(p)
+        session.add(p)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Person).get(p.person_id)
         m = session.query(Manager).get(m.person_id)
@@ -86,9 +86,9 @@ class RelationTest1(ORMTest):
         p = Person(name='some person')
         m = Manager(name='some manager')
         m.employee = p
-        session.save(m)
+        session.add(m)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         p = session.query(Person).get(p.person_id)
         m = session.query(Manager).get(m.person_id)
@@ -178,10 +178,10 @@ class RelationTest2(ORMTest):
         m.colleague = p
         if usedata:
             m.data = Data('ms data')
-        sess.save(m)
+        sess.add(m)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
         p = sess.query(Person).get(p.person_id)
         m = sess.query(Manager).get(m.person_id)
         print p
@@ -268,11 +268,11 @@ def generate_test(jointype="join1", usedata=False):
             p.data = Data('ps data')
             m.data = Data('ms data')
 
-        sess.save(m)
-        sess.save(p)
+        sess.add(m)
+        sess.add(p)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
         p = sess.query(Person).get(p.person_id)
         p2 = sess.query(Person).get(p2.person_id)
         p3 = sess.query(Person).get(p3.person_id)
@@ -357,10 +357,10 @@ class RelationTest4(ORMTest):
 
         # creating 5 managers named from M1 to E5
         for i in range(1,5):
-            session.save(Manager(name="M%d" % i,longer_status="YYYYYYYYY"))
+            session.add(Manager(name="M%d" % i,longer_status="YYYYYYYYY"))
         # creating 5 engineers named from E1 to E5
         for i in range(1,5):
-            session.save(Engineer(name="E%d" % i,status="X"))
+            session.add(Engineer(name="E%d" % i,status="X"))
 
         session.flush()
 
@@ -368,12 +368,12 @@ class RelationTest4(ORMTest):
         manager3 = session.query(Manager).filter(Manager.name=="M3").first()
 
         car1 = Car(employee=engineer4)
-        session.save(car1)
+        session.add(car1)
         car2 = Car(employee=manager3)
-        session.save(car2)
+        session.add(car2)
         session.flush()
 
-        session.clear()
+        session.expunge_all()
     
         def go():
             testcar = session.query(Car).options(eagerload('employee')).get(car1.car_id)
@@ -394,7 +394,7 @@ class RelationTest4(ORMTest):
         assert str(usingGet) == "Engineer E4, status X"
         assert str(usingProperty) == "Engineer E4, status X"
 
-        session.clear()
+        session.expunge_all()
         print "-----------------------------------------------------------------"
         # and now for the lightning round, eager !
 
@@ -403,7 +403,7 @@ class RelationTest4(ORMTest):
             assert str(testcar.employee) == "Engineer E4, status X"
         self.assert_sql_count(testing.db, go, 1)
 
-        session.clear()
+        session.expunge_all()
         s = session.query(Car)
         c = s.join("employee").filter(Person.name=="E4")[0]
         assert c.car_id==car1.car_id
@@ -459,10 +459,10 @@ class RelationTest5(ORMTest):
         car1 = Car()
         car2 = Car()
         car2.manager = Manager()
-        sess.save(car1)
-        sess.save(car2)
+        sess.add(car1)
+        sess.add(car2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         carlist = sess.query(Car).all()
         assert carlist[0].manager is None
@@ -503,10 +503,10 @@ class RelationTest6(ORMTest):
         m = Manager(name='manager1')
         m2 =Manager(name='manager2')
         m.colleague = m2
-        sess.save(m)
+        sess.add(m)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
         m = sess.query(Manager).get(m.person_id)
         m2 = sess.query(Manager).get(m2.person_id)
         assert m.colleague is m2
@@ -601,10 +601,10 @@ class RelationTest7(ORMTest):
                 car=Car()
             else:
                 car=Offraod_Car()
-            session.save(Manager(name="M%d" % i,category="YYYYYYYYY",car=car))
-            session.save(Engineer(name="E%d" % i,field="X",car=car))
+            session.add(Manager(name="M%d" % i,category="YYYYYYYYY",car=car))
+            session.add(Engineer(name="E%d" % i,field="X",car=car))
             session.flush()
-            session.clear()
+            session.expunge_all()
 
         r = session.query(Person).all()
         for p in r:
@@ -697,8 +697,8 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         active = Status(name="active")
         dead = Status(name="dead")
 
-        session.save(active)
-        session.save(dead)
+        session.add(active)
+        session.add(dead)
         session.flush()
 
         # TODO: we haven't created assertions for all the data combinations created here
@@ -710,8 +710,8 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
                 st=active
             else:
                 st=dead
-            session.save(Manager(name="M%d" % i,category="YYYYYYYYY",status=st))
-            session.save(Engineer(name="E%d" % i,field="X",status=st))
+            session.add(Manager(name="M%d" % i,category="YYYYYYYYY",status=st))
+            session.add(Engineer(name="E%d" % i,field="X",status=st))
 
         session.flush()
 
@@ -721,8 +721,8 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         # create 2 cars for E4, one active and one dead
         car1 = Car(employee=engineer4,status=active)
         car2 = Car(employee=engineer4,status=dead)
-        session.save(car1)
-        session.save(car2)
+        session.add(car1)
+        session.add(car2)
         session.flush()
 
         # this particular adapt used to cause a recursion overflow;
@@ -807,9 +807,9 @@ class MultiLevelTest(ORMTest):
         c = Manager().set( name= 'head', machine= 'fast', duties= 'many')
 
         session = create_session()
-        session.save(a)
-        session.save(b)
-        session.save(c)
+        session.add(a)
+        session.add(b)
+        session.add(c)
         session.flush()
         assert set(session.query(Employee).all()) == set([a,b,c])
         assert set(session.query( Engineer).all()) == set([b,c])
@@ -898,10 +898,10 @@ class CustomPKTest(ORMTest):
         ot1 = T1()
         ot2 = T2()
         sess = create_session()
-        sess.save(ot1)
-        sess.save(ot2)
+        sess.add(ot1)
+        sess.add(ot2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         # query using get(), using only one value.  this requires the select_table mapper
         # has the same single-col primary key.
@@ -935,10 +935,10 @@ class CustomPKTest(ORMTest):
         ot1 = T1()
         ot2 = T2()
         sess = create_session()
-        sess.save(ot1)
-        sess.save(ot2)
+        sess.add(ot1)
+        sess.add(ot2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         # query using get(), using only one value.  this requires the select_table mapper
         # has the same single-col primary key.
@@ -995,7 +995,7 @@ class InheritingEagerTest(ORMTest):
         session = create_session()
 
         bob = Employee()
-        session.save(bob)
+        session.add(bob)
 
         tag = Tag('crazy')
         bob.tags.append(tag)
@@ -1004,7 +1004,7 @@ class InheritingEagerTest(ORMTest):
         bob.tags.append(tag)
         session.flush()
 
-        session.clear()
+        session.expunge_all()
         # query from Employee with limit, query needs to apply eager limiting subquery
         instance = session.query(Employee).filter_by(id=1).limit(1).first()
         assert len(instance.tags) == 2
@@ -1052,10 +1052,10 @@ class MissingPolymorphicOnTest(ORMTest):
         c = C(cdata='c1', adata='a1', b=B(data='c'))
         d = D(cdata='c2', adata='a2', ddata='d2', b=B(data='d'))
         sess = create_session()
-        sess.save(c)
-        sess.save(d)
+        sess.add(c)
+        sess.add(d)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(A).all(), [C(cdata='c1', adata='a1'), D(cdata='c2', adata='a2', ddata='d2')])
         
 if __name__ == "__main__":

@@ -80,9 +80,9 @@ class InsertOrderTest(PolymorphTest):
         c.employees.append(Person(status='HHH', name='joesmith'))
         c.employees.append(Engineer(status='CGG', engineer_name='engineer2', primary_language='python', name='wally'))
         c.employees.append(Manager(status='ABA', manager_name='manager2', name='jsmith'))
-        session.save(c)
+        session.add(c)
         session.flush()
-        session.clear()
+        session.expunge_all()
         self.assertEquals(session.query(Company).get(c.company_id), c)
 
 class RelationToSubclassTest(PolymorphTest):
@@ -111,9 +111,9 @@ class RelationToSubclassTest(PolymorphTest):
 
         c = Company(name='company1')
         c.managers.append(Manager(status='AAB', manager_name='manager1', name='pointy haired boss'))
-        sess.save(c)
+        sess.add(c)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         self.assertEquals(sess.query(Company).filter_by(company_id=c.company_id).one(), c)
         assert c.managers[0].company is c
@@ -200,16 +200,16 @@ def generate_round_trip_test(include_base, lazy_relation, redefine_colprop, with
         session = create_session()
         c = Company(name='company1')
         c.employees = employees
-        session.save(c)
+        session.add(c)
 
         session.flush()
-        session.clear()
+        session.expunge_all()
         
         self.assertEquals(session.query(Person).get(dilbert.person_id), dilbert)
-        session.clear()
+        session.expunge_all()
 
         self.assertEquals(session.query(Person).filter(Person.person_id==dilbert.person_id).one(), dilbert)
-        session.clear()
+        session.expunge_all()
 
         def go():
             cc = session.query(Company).get(c.company_id)
@@ -253,12 +253,12 @@ def generate_round_trip_test(include_base, lazy_relation, redefine_colprop, with
         dilbert.engineer_name = 'hes dibert!'
 
         session.flush()
-        session.clear()
+        session.expunge_all()
         
         def go():
             session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
         self.assert_sql_count(testing.db, go, 1)
-        session.clear()
+        session.expunge_all()
         dilbert = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
         def go():
             # assert that only primary table is queried for already-present-in-session
@@ -267,13 +267,13 @@ def generate_round_trip_test(include_base, lazy_relation, redefine_colprop, with
 
         # test standalone orphans
         daboss = Boss(status='BBB', manager_name='boss', golf_swing='fore', **{person_attribute_name:'daboss'})
-        session.save(daboss)
+        session.add(daboss)
         self.assertRaises(orm_exc.FlushError, session.flush)
         c = session.query(Company).first()
         daboss.company = c
         manager_list = [e for e in c.employees if isinstance(e, Manager)]
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         self.assertEquals(session.query(Manager).order_by(Manager.person_id).all(), manager_list)
         c = session.query(Company).first()

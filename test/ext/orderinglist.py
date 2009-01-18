@@ -132,11 +132,11 @@ class OrderingListTest(TestBase):
         self.assert_(s1.bullets[3].position == 4)
 
         session = create_session()
-        session.save(s1)
+        session.add(s1)
         session.flush()
 
         id = s1.id
-        session.clear()
+        session.expunge_all()
         del s1
 
         srt = session.query(Slide).get(id)
@@ -196,11 +196,11 @@ class OrderingListTest(TestBase):
         s1.bullets._reorder()
         self.assert_(s1.bullets[4].position == 5)
         session = create_session()
-        session.save(s1)
+        session.add(s1)
         session.flush()
 
         id = s1.id
-        session.clear()
+        session.expunge_all()
         del s1
 
         srt = session.query(Slide).get(id)
@@ -215,7 +215,7 @@ class OrderingListTest(TestBase):
         srt.bullets._raw_append(Bullet('raw2'))
         srt.bullets[-1].position = 6
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         srt = session.query(Slide).get(id)
         titles = ['s1/b1','s1/b2','s1/b100','s1/b4', 'raw', 'raw2']
@@ -253,11 +253,11 @@ class OrderingListTest(TestBase):
         self.assert_(s1.bullets[5].position == 5)
 
         session = create_session()
-        session.save(s1)
+        session.add(s1)
         session.flush()
 
         id = s1.id
-        session.clear()
+        session.expunge_all()
         del s1
 
         srt = session.query(Slide).get(id)
@@ -296,11 +296,11 @@ class OrderingListTest(TestBase):
             self.assert_(s1.bullets[li] == b[bi])
 
         session = create_session()
-        session.save(s1)
+        session.add(s1)
         session.flush()
 
         id = s1.id
-        session.clear()
+        session.expunge_all()
         del s1
 
         srt = session.query(Slide).get(id)
@@ -323,7 +323,7 @@ class OrderingListTest(TestBase):
         self.assert_(s1.bullets[2].position == 2)
 
         session = create_session()
-        session.save(s1)
+        session.add(s1)
         session.flush()
 
         new_bullet = Bullet('new 2')
@@ -339,7 +339,7 @@ class OrderingListTest(TestBase):
         id = s1.id
 
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         srt = session.query(Slide).get(id)
 

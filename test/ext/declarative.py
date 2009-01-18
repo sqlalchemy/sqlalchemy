@@ -47,7 +47,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(), [User(name='u1', addresses=[
             Address(email='one'),
@@ -131,7 +131,7 @@ class DeclarativeTest(DeclarativeTestBase):
         u1 = User(name='ed', addresses=[Address(email='abc'), Address(email='def'), Address(email='xyz')])
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(User).filter(User.name == 'ed').one(),
             User(name='ed', addresses=[Address(email='xyz'), Address(email='def'), Address(email='abc')])
         )
@@ -193,7 +193,7 @@ class DeclarativeTest(DeclarativeTestBase):
         u1 = User(name='ed', addresses=[Address(email='abc'), Address(email='xyz'), Address(email='def')])
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(User).filter(User.name == 'ed').one(),
             User(name='ed', addresses=[Address(email='abc'), Address(email='def'), Address(email='xyz')])
         )
@@ -282,7 +282,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(), [User(name='u1', addresses=[
             Address(email='one'),
@@ -316,7 +316,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         eq_(sess.query(User).options(eagerload(User.addresses)).all(), [User(name='u1', addresses=[
             Address(email='one'),
             Address(email='two'),
@@ -345,7 +345,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         u = sess.query(User).filter(User.name == 'u1').one()
         a = u.addresses
             
@@ -376,7 +376,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(), [User(name='u1', addresses=[
             Address(email='one'),
@@ -477,7 +477,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(),
             [User(name='u1', address_count=2, addresses=[
@@ -502,7 +502,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(),
             [User(name='u1', a='a', b='b')])
@@ -533,7 +533,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(),
             [User(name='u1', adr_count=2, addresses=[
@@ -570,7 +570,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(User(name='u1'))
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         u1 = sess.query(User).filter(User.name == 'u1').one()
         assert 'name' not in u1.__dict__
@@ -673,7 +673,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(), [User(name='u1', addresses=[
             Address(email='one'),
@@ -709,7 +709,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(),
             [User(name='u1', address_count=2, addresses=[
@@ -812,7 +812,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.add(c1)
         sess.add(c2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_((sess.query(Company).
              filter(Company.employees.of_type(Engineer).
@@ -827,11 +827,11 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         
         # assert that the "id" column is available without a second load.
         # this would be the symptom of the previous step not being correct.
-        sess.clear()
+        sess.expunge_all()
         def go():
             assert sess.query(Manager).filter(Manager.name=='dogbert').one().id
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
         def go():
             assert sess.query(Person).filter(Manager.name=='dogbert').one().id
         self.assert_sql_count(testing.db, go, 1)
@@ -902,7 +902,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.add(c1)
         sess.add(c2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_((sess.query(Person).
              filter(Engineer.primary_language == 'cobol').first()),
@@ -973,7 +973,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.add(c1)
         sess.add(c2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_((sess.query(Person).
              filter(Engineer.primary_language == 'cobol').first()),
@@ -1036,7 +1036,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.add(c1)
         sess.add(c2)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_((sess.query(Person).with_polymorphic(Engineer).
              filter(Engineer.primary_language == 'cobol').first()),
@@ -1085,7 +1085,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         e3 =Engineer(name="vlad", primary_language=cobol) 
         sess.add_all([e1, e2, e3])
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_((sess.query(Person).
              filter(Engineer.primary_language.has(Language.name=='cobol')).first()),
@@ -1204,7 +1204,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         
         sess.add_all([e1, e2, m1, e3])
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         eq_(
             sess.query(Person).order_by(Person.name).all(),
             [
@@ -1338,7 +1338,7 @@ class DeclarativeReflectionTest(testing.TestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(), [User(name='u1', addresses=[
             Address(email='one'),
@@ -1369,7 +1369,7 @@ class DeclarativeReflectionTest(testing.TestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(), [User(nom='u1', addresses=[
             Address(email='one'),
@@ -1403,7 +1403,7 @@ class DeclarativeReflectionTest(testing.TestBase):
         sess = create_session()
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         eq_(sess.query(User).all(), [User(name='u1', handles=[
             IMHandle(network='blabber', handle='foo'),
@@ -1468,11 +1468,11 @@ class DeclarativeReflectionTest(testing.TestBase):
         eq_(u1.uc_name, 'SOMEUSER', u1.uc_name)
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
 
         rt = sess.query(User).filter(User.uc_name == 'SOMEUSER').one()
         eq_(rt, u1)
-        sess.clear()
+        sess.expunge_all()
 
         rt = sess.query(User).filter(User.uc_name.startswith('SOMEUSE')).one()
         eq_(rt, u1)

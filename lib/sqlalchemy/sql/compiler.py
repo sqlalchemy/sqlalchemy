@@ -429,8 +429,7 @@ class SQLCompiler(engine.Compiled):
         return name % self.anon_map
         
     def _process_anon(self, key):
-        (ident, derived) = key.split(' ')
-
+        (ident, derived) = key.split(' ', 1)
         anonymous_counter = self.anon_map.get(derived, 1)
         self.anon_map[derived] = anonymous_counter + 1
         return derived + "_" + str(anonymous_counter)
@@ -444,7 +443,8 @@ class SQLCompiler(engine.Compiled):
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         if asfrom:
-            return self.process(alias.original, asfrom=True, **kwargs) + " AS " + self.preparer.format_alias(alias, alias.name % self.anon_map)
+            return self.process(alias.original, asfrom=True, **kwargs) + " AS " + \
+                    self.preparer.format_alias(alias, alias.name % self.anon_map)
         else:
             return self.process(alias.original, **kwargs)
 

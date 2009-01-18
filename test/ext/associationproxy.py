@@ -82,10 +82,10 @@ class _CollectionOperations(TestBase):
 
     def roundtrip(self, obj):
         if obj not in self.session:
-            self.session.save(obj)
+            self.session.add(obj)
         self.session.flush()
         id, type_ = obj.id, type(obj)
-        self.session.clear()
+        self.session.expunge_all()
         return self.session.query(type_).get(id)
 
     def _test_sequence_ops(self):
@@ -636,10 +636,10 @@ class ScalarTest(TestBase):
 
         def roundtrip(obj):
             if obj not in session:
-                session.save(obj)
+                session.add(obj)
             session.flush()
             id, type_ = obj.id, type(obj)
-            session.clear()
+            session.expunge_all()
             return session.query(type_).get(id)
 
         p = Parent('p')
@@ -752,10 +752,10 @@ class LazyLoadTest(TestBase):
         self.metadata.drop_all()
 
     def roundtrip(self, obj):
-        self.session.save(obj)
+        self.session.add(obj)
         self.session.flush()
         id, type_ = obj.id, type(obj)
-        self.session.clear()
+        self.session.expunge_all()
         return self.session.query(type_).get(id)
 
     def test_lazy_list(self):

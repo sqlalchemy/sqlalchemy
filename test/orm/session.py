@@ -648,6 +648,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert c.scalar("select count(1) from users") == 1
 
 
+    @testing.uses_deprecated()
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_save_update_delete(self):
@@ -671,19 +672,19 @@ class SessionTest(_fixtures.FixtureTest):
 
         # modify outside of session, assert changes remain/get saved
         user.name = "fred"
-        s.update(user)
+        s.add(user)
         assert user in s
         assert user in s.dirty
         s.flush()
-        s.clear()
+        s.expunge_all()
         assert s.query(User).count() == 1
         user = s.query(User).one()
         assert user.name == 'fred'
 
         # ensure its not dirty if no changes occur
-        s.clear()
+        s.expunge_all()
         assert user not in s
-        s.update(user)
+        s.add(user)
         assert user in s
         assert user not in s.dirty
 
@@ -716,7 +717,7 @@ class SessionTest(_fixtures.FixtureTest):
         u = User(name='fred')
         s.add(u)
         s.flush()
-        s.clear()
+        s.expunge_all()
 
         user = s.query(User).one()
         assert user not in s.dirty
@@ -858,7 +859,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert a not in s
         s.flush()
         print "\n".join([repr(x.__dict__) for x in s])
-        s.clear()
+        s.expunge_all()
         assert s.query(User).one().id == u.id
         assert s.query(Address).first() is None
 
@@ -878,7 +879,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert u not in s
         assert a in s
         s.flush()
-        s.clear()
+        s.expunge_all()
         assert s.query(Address).one().id == a.id
         assert s.query(User).first() is None
 
@@ -1017,7 +1018,7 @@ class SessionTest(_fixtures.FixtureTest):
         
         sess.add(User(name='u2'))
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         self.assertEquals(sess.query(User).order_by(User.name).all(), 
             [
                 User(name='u1 modified'),
@@ -1073,7 +1074,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert u2 is not None and u2 is not u1
         assert u2 in sess
 
-        self.assertRaises(Exception, lambda: sess.update(u1))
+        self.assertRaises(Exception, lambda: sess.add(u1))
 
         sess.expunge(u2)
         assert u2 not in sess
@@ -1082,13 +1083,13 @@ class SessionTest(_fixtures.FixtureTest):
         u1.name = "John"
         u2.name = "Doe"
 
-        sess.update(u1)
+        sess.add(u1)
         assert u1 in sess
         assert Session.object_session(u1) is sess
 
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
 
         u3 = sess.query(User).get(u1.id)
         assert u3 is not u1 and u3 is not u2 and u3.name == u1.name
@@ -1173,7 +1174,7 @@ class DisposedStates(testing.ORMTest):
         self._test_session().flush()
     
     def test_clear(self):
-        self._test_session().clear()
+        self._test_session().expunge_all()
     
     def test_close(self):
         self._test_session().close()
@@ -1217,6 +1218,7 @@ class SessionInterface(testing.TestBase):
         return mapper(cls, Table('t', sa.MetaData(),
                                  Column('id', Integer, primary_key=True)))
 
+    @testing.uses_deprecated()
     def _test_instance_guards(self, user_arg):
         watchdog = set()
 

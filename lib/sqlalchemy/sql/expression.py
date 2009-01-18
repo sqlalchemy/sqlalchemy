@@ -1652,7 +1652,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         expressions and function calls.
 
         """
-        return _generated_label("%%(%d %s)s" % (id(self), _escape_for_generated(getattr(self, 'name', 'anon'))))
+        return _generated_label("%%(%d %s)s" % (id(self), getattr(self, 'name', 'anon')))
 
 class ColumnCollection(util.OrderedProperties):
     """An ordered dictionary that stores a list of ColumnElement
@@ -1984,7 +1984,7 @@ class _BindParamClause(ColumnElement):
 
         """
         if unique:
-            self.key = _generated_label("%%(%d %s)s" % (id(self), key and _escape_for_generated(key) or 'param'))
+            self.key = _generated_label("%%(%d %s)s" % (id(self), key or 'param'))
         else:
             self.key = key or _generated_label("%%(%d param)s" % id(self))
         self._orig_key = key or 'param'
@@ -2003,13 +2003,13 @@ class _BindParamClause(ColumnElement):
     def _clone(self):
         c = ClauseElement._clone(self)
         if self.unique:
-            c.key = _generated_label("%%(%d %s)s" % (id(c), c._orig_key and _escape_for_generated(c._orig_key) or 'param'))
+            c.key = _generated_label("%%(%d %s)s" % (id(c), c._orig_key or 'param'))
         return c
 
     def _convert_to_unique(self):
         if not self.unique:
             self.unique = True
-            self.key = _generated_label("%%(%d %s)s" % (id(self), self._orig_key and _escape_for_generated(self._orig_key) or 'param'))
+            self.key = _generated_label("%%(%d %s)s" % (id(self), self._orig_key or 'param'))
 
     def bind_processor(self, dialect):
         return self.type.dialect_impl(dialect).bind_processor(dialect)
@@ -2616,7 +2616,7 @@ class Alias(FromClause):
         if alias is None:
             if self.original.named_with_column:
                 alias = getattr(self.original, 'name', None)
-            alias = _generated_label('%%(%d %s)s' % (id(self), alias and _escape_for_generated(alias) or 'anon'))
+            alias = _generated_label('%%(%d %s)s' % (id(self), alias or 'anon'))
         self.name = alias
 
     @property
@@ -2737,7 +2737,7 @@ class _Label(ColumnElement):
     def __init__(self, name, element, type_=None):
         while isinstance(element, _Label):
             element = element.element
-        self.name = self.key = self._label = name or _generated_label("%%(%d %s)s" % (id(self), _escape_for_generated(getattr(element, 'name', 'anon'))))
+        self.name = self.key = self._label = name or _generated_label("%%(%d %s)s" % (id(self), getattr(element, 'name', 'anon')))
         self._element = element
         self._type = type_
         self.quote = element.quote
@@ -3131,6 +3131,12 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
     def self_group(self, against=None):
         return _FromGrouping(self)
+
+    def is_derived_from(self, fromclause):
+        for s in self.selects:
+            if s.is_derived_from(fromclause):
+                return True
+        return False
 
     def _populate_column_collection(self):
         for cols in zip(*[s.c for s in self.selects]):

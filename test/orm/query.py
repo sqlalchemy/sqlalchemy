@@ -83,7 +83,7 @@ class GetTest(QueryTest):
         u = s.query(User).get(7)
         u2 = s.query(User).get(7)
         assert u is u2
-        s.clear()
+        s.expunge_all()
         u2 = s.query(User).get(7)
         assert u is not u2
 
@@ -122,7 +122,7 @@ class GetTest(QueryTest):
         u = s.query(User).populate_existing().get(7)
         u2 = s.query(User).populate_existing().get(7)
         assert u is u2
-        s.clear()
+        s.expunge_all()
         u2 = s.query(User).populate_existing().get(7)
         assert u is not u2
 
@@ -714,7 +714,7 @@ class FilterTest(QueryTest):
         self.assertEquals([User(id=7),User(id=8),User(id=9)], sess.query(User).filter(User.addresses!=None).order_by(User.id).all())
 
 
-class FromSelfTest(QueryTest):
+class FromSelfTest(QueryTest, AssertsCompiledSQL):
     def test_filter(self):
 
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().all()
@@ -728,8 +728,22 @@ class FromSelfTest(QueryTest):
             (User(id=8), Address(id=3)),
             (User(id=8), Address(id=4)),
             (User(id=9), Address(id=5))
-        ] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().join('addresses').add_entity(Address).order_by(User.id, Address.id).all()
+        ] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().\
+            join('addresses').add_entity(Address).order_by(User.id, Address.id).all()
     
+    def test_no_eagerload(self):
+        """test that eagerloads are pushed outwards and not rendered in subqueries."""
+        
+        s = create_session()
+        
+        self.assert_compile(
+            s.query(User).options(eagerload(User.addresses)).from_self().statement,
+            "SELECT anon_1.users_id, anon_1.users_name, addresses_1.id, addresses_1.user_id, "\
+            "addresses_1.email_address FROM (SELECT users.id AS users_id, users.name AS users_name FROM users) AS anon_1 "\
+            "LEFT OUTER JOIN addresses AS addresses_1 ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id"
+        )
+            
+        
     def test_multiple_entities(self):
         sess = create_session()
 
@@ -748,6 +762,56 @@ class FromSelfTest(QueryTest):
             #    order_by(User.id, Address.id).first(),
             (User(id=8, addresses=[Address(), Address(), Address()]), Address(id=2)),
         )
+    
+class SetOpsTest(QueryTest, AssertsCompiledSQL):
+    
+    def test_union(self):
+        s = create_session()
+        
+        fred = s.query(User).filter(User.name=='fred')
+        ed = s.query(User).filter(User.name=='ed')
+        jack = s.query(User).filter(User.name=='jack')
+        
+        self.assertEquals(fred.union(ed).order_by(User.name).all(), 
+            [User(name='ed'), User(name='fred')]
+        )
+
+        self.assertEquals(fred.union(ed, jack).order_by(User.name).all(), 
+            [User(name='ed'), User(name='fred'), User(name='jack')]
+        )
+        
+    @testing.fails_on('mysql', "mysql doesn't support intersect")
+    def test_intersect(self):
+        s = create_session()
+
+        fred = s.query(User).filter(User.name=='fred')
+        ed = s.query(User).filter(User.name=='ed')
+        jack = s.query(User).filter(User.name=='jack')
+        self.assertEquals(fred.intersect(ed, jack).all(), 
+            []
+        )
+
+        self.assertEquals(fred.union(ed).intersect(ed.union(jack)).all(), 
+            [User(name='ed')]
+        )
+    
+    def test_eager_load(self):
+        s = create_session()
+
+        fred = s.query(User).filter(User.name=='fred')
+        ed = s.query(User).filter(User.name=='ed')
+        jack = s.query(User).filter(User.name=='jack')
+
+        def go():
+            self.assertEquals(
+                fred.union(ed).order_by(User.name).options(eagerload(User.addresses)).all(), 
+                [
+                    User(name='ed', addresses=[Address(), Address(), Address()]), 
+                    User(name='fred', addresses=[Address()])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+        
         
 class AggregateTest(QueryTest):
 
@@ -829,7 +893,7 @@ class DistinctTest(QueryTest):
 
         assert [User(id=7), User(id=9), User(id=8)] == q.all()
 
-        sess.clear()
+        sess.expunge_all()
 
         # test that it works on embedded eagerload/LIMIT subquery
         q = sess.query(User).join('addresses').distinct().options(eagerload('addresses')).order_by(desc(Address.email_address)).limit(2)
@@ -1112,7 +1176,7 @@ class JoinTest(QueryTest):
         l = q.order_by(User.id, AdAlias.id).all()
         self.assertEquals(l, expected)
 
-        sess.clear()
+        sess.expunge_all()
 
         q = sess.query(User).add_entity(AdAlias)
         l = q.select_from(outerjoin(User, AdAlias)).filter(AdAlias.email_address=='ed@bettyboop.com').all()
@@ -1365,7 +1429,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             assert fixtures.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
 
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             l = q.options(contains_alias('ulist'), contains_eager('addresses')).from_statement(query).all()
@@ -1402,14 +1466,14 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         def go():
             assert fixtures.user_address_result == q.all()
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         adalias = addresses.alias()
         q = sess.query(User).select_from(users.outerjoin(adalias)).options(contains_eager(User.addresses, alias=adalias))
         def go():
             self.assertEquals(fixtures.user_address_result, q.order_by(User.id).all())
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         selectquery = users.outerjoin(addresses).select(users.c.id<10, use_labels=True, order_by=[users.c.id, addresses.c.id])
         q = sess.query(User)
@@ -1419,13 +1483,13 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             assert fixtures.user_address_result[0:3] == l
         self.assert_sql_count(testing.db, go, 1)
 
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             l = list(q.options(contains_eager(User.addresses)).instances(selectquery.execute()))
             assert fixtures.user_address_result[0:3] == l
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             l = q.options(contains_eager('addresses')).from_statement(selectquery).all()
@@ -1443,7 +1507,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             l = list(q.options(contains_eager('addresses', alias="adalias")).instances(selectquery.execute()))
             assert fixtures.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         # expression.Alias object
         def go():
@@ -1451,7 +1515,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             assert fixtures.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
 
-        sess.clear()
+        sess.expunge_all()
 
         # Aliased object
         adalias = aliased(Address)
@@ -1459,7 +1523,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             l = q.options(contains_eager('addresses', alias=adalias)).outerjoin((adalias, User.addresses)).order_by(User.id, adalias.id)
             assert fixtures.user_address_result == l.all()
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         oalias = orders.alias('o1')
         ialias = items.alias('i1')
@@ -1471,14 +1535,14 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             assert fixtures.user_order_result == l
         self.assert_sql_count(testing.db, go, 1)
 
-        sess.clear()
+        sess.expunge_all()
 
         # test using Alias with more than one level deep
         def go():
             l = list(q.options(contains_eager('orders', alias=oalias), contains_eager('orders.items', alias=ialias)).instances(query.execute()))
             assert fixtures.user_order_result == l
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         # test using Aliased with more than one level deep
         oalias = aliased(Order)
@@ -1488,7 +1552,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 outerjoin((oalias, User.orders), (ialias, oalias.items)).order_by(User.id, oalias.id, ialias.id)
             assert fixtures.user_order_result == l.all()
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
     def test_mixed_eager_contains_with_limit(self):
         sess = create_session()
@@ -1508,7 +1572,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 Order(address_id=None,user_id=7,description=u'order 5',isopen=0,id=5)
             ])])
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             # same as above, except Order is aliased, so two adapters are applied by the
@@ -1785,25 +1849,25 @@ class MixedEntitiesTest(QueryTest):
 
         selectquery = users.outerjoin(addresses).select(use_labels=True, order_by=[users.c.id, addresses.c.id])
         self.assertEquals(list(sess.query(User, Address).instances(selectquery.execute())), expected)
-        sess.clear()
+        sess.expunge_all()
 
         for address_entity in (Address, aliased(Address)):
             q = sess.query(User).add_entity(address_entity).outerjoin(('addresses', address_entity)).order_by(User.id, address_entity.id)
             self.assertEquals(q.all(), expected)
-            sess.clear()
+            sess.expunge_all()
 
             q = sess.query(User).add_entity(address_entity)
             q = q.join(('addresses', address_entity)).filter_by(email_address='ed@bettyboop.com')
             self.assertEquals(q.all(), [(user8, address3)])
-            sess.clear()
+            sess.expunge_all()
 
             q = sess.query(User, address_entity).join(('addresses', address_entity)).filter_by(email_address='ed@bettyboop.com')
             self.assertEquals(q.all(), [(user8, address3)])
-            sess.clear()
+            sess.expunge_all()
 
             q = sess.query(User, address_entity).join(('addresses', address_entity)).options(eagerload('addresses')).filter_by(email_address='ed@bettyboop.com')
             self.assertEquals(list(util.OrderedSet(q.all())), [(user8, address3)])
-            sess.clear()
+            sess.expunge_all()
 
     def test_aliased_multi_mappers(self):
         sess = create_session()
@@ -1824,7 +1888,7 @@ class MixedEntitiesTest(QueryTest):
         l = q.order_by(User.id, adalias.c.id).all()
         assert l == expected
 
-        sess.clear()
+        sess.expunge_all()
 
         q = sess.query(User).add_entity(Address, alias=adalias)
         l = q.select_from(users.outerjoin(adalias)).filter(adalias.c.email_address=='ed@bettyboop.com').all()
@@ -1837,7 +1901,7 @@ class MixedEntitiesTest(QueryTest):
 
         for add_col in (User.name, users.c.name):
             assert sess.query(User).add_column(add_col).all() == expected
-            sess.clear()
+            sess.expunge_all()
 
         self.assertRaises(sa_exc.InvalidRequestError, sess.query(User).add_column, object())
     
@@ -1865,13 +1929,13 @@ class MixedEntitiesTest(QueryTest):
         q = sess.query(User)
         q = q.group_by([c for c in users.c]).order_by(User.id).outerjoin('addresses').add_column(func.count(Address.id).label('count'))
         self.assertEquals(q.all(), expected)
-        sess.clear()
+        sess.expunge_all()
         
         adalias = aliased(Address)
         q = sess.query(User)
         q = q.group_by([c for c in users.c]).order_by(User.id).outerjoin(('addresses', adalias)).add_column(func.count(adalias.id).label('count'))
         self.assertEquals(q.all(), expected)
-        sess.clear()
+        sess.expunge_all()
 
         s = select([users, func.count(addresses.c.id).label('count')]).select_from(users.outerjoin(addresses)).group_by(*[c for c in users.c]).order_by(User.id)
         q = sess.query(User)
@@ -1901,7 +1965,7 @@ class MixedEntitiesTest(QueryTest):
         l = q.add_column("count").add_column("concat").from_statement(s).all()
         assert l == expected
 
-        sess.clear()
+        sess.expunge_all()
 
         # test with select_from()
         q = create_session().query(User).add_column(func.count(addresses.c.id))\
@@ -1909,21 +1973,21 @@ class MixedEntitiesTest(QueryTest):
             .group_by([c for c in users.c]).order_by(users.c.id)
 
         assert q.all() == expected
-        sess.clear()
+        sess.expunge_all()
 
         q = create_session().query(User).add_column(func.count(addresses.c.id))\
             .add_column(("Name:" + users.c.name)).outerjoin('addresses')\
             .group_by([c for c in users.c]).order_by(users.c.id)
 
         assert q.all() == expected
-        sess.clear()
+        sess.expunge_all()
 
         q = create_session().query(User).add_column(func.count(adalias.c.id))\
             .add_column(("Name:" + users.c.name)).outerjoin(('addresses', adalias))\
             .group_by([c for c in users.c]).order_by(users.c.id)
 
         assert q.all() == expected
-        sess.clear()
+        sess.expunge_all()
 
 
 class ImmediateTest(_fixtures.FixtureTest):
@@ -2127,7 +2191,7 @@ class SelectFromTest(QueryTest):
                 ])
         self.assert_sql_count(testing.db, go, 1)
 
-        sess.clear()
+        sess.expunge_all()
         sel2 = orders.select(orders.c.id.in_([1,2,3]))
         self.assertEquals(sess.query(Order).select_from(sel2).join(['items', 'keywords']).filter(Keyword.name == 'red').order_by(Order.id).all(), [
             Order(description=u'order 1',id=1),
@@ -2156,14 +2220,14 @@ class SelectFromTest(QueryTest):
                 ]
             )
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             self.assertEquals(sess.query(User).options(eagerload('addresses')).select_from(sel).filter(User.id==8).order_by(User.id).all(),
                 [User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)])]
             )
         self.assert_sql_count(testing.db, go, 1)
-        sess.clear()
+        sess.expunge_all()
 
         def go():
             self.assertEquals(sess.query(User).options(eagerload('addresses')).select_from(sel).order_by(User.id)[1], User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)]))
@@ -2222,7 +2286,7 @@ class SelfReferentialTest(ORMTest):
         n1.children[1].append(Node(data='n121'))
         n1.children[1].append(Node(data='n122'))
         n1.children[1].append(Node(data='n123'))
-        sess.save(n1)
+        sess.add(n1)
         sess.flush()
         sess.close()
         
@@ -2406,10 +2470,10 @@ class SelfReferentialM2MTest(ORMTest):
         n2.children = [n3, n6, n7]
         n3.children = [n5, n4]
 
-        sess.save(n1)
-        sess.save(n2)
-        sess.save(n3)
-        sess.save(n4)
+        sess.add(n1)
+        sess.add(n2)
+        sess.add(n3)
+        sess.add(n4)
         sess.flush()
         sess.close()
 
@@ -2484,7 +2548,7 @@ class ExternalColumnsTest(QueryTest):
 
         # run the eager version twice to test caching of aliased clauses
         for x in range(2):
-            sess.clear()
+            sess.expunge_all()
             def go():
                self.assertEquals(sess.query(Address).options(eagerload('user')).all(), address_result)
             self.assert_sql_count(testing.db, go, 1)

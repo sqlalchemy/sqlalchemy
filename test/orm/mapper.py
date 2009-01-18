@@ -282,7 +282,7 @@ class MapperTest(_fixtures.FixtureTest):
         u.name = 'ed'
         u3 = User()
         u3.name = 'some user'
-        sess.save(u3)
+        sess.add(u3)
         sess.flush()
         sess.rollback()
 
@@ -304,7 +304,7 @@ class MapperTest(_fixtures.FixtureTest):
         m = mapper(User, users)
         m.add_property('name', synonym('_name', map_column=True))
 
-        sess.clear()
+        sess.expunge_all()
         u = sess.query(User).filter_by(name='jack').one()
         eq_(u._name, 'jack')
         eq_(u.name, 'jack')
@@ -805,7 +805,7 @@ class MapperTest(_fixtures.FixtureTest):
             eq_(u.uc_name, "SOME USER NAME")
 
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             q = sess.query(User)
             u2 = q.filter(User.name=='some user name').one()
@@ -992,7 +992,7 @@ class OptionsTest(_fixtures.FixtureTest):
             eq_(len(u.addresses), 3)
         self.sql_count_(0, go)
 
-        sess.clear()
+        sess.expunge_all()
 
         u = sess.query(User).filter_by(id=8).one()
         eq_(u.id, 8)
@@ -1027,7 +1027,7 @@ class OptionsTest(_fixtures.FixtureTest):
             eq_(l, self.static.user_address_result)
         self.sql_count_(1, go)
 
-        sess.clear()
+        sess.expunge_all()
 
         # then select just from users.  run it into instances.
         # then assert the data, which will launch 3 more lazy loads
@@ -1073,7 +1073,7 @@ class OptionsTest(_fixtures.FixtureTest):
             eq_(l, self.static.user_all_result)
         self.assert_sql_count(testing.db, go, 1)
 
-        sess.clear()
+        sess.expunge_all()
 
         # then select just from users.  run it into instances.
         # then assert the data, which will launch 6 more lazy loads
@@ -1189,7 +1189,7 @@ class ValidatorTest(_fixtures.FixtureTest):
         eq_(u1.name, 'ed modified')
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         eq_(sess.query(User).filter_by(name='ed modified').one(), User(name='ed'))
         
 
@@ -1209,7 +1209,7 @@ class ValidatorTest(_fixtures.FixtureTest):
         u1.addresses.append(Address(id=15, email_address='foo@bar.com'))
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         eq_(
             sess.query(User).filter_by(name='edward').one(), 
             User(name='edward', addresses=[Address(email_address='foo@bar.com')])
@@ -1329,7 +1329,7 @@ class DeferredTest(_fixtures.FixtureTest):
 
         sess = create_session()
         o = Order()
-        sess.save(o)
+        sess.add(o)
         o.id = 7
         def go():
             o.description = "some description"
@@ -1368,7 +1368,7 @@ class DeferredTest(_fixtures.FixtureTest):
 
         sess = create_session()
         o = Order()
-        sess.save(o)
+        sess.add(o)
         o.id = 7
         def go():
             o.description = "some description"
@@ -1382,7 +1382,7 @@ class DeferredTest(_fixtures.FixtureTest):
 
         sess = create_session()
         o = Order()
-        sess.save(o)
+        sess.add(o)
         def go():
             o.description = "some description"
         self.sql_count_(0, go)
@@ -1497,7 +1497,7 @@ class DeferredTest(_fixtures.FixtureTest):
             ("SELECT orders.user_id AS orders_user_id "
              "FROM orders WHERE orders.id = :param_1",
              {'param_1':1})])
-        sess.clear()
+        sess.expunge_all()
 
         q2 = q.options(sa.orm.undefer('user_id'))
         self.sql_eq_(q2.all, [
@@ -1573,7 +1573,7 @@ class DeferredTest(_fixtures.FixtureTest):
         self.sql_count_(1, go)
         eq_(item.description, 'item 4')
 
-        sess.clear()
+        sess.expunge_all()
         l = q.options(sa.orm.undefer('orders.items.description')).all()
         item = l[0].orders[1].items[1]
         def go():
@@ -1623,7 +1623,7 @@ class DeferredPopulationTest(_base.MappedTest):
     def test_query_twice_with_clear(self):
         session = create_session()
         result = session.query(Thing).first()
-        session.clear()
+        session.expunge_all()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
 
@@ -1638,7 +1638,7 @@ class DeferredPopulationTest(_base.MappedTest):
     def test_eagerload_with_clear(self):
         session = create_session()
         human = session.query(Human).options(sa.orm.eagerload("thing")).first()
-        session.clear()
+        session.expunge_all()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
 
@@ -1653,7 +1653,7 @@ class DeferredPopulationTest(_base.MappedTest):
     def test_join_with_clear(self):
         session = create_session()
         result = session.query(Human).add_entity(Thing).join("thing").first()
-        session.clear()
+        session.expunge_all()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
 
@@ -1729,10 +1729,10 @@ class CompositeTypesTest(_base.MappedTest):
         g.version_id=1
         g.edges.append(Edge(Point(3, 4), Point(5, 6)))
         g.edges.append(Edge(Point(14, 5), Point(2, 7)))
-        sess.save(g)
+        sess.add(g)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
         g2 = sess.query(Graph).get([g.id, g.version_id])
         for e1, e2 in zip(g.edges, g2.edges):
             eq_(e1.start, e2.start)
@@ -1740,19 +1740,19 @@ class CompositeTypesTest(_base.MappedTest):
 
         g2.edges[1].end = Point(18, 4)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         e = sess.query(Edge).get(g2.edges[1].id)
         eq_(e.end, Point(18, 4))
 
         e.end.x = 19
         e.end.y = 5
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         eq_(sess.query(Edge).get(g2.edges[1].id).end, Point(19, 5))
 
         g.edges[1].end = Point(19, 5)
 
-        sess.clear()
+        sess.expunge_all()
         def go():
             g2 = (sess.query(Graph).
                   options(sa.orm.eagerload('edges'))).get([g.id, g.version_id])
@@ -1798,13 +1798,13 @@ class CompositeTypesTest(_base.MappedTest):
 
         sess = create_session()
         g = Graph(Version(1, 1))
-        sess.save(g)
+        sess.add(g)
         sess.flush()
 
-        sess.clear()
+        sess.expunge_all()
         g2 = sess.query(Graph).get([1, 1])
         eq_(g.version, g2.version)
-        sess.clear()
+        sess.expunge_all()
 
         g2 = sess.query(Graph).get(Version(1, 1))
         eq_(g.version, g2.version)
@@ -1825,9 +1825,9 @@ class CompositeTypesTest(_base.MappedTest):
         @testing.fails_on_everything_except("sqlite")
         def go():
             g = Graph(Version(2, None))
-            sess.save(g)
+            sess.add(g)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
             g2 = sess.query(Graph).filter_by(version=Version(2, None)).one()
             eq_(g.version, g2.version)
         go()
@@ -1858,7 +1858,7 @@ class CompositeTypesTest(_base.MappedTest):
         sess = create_session()
         f1 = Foobar()
         f1.foob = FBComposite(None, 5, None, None)
-        sess.save(f1)
+        sess.add(f1)
         sess.flush()
 
         assert f1.foob == FBComposite(2, 5, 15, None)
@@ -1894,7 +1894,7 @@ class CompositeTypesTest(_base.MappedTest):
         sess = create_session()
         f1 = Foobar()
         f1.foob = FBComposite(None, 5, None, None)
-        sess.save(f1)
+        sess.add(f1)
         sess.flush()
         
         assert f1.foob == FBComposite(2, 5, 15, None)
@@ -1941,10 +1941,10 @@ class CompositeTypesTest(_base.MappedTest):
         e = Edge(None, None)
         g.edges.append(e)
         
-        sess.save(g)
+        sess.add(g)
         sess.flush()
         
-        sess.clear()
+        sess.expunge_all()
         
         g2 = sess.query(Graph).get([1, 1])
         assert g2.edges[-1].start.x is None
@@ -2064,10 +2064,10 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         mapper(User, users, extension=Ext())
         sess = create_session()
         u = User(name='u1')
-        sess.save(u)
+        sess.add(u)
         sess.flush()
         u = sess.query(User).populate_existing().get(u.id)
-        sess.clear()
+        sess.expunge_all()
         u = sess.query(User).get(u.id)
         u.name = 'u1 changed'
         sess.flush()
@@ -2092,10 +2092,10 @@ class MapperExtensionTest(_fixtures.FixtureTest):
 
         sess = create_session()
         am = AdminUser(name='au1', email_address='au1@e1')
-        sess.save(am)
+        sess.add(am)
         sess.flush()
         am = sess.query(AdminUser).populate_existing().get(am.id)
-        sess.clear()
+        sess.expunge_all()
         am = sess.query(AdminUser).get(am.id)
         am.name = 'au1 changed'
         sess.flush()
@@ -2122,8 +2122,8 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess = create_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
-        sess.save(i1)
-        sess.save(k1)
+        sess.add(i1)
+        sess.add(k1)
         sess.flush()
         eq_(methods,
             ['instrument_class', 'instrument_class', 'init_instance',
@@ -2150,10 +2150,10 @@ class MapperExtensionTest(_fixtures.FixtureTest):
 
         sess = create_session()
         am = AdminUser(name="au1", email_address="au1@e1")
-        sess.save(am)
+        sess.add(am)
         sess.flush()
         am = sess.query(AdminUser).populate_existing().get(am.id)
-        sess.clear()
+        sess.expunge_all()
         am = sess.query(AdminUser).get(am.id)
         am.name = 'au1 changed'
         sess.flush()
@@ -2179,7 +2179,7 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         u1.name = 'ed'
         sess.add(u1)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
         assert sess.query(User).first()
         
 
@@ -2280,7 +2280,7 @@ class RequirementsTest(_base.MappedTest):
         s = create_session()
         for i in range(3):
             h1 = H1()
-            s.save(h1)
+            s.add(h1)
 
         h1.h2s.append(H2())
         h1.h3s.extend([H3(), H3()])
@@ -2360,9 +2360,9 @@ class MagicNamesTest(_base.MappedTest):
         m = Map(state='AK', mapper=c)
 
         sess = create_session()
-        sess.save(c)
+        sess.add(c)
         sess.flush()
-        sess.clear()
+        sess.expunge_all()
     
         for C, M in ((Cartographer, Map),
                      (sa.orm.aliased(Cartographer), sa.orm.aliased(Map))):

@@ -526,7 +526,7 @@ class Session(object):
     public_methods = (
         '__contains__', '__iter__', 'add', 'add_all', 'begin', 'begin_nested',
         'clear', 'close', 'commit', 'connection', 'delete', 'execute', 'expire',
-        'expire_all', 'expunge', 'flush', 'get_bind', 'is_modified', 
+        'expire_all', 'expunge', 'expunge_all', 'flush', 'get_bind', 'is_modified', 
         'merge', 'query', 'refresh', 'rollback', 'save',
         'save_or_update', 'scalar', 'update')
 
@@ -772,17 +772,17 @@ class Session(object):
         not use any connection resources until they are first needed.
 
         """
-        self.clear()
+        self.expunge_all()
         if self.transaction is not None:
             for transaction in self.transaction._iterate_parents():
                 transaction.close()
 
+    @classmethod
     def close_all(cls):
         """Close *all* sessions in memory."""
 
         for sess in _sessions.values():
             sess.close()
-    close_all = classmethod(close_all)
 
     def expunge_all(self):
         """Remove all object instances from this ``Session``.
@@ -797,10 +797,8 @@ class Session(object):
         self.identity_map = self._identity_cls()
         self._new = {}
         self._deleted = {}
-    clear = expunge_all
 
-    # TODO: deprecate
-    #clear = util.deprecated()(expunge_all)
+    clear = util.deprecated("Use session.expunge_all()")(expunge_all)
 
     # TODO: need much more test coverage for bind_mapper() and similar !
     # TODO: + crystalize + document resolution order vis. bind_mapper/bind_table
@@ -1044,7 +1042,7 @@ class Session(object):
         self.identity_map.discard(state)
         self._deleted.pop(state, None)
 
-    @util.pending_deprecation('0.5.x', "Use session.add()")
+    @util.deprecated("Use session.add()")
     def save(self, instance):
         """Add a transient (unsaved) instance to this ``Session``.
 
@@ -1063,7 +1061,7 @@ class Session(object):
         state = _state_for_unsaved_instance(instance, create=True)
         self._save_impl(state)
 
-    @util.pending_deprecation('0.5.x', "Use session.add()")
+    @util.deprecated("Use session.add()")
     def update(self, instance):
         """Bring a detached (saved) instance into this ``Session``.
 
@@ -1106,7 +1104,7 @@ class Session(object):
         self._cascade_save_or_update(state)
 
     save_or_update = (
-        util.pending_deprecation('0.5.x', "Use session.add()")(add))
+        util.deprecated("Use session.add()")(add))
 
     def _cascade_save_or_update(self, state):
         for state, mapper in _cascade_unknown_state_iterator('save-update', state, halt_on=lambda c:c in self):
@@ -1205,7 +1203,7 @@ class Session(object):
             merged = mapper.class_manager.new_instance()
             merged_state = attributes.instance_state(merged)
             new_instance = True
-            self.save(merged)
+            self.add(merged)
 
         _recursive[instance] = merged
 

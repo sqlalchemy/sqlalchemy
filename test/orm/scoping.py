@@ -105,7 +105,7 @@ class ScopedMapperTest(_ScopedTest):
         sso = SomeOtherObject()
         s.options.append(sso)
         Session.flush()
-        Session.clear()
+        Session.expunge_all()
 
     @testing.resolve_artifact_names
     def test_query(self):
@@ -225,7 +225,7 @@ class ScopedMapperTest2(_ScopedTest):
         b = BaseClass(data='b1')
         s =  SubClass(data='s1', somedata='somedata')
         Session.commit()
-        Session.clear()
+        Session.expunge_all()
 
         eq_(expunge_list([BaseClass(data='b1'),
                           SubClass(data='s1', somedata='somedata')]),

@@ -106,6 +106,7 @@ from sqlalchemy.engine import create_engine, engine_from_config
 
 __all__ = sorted(name for name, obj in locals().items()
                  if not (name.startswith('_') or inspect.ismodule(obj)))
-__version__ = '0.5.1'
+                 
+__version__ = '0.5.2'
 
 del inspect, sys

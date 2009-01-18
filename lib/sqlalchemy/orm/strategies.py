@@ -594,7 +594,6 @@ class EagerLoader(AbstractRelationLoader):
     
     def init(self):
         super(EagerLoader, self).init()
-        self.clauses = {}
         self.join_depth = self.parent_property.join_depth
 
     def init_class_attribute(self):
@@ -603,6 +602,9 @@ class EagerLoader(AbstractRelationLoader):
     def setup_query(self, context, entity, path, adapter, column_collection=None, parentmapper=None, **kwargs):
         """Add a left outer join to the statement thats being constructed."""
 
+        if not context.enable_eagerloads:
+            return
+            
         path = path + (self.key,)
 
         # check for user-defined eager alias
@@ -649,7 +651,7 @@ class EagerLoader(AbstractRelationLoader):
         # whether or not the Query will wrap the selectable in a subquery,
         # and then attach eager load joins to that (i.e., in the case of LIMIT/OFFSET etc.)
         should_nest_selectable = context.query._should_nest_selectable
-    
+        
         if entity in context.eager_joins:
             entity_key, default_towrap = entity, entity.selectable
         elif should_nest_selectable or not context.from_clause or not sql_util.search(context.from_clause, entity.selectable):
@@ -666,14 +668,8 @@ class EagerLoader(AbstractRelationLoader):
     
         towrap = context.eager_joins.setdefault(entity_key, default_towrap)
     
-        # create AliasedClauses object to build up the eager query.  this is cached after 1st creation.
-        # this also allows ORMJoin to cache the aliased joins it produces since we pass the same
-        # args each time in the typical case.
-        path_key = util.WeakCompositeKey(*path)
-        try:
-            clauses = self.clauses[path_key]
-        except KeyError:
-            self.clauses[path_key] = clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
+        # create AliasedClauses object to build up the eager query.  
+        clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
                     equivalents=self.mapper._equivalent_columns)
 
         if adapter:

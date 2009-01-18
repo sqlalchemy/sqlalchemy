@@ -33,7 +33,7 @@ class BindTest(_base.MappedTest):
                 sess = create_session(bind=bind)
                 assert sess.bind is bind
                 f = Foo()
-                sess.save(f)
+                sess.add(f)
                 sess.flush()
                 assert sess.query(Foo).get(f.id) is f
             finally:

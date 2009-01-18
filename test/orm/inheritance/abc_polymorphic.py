@@ -46,9 +46,9 @@ class ABCTest(ORMTest):
 
             sess = create_session()
             for x in (a1, b1, b2, b3, c1, c2, c3):
-                sess.save(x)
+                sess.add(x)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             #for obj in sess.query(A).all():
             #    print obj

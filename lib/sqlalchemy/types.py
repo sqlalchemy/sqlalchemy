@@ -523,7 +523,6 @@ class Text(String):
     params (and the reverse for result sets.)
 
     """
-    
     __visit_name__ = 'text'
 
 class Unicode(String):

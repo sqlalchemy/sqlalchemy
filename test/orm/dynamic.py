@@ -171,7 +171,7 @@ class FlushTest(_fixtures.FixtureTest):
         from sqlalchemy.orm import attributes
         self.assertEquals(attributes.get_history(attributes.instance_state(u1), 'addresses'), ([], [Address(email_address='lala@hoho.com')], []))
         
-        sess.clear()
+        sess.expunge_all()
 
         # test the test fixture a little bit
         assert User(name='jack', addresses=[Address(email_address='wrong')]) != sess.query(User).first()
@@ -231,7 +231,7 @@ class FlushTest(_fixtures.FixtureTest):
         sess.delete(u.addresses[3])
         assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
 
-        sess.clear()
+        sess.expunge_all()
         u = sess.query(User).get(u.id)
 
         sess.delete(u)
@@ -265,7 +265,7 @@ class FlushTest(_fixtures.FixtureTest):
         sess.delete(u.addresses[3])
         assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
 
-        sess.clear()
+        sess.expunge_all()
         u = sess.query(User).get(u.id)
 
         sess.delete(u)
@@ -397,7 +397,7 @@ class DontDereferenceTest(_base.MappedTest):
         address.user = user
         session.add(user)
         session.flush()
-        session.clear()
+        session.expunge_all()
 
         def query1():
             session = create_session(testing.db)

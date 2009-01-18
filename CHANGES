@@ -3,11 +3,26 @@
 =======
 CHANGES
 =======
+0.5.2
+======
 
+- sql
+    - Further fixes to the "percent signs and spaces in column/table
+       names" functionality. [ticket:1284]
+       
 0.5.1
 ========
 
 - orm
+    - Removed an internal join cache which could potentially leak 
+      memory when issuing query.join() repeatedly to ad-hoc 
+      selectables.
+
+    - The "clear()", "save()", "update()", "save_or_update()"
+      Session methods have been deprecated, replaced by 
+      "expunge_all()" and "add()".  "expunge_all()" has also
+      been added to ScopedSession.
+      
     - Modernized the "no mapped table" exception and added a more
       explicit __table__/__tablename__ exception to declarative.
 
@@ -24,7 +39,21 @@ CHANGES
 
     - Test coverage added for `relation()` objects specified on
       concrete mappers. [ticket:1237]
+    
+    - Query.from_self() as well as query.subquery() both disable 
+      the rendering of eager joins inside the subquery produced.
+      The "disable all eager joins" feature is available publically
+      via a new query.enable_eagerloads() generative. [ticket:1276]
+      
+    - Added a rudimental series of set operations to Query that
+      receive Query objects as arguments, including union(),
+      union_all(), intersect(), except_(), insertsect_all(),
+      except_all().  See the API documentation for
+      Query.union() for examples. 
 
+    - Fixed bug that prevented Query.join() and eagerloads from 
+      attaching to a query that selected from a union or aliased union.
+      
     - A short documentation example added for bidirectional
       relations specified on concrete mappers. [ticket:1237]
 
@@ -46,6 +75,17 @@ CHANGES
       which contained no defined values for the child table where
       an UPDATE with no SET clause would be rendered.
 
+    - Using delete-orphan on a many-to-many relation is deprecated.
+      This produces misleading or erroneous results since SQLA does 
+      not retrieve the full list of "parents" for m2m.  To get delete-orphan
+      behavior with an m2m table, use an explcit association class
+      so that the individual association row is treated as a parent.
+      [ticket:1281]
+    
+    - delete-orphan cascade always requires delete cascade.  Specifying
+      delete-orphan without delete now raises a deprecation warning.
+      [ticket:1281]
+      
 - sql
     - Improved the methodology to handling percent signs in column
       names from [ticket:1256].  Added more tests.  MySQL and
@@ -94,6 +134,9 @@ CHANGES
       properly.
 
 - mssql
+    - Corrected handling of large decimal values with more robust
+      tests. Removed string manipulation on floats. [ticket:1280]
+
     - Modified the do_begin handling in mssql to use the Cursor not
       the Connection so it is DBAPI compatible.
 

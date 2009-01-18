@@ -114,21 +114,21 @@ def produce_test(parent, child, direction):
 
             #print "APPENDING", parent.__class__.__name__ , "TO", child.__class__.__name__
 
-            sess.save(parent_obj)
+            sess.add(parent_obj)
             parent_obj.collection.append(child_obj)
             if direction == ONETOMANY:
                 child2 = child_class('child2')
                 parent_obj.collection.append(child2)
-                sess.save(child2)
+                sess.add(child2)
             elif direction == MANYTOONE:
                 parent2 = parent_class('parent2')
                 parent2.collection.append(child_obj)
-                sess.save(parent2)
-            sess.save(somea)
-            sess.save(someb)
-            sess.save(somec)
+                sess.add(parent2)
+            sess.add(somea)
+            sess.add(someb)
+            sess.add(somec)
             sess.flush()
-            sess.clear()
+            sess.expunge_all()
 
             # assert result via direct get() of parent object
             result = sess.query(parent_class).get(parent_obj.id)
@@ -141,7 +141,7 @@ def produce_test(parent, child, direction):
                 assert result2.id == parent2.id
                 assert result2.collection[0].id == child_obj.id
 
-            sess.clear()
+            sess.expunge_all()
 
             # assert result via polymorphic load of parent object
             result = sess.query(A).filter_by(id=parent_obj.id).one()
