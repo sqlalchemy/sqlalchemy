@@ -9,6 +9,10 @@ Rules for Migrating TypeEngine classes to 0.6
     b. Specifying types that are entirely specific to the database
     in use and have no analogue in the sqlalchemy.types package.
     
+    c. Specifying types where there is an analogue in sqlalchemy.types,
+    but the database in use takes vendor-specific flags for those
+    types.
+    
 2. the TypeEngine classes are *no longer* used for:
 
     a. generating DDL

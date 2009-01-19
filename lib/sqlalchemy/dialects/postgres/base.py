@@ -82,9 +82,6 @@ class PGCidr(sqltypes.TypeEngine):
 class PGMacAddr(sqltypes.TypeEngine):
     __visit_name__ = "MACADDR"
 
-class PGBigInteger(sqltypes.Integer):
-    __visit_name__ = "BIGINT"
-
 class PGInterval(sqltypes.TypeEngine):
     __visit_name__ = 'INTERVAL'
 
@@ -156,7 +153,7 @@ colspecs = {
 
 ischema_names = {
     'integer' : sqltypes.INTEGER,
-    'bigint' : PGBigInteger,
+    'bigint' : sqltypes.BigInteger,
     'smallint' : sqltypes.SMALLINT,
     'character varying' : sqltypes.VARCHAR,
     'character' : sqltypes.CHAR,
@@ -278,7 +275,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             isinstance(column.type, sqltypes.Integer) and \
             not isinstance(column.type, sqltypes.SmallInteger) and \
             (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
-            if isinstance(column.type, PGBigInteger):
+            if isinstance(column.type, sqltypes.BigInteger):
                 colspec += " BIGSERIAL"
             else:
                 colspec += " SERIAL"
@@ -379,7 +376,10 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_INTERVAL(self, type_):
         return "INTERVAL"
 
-    def visit_BINARY(self, type_):
+    def visit_binary(self, type_):
+        return self.visit_BYTEA(type_)
+        
+    def visit_BYTEA(self, type_):
         return "BYTEA"
 
     def visit_ARRAY(self, type_):

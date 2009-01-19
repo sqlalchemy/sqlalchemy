@@ -273,9 +273,9 @@ def _is_excluded(db, op, spec):
       _is_excluded('yikesdb', 'in', ((0, 3, 'alpha2'), (0, 3, 'alpha3')))
     """
 
-    spec = db_spec(db)
+    vendor_spec = db_spec(db)
 
-    if not spec(config.db):
+    if not vendor_spec(config.db):
         return False
 
     version = _server_version()
