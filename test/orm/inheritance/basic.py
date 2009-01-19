@@ -89,7 +89,7 @@ class PolymorphicSynonymTest(ORMTest):
         t1 = Table('t1', metadata,
                    Column('id', Integer, primary_key=True),
                    Column('type', String(10), nullable=False),
-                   Column('info', Text))
+                   Column('info', String(255)))
         t2 = Table('t2', metadata,
                    Column('id', Integer, ForeignKey('t1.id'), primary_key=True),
                    Column('data', String(10), nullable=False))

@@ -27,7 +27,7 @@ posts = Table('posts', metadata,
     Column('user_id', Integer, ForeignKey('users.user_id'), nullable=False),
     Column('datetime', DateTime, nullable=False),
     Column('headline', String(500)),
-    Column('summary', Text),
+    Column('summary', String(255)),
     Column('body', Text),
     )
 
