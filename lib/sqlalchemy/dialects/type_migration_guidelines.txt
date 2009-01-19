@@ -1,0 +1,58 @@
+Rules for Migrating TypeEngine classes to 0.6
+---------------------------------------------
+
+1. the TypeEngine classes are used for:
+
+    a. Specifying behavior which needs to occur for bind parameters
+    or result row columns.
+    
+    b. Specifying types that are entirely specific to the database
+    in use and have no analogue in the sqlalchemy.types package.
+    
+2. the TypeEngine classes are *no longer* used for:
+
+    a. generating DDL
+    
+3. the "ischema_names" and "colspecs" dictionaries are now required members on
+the Dialect class.
+
+4. "colspecs" now is a dictionary of generic or uppercased types from sqlalchemy.types
+linked to types specified in the dialect.   Again, if a type in the dialect does not
+specify any special behavior for bind_processor() or result_processor() and does not
+indicate a special type only available in this database, it must be *removed* from the 
+module and from this dictionary.
+
+5. "ischema_names" indicates string descriptions of types as returned from the database
+linked to TypeEngine classes.   
+
+    a. The string name should be matched to the most specific type possible within
+    sqlalchemy.types, unless there is no matching type within sqlalchemy.types in which
+    case it points to a dialect type.
+    
+    b. For an exact or almost exact match, point to the uppercase type.  i.e. "float" 
+    should point to "FLOAT", "varchar" should point to "VARCHAR"
+    
+    c. for a non-match, point to the lowercase type.  i.e. "long" should point to "Text",
+    "special varchar with sprinkles" points to "String".
+    
+5. DDL, or what was formerly issued by "get_col_spec()", is now handled exclusively by
+a subclass of compiler.GenericTypeCompiler.
+
+    a. your TypeCompiler class will receive generic and uppercase types from 
+    sqlalchemy.types.  Do not assume the presence of dialect-specific attributes on
+    these types. 
+    
+    b. the visit_UPPERCASE methods on GenericTypeCompiler should *not* be overridden with
+    methods that produce a different DDL name.   Uppercase types don't do any kind of 
+    "guessing" - if the user says he wants TIMESTAMP, that's the DDL which should render, 
+    regardless of whether the DB accepts it.
+    
+    c. the visit_UPPERCASE methods *should* be overridden with methods that add additional
+    arguments and flags to those types.  
+    
+    d. the visit_lowercase methods are overridden to provide an interpretation of a generic 
+    type.  E.g.  visit_binary() might be overridden to say "return self.visit_BIT(type_)".
+    
+    e. when overriding a visit_lowercase method to return a different type, it should not
+    represent the DDL string within the body of the method; it should call the appropriate
+    visit_UPPERCASE name.
