@@ -5,6 +5,8 @@
 
 """Support for the MaxDB database.
 
+-- NOT TESTED ON 0.6 --
+
 TODO: More module docs!  MaxDB support is currently experimental.
 
 Overview
@@ -79,16 +81,6 @@ class _StringType(sqltypes.String):
         super(_StringType, self).__init__(length=length, **kw)
         self.encoding = encoding
 
-    def get_col_spec(self):
-        if self.length is None:
-            spec = 'LONG'
-        else:
-            spec = '%s(%s)' % (self._type, self.length)
-
-        if self.encoding is not None:
-            spec = ' '.join([spec, self.encoding.upper()])
-        return spec
-
     def bind_processor(self, dialect):
         if self.encoding == 'unicode':
             return None
@@ -156,16 +148,6 @@ class MaxText(_StringType):
         return spec
 
 
-class MaxInteger(sqltypes.Integer):
-    def get_col_spec(self):
-        return 'INTEGER'
-
-
-class MaxSmallInteger(MaxInteger):
-    def get_col_spec(self):
-        return 'SMALLINT'
-
-
 class MaxNumeric(sqltypes.Numeric):
     """The FIXED (also NUMERIC, DECIMAL) data type."""
 
@@ -177,29 +159,7 @@ class MaxNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
         return None
 
-    def get_col_spec(self):
-        if self.scale and self.precision:
-            return 'FIXED(%s, %s)' % (self.precision, self.scale)
-        elif self.precision:
-            return 'FIXED(%s)' % self.precision
-        else:
-            return 'INTEGER'
-
-
-class MaxFloat(sqltypes.Float):
-    """The FLOAT data type."""
-
-    def get_col_spec(self):
-        if self.precision is None:
-            return 'FLOAT'
-        else:
-            return 'FLOAT(%s)' % (self.precision,)
-
-
 class MaxTimestamp(sqltypes.DateTime):
-    def get_col_spec(self):
-        return 'TIMESTAMP'
-
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -242,9 +202,6 @@ class MaxTimestamp(sqltypes.DateTime):
 
 
 class MaxDate(sqltypes.Date):
-    def get_col_spec(self):
-        return 'DATE'
-
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -279,9 +236,6 @@ class MaxDate(sqltypes.Date):
 
 
 class MaxTime(sqltypes.Time):
-    def get_col_spec(self):
-        return 'TIME'
-
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -316,15 +270,7 @@ class MaxTime(sqltypes.Time):
         return process
 
 
-class MaxBoolean(sqltypes.Boolean):
-    def get_col_spec(self):
-        return 'BOOLEAN'
-
-
 class MaxBlob(sqltypes.Binary):
-    def get_col_spec(self):
-        return 'LONG BYTE'
-
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -341,18 +287,54 @@ class MaxBlob(sqltypes.Binary):
                 return value.read(value.remainingLength())
         return process
 
+class MaxDBTypeCompiler(compiler.GenericTypeCompiler):
+    def _string_spec(self, string_spec, type_):
+        if type_.length is None:
+            spec = 'LONG'
+        else:
+            spec = '%s(%s)' % (string_spec, type_.length)
 
+        if getattr(type_, 'encoding'):
+            spec = ' '.join([spec, getattr(type_, 'encoding').upper()])
+        return spec
+
+    def visit_text(self, type_):
+        spec = 'LONG'
+        if getattr(type_, 'encoding', None):
+            spec = ' '.join((spec, type_.encoding))
+        elif type_.convert_unicode:
+            spec = ' '.join((spec, 'UNICODE'))
+
+        return spec
+
+    def visit_char(self, type_):
+        return self._string_spec("CHAR", type_)
+
+    def visit_string(self, type_):
+        return self._string_spec("VARCHAR", type_)
+
+    def visit_binary(self, type_):
+        return "LONG BYTE"
+    
+    def visit_numeric(self, type_):
+        if type_.scale and type_.precision:
+            return 'FIXED(%s, %s)' % (type_.precision, type_.scale)
+        elif type_.precision:
+            return 'FIXED(%s)' % type_.precision
+        else:
+            return 'INTEGER'
+    
+    def visit_BOOLEAN(self, type_):
+        return "BOOLEAN"
+        
 colspecs = {
-    sqltypes.Integer: MaxInteger,
-    sqltypes.SmallInteger: MaxSmallInteger,
     sqltypes.Numeric: MaxNumeric,
-    sqltypes.Float: MaxFloat,
     sqltypes.DateTime: MaxTimestamp,
     sqltypes.Date: MaxDate,
     sqltypes.Time: MaxTime,
     sqltypes.String: MaxString,
+    sqltypes.Unicode:MaxUnicode,
     sqltypes.Binary: MaxBlob,
-    sqltypes.Boolean: MaxBoolean,
     sqltypes.Text: MaxText,
     sqltypes.CHAR: MaxChar,
     sqltypes.TIMESTAMP: MaxTimestamp,
@@ -361,25 +343,25 @@ colspecs = {
     }
 
 ischema_names = {
-    'boolean': MaxBoolean,
-    'char': MaxChar,
-    'character': MaxChar,
-    'date': MaxDate,
-    'fixed': MaxNumeric,
-    'float': MaxFloat,
-    'int': MaxInteger,
-    'integer': MaxInteger,
-    'long binary': MaxBlob,
-    'long unicode': MaxText,
-    'long': MaxText,
-    'long': MaxText,
-    'smallint': MaxSmallInteger,
-    'time': MaxTime,
-    'timestamp': MaxTimestamp,
-    'varchar': MaxString,
+    'boolean': sqltypes.BOOLEAN,
+    'char': sqltypes.CHAR,
+    'character': sqltypes.CHAR,
+    'date': sqltypes.DATE,
+    'fixed': sqltypes.Numeric,
+    'float': sqltypes.FLOAT,
+    'int': sqltypes.INT,
+    'integer': sqltypes.INT,
+    'long binary': sqltypes.BLOB,
+    'long unicode': sqltypes.Text,
+    'long': sqltypes.Text,
+    'long': sqltypes.Text,
+    'smallint': sqltypes.SmallInteger,
+    'time': sqltypes.Time,
+    'timestamp': sqltypes.TIMESTAMP,
+    'varchar': sqltypes.VARCHAR,
     }
 
-
+# TODO: migrate this to sapdb.py
 class MaxDBExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
         # DB-API bug: if there were any functions as values,
@@ -463,259 +445,6 @@ class MaxDBCachedColumnRow(engine_base.RowProxy):
 
 class MaxDBResultProxy(engine_base.ResultProxy):
     _process_row = MaxDBCachedColumnRow
-
-
-class MaxDBDialect(default.DefaultDialect):
-    name = 'maxdb'
-    supports_alter = True
-    supports_unicode_statements = True
-    max_identifier_length = 32
-    supports_sane_rowcount = True
-    supports_sane_multi_rowcount = False
-    preexecute_pk_sequences = True
-
-    # MaxDB-specific
-    datetimeformat = 'internal'
-
-    def __init__(self, _raise_known_sql_errors=False, **kw):
-        super(MaxDBDialect, self).__init__(**kw)
-        self._raise_known = _raise_known_sql_errors
-
-        if self.dbapi is None:
-            self.dbapi_type_map = {}
-        else:
-            self.dbapi_type_map = {
-                'Long Binary': MaxBlob(),
-                'Long byte_t': MaxBlob(),
-                'Long Unicode': MaxText(),
-                'Timestamp': MaxTimestamp(),
-                'Date': MaxDate(),
-                'Time': MaxTime(),
-                datetime.datetime: MaxTimestamp(),
-                datetime.date: MaxDate(),
-                datetime.time: MaxTime(),
-            }
-
-    def dbapi(cls):
-        from sapdb import dbapi as _dbapi
-        return _dbapi
-    dbapi = classmethod(dbapi)
-
-    def create_connect_args(self, url):
-        opts = url.translate_connect_args(username='user')
-        opts.update(url.query)
-        return [], opts
-
-    def type_descriptor(self, typeobj):
-        if isinstance(typeobj, type):
-            typeobj = typeobj()
-        if isinstance(typeobj, sqltypes.Unicode):
-            return typeobj.adapt(MaxUnicode)
-        else:
-            return sqltypes.adapt_type(typeobj, colspecs)
-
-    def do_execute(self, cursor, statement, parameters, context=None):
-        res = cursor.execute(statement, parameters)
-        if isinstance(res, int) and context is not None:
-            context._rowcount = res
-
-    def do_release_savepoint(self, connection, name):
-        # Does MaxDB truly support RELEASE SAVEPOINT <id>?  All my attempts
-        # produce "SUBTRANS COMMIT/ROLLBACK not allowed without SUBTRANS
-        # BEGIN SQLSTATE: I7065"
-        # Note that ROLLBACK TO works fine.  In theory, a RELEASE should
-        # just free up some transactional resources early, before the overall
-        # COMMIT/ROLLBACK so omitting it should be relatively ok.
-        pass
-
-    def get_default_schema_name(self, connection):
-        try:
-            return self._default_schema_name
-        except AttributeError:
-            name = self.identifier_preparer._normalize_name(
-                connection.execute('SELECT CURRENT_SCHEMA FROM DUAL').scalar())
-            self._default_schema_name = name
-            return name
-
-    def has_table(self, connection, table_name, schema=None):
-        denormalize = self.identifier_preparer._denormalize_name
-        bind = [denormalize(table_name)]
-        if schema is None:
-            sql = ("SELECT tablename FROM TABLES "
-                   "WHERE TABLES.TABLENAME=? AND"
-                   "  TABLES.SCHEMANAME=CURRENT_SCHEMA ")
-        else:
-            sql = ("SELECT tablename FROM TABLES "
-                   "WHERE TABLES.TABLENAME = ? AND"
-                   "  TABLES.SCHEMANAME=? ")
-            bind.append(denormalize(schema))
-
-        rp = connection.execute(sql, bind)
-        found = bool(rp.fetchone())
-        rp.close()
-        return found
-
-    def table_names(self, connection, schema):
-        if schema is None:
-            sql = (" SELECT TABLENAME FROM TABLES WHERE "
-                   " SCHEMANAME=CURRENT_SCHEMA ")
-            rs = connection.execute(sql)
-        else:
-            sql = (" SELECT TABLENAME FROM TABLES WHERE "
-                   " SCHEMANAME=? ")
-            matchname = self.identifier_preparer._denormalize_name(schema)
-            rs = connection.execute(sql, matchname)
-        normalize = self.identifier_preparer._normalize_name
-        return [normalize(row[0]) for row in rs]
-
-    def reflecttable(self, connection, table, include_columns):
-        denormalize = self.identifier_preparer._denormalize_name
-        normalize = self.identifier_preparer._normalize_name
-
-        st = ('SELECT COLUMNNAME, MODE, DATATYPE, CODETYPE, LEN, DEC, '
-              '  NULLABLE, "DEFAULT", DEFAULTFUNCTION '
-              'FROM COLUMNS '
-              'WHERE TABLENAME=? AND SCHEMANAME=%s '
-              'ORDER BY POS')
-
-        fk = ('SELECT COLUMNNAME, FKEYNAME, '
-              '  REFSCHEMANAME, REFTABLENAME, REFCOLUMNNAME, RULE, '
-              '  (CASE WHEN REFSCHEMANAME = CURRENT_SCHEMA '
-              '   THEN 1 ELSE 0 END) AS in_schema '
-              'FROM FOREIGNKEYCOLUMNS '
-              'WHERE TABLENAME=? AND SCHEMANAME=%s '
-              'ORDER BY FKEYNAME ')
-
-        params = [denormalize(table.name)]
-        if not table.schema:
-            st = st % 'CURRENT_SCHEMA'
-            fk = fk % 'CURRENT_SCHEMA'
-        else:
-            st = st % '?'
-            fk = fk % '?'
-            params.append(denormalize(table.schema))
-
-        rows = connection.execute(st, params).fetchall()
-        if not rows:
-            raise exc.NoSuchTableError(table.fullname)
-
-        include_columns = set(include_columns or [])
-
-        for row in rows:
-            (name, mode, col_type, encoding, length, scale,
-             nullable, constant_def, func_def) = row
-
-            name = normalize(name)
-
-            if include_columns and name not in include_columns:
-                continue
-
-            type_args, type_kw = [], {}
-            if col_type == 'FIXED':
-                type_args = length, scale
-                # Convert FIXED(10) DEFAULT SERIAL to our Integer
-                if (scale == 0 and
-                    func_def is not None and func_def.startswith('SERIAL')):
-                    col_type = 'INTEGER'
-                    type_args = length,
-            elif col_type in 'FLOAT':
-                type_args = length,
-            elif col_type in ('CHAR', 'VARCHAR'):
-                type_args = length,
-                type_kw['encoding'] = encoding
-            elif col_type == 'LONG':
-                type_kw['encoding'] = encoding
-
-            try:
-                type_cls = ischema_names[col_type.lower()]
-                type_instance = type_cls(*type_args, **type_kw)
-            except KeyError:
-                util.warn("Did not recognize type '%s' of column '%s'" %
-                          (col_type, name))
-                type_instance = sqltypes.NullType
-
-            col_kw = {'autoincrement': False}
-            col_kw['nullable'] = (nullable == 'YES')
-            col_kw['primary_key'] = (mode == 'KEY')
-
-            if func_def is not None:
-                if func_def.startswith('SERIAL'):
-                    if col_kw['primary_key']:
-                        # No special default- let the standard autoincrement
-                        # support handle SERIAL pk columns.
-                        col_kw['autoincrement'] = True
-                    else:
-                        # strip current numbering
-                        col_kw['server_default'] = schema.DefaultClause(
-                            sql.text('SERIAL'))
-                        col_kw['autoincrement'] = True
-                else:
-                    col_kw['server_default'] = schema.DefaultClause(
-                        sql.text(func_def))
-            elif constant_def is not None:
-                col_kw['server_default'] = schema.DefaultClause(sql.text(
-                    "'%s'" % constant_def.replace("'", "''")))
-
-            table.append_column(schema.Column(name, type_instance, **col_kw))
-
-        fk_sets = itertools.groupby(connection.execute(fk, params),
-                                    lambda row: row.FKEYNAME)
-        for fkeyname, fkey in fk_sets:
-            fkey = list(fkey)
-            if include_columns:
-                key_cols = set([r.COLUMNNAME for r in fkey])
-                if key_cols != include_columns:
-                    continue
-
-            columns, referants = [], []
-            quote = self.identifier_preparer._maybe_quote_identifier
-
-            for row in fkey:
-                columns.append(normalize(row.COLUMNNAME))
-                if table.schema or not row.in_schema:
-                    referants.append('.'.join(
-                        [quote(normalize(row[c]))
-                         for c in ('REFSCHEMANAME', 'REFTABLENAME',
-                                   'REFCOLUMNNAME')]))
-                else:
-                    referants.append('.'.join(
-                        [quote(normalize(row[c]))
-                         for c in ('REFTABLENAME', 'REFCOLUMNNAME')]))
-
-            constraint_kw = {'name': fkeyname.lower()}
-            if fkey[0].RULE is not None:
-                rule = fkey[0].RULE
-                if rule.startswith('DELETE '):
-                    rule = rule[7:]
-                constraint_kw['ondelete'] = rule
-
-            table_kw = {}
-            if table.schema or not row.in_schema:
-                table_kw['schema'] = normalize(fkey[0].REFSCHEMANAME)
-
-            ref_key = schema._get_table_key(normalize(fkey[0].REFTABLENAME),
-                                            table_kw.get('schema'))
-            if ref_key not in table.metadata.tables:
-                schema.Table(normalize(fkey[0].REFTABLENAME),
-                             table.metadata,
-                             autoload=True, autoload_with=connection,
-                             **table_kw)
-
-            constraint = schema.ForeignKeyConstraint(columns, referants, link_to_name=True,
-                                                     **constraint_kw)
-            table.append_constraint(constraint)
-
-    def has_sequence(self, connection, name):
-        # [ticket:726] makes this schema-aware.
-        denormalize = self.identifier_preparer._denormalize_name
-        sql = ("SELECT sequence_name FROM SEQUENCES "
-               "WHERE SEQUENCE_NAME=? ")
-
-        rp = connection.execute(sql, denormalize(name))
-        found = bool(rp.fetchone())
-        rp.close()
-        return found
-
 
 class MaxDBCompiler(compiler.SQLCompiler):
     operators = compiler.SQLCompiler.operators.copy()
@@ -947,10 +676,10 @@ class MaxDBIdentifierPreparer(compiler.IdentifierPreparer):
             return name
 
 
-class MaxDBSchemaGenerator(compiler.SchemaGenerator):
+class MaxDBDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kw):
         colspec = [self.preparer.format_column(column),
-                   column.type.dialect_impl(self.dialect).get_col_spec()]
+                   self.dialect.type_compiler.process(column.type)]
 
         if not column.nullable:
             colspec.append('NOT NULL')
@@ -996,7 +725,7 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
         else:
             return None
 
-    def visit_sequence(self, sequence):
+    def visit_create_sequence(self, create):
         """Creates a SEQUENCE.
 
         TODO: move to module doc?
@@ -1024,7 +753,8 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
         maxdb_no_cache
           Defaults to False.  If true, sets NOCACHE.
         """
-
+        sequence = create.element
+        
         if (not sequence.optional and
             (not self.checkfirst or
              not self.dialect.has_sequence(self.connection, sequence.name))):
@@ -1061,18 +791,251 @@ class MaxDBSchemaGenerator(compiler.SchemaGenerator):
             elif opts.get('no_cache', False):
                 ddl.append('NOCACHE')
 
-            self.append(' '.join(ddl))
-            self.execute()
+            return ' '.join(ddl)
 
 
-class MaxDBSchemaDropper(compiler.SchemaDropper):
-    def visit_sequence(self, sequence):
-        if (not sequence.optional and
-            (not self.checkfirst or
-             self.dialect.has_sequence(self.connection, sequence.name))):
-            self.append("DROP SEQUENCE %s" %
-                        self.preparer.format_sequence(sequence))
-            self.execute()
+class MaxDBDialect(default.DefaultDialect):
+    name = 'maxdb'
+    supports_alter = True
+    supports_unicode_statements = True
+    max_identifier_length = 32
+    supports_sane_rowcount = True
+    supports_sane_multi_rowcount = False
+    preexecute_pk_sequences = True
+
+    preparer = MaxDBIdentifierPreparer
+    statement_compiler = MaxDBCompiler
+    ddl_compiler = MaxDBDDLCompiler
+    defaultrunner = MaxDBDefaultRunner
+    execution_ctx_cls = MaxDBExecutionContext
+
+    colspecs = colspecs
+    ischema_names = ischema_names
+    
+    # MaxDB-specific
+    datetimeformat = 'internal'
+
+    def __init__(self, _raise_known_sql_errors=False, **kw):
+        super(MaxDBDialect, self).__init__(**kw)
+        self._raise_known = _raise_known_sql_errors
+
+        if self.dbapi is None:
+            self.dbapi_type_map = {}
+        else:
+            self.dbapi_type_map = {
+                'Long Binary': MaxBlob(),
+                'Long byte_t': MaxBlob(),
+                'Long Unicode': MaxText(),
+                'Timestamp': MaxTimestamp(),
+                'Date': MaxDate(),
+                'Time': MaxTime(),
+                datetime.datetime: MaxTimestamp(),
+                datetime.date: MaxDate(),
+                datetime.time: MaxTime(),
+            }
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+        res = cursor.execute(statement, parameters)
+        if isinstance(res, int) and context is not None:
+            context._rowcount = res
+
+    def do_release_savepoint(self, connection, name):
+        # Does MaxDB truly support RELEASE SAVEPOINT <id>?  All my attempts
+        # produce "SUBTRANS COMMIT/ROLLBACK not allowed without SUBTRANS
+        # BEGIN SQLSTATE: I7065"
+        # Note that ROLLBACK TO works fine.  In theory, a RELEASE should
+        # just free up some transactional resources early, before the overall
+        # COMMIT/ROLLBACK so omitting it should be relatively ok.
+        pass
+
+    def get_default_schema_name(self, connection):
+        try:
+            return self._default_schema_name
+        except AttributeError:
+            name = self.identifier_preparer._normalize_name(
+                connection.execute('SELECT CURRENT_SCHEMA FROM DUAL').scalar())
+            self._default_schema_name = name
+            return name
+
+    def has_table(self, connection, table_name, schema=None):
+        denormalize = self.identifier_preparer._denormalize_name
+        bind = [denormalize(table_name)]
+        if schema is None:
+            sql = ("SELECT tablename FROM TABLES "
+                   "WHERE TABLES.TABLENAME=? AND"
+                   "  TABLES.SCHEMANAME=CURRENT_SCHEMA ")
+        else:
+            sql = ("SELECT tablename FROM TABLES "
+                   "WHERE TABLES.TABLENAME = ? AND"
+                   "  TABLES.SCHEMANAME=? ")
+            bind.append(denormalize(schema))
+
+        rp = connection.execute(sql, bind)
+        found = bool(rp.fetchone())
+        rp.close()
+        return found
+
+    def table_names(self, connection, schema):
+        if schema is None:
+            sql = (" SELECT TABLENAME FROM TABLES WHERE "
+                   " SCHEMANAME=CURRENT_SCHEMA ")
+            rs = connection.execute(sql)
+        else:
+            sql = (" SELECT TABLENAME FROM TABLES WHERE "
+                   " SCHEMANAME=? ")
+            matchname = self.identifier_preparer._denormalize_name(schema)
+            rs = connection.execute(sql, matchname)
+        normalize = self.identifier_preparer._normalize_name
+        return [normalize(row[0]) for row in rs]
+
+    def reflecttable(self, connection, table, include_columns):
+        denormalize = self.identifier_preparer._denormalize_name
+        normalize = self.identifier_preparer._normalize_name
+
+        st = ('SELECT COLUMNNAME, MODE, DATATYPE, CODETYPE, LEN, DEC, '
+              '  NULLABLE, "DEFAULT", DEFAULTFUNCTION '
+              'FROM COLUMNS '
+              'WHERE TABLENAME=? AND SCHEMANAME=%s '
+              'ORDER BY POS')
+
+        fk = ('SELECT COLUMNNAME, FKEYNAME, '
+              '  REFSCHEMANAME, REFTABLENAME, REFCOLUMNNAME, RULE, '
+              '  (CASE WHEN REFSCHEMANAME = CURRENT_SCHEMA '
+              '   THEN 1 ELSE 0 END) AS in_schema '
+              'FROM FOREIGNKEYCOLUMNS '
+              'WHERE TABLENAME=? AND SCHEMANAME=%s '
+              'ORDER BY FKEYNAME ')
+
+        params = [denormalize(table.name)]
+        if not table.schema:
+            st = st % 'CURRENT_SCHEMA'
+            fk = fk % 'CURRENT_SCHEMA'
+        else:
+            st = st % '?'
+            fk = fk % '?'
+            params.append(denormalize(table.schema))
+
+        rows = connection.execute(st, params).fetchall()
+        if not rows:
+            raise exc.NoSuchTableError(table.fullname)
+
+        include_columns = set(include_columns or [])
+
+        for row in rows:
+            (name, mode, col_type, encoding, length, scale,
+             nullable, constant_def, func_def) = row
+
+            name = normalize(name)
+
+            if include_columns and name not in include_columns:
+                continue
+
+            type_args, type_kw = [], {}
+            if col_type == 'FIXED':
+                type_args = length, scale
+                # Convert FIXED(10) DEFAULT SERIAL to our Integer
+                if (scale == 0 and
+                    func_def is not None and func_def.startswith('SERIAL')):
+                    col_type = 'INTEGER'
+                    type_args = length,
+            elif col_type in 'FLOAT':
+                type_args = length,
+            elif col_type in ('CHAR', 'VARCHAR'):
+                type_args = length,
+                type_kw['encoding'] = encoding
+            elif col_type == 'LONG':
+                type_kw['encoding'] = encoding
+
+            try:
+                type_cls = ischema_names[col_type.lower()]
+                type_instance = type_cls(*type_args, **type_kw)
+            except KeyError:
+                util.warn("Did not recognize type '%s' of column '%s'" %
+                          (col_type, name))
+                type_instance = sqltypes.NullType
+
+            col_kw = {'autoincrement': False}
+            col_kw['nullable'] = (nullable == 'YES')
+            col_kw['primary_key'] = (mode == 'KEY')
+
+            if func_def is not None:
+                if func_def.startswith('SERIAL'):
+                    if col_kw['primary_key']:
+                        # No special default- let the standard autoincrement
+                        # support handle SERIAL pk columns.
+                        col_kw['autoincrement'] = True
+                    else:
+                        # strip current numbering
+                        col_kw['server_default'] = schema.DefaultClause(
+                            sql.text('SERIAL'))
+                        col_kw['autoincrement'] = True
+                else:
+                    col_kw['server_default'] = schema.DefaultClause(
+                        sql.text(func_def))
+            elif constant_def is not None:
+                col_kw['server_default'] = schema.DefaultClause(sql.text(
+                    "'%s'" % constant_def.replace("'", "''")))
+
+            table.append_column(schema.Column(name, type_instance, **col_kw))
+
+        fk_sets = itertools.groupby(connection.execute(fk, params),
+                                    lambda row: row.FKEYNAME)
+        for fkeyname, fkey in fk_sets:
+            fkey = list(fkey)
+            if include_columns:
+                key_cols = set([r.COLUMNNAME for r in fkey])
+                if key_cols != include_columns:
+                    continue
+
+            columns, referants = [], []
+            quote = self.identifier_preparer._maybe_quote_identifier
+
+            for row in fkey:
+                columns.append(normalize(row.COLUMNNAME))
+                if table.schema or not row.in_schema:
+                    referants.append('.'.join(
+                        [quote(normalize(row[c]))
+                         for c in ('REFSCHEMANAME', 'REFTABLENAME',
+                                   'REFCOLUMNNAME')]))
+                else:
+                    referants.append('.'.join(
+                        [quote(normalize(row[c]))
+                         for c in ('REFTABLENAME', 'REFCOLUMNNAME')]))
+
+            constraint_kw = {'name': fkeyname.lower()}
+            if fkey[0].RULE is not None:
+                rule = fkey[0].RULE
+                if rule.startswith('DELETE '):
+                    rule = rule[7:]
+                constraint_kw['ondelete'] = rule
+
+            table_kw = {}
+            if table.schema or not row.in_schema:
+                table_kw['schema'] = normalize(fkey[0].REFSCHEMANAME)
+
+            ref_key = schema._get_table_key(normalize(fkey[0].REFTABLENAME),
+                                            table_kw.get('schema'))
+            if ref_key not in table.metadata.tables:
+                schema.Table(normalize(fkey[0].REFTABLENAME),
+                             table.metadata,
+                             autoload=True, autoload_with=connection,
+                             **table_kw)
+
+            constraint = schema.ForeignKeyConstraint(columns, referants, link_to_name=True,
+                                                     **constraint_kw)
+            table.append_constraint(constraint)
+
+    def has_sequence(self, connection, name):
+        # [ticket:726] makes this schema-aware.
+        denormalize = self.identifier_preparer._denormalize_name
+        sql = ("SELECT sequence_name FROM SEQUENCES "
+               "WHERE SEQUENCE_NAME=? ")
+
+        rp = connection.execute(sql, denormalize(name))
+        found = bool(rp.fetchone())
+        rp.close()
+        return found
+
 
 
 def _autoserial_column(table):
@@ -1090,10 +1053,3 @@ def _autoserial_column(table):
 
     return None, None
 
-dialect = MaxDBDialect
-dialect.preparer = MaxDBIdentifierPreparer
-dialect.statement_compiler = MaxDBCompiler
-dialect.schemagenerator = MaxDBSchemaGenerator
-dialect.schemadropper = MaxDBSchemaDropper
-dialect.defaultrunner = MaxDBDefaultRunner
-dialect.execution_ctx_cls = MaxDBExecutionContext

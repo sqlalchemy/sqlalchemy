@@ -68,12 +68,12 @@ class AdaptTest(TestBase):
         firebird_dialect = firebird.FBDialect()
 
         for dialect, start, test in [
-            (oracle_dialect, String(), oracle.OracleString),
-            (oracle_dialect, VARCHAR(), oracle.OracleString),
-            (oracle_dialect, String(50), oracle.OracleString),
-            (oracle_dialect, Unicode(), oracle.OracleString),
+            (oracle_dialect, String(), String),
+            (oracle_dialect, VARCHAR(), VARCHAR),
+            (oracle_dialect, String(50), String),
+            (oracle_dialect, Unicode(), Unicode),
             (oracle_dialect, UnicodeText(), oracle.OracleText),
-            (oracle_dialect, NCHAR(), oracle.OracleString),
+            (oracle_dialect, NCHAR(), NCHAR),
             (oracle_dialect, oracle.OracleRaw(50), oracle.OracleRaw),
             (mysql_dialect, String(), mysql.MSString),
             (mysql_dialect, VARCHAR(), mysql.MSString),
@@ -96,7 +96,43 @@ class AdaptTest(TestBase):
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 
-
+    def test_uppercase_rendering(self):
+        """Test that uppercase types from types.py always render as their type.
+        
+        As of SQLA 0.6, using an uppercase type means you want specifically that
+        type.  If the database in use doesn't support that DDL, it (the DB backend) 
+        should raise an error - it means you should be using a lowercased (genericized) type.
+        
+        """
+        
+        for dialect in [oracle.dialect(), mysql.dialect(), postgres.dialect(), sqlite.dialect(), sybase.dialect(), informix.dialect(), maxdb.dialect()]: #engines.all_dialects():
+            for type_, expected in (
+                (FLOAT, "FLOAT"),
+                (NUMERIC, "NUMERIC"),
+                (DECIMAL, "DECIMAL"),
+                (INTEGER, "INTEGER"),
+                (SMALLINT, "SMALLINT"),
+                (TIMESTAMP, "TIMESTAMP"),
+                (DATETIME, "DATETIME"),
+                (DATE, "DATE"),
+                (TIME, "TIME"),
+                (CLOB, "CLOB"),
+                (VARCHAR, "VARCHAR"),
+                (NVARCHAR, ("NVARCHAR", "NATIONAL VARCHAR")),
+                (CHAR, "CHAR"),
+                (NCHAR, ("NCHAR", "NATIONAL CHAR")),
+                (BLOB, "BLOB"),
+                (BOOLEAN, ("BOOLEAN", "BOOL"))
+            ):
+                if isinstance(expected, str):
+                    expected = (expected, )
+                for exp in expected:
+                    compiled = type_().compile(dialect=dialect)
+                    if exp in compiled:
+                        break
+                else:
+                    assert False, "%r matches none of %r for dialect %s" % (compiled, expected, dialect.name)
+            
 
 class UserDefinedTest(TestBase):
     """tests user-defined types."""

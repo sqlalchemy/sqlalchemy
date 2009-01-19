@@ -215,12 +215,6 @@ class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
     def visit_binary(self, type_):
         return self.visit_BLOB(type_)
     
-    def visit_CLOB(self, type_):
-        return self.visit_TEXT(type_)
-
-    def visit_NCHAR(self, type_):
-        return self.visit_CHAR(type_)
-    
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = set([
         'add', 'after', 'all', 'alter', 'analyze', 'and', 'as', 'asc',

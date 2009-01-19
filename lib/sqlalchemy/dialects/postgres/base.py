@@ -367,7 +367,10 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_BIGINT(self, type_):
         return "BIGINT"
 
-    def visit_DATETIME(self, type_):
+    def visit_datetime(self, type_):
+        return self.visit_TIMESTAMP(type_)
+        
+    def visit_TIMESTAMP(self, type_):
         return "TIMESTAMP " + (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
 
     def visit_TIME(self, type_):

@@ -964,6 +964,9 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_SMALLINT(self, type_):
         return "SMALLINT"
 
+    def visit_BIGINT(self, type_):
+        return "BIGINT"
+
     def visit_TIMESTAMP(self, type_):
         return 'TIMESTAMP'
 
@@ -988,9 +991,6 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_BLOB(self, type_):
         return "BLOB"
     
-    def visit_BINARY(self, type_):
-        return "BINARY"
-        
     def visit_BOOLEAN(self, type_):
         return "BOOLEAN"
     
@@ -998,25 +998,35 @@ class GenericTypeCompiler(engine.TypeCompiler):
         return "TEXT"
     
     def visit_binary(self, type_):
-        return self.visit_BINARY(type_)
+        return self.visit_BLOB(type_)
+        
     def visit_boolean(self, type_): 
         return self.visit_BOOLEAN(type_)
+        
     def visit_time(self, type_): 
         return self.visit_TIME(type_)
+        
     def visit_datetime(self, type_): 
         return self.visit_DATETIME(type_)
+        
     def visit_date(self, type_): 
         return self.visit_DATE(type_)
+        
     def visit_small_integer(self, type_): 
         return self.visit_SMALLINT(type_)
+        
     def visit_integer(self, type_): 
         return self.visit_INTEGER(type_)
+        
     def visit_float(self, type_): 
         return self.visit_FLOAT(type_)
+        
     def visit_numeric(self, type_): 
         return self.visit_NUMERIC(type_)
+        
     def visit_string(self, type_): 
         return self.visit_VARCHAR(type_)
+        
     def visit_text(self, type_): 
         return self.visit_TEXT(type_)
     

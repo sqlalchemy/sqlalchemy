@@ -220,7 +220,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     # Oracle does not allow milliseconds in DATE
     # Oracle does not support TIME columns
     
-    def visit_DATETIME(self, type_):
+    def visit_datetime(self, type_):
         return self.visit_DATE(type_)
         
     def visit_VARCHAR(self, type_):
@@ -229,13 +229,13 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     def visit_NVARCHAR(self, type_):
         return "NVARCHAR2(%(length)s)" % {'length' : type_.length}
     
-    def visit_TEXT(self, type_):
+    def visit_text(self, type_):
         return self.visit_CLOB(type_)
 
-    def visit_BINARY(self, type_):
+    def visit_binary(self, type_):
         return self.visit_BLOB(type_)
     
-    def visit_BOOLEAN(self, type_):
+    def visit_boolean(self, type_):
         return self.visit_SMALLINT(type_)
     
     def visit_RAW(self, type_):

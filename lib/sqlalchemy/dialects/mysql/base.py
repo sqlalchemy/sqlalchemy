@@ -1479,31 +1479,32 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             spec += ' ZEROFILL'
         return spec
 
-    def _extend_string(self, type_, spec):
+    def _extend_string(self, type_, defaults, spec):
         """Extend a string-type declaration with standard SQL CHARACTER SET /
         COLLATE annotations and MySQL specific extensions.
 
         """
-        if not self._mysql_type(type_):
-            return spec
+        
+        def attr(name):
+            return getattr(type_, name, defaults.get(name))
             
-        if type_.charset:
-            charset = 'CHARACTER SET %s' % type_.charset
-        elif type_.ascii:
+        if attr('charset'):
+            charset = 'CHARACTER SET %s' % attr('charset')
+        elif attr('ascii'):
             charset = 'ASCII'
-        elif type_.unicode:
+        elif attr('unicode'):
             charset = 'UNICODE'
         else:
             charset = None
 
-        if type_.collation:
+        if attr('collation'):
             collation = 'COLLATE %s' % type_.collation
-        elif type_.binary:
+        elif attr('binary'):
             collation = 'BINARY'
         else:
             collation = None
 
-        if type_.national:
+        if attr('national'):
             # NATIONAL (aka NCHAR/NVARCHAR) trumps charsets.
             return ' '.join([c for c in ('NATIONAL', spec, collation)
                              if c is not None])
@@ -1607,36 +1608,36 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     
     def visit_TEXT(self, type_):
         if type_.length:
-            return self._extend_string(type_, "TEXT(%d)" % type_.length)
+            return self._extend_string(type_, {}, "TEXT(%d)" % type_.length)
         else:
-            return self._extend_string(type_, "TEXT")
+            return self._extend_string(type_, {}, "TEXT")
         
     def visit_TINYTEXT(self, type_):
-        return self._extend_string(type_, "TINYTEXT")
+        return self._extend_string(type_, {}, "TINYTEXT")
 
     def visit_MEDIUMTEXT(self, type_):
-        return self._extend_string(type_, "MEDIUMTEXT")
+        return self._extend_string(type_, {}, "MEDIUMTEXT")
     
     def visit_LONGTEXT(self, type_):
-        return self._extend_string(type_, "LONGTEXT")
+        return self._extend_string(type_, {}, "LONGTEXT")
     
     def visit_VARCHAR(self, type_):
         if type_.length:
-            return self._extend_string(type_, "VARCHAR(%d)" % type_.length)
+            return self._extend_string(type_, {}, "VARCHAR(%d)" % type_.length)
         else:
-            return self._extend_string(type_, "VARCHAR")
+            return self._extend_string(type_, {}, "VARCHAR")
     
     def visit_CHAR(self, type_):
-        return self._extend_string(type_, "CHAR(%(length)s)" % {'length' : type_.length})
+        return self._extend_string(type_, {'national':True}, "CHAR(%(length)s)" % {'length' : type_.length})
 
     def visit_NVARCHAR(self, type_):
         # We'll actually generate the equiv. "NATIONAL VARCHAR" instead
         # of "NVARCHAR".
-        return self._extend_string(type_, "VARCHAR(%(length)s)" % {'length': type_.length})
+        return self._extend_string(type_, {'national':True}, "VARCHAR(%(length)s)" % {'length': type_.length})
     
     def visit_NCHAR(self, type_):
         # We'll actually generate the equiv. "NATIONAL CHAR" instead of "NCHAR".
-        return self._extend_string(type_, "CHAR(%(length)s)" % {'length': type_.length})
+        return self._extend_string(type_, {'national':True}, "CHAR(%(length)s)" % {'length': type_.length})
     
     def visit_VARBINARY(self, type_):
         if type_.length:
@@ -1672,10 +1673,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         quoted_enums = []
         for e in type_.enums:
             quoted_enums.append("'%s'" % e.replace("'", "''"))
-        return self._extend_string(type_, "ENUM(%s)" % ",".join(quoted_enums))
+        return self._extend_string(type_, {}, "ENUM(%s)" % ",".join(quoted_enums))
         
     def visit_SET(self, type_):
-        return self._extend_string(type_, "SET(%s)" % ",".join(type_._ddl_values))
+        return self._extend_string(type_, {}, "SET(%s)" % ",".join(type_._ddl_values))
 
     def visit_BOOLEAN(self, type):
         return "BOOL"

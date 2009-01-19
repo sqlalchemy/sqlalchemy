@@ -12,9 +12,9 @@ For more information see the SQLAlchemy documentation on types.
 
 """
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
-            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'Text', 'FLOAT',
+            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text', 'FLOAT',
             'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
-            'BOOLEAN', 'SMALLINT', 'DATE', 'TIME',
+            'BOOLEAN', 'SMALLINT', 'INTEGER','DATE', 'TIME',
             'String', 'Integer', 'SmallInteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
             'Boolean', 'Unicode', 'MutableType', 'Concatenable', 'UnicodeText', 'PickleType', 'Interval',
@@ -39,6 +39,9 @@ class AbstractType(Visitable):
     def __init__(self, *args, **kwargs):
         pass
 
+    def compile(self, dialect):
+        return dialect.type_compiler.process(self)
+        
     def copy_value(self, value):
         return value
 
@@ -609,6 +612,16 @@ class SmallInteger(Integer):
 
     __visit_name__ = 'small_integer'
 
+class BigInteger(Integer):
+    """A type for bigger ``int`` integers.
+
+    Typically generates a ``BIGINT`` in DDL, and otherwise acts like
+    a normal :class:`Integer` on the Python side.
+
+    """
+
+    __visit_name__ = 'big_integer'
+
 class Numeric(TypeEngine):
     """A type for fixed precision numbers.
 
@@ -910,6 +923,11 @@ class SMALLINT(SmallInteger):
 
     __visit_name__ = 'SMALLINT'
 
+
+class BIGINT(SmallInteger):
+    """The SQL BIGINT type."""
+
+    __visit_name__ = 'BIGINT'
 
 class TIMESTAMP(DateTime):
     """The SQL TIMESTAMP type."""
