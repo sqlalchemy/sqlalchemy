@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime, os, pickleable, re
 from sqlalchemy import *
-from sqlalchemy import types, exc
+from sqlalchemy import types, exc, schema
 from sqlalchemy.orm import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
@@ -11,7 +11,7 @@ from testlib.testing import eq_
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
-    __dialect__ = mssql.MSSQLDialect()
+    __dialect__ = mssql.dialect()
 
     def test_insert(self):
         t = table('sometable', column('somecolumn'))
@@ -258,36 +258,26 @@ class SchemaTest(TestBase):
         )
         self.column = t.c.test_column
 
+        dialect = mssql.dialect()
+        self.ddl_compiler = dialect.ddl_compiler(dialect, schema.CreateTable(t))
+    
+    def _column_spec(self):
+        return self.ddl_compiler.get_column_specification(self.column)
+        
     def test_that_mssql_default_nullability_emits_null(self):
-        schemagenerator = \
-            mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
-        column_specification = \
-            schemagenerator.get_column_specification(self.column)
-        eq_("test_column VARCHAR NULL", column_specification)
+        eq_("test_column VARCHAR NULL", self._column_spec())
 
     def test_that_mssql_none_nullability_does_not_emit_nullability(self):
-        schemagenerator = \
-            mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
         self.column.nullable = None
-        column_specification = \
-            schemagenerator.get_column_specification(self.column)
-        eq_("test_column VARCHAR", column_specification)
+        eq_("test_column VARCHAR", self._column_spec())
 
     def test_that_mssql_specified_nullable_emits_null(self):
-        schemagenerator = \
-            mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
         self.column.nullable = True
-        column_specification = \
-            schemagenerator.get_column_specification(self.column)
-        eq_("test_column VARCHAR NULL", column_specification)
+        eq_("test_column VARCHAR NULL", self._column_spec())
 
     def test_that_mssql_specified_not_nullable_emits_not_null(self):
-        schemagenerator = \
-            mssql.MSSQLDialect().schemagenerator(mssql.MSSQLDialect(), None)
         self.column.nullable = False
-        column_specification = \
-            schemagenerator.get_column_specification(self.column)
-        eq_("test_column VARCHAR NOT NULL", column_specification)
+        eq_("test_column VARCHAR NOT NULL", self._column_spec())
 
 
 def full_text_search_missing():
@@ -683,7 +673,8 @@ class TypesTest2(TestBase, AssertsExecutionResults):
             table_args.append(Column('c%s' % index, type_(*args, **kw), nullable=None))
 
         binary_table = Table(*table_args)
-        gen = testing.db.dialect.schemagenerator(testing.db.dialect, testing.db, None, None)
+        dialect = mssql.dialect()
+        gen = dialect.ddl_compiler(dialect, schema.CreateTable(binary_table))
 
         for col in binary_table.c:
             index = int(col.name[1:])
@@ -691,11 +682,7 @@ class TypesTest2(TestBase, AssertsExecutionResults):
                            "%s %s" % (col.name, columns[index][3]))
             self.assert_(repr(col))
 
-        try:
-            binary_table.create(checkfirst=True)
-            assert True
-        except:
-            raise
+        binary_table.create(checkfirst=True)
 
         reflected_binary = Table('test_mssql_binary', MetaData(testing.db), autoload=True)
         for col in reflected_binary.c:
@@ -957,6 +944,9 @@ def colspec(c):
 
 class BinaryTest(TestBase, AssertsExecutionResults):
     """Test the Binary and VarBinary types"""
+    
+    __only_on__ = 'mssql'
+    
     def setUpAll(self):
         global binary_table, MyPickleType
 

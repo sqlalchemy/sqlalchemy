@@ -34,14 +34,13 @@ class AdaptTest(TestBase):
                     assert ta != tb
 
     def testmsnvarchar(self):
-        dialect = mssql.MSSQLDialect()
+        dialect = mssql.dialect()
         # run the test twice to ensure the caching step works too
         for x in range(0, 1):
             col = Column('', Unicode(length=10))
             dialect_type = col.type.dialect_impl(dialect)
             assert isinstance(dialect_type, mssql.MSNVarchar)
-            assert dialect_type.get_col_spec() == 'NVARCHAR(10)'
-
+            eq_(dialect.type_compiler.process(dialect_type), 'NVARCHAR(10)')
 
     def testoracletimestamp(self):
         dialect = oracle.OracleDialect()
@@ -105,7 +104,15 @@ class AdaptTest(TestBase):
         
         """
         
-        for dialect in [oracle.dialect(), mysql.dialect(), postgres.dialect(), sqlite.dialect(), sybase.dialect(), informix.dialect(), maxdb.dialect()]: #engines.all_dialects():
+        for dialect in [
+                oracle.dialect(), 
+                mysql.dialect(), 
+                postgres.dialect(), 
+                sqlite.dialect(), 
+                sybase.dialect(), 
+                informix.dialect(), 
+                maxdb.dialect(), 
+                mssql.dialect()]: # TODO when dialects are complete:  engines.all_dialects():
             for type_, expected in (
                 (FLOAT, "FLOAT"),
                 (NUMERIC, "NUMERIC"),

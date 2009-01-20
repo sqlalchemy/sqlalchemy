@@ -465,7 +465,10 @@ class String(Concatenable, TypeEngine):
         self.assert_unicode = assert_unicode
 
     def adapt(self, impltype):
-        return impltype(length=self.length, convert_unicode=self.convert_unicode, assert_unicode=self.assert_unicode)
+        return impltype(
+                    length=self.length, 
+                    convert_unicode=self.convert_unicode, 
+                    assert_unicode=self.assert_unicode)
 
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:

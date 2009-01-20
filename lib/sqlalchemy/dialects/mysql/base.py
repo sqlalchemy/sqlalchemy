@@ -1414,7 +1414,6 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         """Builds column DDL."""
 
         colspec = [self.preparer.format_column(column),
-                    #self.dialect.type_compiler.process(column.type.dialect_impl(self.dialect))
                     self.dialect.type_compiler.process(column.type)
                    ]
 
