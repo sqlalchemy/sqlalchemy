@@ -1104,7 +1104,7 @@ class MSDialect(default.DefaultDialect):
         return self.schema_name
 
     def table_names(self, connection, schema):
-        from sqlalchemy.databases import information_schema as ischema
+        from sqlalchemy.dialects import information_schema as ischema
         return ischema.table_names(connection, schema)
 
     def uppercase_table(self, t):
@@ -1118,7 +1118,7 @@ class MSDialect(default.DefaultDialect):
 
 
     def has_table(self, connection, tablename, schema=None):
-        import sqlalchemy.databases.information_schema as ischema
+        import sqlalchemy.dialects.information_schema as ischema
 
         current_schema = schema or self.get_default_schema_name(connection)
         columns = self.uppercase_table(ischema.columns)
@@ -1133,7 +1133,7 @@ class MSDialect(default.DefaultDialect):
         return row is not None
 
     def reflecttable(self, connection, table, include_columns):
-        import sqlalchemy.databases.information_schema as ischema
+        import sqlalchemy.dialects.information_schema as ischema
         # Get base columns
         if table.schema is not None:
             current_schema = table.schema

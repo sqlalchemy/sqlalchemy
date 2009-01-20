@@ -7,7 +7,7 @@ import sys
 class MSExecutionContext_pyodbc(MSExecutionContext):
     def pre_exec(self):
         """where appropriate, issue "select scope_identity()" in the same statement"""
-        super(MSSQLExecutionContext_pyodbc, self).pre_exec()
+        super(MSExecutionContext_pyodbc, self).pre_exec()
         if self.compiled.isinsert and self.HASIDENT and not self.IINSERT \
                 and len(self.parameters) == 1 and self.dialect.use_scope_identity:
             self.statement += "; select scope_identity()"
@@ -25,7 +25,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
                     self.cursor.nextset()
             self._last_inserted_ids = [int(row[0])]
         else:
-            super(MSSQLExecutionContext_pyodbc, self).post_exec()
+            super(MSExecutionContext_pyodbc, self).post_exec()
 
 
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
