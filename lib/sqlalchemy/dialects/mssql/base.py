@@ -234,10 +234,9 @@ Known Issues
   does **not** work around
 
 """
-import datetime, decimal, inspect, operator, re, sys, urllib
+import datetime, decimal, inspect, operator, sys
 
 from sqlalchemy import sql, schema, exc, util
-from sqlalchemy.sql import compiler, expression, operators as sqlops, functions as sql_functions
 from sqlalchemy.sql import compiler, expression, operators as sql_operators, functions as sql_functions
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
