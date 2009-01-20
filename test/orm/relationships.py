@@ -452,7 +452,7 @@ class RelationTest4(_base.MappedTest):
                         #"save-update, delete-orphan",
                         "save-update, delete, delete-orphan"):
             mapper(B, tableB, properties={
-                'a':relation(A, cascade=cascade)
+                'a':relation(A, cascade=cascade, single_parent=True)
             })
             mapper(A, tableA)
 

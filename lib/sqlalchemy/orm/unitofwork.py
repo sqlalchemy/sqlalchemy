@@ -65,7 +65,8 @@ class UOWEventHandler(interfaces.AttributeExtension):
             prop = _state_mapper(state).get_property(self.key)
             if newvalue is not None and prop.cascade.save_update and newvalue not in sess:
                 sess.add(newvalue)
-            if prop.cascade.delete_orphan and oldvalue in sess.new:
+            if prop.cascade.delete_orphan and oldvalue in sess.new and \
+                prop.mapper._is_orphan(attributes.instance_state(oldvalue)):
                 sess.expunge(oldvalue)
         return newvalue
 

@@ -565,13 +565,16 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         state.modified_event(self, False, previous)
 
         if self.trackparent:
-            if value is not None:
-                self.sethasparent(instance_state(value), True)
             if previous is not value and previous is not None:
                 self.sethasparent(instance_state(previous), False)
 
         for ext in self.extensions:
             value = ext.set(state, value, previous, initiator or self)
+
+        if self.trackparent:
+            if value is not None:
+                self.sethasparent(instance_state(value), True)
+
         return value
 
 
@@ -617,11 +620,12 @@ class CollectionAttributeImpl(AttributeImpl):
     def fire_append_event(self, state, value, initiator):
         state.modified_event(self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
 
+        for ext in self.extensions:
+            value = ext.append(state, value, initiator or self)
+
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), True)
 
-        for ext in self.extensions:
-            value = ext.append(state, value, initiator or self)
         return value
 
     def fire_pre_remove_event(self, state, initiator):

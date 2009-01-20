@@ -1,6 +1,6 @@
 import testenv; testenv.configure_for_tests()
 
-from testlib.sa import Table, Column, Integer, String, ForeignKey, Sequence
+from testlib.sa import Table, Column, Integer, String, ForeignKey, Sequence, exc as sa_exc
 from testlib.sa.orm import mapper, relation, create_session, class_mapper, backref
 from testlib.sa.orm import attributes, exc as orm_exc
 from testlib import testing
@@ -185,7 +185,30 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         assert users.count().scalar() == 1
         assert orders.count().scalar() == 0
 
+class O2OCascadeTest(_fixtures.FixtureTest):
+    run_inserts = None
+    
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        mapper(Address, addresses)
+        mapper(User, users, properties = {
+            'address':relation(Address, backref=backref("user", single_parent=True), uselist=False)
+        })
 
+    @testing.resolve_artifact_names
+    def test_single_parent_raise(self):
+        a1 = Address(email_address='some address')
+        u1 = User(name='u1', address=a1)
+        
+        self.assertRaises(sa_exc.InvalidRequestError, Address, email_address='asd', user=u1)
+        
+        a2 = Address(email_address='asd')
+        u1.address = a2
+        assert u1.address is not a1
+        assert a1.user is None
+        
+        
+        
 class O2MBackrefTest(_fixtures.FixtureTest):
     run_inserts = None
 
@@ -351,7 +374,7 @@ class M2OCascadeTest(_base.MappedTest):
             extra = relation(Extra, cascade="all, delete")
         ))
         mapper(User, users, properties = dict(
-            pref = relation(Pref, lazy=False, cascade="all, delete-orphan")
+            pref = relation(Pref, lazy=False, cascade="all, delete-orphan", single_parent=True  )
         ))
 
     @testing.resolve_artifact_names
@@ -566,9 +589,9 @@ class M2OCascadeDeleteOrphanTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def setup_mappers(self):
         mapper(T1, t1, properties=dict(
-            t2=relation(T2, cascade="all, delete-orphan")))
+            t2=relation(T2, cascade="all, delete-orphan", single_parent=True)))
         mapper(T2, t2, properties=dict(
-            t3=relation(T3, cascade="all, delete-orphan")))
+            t3=relation(T3, cascade="all, delete-orphan", single_parent=True, backref=backref('t2', uselist=False))))
         mapper(T3, t3)
 
     @testing.resolve_artifact_names
@@ -625,9 +648,35 @@ class M2OCascadeDeleteOrphanTest(_base.MappedTest):
         eq_(sess.query(T2).all(), [T2()])
         eq_(sess.query(T3).all(), [])
 
+    @testing.resolve_artifact_names
+    def test_single_parent_raise(self):
+
+        sess = create_session()
+        
+        y = T2(data='T2a')
+        x = T1(data='T1a', t2=y)
+        self.assertRaises(sa_exc.InvalidRequestError, T1, data='T1b', t2=y)
+
+    @testing.resolve_artifact_names
+    def test_single_parent_backref(self):
+
+        sess = create_session()
+        
+        y = T3(data='T3a')
+        x = T2(data='T2a', t3=y)
+
+        # cant attach the T3 to another T2
+        self.assertRaises(sa_exc.InvalidRequestError, T2, data='T2b', t3=y)
+        
+        # set via backref tho is OK, unsets from previous parent
+        # first
+        z = T2(data='T2b')
+        y.t2 = z
+
+        assert z.t3 is y
+        assert x.t3 is None
+
 class M2MCascadeTest(_base.MappedTest):
-    """delete-orphan cascade is deprecated on many-to-many."""
-    
     def define_tables(self, metadata):
         Table('a', metadata,
             Column('id', Integer, primary_key=True),
@@ -662,13 +711,12 @@ class M2MCascadeTest(_base.MappedTest):
         class C(_fixtures.Base):
             pass
 
-    @testing.emits_warning(".*not supported on a many-to-many")
     @testing.resolve_artifact_names
     def test_delete_orphan(self):
         mapper(A, a, properties={
             # if no backref here, delete-orphan failed until [ticket:427] was
             # fixed
-            'bs': relation(B, secondary=atob, cascade="all, delete-orphan")
+            'bs': relation(B, secondary=atob, cascade="all, delete-orphan", single_parent=True)
         })
         mapper(B, b)
 
@@ -684,13 +732,12 @@ class M2MCascadeTest(_base.MappedTest):
         assert b.count().scalar() == 0
         assert a.count().scalar() == 1
 
-    @testing.emits_warning(".*not supported on a many-to-many")
     @testing.resolve_artifact_names
     def test_delete_orphan_cascades(self):
         mapper(A, a, properties={
             # if no backref here, delete-orphan failed until [ticket:427] was
             # fixed
-            'bs':relation(B, secondary=atob, cascade="all, delete-orphan")
+            'bs':relation(B, secondary=atob, cascade="all, delete-orphan", single_parent=True)
         })
         mapper(B, b, properties={'cs':relation(C, cascade="all, delete-orphan")})
         mapper(C, c)
@@ -708,11 +755,10 @@ class M2MCascadeTest(_base.MappedTest):
         assert a.count().scalar() == 1
         assert c.count().scalar() == 0
 
-    @testing.emits_warning(".*not supported on a many-to-many")
     @testing.resolve_artifact_names
     def test_cascade_delete(self):
         mapper(A, a, properties={
-            'bs':relation(B, secondary=atob, cascade="all, delete-orphan")
+            'bs':relation(B, secondary=atob, cascade="all, delete-orphan", single_parent=True)
         })
         mapper(B, b)
 
@@ -727,39 +773,46 @@ class M2MCascadeTest(_base.MappedTest):
         assert b.count().scalar() == 0
         assert a.count().scalar() == 0
 
-    @testing.emits_warning(".*not supported on a many-to-many")
-    @testing.fails_on_everything_except('sqlite')
     @testing.resolve_artifact_names
-    def test_this_doesnt_work(self):
-        """illustrates why cascade with m2m should not be supported
-            (i.e. many parents...)
-            
-        """
+    def test_single_parent_raise(self):
         mapper(A, a, properties={
-            'bs':relation(B, secondary=atob, cascade="all, delete-orphan")
+            'bs':relation(B, secondary=atob, cascade="all, delete-orphan", single_parent=True)
         })
         mapper(B, b)
 
         sess = create_session()
         b1 =B(data='b1')
         a1 = A(data='a1', bs=[b1])
-        a2 = A(data='a2', bs=[b1])
-        sess.add(a1)
-        sess.add(a2)
-        sess.flush()
+        
+        self.assertRaises(sa_exc.InvalidRequestError,
+                A, data='a2', bs=[b1]
+            )
 
-        sess.delete(a1)
+    @testing.resolve_artifact_names
+    def test_single_parent_backref(self):
+        """test that setting m2m via a uselist=False backref bypasses the single_parent raise"""
         
-        # this raises an integrity error on DBs that support FKs
-        sess.flush()
-        
-        # still a row present !
-        assert atob.count().scalar() ==1
-        
-        # but no bs !
-        assert b.count().scalar() == 0
-        assert a.count().scalar() == 1
+        mapper(A, a, properties={
+            'bs':relation(B, 
+                secondary=atob, 
+                cascade="all, delete-orphan", single_parent=True,
+                backref=backref('a', uselist=False))
+        })
+        mapper(B, b)
 
+        sess = create_session()
+        b1 =B(data='b1')
+        a1 = A(data='a1', bs=[b1])
+        
+        self.assertRaises(
+            sa_exc.InvalidRequestError,
+            A, data='a2', bs=[b1]
+        )
+        
+        a2 = A(data='a2')
+        b1.a = a2
+        assert b1 not in a1.bs
+        assert b1 in a2.bs
 
 class UnsavedOrphansTest(_base.MappedTest):
     """Pending entities that are orphans"""
@@ -927,9 +980,9 @@ class UnsavedOrphansTest3(_base.MappedTest):
                    ForeignKey('accounts.account_id')))
 
     @testing.resolve_artifact_names
-    def test_double_parent_expunge(self):
-        """Removing a pending item from a collection expunges it from the session."""
-
+    def test_double_parent_expunge_o2m(self):
+        """test the delete-orphan uow event for multiple delete-orphan parent relations."""
+        
         class Customer(_fixtures.Base):
             pass
         class Account(_fixtures.Base):
@@ -965,6 +1018,47 @@ class UnsavedOrphansTest3(_base.MappedTest):
         sr.customers.remove(c)
         assert c not in s, "Should expunge customer when both parents are gone"
 
+    @testing.resolve_artifact_names
+    def test_double_parent_expunge_o2o(self):
+        """test the delete-orphan uow event for multiple delete-orphan parent relations."""
+
+        class Customer(_fixtures.Base):
+            pass
+        class Account(_fixtures.Base):
+            pass
+        class SalesRep(_fixtures.Base):
+            pass
+
+        mapper(Customer, customers)
+        mapper(Account, accounts, properties=dict(
+            customer=relation(Customer,
+                               cascade="all,delete-orphan",
+                               backref="account", uselist=False)))
+        mapper(SalesRep, sales_reps, properties=dict(
+            customer=relation(Customer,
+                               cascade="all,delete-orphan",
+                               backref="sales_rep", uselist=False)))
+        s = create_session()
+
+        a = Account(balance=0)
+        sr = SalesRep(name="John")
+        s.add_all((a, sr))
+        s.flush()
+
+        c = Customer(name="Jane")
+
+        a.customer = c
+        sr.customer = c
+        assert c in s
+
+        a.customer = None
+        assert c in s, "Should not expunge customer yet, still has one parent"
+
+        sr.customer = None
+        assert c not in s, "Should expunge customer when both parents are gone"
+
+        
+        
 class DoubleParentOrphanTest(_base.MappedTest):
     """test orphan detection for an entity with two parent relations"""
 
@@ -1000,8 +1094,8 @@ class DoubleParentOrphanTest(_base.MappedTest):
             pass
 
         mapper(Address, addresses)
-        mapper(Home, homes, properties={'address':relation(Address, cascade="all,delete-orphan")})
-        mapper(Business, businesses, properties={'address':relation(Address, cascade="all,delete-orphan")})
+        mapper(Home, homes, properties={'address':relation(Address, cascade="all,delete-orphan", single_parent=True)})
+        mapper(Business, businesses, properties={'address':relation(Address, cascade="all,delete-orphan", single_parent=True)})
 
         session = create_session()
         h1 = Home(description='home1', address=Address(street='address1'))
@@ -1026,8 +1120,8 @@ class DoubleParentOrphanTest(_base.MappedTest):
             pass
 
         mapper(Address, addresses)
-        mapper(Home, homes, properties={'address':relation(Address, cascade="all,delete-orphan")})
-        mapper(Business, businesses, properties={'address':relation(Address, cascade="all,delete-orphan")})
+        mapper(Home, homes, properties={'address':relation(Address, cascade="all,delete-orphan", single_parent=True)})
+        mapper(Business, businesses, properties={'address':relation(Address, cascade="all,delete-orphan", single_parent=True)})
 
         session = create_session()
         a1 = Address()

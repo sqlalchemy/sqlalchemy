@@ -10,7 +10,7 @@ import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import sql, util, log
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors, expression, operators
-from sqlalchemy.orm import mapper, attributes
+from sqlalchemy.orm import mapper, attributes, interfaces
 from sqlalchemy.orm.interfaces import (
     LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
     serialize_path, deserialize_path, StrategizedProperty
@@ -33,6 +33,10 @@ def _register_attribute(strategy, useobject,
 
     prop = strategy.parent_property
     attribute_ext = util.to_list(prop.extension) or []
+
+    if useobject and prop.single_parent:
+        attribute_ext.append(_SingleParentValidator(prop))
+
     if getattr(prop, 'backref', None):
         attribute_ext.append(prop.backref.extension)
     
@@ -812,4 +816,24 @@ class LoadEagerFromAliasOption(PropertyOption):
         else:
             query._attributes[("user_defined_eager_row_processor", paths[-1])] = None
 
+class _SingleParentValidator(interfaces.AttributeExtension):
+    def __init__(self, prop):
+        self.prop = prop
+
+    def _do_check(self, state, value, oldvalue, initiator):
+        if value is not None:
+            hasparent = initiator.hasparent(attributes.instance_state(value))
+            if hasparent and oldvalue is not value: 
+                raise sa_exc.InvalidRequestError("Instance %s is already associated with an instance "
+                    "of %s via its %s attribute, and is only allowed a single parent." % 
+                    (mapperutil.instance_str(value), state.class_, self.prop)
+                )
+        return value
         
+    def append(self, state, value, initiator):
+        return self._do_check(state, value, None, initiator)
+
+    def set(self, state, value, oldvalue, initiator):
+        return self._do_check(state, value, oldvalue, initiator)
+
+
