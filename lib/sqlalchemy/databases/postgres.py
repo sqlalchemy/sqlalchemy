@@ -275,6 +275,8 @@ ischema_names = {
     'smallint' : PGSmallInteger,
     'character varying' : PGString,
     'character' : PGChar,
+    '"char"' : PGChar,
+    'name': PGChar,
     'text' : PGText,
     'numeric' : PGNumeric,
     'float' : PGFloat,
