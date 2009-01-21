@@ -2,6 +2,7 @@ from sqlalchemy.connectors import Connector
 
 import sys
 import re
+import urllib
 
 class PyODBCConnector(Connector):
     driver='pyodbc'

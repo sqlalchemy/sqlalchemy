@@ -8,7 +8,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
     def pre_exec(self):
         """where appropriate, issue "select scope_identity()" in the same statement"""
         super(MSExecutionContext_pyodbc, self).pre_exec()
-        if self.compiled.isinsert and self.HASIDENT and not self.IINSERT \
+        if self.isinsert and self.HASIDENT and not self.IINSERT \
                 and len(self.parameters) == 1 and self.dialect.use_scope_identity:
             self.statement += "; select scope_identity()"
 

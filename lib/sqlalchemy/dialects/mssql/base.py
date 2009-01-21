@@ -415,9 +415,9 @@ class MSNText(_StringType, sqltypes.UnicodeText):
           value. Accepts a Windows Collation Name or a SQL Collation Name.
 
         """
-        collation = kw.pop('collation', None)
+        collation = kwargs.pop('collation', None)
         _StringType.__init__(self, collation)
-        sqltypes.UnicodeText.__init__(self, None, **kw)
+        sqltypes.UnicodeText.__init__(self, None, **kwargs)
 
 
 class MSString(_StringType, sqltypes.VARCHAR):
@@ -720,7 +720,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""
 
-        if self.compiled.isinsert:
+        if self.isinsert:
             tbl = self.compiled.statement.table
             seq_column = _table_sequence_column(tbl)
             self.HASIDENT = bool(seq_column)
@@ -743,7 +743,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
         """Disable IDENTITY_INSERT if enabled."""
 
-        if self.compiled.isinsert and not self.executemany and self.HASIDENT and not self.IINSERT:
+        if self.isinsert and not self.executemany and self.HASIDENT and not self.IINSERT:
             if not self._last_inserted_ids or self._last_inserted_ids[0] is None:
                 if self.dialect.use_scope_identity:
                     self.cursor.execute("SELECT scope_identity() AS lastrowid")
