@@ -648,8 +648,13 @@ class TypesTest2(TestBase, AssertsExecutionResults):
 
         columns = [
             # column type, args, kwargs, expected ddl
-            (mssql.MSBinary, [], {},
+            (types.Binary, [], {},
              'BINARY'),
+            (types.Binary, [10], {},
+             'BINARY(10)'),
+
+            (mssql.MSBinary, [], {},
+             'IMAGE'),
             (mssql.MSBinary, [10], {},
              'BINARY(10)'),
 
