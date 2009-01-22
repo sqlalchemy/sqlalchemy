@@ -395,23 +395,35 @@ class MapperProperty(object):
     def instrument_class(self, mapper):
         raise NotImplementedError()
         
+    _compile_started = False
+    _compile_finished = False
+    
     def init(self):
-        """Called after all mappers are compiled to assemble
-        relationships between mappers, establish instrumented class
-        attributes.
+        """Called after all mappers are created to assemble
+        relationships between mappers and perform other post-mapper-creation
+        initialization steps.  
+        
         """
-
-        self._compiled = True
+        self._compile_started = True
         self.do_init()
-
+        self._compile_finished = True
+        
     def do_init(self):
-        """Perform subclass-specific initialization steps.
+        """Perform subclass-specific initialization post-mapper-creation steps.
 
         This is a *template* method called by the
-        ``MapperProperty`` object's init() method."""
-
+        ``MapperProperty`` object's init() method.
+        
+        """
         pass
-
+    
+    def post_instrument_class(self, mapper):
+        """Perform instrumentation adjustments that need to occur
+        after init() has completed.
+        
+        """
+        pass
+        
     def register_dependencies(self, *args, **kwargs):
         """Called by the ``Mapper`` in response to the UnitOfWork
         calling the ``Mapper``'s register_dependencies operation.
@@ -573,9 +585,11 @@ class StrategizedProperty(MapperProperty):
     def do_init(self):
         self.__all_strategies = {}
         self.strategy = self.__init_strategy(self.strategy_class)
-        if self.is_primary():
-            self.strategy.init_class_attribute()
 
+    def post_instrument_class(self, mapper):
+        if self.is_primary():
+            self.strategy.init_class_attribute(mapper)
+                
 def build_path(entity, key, prev=None):
     if prev:
         return prev + (entity, key)
@@ -810,7 +824,7 @@ class LoaderStrategy(object):
     def init(self):
         raise NotImplementedError("LoaderStrategy")
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         pass
 
     def setup_query(self, context, entity, path, adapter, **kwargs):

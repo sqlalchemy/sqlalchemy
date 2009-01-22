@@ -18,7 +18,7 @@ from sqlalchemy.orm.interfaces import (
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 
-def _register_attribute(strategy, useobject,
+def _register_attribute(strategy, mapper, useobject,
         compare_function=None, 
         typecallable=None,
         copy_function=None, 
@@ -46,10 +46,10 @@ def _register_attribute(strategy, useobject,
     if useobject:
         attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
 
-    for mapper in prop.parent.polymorphic_iterator():
-        if (mapper is prop.parent or not mapper.concrete) and mapper.has_property(prop.key):
+    for m in mapper.polymorphic_iterator():
+        if (m is prop.parent or not m.concrete) and m.has_property(prop.key):
             attributes.register_attribute_impl(
-                mapper.class_, 
+                m.class_, 
                 prop.key, 
                 parent_token=prop,
                 mutable_scalars=mutable_scalars,
@@ -98,12 +98,12 @@ class ColumnLoader(LoaderStrategy):
                 c = adapter.columns[c]
             column_collection.append(c)
         
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
         coltype = self.columns[0].type
         active_history = self.columns[0].primary_key  # TODO: check all columns ?  check for foreign Key as well?
 
-        _register_attribute(self, useobject=False,
+        _register_attribute(self, mapper, useobject=False,
             compare_function=coltype.compare_values,
             copy_function=coltype.copy_value,
             mutable_scalars=self.columns[0].type.is_mutable(),
@@ -137,7 +137,7 @@ log.class_logger(ColumnLoader)
 class CompositeColumnLoader(ColumnLoader):
     """Strategize the loading of a composite column-based MapperProperty."""
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
         self.logger.info("%s register managed composite attribute" % self)
 
@@ -158,7 +158,7 @@ class CompositeColumnLoader(ColumnLoader):
             else:
                 return True
 
-        _register_attribute(self, useobject=False,
+        _register_attribute(self, mapper, useobject=False,
             compare_function=compare,
             copy_function=copy,
             mutable_scalars=True
@@ -220,10 +220,10 @@ class DeferredColumnLoader(LoaderStrategy):
         self.columns = self.parent_property.columns
         self.group = self.parent_property.group
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
     
-        _register_attribute(self, useobject=False,
+        _register_attribute(self, mapper, useobject=False,
              compare_function=self.columns[0].type.compare_values,
              copy_function=self.columns[0].type.copy_value,
              mutable_scalars=self.columns[0].type.is_mutable(),
@@ -335,10 +335,10 @@ class AbstractRelationLoader(LoaderStrategy):
 class NoLoader(AbstractRelationLoader):
     """Strategize a relation() that doesn't load data automatically."""
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
 
-        _register_attribute(self, 
+        _register_attribute(self, mapper,
             useobject=True, 
             uselist=self.parent_property.uselist,
             typecallable = self.parent_property.collection_class,
@@ -372,11 +372,12 @@ class LazyLoader(AbstractRelationLoader):
         if self.use_get:
             self.logger.info("%s will use query.get() to optimize instance loads" % self)
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
         
         
         _register_attribute(self, 
+                mapper,
                 useobject=True,
                 callable_=self.class_level_loader,
                 uselist = self.parent_property.uselist,
@@ -600,8 +601,8 @@ class EagerLoader(AbstractRelationLoader):
         super(EagerLoader, self).init()
         self.join_depth = self.parent_property.join_depth
 
-    def init_class_attribute(self):
-        self.parent_property._get_strategy(LazyLoader).init_class_attribute()
+    def init_class_attribute(self, mapper):
+        self.parent_property._get_strategy(LazyLoader).init_class_attribute(mapper)
         
     def setup_query(self, context, entity, path, adapter, column_collection=None, parentmapper=None, **kwargs):
         """Add a left outer join to the statement thats being constructed."""

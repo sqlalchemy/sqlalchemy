@@ -22,6 +22,11 @@ CHANGES
       The relation will raise an error if multiple parent-association
       events occur within Python.
 
+    - Adjusted the attribute instrumentation change from 0.5.1 to 
+      fully establish instrumentation for subclasses where the mapper
+      was created after the superclass had already been fully
+      instrumented. [ticket:1292]
+      
     - Fixed bug in delete-orphan cascade whereby two one-to-one
       relations from two different parent classes to the same target 
       class would prematurely expunge the instance.

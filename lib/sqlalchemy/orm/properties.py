@@ -711,6 +711,7 @@ class RelationProperty(StrategizedProperty):
         self._determine_direction()
         self._determine_local_remote_pairs()
         self._post_init()
+        super(RelationProperty, self).do_init()
 
     def _get_target(self):
         if not hasattr(self, 'mapper'):
@@ -998,7 +999,6 @@ class RelationProperty(StrategizedProperty):
                 "added to the primary mapper, i.e. the very first "
                 "mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
         
-        super(RelationProperty, self).do_init()
 
     def _refers_to_parent_table(self):
         return self.parent.mapped_table is self.target or self.parent.mapped_table is self.target
