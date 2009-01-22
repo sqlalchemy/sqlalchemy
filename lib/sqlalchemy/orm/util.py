@@ -370,7 +370,7 @@ class _ORMJoin(expression.Join):
                 adapt_from = left
             else:
                 adapt_from = None
-        
+            
         right_mapper, right, right_is_aliased = _entity_info(right)
         if right_is_aliased:
             adapt_to = right
@@ -420,6 +420,15 @@ def join(left, right, onclause=None, isouter=False):
     classes or AliasedClass instances. The onclause may be a 
     string name of a relation(), or a class-bound descriptor 
     representing a relation.
+    
+    When passed a string or plain mapped descriptor for the
+    onclause, ``join()`` goes into "automatic" mode and
+    will attempt to join the right side to the left
+    in whatever way it sees fit, which may include aliasing
+    the ON clause to match the left side.  Alternatively,
+    when passed a clause-based onclause, or an attribute
+    mapped to an :func:`~sqlalchemy.orm.aliased` construct, 
+    no left-side guesswork is performed.
     
     """
     return _ORMJoin(left, right, onclause, isouter)

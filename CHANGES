@@ -31,6 +31,11 @@ CHANGES
       relations from two different parent classes to the same target 
       class would prematurely expunge the instance.
 
+    - Fixed an eager loading bug whereby self-referential eager 
+      loading would prevent other eager loads, self referential or not,
+      from joining to the parent JOIN properly.  Thanks to Alex K
+      for creating a great test case.
+      
 - sql
     - Further fixes to the "percent signs and spaces in column/table
        names" functionality. [ticket:1284]

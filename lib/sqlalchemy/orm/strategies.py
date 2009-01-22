@@ -656,7 +656,7 @@ class EagerLoader(AbstractRelationLoader):
         # whether or not the Query will wrap the selectable in a subquery,
         # and then attach eager load joins to that (i.e., in the case of LIMIT/OFFSET etc.)
         should_nest_selectable = context.query._should_nest_selectable
-        
+
         if entity in context.eager_joins:
             entity_key, default_towrap = entity, entity.selectable
         elif should_nest_selectable or not context.from_clause or not sql_util.search(context.from_clause, entity.selectable):
@@ -669,22 +669,31 @@ class EagerLoader(AbstractRelationLoader):
             # otherwise, create a single eager join from the from clause.  
             # Query._compile_context will adapt as needed and append to the
             # FROM clause of the select().
-            entity_key, default_towrap = None, context.from_clause
-    
+            entity_key, default_towrap = None, context.from_clause  
+
         towrap = context.eager_joins.setdefault(entity_key, default_towrap)
-    
+
         # create AliasedClauses object to build up the eager query.  
         clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
                     equivalents=self.mapper._equivalent_columns)
 
         if adapter:
+            # TODO: the fallback to self.parent_property here is a hack to account for
+            # an eagerjoin using of_type().  this should be improved such that
+            # when using of_type(), the subtype is the target of the previous eager join.
+            # there shouldn't be a fallback here, since mapperutil.outerjoin() can't
+            # be trusted with a plain MapperProperty.
             if getattr(adapter, 'aliased_class', None):
                 onclause = getattr(adapter.aliased_class, self.key, self.parent_property)
             else:
                 onclause = getattr(mapperutil.AliasedClass(self.parent, adapter.selectable), self.key, self.parent_property)
         else:
-            onclause = self.parent_property
-    
+            # For a plain MapperProperty, wrap the mapped table in an AliasedClass anyway.  
+            # this prevents mapperutil.outerjoin() from aliasing to the left side indiscriminately,
+            # which can break things if the left side contains multiple aliases of the parent
+            # mapper already. In the case of eager loading, we know exactly what left side we want to join to.
+            onclause = getattr(mapperutil.AliasedClass(self.parent, self.parent.mapped_table), self.key)
+            
         context.eager_joins[entity_key] = eagerjoin = mapperutil.outerjoin(towrap, clauses.aliased_class, onclause)
         
         # send a hint to the Query as to where it may "splice" this join
