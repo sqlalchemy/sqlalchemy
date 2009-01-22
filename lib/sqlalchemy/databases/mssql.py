@@ -328,17 +328,35 @@ class MSNumeric(sqltypes.Numeric):
             if value is None:
                 # Not sure that this exception is needed
                 return value
-            else:
-                if isinstance(value, decimal.Decimal):
-                    sign = (value < 0 and '-' or '') 
-                    if value._exp > -1:
-                        return float(sign + value._int + '0' * value._exp)
-                    else:
-                        s = value._int.zfill(-value._exp+1)
-                        pos = len(s) + value._exp
-                        return sign + s[:pos] + '.' + s[pos:]
+
+            elif isinstance(value, decimal.Decimal):
+                if value.adjusted() < 0:
+                    result = "%s0.%s%s" % (
+                            (value < 0 and '-' or ''),
+                            '0' * (abs(value.adjusted()) - 1),
+                            "".join([str(nint) for nint in value._int]))
+
                 else:
-                    return value
+                    if 'E' in str(value):
+                        result = "%s%s%s" % (
+                                (value < 0 and '-' or ''),
+                                "".join([str(s) for s in value._int]),
+                                "0" * (value.adjusted() - (len(value._int)-1)))
+                    else:
+                        if (len(value._int) - 1) > value.adjusted():
+                            result = "%s%s.%s" % (
+                                    (value < 0 and '-' or ''),
+                                    "".join([str(s) for s in value._int][0:value.adjusted() + 1]),
+                                    "".join([str(s) for s in value._int][value.adjusted() + 1:]))
+                        else:
+                            result = "%s%s" % (
+                                    (value < 0 and '-' or ''),
+                                    "".join([str(s) for s in value._int][0:value.adjusted() + 1]))
+
+                return result
+
+            else:
+                return value
 
         return process
 

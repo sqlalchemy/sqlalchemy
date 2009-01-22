@@ -25,7 +25,7 @@ CHANGES
     - Fixed bug in delete-orphan cascade whereby two one-to-one
       relations from two different parent classes to the same target 
       class would prematurely expunge the instance.
-      
+
 - sql
     - Further fixes to the "percent signs and spaces in column/table
        names" functionality. [ticket:1284]
@@ -33,6 +33,8 @@ CHANGES
 - mssql
     - Restored convert_unicode handling. Results were being passed
       on through without conversion. [ticket:1291]
+
+    - Really fixing the decimal handling this time. [ticket:1282].
 
 0.5.1
 ========
