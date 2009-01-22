@@ -29,7 +29,11 @@ CHANGES
 - sql
     - Further fixes to the "percent signs and spaces in column/table
        names" functionality. [ticket:1284]
-       
+
+- mssql
+    - Restored convert_unicode handling. Results were being passed
+      on through without conversion. [ticket:1291]
+
 0.5.1
 ========
 

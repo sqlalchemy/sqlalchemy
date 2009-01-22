@@ -1,3 +1,4 @@
+# -*- encoding: utf-8
 import testenv; testenv.configure_for_tests()
 import datetime, os, pickleable, re
 from sqlalchemy import *
@@ -143,6 +144,28 @@ class ReflectionTest(TestBase):
         finally:
             table.drop()
 
+
+class QueryUnicodeTest(TestBase):
+    __only_on__ = 'mssql'
+
+    def test_convert_unicode(self):
+        meta = MetaData(testing.db)
+        t1 = Table('unitest_table', meta,
+                Column('id', Integer, primary_key=True),
+                Column('descr', mssql.MSText(200, convert_unicode=True)))
+        meta.create_all()
+        con = testing.db.connect()
+
+        # encode in UTF-8 (sting object) because this is the default dialect encoding
+        con.execute(u"insert into unitest_table values ('bien mangé')".encode('UTF-8'))
+
+        try:
+            r = t1.select().execute().fetchone()
+            assert isinstance(r[1], unicode), '%s is %s instead of unicode, working on %s' % (
+                    r[1], type(r[1]), meta.bind)
+
+        finally:
+            meta.drop_all()
 
 class QueryTest(TestBase):
     __only_on__ = 'mssql'

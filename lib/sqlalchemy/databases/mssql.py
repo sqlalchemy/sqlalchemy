@@ -308,9 +308,6 @@ class _StringType(object):
         else:
             return None
 
-    def result_processor(self, dialect):
-        return None
-
 
 class MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect):
