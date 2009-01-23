@@ -1151,14 +1151,14 @@ class MSSQLDialect(default.DefaultDialect):
             coltype = self.ischema_names.get(type, None)
 
             kwargs = {}
-            if coltype in (MSString, MSChar, MSNVarchar, MSNChar, MSText, MSNText):
+            if coltype in (MSString, MSChar, MSNVarchar, MSNChar, MSText, MSNText, MSBinary, MSVarBinary, sqltypes.Binary):
                 kwargs['length'] = charlen
                 if collation:
                     kwargs['collation'] = collation
                 if coltype == MSText or (coltype in (MSString, MSNVarchar) and charlen == -1):
                     kwargs.pop('length')
 
-            if coltype in (MSNumeric,):   # TODO: include MSMoney?
+            if issubclass(coltype, sqltypes.Numeric):
                 kwargs['scale'] = numericscale
                 kwargs['precision'] = numericprec
 
