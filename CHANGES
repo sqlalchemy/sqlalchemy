@@ -46,6 +46,9 @@ CHANGES
 
     - Really fixing the decimal handling this time. [ticket:1282].
 
+    - Modified table reflection code to use only kwargs when 
+      constructing tables. [Ticket:1289]
+
 0.5.1
 ========
 

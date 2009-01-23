@@ -1148,32 +1148,28 @@ class MSSQLDialect(default.DefaultDialect):
             if include_columns and name not in include_columns:
                 continue
 
-            args = []
-            for a in (charlen, numericprec, numericscale):
-                if a is not None:
-                    args.append(a)
             coltype = self.ischema_names.get(type, None)
 
             kwargs = {}
             if coltype in (MSString, MSChar, MSNVarchar, MSNChar, MSText, MSNText):
+                kwargs['length'] = charlen
                 if collation:
-                    kwargs.update(collation=collation)
+                    kwargs['collation'] = collation
+                if coltype == MSText or (coltype in (MSString, MSNVarchar) and charlen == -1):
+                    kwargs.pop('length')
 
-            if coltype == MSText or (coltype == MSString and charlen == -1):
-                coltype = MSText(**kwargs)
-            else:
-                if coltype is None:
-                    util.warn("Did not recognize type '%s' of column '%s'" %
-                              (type, name))
-                    coltype = sqltypes.NULLTYPE
+            if coltype in (MSNumeric,):   # TODO: include MSMoney?
+                kwargs['scale'] = numericscale
+                kwargs['precision'] = numericprec
 
-                elif coltype in (MSNVarchar,) and charlen == -1:
-                    args[0] = None
-                coltype = coltype(*args, **kwargs)
+            if coltype is None:
+                util.warn("Did not recognize type '%s' of column '%s'" % (type, name))
+                coltype = sqltypes.NULLTYPE
+
+            coltype = coltype(**kwargs)
             colargs = []
             if default is not None:
                 colargs.append(schema.DefaultClause(sql.text(default)))
-
             table.append_column(schema.Column(name, coltype, nullable=nullable, autoincrement=False, *colargs))
 
         if not found_table:
