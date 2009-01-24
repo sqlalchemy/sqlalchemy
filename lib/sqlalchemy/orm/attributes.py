@@ -160,7 +160,8 @@ class InstrumentedAttribute(QueryableAttribute):
 
 class _ProxyImpl(object):
     accepts_scalar_loader = False
-
+    dont_expire_missing = False
+    
     def __init__(self, key):
         self.key = key
 
@@ -230,7 +231,9 @@ class AttributeImpl(object):
 
     def __init__(self, class_, key,
                     callable_, trackparent=False, extension=None,
-                    compare_function=None, active_history=False, parent_token=None, **kwargs):
+                    compare_function=None, active_history=False, parent_token=None, 
+                    dont_expire_missing=False,
+                    **kwargs):
         """Construct an AttributeImpl.
 
         \class_
@@ -268,6 +271,11 @@ class AttributeImpl(object):
           Allows multiple AttributeImpls to all match a single 
           owner attribute.
           
+        dont_expire_missing
+          if True, don't add an "expiry" callable to this attribute
+          during state.expire_attributes(None), if no value is present 
+          for this key.
+          
         """
         self.class_ = class_
         self.key = key
@@ -280,7 +288,8 @@ class AttributeImpl(object):
             self.is_equal = compare_function
         self.extensions = util.to_list(extension or [])
         self.active_history = active_history
-
+        self.dont_expire_missing = dont_expire_missing
+        
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.
 
@@ -1006,12 +1015,19 @@ class InstanceState(object):
             attribute_names = self.manager.keys()
             self.expired = True
             self.modified = False
+            filter_deferred = True
+        else:
+            filter_deferred = False
         for key in attribute_names:
+            impl = self.manager[key].impl
+            if not filter_deferred or \
+                not impl.dont_expire_missing or \
+                key in self.dict:
+                self.expired_attributes.add(key)
+                if impl.accepts_scalar_loader:
+                    self.callables[key] = self
             self.dict.pop(key, None)
             self.committed_state.pop(key, None)
-            self.expired_attributes.add(key)
-            if self.manager.get_impl(key).accepts_scalar_loader:
-                self.callables[key] = self
 
     def reset(self, key):
         """remove the given attribute and any callables associated with it."""
