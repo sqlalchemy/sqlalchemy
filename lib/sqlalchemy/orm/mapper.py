@@ -775,7 +775,12 @@ class Mapper(object):
         if prop is None and raiseerr:
             raise sa_exc.InvalidRequestError("Mapper '%s' has no property '%s'" % (str(self), key))
         return prop
-
+    
+    @util.memoized_property
+    def _deferred_props(self):
+        return [p.key for p in self._props.values() if 
+                isinstance(p, ColumnProperty) and getattr(p, 'deferred', False)]
+        
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""

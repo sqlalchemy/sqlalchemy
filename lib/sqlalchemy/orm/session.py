@@ -1518,7 +1518,15 @@ class Session(object):
 
         return util.IdentitySet(self._new.values())
 
-_expire_state = attributes.InstanceState.expire_attributes
+def _expire_state(state, attribute_names):
+    if attribute_names is None:
+        state.expired = True
+        state.modified= False
+        # dont add unloaded deferred attributes to the list of attrs
+        attribute_names = set(state.manager.keys()).\
+                difference([k for k in state.manager.mapper._deferred_props if k not in state.dict])
+    state.expire_attributes(attribute_names)
+    
 UOWEventHandler = unitofwork.UOWEventHandler
 
 _sessions = weakref.WeakValueDictionary()

@@ -35,6 +35,10 @@ CHANGES
       loading would prevent other eager loads, self referential or not,
       from joining to the parent JOIN properly.  Thanks to Alex K
       for creating a great test case.
+    
+    - session.expire() and related methods will not expire() unloaded
+      deferred attributes.  This prevents them from being needlessly
+      loaded when the instance is refreshed.
       
 - sql
     - Further fixes to the "percent signs and spaces in column/table

@@ -4,7 +4,7 @@ import testenv; testenv.configure_for_tests()
 import gc
 from testlib import sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey, exc as sa_exc
-from testlib.sa.orm import mapper, relation, create_session, attributes
+from testlib.sa.orm import mapper, relation, create_session, attributes, deferred
 from orm import _base, _fixtures
 
 
@@ -98,7 +98,21 @@ class ExpireTest(_fixtures.FixtureTest):
         # but now its back, rollback has occured, the _remove_newly_deleted
         # is reverted
         self.assertEquals(u.name, 'chuck')
-    
+
+    @testing.resolve_artifact_names
+    def test_deferred(self):
+        """test that unloaded, deferred attributes aren't included in the expiry list."""
+        
+        mapper(Order, orders, properties={'description':deferred(orders.c.description)})
+        
+        s = create_session()
+        o1 = s.query(Order).first()
+        assert 'description' not in o1.__dict__
+        s.expire(o1)
+        assert o1.isopen is not None
+        assert 'description' not in o1.__dict__
+        assert o1.description
+        
     @testing.resolve_artifact_names
     def test_lazyload_autoflushes(self):
         mapper(User, users, properties={
