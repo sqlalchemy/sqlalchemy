@@ -678,24 +678,21 @@ class EagerLoader(AbstractRelationLoader):
         clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
                     equivalents=self.mapper._equivalent_columns)
 
+        join_to_left = False
         if adapter:
-            # TODO: the fallback to self.parent_property here is a hack to account for
-            # an eagerjoin using of_type().  this should be improved such that
-            # when using of_type(), the subtype is the target of the previous eager join.
-            # there shouldn't be a fallback here, since mapperutil.outerjoin() can't
-            # be trusted with a plain MapperProperty.
             if getattr(adapter, 'aliased_class', None):
                 onclause = getattr(adapter.aliased_class, self.key, self.parent_property)
             else:
                 onclause = getattr(mapperutil.AliasedClass(self.parent, adapter.selectable), self.key, self.parent_property)
+                
+            if onclause is self.parent_property:
+                # TODO: this is a temporary hack to account for polymorphic eager loads where
+                # the eagerload is referencing via of_type().
+                join_to_left = True
         else:
-            # For a plain MapperProperty, wrap the mapped table in an AliasedClass anyway.  
-            # this prevents mapperutil.outerjoin() from aliasing to the left side indiscriminately,
-            # which can break things if the left side contains multiple aliases of the parent
-            # mapper already. In the case of eager loading, we know exactly what left side we want to join to.
-            onclause = getattr(mapperutil.AliasedClass(self.parent, self.parent.mapped_table), self.key)
+            onclause = self.parent_property
             
-        context.eager_joins[entity_key] = eagerjoin = mapperutil.outerjoin(towrap, clauses.aliased_class, onclause)
+        context.eager_joins[entity_key] = eagerjoin = mapperutil.outerjoin(towrap, clauses.aliased_class, onclause, join_to_left=join_to_left)
         
         # send a hint to the Query as to where it may "splice" this join
         eagerjoin.stop_on = entity.selectable

@@ -39,6 +39,11 @@ CHANGES
     - session.expire() and related methods will not expire() unloaded
       deferred attributes.  This prevents them from being needlessly
       loaded when the instance is refreshed.
+
+    - query.join()/outerjoin() will now properly join an aliased()
+      construct to the existing left side, even if query.from_self()
+      or query.select_from(someselectable) has been called.
+      [ticket:1293]
       
 - sql
     - Further fixes to the "percent signs and spaces in column/table

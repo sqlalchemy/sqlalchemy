@@ -887,26 +887,40 @@ class Query(object):
 
     @_generative(__no_statement_condition, __no_limit_offset)
     def __join(self, keys, outerjoin, create_aliases, from_joinpoint):
+        
+        # copy collections that may mutate so they do not affect
+        # the copied-from query.
         self.__currenttables = set(self.__currenttables)
         self._polymorphic_adapters = self._polymorphic_adapters.copy()
 
+        # start from the beginning unless from_joinpoint is set.
         if not from_joinpoint:
             self.__reset_joinpoint()
 
+        # join from our from_obj.  This is
+        # None unless select_from()/from_self() has been called.
         clause = self._from_obj
-        right_entity = None
 
+        # after the method completes,
+        # the query's joinpoint will be set to this.
+        right_entity = None
+        
         for arg1 in util.to_list(keys):
             aliased_entity = False
             alias_criterion = False
             left_entity = right_entity
             prop = of_type = right_entity = right_mapper = None
 
+            # distinguish between tuples, scalar args
             if isinstance(arg1, tuple):
                 arg1, arg2 = arg1
             else:
                 arg2 = None
 
+            # determine onclause/right_entity.  there
+            # is a little bit of legacy behavior still at work here
+            # which means they might be in either order.  may possibly
+            # lock this down to (right_entity, onclause) in 0.6.
             if isinstance(arg2, (interfaces.PropComparator, basestring)):
                 onclause = arg2
                 right_entity = arg1
@@ -917,6 +931,8 @@ class Query(object):
                 onclause = arg2
                 right_entity = arg1
 
+            # extract info from the onclause argument, determine
+            # left_entity and right_entity.
             if isinstance(onclause, interfaces.PropComparator):
                 of_type = getattr(onclause, '_of_type', None)
                 prop = onclause.property
@@ -942,25 +958,34 @@ class Query(object):
 
                 if not right_entity:
                     right_entity = right_mapper
-            elif onclause is None:
-                if not left_entity:
-                    left_entity = self._joinpoint_zero()
-            else:
-                if not left_entity:
-                    left_entity = self._joinpoint_zero()
+            elif not left_entity:
+                left_entity = self._joinpoint_zero()
 
+            # if no initial left-hand clause is set, extract
+            # this from the left_entity or as a last
+            # resort from the onclause argument, if it's
+            # a PropComparator.
             if not clause:
-                if isinstance(onclause, interfaces.PropComparator):
-                    clause = onclause.__clause_element__()
-
                 for ent in self._entities:
                     if ent.corresponds_to(left_entity):
                         clause = ent.selectable
                         break
+                    
+            if not clause:
+                if isinstance(onclause, interfaces.PropComparator):
+                    clause = onclause.__clause_element__()
 
             if not clause:
                 raise sa_exc.InvalidRequestError("Could not find a FROM clause to join from")
 
+            # if we have a MapperProperty and the onclause is not already
+            # an instrumented descriptor.  this catches of_type()
+            # PropComparators and string-based on clauses.
+            if prop and not isinstance(onclause, attributes.QueryableAttribute):
+                onclause = prop
+
+            # start looking at the right side of the join
+            
             mp, right_selectable, is_aliased_class = _entity_info(right_entity)
             
             if mp is not None and right_mapper is not None and not mp.common_parent(right_mapper):
@@ -971,11 +996,16 @@ class Query(object):
             if not right_mapper and mp:
                 right_mapper = mp
 
+            # determine if we need to wrap the right hand side in an alias.
+            # this occurs based on the create_aliases flag, or if the target
+            # is a selectable, Join, or polymorphically-loading mapper
             if right_mapper and not is_aliased_class:
                 if right_entity is right_selectable:
 
                     if not right_selectable.is_derived_from(right_mapper.mapped_table):
-                        raise sa_exc.InvalidRequestError("Selectable '%s' is not derived from '%s'" % (right_selectable.description, right_mapper.mapped_table.description))
+                        raise sa_exc.InvalidRequestError(
+                            "Selectable '%s' is not derived from '%s'" % 
+                            (right_selectable.description, right_mapper.mapped_table.description))
 
                     if not isinstance(right_selectable, expression.Alias):
                         right_selectable = right_selectable.alias()
@@ -993,12 +1023,17 @@ class Query(object):
                     aliased_entity = True
 
                 elif prop:
+                    # for joins across plain relation()s, try not to specify the
+                    # same joins twice.  the __currenttables collection tracks
+                    # what plain mapped tables we've joined to already.
+                    
                     if prop.table in self.__currenttables:
                         if prop.secondary is not None and prop.secondary not in self.__currenttables:
                             # TODO: this check is not strong enough for different paths to the same endpoint which
                             # does not use secondary tables
-                            raise sa_exc.InvalidRequestError("Can't join to property '%s'; a path to this table along a different secondary table already exists.  Use the `alias=True` argument to `join()`." % descriptor)
-
+                            raise sa_exc.InvalidRequestError("Can't join to property '%s'; a path to this "
+                                "table along a different secondary table already "
+                                "exists.  Use the `alias=True` argument to `join()`." % descriptor)
                         continue
 
                     if prop.secondary:
@@ -1010,30 +1045,50 @@ class Query(object):
                     else:
                         right_entity = prop.mapper
 
+            # create adapters to the right side, if we've created aliases
             if alias_criterion:
                 right_adapter = ORMAdapter(right_entity,
                     equivalents=right_mapper._equivalent_columns, chain_to=self._filter_aliases)
 
-                if isinstance(onclause, sql.ClauseElement):
+            # if the onclause is a ClauseElement, adapt it with our right
+            # adapter, then with our query-wide adaptation if any.
+            if isinstance(onclause, expression.ClauseElement):
+                if alias_criterion:
                     onclause = right_adapter.traverse(onclause)
+                onclause = self._adapt_clause(onclause, False, True)
 
-            # TODO: is this a little hacky ?
-            if not isinstance(onclause, attributes.QueryableAttribute) or not isinstance(onclause.parententity, AliasedClass):
-                if prop:
-                    # MapperProperty based onclause
-                    onclause = prop
-                else:
-                    # ClauseElement based onclause
-                    onclause = self._adapt_clause(onclause, False, True)
-                
-            clause = orm_join(clause, right_entity, onclause, isouter=outerjoin)
+            # determine if we want _ORMJoin to alias the onclause 
+            # to the given left side.  This is used if we're joining against a 
+            # select_from() selectable, from_self() call, or the onclause
+            # has been resolved into a MapperProperty.  Otherwise we assume
+            # the onclause itself contains more specific information on how to
+            # construct the onclause.
+            join_to_left = not is_aliased_class or \
+                            onclause is prop or \
+                            clause is self._from_obj and self._from_obj_alias
+            
+            # create the join                
+            clause = orm_join(clause, right_entity, onclause, isouter=outerjoin, join_to_left=join_to_left)
+            
+            # set up state for the query as a whole
             if alias_criterion:
+                # adapt filter() calls based on our right side adaptation
                 self._filter_aliases = right_adapter
 
+                # if a polymorphic entity was aliased, establish that
+                # so that MapperEntity/ColumnEntity can pick up on it
+                # and adapt when it renders columns and fetches them from results
                 if aliased_entity:
-                    self.__mapper_loads_polymorphically_with(right_mapper, ORMAdapter(right_entity, equivalents=right_mapper._equivalent_columns))
-
+                    self.__mapper_loads_polymorphically_with(
+                                        right_mapper, 
+                                        ORMAdapter(right_entity, equivalents=right_mapper._equivalent_columns)
+                                    )
+        
+        # loop finished.  we're selecting from 
+        # our final clause now
         self._from_obj = clause
+        
+        # future joins with from_joinpoint=True join from our established right_entity.
         self._joinpoint = right_entity
 
     @_generative(__no_statement_condition)
