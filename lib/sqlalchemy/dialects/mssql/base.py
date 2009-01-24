@@ -265,17 +265,35 @@ class MSNumeric(sqltypes.Numeric):
             if value is None:
                 # Not sure that this exception is needed
                 return value
-            else:
-                if isinstance(value, decimal.Decimal):
-                    sign = (value < 0 and '-' or '') 
-                    if value._exp > -1:
-                        return float(sign + value._int + '0' * value._exp)
-                    else:
-                        s = value._int.zfill(-value._exp+1)
-                        pos = len(s) + value._exp
-                        return sign + s[:pos] + '.' + s[pos:]
+
+            elif isinstance(value, decimal.Decimal):
+                if value.adjusted() < 0:
+                    result = "%s0.%s%s" % (
+                            (value < 0 and '-' or ''),
+                            '0' * (abs(value.adjusted()) - 1),
+                            "".join([str(nint) for nint in value._int]))
+
                 else:
-                    return value
+                    if 'E' in str(value):
+                        result = "%s%s%s" % (
+                                (value < 0 and '-' or ''),
+                                "".join([str(s) for s in value._int]),
+                                "0" * (value.adjusted() - (len(value._int)-1)))
+                    else:
+                        if (len(value._int) - 1) > value.adjusted():
+                            result = "%s%s.%s" % (
+                                    (value < 0 and '-' or ''),
+                                    "".join([str(s) for s in value._int][0:value.adjusted() + 1]),
+                                    "".join([str(s) for s in value._int][value.adjusted() + 1:]))
+                        else:
+                            result = "%s%s" % (
+                                    (value < 0 and '-' or ''),
+                                    "".join([str(s) for s in value._int][0:value.adjusted() + 1]))
+
+                return result
+
+            else:
+                return value
 
         return process
 
@@ -1181,32 +1199,28 @@ class MSDialect(default.DefaultDialect):
             if include_columns and name not in include_columns:
                 continue
 
-            args = []
-            for a in (charlen, numericprec, numericscale):
-                if a is not None:
-                    args.append(a)
             coltype = self.ischema_names.get(type, None)
 
             kwargs = {}
-            if coltype in (MSString, MSChar, MSNVarchar, MSNChar, MSText, MSNText):
+            if coltype in (MSString, MSChar, MSNVarchar, MSNChar, MSText, MSNText, MSBinary, MSVarBinary, sqltypes.Binary):
+                kwargs['length'] = charlen
                 if collation:
-                    kwargs.update(collation=collation)
+                    kwargs['collation'] = collation
+                if coltype == MSText or (coltype in (MSString, MSNVarchar) and charlen == -1):
+                    kwargs.pop('length')
 
-            if coltype == MSText or (coltype == MSString and charlen == -1):
-                coltype = MSText(**kwargs)
-            else:
-                if coltype is None:
-                    util.warn("Did not recognize type '%s' of column '%s'" %
-                              (type, name))
-                    coltype = sqltypes.NULLTYPE
+            if issubclass(coltype, sqltypes.Numeric):
+                kwargs['scale'] = numericscale
+                kwargs['precision'] = numericprec
 
-                elif coltype in (MSNVarchar,) and charlen == -1:
-                    args[0] = None
-                coltype = coltype(*args, **kwargs)
+            if coltype is None:
+                util.warn("Did not recognize type '%s' of column '%s'" % (type, name))
+                coltype = sqltypes.NULLTYPE
+
+            coltype = coltype(**kwargs)
             colargs = []
             if default is not None:
                 colargs.append(schema.DefaultClause(sql.text(default)))
-
             table.append_column(schema.Column(name, coltype, nullable=nullable, autoincrement=False, *colargs))
 
         if not found_table:

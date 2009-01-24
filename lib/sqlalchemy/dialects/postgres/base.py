@@ -157,6 +157,8 @@ ischema_names = {
     'smallint' : sqltypes.SMALLINT,
     'character varying' : sqltypes.VARCHAR,
     'character' : sqltypes.CHAR,
+    '"char"' : sqltypes.String,
+    'name' : sqltypes.String,
     'text' : sqltypes.TEXT,
     'numeric' : sqltypes.NUMERIC,
     'float' : sqltypes.FLOAT,
