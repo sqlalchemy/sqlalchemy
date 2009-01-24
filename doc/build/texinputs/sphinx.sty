@@ -438,6 +438,36 @@
     \fi
 }{\end{fulllineitems}}
 
+% class method ----------------------------------------------------------
+% \begin{classmethoddesc}[classname]{methodname}{args}
+\newcommand{\classmethodline}[3][\@undefined]{
+  \classmethodlineni{#2}{#3}
+  \ifx\@undefined#1\relax
+    \index{#2@{\py@idxcode{#2()}} (\py@thisclass\ class method)}
+  \else
+    \index{#2@{\py@idxcode{#2()}} (#1 class method)}
+  \fi
+}
+\newenvironment{classmethoddesc}[3][\@undefined]{
+  \begin{fulllineitems}
+    \ifx\@undefined#1\relax
+      \classmethodline{#2}{#3}
+    \else
+      \def\py@thisclass{#1}
+      \classmethodline{#2}{#3}
+    \fi
+}{\end{fulllineitems}}
+
+% similar to {classmethoddesc}, but doesn't add to the index
+% (never actually uses the optional argument)
+\newcommand{\classmethodlineni}[3][\py@classbadkey]{%
+  \py@sigline{class \bfcode{#2}}{#3}}
+\newenvironment{classmethoddescni}[3][\py@classbadkey]{
+  \begin{fulllineitems}
+    \classmethodlineni{#2}{#3}
+}{\end{fulllineitems}}
+
+
 % object data attribute --------------------------------------------------
 % \begin{memberdesc}[classname]{membername}
 \newcommand{\memberline}[2][\py@classbadkey]{%
