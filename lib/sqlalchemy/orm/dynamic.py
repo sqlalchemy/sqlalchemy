@@ -22,10 +22,11 @@ from sqlalchemy.orm.util import _state_has_identity, has_identity
 
 
 class DynaLoader(strategies.AbstractRelationLoader):
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
 
         strategies._register_attribute(self,
+            mapper,
             useobject=True,
             impl_class=DynamicAttributeImpl, 
             target_mapper=self.parent_property.mapper, 

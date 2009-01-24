@@ -653,6 +653,20 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_NVARCHAR(self, type_):
         return self._extend("NVARCHAR", type_)
 
+    def visit_date(self, type_):
+        # psudocode
+        if self.dialect.version <= 10:
+            return self.visit_DATETIME(type_)
+        else:
+            return self.visit_DATE(type_)
+
+    def visit_time(self, type_):
+        # psudocode
+        if self.dialect.version <= 10:
+            return self.visit_DATETIME(type_)
+        else:
+            return self.visit_TIME(type_)
+            
     def visit_binary(self, type_):
         if type_.length:
             return self.visit_BINARY(type_)

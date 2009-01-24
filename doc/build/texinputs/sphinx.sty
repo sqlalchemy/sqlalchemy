@@ -438,6 +438,21 @@
     \fi
 }{\end{fulllineitems}}
 
+% class method ----------------------------------------------------------
+% \begin{classmethoddesc}[classname]{methodname}{args}
+\newcommand{\classmethodline}[3][\@undefined]{
+\py@sigline{class \bfcode{#2}}{#3}}
+\newenvironment{classmethoddesc}[3][\@undefined]{
+  \begin{fulllineitems}
+    \ifx\@undefined#1\relax
+      \classmethodline{#2}{#3}
+    \else
+      \def\py@thisclass{#1}
+      \classmethodline{#2}{#3}
+    \fi
+}{\end{fulllineitems}}
+
+
 % object data attribute --------------------------------------------------
 % \begin{memberdesc}[classname]{membername}
 \newcommand{\memberline}[2][\py@classbadkey]{%

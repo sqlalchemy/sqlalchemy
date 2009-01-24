@@ -359,6 +359,7 @@ class RelationProperty(StrategizedProperty):
         passive_updates=True, remote_side=None,
         enable_typechecks=True, join_depth=None,
         comparator_factory=None,
+        single_parent=False,
         strategy_class=None, _local_remote_pairs=None, query_class=None):
 
         self.uselist = uselist
@@ -370,6 +371,7 @@ class RelationProperty(StrategizedProperty):
         self.direction = None
         self.viewonly = viewonly
         self.lazy = lazy
+        self.single_parent = single_parent
         self._foreign_keys = foreign_keys
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
@@ -709,6 +711,7 @@ class RelationProperty(StrategizedProperty):
         self._determine_direction()
         self._determine_local_remote_pairs()
         self._post_init()
+        super(RelationProperty, self).do_init()
 
     def _get_target(self):
         if not hasattr(self, 'mapper'):
@@ -910,9 +913,11 @@ class RelationProperty(StrategizedProperty):
                     "the child's mapped tables.  Specify 'foreign_keys' "
                     "argument." % (str(self)))
         
-        if self.cascade.delete_orphan and self.direction is MANYTOMANY:
+        if self.cascade.delete_orphan and not self.single_parent and \
+            (self.direction is MANYTOMANY or self.direction is MANYTOONE):
             util.warn("On %s, delete-orphan cascade is not supported on a "
-                    "many-to-many relation.  This will raise an error in 0.6." % self)
+                    "many-to-many or many-to-one relationship when single_parent is not set.  "
+                    " Set single_parent=True on the relation()." % self)
         
     def _determine_local_remote_pairs(self):
         if not self.local_remote_pairs:
@@ -994,7 +999,6 @@ class RelationProperty(StrategizedProperty):
                 "added to the primary mapper, i.e. the very first "
                 "mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
         
-        super(RelationProperty, self).do_init()
 
     def _refers_to_parent_table(self):
         return self.parent.mapped_table is self.target or self.parent.mapped_table is self.target

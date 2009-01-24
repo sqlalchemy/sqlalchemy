@@ -743,6 +743,42 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             "LEFT OUTER JOIN addresses AS addresses_1 ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id"
         )
             
+    def test_aliases(self):
+        """test that aliased objects are accessible externally to a from_self() call."""
+        
+        s = create_session()
+        
+        ualias = aliased(User)
+        eq_(
+            s.query(User, ualias).filter(User.id > ualias.id).from_self(User.name, ualias.name).
+                    order_by(User.name, ualias.name).all(),
+            [
+                (u'chuck', u'ed'), 
+                (u'chuck', u'fred'), 
+                (u'chuck', u'jack'), 
+                (u'ed', u'jack'), 
+                (u'fred', u'ed'), 
+                (u'fred', u'jack')
+            ]
+        )
+
+        eq_(
+            s.query(User, ualias).filter(User.id > ualias.id).from_self(User.name, ualias.name).filter(ualias.name=='ed')\
+                .order_by(User.name, ualias.name).all(),
+            [(u'chuck', u'ed'), (u'fred', u'ed')]
+        )
+
+        eq_(
+            s.query(User, ualias).filter(User.id > ualias.id).from_self(ualias.name, Address.email_address).
+                    join(ualias.addresses).order_by(ualias.name, Address.email_address).all(),
+            [
+                (u'ed', u'fred@fred.com'), 
+                (u'jack', u'ed@bettyboop.com'), 
+                (u'jack', u'ed@lala.com'), 
+                (u'jack', u'ed@wood.com'), 
+                (u'jack', u'fred@fred.com')]
+        )
+        
         
     def test_multiple_entities(self):
         sess = create_session()

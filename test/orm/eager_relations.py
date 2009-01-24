@@ -1064,6 +1064,76 @@ class SelfReferentialEagerTest(_base.MappedTest):
             ]) == d
         self.assert_sql_count(testing.db, go, 3)
 
+class MixedSelfReferentialEagerTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table('a_table', metadata,
+                       Column('id', Integer, primary_key=True)
+                       )
+
+        Table('b_table', metadata,
+                       Column('id', Integer, primary_key=True),
+                       Column('parent_b1_id', Integer, ForeignKey('b_table.id')),
+                       Column('parent_a_id', Integer, ForeignKey('a_table.id')),
+                       Column('parent_b2_id', Integer, ForeignKey('b_table.id')))
+
+
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        class A(_base.ComparableEntity):
+            pass
+        class B(_base.ComparableEntity):
+            pass
+            
+        mapper(A,a_table)
+        mapper(B,b_table,properties = {
+           'parent_b1': relation(B,
+                            remote_side = [b_table.c.id],
+                            primaryjoin = (b_table.c.parent_b1_id ==b_table.c.id),
+                            order_by = b_table.c.id
+                            ),
+           'parent_z': relation(A,lazy = True),
+           'parent_b2': relation(B,
+                            remote_side = [b_table.c.id],
+                            primaryjoin = (b_table.c.parent_b2_id ==b_table.c.id),
+                            order_by = b_table.c.id
+                            )
+        });
+    
+    @testing.resolve_artifact_names
+    def insert_data(self):
+        a_table.insert().execute(dict(id=1), dict(id=2), dict(id=3))
+        b_table.insert().execute(
+            dict(id=1, parent_a_id=2, parent_b1_id=None, parent_b2_id=None),
+            dict(id=2, parent_a_id=1, parent_b1_id=1, parent_b2_id=None),
+            dict(id=3, parent_a_id=1, parent_b1_id=1, parent_b2_id=2),
+            dict(id=4, parent_a_id=3, parent_b1_id=1, parent_b2_id=None),
+            dict(id=5, parent_a_id=3, parent_b1_id=None, parent_b2_id=2),
+            dict(id=6, parent_a_id=1, parent_b1_id=1, parent_b2_id=3),
+            dict(id=7, parent_a_id=2, parent_b1_id=None, parent_b2_id=3),
+            dict(id=8, parent_a_id=2, parent_b1_id=1, parent_b2_id=2),
+            dict(id=9, parent_a_id=None, parent_b1_id=1, parent_b2_id=None),
+            dict(id=10, parent_a_id=3, parent_b1_id=7, parent_b2_id=2),
+            dict(id=11, parent_a_id=3, parent_b1_id=1, parent_b2_id=8),
+            dict(id=12, parent_a_id=2, parent_b1_id=5, parent_b2_id=2),
+            dict(id=13, parent_a_id=3, parent_b1_id=4, parent_b2_id=4),
+            dict(id=14, parent_a_id=3, parent_b1_id=7, parent_b2_id=2),
+        )
+        
+    @testing.resolve_artifact_names
+    def test_eager_load(self):
+        session = create_session()
+        def go():
+            eq_(
+                session.query(B).options(eagerload('parent_b1'),eagerload('parent_b2'),eagerload('parent_z')).
+                            filter(B.id.in_([2, 8, 11])).order_by(B.id).all(),
+                [
+                    B(id=2, parent_z=A(id=1), parent_b1=B(id=1), parent_b2=None),
+                    B(id=8, parent_z=A(id=2), parent_b1=B(id=1), parent_b2=B(id=2)),
+                    B(id=11, parent_z=A(id=3), parent_b1=B(id=1), parent_b2=B(id=8))
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+        
 class SelfReferentialM2MEagerTest(_base.MappedTest):
     def define_tables(self, metadata):
         Table('widget', metadata,

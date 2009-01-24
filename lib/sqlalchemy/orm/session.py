@@ -1519,6 +1519,7 @@ class Session(object):
         return util.IdentitySet(self._new.values())
 
 _expire_state = attributes.InstanceState.expire_attributes
+    
 UOWEventHandler = unitofwork.UOWEventHandler
 
 _sessions = weakref.WeakValueDictionary()

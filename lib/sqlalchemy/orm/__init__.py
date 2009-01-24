@@ -388,6 +388,14 @@ def relation(argument, secondary=None, **kwargs):
       based on the foreign key relationships of the association and
       child tables.
 
+    :param single_parent=(True|False):
+      when True, installs a validator which will prevent objects
+      from being associated with more than one parent at a time.
+      This is used for many-to-one or many-to-many relationships that
+      should be treated either as one-to-one or one-to-many.  Its
+      usage is optional unless delete-orphan cascade is also 
+      set on this relation(), in which case its required (new in 0.5.2).
+      
     :param uselist=(True|False):
       a boolean that indicates if this property should be loaded as a
       list or a scalar. In most cases, this value is determined
@@ -400,7 +408,7 @@ def relation(argument, secondary=None, **kwargs):
     :param viewonly=False:
       when set to True, the relation is used only for loading objects
       within the relationship, and has no effect on the unit-of-work
-      flush process.  Relations with viewonly can specify any kind of
+      flush process.  Relationships with viewonly can specify any kind of
       join conditions to provide additional views of related objects
       onto a parent object. Note that the functionality of a viewonly
       relationship has its limits - complicated join conditions may

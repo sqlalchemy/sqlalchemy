@@ -381,6 +381,8 @@ The above mapper specifies two relations, ``items`` and ``customer``.  The ``ite
 
 The ``customer`` relationship specifies only the "save-update" cascade value, indicating most operations will not be cascaded from a parent ``Order`` instance to a child ``User`` instance except for the ``add()`` operation.  "save-update" cascade indicates that an ``add()`` on the parent will cascade to all child items, and also that items added to a parent which is already present in the session will also be added.
 
+Note that the ``delete-orphan`` cascade only functions for relationships where the target object can have a single parent at a time, meaning it is only appropriate for one-to-one or one-to-many relationships.  For a :func:`~sqlalchemy.orm.relation` which establishes one-to-one via a local foreign key, i.e. a many-to-one that stores only a single parent, or one-to-one/one-to-many via a "secondary" (association) table, a warning will be issued if ``delete-orphan`` is configured.  To disable this warning, also specify the ``single_parent=True`` flag on the relationship, which constrains objects to allow attachment to only one parent at a time.
+
 The default value for ``cascade`` on :func:`~sqlalchemy.orm.relation()` is ``save-update, merge``.
 
 Managing Transactions

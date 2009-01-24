@@ -6,10 +6,58 @@ CHANGES
 0.5.2
 ======
 
+- orm
+    - Further refined 0.5.1's warning about delete-orphan cascade
+      placed on a many-to-many relation.   First, the bad news:
+      the warning will apply to both many-to-many as well as
+      many-to-one relations.  This is necessary since in both 
+      cases, SQLA does not scan the full set of potential parents
+      when determining "orphan" status - for a persistent object
+      it only detects an in-python de-association event to establish
+      the object as an "orphan".  Next, the good news: to support 
+      one-to-one via a foreign key or assocation table, or to 
+      support one-to-many via an association table, a new flag 
+      single_parent=True may be set which indicates objects 
+      linked to the relation are only meant to have a single parent.
+      The relation will raise an error if multiple parent-association
+      events occur within Python.
+
+    - Adjusted the attribute instrumentation change from 0.5.1 to 
+      fully establish instrumentation for subclasses where the mapper
+      was created after the superclass had already been fully
+      instrumented. [ticket:1292]
+      
+    - Fixed bug in delete-orphan cascade whereby two one-to-one
+      relations from two different parent classes to the same target 
+      class would prematurely expunge the instance.
+
+    - Fixed an eager loading bug whereby self-referential eager 
+      loading would prevent other eager loads, self referential or not,
+      from joining to the parent JOIN properly.  Thanks to Alex K
+      for creating a great test case.
+    
+    - session.expire() and related methods will not expire() unloaded
+      deferred attributes.  This prevents them from being needlessly
+      loaded when the instance is refreshed.
+
+    - query.join()/outerjoin() will now properly join an aliased()
+      construct to the existing left side, even if query.from_self()
+      or query.select_from(someselectable) has been called.
+      [ticket:1293]
+      
 - sql
     - Further fixes to the "percent signs and spaces in column/table
        names" functionality. [ticket:1284]
-       
+
+- mssql
+    - Restored convert_unicode handling. Results were being passed
+      on through without conversion. [ticket:1291]
+
+    - Really fixing the decimal handling this time. [ticket:1282].
+
+    - Modified table reflection code to use only kwargs when 
+      constructing tables. [Ticket:1289]
+
 0.5.1
 ========
 

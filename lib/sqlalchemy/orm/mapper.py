@@ -620,6 +620,7 @@ class Mapper(object):
 
         if init:
             prop.init()
+            prop.post_instrument_class(self)
 
 
     def compile(self):
@@ -684,9 +685,14 @@ class Mapper(object):
         self._log("_post_configure_properties() started")
         l = [(key, prop) for key, prop in self._props.iteritems()]
         for key, prop in l:
-            if not getattr(prop, '_compiled', False):
-                self._log("initialize prop " + key)
+            self._log("initialize prop " + key)
+            
+            if not prop._compile_started:
                 prop.init()
+            
+            if prop._compile_finished:
+                prop.post_instrument_class(self)
+            
         self._log("_post_configure_properties() complete")
         self.compiled = True
             
@@ -769,7 +775,7 @@ class Mapper(object):
         if prop is None and raiseerr:
             raise sa_exc.InvalidRequestError("Mapper '%s' has no property '%s'" % (str(self), key))
         return prop
-
+    
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""

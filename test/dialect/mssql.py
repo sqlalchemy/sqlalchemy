@@ -1,3 +1,4 @@
+# -*- encoding: utf-8
 import testenv; testenv.configure_for_tests()
 import datetime, os, pickleable, re
 from sqlalchemy import *
@@ -144,6 +145,28 @@ class ReflectionTest(TestBase):
         finally:
             table.drop()
 
+
+class QueryUnicodeTest(TestBase):
+    __only_on__ = 'mssql'
+
+    def test_convert_unicode(self):
+        meta = MetaData(testing.db)
+        t1 = Table('unitest_table', meta,
+                Column('id', Integer, primary_key=True),
+                Column('descr', mssql.MSText(200, convert_unicode=True)))
+        meta.create_all()
+        con = testing.db.connect()
+
+        # encode in UTF-8 (sting object) because this is the default dialect encoding
+        con.execute(u"insert into unitest_table values ('bien mangé')".encode('UTF-8'))
+
+        try:
+            r = t1.select().execute().fetchone()
+            assert isinstance(r[1], unicode), '%s is %s instead of unicode, working on %s' % (
+                    r[1], type(r[1]), meta.bind)
+
+        finally:
+            meta.drop_all()
 
 class QueryTest(TestBase):
     __only_on__ = 'mssql'
@@ -472,10 +495,15 @@ class TypesTest(TestBase):
         try:
             test_items = [decimal.Decimal(d) for d in '1500000.00000000000000000000',
                           '-1500000.00000000000000000000', '1500000',
-                          '0.0000000000000000002', '0.2', '-0.0000000000000000002',
-                          '156666.458923543', '-156666.458923543', '1', '-1', '1234',
+                          '0.0000000000000000002', '0.2', '-0.0000000000000000002', '-2E-2',
+                          '156666.458923543', '-156666.458923543', '1', '-1', '-1234', '1234',
                           '2E-12', '4E8', '3E-6', '3E-7', '4.1', '1E-1', '1E-2', '1E-3',
-                          '1E-4', '1E-5', '1E-6', '1E-7', '1E-8']
+                          '1E-4', '1E-5', '1E-6', '1E-7', '1E-1', '1E-8', '0.2732E2', '-0.2432E2', '4.35656E2',
+                          '-02452E-2', '45125E-2',
+                          '1234.58965E-2', '1.521E+15', '-1E-25', '1E-25', '1254E-25', '-1203E-25',
+                          '0', '-0.00', '-0', '4585E12', '000000000000000000012', '000000000000.32E12',
+                          '00000000000000.1E+12', '000000000000.2E-32']
+
             for value in test_items:
                 numeric_table.insert().execute(numericcol=value)
 

@@ -10,7 +10,7 @@ import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import sql, util, log
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors, expression, operators
-from sqlalchemy.orm import mapper, attributes
+from sqlalchemy.orm import mapper, attributes, interfaces
 from sqlalchemy.orm.interfaces import (
     LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
     serialize_path, deserialize_path, StrategizedProperty
@@ -18,7 +18,7 @@ from sqlalchemy.orm.interfaces import (
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 
-def _register_attribute(strategy, useobject,
+def _register_attribute(strategy, mapper, useobject,
         compare_function=None, 
         typecallable=None,
         copy_function=None, 
@@ -33,6 +33,10 @@ def _register_attribute(strategy, useobject,
 
     prop = strategy.parent_property
     attribute_ext = util.to_list(prop.extension) or []
+
+    if useobject and prop.single_parent:
+        attribute_ext.append(_SingleParentValidator(prop))
+
     if getattr(prop, 'backref', None):
         attribute_ext.append(prop.backref.extension)
     
@@ -42,10 +46,10 @@ def _register_attribute(strategy, useobject,
     if useobject:
         attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
 
-    for mapper in prop.parent.polymorphic_iterator():
-        if (mapper is prop.parent or not mapper.concrete) and mapper.has_property(prop.key):
+    for m in mapper.polymorphic_iterator():
+        if (m is prop.parent or not m.concrete) and m.has_property(prop.key):
             attributes.register_attribute_impl(
-                mapper.class_, 
+                m.class_, 
                 prop.key, 
                 parent_token=prop,
                 mutable_scalars=mutable_scalars,
@@ -94,12 +98,12 @@ class ColumnLoader(LoaderStrategy):
                 c = adapter.columns[c]
             column_collection.append(c)
         
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
         coltype = self.columns[0].type
         active_history = self.columns[0].primary_key  # TODO: check all columns ?  check for foreign Key as well?
 
-        _register_attribute(self, useobject=False,
+        _register_attribute(self, mapper, useobject=False,
             compare_function=coltype.compare_values,
             copy_function=coltype.copy_value,
             mutable_scalars=self.columns[0].type.is_mutable(),
@@ -133,7 +137,7 @@ log.class_logger(ColumnLoader)
 class CompositeColumnLoader(ColumnLoader):
     """Strategize the loading of a composite column-based MapperProperty."""
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
         self.logger.info("%s register managed composite attribute" % self)
 
@@ -154,7 +158,7 @@ class CompositeColumnLoader(ColumnLoader):
             else:
                 return True
 
-        _register_attribute(self, useobject=False,
+        _register_attribute(self, mapper, useobject=False,
             compare_function=compare,
             copy_function=copy,
             mutable_scalars=True
@@ -216,14 +220,15 @@ class DeferredColumnLoader(LoaderStrategy):
         self.columns = self.parent_property.columns
         self.group = self.parent_property.group
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
     
-        _register_attribute(self, useobject=False,
+        _register_attribute(self, mapper, useobject=False,
              compare_function=self.columns[0].type.compare_values,
              copy_function=self.columns[0].type.copy_value,
              mutable_scalars=self.columns[0].type.is_mutable(),
              callable_=self.class_level_loader,
+             dont_expire_missing=True
         )
 
     def setup_query(self, context, entity, path, adapter, only_load_props=None, **kwargs):
@@ -331,10 +336,10 @@ class AbstractRelationLoader(LoaderStrategy):
 class NoLoader(AbstractRelationLoader):
     """Strategize a relation() that doesn't load data automatically."""
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
 
-        _register_attribute(self, 
+        _register_attribute(self, mapper,
             useobject=True, 
             uselist=self.parent_property.uselist,
             typecallable = self.parent_property.collection_class,
@@ -368,11 +373,12 @@ class LazyLoader(AbstractRelationLoader):
         if self.use_get:
             self.logger.info("%s will use query.get() to optimize instance loads" % self)
 
-    def init_class_attribute(self):
+    def init_class_attribute(self, mapper):
         self.is_class_level = True
         
         
         _register_attribute(self, 
+                mapper,
                 useobject=True,
                 callable_=self.class_level_loader,
                 uselist = self.parent_property.uselist,
@@ -596,8 +602,8 @@ class EagerLoader(AbstractRelationLoader):
         super(EagerLoader, self).init()
         self.join_depth = self.parent_property.join_depth
 
-    def init_class_attribute(self):
-        self.parent_property._get_strategy(LazyLoader).init_class_attribute()
+    def init_class_attribute(self, mapper):
+        self.parent_property._get_strategy(LazyLoader).init_class_attribute(mapper)
         
     def setup_query(self, context, entity, path, adapter, column_collection=None, parentmapper=None, **kwargs):
         """Add a left outer join to the statement thats being constructed."""
@@ -651,7 +657,7 @@ class EagerLoader(AbstractRelationLoader):
         # whether or not the Query will wrap the selectable in a subquery,
         # and then attach eager load joins to that (i.e., in the case of LIMIT/OFFSET etc.)
         should_nest_selectable = context.query._should_nest_selectable
-        
+
         if entity in context.eager_joins:
             entity_key, default_towrap = entity, entity.selectable
         elif should_nest_selectable or not context.from_clause or not sql_util.search(context.from_clause, entity.selectable):
@@ -664,23 +670,29 @@ class EagerLoader(AbstractRelationLoader):
             # otherwise, create a single eager join from the from clause.  
             # Query._compile_context will adapt as needed and append to the
             # FROM clause of the select().
-            entity_key, default_towrap = None, context.from_clause
-    
+            entity_key, default_towrap = None, context.from_clause  
+
         towrap = context.eager_joins.setdefault(entity_key, default_towrap)
-    
+
         # create AliasedClauses object to build up the eager query.  
         clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
                     equivalents=self.mapper._equivalent_columns)
 
+        join_to_left = False
         if adapter:
             if getattr(adapter, 'aliased_class', None):
                 onclause = getattr(adapter.aliased_class, self.key, self.parent_property)
             else:
                 onclause = getattr(mapperutil.AliasedClass(self.parent, adapter.selectable), self.key, self.parent_property)
+                
+            if onclause is self.parent_property:
+                # TODO: this is a temporary hack to account for polymorphic eager loads where
+                # the eagerload is referencing via of_type().
+                join_to_left = True
         else:
             onclause = self.parent_property
-    
-        context.eager_joins[entity_key] = eagerjoin = mapperutil.outerjoin(towrap, clauses.aliased_class, onclause)
+            
+        context.eager_joins[entity_key] = eagerjoin = mapperutil.outerjoin(towrap, clauses.aliased_class, onclause, join_to_left=join_to_left)
         
         # send a hint to the Query as to where it may "splice" this join
         eagerjoin.stop_on = entity.selectable
@@ -812,4 +824,24 @@ class LoadEagerFromAliasOption(PropertyOption):
         else:
             query._attributes[("user_defined_eager_row_processor", paths[-1])] = None
 
+class _SingleParentValidator(interfaces.AttributeExtension):
+    def __init__(self, prop):
+        self.prop = prop
+
+    def _do_check(self, state, value, oldvalue, initiator):
+        if value is not None:
+            hasparent = initiator.hasparent(attributes.instance_state(value))
+            if hasparent and oldvalue is not value: 
+                raise sa_exc.InvalidRequestError("Instance %s is already associated with an instance "
+                    "of %s via its %s attribute, and is only allowed a single parent." % 
+                    (mapperutil.instance_str(value), state.class_, self.prop)
+                )
+        return value
         
+    def append(self, state, value, initiator):
+        return self._do_check(state, value, None, initiator)
+
+    def set(self, state, value, oldvalue, initiator):
+        return self._do_check(state, value, oldvalue, initiator)
+
+

@@ -359,18 +359,18 @@ class _ORMJoin(expression.Join):
     
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None, isouter=False):
+    def __init__(self, left, right, onclause=None, isouter=False, join_to_left=True):
+        adapt_from = None
+        
         if hasattr(left, '_orm_mappers'):
             left_mapper = left._orm_mappers[1]
-            adapt_from = left.right
-
+            if join_to_left:
+                adapt_from = left.right
         else:
             left_mapper, left, left_is_aliased = _entity_info(left)
-            if left_is_aliased or not left_mapper:
+            if join_to_left and (left_is_aliased or not left_mapper):
                 adapt_from = left
-            else:
-                adapt_from = None
-        
+            
         right_mapper, right, right_is_aliased = _entity_info(right)
         if right_is_aliased:
             adapt_to = right
@@ -383,11 +383,8 @@ class _ORMJoin(expression.Join):
             if isinstance(onclause, basestring):
                 prop = left_mapper.get_property(onclause)
             elif isinstance(onclause, attributes.QueryableAttribute):
-                # TODO: we might want to honor the current adapt_from,
-                # if already set.  we would need to adjust how we calculate
-                # adapt_from though since it is present in too many cases
-                # at the moment (query tests illustrate that).
-                adapt_from = onclause.__clause_element__()
+                if not adapt_from:
+                    adapt_from = onclause.__clause_element__()
                 prop = onclause.property
             elif isinstance(onclause, MapperProperty):
                 prop = onclause
@@ -395,7 +392,12 @@ class _ORMJoin(expression.Join):
                 prop = None
 
             if prop:
-                pj, sj, source, dest, secondary, target_adapter = prop._create_joins(source_selectable=adapt_from, dest_selectable=adapt_to, source_polymorphic=True, dest_polymorphic=True, of_type=right_mapper)
+                pj, sj, source, dest, secondary, target_adapter = prop._create_joins(
+                                source_selectable=adapt_from, 
+                                dest_selectable=adapt_to, 
+                                source_polymorphic=True, 
+                                dest_polymorphic=True, 
+                                of_type=right_mapper)
 
                 if sj:
                     left = sql.join(left, secondary, pj, isouter)
@@ -406,13 +408,13 @@ class _ORMJoin(expression.Join):
                 
         expression.Join.__init__(self, left, right, onclause, isouter)
 
-    def join(self, right, onclause=None, isouter=False):
-        return _ORMJoin(self, right, onclause, isouter)
+    def join(self, right, onclause=None, isouter=False, join_to_left=True):
+        return _ORMJoin(self, right, onclause, isouter, join_to_left)
 
-    def outerjoin(self, right, onclause=None):
-        return _ORMJoin(self, right, onclause, True)
+    def outerjoin(self, right, onclause=None, join_to_left=True):
+        return _ORMJoin(self, right, onclause, True, join_to_left)
 
-def join(left, right, onclause=None, isouter=False):
+def join(left, right, onclause=None, isouter=False, join_to_left=True):
     """Produce an inner join between left and right clauses.
     
     In addition to the interface provided by 
@@ -421,10 +423,15 @@ def join(left, right, onclause=None, isouter=False):
     string name of a relation(), or a class-bound descriptor 
     representing a relation.
     
+    join_to_left indicates to attempt aliasing the ON clause,
+    in whatever form it is passed, to the selectable
+    passed as the left side.  If False, the onclause
+    is used as is.
+    
     """
-    return _ORMJoin(left, right, onclause, isouter)
+    return _ORMJoin(left, right, onclause, isouter, join_to_left)
 
-def outerjoin(left, right, onclause=None):
+def outerjoin(left, right, onclause=None, join_to_left=True):
     """Produce a left outer join between left and right clauses.
     
     In addition to the interface provided by 
@@ -434,7 +441,7 @@ def outerjoin(left, right, onclause=None):
     representing a relation.
     
     """
-    return _ORMJoin(left, right, onclause, True)
+    return _ORMJoin(left, right, onclause, True, join_to_left)
 
 def with_parent(instance, prop):
     """Return criterion which selects instances with a given parent.

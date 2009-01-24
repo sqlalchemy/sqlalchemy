@@ -1,6 +1,7 @@
 from sqlalchemy.dialects.mssql.base import MSDialect, MSDateTimeAsDate, MSDateTimeAsTime
 from sqlalchemy import types as sqltypes
 
+
 class MSDialect_pymssql(MSDialect):
     supports_sane_rowcount = False
     max_identifier_length = 30

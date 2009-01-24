@@ -211,6 +211,14 @@ class MapperTest(_fixtures.FixtureTest):
         assert getattr(Foo().__class__, 'name').impl is not None
 
     @testing.resolve_artifact_names
+    def test_deferred_subclass_attribute_instrument(self):
+        class Foo(User):pass
+        mapper(User, users)
+        compile_mappers()
+        mapper(Foo, addresses, inherits=User)
+        assert getattr(Foo().__class__, 'name').impl is not None
+
+    @testing.resolve_artifact_names
     def test_compile_on_get_props_1(self):
         m =mapper(User, users)
         assert not m.compiled
@@ -223,7 +231,7 @@ class MapperTest(_fixtures.FixtureTest):
         assert not m.compiled
         assert m.get_property('name')
         assert m.compiled
-
+        
     @testing.resolve_artifact_names
     def test_add_property(self):
         assert_col = []
