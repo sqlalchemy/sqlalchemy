@@ -1011,6 +1011,9 @@ class GenericTypeCompiler(engine.TypeCompiler):
         
     def visit_date(self, type_): 
         return self.visit_DATE(type_)
+
+    def visit_big_integer(self, type_): 
+        return self.visit_BIGINT(type_)
         
     def visit_small_integer(self, type_): 
         return self.visit_SMALLINT(type_)

@@ -258,11 +258,7 @@ class MSNumeric(sqltypes.Numeric):
 
     def bind_processor(self, dialect):
         def process(value):
-            if value is None:
-                # Not sure that this exception is needed
-                return value
-
-            elif isinstance(value, decimal.Decimal):
+            if isinstance(value, decimal.Decimal):
                 if value.adjusted() < 0:
                     result = "%s0.%s%s" % (
                             (value < 0 and '-' or ''),
@@ -309,7 +305,7 @@ class MSTinyInteger(sqltypes.Integer):
 # filter bind parameters into datetime objects (required by pyodbc,
 # not sure about other dialects).
 
-class MSDate(sqltypes.Date):
+class MSDate(sqltypes.DATE):
     def bind_processor(self, dialect):
         def process(value):
             if type(value) == datetime.date:
@@ -329,7 +325,7 @@ class MSDate(sqltypes.Date):
                 return value
         return process
     
-class MSTime(sqltypes.Time):
+class MSTime(sqltypes.TIME):
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
         super(MSTime, self).__init__()
@@ -356,7 +352,7 @@ class MSTime(sqltypes.Time):
                 return value
         return process
 
-class MSDateTime(sqltypes.DateTime):
+class _DateTimeBase(object):
     def bind_processor(self, dialect):
         def process(value):
             if type(value) == datetime.date:
@@ -364,11 +360,14 @@ class MSDateTime(sqltypes.DateTime):
             else:
                 return value
         return process
+
+class MSDateTime(_DateTimeBase, sqltypes.DATETIME):
+    pass
     
-class MSSmallDateTime(MSDateTime):
+class MSSmallDateTime(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = 'SMALLDATETIME'
 
-class MSDateTime2(MSDateTime):
+class MSDateTime2(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = 'DATETIME2'
     
     def __init__(self, precision=None, **kwargs):
@@ -549,11 +548,12 @@ class MSNChar(_StringType, sqltypes.NCHAR):
         sqltypes.NCHAR.__init__(self, *args, **kw)
 
 class MSBinary(sqltypes.Binary):
-    pass
+    __visit_name__ = 'BINARY'
 
 class MSVarBinary(sqltypes.Binary):
     __visit_name__ = 'VARBINARY'
 
+        
 class MSImage(sqltypes.Binary):
     __visit_name__ = 'IMAGE'
 
@@ -667,6 +667,8 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_date(self, type_):
         if self.dialect.server_version_info < MS_2008_VERSION:
+            import pdb
+            pdb.set_trace()
             return self.visit_DATETIME(type_)
         else:
             return self.visit_DATE(type_)
