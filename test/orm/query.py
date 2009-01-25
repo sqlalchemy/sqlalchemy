@@ -2761,7 +2761,7 @@ class UpdateDeleteTest(_base.MappedTest):
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter('name = :name').params(name='john').delete()
+        sess.query(User).filter('name = :name').params(name='john').delete('fetch')
         assert john not in sess
 
         eq_(sess.query(User).order_by(User.id).all(), [jack,jill,jane])
@@ -2808,11 +2808,16 @@ class UpdateDeleteTest(_base.MappedTest):
     
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.resolve_artifact_names
-    def test_delete_fallback(self):
+    def test_delete_invalid_evaluation(self):
         sess = create_session(bind=testing.db, autocommit=False)
         
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(User.name == select([func.max(User.name)])).delete(synchronize_session='evaluate')
+        
+        self.assertRaises(sa_exc.InvalidRequestError,
+            sess.query(User).filter(User.name == select([func.max(User.name)])).delete, synchronize_session='evaluate'
+        )
+        
+        sess.query(User).filter(User.name == select([func.max(User.name)])).delete(synchronize_session='fetch')
         
         assert john not in sess
         
@@ -2843,7 +2848,7 @@ class UpdateDeleteTest(_base.MappedTest):
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
 
-        sess.query(User).filter('age > :x').params(x=29).update({'age': User.age - 10}, synchronize_session='evaluate')
+        sess.query(User).filter('age > :x').params(x=29).update({'age': User.age - 10}, synchronize_session='fetch')
 
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
@@ -2903,7 +2908,7 @@ class UpdateDeleteTest(_base.MappedTest):
         sess = create_session(bind=testing.db, autocommit=False)
         
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='expire')
+        sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='fetch')
         
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))

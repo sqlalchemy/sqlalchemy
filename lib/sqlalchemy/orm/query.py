@@ -1495,7 +1495,7 @@ class Query(object):
             self.session._autoflush()
         return self.session.scalar(s, params=self._params, mapper=self._mapper_zero())
 
-    def delete(self, synchronize_session='fetch'):
+    def delete(self, synchronize_session='evaluate'):
         """Perform a bulk delete query.
 
         Deletes rows matched by this query from the database. 
@@ -1505,15 +1505,15 @@ class Query(object):
 
             False
               don't synchronize the session. This option is the most efficient and is reliable
-              once the session is expired, which typically occurs after a commit().   Before
-              the expiration, objects may still remain in the session which were in fact deleted
-              which can lead to confusing results if they are accessed via get() or already
-              loaded collections.
+              once the session is expired, which typically occurs after a commit(), or explicitly
+              using expire_all().  Before the expiration, objects may still remain in the session 
+              which were in fact deleted which can lead to confusing results if they are accessed 
+              via get() or already loaded collections.
 
             'fetch'
               performs a select query before the delete to find objects that are matched
               by the delete query and need to be removed from the session. Matched objects
-              are removed from the session. 'fetch' is the default strategy.
+              are removed from the session.
 
             'evaluate'
               experimental feature. Tries to evaluate the querys criteria in Python
@@ -1554,7 +1554,8 @@ class Query(object):
                 evaluator_compiler = evaluator.EvaluatorCompiler()
                 eval_condition = evaluator_compiler.process(self.whereclause)
             except evaluator.UnevaluatableError:
-                synchronize_session = 'fetch'
+                raise sa_exc.InvalidRequestError("Could not evaluate current criteria in Python.  "
+                        "Specify 'fetch' or False for the synchronize_session parameter.")
 
         delete_stmt = sql.delete(primary_table, context.whereclause)
 
@@ -1587,7 +1588,7 @@ class Query(object):
 
         return result.rowcount
 
-    def update(self, values, synchronize_session='expire'):
+    def update(self, values, synchronize_session='evaluate'):
         """Perform a bulk update query.
 
         Updates rows matched by this query in the database. 
@@ -1599,18 +1600,19 @@ class Query(object):
             attributes on objects in the session. Valid values are:
 
             False
-              don't synchronize the session. Use this when you don't need to use the
-              session after the update or you can be sure that none of the matched objects
-              are in the session.
-
-            'expire'
+              don't synchronize the session. This option is the most efficient and is reliable
+              once the session is expired, which typically occurs after a commit(), or explicitly
+              using expire_all().  Before the expiration, updated objects may still remain in the session 
+              with stale values on their attributes, which can lead to confusing results.
+              
+            'fetch'
               performs a select query before the update to find objects that are matched
               by the update query. The updated attributes are expired on matched objects.
 
             'evaluate'
-              experimental feature. Tries to evaluate the querys criteria in Python
+              Tries to evaluate the Query's criteria in Python
               straight on the objects in the session. If evaluation of the criteria isn't
-              implemented, the 'expire' strategy will be used as a fallback.
+              implemented, an exception is raised.
 
               The expression evaluator currently doesn't account for differing string
               collations between the database and Python.
@@ -1619,9 +1621,6 @@ class Query(object):
 
         The method does *not* offer in-Python cascading of relations - it is assumed that
         ON UPDATE CASCADE is configured for any foreign key references which require it.
-        The Session needs to be expired (occurs automatically after commit(), or call expire_all())
-        in order for the state of dependent objects subject foreign key cascade to be 
-        correctly represented.
         
         Also, the ``before_update()`` and ``after_update()`` :class:`~sqlalchemy.orm.interfaces.MapperExtension` 
         methods are not called from this method.  For an update hook here, use the
@@ -1633,8 +1632,8 @@ class Query(object):
         #TODO: updates of manytoone relations need to be converted to fk assignments
         #TODO: cascades need handling.
 
-        if synchronize_session not in [False, 'evaluate', 'expire']:
-            raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'expire'")
+        if synchronize_session not in [False, 'evaluate', 'fetch']:
+            raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'fetch'")
 
         context = self._compile_context()
         if len(context.statement.froms) != 1 or not isinstance(context.statement.froms[0], schema.Table):
@@ -1653,11 +1652,12 @@ class Query(object):
                     key = expression._column_as_key(key)
                     value_evaluators[key] = evaluator_compiler.process(expression._literal_as_binds(value))
             except evaluator.UnevaluatableError:
-                synchronize_session = 'expire'
+                raise sa_exc.InvalidRequestError("Could not evaluate current criteria in Python.  "
+                        "Specify 'fetch' or False for the synchronize_session parameter.")
 
         update_stmt = sql.update(primary_table, context.whereclause, values)
 
-        if synchronize_session == 'expire':
+        if synchronize_session == 'fetch':
             select_stmt = context.statement.with_only_columns(primary_table.primary_key)
             matched_rows = session.execute(select_stmt, params=self._params).fetchall()
 
@@ -1684,7 +1684,7 @@ class Query(object):
                     # expire attributes with pending changes (there was no autoflush, so they are overwritten)
                     state.expire_attributes(set(evaluated_keys).difference(to_evaluate))
 
-        elif synchronize_session == 'expire':
+        elif synchronize_session == 'fetch':
             target_mapper = self._mapper_zero()
 
             for primary_key in matched_rows:

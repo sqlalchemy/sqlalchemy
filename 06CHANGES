@@ -1,0 +1,15 @@
+- orm
+    - the 'expire' option on query.update() has been renamed to 'fetch', thus matching
+      that of query.delete()
+    - query.update() and query.delete() both default to 'evaluate' for the synchronize 
+      strategy.
+    - the 'synchronize' strategy for update() and delete() raises an error on failure.  
+      There is no implicit fallback onto "fetch".   Failure of evaluation is based
+      on the structure of criteria, so success/failure is deterministic based on 
+      code structure.
+    
+- dialect refactor
+
+- new dialects
+    - pg8000
+    - pyodbc+mysql
