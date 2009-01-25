@@ -119,7 +119,14 @@ class DefaultEngineStrategy(EngineStrategy):
                                     dialect.__class__.__name__,
                                     pool.__class__.__name__,
                                     engineclass.__name__))
-        return engineclass(pool, dialect, u, **engine_args)
+                                    
+        engine = engineclass(pool, dialect, u, **engine_args)
+        conn = engine.connect()
+        try:
+            dialect.initialize(conn)
+        finally:
+            conn.close()
+        return engine
 
     def pool_threadlocal(self):
         raise NotImplementedError()

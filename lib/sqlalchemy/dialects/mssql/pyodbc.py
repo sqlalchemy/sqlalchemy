@@ -1,4 +1,4 @@
-from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect, MSDateTimeAsDate, MSDateTimeAsTime
+from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 from sqlalchemy import types as sqltypes
 
@@ -14,14 +14,13 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 
     def post_exec(self):
         if self.HASIDENT and not self.IINSERT and self.dialect.use_scope_identity and not self.executemany:
-            import pyodbc
             # Fetch the last inserted id from the manipulated statement
             # We may have to skip over a number of result sets with no data (due to triggers, etc.)
             while True:
                 try:
                     row = self.cursor.fetchone()
                     break
-                except pyodbc.Error, e:
+                except self.dialect.dbapi.Error, e:
                     self.cursor.nextset()
             self._last_inserted_ids = [int(row[0])]
         else:
@@ -43,11 +42,6 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         self.description_encoding = description_encoding
         self.use_scope_identity = self.dbapi and hasattr(self.dbapi.Cursor, 'nextset')
         
-        if self.server_version_info < (10,):
-            self.colspecs = MSDialect.colspecs.copy()
-            self.colspecs[sqltypes.Date] = MSDateTimeAsDate
-            self.colspecs[sqltypes.Time] = MSDateTimeAsTime
-
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(e) or 'Attempt to use a closed connection.' in str(e)

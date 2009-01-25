@@ -116,11 +116,6 @@ arguments on the URL, or as keyword argument to
   pyodbc this defaults to ``True`` if the version of pyodbc being
   used supports it.
 
-* *has_window_funcs* - indicates whether or not window functions
-  (LIMIT and OFFSET) are supported on the version of MSSQL being
-  used. If you're running MSSQL 2005 or later turn this on to get
-  OFFSET support. Defaults to ``False``.
-
 * *max_identifier_length* - allows you to se the maximum length of
   identfiers supported by the database. Defaults to 128. For pymssql
   the default is 30.
@@ -182,10 +177,9 @@ will yield::
 
     SELECT TOP n
 
-If the ``has_window_funcs`` flag is set then LIMIT with OFFSET
-support is available through the ``ROW_NUMBER OVER`` construct. This
-construct requires an ``ORDER BY`` to be specified as well and is
-only available on MSSQL 2005 and later.
+If using SQL Server 2005 or above, LIMIT with OFFSET
+support is available through the ``ROW_NUMBER OVER`` construct. 
+For versions below 2005, LIMIT with OFFSET usage will fail.
 
 Nullability
 -----------
@@ -206,13 +200,12 @@ If ``nullable`` is ``True`` or ``False`` then the column will be
 
 Date / Time Handling
 --------------------
-For MSSQL versions that support the ``DATE`` and ``TIME`` types
-(MSSQL 2008+) the data type is used. For versions that do not
-support the ``DATE`` and ``TIME`` types a ``DATETIME`` type is used
-instead and the MSSQL dialect handles converting the results
-properly. This means ``Date()`` and ``Time()`` are fully supported
-on all versions of MSSQL. If you do not desire this behavior then
-do not use the ``Date()`` or ``Time()`` types.
+DATE and TIME are supported.   Bind parameters are converted
+to datetime.datetime() objects as required by most MSSQL drivers,
+and results are processed from strings if needed.
+The DATE and TIME types are not available for MSSQL 2005 and
+previous - if a server version below 2008 is detected, DDL
+for these types will be issued as DATETIME.
 
 Compatibility Levels
 --------------------
@@ -234,7 +227,7 @@ Known Issues
   does **not** work around
 
 """
-import datetime, decimal, inspect, operator, sys
+import datetime, decimal, inspect, operator, sys, re
 
 from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.sql import compiler, expression, operators as sql_operators, functions as sql_functions
@@ -242,6 +235,9 @@ from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
 
+MS_2008_VERSION = (10,)
+#MS_2005_VERSION = ??
+#MS_2000_VERSION = ??
 
 MSSQL_RESERVED_WORDS = set(['function'])
 
@@ -308,20 +304,65 @@ class MSReal(sqltypes.Float):
 class MSTinyInteger(sqltypes.Integer):
     __visit_name__ = 'TINYINT'
 
+# MSSQL DATE/TIME types have varied behavior, sometimes returning
+# strings.  MSDate/MSTime check for everything, and always
+# filter bind parameters into datetime objects (required by pyodbc,
+# not sure about other dialects).
+
+class MSDate(sqltypes.Date):
+    def bind_processor(self, dialect):
+        def process(value):
+            if type(value) == datetime.date:
+                return datetime.datetime(value.year, value.month, value.day)
+            else:
+                return value
+        return process
+
+    _reg = re.compile(r"(\d+)-(\d+)-(\d+)")
+    def result_processor(self, dialect):
+        def process(value):
+            if isinstance(value, datetime.datetime):
+                return value.date()
+            elif isinstance(value, basestring):
+                return datetime.date(*[int(x or 0) for x in self._reg.match(value).groups()])
+            else:
+                return value
+        return process
+    
 class MSTime(sqltypes.Time):
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
         super(MSTime, self).__init__()
 
+    __zero_date = datetime.date(1900, 1, 1)
+
+    def bind_processor(self, dialect):
+        def process(value):
+            if isinstance(value, datetime.datetime):
+                value = datetime.datetime.combine(self.__zero_date, value.time())
+            elif isinstance(value, datetime.time):
+                value = datetime.datetime.combine(self.__zero_date, value)
+            return value
+        return process
+
+    _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
+    def result_processor(self, dialect):
+        def process(value):
+            if isinstance(value, datetime.datetime):
+                return value.time()
+            elif isinstance(value, basestring):
+                return datetime.time(*[int(x or 0) for x in self._reg.match(value).groups()])
+            else:
+                return value
+        return process
 
 class MSDateTime(sqltypes.DateTime):
     def bind_processor(self, dialect):
-        # most DBAPIs allow a datetime.date object
-        # as a datetime.
         def process(value):
-            if type(value) is datetime.date:
+            if type(value) == datetime.date:
                 return datetime.datetime(value.year, value.month, value.day)
-            return value
+            else:
+                return value
         return process
     
 class MSSmallDateTime(MSDateTime):
@@ -338,53 +379,6 @@ class MSDateTimeOffset(sqltypes.TypeEngine):
     
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
-
-class MSDateTimeAsDate(sqltypes.TypeDecorator):
-    """ This is an implementation of the Date type for versions of MSSQL that
-    do not support that specific type. In order to make it work a ``DATETIME``
-    column specification is used and the results get converted back to just
-    the date portion.
-
-    """
-
-    impl = sqltypes.DateTime
-
-    def process_bind_param(self, value, dialect):
-        if type(value) is datetime.date:
-            return datetime.datetime(value.year, value.month, value.day)
-        return value
-
-    def process_result_value(self, value, dialect):
-        if type(value) is datetime.datetime:
-            return value.date()
-        return value
-
-class MSDateTimeAsTime(sqltypes.TypeDecorator):
-    """ This is an implementation of the Time type for versions of MSSQL that
-    do not support that specific type. In order to make it work a ``DATETIME``
-    column specification is used and the results get converted back to just
-    the time portion.
-
-    """
-
-    __zero_date = datetime.date(1900, 1, 1)
-
-    impl = sqltypes.DateTime
-
-    def process_bind_param(self, value, dialect):
-        if type(value) is datetime.datetime:
-            value = datetime.datetime.combine(self.__zero_date, value.time())
-        elif type(value) is datetime.time:
-            value = datetime.datetime.combine(self.__zero_date, value)
-        return value
-
-    def process_result_value(self, value, dialect):
-        if type(value) is datetime.datetime:
-            return value.time()
-        elif type(value) is datetime.date:
-            return datetime.time(0, 0, 0)
-        return value
-
 
 class _StringType(object):
     """Base for MSSQL string types."""
@@ -672,15 +666,13 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend("NVARCHAR", type_)
 
     def visit_date(self, type_):
-        # psudocode
-        if self.dialect.version <= 10:
+        if self.dialect.server_version_info < MS_2008_VERSION:
             return self.visit_DATETIME(type_)
         else:
             return self.visit_DATE(type_)
 
     def visit_time(self, type_):
-        # psudocode
-        if self.dialect.version <= 10:
+        if self.dialect.server_version_info < MS_2008_VERSION:
             return self.visit_DATETIME(type_)
         else:
             return self.visit_TIME(type_)
@@ -791,6 +783,7 @@ colspecs = {
     sqltypes.Unicode : MSNVarchar,
     sqltypes.Numeric : MSNumeric,
     sqltypes.DateTime : MSDateTime,
+    sqltypes.Date : MSDate,
     sqltypes.Time : MSTime,
     sqltypes.String : MSString,
     sqltypes.Boolean : MSBoolean,
@@ -861,9 +854,6 @@ class MSSQLCompiler(compiler.SQLCompiler):
             if select._limit:
                 if not select._offset:
                     s += "TOP %s " % (select._limit,)
-                else:
-                    if not self.dialect.has_window_funcs:
-                        raise exc.InvalidRequestError('MSSQL does not support LIMIT with an offset')
             return s
         return compiler.SQLCompiler.get_select_precolumns(self, select)
 
@@ -876,7 +866,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         so tries to wrap it in a subquery with ``row_number()`` criterion.
 
         """
-        if self.dialect.has_window_funcs and not getattr(select, '_mssql_visit', None) and select._offset:
+        if not getattr(select, '_mssql_visit', None) and select._offset:
             # to use ROW_NUMBER(), an ORDER BY is required.
             orderby = self.process(select._order_by_clause)
             if not orderby:
@@ -1061,7 +1051,6 @@ class MSDialect(default.DefaultDialect):
     execution_ctx_cls = MSExecutionContext
     text_as_varchar = False
     use_scope_identity = False
-    has_window_funcs = False
     max_identifier_length = 128
     schema_name = "dbo"
     colspecs = colspecs
@@ -1069,6 +1058,8 @@ class MSDialect(default.DefaultDialect):
 
     supports_unicode_binds = True
 
+    server_version_info = ()
+    
     statement_compiler = MSSQLCompiler
     ddl_compiler = MSDDLCompiler
     type_compiler = MSTypeCompiler
@@ -1077,35 +1068,19 @@ class MSDialect(default.DefaultDialect):
     def __init__(self,
                  auto_identity_insert=True, query_timeout=None,
                  use_scope_identity=False,
-                 has_window_funcs=False, max_identifier_length=None,
+                 max_identifier_length=None,
                  schema_name="dbo", **opts):
         self.auto_identity_insert = bool(auto_identity_insert)
         self.query_timeout = int(query_timeout or 0)
         self.schema_name = schema_name
 
         self.use_scope_identity = bool(use_scope_identity)
-        self.has_window_funcs =  bool(has_window_funcs)
         self.max_identifier_length = int(max_identifier_length or 0) or 128
         super(MSDialect, self).__init__(**opts)
-
-    @base.connection_memoize(('mssql', 'server_version_info'))
-    def server_version_info(self, connection):
-        """A tuple of the database server version.
-
-        Formats the remote server version as a tuple of version values,
-        e.g. ``(9, 0, 1399)``.  If there are strings in the version number
-        they will be in the tuple too, so don't count on these all being
-        ``int`` values.
-
-        This is a fast check that does not require a round trip.  It is also
-        cached per-Connection.
-        """
-        return connection.dialect._server_version_info(connection.connection)
-
-    def _server_version_info(self, dbapi_con):
-        """Return a tuple of the database's version number."""
-        raise NotImplementedError()
-
+    
+    def initialize(self, connection):
+        self.server_version_info = self._get_server_version_info(connection)
+    
     def do_begin(self, connection):
         cursor = connection.cursor()
         cursor.execute("SET IMPLICIT_TRANSACTIONS OFF")

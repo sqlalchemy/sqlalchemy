@@ -1697,7 +1697,6 @@ class MySQLDialect(default.DefaultDialect):
     ischema_names = ischema_names
     
     def __init__(self, use_ansiquotes=None, **kwargs):
-        self.use_ansiquotes = use_ansiquotes
         default.DefaultDialect.__init__(self, **kwargs)
 
     def do_executemany(self, cursor, statement, parameters, context=None):
@@ -1716,7 +1715,7 @@ class MySQLDialect(default.DefaultDialect):
         try:
             connection.commit()
         except:
-            if self._server_version_info(connection) < (3, 23, 15):
+            if self.server_version_info < (3, 23, 15):
                 args = sys.exc_info()[1].args
                 if args and args[0] == 1064:
                     return
@@ -1728,7 +1727,7 @@ class MySQLDialect(default.DefaultDialect):
         try:
             connection.rollback()
         except:
-            if self._server_version_info(connection) < (3, 23, 15):
+            if self.server_version_info < (3, 23, 15):
                 args = sys.exc_info()[1].args
                 if args and args[0] == 1064:
                     return
@@ -1786,8 +1785,7 @@ class MySQLDialect(default.DefaultDialect):
     def table_names(self, connection, schema):
         """Return a Unicode SHOW TABLES from a given schema."""
 
-        charset = self._detect_charset(connection)
-        self._autoset_identifier_style(connection)
+        charset = self._server_charset
         rp = connection.execute("SHOW TABLES FROM %s" %
             self.identifier_preparer.quote_identifier(schema))
         return [row[0] for row in self._compat_fetchall(rp, charset=charset)]
@@ -1803,7 +1801,6 @@ class MySQLDialect(default.DefaultDialect):
         # full_name = self.identifier_preparer.format_table(table,
         #                                                   use_schema=True)
 
-        self._autoset_identifier_style(connection)
 
         full_name = '.'.join(self.identifier_preparer._quote_free_identifiers(
             schema, table_name))
@@ -1823,36 +1820,30 @@ class MySQLDialect(default.DefaultDialect):
         finally:
             if rs:
                 rs.close()
-
-    @engine_base.connection_memoize(('mysql', 'server_version_info'))
-    def server_version_info(self, connection):
-        """A tuple of the database server version.
-
-        Formats the remote server version as a tuple of version values,
-        e.g. ``(5, 0, 44)``.  If there are strings in the version number
-        they will be in the tuple too, so don't count on these all being
-        ``int`` values.
-
-        This is a fast check that does not require a round trip.  It is also
-        cached per-Connection.
-        """
-
-        # TODO: do we need to bypass ConnectionFairy here?  other calls
-        # to this seem to not do that.
-        return self._server_version_info(connection.connection.connection)
-
+    
+    def initialize(self, connection):
+        self.server_version_info = self._get_server_version_info(connection)
+        self._server_charset = self._detect_charset(connection)
+        self._server_casing = self._detect_casing(connection)
+        self._server_collations = self._detect_collations(connection)
+        self._server_ansiquotes = self._detect_ansiquotes(connection)
+        if self._server_ansiquotes:
+            self.preparer = MySQLANSIIdentifierPreparer
+        else:
+            self.preparer = MySQLIdentifierPreparer
+        self.identifier_preparer = self.preparer(self)
+        
     def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""
 
-        charset = self._detect_charset(connection)
-        self._autoset_identifier_style(connection)
+        charset = self._server_charset
 
         try:
             reflector = self.reflector
         except AttributeError:
             preparer = self.identifier_preparer
-            if (self.server_version_info(connection) < (4, 1) and
-                self.use_ansiquotes):
+            if (self.server_version_info < (4, 1) and
+                self._server_use_ansiquotes):
                 # ANSI_QUOTES doesn't affect SHOW CREATE TABLE on < 4.1
                 preparer = MySQLIdentifierPreparer(self)
 
@@ -1864,15 +1855,15 @@ class MySQLDialect(default.DefaultDialect):
             columns = self._describe_table(connection, table, charset)
             sql = reflector._describe_to_create(table, columns)
 
-        self._adjust_casing(connection, table)
+        self._adjust_casing(table)
 
         return reflector.reflect(connection, table, sql, charset,
                                  only=include_columns)
 
-    def _adjust_casing(self, connection, table, charset=None):
+    def _adjust_casing(self, table, charset=None):
         """Adjust Table name to the server case sensitivity, if needed."""
 
-        casing = self._detect_casing(connection)
+        casing = self._server_casing
 
         # For winxx database hosts.  TODO: is this really needed?
         if casing == 1 and table.name != table.name.lower():
@@ -1892,7 +1883,7 @@ class MySQLDialect(default.DefaultDialect):
         """
         # http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
 
-        charset = self._detect_charset(connection)
+        charset = self._server_charset
         row = self._compat_fetchone(connection.execute(
             "SHOW VARIABLES LIKE 'lower_case_table_names'"),
                                charset=charset)
@@ -1909,8 +1900,6 @@ class MySQLDialect(default.DefaultDialect):
                 cs = int(row[1])
             row.close()
         return cs
-    _detect_casing = engine_base.connection_memoize(
-        ('mysql', 'lower_case_table_names'))(_detect_casing)
 
     def _detect_collations(self, connection):
         """Pull the active COLLATIONS list from the server.
@@ -1919,49 +1908,21 @@ class MySQLDialect(default.DefaultDialect):
         """
 
         collations = {}
-        if self.server_version_info(connection) < (4, 1, 0):
+        if self.server_version_info < (4, 1, 0):
             pass
         else:
-            charset = self._detect_charset(connection)
+            charset = self._server_charset
             rs = connection.execute('SHOW COLLATION')
             for row in self._compat_fetchall(rs, charset):
                 collations[row[0]] = row[1]
         return collations
-    _detect_collations = engine_base.connection_memoize(
-        ('mysql', 'collations'))(_detect_collations)
 
-    def use_ansiquotes(self, useansi):
-        self._use_ansiquotes = useansi
-        if useansi:
-            self.preparer = MySQLANSIIdentifierPreparer
-        else:
-            self.preparer = MySQLIdentifierPreparer
-        # icky
-        if hasattr(self, 'identifier_preparer'):
-            self.identifier_preparer = self.preparer(self)
-        if hasattr(self, 'reflector'):
-            del self.reflector
-
-    use_ansiquotes = property(lambda s: s._use_ansiquotes, use_ansiquotes,
-                              doc="True if ANSI_QUOTES is in effect.")
-
-    def _autoset_identifier_style(self, connection, charset=None):
-        """Detect and adjust for the ANSI_QUOTES sql mode.
-
-        If the dialect's use_ansiquotes is unset, query the server's sql mode
-        and reset the identifier style.
-
-        Note that this currently *only* runs during reflection.  Ideally this
-        would run the first time a connection pool connects to the database,
-        but the infrastructure for that is not yet in place.
-        """
-
-        if self.use_ansiquotes is not None:
-            return
+    def _detect_ansiquotes(self, connection):
+        """Detect and adjust for the ANSI_QUOTES sql mode."""
 
         row = self._compat_fetchone(
             connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
-                               charset=charset)
+                               charset=self._server_charset)
         if not row:
             mode = ''
         else:
@@ -1971,7 +1932,7 @@ class MySQLDialect(default.DefaultDialect):
                 mode_no = int(mode)
                 mode = (mode_no | 4 == mode_no) and 'ANSI_QUOTES' or ''
 
-        self.use_ansiquotes = 'ANSI_QUOTES' in mode
+        return 'ANSI_QUOTES' in mode
 
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):

@@ -68,8 +68,8 @@ class PyODBCConnector(Connector):
         else:
             return False
 
-    def _server_version_info(self, dbapi_con):
-        """Convert a pyodbc SQL_DBMS_VER string into a tuple."""
+    def _get_server_version_info(self, connection):
+        dbapi_con = connection.connection
         version = []
         r = re.compile('[.\-]')
         for n in r.split(dbapi_con.getinfo(self.dbapi.SQL_DBMS_VER)):

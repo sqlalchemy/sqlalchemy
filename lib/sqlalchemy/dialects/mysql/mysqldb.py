@@ -96,9 +96,8 @@ class MySQL_mysqldb(MySQLDialect):
     def do_ping(self, connection):
         connection.ping()
 
-    def _server_version_info(self, dbapi_con):
-        """Convert a MySQL-python server_info string into a tuple."""
-
+    def _get_server_version_info(self,connection):
+        dbapi_con = connection.connection
         version = []
         r = re.compile('[.\-]')
         for n in r.split(dbapi_con.get_server_info()):
@@ -114,7 +113,6 @@ class MySQL_mysqldb(MySQLDialect):
         except AttributeError:
             return None
 
-    @engine_base.connection_memoize(('mysql', 'charset'))
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
 
@@ -124,7 +122,7 @@ class MySQL_mysqldb(MySQLDialect):
 
         # Note: MySQL-python 1.2.1c7 seems to ignore changes made
         # on a connection via set_character_set()
-        if self.server_version_info(connection) < (4, 1, 0):
+        if self.server_version_info < (4, 1, 0):
             try:
                 return connection.connection.character_set_name()
             except AttributeError:

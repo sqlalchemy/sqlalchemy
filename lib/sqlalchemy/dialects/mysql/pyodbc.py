@@ -21,7 +21,6 @@ class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
         MySQLDialect.__init__(self, **kw)
         PyODBCConnector.__init__(self, **kw)
 
-    @engine_base.connection_memoize(('mysql', 'charset'))
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
 

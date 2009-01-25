@@ -574,7 +574,6 @@ class DateTest(TestBase, AssertsExecutionResults):
 
         db = testing.db
         if testing.against('oracle'):
-            import sqlalchemy.databases.oracle as oracle
             insert_data =  [
                     (7, 'jack',
                      datetime.datetime(2005, 11, 10, 0, 0),
@@ -666,14 +665,12 @@ class DateTest(TestBase, AssertsExecutionResults):
             "select user_datetime from query_users_with_date",
             typemap={'user_datetime':DateTime}).execute().fetchall()
 
-        print repr(x)
         self.assert_(isinstance(x[0][0], datetime.datetime))
 
         x = testing.db.text(
             "select * from query_users_with_date where user_datetime=:somedate",
             bindparams=[bindparam('somedate', type_=types.DateTime)]).execute(
             somedate=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
-        print repr(x)
 
     def testdate2(self):
         meta = MetaData(testing.db)

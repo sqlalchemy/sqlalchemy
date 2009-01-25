@@ -288,7 +288,7 @@ def _server_version(bind=None):
 
     if bind is None:
         bind = config.db
-    return bind.dialect.server_version_info(bind.contextual_connect())
+    return getattr(bind.dialect, 'server_version_info', ())
 
 def skip_if(predicate, reason=None):
     """Skip a test if predicate is true."""
@@ -454,8 +454,7 @@ def against(*queries):
             if not db_spec(name)(config.db):
                 continue
 
-            have = config.db.dialect.server_version_info(
-                config.db.contextual_connect())
+            have = _server_version()
 
             oper = hasattr(op, '__call__') and op or _ops[op]
             if oper(have, spec):

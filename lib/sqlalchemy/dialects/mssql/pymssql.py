@@ -7,11 +7,6 @@ class MSDialect_pymssql(MSDialect):
     max_identifier_length = 30
     driver = 'pymssql'
 
-    # TODO: shouldnt this be based on server version <10 like pyodbc does ?
-    colspecs = MSSQLDialect.colspecs.copy()
-    colspecs[sqltypes.Date] = MSDateTimeAsDate
-    colspecs[sqltypes.Time] = MSDateTimeAsTime
-    
     @classmethod
     def import_dbapi(cls):
         import pymssql as module

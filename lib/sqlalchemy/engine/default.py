@@ -68,7 +68,7 @@ class DefaultDialect(base.Dialect):
             raise exc.ArgumentError("Label length of %d is greater than this dialect's maximum identifier length of %d" % (label_length, self.max_identifier_length))
         self.label_length = label_length
         self.description_encoding = getattr(self, 'description_encoding', encoding)
-
+    
     def type_descriptor(self, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given
         the generic object which comes from the types module.

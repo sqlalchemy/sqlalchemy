@@ -67,6 +67,13 @@ class Dialect(object):
       a :class:`~Compiled` class used to compile DDL
       statements
 
+    server_version_info
+      a tuple containing a version number for the DB backend in use.
+      This value is only available for supporting dialects, and only for 
+      a dialect that's been associated with a connection pool via
+      create_engine() or otherwise had its ``initialize()`` method called
+      with a conneciton.
+
     execution_ctx_cls
       a :class:`ExecutionContext` class used to handle statement execution
 
@@ -114,6 +121,7 @@ class Dialect(object):
 
     supports_default_values
       Indicates if the construct ``INSERT INTO tablename DEFAULT VALUES`` is supported
+      
     """
 
     def create_connect_args(self, url):
@@ -141,10 +149,14 @@ class Dialect(object):
         raise NotImplementedError()
 
 
-    def server_version_info(self, connection):
-        """Return a tuple of the database's version number."""
-
-        raise NotImplementedError()
+    def initialize(self, connection):
+        """Called during strategized creation of the dialect with a connection.
+        
+        Allows dialects to configure options based on server version info or
+        other properties.
+        
+        """
+        pass
 
     def reflecttable(self, connection, table, include_columns=None):
         """Load table description from the database.
