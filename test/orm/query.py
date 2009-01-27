@@ -516,15 +516,55 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(sess.query(x).filter(x==5).statement, 
             "SELECT lala(users.id) AS foo FROM users WHERE lala(users.id) = :param_1", dialect=default.DefaultDialect())
 
-class CompileTest(QueryTest):
+class ExpressionTest(QueryTest):
         
-    def test_deferred(self):
+    def test_deferred_instances(self):
         session = create_session()
         s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), Address.user_id==User.id)).statement
 
         l = list(session.query(User).instances(s.execute(emailad = 'jack@bean.com')))
-        assert [User(id=7)] == l
+        eq_([User(id=7)], l)
 
+
+    def test_in(self):
+        session = create_session()
+        s = session.query(User.id).join(User.addresses).group_by(User.id).having(func.count(Address.id) > 2)
+        eq_(
+            session.query(User).filter(User.id.in_(s)).all(),
+            [User(id=8)]
+        )
+
+    def test_union(self):
+        s = create_session()
+        
+        q1 = s.query(User).filter(User.name=='ed')
+        q2 = s.query(User).filter(User.name=='fred')
+        eq_(
+            s.query(User).from_statement(union(q1, q2).order_by(User.name)).all(),
+            [User(name='ed'), User(name='fred')]
+        )
+    
+    def test_select(self):
+        s = create_session()
+        
+        q1 = s.query(User).filter(User.name=='ed')
+        eq_(
+            s.query(User).from_statement(select([q1])).all(),
+            [User(name='ed')]
+        )
+        
+    def test_join(self):
+        s = create_session()
+
+        # TODO: do we want aliased() to detect a query and convert to subquery() 
+        # automatically ?
+        q1 = s.query(Address).filter(Address.email_address=='jack@bean.com')
+        adalias = aliased(Address, q1.subquery())
+        eq_(
+            s.query(User, adalias).join((adalias, User.id==adalias.user_id)).all(),
+            [(User(id=7,name=u'jack'), Address(email_address=u'jack@bean.com',user_id=7,id=1))]
+        )
+        
 # more slice tests are available in test/orm/generative.py
 class SliceTest(QueryTest):
     def test_first(self):

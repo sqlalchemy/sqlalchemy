@@ -923,6 +923,12 @@ def _literal_as_text(element):
     else:
         return element
 
+def _clause_element_as_expr(element):
+    if hasattr(element, '__clause_element__'):
+        return element.__clause_element__()
+    else:
+        return element
+        
 def _literal_as_column(element):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
@@ -958,14 +964,6 @@ def _corresponding_column_or_error(fromclause, column, require_embedded=False):
                 "failed to locate a corresponding column from table '%s'"
                 % (column, getattr(column, 'table', None), fromclause.description))
     return c
-
-def _selectable(element):
-    if hasattr(element, '__selectable__'):
-        return element.__selectable__()
-    elif isinstance(element, Selectable):
-        return element
-    else:
-        raise exc.ArgumentError("Object %r is not a Selectable and does not implement `__selectable__()`" % element)
 
 def is_column(col):
     """True if ``col`` is an instance of ``ColumnElement``."""
@@ -1415,6 +1413,8 @@ class _CompareMixin(ColumnOperators):
         return self._in_impl(operators.in_op, operators.notin_op, other)
 
     def _in_impl(self, op, negate_op, seq_or_selectable):
+        seq_or_selectable = _clause_element_as_expr(seq_or_selectable)
+            
         if isinstance(seq_or_selectable, _ScalarSelect):
             return self.__compare( op, seq_or_selectable, negate=negate_op)
 
@@ -2475,8 +2475,8 @@ class Join(FromClause):
     __visit_name__ = 'join'
 
     def __init__(self, left, right, onclause=None, isouter=False):
-        self.left = _selectable(left)
-        self.right = _selectable(right).self_group()
+        self.left = _literal_as_text(left)
+        self.right = _literal_as_text(right).self_group()
 
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
@@ -3103,6 +3103,8 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
         # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
         for n, s in enumerate(selects):
+            s = _clause_element_as_expr(s)
+            
             if not numcols:
                 numcols = len(s.c)
             elif len(s.c) != numcols:
@@ -3368,9 +3370,7 @@ class Select(_SelectBaseMixin, FromClause):
         """return a new select() construct with the given FROM expression applied to its list of
         FROM objects."""
 
-        if _is_literal(fromclause):
-            fromclause = _TextClause(fromclause)
-
+        fromclause = _literal_as_text(fromclause)
         self._froms = self._froms.union([fromclause])
 
     @_generative

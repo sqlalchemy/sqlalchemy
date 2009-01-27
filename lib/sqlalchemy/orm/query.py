@@ -320,18 +320,16 @@ class Query(object):
         
         return self._compile_context(labels=self._with_labels).statement._annotate({'_halt_adapt': True})
 
-    @property
-    def _nested_statement(self):
-        return self.with_labels().enable_eagerloads(False).statement.correlate(None)
-
     def subquery(self):
         """return the full SELECT statement represented by this Query, embedded within an Alias.
         
         Eager JOIN generation within the query is disabled.
         
         """
-
         return self.enable_eagerloads(False).statement.alias()
+    
+    def __clause_element__(self):
+        return self.enable_eagerloads(False).statement
 
     @_generative()
     def enable_eagerloads(self, value):
@@ -554,7 +552,7 @@ class Query(object):
         those being selected.
 
         """
-        fromclause = self._nested_statement
+        fromclause = self.with_labels().enable_eagerloads(False).statement.correlate(None)
         q = self._from_selectable(fromclause)
         if entities:
             q._set_entities(entities)
@@ -748,7 +746,7 @@ class Query(object):
 
         """
         return self._from_selectable(
-                    expression.union(*([self._nested_statement]+ [x._nested_statement for x in q])))
+                    expression.union(*([self]+ list(q))))
 
     def union_all(self, *q):
         """Produce a UNION ALL of this Query against one or more queries.
@@ -758,7 +756,7 @@ class Query(object):
 
         """
         return self._from_selectable(
-                    expression.union_all(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                    expression.union_all(*([self]+ list(q)))
                 )
 
     def intersect(self, *q):
@@ -769,7 +767,7 @@ class Query(object):
 
         """
         return self._from_selectable(
-                    expression.intersect(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                    expression.intersect(*([self]+ list(q)))
                 )
 
     def intersect_all(self, *q):
@@ -780,7 +778,7 @@ class Query(object):
 
         """
         return self._from_selectable(
-                    expression.intersect_all(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                    expression.intersect_all(*([self]+ list(q)))
                 )
 
     def except_(self, *q):
@@ -791,7 +789,7 @@ class Query(object):
 
         """
         return self._from_selectable(
-                    expression.except_(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                    expression.except_(*([self]+ list(q)))
                 )
 
     def except_all(self, *q):
@@ -802,7 +800,7 @@ class Query(object):
 
         """
         return self._from_selectable(
-                    expression.except_all(*([self._nested_statement]+ [x._nested_statement for x in q]))
+                    expression.except_all(*([self]+ list(q)))
                 )
 
     @util.accepts_a_list_as_starargs(list_deprecation='pending')
