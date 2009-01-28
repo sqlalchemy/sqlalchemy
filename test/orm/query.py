@@ -516,7 +516,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(sess.query(x).filter(x==5).statement, 
             "SELECT lala(users.id) AS foo FROM users WHERE lala(users.id) = :param_1", dialect=default.DefaultDialect())
 
-class ExpressionTest(QueryTest):
+class ExpressionTest(QueryTest, AssertsCompiledSQL):
         
     def test_deferred_instances(self):
         session = create_session()
@@ -537,20 +537,22 @@ class ExpressionTest(QueryTest):
     def test_union(self):
         s = create_session()
         
-        q1 = s.query(User).filter(User.name=='ed')
-        q2 = s.query(User).filter(User.name=='fred')
+        q1 = s.query(User).filter(User.name=='ed').with_labels()
+        q2 = s.query(User).filter(User.name=='fred').with_labels()
         eq_(
-            s.query(User).from_statement(union(q1, q2).order_by(User.name)).all(),
+            s.query(User).from_statement(union(q1, q2).order_by('users_name')).all(),
             [User(name='ed'), User(name='fred')]
         )
     
     def test_select(self):
         s = create_session()
         
+        # this is actually not legal on most DBs since the subquery has no alias
         q1 = s.query(User).filter(User.name=='ed')
-        eq_(
-            s.query(User).from_statement(select([q1])).all(),
-            [User(name='ed')]
+        self.assert_compile(
+            select([q1]),
+            "SELECT id, name FROM (SELECT users.id AS id, users.name AS name FROM users WHERE users.name = :name_1)",
+            dialect=default.DefaultDialect()
         )
         
     def test_join(self):
