@@ -462,26 +462,8 @@ def case(whens, value=None, else_=None):
           })
 
     """
-    try:
-        whens = util.dictlike_iteritems(whens)
-    except TypeError:
-        pass
-
-    if value:
-        crit_filter = _literal_as_binds
-    else:
-        crit_filter = _no_literals
-
-    whenlist = [ClauseList('WHEN', crit_filter(c), 'THEN', _literal_as_binds(r), operator=None)
-                for (c,r) in whens]
-    if else_ is not None:
-        whenlist.append(ClauseList('ELSE', _literal_as_binds(else_), operator=None))
-    if whenlist:
-        type = list(whenlist[-1])[-1].type
-    else:
-        type = None
-    cc = _CalculatedClause(None, 'CASE', value, type_=type, operator=None, group_contents=False, *whenlist + ['END'])
-    return cc
+    
+    return _Case(whens, value=value, else_=else_)
 
 def cast(clause, totype, **kwargs):
     """Return a ``CAST`` function.
@@ -509,9 +491,10 @@ def collate(expression, collation):
     """Return the clause ``expression COLLATE collation``."""
 
     expr = _literal_as_binds(expression)
-    return _CalculatedClause(
-        expr, expr, _literal_as_text(collation),
-        operator=operators.collate, group=False)
+    return _BinaryExpression(
+        expr, 
+        _literal_as_text(collation), 
+        operators.collate, type_=expr.type)
 
 def exists(*args, **kwargs):
     """Return an ``EXISTS`` clause as applied to a :class:`~sqlalchemy.sql.expression.Select` object.
@@ -1516,9 +1499,7 @@ class _CompareMixin(ColumnOperators):
     def collate(self, collation):
         """Produce a COLLATE clause, i.e. ``<column> COLLATE utf8_bin``"""
 
-        return _CalculatedClause(
-           None, self, _literal_as_text(collation),
-            operator=operators.collate, group=False)
+        return collate(self, collation)
 
     def op(self, operator):
         """produce a generic operator function.
@@ -1540,6 +1521,7 @@ class _CompareMixin(ColumnOperators):
         return lambda other: self.__operate(operator, other)
 
     def _bind_param(self, obj):
+        # ONE COmpareMixin
         return _BindParamClause(None, obj, type_=self.type, unique=True)
 
     def _check_literal(self, other):
@@ -2198,73 +2180,55 @@ class BooleanClauseList(ClauseList, ColumnElement):
         return (self, )
 
 
-class _CalculatedClause(ColumnElement):
-    """Describe a calculated SQL expression that has a type, like ``CASE``.
+class _Case(ColumnElement):
+    __visit_name__ = 'case'
 
-    Extends ``ColumnElement`` to provide column-level comparison
-    operators.
+    def __init__(self, whens, value=None, else_=None):
+        try:
+            whens = util.dictlike_iteritems(whens)
+        except TypeError:
+            pass
 
-    """
-
-    __visit_name__ = 'calculatedclause'
-
-    def __init__(self, name, *clauses, **kwargs):
-        self.name = name
-        self.type = sqltypes.to_instance(kwargs.get('type_', None))
-        self._bind = kwargs.get('bind', None)
-        self.group = kwargs.pop('group', True)
-        clauses = ClauseList(
-            operator=kwargs.get('operator', None),
-            group_contents=kwargs.get('group_contents', True),
-            *clauses)
-        if self.group:
-            self.clause_expr = clauses.self_group()
+        if value:
+            whenlist = [(_literal_as_binds(c).self_group(), _literal_as_binds(r)) for (c, r) in whens]
         else:
-            self.clause_expr = clauses
-
-    @property
-    def key(self):
-        return self.name or '_calc_'
+            whenlist = [(_no_literals(c).self_group(), _literal_as_binds(r)) for (c, r) in whens]
+            
+        if whenlist:
+            type_ = list(whenlist[-1])[-1].type
+        else:
+            type_ = None
+            
+        self.value = value
+        self.type = type_
+        self.whens = whenlist
+        if else_ is not None:
+            self.else_ = _literal_as_binds(else_)
+        else:
+            self.else_ = None
 
     def _copy_internals(self, clone=_clone):
-        self.clause_expr = clone(self.clause_expr)
-
-    @property
-    def clauses(self):
-        if isinstance(self.clause_expr, _Grouping):
-            return self.clause_expr.element
-        else:
-            return self.clause_expr
+        if self.value:
+            self.value = clone(self.value)
+        self.whens = [(clone(x), clone(y)) for x, y in self.whens]
+        if self.else_:
+            self.else_ = clone(self.else_)
 
     def get_children(self, **kwargs):
-        return self.clause_expr,
+        if self.value:
+            yield self.value
+        for x, y in self.whens:
+            yield x
+            yield y
+        if self.else_:
+            yield self.else_ 
 
     @property
     def _from_objects(self):
-        return self.clauses._from_objects
+        return itertools.chain(*[x._from_objects for x in self.get_children()])
 
-    def _bind_param(self, obj):
-        return _BindParamClause(self.name, obj, type_=self.type, unique=True)
-
-    def select(self):
-        return select([self])
-
-    def scalar(self):
-        return select([self]).execute().scalar()
-
-    def execute(self):
-        return select([self]).execute()
-
-    def _compare_type(self, obj):
-        return self.type
-
-class Function(_CalculatedClause, FromClause):
-    """Describe a SQL function.
-
-    Extends ``_CalculatedClause``, turn the *clauselist* into function
-    arguments, also adds a `packagenames` argument.
-
-    """
+class Function(ColumnElement, FromClause):
+    """Describe a SQL function."""
 
     __visit_name__ = 'function'
 
@@ -2284,12 +2248,36 @@ class Function(_CalculatedClause, FromClause):
     def columns(self):
         return [self]
 
-    def _copy_internals(self, clone=_clone):
-        _CalculatedClause._copy_internals(self, clone=clone)
-        self._reset_exported()
+    @util.memoized_property
+    def clauses(self):
+        return self.clause_expr.element
+        
+    @property
+    def _from_objects(self):
+        return self.clauses._from_objects
 
     def get_children(self, **kwargs):
-        return _CalculatedClause.get_children(self, **kwargs)
+        return self.clause_expr, 
+
+    def _copy_internals(self, clone=_clone):
+        self.clause_expr = clone(self.clause_expr)
+        self._reset_exported()
+        util.reset_memoized(self, 'clauses')
+        
+    def _bind_param(self, obj):
+        return _BindParamClause(self.name, obj, type_=self.type, unique=True)
+
+    def select(self):
+        return select([self])
+
+    def scalar(self):
+        return select([self]).execute().scalar()
+
+    def execute(self):
+        return select([self]).execute()
+
+    def _compare_type(self, obj):
+        return self.type
 
 
 class _Cast(ColumnElement):
@@ -2848,6 +2836,7 @@ class ColumnClause(_Immutable, ColumnElement):
             return []
 
     def _bind_param(self, obj):
+        # THREE ColumnCluase
         return _BindParamClause(self.name, obj, type_=self.type, unique=True)
 
     def _make_proxy(self, selectable, name=None, attach=True):

@@ -13,18 +13,13 @@ class _GenericMeta(VisitableType):
 class GenericFunction(Function):
     __metaclass__ = _GenericMeta
 
-    def __init__(self, type_=None, group=True, args=(), **kwargs):
+    def __init__(self, type_=None, args=(), **kwargs):
         self.packagenames = []
         self.name = self.__class__.__name__
         self._bind = kwargs.get('bind', None)
-        if group:
-            self.clause_expr = ClauseList(
+        self.clause_expr = ClauseList(
                 operator=operators.comma_op,
                 group_contents=True, *args).self_group()
-        else:
-            self.clause_expr = ClauseList(
-                operator=operators.comma_op,
-                group_contents=True, *args)
         self.type = sqltypes.to_instance(
             type_ or getattr(self, '__return_type__', None))
 

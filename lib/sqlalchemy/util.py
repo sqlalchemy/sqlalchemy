@@ -1355,10 +1355,7 @@ class memoized_instancemethod(object):
         return oneshot
 
 def reset_memoized(instance, name):
-    try:
-        del instance.__dict__[name]
-    except KeyError:
-        pass
+    instance.__dict__.pop(name, None)
 
 class WeakIdentityMapping(weakref.WeakKeyDictionary):
     """A WeakKeyDictionary with an object identity index.

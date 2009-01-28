@@ -114,7 +114,7 @@ _PRECEDENCE = {
     and_: 3,
     or_: 2,
     comma_op: -1,
-    collate: -2,
+    collate: 7,
     as_: -1,
     exists: 0,
     _smallest: -1000,

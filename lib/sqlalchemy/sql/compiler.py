@@ -331,8 +331,16 @@ class DefaultCompiler(engine.Compiled):
         return sep.join(s for s in (self.process(c) for c in clauselist.clauses)
                         if s is not None)
 
-    def visit_calculatedclause(self, clause, **kwargs):
-        return self.process(clause.clause_expr)
+    def visit_case(self, clause, **kwargs):
+        x = "CASE "
+        if clause.value:
+            x += self.process(clause.value) + " "
+        for cond, result in clause.whens:
+            x += "WHEN " + self.process(cond) + " THEN " + self.process(result) + " "
+        if clause.else_:
+            x += "ELSE " + self.process(clause.else_) + " "
+        x += "END"
+        return x
 
     def visit_cast(self, cast, **kwargs):
         return "CAST(%s AS %s)" % (self.process(cast.clause), self.process(cast.typeclause))
