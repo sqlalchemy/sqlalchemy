@@ -1131,37 +1131,32 @@ class ClauseElement(Visitable):
 
         The return value is a :class:`~sqlalchemy.engine.Compiled` object.
         Calling `str()` or `unicode()` on the returned value will yield
-        a string representation of the result.   The ``Compiled``
+        a string representation of the result.   The :class:`~sqlalchemy.engine.Compiled`
         object also can return a dictionary of bind parameter names and
         values using the `params` accessor.
 
-        bind
-          An ``Engine`` or ``Connection`` from which a
+        :param bind: An ``Engine`` or ``Connection`` from which a
           ``Compiled`` will be acquired.  This argument
           takes precedence over this ``ClauseElement``'s
           bound engine, if any.
 
-        column_keys
-          Used for INSERT and UPDATE statements, a list of
+        :param column_keys: Used for INSERT and UPDATE statements, a list of
           column names which should be present in the VALUES clause
           of the compiled statement.  If ``None``, all columns
           from the target table object are rendered.
 
-        compiler
-          A ``Compiled`` instance which will be used to compile
+        :param compiler: A ``Compiled`` instance which will be used to compile
           this expression.  This argument takes precedence
           over the `bind` and `dialect` arguments as well as
           this ``ClauseElement``'s bound engine, if
           any.
 
-        dialect
-          A ``Dialect`` instance frmo which a ``Compiled``
+        :param dialect: A ``Dialect`` instance frmo which a ``Compiled``
           will be acquired.  This argument takes precedence
           over the `bind` argument as well as this
           ``ClauseElement``'s bound engine, if any.
 
-        inline
-          Used for INSERT statements, for a dialect which does
+        :param inline: Used for INSERT statements, for a dialect which does
           not support inline retrieval of newly generated
           primary key columns, will force the expression used
           to create the new primary key value to be rendered
@@ -1415,7 +1410,8 @@ class _CompareMixin(ColumnOperators):
         for o in seq_or_selectable:
             if not _is_literal(o):
                 if not isinstance( o, _CompareMixin):
-                    raise exc.InvalidRequestError( "in() function accepts either a list of non-selectable values, or a selectable: "+repr(o) )
+                    raise exc.InvalidRequestError( 
+                        "in() function accepts either a list of non-selectable values, or a selectable: %r" % o)
             else:
                 o = self._bind_param(o)
             args.append(o)
@@ -1521,7 +1517,6 @@ class _CompareMixin(ColumnOperators):
         return lambda other: self.__operate(operator, other)
 
     def _bind_param(self, obj):
-        # ONE COmpareMixin
         return _BindParamClause(None, obj, type_=self.type, unique=True)
 
     def _check_literal(self, other):
@@ -1794,6 +1789,10 @@ class FromClause(Selectable):
         return ClauseAdapter(alias).traverse(self)
 
     def correspond_on_equivalents(self, column, equivalents):
+        """Return corresponding_column for the given column, or if None
+        search for a match in the given dictionary.
+        
+        """
         col = self.corresponding_column(column, require_embedded=True)
         if col is None and col in equivalents:
             for equiv in equivalents[col]:
@@ -1807,11 +1806,9 @@ class FromClause(Selectable):
         object from this ``Selectable`` which corresponds to that
         original ``Column`` via a common anscestor column.
 
-        column
-          the target ``ColumnElement`` to be matched
+        :param column: the target ``ColumnElement`` to be matched
 
-        require_embedded
-          only return corresponding columns for the given
+        :param require_embedded: only return corresponding columns for the given
           ``ColumnElement``, if the given ``ColumnElement`` is
           actually present within a sub-element of this
           ``FromClause``.  Normally the column will match if it merely
@@ -2805,9 +2802,12 @@ class ColumnClause(_Immutable, ColumnElement):
 
         elif self.table and self.table.named_with_column:
             if getattr(self.table, 'schema', None):
-                label = self.table.schema + "_" + _escape_for_generated(self.table.name) + "_" + _escape_for_generated(self.name)
+                label = self.table.schema + "_" + \
+                            _escape_for_generated(self.table.name) + "_" + \
+                            _escape_for_generated(self.name)
             else:
-                label = _escape_for_generated(self.table.name) + "_" + _escape_for_generated(self.name)
+                label = _escape_for_generated(self.table.name) + "_" + \
+                            _escape_for_generated(self.name)
 
             if label in self.table.c:
                 # TODO: coverage does not seem to be present for this
@@ -2836,7 +2836,6 @@ class ColumnClause(_Immutable, ColumnElement):
             return []
 
     def _bind_param(self, obj):
-        # THREE ColumnCluase
         return _BindParamClause(self.name, obj, type_=self.type, unique=True)
 
     def _make_proxy(self, selectable, name=None, attach=True):
