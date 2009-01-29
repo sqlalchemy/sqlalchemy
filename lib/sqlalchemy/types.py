@@ -24,7 +24,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
 import inspect
 import datetime as dt
 from decimal import Decimal as _python_Decimal
-
+import weakref
 from sqlalchemy import exc
 from sqlalchemy.util import pickle
 import sqlalchemy.util as util
@@ -125,14 +125,14 @@ class TypeEngine(AbstractType):
         try:
             return self._impl_dict[dialect]
         except AttributeError:
-            self._impl_dict = {}
+            self._impl_dict = weakref.WeakKeyDictionary()   # will be optimized in 0.6
             return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
         except KeyError:
             return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        d['_impl_dict'] = {}
+        d['_impl_dict'] = weakref.WeakKeyDictionary()   # will be optimized in 0.6
         return d
 
     def get_col_spec(self):
@@ -223,7 +223,7 @@ class TypeDecorator(AbstractType):
         try:
             return self._impl_dict[dialect]
         except AttributeError:
-            self._impl_dict = {}
+            self._impl_dict = weakref.WeakKeyDictionary()   # will be optimized in 0.6
         except KeyError:
             pass
 
