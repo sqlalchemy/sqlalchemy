@@ -132,7 +132,7 @@ class TypeEngine(AbstractType):
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        d['_impl_dict'] = weakref.WeakKeyDictionary()   # will be optimized in 0.6
+        d.pop('_impl_dict', None)
         return d
 
     def get_col_spec(self):
