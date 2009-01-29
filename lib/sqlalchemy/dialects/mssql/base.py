@@ -305,7 +305,7 @@ class MSTinyInteger(sqltypes.Integer):
 # filter bind parameters into datetime objects (required by pyodbc,
 # not sure about other dialects).
 
-class MSDate(sqltypes.DATE):
+class MSDate(sqltypes.Date):
     def bind_processor(self, dialect):
         def process(value):
             if type(value) == datetime.date:
@@ -325,7 +325,7 @@ class MSDate(sqltypes.DATE):
                 return value
         return process
     
-class MSTime(sqltypes.TIME):
+class MSTime(sqltypes.Time):
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
         super(MSTime, self).__init__()
