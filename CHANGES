@@ -12,6 +12,11 @@ CHANGES
       union(query1, query2), select([foo]).select_from(query), 
       etc.
 
+    - improvements to the "determine direction" logic of 
+      relation() such that the direction of tricky situations 
+      like mapper(A.join(B)) -> relation-> mapper(B) can be
+      determined.
+      
 - sql
     - the __selectable__() interface has been replaced entirely
       by __clause_element__().

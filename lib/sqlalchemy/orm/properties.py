@@ -889,29 +889,45 @@ class RelationProperty(StrategizedProperty):
                 self.direction = MANYTOONE
 
         else:
-            for mappedtable, parenttable in [(self.mapper.mapped_table, self.parent.mapped_table), (self.mapper.local_table, self.parent.local_table)]:
-                onetomany = [c for c in self._foreign_keys if mappedtable.c.contains_column(c)]
-                manytoone = [c for c in self._foreign_keys if parenttable.c.contains_column(c)]
+            foreign_keys = [f for c, f in self.synchronize_pairs]
 
-                if not onetomany and not manytoone:
-                    raise sa_exc.ArgumentError(
-                        "Can't determine relation direction for relationship '%s' "
-                        "- foreign key columns are present in neither the "
-                        "parent nor the child's mapped tables" %(str(self)))
-                elif onetomany and manytoone:
-                    continue
-                elif onetomany:
+            parentcols = util.column_set(self.parent.mapped_table.c)
+            targetcols = util.column_set(self.mapper.mapped_table.c)
+
+            # fk collection which suggests ONETOMANY.
+            onetomany_fk = targetcols.intersection(foreign_keys)
+
+            # fk collection which suggests MANYTOONE.
+            manytoone_fk = parentcols.intersection(foreign_keys)
+            
+            if not onetomany_fk and not manytoone_fk:
+                raise sa_exc.ArgumentError(
+                    "Can't determine relation direction for relationship '%s' "
+                    "- foreign key columns are present in neither the "
+                    "parent nor the child's mapped tables" % self )
+
+            elif onetomany_fk and manytoone_fk: 
+                # fks on both sides.  do the same
+                # test only based on the local side.
+                referents = [c for c, f in self.synchronize_pairs]
+                onetomany_local = parentcols.intersection(referents)
+                manytoone_local = targetcols.intersection(referents)
+
+                if onetomany_local and not manytoone_local:
                     self.direction = ONETOMANY
-                    break
-                elif manytoone:
+                elif manytoone_local and not onetomany_local:
                     self.direction = MANYTOONE
-                    break
-            else:
+            elif onetomany_fk:
+                self.direction = ONETOMANY
+            elif manytoone_fk:
+                self.direction = MANYTOONE
+                
+            if not self.direction:
                 raise sa_exc.ArgumentError(
                     "Can't determine relation direction for relationship '%s' "
                     "- foreign key columns are present in both the parent and "
                     "the child's mapped tables.  Specify 'foreign_keys' "
-                    "argument." % (str(self)))
+                    "argument." % self)
         
         if self.cascade.delete_orphan and not self.single_parent and \
             (self.direction is MANYTOMANY or self.direction is MANYTOONE):
@@ -1001,7 +1017,7 @@ class RelationProperty(StrategizedProperty):
         
 
     def _refers_to_parent_table(self):
-        return self.parent.mapped_table is self.target or self.parent.mapped_table is self.target
+        return self.parent.mapped_table is self.target
 
     def _is_self_referential(self):
         return self.mapper.common_parent(self.parent)

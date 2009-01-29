@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from testlib import sa, testing
-from testlib.sa import Table, Column, Integer, String, ForeignKey, MetaData
+from testlib.sa import Table, Column, Integer, String, ForeignKey, MetaData, and_
 from testlib.sa.orm import mapper, relation, backref, create_session, compile_mappers, clear_mappers
 from testlib.testing import eq_, startswith_
 from orm import _base, _fixtures
@@ -649,6 +649,78 @@ class RelationTest6(_base.MappedTest):
             sess.query(TagInstance).order_by(TagInstance.data).all(), 
             [TagInstance(data='iplc_case'), TagInstance(data='not_iplc_case')]
         )
+
+class AmbiguousJoinInterpretedAsSelfRef(_base.MappedTest):
+    """test ambiguous joins due to FKs on both sides treated as self-referential.
+    
+    this mapping is very similar to that of test/orm/inheritance/query.py
+    SelfReferentialTestJoinedToBase , except that inheritance is not used
+    here.
+    
+    """
+    
+    def define_tables(self, metadata):
+        subscriber_table = Table('subscriber', metadata,
+           Column('id', Integer, primary_key=True),
+          )
+
+        address_table = Table('address',
+                 metadata,
+                 Column('subscriber_id', Integer, ForeignKey('subscriber.id'), primary_key=True),
+                 Column('type', String(1), primary_key=True),
+                 )
+
+    @testing.resolve_artifact_names
+    def setup_mappers(self):
+        subscriber_and_address = subscriber.join(address, 
+        	and_(address.c.subscriber_id==subscriber.c.id, address.c.type.in_(['A', 'B', 'C'])))
+
+        class Address(_base.ComparableEntity):
+            pass
+
+        class Subscriber(_base.ComparableEntity):
+            pass
+
+        mapper(Address, address)
+
+        mapper(Subscriber, subscriber_and_address, properties={
+           'id':[subscriber.c.id, address.c.subscriber_id],
+           'addresses' : relation(Address, 
+                backref=backref("customer"))
+           })
+        
+    @testing.resolve_artifact_names
+    def test_mapping(self):
+        from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
+        sess = create_session()
+        assert Subscriber.addresses.property.direction is ONETOMANY
+        assert Address.customer.property.direction is MANYTOONE
+        
+        s1 = Subscriber(type='A',
+                addresses = [
+                    Address(type='D'),
+                    Address(type='E'),
+                ]
+        )
+        a1 = Address(type='B', customer=Subscriber(type='C'))
+        
+        assert s1.addresses[0].customer is s1
+        assert a1.customer.addresses[0] is a1
+        
+        sess.add_all([s1, a1])
+        
+        sess.flush()
+        sess.expunge_all()
+        
+        eq_(
+            sess.query(Subscriber).order_by(Subscriber.type).all(),
+            [
+                Subscriber(id=1, type=u'A'), 
+                Subscriber(id=2, type=u'B'), 
+                Subscriber(id=2, type=u'C')
+            ]
+        )
+
 
 class ManualBackrefTest(_fixtures.FixtureTest):
     """Test explicit relations that are backrefs to each other."""
