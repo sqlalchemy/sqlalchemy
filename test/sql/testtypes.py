@@ -12,27 +12,6 @@ from testlib import *
 
 
 class AdaptTest(TestBase):
-    def testadapt(self):
-        e1 = url.URL('postgres').get_dialect()()
-        e2 = url.URL('mysql').get_dialect()()
-        e3 = url.URL('sqlite').get_dialect()()
-        e4 = url.URL('firebird').get_dialect()()
-
-        type = String(40)
-
-        t1 = type.dialect_impl(e1)
-        t2 = type.dialect_impl(e2)
-        t3 = type.dialect_impl(e3)
-        t4 = type.dialect_impl(e4)
-
-        impls = [t1, t2, t3, t4]
-        for i,ta in enumerate(impls):
-            for j,tb in enumerate(impls):
-                if i == j:
-                    assert ta == tb  # call me paranoid...  :)
-                else:
-                    assert ta != tb
-
     def testmsnvarchar(self):
         dialect = mssql.dialect()
         # run the test twice to ensure the caching step works too
@@ -86,12 +65,12 @@ class AdaptTest(TestBase):
             (postgres_dialect, Unicode(), String),
             (postgres_dialect, UnicodeText(), Text),
             (postgres_dialect, NCHAR(), String),
-            (firebird_dialect, String(), firebird.FBString),
-            (firebird_dialect, VARCHAR(), firebird.FBString),
-            (firebird_dialect, String(50), firebird.FBString),
-            (firebird_dialect, Unicode(), firebird.FBString),
-            (firebird_dialect, UnicodeText(), firebird.FBText),
-            (firebird_dialect, NCHAR(), firebird.FBString),
+#            (firebird_dialect, String(), firebird.FBString),
+#            (firebird_dialect, VARCHAR(), firebird.FBString),
+#            (firebird_dialect, String(50), firebird.FBString),
+#            (firebird_dialect, Unicode(), firebird.FBString),
+#            (firebird_dialect, UnicodeText(), firebird.FBText),
+#            (firebird_dialect, NCHAR(), firebird.FBString),
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 

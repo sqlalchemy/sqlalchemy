@@ -7,6 +7,8 @@ import operator
 from testlib import testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, PickleType
 from orm import _base
+import sqlalchemy as sa
+from sqlalchemy.sql import column
 
 
 class A(_base.ComparableEntity):
@@ -386,6 +388,15 @@ class MemUsageTest(EnsureZeroed):
             go()
         finally:
             metadata.drop_all()
+
+    def test_type_compile(self):
+        from sqlalchemy.dialects.sqlite.base import dialect as SQLiteDialect
+        cast = sa.cast(column('x'), sa.Integer)
+        @profile_memory
+        def go():
+            dialect = SQLiteDialect()
+            cast.compile(dialect=dialect)
+        go()
         
 if __name__ == '__main__':
     testenv.main()

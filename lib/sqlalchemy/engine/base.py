@@ -135,15 +135,17 @@ class Dialect(object):
         raise NotImplementedError()
 
 
-    def type_descriptor(self, typeobj):
-        """Transform a generic type to a database-specific type.
+    @classmethod
+    def type_descriptor(cls, typeobj):
+        """Transform a generic type to a dialect-specific type.
 
-        Transforms the given :class:`~sqlalchemy.types.TypeEngine` instance
-        from generic to database-specific.
-
-        Subclasses will usually use the
+        Dialect classes will usually use the
         :func:`~sqlalchemy.types.adapt_type` method in the types module to
         make this job easy.
+        
+        The returned result is cached *per dialect class* so can
+        contain no dialect-instance state.
+        
         """
 
         raise NotImplementedError()

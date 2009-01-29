@@ -12,7 +12,8 @@
     - server_version_info becomes a static attribute.
     - create_engine() now establishes an initial connection immediately upon
       creation, which is passed to the dialect to determine connection properties.
-      
+    - cached TypeEngine classes are cached per-dialect class instead of per-dialect.
+    
 - mysql
     - all the _detect_XXX() functions now run once underneath dialect.initialize()
     

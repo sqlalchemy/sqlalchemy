@@ -108,12 +108,12 @@ class TypeEngine(AbstractType):
 
     def dialect_impl(self, dialect, **kwargs):
         try:
-            return self._impl_dict[dialect]
+            return self._impl_dict[dialect.__class__]
         except AttributeError:
             self._impl_dict = {}
-            return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
+            return self._impl_dict.setdefault(dialect.__class__, dialect.__class__.type_descriptor(self))
         except KeyError:
-            return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
+            return self._impl_dict.setdefault(dialect.__class__, dialect.__class__.type_descriptor(self))
 
     def __getstate__(self):
         d = self.__dict__.copy()
@@ -232,7 +232,7 @@ class TypeDecorator(AbstractType):
 
     def dialect_impl(self, dialect):
         try:
-            return self._impl_dict[dialect]
+            return self._impl_dict[dialect.__class__]
         except AttributeError:
             self._impl_dict = {}
         except KeyError:
@@ -241,7 +241,7 @@ class TypeDecorator(AbstractType):
         # adapt the TypeDecorator first, in 
         # the case that the dialect maps the TD
         # to one of its native types (i.e. PGInterval)
-        adapted = dialect.type_descriptor(self)
+        adapted = dialect.__class__.type_descriptor(self)
         if adapted is not self:
             self._impl_dict[dialect] = adapted
             return adapted
@@ -275,7 +275,7 @@ class TypeDecorator(AbstractType):
         if isinstance(self.impl, TypeDecorator):
             return self.impl.dialect_impl(dialect)
         else:
-            return dialect.type_descriptor(self.impl)
+            return dialect.__class__.type_descriptor(self.impl)
 
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying implementation."""

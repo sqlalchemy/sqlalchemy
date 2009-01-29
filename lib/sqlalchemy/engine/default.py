@@ -69,7 +69,8 @@ class DefaultDialect(base.Dialect):
         self.label_length = label_length
         self.description_encoding = getattr(self, 'description_encoding', encoding)
     
-    def type_descriptor(self, typeobj):
+    @classmethod
+    def type_descriptor(cls, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given
         the generic object which comes from the types module.
 
@@ -78,7 +79,7 @@ class DefaultDialect(base.Dialect):
         and passes on to ``types.adapt_type()``.
         
         """
-        return sqltypes.adapt_type(typeobj, self.colspecs)
+        return sqltypes.adapt_type(typeobj, cls.colspecs)
 
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
