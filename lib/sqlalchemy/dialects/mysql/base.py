@@ -1785,7 +1785,7 @@ class MySQLDialect(default.DefaultDialect):
     def table_names(self, connection, schema):
         """Return a Unicode SHOW TABLES from a given schema."""
 
-        charset = self._server_charset
+        charset = self._connection_charset
         rp = connection.execute("SHOW TABLES FROM %s" %
             self.identifier_preparer.quote_identifier(schema))
         return [row[0] for row in self._compat_fetchall(rp, charset=charset)]
@@ -1823,7 +1823,7 @@ class MySQLDialect(default.DefaultDialect):
     
     def initialize(self, connection):
         self.server_version_info = self._get_server_version_info(connection)
-        self._server_charset = self._detect_charset(connection)
+        self._connection_charset = self._detect_charset(connection)
         self._server_casing = self._detect_casing(connection)
         self._server_collations = self._detect_collations(connection)
         self._server_ansiquotes = self._detect_ansiquotes(connection)
@@ -1836,7 +1836,7 @@ class MySQLDialect(default.DefaultDialect):
     def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""
 
-        charset = self._server_charset
+        charset = self._connection_charset
 
         try:
             reflector = self.reflector
@@ -1883,7 +1883,7 @@ class MySQLDialect(default.DefaultDialect):
         """
         # http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
 
-        charset = self._server_charset
+        charset = self._connection_charset
         row = self._compat_fetchone(connection.execute(
             "SHOW VARIABLES LIKE 'lower_case_table_names'"),
                                charset=charset)
@@ -1911,7 +1911,7 @@ class MySQLDialect(default.DefaultDialect):
         if self.server_version_info < (4, 1, 0):
             pass
         else:
-            charset = self._server_charset
+            charset = self._connection_charset
             rs = connection.execute('SHOW COLLATION')
             for row in self._compat_fetchall(rs, charset):
                 collations[row[0]] = row[1]
@@ -1922,7 +1922,7 @@ class MySQLDialect(default.DefaultDialect):
 
         row = self._compat_fetchone(
             connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
-                               charset=self._server_charset)
+                               charset=self._connection_charset)
         if not row:
             mode = ''
         else:
