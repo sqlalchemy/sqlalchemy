@@ -4,6 +4,8 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey
 from sqlalchemy.orm import mapper, relation, clear_mappers, create_session
 from sqlalchemy.orm.mapper import Mapper, _mapper_registry
 from sqlalchemy.orm.session import _sessions 
+import sqlalchemy as sa
+from sqlalchemy.sql import column
 from testlib import *
 from testlib.fixtures import Base
 
@@ -278,6 +280,14 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
         assert_no_mappers()
 
-
+    def test_type_compile(self):
+        from sqlalchemy.databases.sqlite import SQLiteDialect
+        cast = sa.cast(column('x'), sa.Integer)
+        @profile_memory
+        def go():
+            dialect = SQLiteDialect()
+            cast.compile(dialect=dialect)
+        go()
+        
 if __name__ == '__main__':
     testenv.main()

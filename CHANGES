@@ -37,6 +37,14 @@ CHANGES
     - NullPool supports reconnect on failure behavior.
       [ticket:1094]
 
+    - The per-dialect cache used by TypeEngine to cache
+      dialect-specific types is now a WeakKeyDictionary.
+      This to prevent dialect objects from 
+      being referenced forever for an application that 
+      creates an arbitrarily large number of engines
+      or dialects.   There is a small performance penalty
+      which will be resolved in 0.6.  [ticket:1299]
+      
 - postgres
     - Added Index reflection support to Postgres, using a
       great patch we long neglected, submitted by 
