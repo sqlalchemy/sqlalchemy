@@ -662,6 +662,7 @@ class AmbiguousJoinInterpretedAsSelfRef(_base.MappedTest):
     def define_tables(self, metadata):
         subscriber_table = Table('subscriber', metadata,
            Column('id', Integer, primary_key=True),
+           Column('dummy', String(10)) # to appease older sqlite version
           )
 
         address_table = Table('address',
