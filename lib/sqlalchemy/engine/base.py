@@ -118,7 +118,12 @@ class Dialect(object):
       types present in cursor.description; it only takes effect for
       result sets against textual statements where no explicit
       typemap was present.
-
+    
+    colspecs
+      A dictionary of TypeEngine classes from sqlalchemy.types mapped to subclasses
+      that are specific to the dialect class.   This dictionary is class-level only
+      and is not accessed from the dialect instance itself.
+      
     supports_default_values
       Indicates if the construct ``INSERT INTO tablename DEFAULT VALUES`` is supported
       
