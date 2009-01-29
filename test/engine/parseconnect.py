@@ -123,80 +123,43 @@ pool_timeout=10
 
     def test_recycle(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
-        e = create_engine('postgres://', pool_recycle=472, module=dbapi)
+        e = create_engine('postgres://', pool_recycle=472, module=dbapi, _initialize=False)
         assert e.pool._recycle == 472
 
     def test_badargs(self):
-        # good arg, use MockDBAPI to prevent oracle import errors
-        e = create_engine('oracle://', use_ansi=True, module=MockDBAPI())
-
-        try:
-            e = create_engine("foobar://", module=MockDBAPI())
-            assert False
-        except ImportError:
-            assert True
+        self.assertRaises(ImportError, create_engine, "foobar://", module=MockDBAPI())
 
         # bad arg
-        try:
-            e = create_engine('postgres://', use_ansi=True, module=MockDBAPI())
-            assert False
-        except TypeError:
-            assert True
+        self.assertRaises(TypeError, create_engine, 'postgres://', use_ansi=True, module=MockDBAPI())
 
         # bad arg
-        try:
-            e = create_engine('oracle://', lala=5, use_ansi=True, module=MockDBAPI())
-            assert False
-        except TypeError:
-            assert True
+        self.assertRaises(TypeError, create_engine, 'oracle://', lala=5, use_ansi=True, module=MockDBAPI())
 
-        try:
-            e = create_engine('postgres://', lala=5, module=MockDBAPI())
-            assert False
-        except TypeError:
-            assert True
+        self.assertRaises(TypeError, create_engine, 'postgres://', lala=5, module=MockDBAPI())
 
-        try:
-            e = create_engine('sqlite://', lala=5)
-            assert False
-        except TypeError:
-            assert True
+        self.assertRaises(TypeError, create_engine,'sqlite://', lala=5)
 
-        try:
-            e = create_engine('mysql://', use_unicode=True, module=MockDBAPI())
-            assert False
-        except TypeError:
-            assert True
+        self.assertRaises(TypeError, create_engine, 'mysql+mysqldb://', use_unicode=True, module=MockDBAPI())
 
-        try:
-            # sqlite uses SingletonThreadPool which doesnt have max_overflow
-            e = create_engine('sqlite://', max_overflow=5)
-            assert False
-        except TypeError:
-            assert True
+        # sqlite uses SingletonThreadPool which doesnt have max_overflow
+        self.assertRaises(TypeError, create_engine, 'sqlite://', max_overflow=5)
 
-        e = create_engine('mysql://', module=MockDBAPI(), connect_args={'use_unicode':True}, convert_unicode=True)
-
-        e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
-        try:
-            c = e.connect()
-            assert False
-        except tsa.exc.DBAPIError:
-            assert True
+        # raises DBAPIerror due to use_unicode not a sqlite arg
+        self.assertRaises(tsa.exc.DBAPIError, create_engine, 'sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
 
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""
 
-        e = create_engine('mysql://scott:tiger@localhost/test', module=MockDBAPI())
+        e = create_engine('mysql://scott:tiger@localhost/test', module=MockDBAPI(), _initialize=False)
         u = url.make_url('mysql://scott:tiger@localhost/test')
-        e2 = create_engine(u, module=MockDBAPI())
+        e2 = create_engine(u, module=MockDBAPI(), _initialize=False)
         assert e.url.drivername == e2.url.drivername == 'mysql'
         assert e.url.username == e2.url.username == 'scott'
         assert e2.url is u
 
     def test_poolargs(self):
         """test that connection pool args make it thru"""
-        e = create_engine('postgres://', creator=None, pool_recycle=50, echo_pool=None, module=MockDBAPI())
+        e = create_engine('postgres://', creator=None, pool_recycle=50, echo_pool=None, module=MockDBAPI(), _initialize=False)
         assert e.pool._recycle == 50
 
         # these args work for QueuePool
@@ -213,13 +176,14 @@ class MockDBAPI(object):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
         self.paramstyle = 'named'
-    def connect(self, **kwargs):
-        print kwargs, self.kwargs
+    def connect(self, *args, **kwargs):
         for k in self.kwargs:
             assert k in kwargs, "key %s not present in dictionary" % k
             assert kwargs[k]==self.kwargs[k], "value %s does not match %s" % (kwargs[k], self.kwargs[k])
         return MockConnection()
 class MockConnection(object):
+    def get_server_info(self):
+        return "5.0"
     def close(self):
         pass
     def cursor(self):

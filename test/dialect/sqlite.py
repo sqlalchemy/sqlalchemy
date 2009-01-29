@@ -47,42 +47,36 @@ class TestTypes(TestBase, AssertsExecutionResults):
             bindproc = t.dialect_impl(dialect).bind_processor(dialect)
             assert not bindproc or isinstance(bindproc(u"some string"), unicode)
         
-    @testing.uses_deprecated('Using String type with no length')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
-        specs = [( String(), pysqlite_dialect.SLString(), ),
-                 ( String(1), pysqlite_dialect.SLString(1), ),
-                 ( String(3), pysqlite_dialect.SLString(3), ),
-                 ( Text(), pysqlite_dialect.SLText(), ),
-                 ( Unicode(), pysqlite_dialect.SLString(), ),
-                 ( Unicode(1), pysqlite_dialect.SLString(1), ),
-                 ( Unicode(3), pysqlite_dialect.SLString(3), ),
-                 ( UnicodeText(), pysqlite_dialect.SLText(), ),
-                 ( CLOB, pysqlite_dialect.SLText(), ),
-                 ( pysqlite_dialect.SLChar(1), ),
-                 ( CHAR(3), pysqlite_dialect.SLChar(3), ),
-                 ( NCHAR(2), pysqlite_dialect.SLChar(2), ),
-                 ( NUMERIC, sqlite.SLNumeric(), ),
-                 ( NUMERIC(10,2), sqlite.SLNumeric(10,2), ),
-                 ( Numeric, sqlite.SLNumeric(), ),
-                 ( Numeric(10, 2), sqlite.SLNumeric(10, 2), ),
-                 ( DECIMAL, sqlite.SLNumeric(), ),
-                 ( DECIMAL(10, 2), sqlite.SLNumeric(10, 2), ),
-                 ( Float, sqlite.SLNumeric(), ),
-                 ( sqlite.SLNumeric(), ),
-                 ( TIMESTAMP, sqlite.SLDateTime(), ),
-                 ( DATETIME, sqlite.SLDateTime(), ),
-                 ( DateTime, sqlite.SLDateTime(), ),
-                 ( sqlite.SLDateTime(), ),
-                 ( DATE, sqlite.SLDate(), ),
-                 ( Date, sqlite.SLDate(), ),
-                 ( sqlite.SLDate(), ),
-                 ( TIME, sqlite.SLTime(), ),
-                 ( Time, sqlite.SLTime(), ),
-                 ( sqlite.SLTime(), ),
-                 ( BOOLEAN, sqlite.SLBoolean(), ),
-                 ( Boolean, sqlite.SLBoolean(), ),
-                 ( sqlite.SLBoolean(), ),
+        specs = [( String(), String(), ),
+                 ( String(1), String(1), ),
+                 ( String(3), String(3), ),
+                 ( Text(), Text(), ),
+                 ( Unicode(), String(), ),
+                 ( Unicode(1), String(1), ),
+                 ( Unicode(3), String(3), ),
+                 ( UnicodeText(), Text(), ),
+                 ( CHAR(1), ),
+                 ( CHAR(3), CHAR(3), ),
+                 ( NUMERIC, NUMERIC(), ),
+                 ( NUMERIC(10,2), NUMERIC(10,2), ),
+                 ( Numeric, NUMERIC(), ),
+                 ( Numeric(10, 2), NUMERIC(10, 2), ),
+                 ( DECIMAL, DECIMAL(), ),
+                 ( DECIMAL(10, 2), DECIMAL(10, 2), ),
+                 ( Float, Float(), ),
+                 ( NUMERIC(), ),
+                 ( TIMESTAMP, TIMESTAMP(), ),
+                 ( DATETIME, DATETIME(), ),
+                 ( DateTime, DateTime(), ),
+                 ( DateTime(), ),
+                 ( DATE, DATE(), ),
+                 ( Date, Date(), ),
+                 ( TIME, TIME(), ),
+                 ( Time, Time(), ),
+                 ( BOOLEAN, BOOLEAN(), ),
+                 ( Boolean, Boolean(), ),
                  ]
         columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
 
@@ -101,7 +95,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
                 expected = [len(c) > 1 and c[1] or c[0] for c in specs]
                 for table in rt, rv:
                     for i, reflected in enumerate(table.c):
-                        assert isinstance(reflected.type, type(expected[i])), type(expected[i])
+                        assert isinstance(reflected.type, type(expected[i])), "%d: %r" % (i, type(expected[i]))
             finally:
                 db.execute('DROP VIEW types_v')
         finally:

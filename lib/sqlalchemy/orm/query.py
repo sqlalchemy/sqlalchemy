@@ -1552,7 +1552,7 @@ class Query(object):
         if synchronize_session == 'evaluate':
             try:
                 evaluator_compiler = evaluator.EvaluatorCompiler()
-                eval_condition = evaluator_compiler.process(self.whereclause)
+                eval_condition = evaluator_compiler.process(self.whereclause or expression._Null)
             except evaluator.UnevaluatableError:
                 raise sa_exc.InvalidRequestError("Could not evaluate current criteria in Python.  "
                         "Specify 'fetch' or False for the synchronize_session parameter.")
@@ -1645,7 +1645,7 @@ class Query(object):
         if synchronize_session == 'evaluate':
             try:
                 evaluator_compiler = evaluator.EvaluatorCompiler()
-                eval_condition = evaluator_compiler.process(self.whereclause)
+                eval_condition = evaluator_compiler.process(self.whereclause or expression._Null)
 
                 value_evaluators = {}
                 for key,value in values.items():

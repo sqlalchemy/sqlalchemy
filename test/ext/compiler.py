@@ -120,12 +120,12 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
 
         self.assert_compile(AddThingy(),
             "ADD SPECIAL PG THINGY",
-            dialect=create_engine('postgres://').dialect
+            dialect=create_engine('postgres://', _initialize=False).dialect
         )
 
         self.assert_compile(DropThingy(),
             "DROP THINGY",
-            dialect=create_engine('postgres://').dialect
+            dialect=create_engine('postgres://', _initialize=False).dialect
         )
         
         

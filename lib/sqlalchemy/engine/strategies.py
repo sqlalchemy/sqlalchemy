@@ -109,6 +109,8 @@ class DefaultEngineStrategy(EngineStrategy):
             if k in kwargs:
                 engine_args[k] = kwargs.pop(k)
 
+        _initialize = kwargs.pop('_initialize', True)
+        
         # all kwargs should be consumed
         if kwargs:
             raise TypeError(
@@ -121,11 +123,13 @@ class DefaultEngineStrategy(EngineStrategy):
                                     engineclass.__name__))
                                     
         engine = engineclass(pool, dialect, u, **engine_args)
-        conn = engine.connect()
-        try:
-            dialect.initialize(conn)
-        finally:
-            conn.close()
+        
+        if _initialize:
+            conn = engine.connect()
+            try:
+                dialect.initialize(conn)
+            finally:
+                conn.close()
         return engine
 
     def pool_threadlocal(self):
