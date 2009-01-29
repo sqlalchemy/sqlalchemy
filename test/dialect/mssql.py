@@ -153,7 +153,7 @@ class QueryUnicodeTest(TestBase):
         meta = MetaData(testing.db)
         t1 = Table('unitest_table', meta,
                 Column('id', Integer, primary_key=True),
-                Column('descr', mssql.MSText(200, convert_unicode=True)))
+                Column('descr', mssql.MSText(convert_unicode=True)))
         meta.create_all()
         con = testing.db.connect()
 

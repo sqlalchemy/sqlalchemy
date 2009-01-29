@@ -667,8 +667,6 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_date(self, type_):
         if self.dialect.server_version_info < MS_2008_VERSION:
-            import pdb
-            pdb.set_trace()
             return self.visit_DATETIME(type_)
         else:
             return self.visit_DATE(type_)

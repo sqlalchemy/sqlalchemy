@@ -5,7 +5,8 @@ from testlib import *
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
-    __dialect__ = informix.InfoDialect()
+    __only_on__ = 'informix'
+    __dialect__ = informix.InformixDialect()
     
     def test_statements(self):
         meta =MetaData()
