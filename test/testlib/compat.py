@@ -12,5 +12,8 @@ def _function_named(fn, newname):
                           fn.func_defaults, fn.func_closure)
     return fn
 
-from sqlalchemy.util import callable
+try:
+    import callable
+except ImportError:
+    callable = lambda x: hasattr(x, '__call__')
 
