@@ -1210,7 +1210,11 @@ class ClauseElement(Visitable):
         return dialect.statement_compiler(dialect, self, **kw)
         
     def __str__(self):
+        # Py3K
+        #return unicode(self.compile())
+        # Py2K
         return unicode(self.compile()).encode('ascii', 'backslashreplace')
+        # end Py2K
 
     def __and__(self, other):
         return and_(self, other)
@@ -1363,6 +1367,9 @@ class ColumnOperators(Operators):
 
     def __truediv__(self, other):
         return self.operate(operators.truediv, other)
+
+    def __rtruediv__(self, other):
+        return self.reverse_operate(operators.truediv, other)
 
 class _CompareMixin(ColumnOperators):
     """Defines comparison and math operations for ``ClauseElement`` instances."""
@@ -2623,7 +2630,11 @@ class Alias(FromClause):
 
     @property
     def description(self):
+        # Py3K
+        #return self.name
+        # Py2K
         return self.name.encode('ascii', 'backslashreplace')
+        # end Py2K
 
     def is_derived_from(self, fromclause):
         if fromclause in self._cloned_set:
@@ -2819,7 +2830,11 @@ class ColumnClause(_Immutable, ColumnElement):
 
     @util.memoized_property
     def description(self):
+        # Py3K
+        #return self.name
+        # Py2K
         return self.name.encode('ascii', 'backslashreplace')
+        # end Py2K
 
     @util.memoized_property
     def _label(self):
@@ -2901,7 +2916,11 @@ class TableClause(_Immutable, FromClause):
 
     @util.memoized_property
     def description(self):
+        # Py3K
+        #return self.name
+        # Py2K
         return self.name.encode('ascii', 'backslashreplace')
+        # end Py2K
 
     def append_column(self, c):
         self._columns[c.name] = c

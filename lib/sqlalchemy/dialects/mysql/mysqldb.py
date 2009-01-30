@@ -51,8 +51,7 @@ class MySQL_mysqldb(MySQLDialect):
     
     @classmethod
     def dbapi(cls):
-        import MySQLdb as mysql
-        return mysql
+        return __import__('MySQLdb')
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(database='db', username='user',
@@ -86,7 +85,7 @@ class MySQL_mysqldb(MySQLDialect):
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
             try:
-                import MySQLdb.constants.CLIENT as CLIENT_FLAGS
+                CLIENT_FLAGS = __import__('MySQLdb.constants').constants.CLIENT
                 client_flag |= CLIENT_FLAGS.FOUND_ROWS
             except:
                 pass

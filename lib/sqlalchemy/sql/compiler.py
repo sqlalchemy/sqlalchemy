@@ -18,7 +18,7 @@ creating database-specific compilers and schema generators, the module
 is otherwise internal to SQLAlchemy.
 """
 
-import string, re
+import re
 from sqlalchemy import schema, engine, util, exc
 from sqlalchemy.sql import operators, functions, util as sql_util, visitors
 from sqlalchemy.sql import expression as sql
@@ -357,9 +357,8 @@ class SQLCompiler(engine.Compiled):
         entry = self.stack and self.stack[-1] or {}
         self.stack.append({'from':entry.get('from', None), 'iswrapper':True})
 
-        text = string.join((self.process(c, asfrom=asfrom, parens=False, compound_index=i)
-                            for i, c in enumerate(cs.selects)),
-                           " " + cs.keyword + " ")
+        text = (" " + cs.keyword + " ").join((self.process(c, asfrom=asfrom, parens=False, compound_index=i)
+                            for i, c in enumerate(cs.selects)))
         group_by = self.process(cs._group_by_clause, asfrom=asfrom)
         if group_by:
             text += " GROUP BY " + group_by

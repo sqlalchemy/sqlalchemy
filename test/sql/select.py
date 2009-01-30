@@ -398,7 +398,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
 
     def test_operators(self):
         for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
-                                (operator.sub, '-'), (operator.div, '/'),
+                                (operator.sub, '-'), 
+                                # Py3K
+                                #(operator.truediv, '/'),
+                                # Py2K
+                                (operator.div, '/'),
+                                # end Py2K
                                 ):
             for (lhs, rhs, res) in (
                 (5, table1.c.myid, ':myid_1 %s mytable.myid'),

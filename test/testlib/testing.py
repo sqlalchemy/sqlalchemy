@@ -983,6 +983,11 @@ def runTests(suite):
     try:
         if not verbose or quiet:
             sys.stdout = DevNullWriter()
+        # Py3K
+        #else:
+        #    # straight from the man:  
+        #    # http://mail.python.org/pipermail/python-3000/2008-February/012144.html
+        #    sys.stdout._encoding = 'utf-8'
         runner = unittest.TextTestRunner(verbosity = quiet and 1 or 2)
         return runner.run(suite)
     finally:

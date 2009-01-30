@@ -93,6 +93,7 @@ _largest = symbol('_largest')
 _PRECEDENCE = {
     from_: 15,
     mul: 7,
+    truediv: 7,
     # Py2K
     div: 7,
     # end Py2K

@@ -31,34 +31,33 @@ def preprocess(data):
                 for line in consume_py3k():
                     yield line
             elif py2k_pattern.match(line):
-                yield line
                 for line in consume_py2k():
                     yield line
             else:
                 yield line
     
     def consume_py3k():
+        yield "# start Py3K"
         while lines:
             line = lines.pop(0)
             m = comment_pattern.match(line)
             if m:
                 yield "%s%s" % m.group(1, 2)
             else:
-                m = py2k_pattern.match(line)
-                if m:
-                    for line in consume_py2k():
-                        yield line
-                else:
-                    yield line
+                # pushback
+                lines.insert(0, line)
                 break
+        yield "# end Py3K"
     
     def consume_py2k():
+        yield "# start Py2K"
         while lines:
             line = lines.pop(0)
             if not end_py2k_pattern.match(line):
                 yield "#%s" % line
             else:
                 break
+        yield "# end Py2K"
 
     return "\n".join(consume_normal())
 
