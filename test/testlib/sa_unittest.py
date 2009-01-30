@@ -517,8 +517,12 @@ class TestLoader:
         elif (isinstance(obj, (type, types.ClassType)) and
               issubclass(obj, TestCase)):
             return self.loadTestsFromTestCase(obj)
+        # Py3K
+        #elif type(obj) == types.FunctionType:
+        # Py2K
         elif type(obj) == types.UnboundMethodType:
             return parent(obj.__name__)
+        # end Py2K
         elif isinstance(obj, TestSuite):
             return obj
         elif callable(obj):

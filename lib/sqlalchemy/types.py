@@ -844,7 +844,11 @@ class PickleType(MutableType, TypeDecorator):
         loads = self.pickler.loads
         if value is None:
             return None
+        # Py3K
+        #return loads(value)
+        # Py2K
         return loads(str(value))
+        # end Py2K
 
     def copy_value(self, value):
         if self.mutable:
@@ -855,9 +859,6 @@ class PickleType(MutableType, TypeDecorator):
     def compare_values(self, x, y):
         if self.comparator:
             return self.comparator(x, y)
-        elif self.mutable and not hasattr(x, '__eq__') and x is not None:
-            util.warn_deprecated("Objects stored with PickleType when mutable=True must implement __eq__() for reliable comparison.")
-            return self.pickler.dumps(x, self.protocol) == self.pickler.dumps(y, self.protocol)
         else:
             return x == y
 

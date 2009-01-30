@@ -64,7 +64,7 @@ option to the Index constructor::
 
 """
 
-import re, string
+import re
 
 from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.engine import base, default
@@ -251,7 +251,7 @@ class PGCompiler(compiler.SQLCompiler):
                 else:
                     yield c
         columns = [self.process(c, within_columns_clause=True) for c in flatten_columnlist(returning_cols)]
-        text += ' RETURNING ' + string.join(columns, ', ')
+        text += ' RETURNING ' + ', '.join(columns)
         return text
 
     def visit_update(self, update_stmt):
@@ -306,7 +306,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text += "INDEX %s ON %s (%s)" \
                     % (preparer.quote(self._validate_identifier(index.name, True), index.quote),
                        preparer.format_table(index.table),
-                       string.join([preparer.format_column(c) for c in index.columns], ', '))
+                       ', '.join([preparer.format_column(c) for c in index.columns]))
                        
         whereclause = index.kwargs.get('postgres_where', None)
         if whereclause is not None:

@@ -27,3 +27,9 @@
       the same except the error is raised by SQL server instead of the dialect, and no
       flag setting is required to enable it.
     - using new dialect.initialize() feature to set up version-dependent behavior.
+    
+- types
+    - PickleType now uses == for comparison of values when mutable=True, 
+      unless the "comparator" argument with a comparsion function is specified to the type.  
+      Objects being pickled will be compared based on identity (which defeats the purpose
+      of mutable=True) if __eq__() is not overridden or a comparison function is not provided.
