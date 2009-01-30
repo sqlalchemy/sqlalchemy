@@ -9,22 +9,22 @@ from testlib import *
 import gc
 
 class UserDefinedTest(TestBase, AssertsCompiledSQL):
-    
+
     def test_column(self):
-        
+
         class MyThingy(ColumnClause):
             __visit_name__ = 'thingy'
-            
+
             def __init__(self, arg= None):
                 super(MyThingy, self).__init__(arg or 'MYTHINGY!')
-                
+
         class MyCompiler(UserDefinedCompiler):
             compile_elements = [MyThingy]
-            
+
             def visit_thingy(self, thingy, **kw):
                 return ">>%s<<" % thingy.name
-                
-        
+
+
         self.assert_compile(
             select([column('foo'), MyThingy()]),
             "SELECT foo, >>MYTHINGY!<<"
@@ -38,17 +38,17 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
     def test_stateful(self):
         class MyThingy(ColumnClause):
             __visit_name__ = 'thingy'
-            
+
             def __init__(self):
                 super(MyThingy, self).__init__('MYTHINGY!')
-                
+
         class MyCompiler(UserDefinedCompiler):
             compile_elements = [MyThingy]
-            
+
             def __init__(self, parent_compiler):
                 UserDefinedCompiler.__init__(self, parent_compiler)
                 self.counter = 0
-                
+
             def visit_thingy(self, thingy, **kw):
                 self.counter += 1
                 return str(self.counter)
@@ -69,16 +69,16 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             def __init__(self, table, select):
                 self.table = table
                 self.select = select
-        
+
         class MyCompiler(UserDefinedCompiler):
             compile_elements = [InsertFromSelect]
-            
+
             def visit_insert_from_select(self, element):
                 return "INSERT INTO %s (%s)" % (
                     self.process(element.table, asfrom=True),
                     self.process(element.select)
                 )
-        
+
         t1 = table("mytable", column('x'), column('y'), column('z'))
         self.assert_compile(
             InsertFromSelect(
@@ -104,11 +104,11 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             def visit_drop_thingy(self, thingy, **kw):
                 return "DROP THINGY"
 
-        class MyPGCompiler(MyCompiler):
-            dialect = 'postgres'
-            
+        class MySqliteCompiler(MyCompiler):
+            dialect = 'sqlite'
+
             def visit_add_thingy(self, thingy, **kw):
-                return "ADD SPECIAL PG THINGY"
+                return "ADD SPECIAL SL THINGY"
 
         self.assert_compile(AddThingy(),
             "ADD THINGY"
@@ -120,15 +120,24 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         
         from sqlalchemy.dialects.postgres import base
         self.assert_compile(AddThingy(),
+<<<<<<< HEAD:test/ext/compiler.py
             "ADD SPECIAL PG THINGY",
             dialect=base.dialect()
+=======
+            "ADD SPECIAL SL THINGY",
+            dialect=create_engine('sqlite://', _initialize=False).dialect
+>>>>>>> Couple more corrections to get mssql tests to pass.:test/ext/compiler.py
         )
 
         self.assert_compile(DropThingy(),
             "DROP THINGY",
+<<<<<<< HEAD:test/ext/compiler.py
             dialect=base.dialect()
+=======
+            dialect=create_engine('sqlite://', _initialize=False).dialect
+>>>>>>> Couple more corrections to get mssql tests to pass.:test/ext/compiler.py
         )
-        
-        
+
+
 if __name__ == '__main__':
     testenv.main()

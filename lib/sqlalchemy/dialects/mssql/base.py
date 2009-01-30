@@ -1184,13 +1184,13 @@ class MSDialect(default.DefaultDialect):
                 if coltype == MSText or (coltype in (MSString, MSNVarchar) and charlen == -1):
                     kwargs.pop('length')
 
-            if issubclass(coltype, sqltypes.Numeric):
-                kwargs['scale'] = numericscale
-                kwargs['precision'] = numericprec
-
             if coltype is None:
                 util.warn("Did not recognize type '%s' of column '%s'" % (type, name))
                 coltype = sqltypes.NULLTYPE
+
+            if issubclass(coltype, sqltypes.Numeric) and coltype is not MSReal:
+                kwargs['scale'] = numericscale
+                kwargs['precision'] = numericprec
 
             coltype = coltype(**kwargs)
             colargs = []
