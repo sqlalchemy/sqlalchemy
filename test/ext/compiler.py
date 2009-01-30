@@ -117,25 +117,16 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(DropThingy(),
             "DROP THINGY"
         )
-        
+
         from sqlalchemy.dialects.postgres import base
         self.assert_compile(AddThingy(),
-<<<<<<< HEAD:test/ext/compiler.py
             "ADD SPECIAL PG THINGY",
             dialect=base.dialect()
-=======
-            "ADD SPECIAL SL THINGY",
-            dialect=create_engine('sqlite://', _initialize=False).dialect
->>>>>>> Couple more corrections to get mssql tests to pass.:test/ext/compiler.py
         )
 
         self.assert_compile(DropThingy(),
             "DROP THINGY",
-<<<<<<< HEAD:test/ext/compiler.py
             dialect=base.dialect()
-=======
-            dialect=create_engine('sqlite://', _initialize=False).dialect
->>>>>>> Couple more corrections to get mssql tests to pass.:test/ext/compiler.py
         )
 
 
