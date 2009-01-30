@@ -13,7 +13,7 @@ def _function_named(fn, newname):
     return fn
 
 try:
-    import callable
+    from __builtin__ import callable
 except ImportError:
     callable = lambda x: hasattr(x, '__call__')
 
