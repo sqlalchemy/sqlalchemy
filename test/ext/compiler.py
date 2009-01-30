@@ -118,9 +118,9 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             "DROP THINGY"
         )
 
-        from sqlalchemy.dialects.postgres import base
+        from sqlalchemy.dialects.sqlite import base
         self.assert_compile(AddThingy(),
-            "ADD SPECIAL PG THINGY",
+            "ADD SPECIAL SL THINGY",
             dialect=base.dialect()
         )
 
