@@ -51,7 +51,7 @@ def clear_managers():
     All pools and connections are disposed.
     """
 
-    for manager in proxies.values():
+    for manager in proxies.itervalues():
         manager.close()
     proxies.clear()
 

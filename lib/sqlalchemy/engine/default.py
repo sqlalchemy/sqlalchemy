@@ -71,7 +71,8 @@ class DefaultDialect(base.Dialect):
         self.type_compiler = self.type_compiler(self)
         
         if label_length and label_length > self.max_identifier_length:
-            raise exc.ArgumentError("Label length of %d is greater than this dialect's maximum identifier length of %d" % (label_length, self.max_identifier_length))
+            raise exc.ArgumentError("Label length of %d is greater than this dialect's"
+                    " maximum identifier length of %d" % (label_length, self.max_identifier_length))
         self.label_length = label_length
         
         if not hasattr(self, 'description_encoding'):

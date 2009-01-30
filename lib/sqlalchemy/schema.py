@@ -1315,7 +1315,7 @@ class PrimaryKeyConstraint(Constraint):
         if kwargs:
             raise exc.ArgumentError(
                 'Unknown PrimaryKeyConstraint argument(s): %s' %
-                ', '.join(repr(x) for x in kwargs.keys()))
+                ', '.join(repr(x) for x in kwargs.iterkeys()))
 
         super(PrimaryKeyConstraint, self).__init__(**constraint_args)
         self.__colnames = list(columns)
@@ -1382,7 +1382,7 @@ class UniqueConstraint(Constraint):
         if kwargs:
             raise exc.ArgumentError(
                 'Unknown UniqueConstraint argument(s): %s' %
-                ', '.join(repr(x) for x in kwargs.keys()))
+                ', '.join(repr(x) for x in kwargs.iterkeys()))
 
         super(UniqueConstraint, self).__init__(**constraint_args)
         self.__colnames = list(columns)
@@ -1622,9 +1622,9 @@ class MetaData(SchemaItem):
         
         from sqlalchemy.sql.util import sort_tables
         if tables is None:
-            tables = self.tables.values()
+            tables = self.tables.itervalues()
         else:
-            tables = set(tables).intersection(self.tables.values())
+            tables = set(tables).intersection(self.tables.itervalues())
         ret = sort_tables(tables)
         if reverse:
             ret = reversed(ret)
@@ -1636,7 +1636,7 @@ class MetaData(SchemaItem):
         dependency.
         """
         from sqlalchemy.sql.util import sort_tables
-        return sort_tables(self.tables.values())
+        return sort_tables(self.tables.itervalues())
         
     def reflect(self, bind=None, schema=None, only=None):
         """Load all available table definitions from the database.
@@ -1682,7 +1682,7 @@ class MetaData(SchemaItem):
 
         available = util.OrderedSet(bind.engine.table_names(schema,
                                                             connection=conn))
-        current = set(self.tables.keys())
+        current = set(self.tables.iterkeys())
 
         if only is None:
             load = [name for name in available if name not in current]
@@ -1882,7 +1882,7 @@ class ThreadLocalMetaData(MetaData):
     def dispose(self):
         """Dispose all bound engines, in all thread contexts."""
 
-        for e in self.__engines.values():
+        for e in self.__engines.itervalues():
             if hasattr(e, 'dispose'):
                 e.dispose()
 

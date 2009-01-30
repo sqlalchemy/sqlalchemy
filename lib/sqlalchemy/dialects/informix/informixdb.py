@@ -53,8 +53,7 @@ class Informix_informixdb(InformixDialect):
     
     @classmethod
     def dbapi(cls):
-        import informixdb
-        return informixdb
+        return __import__('informixdb')
 
     def create_connect_args(self, url):
         if url.host:

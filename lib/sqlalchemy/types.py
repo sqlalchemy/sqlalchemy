@@ -1008,7 +1008,9 @@ NULLTYPE = NullType()
 # type which usually resolves to TEXT/CLOB
 type_map = {
     str : VARCHAR,
+    # Py2K
     unicode : NCHAR,
+    # end Py2K
     int : Integer,
     float : Numeric,
     bool: Boolean,

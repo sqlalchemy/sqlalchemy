@@ -360,7 +360,6 @@ class SybaseDialect(default.DefaultDialect):
 
         c = connection.execute(s)
         row = c.fetchone()
-        print "has_table: " + tablename + ": " + str(bool(row is not None))
         return row is not None
 
     def reflecttable(self, connection, table, include_columns):
@@ -444,7 +443,7 @@ class SybaseDialect(default.DefaultDialect):
             else:
                 foreignKeys[primary_table][0].append('%s'%(foreign_column))
                 foreignKeys[primary_table][1].append('%s.%s'%(primary_table, primary_column))
-        for primary_table in foreignKeys.keys():
+        for primary_table in foreignKeys.iterkeys():
             #table.append_constraint(schema.ForeignKeyConstraint(['%s.%s'%(foreign_table, foreign_column)], ['%s.%s'%(primary_table,primary_column)]))
             table.append_constraint(schema.ForeignKeyConstraint(foreignKeys[primary_table][0], foreignKeys[primary_table][1], link_to_name=True))
 

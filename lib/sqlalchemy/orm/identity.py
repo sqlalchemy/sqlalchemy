@@ -161,7 +161,7 @@ class WeakInstanceDict(IdentityMap):
         
 class StrongInstanceDict(IdentityMap):
     def all_states(self):
-        return [attributes.instance_state(o) for o in self.values()]
+        return [attributes.instance_state(o) for o in self.itervalues()]
     
     def contains_state(self, state):
         return state.key in self and attributes.instance_state(self[state.key]) is state

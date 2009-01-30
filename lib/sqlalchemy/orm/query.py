@@ -1352,7 +1352,7 @@ class Query(object):
 
             session._finalize_loaded(context.progress)
 
-            for ii, attrs in context.partials.items():
+            for ii, attrs in context.partials.iteritems():
                 ii.commit(attrs)
 
             for row in rows:
@@ -1648,7 +1648,7 @@ class Query(object):
                 eval_condition = evaluator_compiler.process(self.whereclause or expression._Null)
 
                 value_evaluators = {}
-                for key,value in values.items():
+                for key,value in values.iteritems():
                     key = expression._column_as_key(key)
                     value_evaluators[key] = evaluator_compiler.process(expression._literal_as_binds(value))
             except evaluator.UnevaluatableError:
