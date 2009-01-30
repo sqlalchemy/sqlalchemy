@@ -978,7 +978,8 @@ def _list_decorators():
                 fn(self, index)
         _tidy(__delitem__)
         return __delitem__
-
+    
+    # Py2K
     def __setslice__(fn):
         def __setslice__(self, start, end, values):
             for value in self[start:end]:
@@ -995,7 +996,8 @@ def _list_decorators():
             fn(self, start, end)
         _tidy(__delslice__)
         return __delslice__
-
+    # end Py2K
+    
     def extend(fn):
         def extend(self, iterable):
             for value in iterable:

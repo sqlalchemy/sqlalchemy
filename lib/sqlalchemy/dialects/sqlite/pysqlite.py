@@ -109,7 +109,6 @@ from sqlalchemy import schema, exc, pool
 from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
-from types import NoneType
 
 class SQLite_pysqliteExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):

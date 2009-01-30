@@ -828,6 +828,7 @@ class MapperTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_comparable_column(self):
         class MyComparator(sa.orm.properties.ColumnProperty.Comparator):
+            __hash__ = None
             def __eq__(self, other):
                 # lower case comparison
                 return func.lower(self.__clause_element__()) == func.lower(other)

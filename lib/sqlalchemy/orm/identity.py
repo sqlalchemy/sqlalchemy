@@ -149,7 +149,12 @@ class WeakInstanceDict(IdentityMap):
         return list(self.itervalues())
 
     def all_states(self):
+        # Py3K
+        # return list(dict.values(self))
+        
+        # Py2K
         return dict.values(self)
+        # end Py2K
     
     def prune(self):
         return 0

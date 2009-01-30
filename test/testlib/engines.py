@@ -171,9 +171,16 @@ class ReplayableSession(object):
     Natives = set([getattr(types, t)
                    for t in dir(types) if not t.startswith('_')]). \
                    difference([getattr(types, t)
+                            # Py3K
+                            #for t in ('FunctionType', 'BuiltinFunctionType',
+                            #          'MethodType', 'BuiltinMethodType',
+                            #          'LambdaType', )])
+                            
+                            # Py2K
                                for t in ('FunctionType', 'BuiltinFunctionType',
                                          'MethodType', 'BuiltinMethodType',
                                          'LambdaType', 'UnboundMethodType',)])
+                            # end Py2K
     def __init__(self):
         self.buffer = deque()
 

@@ -11,7 +11,7 @@ types = __import__('types')
 from sqlalchemy import exc
 
 try:
-    import thread, threading
+    import thread as thread, threading as threading
     from threading import local as ThreadLocal
 except ImportError:
     import dummy_thread as thread
@@ -40,6 +40,8 @@ else:
     set_types = set, sets.Set
 
 EMPTY_SET = frozenset()
+
+NoneType = type(None)
 
 if py3k:
     import pickle
@@ -677,7 +679,7 @@ class OrderedProperties(object):
         return self._data.keys()
 
     def has_key(self, key):
-        return self._data.has_key(key)
+        return key in self._data
 
     def clear(self):
         self._data.clear()

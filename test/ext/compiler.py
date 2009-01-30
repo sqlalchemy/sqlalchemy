@@ -117,15 +117,16 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(DropThingy(),
             "DROP THINGY"
         )
-
+        
+        from sqlalchemy.dialects.postgres import base
         self.assert_compile(AddThingy(),
             "ADD SPECIAL PG THINGY",
-            dialect=create_engine('postgres://', _initialize=False).dialect
+            dialect=base.dialect()
         )
 
         self.assert_compile(DropThingy(),
             "DROP THINGY",
-            dialect=create_engine('postgres://', _initialize=False).dialect
+            dialect=base.dialect()
         )
         
         

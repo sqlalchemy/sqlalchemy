@@ -18,7 +18,7 @@ from lib2to3 import main, refactor
 import re
 
 py3k_pattern = re.compile(r'\s*# Py3K')
-comment_pattern = re.compile(r'(\s*)#(.*)')
+comment_pattern = re.compile(r'(\s*)#(?! ?Py2K)(.*)')
 py2k_pattern = re.compile(r'\s*# Py2K')
 end_py2k_pattern = re.compile(r'\s*# end Py2K')
 
@@ -44,7 +44,12 @@ def preprocess(data):
             if m:
                 yield "%s%s" % m.group(1, 2)
             else:
-                yield line
+                m = py2k_pattern.match(line)
+                if m:
+                    for line in consume_py2k():
+                        yield line
+                else:
+                    yield line
                 break
     
     def consume_py2k():
@@ -57,7 +62,16 @@ def preprocess(data):
 
     return "\n".join(consume_normal())
 
-refactor_string = main.StdoutRefactoringTool.refactor_string
-main.StdoutRefactoringTool.refactor_string = lambda s, data, name: refactor_string(s, preprocess(data), name)
+old_refactor_string = main.StdoutRefactoringTool.refactor_string
+
+def refactor_string(self, data, name):
+    newdata = preprocess(data)
+    tree = old_refactor_string(self, newdata, name)
+    if tree:
+        if newdata != data:
+            tree.was_changed = True
+    return tree
+    
+main.StdoutRefactoringTool.refactor_string = refactor_string
 
 main.main("lib2to3.fixes")

@@ -31,7 +31,7 @@ from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.sql import compiler, functions as sql_functions
-from types import NoneType
+from sqlalchemy.util import NoneType
 
 class NumericMixin(object):
     def bind_processor(self, dialect):

@@ -198,7 +198,8 @@ class CollectionsTest(_base.ORMTest):
             direct.remove(e)
             control.remove(e)
             assert_eq()
-
+        
+        # Py2K
         if hasattr(direct, '__setslice__'):
             values = [creator(), creator()]
             direct[0:1] = values
@@ -242,7 +243,8 @@ class CollectionsTest(_base.ORMTest):
             del direct[:]
             del control[:]
             assert_eq()
-
+        # end Py2K
+        
         if hasattr(direct, 'extend'):
             values = [creator(), creator(), creator()]
 

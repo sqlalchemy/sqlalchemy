@@ -64,7 +64,9 @@ OPERATORS =  {
     operators.add : '+',
     operators.mul : '*',
     operators.sub : '-',
+    # Py2K
     operators.div : '/',
+    # end Py2K
     operators.mod : '%',
     operators.truediv : '/',
     operators.lt : '<',

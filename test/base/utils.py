@@ -363,6 +363,10 @@ class DictlikeIteritemsTest(unittest.TestCase):
 
 
 class DuckTypeCollectionTest(TestBase):
+    # Py3K
+    #pass
+    
+    # Py2K
     def test_sets(self):
         import sets
         class SetLike(object):
@@ -385,7 +389,7 @@ class DuckTypeCollectionTest(TestBase):
             is_(util.duck_type_collection(type_), None)
             instance = type_()
             is_(util.duck_type_collection(instance), None)
-
+    # end Py2K
 
 class ArgInspectionTest(TestBase):
     def test_get_cls_kwargs(self):

@@ -1399,7 +1399,9 @@ class _CompareMixin(ColumnOperators):
         operators.add : (__operate,),
         operators.mul : (__operate,),
         operators.sub : (__operate,),
+        # Py2K
         operators.div : (__operate,),
+        # end Py2K
         operators.mod : (__operate,),
         operators.truediv : (__operate,),
         operators.lt : (__compare, operators.ge),
