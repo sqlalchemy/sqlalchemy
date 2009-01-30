@@ -20,8 +20,8 @@ def configure_for_tests():
         sys.path.insert(0, os.path.join(os.getcwd(), 'lib'))
         logging.basicConfig()
 
-        testlib.config.configure()
         _setup = True
+        testlib.config.configure()
 
 def simple_setup():
     """import testenv; testenv.simple_setup()"""

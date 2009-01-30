@@ -121,6 +121,7 @@ class SQLite_pysqlite(SQLiteDialect):
     default_paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
     execution_ctx_cls = SQLite_pysqliteExecutionContext
+    description_encoding = None
     driver = 'pysqlite'
     
     def __init__(self, **kwargs):

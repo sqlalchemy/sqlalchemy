@@ -337,7 +337,11 @@ class PGDefaultRunner(base.DefaultRunner):
                     exc = "select nextval('\"%s\".\"%s_%s_seq\"')" % (sch, column.table.name, column.name)
                 else:
                     exc = "select nextval('\"%s_%s_seq\"')" % (column.table.name, column.name)
-                return self.execute_string(exc.encode(self.dialect.encoding))
+
+                if self.dialect.supports_unicode_statements:
+                    return self.execute_string(exc)
+                else:
+                    return self.execute_string(exc.encode(self.dialect.encoding))
 
         return super(PGDefaultRunner, self).get_column_default(column)
 
@@ -500,8 +504,11 @@ class PGDialect(default.DefaultDialect):
         if table.schema is not None:
             schema_where_clause = "n.nspname = :schema"
             schemaname = table.schema
+            
+            # Py2K
             if isinstance(schemaname, str):
                 schemaname = schemaname.decode(self.encoding)
+            # end Py2K
         else:
             schema_where_clause = "pg_catalog.pg_table_is_visible(c.oid)"
             schemaname = None
@@ -526,8 +533,10 @@ class PGDialect(default.DefaultDialect):
 
         s = sql.text(SQL_COLS, bindparams=[sql.bindparam('table_name', type_=sqltypes.Unicode), sql.bindparam('schema', type_=sqltypes.Unicode)], typemap={'attname':sqltypes.Unicode, 'default':sqltypes.Unicode})
         tablename = table.name
+        # Py2K
         if isinstance(tablename, str):
             tablename = tablename.decode(self.encoding)
+        # end Py2K
         c = connection.execute(s, table_name=tablename, schema=schemaname)
         rows = c.fetchall()
 

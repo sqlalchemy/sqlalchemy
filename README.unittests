@@ -26,30 +26,39 @@ sys.path.  This forces the local version of SQLAlchemy to be used, bypassing
 any setuptools-installed installations (setuptools places .egg files ahead of
 plain directories, even if on PYTHONPATH, unfortunately).
 
+NEW INSTRUCTIONS FOR ABSOLUTE MODULE IMPORTS
+--------------------------------------------
+Py3K imports modules absolutely.  This means the old way of running unittests,
+such as "python test/sql/query.py", can break things badly.  How ?   By name
+conflicts in our test suite.  We have a unit test called "test/sql/select.py".
+The pg8000 DBAPI uses the Python "select" module.   If you run a script
+called "test/sql/query.py", now "test/sql" is part of the import path, and 
+pg8000 pulls in "test/sql/select.py" instead.   Kaboom !  So we run
+the tests using -m now.
 
 RUNNING ALL TESTS
 -----------------
 To run all tests:
 
-    $ python test/alltests.py
+    $ python -m alltests
 
 
 RUNNING INDIVIDUAL TESTS
 -------------------------
 Any unittest module can be run directly from the module file:
 
-    python test/orm/mapper.py
+    python -m orm.mapper
 
 To run a specific test within the module, specify it as ClassName.methodname:
 
-    python test/orm/mapper.py MapperTest.testget
+    python -m orm.mapper MapperTest.testget
 
 
 COMMAND LINE OPTIONS
 --------------------
 Help is available via --help
 
-    $ python test/alltests.py --help
+    $ python -m alltests --help
 
     usage: alltests.py [options] [tests...]
 
@@ -78,7 +87,7 @@ preexisting tables will interfere with the tests
 If you'll be running the tests frequently, database aliases can save a lot of
 typing.  The --dbs option lists the built-in aliases and their matching URLs:
 
-    $ python test/alltests.py --dbs
+    $ python -m alltests --dbs
     Available --db options (use --dburi to override)
                mysql    mysql://scott:tiger@127.0.0.1:3306/test
               oracle    oracle://scott:tiger@127.0.0.1:1521
@@ -87,7 +96,7 @@ typing.  The --dbs option lists the built-in aliases and their matching URLs:
 
 To run tests against an aliased database:
 
-    $ python test/alltests.py --db=postgres
+    $ python -m alltests --db=postgres
 
 To customize the URLs with your own users or hostnames, make a simple .ini
 file called `test.cfg` at the top level of the SQLAlchemy source distribution
@@ -106,7 +115,7 @@ SQLAlchemy logs its activity and debugging through Python's logging package.
 Any log target can be directed to the console with command line options, such
 as:
 
-    $ python test/orm/unitofwork.py --log-info=sqlalchemy.orm.mapper \
+    $ python -m orm.unitofwork --log-info=sqlalchemy.orm.mapper \
       --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine
 
 This would log mapper configuration, connection pool checkouts, and SQL
@@ -125,7 +134,8 @@ After the suite has been run with --coverage, an annotated version of any
 source file can be generated, marking statements that are executed with > and
 statements that are missed with !, by running the coverage.py utility with the
 "-a" (annotate) option, such as:
-
+    
+    # TODO: need to adjust this for -m flag
     $ python ./test/testlib/coverage.py -a ./lib/sqlalchemy/sql.py
 
 This will create a new annotated file ./lib/sqlalchemy/sql.py,cover. Pretty

@@ -31,8 +31,14 @@ class DefaultDialect(base.Dialect):
     supports_alter = True
     supports_sequences = False
     sequences_optional = False
+    
+    # Py3K
+    #supports_unicode_statements = True
+    #supports_unicode_binds = True
+    # Py2K
     supports_unicode_statements = False
     supports_unicode_binds = False
+    # end Py2K
     
     name = 'default'
     max_identifier_length = 9999
@@ -67,7 +73,13 @@ class DefaultDialect(base.Dialect):
         if label_length and label_length > self.max_identifier_length:
             raise exc.ArgumentError("Label length of %d is greater than this dialect's maximum identifier length of %d" % (label_length, self.max_identifier_length))
         self.label_length = label_length
-        self.description_encoding = getattr(self, 'description_encoding', encoding)
+        
+        if not hasattr(self, 'description_encoding'):
+            self.description_encoding = getattr(self, 'description_encoding', encoding)
+        
+        # Py3K
+        #self.supports_unicode_statements = True
+        #self.supports_unicode_binds = True
     
     @classmethod
     def type_descriptor(cls, typeobj):

@@ -19,7 +19,7 @@ SQLAlchemy connection pool.
 import weakref, time, threading
 
 from sqlalchemy import exc, log
-from sqlalchemy import queue as Queue
+from sqlalchemy import queue as sqla_queue
 from sqlalchemy.util import thread, threading, pickle, as_interface
 
 proxies = {}
@@ -593,7 +593,7 @@ class QueuePool(Pool):
 
         """
         Pool.__init__(self, creator, **params)
-        self._pool = Queue.Queue(pool_size)
+        self._pool = sqla_queue.Queue(pool_size)
         self._overflow = 0 - pool_size
         self._max_overflow = max_overflow
         self._timeout = timeout
@@ -606,7 +606,7 @@ class QueuePool(Pool):
     def do_return_conn(self, conn):
         try:
             self._pool.put(conn, False)
-        except Queue.Full:
+        except sqla_queue.Full:
             if self._overflow_lock is None:
                 self._overflow -= 1
             else:
@@ -620,7 +620,7 @@ class QueuePool(Pool):
         try:
             wait = self._max_overflow > -1 and self._overflow >= self._max_overflow
             return self._pool.get(wait, self._timeout)
-        except Queue.Empty:
+        except sqla_queue.Empty:
             if self._max_overflow > -1 and self._overflow >= self._max_overflow:
                 if not wait:
                     return self.do_get()
@@ -648,7 +648,7 @@ class QueuePool(Pool):
             try:
                 conn = self._pool.get(False)
                 conn.close()
-            except Queue.Empty:
+            except sqla_queue.Empty:
                 break
 
         self._overflow = 0 - self.size()
