@@ -417,7 +417,7 @@ class RelationProperty(StrategizedProperty):
             if backref:
                 raise sa_exc.ArgumentError("backref and back_populates keyword arguments are mutually exclusive")
             self.backref = None
-        elif isinstance(backref, str):
+        elif isinstance(backref, basestring):
             # propagate explicitly sent primary/secondary join conditions to the BackRef object if
             # just a string was sent
             if secondary is not None:
