@@ -931,7 +931,8 @@ class TestClassHierarchy(TestBase):
 
         eq_(set(util.class_hierarchy(A)), set((A, B, C, object)))
         eq_(set(util.class_hierarchy(B)), set((A, B, C, object)))
-
+    
+    # Py2K
     def test_oldstyle_mixin(self):
         class A(object):
             pass
@@ -945,7 +946,7 @@ class TestClassHierarchy(TestBase):
         eq_(set(util.class_hierarchy(B)), set((A, B, object)))
         eq_(set(util.class_hierarchy(Mixin)), set())
         eq_(set(util.class_hierarchy(A)), set((A, B, object)))
-
+    # end Py2K
         
 if __name__ == "__main__":
     testenv.main()

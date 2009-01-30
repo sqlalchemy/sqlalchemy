@@ -434,20 +434,32 @@ def class_hierarchy(cls):
     will not be descended.
 
     """
+    # Py2K
     if isinstance(cls, types.ClassType):
         return list()
+    # end Py2K
     hier = set([cls])
     process = list(cls.__mro__)
     while process:
         c = process.pop()
+        # Py2K
         if isinstance(c, types.ClassType):
             continue
         for b in (_ for _ in c.__bases__
                   if _ not in hier and not isinstance(_, types.ClassType)):
+        # end Py2K
+        # Py3K
+        #for b in (_ for _ in c.__bases__
+        #          if _ not in hier):
             process.append(b)
             hier.add(b)
+        # Py3K
+        #if c.__module__ == 'builtins' or not hasattr(c, '__subclasses__'):
+        #    continue
+        # Py2K
         if c.__module__ == '__builtin__' or not hasattr(c, '__subclasses__'):
             continue
+        # end Py2K
         for s in [_ for _ in c.__subclasses__() if _ not in hier]:
             process.append(s)
             hier.add(s)
@@ -1428,8 +1440,11 @@ class WeakIdentityMapping(weakref.WeakKeyDictionary):
         return item
 
     def clear(self):
+        # Py2K
+        # in 3k, MutableMapping calls popitem()
         self._weakrefs.clear()
         self.by_id.clear()
+        # end Py2K
         weakref.WeakKeyDictionary.clear(self)
 
     def update(self, *a, **kw):
