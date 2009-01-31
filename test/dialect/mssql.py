@@ -125,6 +125,61 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(func.current_date(), "GETDATE()")
         self.assert_compile(func.length(3), "LEN(:length_1)")
 
+
+class IdentityInsertTest(TestBase, AssertsCompiledSQL):
+    __only_on__ = 'mssql'
+    __dialect__ = mssql.MSSQLDialect()
+
+    def setUpAll(self):
+        global metadata, cattable
+        metadata = MetaData(testing.db)
+
+        cattable = Table('cattable', metadata,
+            Column('id', Integer),
+            Column('description', String(50)),
+            PrimaryKeyConstraint('id', name='PK_cattable'),
+        )
+
+    def setUp(self):
+        metadata.create_all()
+
+    def tearDown(self):
+        metadata.drop_all()
+
+    def test_compiled(self):
+        self.assert_compile(cattable.insert().values(id=9, description='Python'), "INSERT INTO cattable (id, description) VALUES (:id, :description)")
+
+    def test_execute(self):
+        cattable.insert().values(id=9, description='Python').execute()
+
+        cats = cattable.select().order_by(cattable.c.id).execute()
+        self.assertEqual([(9, 'Python')], list(cats))
+
+        result = cattable.insert().values(description='PHP').execute()
+        self.assertEqual([10], result.last_inserted_ids())
+        lastcat = cattable.select().order_by(desc(cattable.c.id)).execute()
+        self.assertEqual((10, 'PHP'), lastcat.fetchone())
+
+    def test_executemany(self):
+        cattable.insert().execute([
+            {'id': 89, 'description': 'Python'},
+            {'id': 8, 'description': 'Ruby'},
+            {'id': 3, 'description': 'Perl'},
+            {'id': 1, 'description': 'Java'},
+        ])
+
+        cats = cattable.select().order_by(cattable.c.id).execute()
+        self.assertEqual([(1, 'Java'), (3, 'Perl'), (8, 'Ruby'), (89, 'Python')], list(cats))
+
+        cattable.insert().execute([
+            {'description': 'PHP'},
+            {'description': 'Smalltalk'},
+        ])
+
+        lastcats = cattable.select().order_by(desc(cattable.c.id)).limit(2).execute()
+        self.assertEqual([(91, 'Smalltalk'), (90, 'PHP')], list(lastcats))
+
+
 class ReflectionTest(TestBase):
     __only_on__ = 'mssql'
 
