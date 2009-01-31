@@ -129,24 +129,34 @@ class WeakInstanceDict(IdentityMap):
             return self[key]
         except KeyError:
             return default
-            
+    
+    # Py2K        
     def items(self):
         return list(self.iteritems())
 
     def iteritems(self):
         for state in dict.itervalues(self):
+    # end Py2K
+    # Py3K
+    #def items(self):
+    #    for state in dict.values(self):
             value = state.obj()
             if value is not None:
                 yield state.key, value
 
+    # Py2K
+    def values(self):
+        return list(self.itervalues())
+
     def itervalues(self):
         for state in dict.itervalues(self):
+    # end Py2K
+    # Py3K
+    #def values(self):
+    #    for state in dict.values(self):
             instance = state.obj()
             if instance is not None:
                 yield instance
-
-    def values(self):
-        return list(self.itervalues())
 
     def all_states(self):
         # Py3K

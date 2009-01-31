@@ -72,6 +72,6 @@ class Postgres_pg8000(PGDialect):
         return ([], opts)
 
     def is_disconnect(self, e):
-        return "connection is closed" in e
+        return "connection is closed" in str(e)
 
 dialect = Postgres_pg8000

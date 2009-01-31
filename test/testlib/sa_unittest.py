@@ -521,8 +521,8 @@ class TestLoader:
         #elif type(obj) == types.FunctionType:
         # Py2K
         elif type(obj) == types.UnboundMethodType:
-            return parent(obj.__name__)
         # end Py2K
+            return parent(obj.__name__)
         elif isinstance(obj, TestSuite):
             return obj
         elif callable(obj):

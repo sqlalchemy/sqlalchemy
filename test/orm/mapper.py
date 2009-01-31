@@ -2224,6 +2224,7 @@ class RequirementsTest(_base.MappedTest):
                      primary_key=True),
               Column('value', String(10)))
 
+    # Py2K
     @testing.resolve_artifact_names
     def test_baseclass(self):
         class OldStyle:
@@ -2238,7 +2239,8 @@ class RequirementsTest(_base.MappedTest):
 
         # TODO: is weakref support detectable without an instance?
         #self.assertRaises(sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
-
+    # end Py2K
+    
     @testing.resolve_artifact_names
     def test_comparison_overrides(self):
         """Simple tests to ensure users can supply comparison __methods__.

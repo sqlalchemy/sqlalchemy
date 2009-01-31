@@ -366,34 +366,6 @@ class MutableTypesTest(_base.MappedTest):
              "WHERE mutable_t.id = :mutable_t_id",
              {'mutable_t_id': f1.id, 'val': u'hi', 'data':f1.data})])
 
-    @testing.uses_deprecated()
-    @testing.resolve_artifact_names
-    def test_nocomparison(self):
-        """Changes are detected on MutableTypes lacking an __eq__ method."""
-
-        f1 = Foo()
-        f1.data = pickleable.BarWithoutCompare(4,5)
-        session = create_session(autocommit=False)
-        session.add(f1)
-        session.commit()
-
-        self.sql_count_(0, session.commit)
-        session.close()
-
-        session = create_session(autocommit=False)
-        f2 = session.query(Foo).filter_by(id=f1.id).one()
-        self.sql_count_(0, session.commit)
-
-        f2.data.y = 19
-        self.sql_count_(1, session.commit)
-        session.close()
-
-        session = create_session(autocommit=False)
-        f3 = session.query(Foo).filter_by(id=f1.id).one()
-        eq_((f3.data.x, f3.data.y), (4,19))
-        self.sql_count_(0, session.commit)
-        session.close()
-
     @testing.resolve_artifact_names
     def test_unicode(self):
         """Equivalent Unicode values are not flagged as changed."""
@@ -860,9 +832,8 @@ class DefaultTest(_base.MappedTest):
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
             Column('hoho', hohotype, server_default=str(hohoval)),
-            Column('counter', Integer, default=sa.func.char_length("1234567")),
-            Column('foober', String(30), default="im foober",
-                   onupdate="im the update"))
+            Column('counter', Integer, default=sa.func.char_length("1234567", type_=Integer)),
+            Column('foober', String(30), default="im foober", onupdate="im the update"))
 
         st = Table('secondary_table', metadata,
             Column('id', Integer, primary_key=True),
@@ -953,14 +924,14 @@ class DefaultTest(_base.MappedTest):
         # "post-update"
         mapper(Hoho, default_t)
 
-        h1 = Hoho(hoho="15", counter="15")
+        h1 = Hoho(hoho="15", counter=15)
         session = create_session()
         session.add(h1)
         session.flush()
 
         def go():
             eq_(h1.hoho, "15")
-            eq_(h1.counter, "15")
+            eq_(h1.counter, 15)
             eq_(h1.foober, "im foober")
         self.sql_count_(0, go)
 

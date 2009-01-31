@@ -1,8 +1,8 @@
 import testenv; testenv.configure_for_tests()
 from testlib import sa_unittest as unittest
 
-import inheritance.alltests as inheritance
-import sharding.alltests as sharding
+from orm.inheritance import alltests as inheritance
+from orm.sharding import alltests as sharding
 
 def suite():
     modules_to_test = (

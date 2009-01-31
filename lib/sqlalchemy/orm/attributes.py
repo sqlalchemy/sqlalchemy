@@ -1800,10 +1800,13 @@ def __init__(%(apply_pos)s):
 """
     func_vars = util.format_argspec_init(original__init__, grouped=False)
     func_text = func_body % func_vars
-    #TODO: log debug #print func_text
 
+    # Py3K
+    #func_defaults = getattr(original__init__, '__defaults__', None)
+    # Py2K
     func = getattr(original__init__, 'im_func', original__init__)
     func_defaults = getattr(func, 'func_defaults', None)
+    # end Py2K
 
     env = locals().copy()
     exec func_text in env
