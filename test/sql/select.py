@@ -131,6 +131,30 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             select([ClauseList(column('a'), column('b'))]).select_from('sometable'), 
             'SELECT a, b FROM sometable'
         )
+        
+    def test_use_labels(self):
+        self.assert_compile(
+            select([table1.c.myid==5], use_labels=True),
+            "SELECT mytable.myid = :myid_1 AS anon_1 FROM mytable"
+        )
+
+        self.assert_compile(
+            select([func.foo()], use_labels=True),
+            "SELECT foo() AS foo_1"
+        )
+
+        self.assert_compile(
+            select([not_(True)], use_labels=True),
+            "SELECT NOT :param_1"       # TODO: should this make an anon label ??
+        )
+
+        self.assert_compile(
+            select([cast("data", sqlite.SLInteger)], use_labels=True),      # this will work with plain Integer in 0.6
+            "SELECT CAST(:param_1 AS INTEGER) AS anon_1"
+        )
+        
+        
+        
     def test_nested_uselabels(self):
         """test nested anonymous label generation.  this
         essentially tests the ANONYMOUS_LABEL regex.

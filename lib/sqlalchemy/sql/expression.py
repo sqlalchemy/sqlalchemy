@@ -1566,7 +1566,8 @@ class ColumnElement(ClauseElement, _CompareMixin):
     primary_key = False
     foreign_keys = []
     quote = None
-
+    _label = None
+    
     @property
     def _select_iterable(self):
         return (self, )

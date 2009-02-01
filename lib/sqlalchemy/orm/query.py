@@ -2006,7 +2006,12 @@ class _ColumnEntity(_QueryEntity):
         if not isinstance(column, sql.ColumnElement):
             raise sa_exc.InvalidRequestError("Invalid column expression '%r'" % column)
 
-        if not hasattr(column, '_label'):
+        # if the Column is unnamed, give it a
+        # label() so that mutable column expressions
+        # can be located in the result even
+        # if the expression's identity has been changed
+        # due to adaption
+        if not column._label:
             column = column.label(None)
 
         query._entities.append(self)

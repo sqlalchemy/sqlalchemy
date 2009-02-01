@@ -37,7 +37,11 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                     GenericFunction.__init__(self, args=[arg], **kwargs)
                 
             self.assert_compile(fake_func('foo'), "fake_func(%s)" % bindtemplate % {'name':'param_1', 'position':1}, dialect=dialect)
-    
+            
+    def test_use_labels(self):
+        self.assert_compile(select([func.foo()], use_labels=True), 
+            "SELECT foo() AS foo_1"
+        )
     def test_underscores(self):
         self.assert_compile(func.if_(), "if()")
         
