@@ -638,10 +638,11 @@ class PGDialect(default.DefaultDialect):
         for row in c.fetchall():
             idx_name, unique, expr, prd, col = row
 
-            if expr and not idx_name == sv_idx_name:
-                util.warn(
-                  "Skipped unsupported reflection of expression-based index %s"
-                  % idx_name)
+            if expr:
+                if not idx_name == sv_idx_name:
+                    util.warn(
+                      "Skipped unsupported reflection of expression-based index %s"
+                      % idx_name)
                 sv_idx_name = idx_name
                 continue
             if prd and not idx_name == sv_idx_name:

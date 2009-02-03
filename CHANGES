@@ -32,7 +32,11 @@ CHANGES
       creates an arbitrarily large number of engines
       or dialects.   There is a small performance penalty
       which will be resolved in 0.6.  [ticket:1299]
-      
+
+- postgres
+    - Index reflection won't fail when an index with 
+      multiple expressions is encountered.
+    
 0.5.2
 ======
 

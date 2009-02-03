@@ -631,15 +631,23 @@ class MiscTest(TestBase, AssertsExecutionResults):
         m1 = MetaData(testing.db)
         t1 = Table('party', m1,
             Column('id', String(10), nullable=False),
-            Column('name', String(20), index=True)
+            Column('name', String(20), index=True), 
+            Column('aname', String(20))
             )
         m1.create_all()
+        
         testing.db.execute("""
           create index idx1 on party ((id || name))
         """, None) 
         testing.db.execute("""
           create unique index idx2 on party (id) where name = 'test'
         """, None)
+        
+        testing.db.execute("""
+            create index idx3 on party using btree
+                (lower(name::text), lower(aname::text))
+        """)
+        
         try:
             m2 = MetaData(testing.db)
 
@@ -655,6 +663,7 @@ class MiscTest(TestBase, AssertsExecutionResults):
             # Make sure indexes are in the order we expect them in
             tmp = [(idx.name, idx) for idx in t2.indexes]
             tmp.sort()
+            
             r1, r2 = [idx[1] for idx in tmp]
 
             assert r1.name == 'idx2'
