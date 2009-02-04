@@ -556,6 +556,53 @@ class PGDialect(default.DefaultDialect):
         info_cache['tables'][table_index]['table_oid'] = table_oid
         return table_oid
 
+    def get_schema_names(self, connection, info_cache=None):
+        s = """
+        SELECT nspname
+        FROM pg_namespace
+        ORDER BY nspname
+        """
+        rp = connection.execute(s)
+        # what about system tables?
+        return [row[0].decode(self.encoding) for row in rp \
+                if not row[0].startswith('pg_')]
+
+    def get_table_names(self, connection, schemaname=None, info_cache=None):
+        if schemaname is not None:
+            current_schema = schemaname
+        else:
+            current_schema = self.get_default_schema_name(connection)
+        return self.table_names(connection, current_schema)
+
+    def get_view_names(self, connection, schemaname=None, info_cache=None):
+        if schemaname is not None:
+            current_schema = schemaname
+        else:
+            current_schema = self.get_default_schema_name(connection)
+        s = """
+        SELECT relname
+        FROM pg_class c
+        WHERE relkind = 'v'
+          AND '%(schema)s' = (select nspname from pg_namespace n where n.oid = c.relnamespace)
+        """ % dict(schema=current_schema)
+        return [row[0].decode(self.encoding) for row in connection.execute(s)]
+
+    def get_view_definition(self, connection, viewname, schemaname=None,
+                                                            info_cache=None):
+        if schemaname is not None:
+            current_schema = schemaname
+        else:
+            current_schema = self.get_default_schema_name(connection)
+        s = """
+        SELECT definition FROM pg_views
+        WHERE schemaname = :schemaname
+        AND viewname = :viewname
+        """
+        rp = connection.execute(sql.text(s),
+                                viewname=viewname, schemaname=current_schema)
+        if rp:
+            return rp.scalar().decode(self.encoding)
+
     def get_columns(self, connection, tablename, schemaname=None,
                     info_cache=None):
         info_cache = self._prepare_info_cache(info_cache, tablename, schemaname)
