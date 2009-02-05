@@ -53,7 +53,7 @@ class Inspector(object):
                                                         self.info_cache)
         return []
 
-    def get_table_names(self, schemaname=None):
+    def get_table_names(self, schemaname=None, order_by=None):
         """Return all table names in `schemaname`.
         schemaname:
           Optional, retrieve names from a non-default schema.
@@ -63,9 +63,28 @@ class Inspector(object):
 
         """
         if hasattr(self.engine.dialect, 'get_table_names'):
-            return self.engine.dialect.get_table_names(self.conn, schemaname,
+            tnames = self.engine.dialect.get_table_names(self.conn, schemaname,
                                                        self.info_cache)
-        return self.engine.table_names(schemaname)
+        else:
+            tnames = self.engine.table_names(schemaname)
+        if order_by == 'foreign_key':
+            ordered_tnames = tnames[:]
+            # Order based on foreign key dependencies.
+            for tname in tnames:
+                table_pos = tnames.index(tname)
+                fkeys = self.get_foreign_keys(tname, schemaname)
+                for fkey in fkeys:
+                    rtable = fkey['referred_table']
+                    if rtable in ordered_tnames:
+                        ref_pos = ordered_tnames.index(rtable)
+                        # Make sure it's lower in the list than anything it
+                        # references.
+                        if table_pos > ref_pos:
+                            ordered_tnames.pop(table_pos) # rtable moves up 1
+                            # insert just below rtable
+                            ordered_tnames.index(ref_pos, tname)
+            tnames = ordered_tnames
+        return tnames
 
     def get_view_names(self, schemaname=None):
         """Return all view names in `schemaname`.
@@ -122,7 +141,7 @@ class Inspector(object):
         """Return information about primary keys in `tablename`.
 
         Given a string `tablename`, and an optional string `schemaname`, return 
-        primary key information as a list of column names:
+        primary key information as a list of column names.
 
         """
 
