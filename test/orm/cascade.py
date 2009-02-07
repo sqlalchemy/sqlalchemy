@@ -1184,7 +1184,7 @@ class PartialFlushTest(_base.MappedTest):
     def define_tables(self, metadata):
         Table("base", metadata,
             Column("id", Integer, primary_key=True),
-            Column("descr", String)
+            Column("descr", String(50))
         )
 
         Table("noninh_child", metadata, 
