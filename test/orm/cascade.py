@@ -1176,5 +1176,116 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
         eq_(sess.query(A).get(a1.id),
             A(name='a1', bs=[B(name='b1'), B(name='b2'), B(name='b3')]))
 
+
+class PartialFlushTest(_base.MappedTest):
+    """test cascade behavior as it relates to object lists passed to flush().
+    
+    """
+    def define_tables(self, metadata):
+        Table("base", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("descr", String)
+        )
+
+        Table("noninh_child", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('base_id', Integer, ForeignKey('base.id'))
+        )
+
+        Table("parent", metadata,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True)
+        )
+        Table("inh_child", metadata,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+            Column("parent_id", Integer, ForeignKey("parent.id"))
+        )
+
+
+    @testing.resolve_artifact_names
+    def test_o2m_m2o(self):
+        class Base(_base.ComparableEntity):
+            pass
+        class Child(_base.ComparableEntity):
+            pass
+
+        mapper(Base, base, properties={
+            'children':relation(Child, backref='parent')
+        })
+        mapper(Child, noninh_child)
+
+        sess = create_session()
+
+        c1, c2 = Child(), Child()
+        b1 = Base(descr='b1', children=[c1, c2])
+        sess.add(b1)
+
+        assert c1 in sess.new
+        assert c2 in sess.new
+        sess.flush([b1])
+
+        # c1, c2 get cascaded into the session on o2m.
+        # not sure if this is how I like this 
+        # to work but that's how it works for now.
+        assert c1 in sess and c1 not in sess.new
+        assert c2 in sess and c2 not in sess.new
+        assert b1 in sess and b1 not in sess.new
+
+        sess = create_session()
+        c1, c2 = Child(), Child()
+        b1 = Base(descr='b1', children=[c1, c2])
+        sess.add(b1)
+        sess.flush([c1])
+        # m2o, otoh, doesn't cascade up the other way.
+        assert c1 in sess and c1 not in sess.new
+        assert c2 in sess and c2 in sess.new
+        assert b1 in sess and b1 in sess.new
+
+        sess = create_session()
+        c1, c2 = Child(), Child()
+        b1 = Base(descr='b1', children=[c1, c2])
+        sess.add(b1)
+        sess.flush([c1, c2])
+        # m2o, otoh, doesn't cascade up the other way.
+        assert c1 in sess and c1 not in sess.new
+        assert c2 in sess and c2 not in sess.new
+        assert b1 in sess and b1 in sess.new
+
+    @testing.resolve_artifact_names
+    def test_circular_sort(self):
+        """test ticket 1306"""
+        
+        class Base(_base.ComparableEntity):
+            pass
+        class Parent(Base):
+            pass
+        class Child(Base):
+            pass
+
+        mapper(Base,base)
+
+        mapper(Child, inh_child,
+            inherits=Base,
+            properties={'parent': relation(
+                Parent,
+                backref='children', 
+                primaryjoin=inh_child.c.parent_id == parent.c.id
+            )}
+        )
+
+
+        mapper(Parent,parent, inherits=Base)
+
+        sess = create_session()
+        p1 = Parent()
+
+        c1, c2, c3 = Child(), Child(), Child()
+        p1.children = [c1, c2, c3]
+        sess.add(p1)
+        
+        sess.flush([c1])
+        assert p1 in sess.new
+        assert c1 not in sess.new
+        assert c2 in sess.new
+        
 if __name__ == "__main__":
     testenv.main()

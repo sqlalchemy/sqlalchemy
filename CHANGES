@@ -17,6 +17,10 @@ CHANGES
       like mapper(A.join(B)) -> relation-> mapper(B) can be
       determined.
       
+    - When flushing partial sets of objects using session.flush([somelist]),
+      pending objects which remain pending after the operation won't
+      inadvertently be added as persistent. [ticket:1306]
+      
 - sql
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used
