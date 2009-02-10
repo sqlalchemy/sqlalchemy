@@ -25,6 +25,10 @@ CHANGES
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used
       in an ORM column_property()).  [ticket:1302]
+
+    - anonymous alias names now truncate down to the max length
+      allowed by the dialect.  More significant on DBs like
+      Oracle with very small character limits. [ticket:1309]
       
     - the __selectable__() interface has been replaced entirely
       by __clause_element__().

@@ -278,8 +278,9 @@ class DefaultCompiler(engine.Compiled):
             else:
                 schema_prefix = ''
             tablename = column.table.name
-            if isinstance(tablename, sql._generated_label):
-                tablename = tablename % self.anon_map
+            tablename = isinstance(tablename, sql._generated_label) and \
+                            self._truncated_identifier("alias", tablename) or tablename
+            
             return schema_prefix + self.preparer.quote(tablename, column.table.quote) + "." + name
 
     def escape_literal_column(self, text):
@@ -454,8 +455,11 @@ class DefaultCompiler(engine.Compiled):
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         if asfrom:
+            alias_name = isinstance(alias.name, sql._generated_label) and \
+                            self._truncated_identifier("alias", alias.name) or alias.name
+            
             return self.process(alias.original, asfrom=True, **kwargs) + " AS " + \
-                    self.preparer.format_alias(alias, alias.name % self.anon_map)
+                    self.preparer.format_alias(alias, alias_name)
         else:
             return self.process(alias.original, **kwargs)
 

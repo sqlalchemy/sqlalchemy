@@ -4,9 +4,6 @@ from sqlalchemy import exc as exceptions
 from testlib import *
 from sqlalchemy.engine import default
 
-# TODO: either create a mock dialect with named paramstyle and a short identifier length,
-# or find a way to just use sqlite dialect and make those changes
-
 IDENT_LENGTH = 29
 
 class LabelTypeTest(TestBase):
@@ -20,10 +17,15 @@ class LabelTypeTest(TestBase):
 
 class LongLabelsTest(TestBase, AssertsCompiledSQL):
     def setUpAll(self):
-        global metadata, table1, maxlen
+        global metadata, table1, table2, maxlen
         metadata = MetaData(testing.db)
         table1 = Table("some_large_named_table", metadata,
             Column("this_is_the_primarykey_column", Integer, Sequence("this_is_some_large_seq"), primary_key=True),
+            Column("this_is_the_data_column", String(30))
+            )
+
+        table2 = Table("table_with_exactly_29_characs", metadata,
+            Column("this_is_the_primarykey_column", Integer, Sequence("some_seq"), primary_key=True),
             Column("this_is_the_data_column", String(30))
             )
 
@@ -87,6 +89,37 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
             (3, "data3"),
         ], repr(result)
 
+    def test_table_alias_names(self):
+        self.assert_compile(
+            table2.alias().select(),
+            "SELECT table_with_exactly_29_c_1.this_is_the_primarykey_column, table_with_exactly_29_c_1.this_is_the_data_column FROM table_with_exactly_29_characs AS table_with_exactly_29_c_1"
+        )
+
+        ta = table2.alias()
+        dialect = default.DefaultDialect()
+        dialect.max_identifier_length = IDENT_LENGTH
+        self.assert_compile(
+            select([table1, ta]).select_from(table1.join(ta, table1.c.this_is_the_data_column==ta.c.this_is_the_data_column)).\
+                        where(ta.c.this_is_the_data_column=='data3'),
+                        
+            "SELECT some_large_named_table.this_is_the_primarykey_column, some_large_named_table.this_is_the_data_column, "
+            "table_with_exactly_29_c_1.this_is_the_primarykey_column, table_with_exactly_29_c_1.this_is_the_data_column FROM "
+            "some_large_named_table JOIN table_with_exactly_29_characs AS table_with_exactly_29_c_1 ON "
+            "some_large_named_table.this_is_the_data_column = table_with_exactly_29_c_1.this_is_the_data_column "
+            "WHERE table_with_exactly_29_c_1.this_is_the_data_column = :this_is_the_data_column_1",
+            dialect=dialect
+        )
+        
+        table2.insert().execute(
+            {"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"},
+            {"this_is_the_primarykey_column":2, "this_is_the_data_column":"data2"},
+            {"this_is_the_primarykey_column":3, "this_is_the_data_column":"data3"},
+            {"this_is_the_primarykey_column":4, "this_is_the_data_column":"data4"},
+        )
+        
+        r = table2.alias().select().execute()
+        assert r.fetchall() == [(x, "data%d" % x) for x in range(1, 5)]
+        
     def test_colbinds(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})
         table1.insert().execute(**{"this_is_the_primarykey_column":2, "this_is_the_data_column":"data2"})
@@ -153,9 +186,9 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
             "FROM some_large_named_table WHERE some_large_named_table.this_is_the_primarykey_column = :this_1) AS anon_1", dialect=compile_dialect)
 
         compile_dialect = default.DefaultDialect(label_length=4)
-        self.assert_compile(x, "SELECT anon_1.this_is_the_primarykey_column AS _1, anon_1.this_is_the_data_column AS _2 FROM "
+        self.assert_compile(x, "SELECT _1.this_is_the_primarykey_column AS _1, _1.this_is_the_data_column AS _2 FROM "
             "(SELECT some_large_named_table.this_is_the_primarykey_column AS _3, some_large_named_table.this_is_the_data_column AS _4 "
-            "FROM some_large_named_table WHERE some_large_named_table.this_is_the_primarykey_column = :_1) AS anon_1", dialect=compile_dialect)
+            "FROM some_large_named_table WHERE some_large_named_table.this_is_the_primarykey_column = :_1) AS _1", dialect=compile_dialect)
         
         
 if __name__ == '__main__':
