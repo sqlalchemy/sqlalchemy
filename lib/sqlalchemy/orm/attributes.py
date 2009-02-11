@@ -758,6 +758,7 @@ class CollectionAttributeImpl(AttributeImpl):
         state.commit([self.key])
 
         if self.key in state.pending:
+            
             # pending items exist.  issue a modified event,
             # add/remove new items.
             state.modified_event(self, True, user_data)
@@ -1027,6 +1028,7 @@ class InstanceState(object):
                 if impl.accepts_scalar_loader:
                     self.callables[key] = self
             self.dict.pop(key, None)
+            self.pending.pop(key, None)
             self.committed_state.pop(key, None)
 
     def reset(self, key):

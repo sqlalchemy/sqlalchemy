@@ -12,6 +12,13 @@ CHANGES
       union(query1, query2), select([foo]).select_from(query), 
       etc.
 
+    - a session.expire() on a particular collection attribute
+      will clear any pending backref additions as well, so that
+      the next access correctly returns only what was present
+      in the database.  Presents some degree of a workaround for 
+      [ticket:1315], although we are considering removing the 
+      flush([objects]) feature altogether.
+      
     - improvements to the "determine direction" logic of 
       relation() such that the direction of tricky situations 
       like mapper(A.join(B)) -> relation-> mapper(B) can be
