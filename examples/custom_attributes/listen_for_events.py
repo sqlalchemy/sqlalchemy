@@ -7,11 +7,10 @@ across the board.
 from sqlalchemy.orm.interfaces import AttributeExtension, InstrumentationManager
 
 class InstallListeners(InstrumentationManager):
-    def instrument_attribute(self, class_, key, inst):
+    def post_configure_attribute(self, class_, key, inst):
         """Add an event listener to an InstrumentedAttribute."""
         
         inst.impl.extensions.insert(0, AttributeListener(key))
-        return super(InstallListeners, self).instrument_attribute(class_, key, inst)
         
 class AttributeListener(AttributeExtension):
     """Generic event listener.  

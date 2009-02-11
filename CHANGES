@@ -20,6 +20,10 @@ CHANGES
     - When flushing partial sets of objects using session.flush([somelist]),
       pending objects which remain pending after the operation won't
       inadvertently be added as persistent. [ticket:1306]
+     
+    - Added "post_configure_attribute" method to InstrumentationManager,
+      so that the "listen_for_events.py" example works again.
+      [ticket:1314]
       
 - sql
     - Fixed missing _label attribute on Function object, others

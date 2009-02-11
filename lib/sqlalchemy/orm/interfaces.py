@@ -855,7 +855,12 @@ class LoaderStrategy(object):
             return fn
 
 class InstrumentationManager(object):
-    """User-defined class instrumentation extension."""
+    """User-defined class instrumentation extension.
+    
+    The API for this class should be considered as semi-stable,
+    and may change slightly with new releases.
+    
+    """
 
     # r4361 added a mandatory (cls) constructor to this interface.
     # given that, perhaps class_ should be dropped from all of these
@@ -876,6 +881,9 @@ class InstrumentationManager(object):
         return get
 
     def instrument_attribute(self, class_, key, inst):
+        pass
+
+    def post_configure_attribute(self, class_, key, inst):
         pass
 
     def install_descriptor(self, class_, key, inst):
