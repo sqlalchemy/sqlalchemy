@@ -432,6 +432,7 @@ class PGDialect(default.DefaultDialect):
     type_compiler = PGTypeCompiler
     preparer = PGIdentifierPreparer
     defaultrunner = PGDefaultRunner
+    info_cache = PGInfoCache
 
 
     def do_begin_twophase(self, connection, xid):
@@ -613,9 +614,9 @@ class PGDialect(default.DefaultDialect):
         else:
             current_schema = self.get_default_schema_name(connection)
         if info_cache:
-            view = info_cache.getView(viewname, current_schema)
-            if view.get('definition'):
-                return view['definition']
+            view_cache = info_cache.getView(viewname, current_schema)
+            if view_cache and 'definition' in view_cache:
+                return view_cache['definition']
         s = """
         SELECT definition FROM pg_views
         WHERE schemaname = :schemaname
