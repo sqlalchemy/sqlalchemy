@@ -32,13 +32,13 @@ class Inspector(object):
           [sqlalchemy.engine.base.#Connectable]
 
         """
-        self.info_cache = {}
         self.conn = conn
         # set the engine
         if hasattr(conn, 'engine'):
             self.engine = conn.engine
         else:
             self.engine = conn
+        self.info_cache = self.engine.dialect.info_cache()
 
     def default_schema_name(self):
         return self.engine.dialect.get_default_schema_name(self.conn)
