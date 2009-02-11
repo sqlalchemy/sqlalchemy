@@ -33,6 +33,7 @@ class DefaultInfoCache(object):
         self._cache = dict(schemas={})
         self.tables_are_complete = False
         self.schemas_are_complete = False
+        self.views_are_complete = False
 
     def clear(self):
         """Clear the cache."""
@@ -67,7 +68,7 @@ class DefaultInfoCache(object):
         return None
 
     def addSchema(self, schemaname):
-        self._cache['schemas'][schemaname] = dict(tables={})
+        self._cache['schemas'][schemaname] = dict(tables={}, views={})
         return self.getSchema(schemaname)
 
     def addAllSchemas(self, schemanames):
