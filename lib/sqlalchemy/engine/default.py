@@ -142,6 +142,50 @@ class DefaultInfoCache(object):
     def addAllViews(self, viewnames, schemaname=None):
         return self.addAllTables(viewnames, schemaname, 'view')
 
+    def _getTableData(self, key, tablename, schemaname=None):
+        table_cache = self.getTable(tablename, schemaname)
+        if table_cache is not None and key in table_cache.keys():
+            return table_cache[key]
+
+    def _setTableData(self, key, data, tablename, schemaname=None):
+        """Cache data for schemaname.tablename using key.
+
+        It will create a schema and table entry in the cache if needed.
+
+        """
+        table_cache = self.getTable(tablename, schemaname, create=True)
+        table_cache[key] = data
+
+    def getColumns(self, tablename, schemaname=None):
+        """Return columns list or None."""
+        
+        return self._getTableData('columns', tablename, schemaname)
+
+    def setColumns(self, columns, tablename, schemaname=None):
+        """Add list of columns to table cache."""
+
+        return self._setTableData('columns', columns, tablename, schemaname)
+
+    def getPrimaryKeys(self, tablename, schemaname=None):
+        """Return primary key list or None."""
+        
+        return self._getTableData('primary_keys', tablename, schemaname)
+
+    def setPrimaryKeys(self, pkeys, tablename, schemaname=None):
+        """Add list of primary keys to table cache."""
+
+        return self._setTableData('primary_keys', pkeys, tablename, schemaname)
+
+    def getForeignKeys(self, tablename, schemaname=None):
+        """Return foreign key list or None."""
+        
+        return self._getTableData('foreign_keys', tablename, schemaname)
+
+    def setForeignKeys(self, fkeys, tablename, schemaname=None):
+        """Add list of foreign keys to table cache."""
+
+        return self._setTableData('foreign_keys', fkeys, tablename, schemaname)
+
 
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
