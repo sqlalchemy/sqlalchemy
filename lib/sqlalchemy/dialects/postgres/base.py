@@ -640,9 +640,9 @@ class PGDialect(default.DefaultDialect):
     def get_columns(self, connection, tablename, schemaname=None,
                     info_cache=None):
         if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname)
-            if table_cache and 'columns' in table_cache.keys():
-                return table_cache.get('columns')
+            columns = info_cache.getColumns(tablename, schemaname)
+            if columns is not None:
+                return columns
         table_oid = self._get_table_oid(connection, tablename, schemaname,
                                         info_cache)
         SQL_COLS = """
@@ -727,9 +727,7 @@ class PGDialect(default.DefaultDialect):
                                default=default, colargs=colargs)
             columns.append(column_info)
         if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname, 
-                                              create=True)
-            table_cache['columns'] = columns
+            info_cache.setColumns(columns, tablename, schemaname)
         return columns
 
     def get_primary_keys(self, connection, tablename, schemaname=None,
