@@ -540,6 +540,11 @@ class PGDialect(default.DefaultDialect):
             WHERE (%s)
             AND c.relname = :table_name AND c.relkind in ('r','v')
         """ % schema_where_clause
+        # Since we're binding to unicode, tablename and schemaname must be
+        # unicode.
+        tablename = unicode(tablename)
+        if schemaname is not None:
+            schemaname = unicode(schemaname)
         s = sql.text(query, bindparams=[
             sql.bindparam('table_name', type_=sqltypes.Unicode),
             sql.bindparam('schema', type_=sqltypes.Unicode)
