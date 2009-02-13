@@ -9,6 +9,8 @@ from sqlalchemy.orm import *
 from sqlalchemy import exc as sa_exc
 from testlib import *
 from testlib import fixtures
+from orm import _base
+from testlib.testing import eq_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine import default
 
@@ -773,7 +775,7 @@ class SelfReferentialTestJoinedToJoined(ORMTest):
         
         mapper(Engineer, engineers, inherits=Person, 
           polymorphic_identity='engineer', properties={
-          'reports_to':relation(Manager, primaryjoin=managers.c.person_id==engineers.c.reports_to_id)
+          'reports_to':relation(Manager, primaryjoin=managers.c.person_id==engineers.c.reports_to_id, backref='engineers')
         })
 
     def test_has(self):
@@ -800,6 +802,33 @@ class SelfReferentialTestJoinedToJoined(ORMTest):
         self.assertEquals(
             sess.query(Engineer).join('reports_to', aliased=True).filter(Manager.name=='dogbert').first(), 
             Engineer(name='dilbert'))
+    
+    def test_relation_compare(self):
+        m1 = Manager(name='dogbert')
+        m2 = Manager(name='foo')
+        e1 = Engineer(name='dilbert', primary_language='java', reports_to=m1)
+        e2 = Engineer(name='wally', primary_language='c++', reports_to=m2)
+        e3 = Engineer(name='etc', primary_language='c++')
+        sess = create_session()
+        sess.add(m1)
+        sess.add(m2)
+        sess.add(e1)
+        sess.add(e2)
+        sess.add(e3)
+        sess.flush()
+        sess.expunge_all()
+
+        self.assertEquals(
+            sess.query(Manager).join(Manager.engineers).filter(Engineer.reports_to==None).all(), 
+            []
+        )
+
+        self.assertEquals(
+            sess.query(Manager).join(Manager.engineers).filter(Engineer.reports_to==m1).all(), 
+            [m1]
+        )
+        
+        
         
 
 class M2MFilterTest(ORMTest):
@@ -868,6 +897,8 @@ class M2MFilterTest(ORMTest):
         self.assertEquals(sess.query(Organization).filter(Organization.engineers.any(Engineer.name=='e1')).all(), [Organization(name='org1')])
 
 class SelfReferentialM2MTest(ORMTest, AssertsCompiledSQL):
+    keep_mappers = True
+    
     def define_tables(self, metadata):
         Base = declarative_base(metadata=metadata)
 
@@ -895,8 +926,49 @@ class SelfReferentialM2MTest(ORMTest, AssertsCompiledSQL):
         Child1.left_child2 = relation(Child2, secondary = secondary_table,
                primaryjoin = Parent.id == secondary_table.c.right_id,
                secondaryjoin = Parent.id == secondary_table.c.left_id,
-               uselist = False,
+               uselist = False, backref="right_children"
                                )
+
+    
+    def test_query_crit(self):
+        session = create_session()
+        c11, c12, c13 = Child1(), Child1(), Child1()
+        c21, c22, c23 = Child2(), Child2(), Child2()
+        
+        c11.left_child2 = c22
+        c12.left_child2 = c22
+        c13.left_child2 = c23
+        
+        session.add_all([c11, c12, c13, c21, c22, c23])
+        session.flush()
+        
+        # test that the join to Child2 doesn't alias Child1 in the select
+        eq_(
+            set(session.query(Child1).join(Child1.left_child2)), 
+            set([c11, c12, c13])
+        )
+
+        eq_(
+            set(session.query(Child1, Child2).join(Child1.left_child2)), 
+            set([(c11, c22), (c12, c22), (c13, c23)])
+        )
+
+        # test __eq__() on property is annotating correctly
+        eq_(
+            set(session.query(Child2).join(Child2.right_children).filter(Child1.left_child2==c22)),
+            set([c22])
+        )
+
+        # test the same again
+        self.assert_compile(
+            session.query(Child2).join(Child2.right_children).filter(Child1.left_child2==c22).with_labels().statement,
+            "SELECT parent.id AS parent_id, child2.id AS child2_id, parent.cls AS parent_cls FROM "
+            "secondary AS secondary_1, parent JOIN child2 ON parent.id = child2.id JOIN secondary AS secondary_2 "
+            "ON parent.id = secondary_2.left_id JOIN (SELECT parent.id AS parent_id, parent.cls AS parent_cls, "
+            "child1.id AS child1_id FROM parent JOIN child1 ON parent.id = child1.id) AS anon_1 ON "
+            "anon_1.parent_id = secondary_2.right_id WHERE anon_1.parent_id = secondary_1.right_id AND :param_1 = secondary_1.left_id",
+            dialect=default.DefaultDialect()
+        )
 
     def test_eager_join(self):
         session = create_session()

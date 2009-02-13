@@ -127,6 +127,7 @@ class Query(object):
 
     def __mapper_loads_polymorphically_with(self, mapper, adapter):
         for m2 in mapper._with_polymorphic_mappers:
+            self._polymorphic_adapters[m2] = adapter
             for m in m2.iterate_to_root():
                 self._polymorphic_adapters[m.mapped_table] = self._polymorphic_adapters[m.local_table] = adapter
 
@@ -145,6 +146,7 @@ class Query(object):
 
     def _reset_polymorphic_adapter(self, mapper):
         for m2 in mapper._with_polymorphic_mappers:
+            self._polymorphic_adapters.pop(m2, None)
             for m in m2.iterate_to_root():
                 self._polymorphic_adapters.pop(m.mapped_table, None)
                 self._polymorphic_adapters.pop(m.local_table, None)
@@ -1892,10 +1894,7 @@ class _MapperEntity(_QueryEntity):
 
         adapter = None
         if not self.is_aliased_class and query._polymorphic_adapters:
-            for mapper in self.mapper.iterate_to_root():
-                adapter = query._polymorphic_adapters.get(mapper.mapped_table, None)
-                if adapter:
-                    break
+            adapter = query._polymorphic_adapters.get(self.mapper, None)
 
         if not adapter and self.adapter:
             adapter = self.adapter

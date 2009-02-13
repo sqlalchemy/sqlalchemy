@@ -32,6 +32,13 @@ CHANGES
       so that the "listen_for_events.py" example works again.
       [ticket:1314]
       
+    - Fixed bugs in Query regarding simultaneous selection of 
+      multiple joined-table inheritance entities with common base 
+      classes, previously the adaption applied to "e2" on 
+      "e1 JOIN e2" would be partially applied to "e1".  Additionally,
+      comparisons on relations (i.e. Entity2.related==e2)
+      were not getting adapted correctly.
+      
 - sql
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used

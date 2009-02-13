@@ -485,11 +485,11 @@ class RelationProperty(StrategizedProperty):
                 if self.property.direction in [ONETOMANY, MANYTOMANY]:
                     return ~self._criterion_exists()
                 else:
-                    return self.property._optimized_compare(None, adapt_source=self.adapter)
+                    return _orm_annotate(self.property._optimized_compare(None, adapt_source=self.adapter))
             elif self.property.uselist:
                 raise sa_exc.InvalidRequestError("Can't compare a collection to an object or collection; use contains() to test for membership.")
             else:
-                return self.property._optimized_compare(other, adapt_source=self.adapter)
+                return _orm_annotate(self.property._optimized_compare(other, adapt_source=self.adapter))
 
         def _criterion_exists(self, criterion=None, **kwargs):
             if getattr(self, '_of_type', None):
