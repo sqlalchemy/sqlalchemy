@@ -1270,6 +1270,10 @@ class MSSQLDialect_pymssql(MSSQLDialect):
         # pymmsql doesn't have a Binary method.  we use string
         # TODO: monkeypatching here is less than ideal
         module.Binary = lambda st: str(st)
+        try:
+            module.version_info = tuple(map(int, module.__version__.split('.')))
+        except:
+            module.version_info = (0, 0, 0)
         return module
 
     def __init__(self, **params):
@@ -1291,7 +1295,10 @@ class MSSQLDialect_pymssql(MSSQLDialect):
     def create_connect_args(self, url):
         r = super(MSSQLDialect_pymssql, self).create_connect_args(url)
         if hasattr(self, 'query_timeout'):
-            self.dbapi._mssql.set_query_timeout(self.query_timeout)
+            if self.dbapi.version_info > (0, 8, 0):
+                r[1]['timeout'] = self.query_timeout
+            else:
+                self.dbapi._mssql.set_query_timeout(self.query_timeout) 
         return r
 
     def make_connect_string(self, keys, query):

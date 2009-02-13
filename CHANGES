@@ -62,6 +62,9 @@ CHANGES
 - postgres
     - Index reflection won't fail when an index with 
       multiple expressions is encountered.
+
+- mssql
+    - Preliminary support for pymssql 1.0.1
     
 0.5.2
 ======
