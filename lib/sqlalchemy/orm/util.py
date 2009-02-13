@@ -258,12 +258,19 @@ class ORMAdapter(sql_util.ColumnAdapter):
     
     """
     def __init__(self, entity, equivalents=None, chain_to=None):
-        mapper, selectable, is_aliased_class = _entity_info(entity)
+        self.mapper, selectable, is_aliased_class = _entity_info(entity)
         if is_aliased_class:
             self.aliased_class = entity
         else:
             self.aliased_class = None
         sql_util.ColumnAdapter.__init__(self, selectable, equivalents, chain_to)
+
+    def replace(self, elem):
+        entity = elem._annotations.get('parentmapper', None)
+        if not entity or entity.isa(self.mapper):
+            return sql_util.ColumnAdapter.replace(self, elem)
+        else:
+            return None
 
 class AliasedClass(object):
     """Represents an 'alias'ed form of a mapped class for usage with Query.
@@ -303,7 +310,7 @@ class AliasedClass(object):
         self.__name__ = 'AliasedClass_' + str(self.__target)
         
     def __adapt_element(self, elem):
-        return self.__adapter.traverse(elem)._annotate({'parententity': self})
+        return self.__adapter.traverse(elem)._annotate({'parententity': self, 'parentmapper':self.__mapper})
         
     def __adapt_prop(self, prop):
         existing = getattr(self.__target, prop.key)

@@ -750,7 +750,7 @@ class SelfReferentialTestJoinedToBase(ORMTest):
             sess.query(Engineer).join('reports_to', aliased=True).filter(Person.name=='dogbert').first(), 
             Engineer(name='dilbert'))
 
-class SelfReferentialTestJoinedToJoined(ORMTest):
+class SelfReferentialJ2JTest(ORMTest):
     keep_mappers = True
 
     def define_tables(self, metadata):
@@ -803,6 +803,36 @@ class SelfReferentialTestJoinedToJoined(ORMTest):
             sess.query(Engineer).join('reports_to', aliased=True).filter(Manager.name=='dogbert').first(), 
             Engineer(name='dilbert'))
     
+    def test_filter_aliasing(self):
+        m1 = Manager(name='dogbert')
+        m2 = Manager(name='foo')
+        e1 = Engineer(name='wally', primary_language='java', reports_to=m1)
+        e2 = Engineer(name='dilbert', primary_language='c++', reports_to=m2)
+        e3 = Engineer(name='etc', primary_language='c++')
+        sess = create_session()
+        sess.add_all([m1, m2, e1, e2, e3])
+        sess.flush()
+        sess.expunge_all()
+
+        # filter aliasing applied to Engineer doesn't whack Manager
+        self.assertEquals(
+            sess.query(Manager).join(Manager.engineers).filter(Manager.name=='dogbert').all(),
+            [m1]
+        )
+
+        self.assertEquals(
+            sess.query(Manager).join(Manager.engineers).filter(Engineer.name=='dilbert').all(),
+            [m2]
+        )
+
+        self.assertEquals(
+            sess.query(Manager, Engineer).join(Manager.engineers).order_by(Manager.name.desc()).all(),
+            [
+                (m2, e2),
+                (m1, e1),
+            ]
+        )
+        
     def test_relation_compare(self):
         m1 = Manager(name='dogbert')
         m2 = Manager(name='foo')
@@ -827,8 +857,7 @@ class SelfReferentialTestJoinedToJoined(ORMTest):
             sess.query(Manager).join(Manager.engineers).filter(Engineer.reports_to==m1).all(), 
             [m1]
         )
-        
-        
+
         
 
 class M2MFilterTest(ORMTest):

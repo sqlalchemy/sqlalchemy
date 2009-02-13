@@ -34,10 +34,18 @@ CHANGES
       
     - Fixed bugs in Query regarding simultaneous selection of 
       multiple joined-table inheritance entities with common base 
-      classes, previously the adaption applied to "e2" on 
-      "e1 JOIN e2" would be partially applied to "e1".  Additionally,
-      comparisons on relations (i.e. Entity2.related==e2)
-      were not getting adapted correctly.
+      classes:
+      
+      - previously the adaption applied to "B" on 
+        "A JOIN B" would be erroneously partially applied 
+        to "A".
+      
+      - comparisons on relations (i.e. A.related==someb)
+        were not getting adapted when they should.
+      
+      - Other filterings, like 
+        query(A).join(A.bs).filter(B.foo=='bar'), were erroneously
+        adapting "B.foo" as though it were an "A".
       
 - sql
     - Fixed missing _label attribute on Function object, others

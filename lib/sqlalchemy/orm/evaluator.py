@@ -30,8 +30,8 @@ class EvaluatorCompiler(object):
         return lambda obj: None
 
     def visit_column(self, clause):
-        if 'parententity' in clause._annotations:
-            key = clause._annotations['parententity']._get_col_to_prop(clause).key
+        if 'parentmapper' in clause._annotations:
+            key = clause._annotations['parentmapper']._get_col_to_prop(clause).key
         else:
             key = clause.key
         get_corresponding_attr = operator.attrgetter(key)
