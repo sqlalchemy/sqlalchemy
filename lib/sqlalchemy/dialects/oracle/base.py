@@ -568,9 +568,28 @@ class OracleDialect(default.DefaultDialect):
             else:
                 return None, None, None, None
 
-    def get_columns(self, connection, tablename, schemaname=None,
-                    info_cache=None, dblink=''):
+    def _prepare_reflection_args(self, connection, tablename, schemaname=None,
+                                 resolve_synonyms=False, dblink=''):
 
+        if resolve_synonyms:
+            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(schemaname), desired_synonym=self._denormalize_name(tablename))
+        else:
+            actual_name, owner, dblink, synonym = None, None, None, None
+        if not actual_name:
+            actual_name = self._denormalize_name(tablename)
+        if not dblink:
+            dblink = ''
+        if not owner:
+            owner = self._denormalize_name(schemaname or self.get_default_schema_name(connection))
+        return (actual_name, owner, dblink, synonym)
+
+    def get_columns(self, connection, tablename, schemaname=None,
+                    info_cache=None, resolve_synonyms=False, dblink=''):
+
+        
+        (tablename, schemaname, dblink, synonym) = \
+            self._prepare_reflection_args(connection, tablename, schemaname,
+                                          resolve_synonyms, dblink)
         if info_cache:
             columns = info_cache.getColumns(tablename, schemaname)
             if columns:
@@ -658,8 +677,10 @@ class OracleDialect(default.DefaultDialect):
         return constraint_data
 
     def get_primary_keys(self, connection, tablename, schemaname=None,
-                         info_cache=None, dblink=''):
-
+                         info_cache=None, resolve_synonyms=False, dblink=''):
+        (tablename, schemaname, dblink, synonym) = \
+            self._prepare_reflection_args(connection, tablename, schemaname,
+                                          resolve_synonyms, dblink)
         if info_cache:
             pkeys = info_cache.getPrimaryKeys(tablename, schemaname)
             if pkeys is not None:
@@ -676,10 +697,11 @@ class OracleDialect(default.DefaultDialect):
             info_cache.setPrimaryKeys(pkeys, tablename, schemaname)
         return pkeys
 
-
     def get_foreign_keys(self, connection, tablename, schemaname=None,
-                         info_cache=None, dblink='', resolve_synonyms=False):
-
+                         info_cache=None, resolve_synonyms=False, dblink=''):
+        (tablename, schemaname, dblink, synonym) = \
+            self._prepare_reflection_args(connection, tablename, schemaname,
+                                          resolve_synonyms, dblink)
         if info_cache:
             fkeys = info_cache.getForeignKeys(tablename, schemaname)
             if fkeys is not None:
@@ -727,17 +749,9 @@ class OracleDialect(default.DefaultDialect):
 
         resolve_synonyms = table.kwargs.get('oracle_resolve_synonyms', False)
 
-        if resolve_synonyms:
-            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(table.schema), desired_synonym=self._denormalize_name(table.name))
-        else:
-            actual_name, owner, dblink, synonym = None, None, None, None
-
-        if not actual_name:
-            actual_name = self._denormalize_name(table.name)
-        if not dblink:
-            dblink = ''
-        if not owner:
-            owner = self._denormalize_name(table.schema or self.get_default_schema_name(connection))
+        (actual_name, owner, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table.name, table.schema,
+                                          resolve_synonyms)
 
         # columns
         columns = self.get_columns(connection, actual_name, owner, info_cache,
@@ -764,7 +778,7 @@ class OracleDialect(default.DefaultDialect):
         fks = {}
         fkeys = []
         fkeys = self.get_foreign_keys(connection, actual_name, owner,
-                                      info_cache, dblink, resolve_synonyms)
+                                      info_cache, resolve_synonyms, dblink)
         refspecs = []
         for (conname, constrained_columns, referred_schema, referred_table,
              referred_columns) in fkeys:
