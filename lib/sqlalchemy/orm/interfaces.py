@@ -8,7 +8,7 @@
 
 Semi-private module containing various base classes used throughout the ORM.
 
-Defines the extension classes :class:`MapperExtension`, 
+Defines the extension classes :class:`MapperExtension`,
 :class:`SessionExtension`, and :class:`AttributeExtension` as
 well as other user-subclassable extension objects.
 
@@ -167,7 +167,7 @@ class MapperExtension(object):
         ``__new__``, and after initial attribute population has
         occurred.
 
-        This typicically occurs when the instance is created based on
+        This typically occurs when the instance is created based on
         incoming result rows, and is only called once for that
         instance's lifetime.
 
@@ -325,7 +325,7 @@ class SessionExtension(object):
         `query_context` was the query context object.
         `result` is the result object returned from the bulk operation.
         """
-    
+
 class MapperProperty(object):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual
@@ -394,36 +394,36 @@ class MapperProperty(object):
 
     def instrument_class(self, mapper):
         raise NotImplementedError()
-        
+
     _compile_started = False
     _compile_finished = False
-    
+
     def init(self):
         """Called after all mappers are created to assemble
         relationships between mappers and perform other post-mapper-creation
-        initialization steps.  
-        
+        initialization steps.
+
         """
         self._compile_started = True
         self.do_init()
         self._compile_finished = True
-        
+
     def do_init(self):
         """Perform subclass-specific initialization post-mapper-creation steps.
 
         This is a *template* method called by the
         ``MapperProperty`` object's init() method.
-        
+
         """
         pass
-    
+
     def post_instrument_class(self, mapper):
         """Perform instrumentation adjustments that need to occur
         after init() has completed.
-        
+
         """
         pass
-        
+
     def register_dependencies(self, *args, **kwargs):
         """Called by the ``Mapper`` in response to the UnitOfWork
         calling the ``Mapper``'s register_dependencies operation.
@@ -482,10 +482,10 @@ class PropComparator(expression.ColumnOperators):
     def adapted(self, adapter):
         """Return a copy of this PropComparator which will use the given adaption function
         on the local side of generated expressions.
-        
+
         """
         return self.__class__(self.prop, self.mapper, adapter)
-        
+
     @staticmethod
     def any_op(a, b, **kwargs):
         return a.any(b, **kwargs)
@@ -589,7 +589,7 @@ class StrategizedProperty(MapperProperty):
     def post_instrument_class(self, mapper):
         if self.is_primary():
             self.strategy.init_class_attribute(mapper)
-                
+
 def build_path(entity, key, prev=None):
     if prev:
         return prev + (entity, key)
@@ -738,35 +738,35 @@ class PropertyOption(MapperOption):
 
 class AttributeExtension(object):
     """An event handler for individual attribute change events.
-    
-    AttributeExtension is assembled within the descriptors associated 
-    with a mapped class. 
-    
+
+    AttributeExtension is assembled within the descriptors associated
+    with a mapped class.
+
     """
 
     def append(self, state, value, initiator):
         """Receive a collection append event.
-        
+
         The returned value will be used as the actual value to be
         appended.
-        
+
         """
         return value
 
     def remove(self, state, value, initiator):
         """Receive a remove event.
-        
+
         No return value is defined.
-        
+
         """
         pass
 
     def set(self, state, value, oldvalue, initiator):
         """Receive a set event.
-        
+
         The returned value will be used as the actual value to be
         set.
-        
+
         """
         return value
 
@@ -855,7 +855,12 @@ class LoaderStrategy(object):
             return fn
 
 class InstrumentationManager(object):
-    """User-defined class instrumentation extension."""
+    """User-defined class instrumentation extension.
+    
+    The API for this class should be considered as semi-stable,
+    and may change slightly with new releases.
+    
+    """
 
     # r4361 added a mandatory (cls) constructor to this interface.
     # given that, perhaps class_ should be dropped from all of these
@@ -876,6 +881,9 @@ class InstrumentationManager(object):
         return get
 
     def instrument_attribute(self, class_, key, inst):
+        pass
+
+    def post_configure_attribute(self, class_, key, inst):
         pass
 
     def install_descriptor(self, class_, key, inst):

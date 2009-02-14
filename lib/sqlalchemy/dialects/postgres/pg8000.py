@@ -45,7 +45,7 @@ class Postgres_pg8000ExecutionContext(default.DefaultExecutionContext):
 class Postgres_pg8000(PGDialect):
     driver = 'pg8000'
 
-    supports_unicode_statements = False
+    supports_unicode_statements = True
     
     supports_unicode_binds = True
     

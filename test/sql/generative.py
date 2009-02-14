@@ -447,6 +447,13 @@ class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t1)), "SELECT * FROM table2 WHERE t1alias.col1 = table2.col2")
         self.assert_compile(vis.traverse(select(['*'], t1.c.col1==t2.c.col2, from_obj=[t1, t2]).correlate(t2)), "SELECT * FROM table1 AS t1alias WHERE t1alias.col1 = table2.col2")
 
+        self.assert_compile(vis.traverse(case([(t1.c.col1==5, t1.c.col2)], else_=t1.c.col1)), 
+            "CASE WHEN (t1alias.col1 = :col1_1) THEN t1alias.col2 ELSE t1alias.col1 END"
+        )
+        self.assert_compile(vis.traverse(case([(5, t1.c.col2)], value=t1.c.col1, else_=t1.c.col1)), 
+            "CASE t1alias.col1 WHEN :param_1 THEN t1alias.col2 ELSE t1alias.col1 END"
+        )
+
 
         s = select(['*'], from_obj=[t1]).alias('foo')
         self.assert_compile(s.select(), "SELECT foo.* FROM (SELECT * FROM table1) AS foo")

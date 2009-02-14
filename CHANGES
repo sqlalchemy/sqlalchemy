@@ -3,6 +3,77 @@
 =======
 CHANGES
 =======
+0.5.3
+=====
+- orm
+    - Query now implements __clause_element__() which produces
+      its selectable, which means a Query instance can be accepted 
+      in many SQL expressions, including col.in_(query), 
+      union(query1, query2), select([foo]).select_from(query), 
+      etc.
+
+    - a session.expire() on a particular collection attribute
+      will clear any pending backref additions as well, so that
+      the next access correctly returns only what was present
+      in the database.  Presents some degree of a workaround for 
+      [ticket:1315], although we are considering removing the 
+      flush([objects]) feature altogether.
+      
+    - improvements to the "determine direction" logic of 
+      relation() such that the direction of tricky situations 
+      like mapper(A.join(B)) -> relation-> mapper(B) can be
+      determined.
+      
+    - When flushing partial sets of objects using session.flush([somelist]),
+      pending objects which remain pending after the operation won't
+      inadvertently be added as persistent. [ticket:1306]
+     
+    - Added "post_configure_attribute" method to InstrumentationManager,
+      so that the "listen_for_events.py" example works again.
+      [ticket:1314]
+      
+    - Fixed bugs in Query regarding simultaneous selection of 
+      multiple joined-table inheritance entities with common base 
+      classes:
+      
+      - previously the adaption applied to "B" on 
+        "A JOIN B" would be erroneously partially applied 
+        to "A".
+      
+      - comparisons on relations (i.e. A.related==someb)
+        were not getting adapted when they should.
+      
+      - Other filterings, like 
+        query(A).join(A.bs).filter(B.foo=='bar'), were erroneously
+        adapting "B.foo" as though it were an "A".
+      
+- sql
+    - Fixed missing _label attribute on Function object, others
+      when used in a select() with use_labels (such as when used
+      in an ORM column_property()).  [ticket:1302]
+
+    - anonymous alias names now truncate down to the max length
+      allowed by the dialect.  More significant on DBs like
+      Oracle with very small character limits. [ticket:1309]
+      
+    - the __selectable__() interface has been replaced entirely
+      by __clause_element__().
+
+    - The per-dialect cache used by TypeEngine to cache
+      dialect-specific types is now a WeakKeyDictionary.
+      This to prevent dialect objects from 
+      being referenced forever for an application that 
+      creates an arbitrarily large number of engines
+      or dialects.   There is a small performance penalty
+      which will be resolved in 0.6.  [ticket:1299]
+
+- postgres
+    - Index reflection won't fail when an index with 
+      multiple expressions is encountered.
+
+- mssql
+    - Preliminary support for pymssql 1.0.1
+    
 0.5.2
 ======
 

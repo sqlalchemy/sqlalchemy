@@ -6,6 +6,8 @@ from sqlalchemy.orm.session import _sessions
 import operator
 from testlib import testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, PickleType
+import sqlalchemy as sa
+from sqlalchemy.sql import column
 from orm import _base
 import sqlalchemy as sa
 from sqlalchemy.sql import column

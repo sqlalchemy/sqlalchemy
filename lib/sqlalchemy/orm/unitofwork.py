@@ -267,7 +267,7 @@ class UOWTransaction(object):
         for elem in self.elements:
             if elem.isdelete:
                 self.session._remove_newly_deleted(elem.state)
-            else:
+            elif not elem.listonly:
                 self.session._register_newly_persistent(elem.state)
 
     def _sort_dependencies(self):

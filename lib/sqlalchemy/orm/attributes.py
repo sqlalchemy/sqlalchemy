@@ -758,6 +758,7 @@ class CollectionAttributeImpl(AttributeImpl):
         state.commit([self.key])
 
         if self.key in state.pending:
+            
             # pending items exist.  issue a modified event,
             # add/remove new items.
             state.modified_event(self, True, user_data)
@@ -1027,6 +1028,7 @@ class InstanceState(object):
                 if impl.accepts_scalar_loader:
                     self.callables[key] = self
             self.dict.pop(key, None)
+            self.pending.pop(key, None)
             self.committed_state.pop(key, None)
 
     def reset(self, key):
@@ -1201,6 +1203,9 @@ class ClassManager(dict):
                 manager = create_manager_for_cls(cls)
             manager.instrument_attribute(key, inst, True)
 
+    def post_configure_attribute(self, key):
+        pass
+        
     def uninstrument_attribute(self, key, propagated=False):
         if key not in self:
             return
@@ -1353,6 +1358,9 @@ class _ClassInstrumentationAdapter(ClassManager):
         ClassManager.instrument_attribute(self, key, inst, propagated)
         if not propagated:
             self._adapted.instrument_attribute(self.class_, key, inst)
+
+    def post_configure_attribute(self, key):
+        self._adapted.post_configure_attribute(self.class_, key, self[key])
 
     def install_descriptor(self, key, inst):
         self._adapted.install_descriptor(self.class_, key, inst)
@@ -1579,9 +1587,10 @@ def register_attribute_impl(class_, key, **kw):
             key, factory or list)
     else:
         typecallable = kw.pop('typecallable', None)
-
+        
     manager[key].impl = _create_prop(class_, key, manager, typecallable=typecallable, **kw)
-
+    manager.post_configure_attribute(key)
+    
 def register_descriptor(class_, key, proxy_property=None, comparator=None, parententity=None, property_=None):
     manager = manager_of_class(class_)
 

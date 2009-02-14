@@ -747,6 +747,51 @@ class PolymorphicExpireTest(_base.MappedTest):
         self.assert_sql_count(testing.db, go, 2)
         self.assertEquals(Engineer.name.get_history(e1), (['new engineer name'],(), ['engineer1']))
 
+class ExpiredPendingTest(_fixtures.FixtureTest):
+    run_define_tables = 'once'
+    run_setup_classes = 'once'
+    run_setup_mappers = None
+    run_inserts = None
+    
+    @testing.resolve_artifact_names
+    def test_expired_pending(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref='user'),
+            })
+        mapper(Address, addresses)
+
+        sess = create_session()
+        a1 = Address(email_address='a1')
+        sess.add(a1)
+        sess.flush()
+        
+        u1 = User(name='u1')
+        a1.user = u1
+        sess.flush()
+
+        # expire 'addresses'.  backrefs
+        # which attach to u1 will expect to be "pending"
+        sess.expire(u1, ['addresses'])
+
+        # attach an Address.  now its "pending" 
+        # in user.addresses
+        a2 = Address(email_address='a2')
+        a2.user = u1
+
+        # expire u1.addresses again.  this expires
+        # "pending" as well.
+        sess.expire(u1, ['addresses'])
+        
+        # insert a new row
+        sess.execute(addresses.insert(), dict(email_address='a3', user_id=u1.id))
+        
+        # only two addresses pulled from the DB, no "pending"
+        assert len(u1.addresses) == 2
+        
+        sess.flush()
+        sess.expire_all()
+        assert len(u1.addresses) == 3
+    
 
 class RefreshTest(_fixtures.FixtureTest):
 
@@ -783,9 +828,6 @@ class RefreshTest(_fixtures.FixtureTest):
         s.expire(u)
 
         # get the attribute, it refreshes
-        print "OK------"
-#        print u.__dict__
-#        print u._state.callables
         assert u.name == 'jack'
         assert id(a) not in [id(x) for x in u.addresses]
 
