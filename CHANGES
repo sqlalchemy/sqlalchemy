@@ -46,7 +46,14 @@ CHANGES
       - Other filterings, like 
         query(A).join(A.bs).filter(B.foo=='bar'), were erroneously
         adapting "B.foo" as though it were an "A".
-      
+    
+     - Added an attribute helper method ``set_committed_value`` in 
+       sqlalchemy.orm.attributes.  Given an object, attribute name,
+       and value, will set the value on the object as part of its
+       "committed" state, i.e. state that is understood to have 
+       been loaded from the database.   Helps with the creation of 
+       homegrown collection loaders and such.
+       
 - sql
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used

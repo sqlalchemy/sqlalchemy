@@ -71,7 +71,7 @@ between releases.  ClassManager is not public and no guarantees are made
 about stability.  Caveat emptor.
 
 This attribute is consulted by the default SQLAlchemy instrumentation
-resultion code.  If custom finders are installed in the global
+resolution code.  If custom finders are installed in the global
 instrumentation_finders list, they may or may not choose to honor this
 attribute.
 
@@ -431,9 +431,7 @@ class ScalarAttributeImpl(AttributeImpl):
 
         if self.extensions:
             self.fire_remove_event(state, old, None)
-            del state.dict[self.key]
-        else:
-            del state.dict[self.key]
+        del state.dict[self.key]
 
     def get_history(self, state, passive=PASSIVE_OFF):
         return History.from_attribute(
@@ -452,9 +450,7 @@ class ScalarAttributeImpl(AttributeImpl):
 
         if self.extensions:
             value = self.fire_replace_event(state, value, old, initiator)
-            state.dict[self.key] = value
-        else:
-            state.dict[self.key] = value
+        state.dict[self.key] = value
 
     def fire_replace_event(self, state, value, previous, initiator):
         for ext in self.extensions:
@@ -1537,8 +1533,22 @@ class PendingCollection(object):
             self.added_items.remove(value)
         self.deleted_items.add(value)
 
+def _conditional_instance_state(obj):
+    if not isinstance(obj, InstanceState):
+        obj = instance_state(obj)
+    return obj
+        
+def get_history(obj, key, **kwargs):
+    """Return a History record for the given object and attribute key.
+    
+    obj is an instrumented object instance.  An InstanceState
+    is accepted directly for backwards compatibility but 
+    this usage is deprecated.
+    
+    """
+    return get_state_history(_conditional_instance_state(obj), key, **kwargs)
 
-def get_history(state, key, **kwargs):
+def get_state_history(state, key, **kwargs):
     return state.get_history(key, **kwargs)
 
 def has_parent(cls, obj, key, optimistic=False):
@@ -1605,25 +1615,98 @@ def register_descriptor(class_, key, proxy_property=None, comparator=None, paren
 def unregister_attribute(class_, key):
     manager_of_class(class_).uninstrument_attribute(key)
 
-def init_collection(state, key):
+def init_collection(obj, key):
+    """Initialize a collection attribute and return the collection adapter.
+    
+    This function is used to provide direct access to collection internals
+    for a previously unloaded attribute.  e.g.::
+        
+        collection_adapter = init_collection(someobject, 'elements')
+        for elem in values:
+            collection_adapter.append_without_event(elem)
+    
+    For an easier way to do the above, see :func:`~sqlalchemy.orm.attributes.set_committed_value`.
+    
+    obj is an instrumented object instance.  An InstanceState
+    is accepted directly for backwards compatibility but 
+    this usage is deprecated.
+    
+    """
+
+    return init_state_collection(_conditional_instance_state(obj), key)
+    
+def init_state_collection(state, key):
     """Initialize a collection attribute and return the collection adapter."""
+    
     attr = state.get_impl(key)
     user_data = attr.initialize(state)
     return attr.get_collection(state, user_data)
 
+def set_committed_value(instance, key, value):
+    """Set the value of an attribute with no history events.
+    
+    Cancels any previous history present.  The value should be 
+    a scalar value for scalar-holding attributes, or
+    an iterable for any collection-holding attribute.
+
+    This is the same underlying method used when a lazy loader
+    fires off and loads additional data from the database.
+    In particular, this method can be used by application code
+    which has loaded additional attributes or collections through
+    separate queries, which can then be attached to an instance
+    as though it were part of its original loaded state.
+    
+    """
+    state = instance_state(instance)
+    state.get_impl(key).set_committed_value(instance, key, value)
+    
 def set_attribute(instance, key, value):
+    """Set the value of an attribute, firing history events.
+    
+    This function may be used regardless of instrumentation
+    applied directly to the class, i.e. no descriptors are required.
+    Custom attribute management schemes will need to make usage
+    of this method to establish attribute state as understood
+    by SQLAlchemy.
+    
+    """
     state = instance_state(instance)
     state.get_impl(key).set(state, value, None)
 
 def get_attribute(instance, key):
+    """Get the value of an attribute, firing any callables required.
+
+    This function may be used regardless of instrumentation
+    applied directly to the class, i.e. no descriptors are required.
+    Custom attribute management schemes will need to make usage
+    of this method to make usage of attribute state as understood
+    by SQLAlchemy.
+    
+    """
     state = instance_state(instance)
     return state.get_impl(key).get(state)
 
 def del_attribute(instance, key):
+    """Delete the value of an attribute, firing history events.
+
+    This function may be used regardless of instrumentation
+    applied directly to the class, i.e. no descriptors are required.
+    Custom attribute management schemes will need to make usage
+    of this method to establish attribute state as understood
+    by SQLAlchemy.
+    
+    """
     state = instance_state(instance)
     state.get_impl(key).delete(state)
 
 def is_instrumented(instance, key):
+    """Return True if the given attribute on the given instance is instrumented
+    by the attributes package.
+    
+    This function may be used regardless of instrumentation
+    applied directly to the class, i.e. no descriptors are required.
+    
+    """
     return manager_of_class(instance.__class__).is_instrumented(key, search=True)
 
 class InstrumentationRegistry(object):
@@ -1708,9 +1791,14 @@ class InstrumentationRegistry(object):
 # Create a registry singleton and prepare placeholders for lookup functions.
 
 instrumentation_registry = InstrumentationRegistry()
+
 create_manager_for_cls = None
+
 manager_of_class = None
+
 instance_state = None
+
+
 _lookup_strategy = None
 
 def _install_lookup_strategy(implementation):

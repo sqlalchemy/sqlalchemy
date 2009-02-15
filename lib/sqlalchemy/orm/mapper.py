@@ -1290,7 +1290,7 @@ class Mapper(object):
                             params[col._label] = mapper._get_state_attr_by_column(state, col)
                             params[col.key] = params[col._label] + 1
                             for prop in mapper._columntoproperty.itervalues():
-                                history = attributes.get_history(state, prop.key, passive=True)
+                                history = attributes.get_state_history(state, prop.key, passive=True)
                                 if history.added:
                                     hasdata = True
                         elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
@@ -1302,7 +1302,7 @@ class Mapper(object):
                                 continue
 
                             prop = mapper._columntoproperty[col]
-                            history = attributes.get_history(state, prop.key, passive=True)
+                            history = attributes.get_state_history(state, prop.key, passive=True)
                             if history.added:
                                 if isinstance(history.added[0], sql.ClauseElement):
                                     value_params[col] = history.added[0]

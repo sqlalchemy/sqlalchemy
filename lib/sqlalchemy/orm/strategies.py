@@ -765,7 +765,7 @@ class EagerLoader(AbstractRelationLoader):
                         # when self-referential eager loading is used; the same instance may be present
                         # in two distinct sets of result columns
 
-                        collection = attributes.init_collection(state, key)
+                        collection = attributes.init_state_collection(state, key)
                         appender = util.UniqueAppender(collection, 'append_without_event')
 
                         context.attributes[(state, key)] = appender
