@@ -186,6 +186,15 @@ class DefaultInfoCache(object):
 
         return self._setTableData('foreign_keys', fkeys, tablename, schemaname)
 
+    def getIndexes(self, tablename, schemaname=None):
+        """Return indexes list or None."""
+        
+        return self._getTableData('indexes', tablename, schemaname)
+
+    def setIndexes(self, indexes, tablename, schemaname=None):
+        """Add list of indexes to table cache."""
+
+        return self._setTableData('indexes', indexes, tablename, schemaname)
 
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""

@@ -583,6 +583,22 @@ class OracleDialect(default.DefaultDialect):
             owner = self._denormalize_name(schemaname or self.get_default_schema_name(connection))
         return (actual_name, owner, dblink, synonym)
 
+    def get_schema_names(self, connection, info_cache=None):
+        s = "SELECT username FROM all_users ORDER BY username"
+        cursor = connection.execute(s,)
+        return [self._normalize_name(row[0]) for row in cursor]
+
+    def get_table_names(self, connection, schemaname=None, info_cache=None):
+        schemaname = self._denormalize_name(schemaname or self.get_default_schema_name(connection))
+        return self.table_names(connection, schemaname)
+
+    def get_view_names(self, connection, schemaname=None, info_cache=None):
+        schemaname = self._denormalize_name(schemaname or self.get_default_schema_name(connection))
+        s = "select view_name from all_views where OWNER = :owner"
+        cursor = connection.execute(s,
+                {'owner':self._denormalize_name(schemaname)})
+        return [self._normalize_name(row[0]) for row in cursor]
+
     def get_columns(self, connection, tablename, schemaname=None,
                     info_cache=None, resolve_synonyms=False, dblink=''):
 
@@ -641,6 +657,51 @@ class OracleDialect(default.DefaultDialect):
         if info_cache:
             info_cache.setColumns(columns, tablename, schemaname)
         return columns
+
+    def get_indexes(self, connection, tablename, schemaname=None,
+                    info_cache=None, resolve_synonyms=False, dblink=''):
+
+        
+        (tablename, schemaname, dblink, synonym) = \
+            self._prepare_reflection_args(connection, tablename, schemaname,
+                                          resolve_synonyms, dblink)
+        if info_cache:
+            indexes = info_cache.getIndexes(tablename, schemaname)
+            if indexes:
+                return indexes
+        indexes = []
+        q = """
+        SELECT a.INDEX_NAME, a.COLUMN_NAME, b.UNIQUENESS
+        FROM ALL_IND_COLUMNS%(dblink)s a
+        INNER JOIN ALL_INDEXES%(dblink)s b
+            ON a.INDEX_NAME = b.INDEX_NAME
+            AND a.TABLE_OWNER = b.TABLE_OWNER
+            AND a.TABLE_NAME = b.TABLE_NAME
+        WHERE a.TABLE_NAME = :tablename
+        AND a.TABLE_OWNER = :schemaname
+        ORDER BY a.INDEX_NAME, a.COLUMN_POSITION
+        """ % dict(dblink=dblink)
+        rp = connection.execute(q,
+            dict(tablename=self._denormalize_name(tablename),
+                 schemaname=self._denormalize_name(schemaname)))
+        indexes = []
+        last_index_name = None
+        pkeys = self.get_primary_keys(connection, tablename, schemaname,
+                                      info_cache, resolve_synonyms, dblink)
+        uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
+        for rset in rp:
+            # don't include the primary key columns
+            if rset.column_name in [s.upper() for s in pkeys]:
+                continue
+            if rset.index_name != last_index_name:
+                index = dict(name=rset.index_name, column_names=[])
+                indexes.append(index)
+            index['unique'] = uniqueness.get(rset.uniqueness, False)
+            index['column_names'].append(rset.column_name)
+            last_index_name = rset.index_name
+        if info_cache:
+            info_cache.setIndexes(indexes, tablename, schemaname)
+        return indexes
 
     def _get_constraint_data(self, connection, tablename, schemaname=None,
                              info_cache=None, dblink=''):
@@ -738,10 +799,41 @@ class OracleDialect(default.DefaultDialect):
                     fk[1].append(remote_column)
         for (name, value) in fks.items():
             if remote_table and value[1]:
-                fkeys.append((name, value[0], remote_owner, remote_table, value[1]))
+                fkey_d = {
+                    'name' : name,
+                    'constrained_columns' : value[0],
+                    'referred_schema' : remote_owner,
+                    'referred_table' : remote_table,
+                    'referred_columns' : value[1]
+                }
+                fkeys.append(fkey_d)
         if info_cache:
             info_cache.setForeignKeys(fkeys, tablename, schemaname)
         return fkeys
+
+    def get_view_definition(self, connection, viewname, schemaname=None,
+                            info_cache=None, resolve_synonyms=False, dblink=''):
+        (viewname, schemaname, dblink, synonym) = \
+            self._prepare_reflection_args(connection, viewname, schemaname,
+                                          resolve_synonyms, dblink)
+        if info_cache:
+            view_cache = info_cache.getView(viewname, schemaname)
+            if view_cache and 'definition' in view_cache:
+                return view_cache['definition']
+        s = """
+        SELECT text FROM all_views
+        WHERE owner = :schemaname
+        AND view_name = :viewname
+        """
+        rp = connection.execute(sql.text(s),
+                                viewname=viewname, schemaname=schemaname)
+        if rp:
+            view_def = rp.scalar().decode(self.encoding)
+            if info_cache:
+                view = info_cache.getView(viewname, schemaname,
+                                          create=True)
+                view['definition'] = view_def
+            return view_def
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer
@@ -780,8 +872,12 @@ class OracleDialect(default.DefaultDialect):
         fkeys = self.get_foreign_keys(connection, actual_name, owner,
                                       info_cache, resolve_synonyms, dblink)
         refspecs = []
-        for (conname, constrained_columns, referred_schema, referred_table,
-             referred_columns) in fkeys:
+        for fkey_d in fkeys:
+            conname = fkey_d['name']
+            constrained_columns = fkey_d['constrained_columns']
+            referred_schema = fkey_d['referred_schema']
+            referred_table = fkey_d['referred_table']
+            referred_columns = fkey_d['referred_columns']
             for (i, ref_col) in enumerate(referred_columns):
                 if not table.schema and self._denormalize_name(referred_schema) == self._denormalize_name(owner):
                     t = schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)

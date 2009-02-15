@@ -4,6 +4,7 @@
 
 import testenv; testenv.configure_for_tests()
 import sqlalchemy as sa
+from sqlalchemy import types as sql_types
 from sqlalchemy.engine.reflection import Inspector
 from testlib.sa import MetaData, Table, Column
 from testlib import TestBase, testing, engines
@@ -13,7 +14,7 @@ if 'set' not in dir(__builtins__):
 
 def getSchema():
     if testing.against('oracle'):
-        return 'scott'
+        return 'test'
     else:
         return 'test_schema'
 
@@ -35,6 +36,7 @@ def createTables(meta, schema=None):
         Column('test3', sa.Text),
         Column('test4', sa.Numeric, nullable = False),
         Column('test5', sa.DateTime),
+        Column('test5-1', sa.TIMESTAMP),
         parent_user_id,
         Column('test6', sa.DateTime, nullable=False),
         Column('test7', sa.Text),
@@ -143,7 +145,7 @@ class ReflectionTest(TestBase):
             for (tablename, table) in zip(table_names, (users, addresses)):
                 schema_name = schemaname
                 if schemaname and testing.against('oracle'):
-                    schema_name = schema.upper()
+                    schema_name = schemaname.upper()
                 cols = insp.get_columns(tablename, schemaname=schema_name)
                 self.assert_(len(cols) > 0, len(cols))
                 # should be in order
@@ -152,14 +154,22 @@ class ReflectionTest(TestBase):
                     # coltype is tricky
                     # It may not inherit from col.type while they share
                     # the same base.
-                    coltype = cols[i]['type'].__class__
+                    ctype = cols[i]['type'].__class__
+                    ctype_def = col.type
+                    if isinstance(ctype_def, sa.types.TypeEngine):
+                        ctype_def = ctype_def.__class__
+                    # Oracle returns Date for DateTime.
+                    if testing.against('oracle') \
+                        and ctype_def in (sql_types.Date, sql_types.DateTime):
+                            ctype_def = sql_types.Date
                     self.assert_(
-                        issubclass(coltype, col.type.__class__) or \
+                        issubclass(ctype, ctype_def) or \
                         len(
                             set(
-                                coltype.__bases__
-                            ).intersection(col.type.__class__.__bases__)) > 0
-                    ,("%s, %s", (col.type, coltype)))
+                                ctype.__bases__
+                            ).intersection(ctype_def.__bases__)) > 0
+                    ,("%s(%s), %s(%s)" % (col.name, col.type, cols[i]['name'],
+                                          ctype)))
         finally:
             if table_type == 'view':
                 dropViews(meta.bind, schemaname)
@@ -248,10 +258,16 @@ class ReflectionTest(TestBase):
             insp = Inspector(meta.bind)
             indexes = insp.get_indexes('users', schemaname=schemaname)
             indexes.sort()
-            expected_indexes = [
-                {'unique': False,
-                 'column_names': ['test1', 'test2'],
-                 'name': 'users_t_idx'}]
+            if testing.against('oracle'):
+                expected_indexes = [
+                    {'unique': False,
+                     'column_names': ['TEST1', 'TEST2'],
+                     'name': 'USERS_T_IDX'}]
+            else:
+                expected_indexes = [
+                    {'unique': False,
+                     'column_names': ['test1', 'test2'],
+                     'name': 'users_t_idx'}]
             self.assertEqual(indexes, expected_indexes)
         finally:
             addresses.drop()
