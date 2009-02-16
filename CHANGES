@@ -53,6 +53,11 @@ CHANGES
        "committed" state, i.e. state that is understood to have 
        been loaded from the database.   Helps with the creation of 
        homegrown collection loaders and such.
+
+     - Declarative figures out joined-table inheritance primary join
+       condition even if "inherits" mapper argument is given 
+       explicitly.  Allows mixins to be used with joined table
+       inheritance.
        
 - sql
     - Fixed missing _label attribute on Function object, others
