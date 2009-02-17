@@ -325,6 +325,12 @@ class SessionTest(_fixtures.FixtureTest):
                          {'id':7}).fetchall(),
             [(7, u'jack')])
 
+
+        # use :bindparam style
+        eq_(sess.scalar("select id from users where id=:id",
+                         {'id':7}),
+            7)
+
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_subtransaction_on_external(self):

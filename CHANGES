@@ -18,6 +18,10 @@ CHANGES
       in the database.  Presents some degree of a workaround for 
       [ticket:1315], although we are considering removing the 
       flush([objects]) feature altogether.
+    
+    - Session.scalar() now converts raw SQL strings to text()
+      the same way Session.execute() does and accepts same 
+      alternative **kw args.
       
     - improvements to the "determine direction" logic of 
       relation() such that the direction of tricky situations 

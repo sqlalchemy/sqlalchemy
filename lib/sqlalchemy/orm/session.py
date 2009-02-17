@@ -754,13 +754,10 @@ class Session(object):
         return self.__connection(engine, close_with_result=True).execute(
             clause, params or {})
 
-    def scalar(self, clause, params=None, mapper=None):
+    def scalar(self, clause, params=None, mapper=None, **kw):
         """Like execute() but return a scalar result."""
-
-        engine = self.get_bind(mapper, clause=clause)
-
-        return self.__connection(engine, close_with_result=True).scalar(
-            clause, params or {})
+        
+        return self.execute(clause, params=params, mapper=mapper, **kw).scalar()
 
     def close(self):
         """Close this Session.
