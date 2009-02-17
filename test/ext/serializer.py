@@ -124,6 +124,12 @@ class SerializeTest(testing.ORMTest):
         q2 = serializer.loads(serializer.dumps(q), users.metadata, Session)
         
         eq_(list(q2.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9), (u8, u10)])
+
+    def test_any(self):
+        r = User.addresses.any(Address.email=='x')
+        ser = serializer.dumps(r)
+        x = serializer.loads(ser, users.metadata)
+        eq_(str(r), str(x))
         
 if __name__ == '__main__':
     testing.main()

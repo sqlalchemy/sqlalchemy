@@ -54,11 +54,6 @@ CHANGES
        been loaded from the database.   Helps with the creation of 
        homegrown collection loaders and such.
 
-     - Declarative figures out joined-table inheritance primary join
-       condition even if "inherits" mapper argument is given 
-       explicitly.  Allows mixins to be used with joined table
-       inheritance.
-       
 - sql
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used
@@ -85,7 +80,17 @@ CHANGES
 
 - mssql
     - Preliminary support for pymssql 1.0.1
-    
+
+- extensions
+
+    - Fixed a recursive pickling issue in serializer, triggered
+      by an EXISTS or other embedded FROM construct.
+
+    - Declarative figures out joined-table inheritance primary join
+      condition even if "inherits" mapper argument is given 
+      explicitly.  Allows mixins to be used with joined table
+      inheritance.
+
 0.5.2
 ======
 
