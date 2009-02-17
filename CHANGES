@@ -91,6 +91,9 @@ CHANGES
       explicitly.  Allows mixins to be used with joined table
       inheritance.
 
+    - Declarative will properly interpret the "foreign_keys" argument
+      on a backref() if it's a string.
+      
 0.5.2
 ======
 

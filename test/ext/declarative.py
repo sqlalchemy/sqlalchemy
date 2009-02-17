@@ -117,7 +117,9 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             addresses = relation("Address", order_by="desc(Address.email)", 
-                primaryjoin="User.id==Address.user_id", foreign_keys="[Address.user_id]")
+                primaryjoin="User.id==Address.user_id", foreign_keys="[Address.user_id]",
+                backref=backref('user', primaryjoin="User.id==Address.user_id", foreign_keys="[Address.user_id]")
+                )
         
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
