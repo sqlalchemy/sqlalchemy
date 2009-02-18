@@ -85,6 +85,9 @@ CHANGES
 - mssql
     - Preliminary support for pymssql 1.0.1
 
+    - Corrected issue on mssql where max_identifier_length was
+      not being respected.
+
 - extensions
 
     - Fixed a recursive pickling issue in serializer, triggered

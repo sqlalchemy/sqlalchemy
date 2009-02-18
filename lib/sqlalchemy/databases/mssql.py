@@ -995,7 +995,8 @@ class MSSQLDialect(default.DefaultDialect):
         self.text_as_varchar = bool(text_as_varchar)
         self.use_scope_identity = bool(use_scope_identity)
         self.has_window_funcs =  bool(has_window_funcs)
-        self.max_identifier_length = int(max_identifier_length or 0) or 128
+        self.max_identifier_length = int(max_identifier_length or 0) or \
+                self.max_identifier_length
         super(MSSQLDialect, self).__init__(**opts)
 
     @classmethod
