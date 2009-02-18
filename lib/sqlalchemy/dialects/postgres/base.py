@@ -67,7 +67,7 @@ option to the Index constructor::
 import re
 
 from sqlalchemy import sql, schema, exc, util
-from sqlalchemy.engine import base, default
+from sqlalchemy.engine import base, default, reflection
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
@@ -397,19 +397,19 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             value = value[1:-1].replace('""','"')
         return value
 
-class PGInfoCache(default.DefaultInfoCache):
+class PGInfoCache(reflection.DefaultInfoCache):
     
     def __init__(self):
 
-        default.DefaultInfoCache.__init__(self)
+        reflection.DefaultInfoCache.__init__(self)
 
-    def getTableOID(self, tablename, schemaname=None):
-        table = self.getTable(tablename, schemaname)
+    def get_table_oid(self, tablename, schemaname=None):
+        table = self.get_table(tablename, schemaname)
         if table:
             return table.get('oid')
 
-    def setTableOID(self, oid, tablename, schemaname=None):
-        table = self.getTable(tablename, schemaname, create=True)
+    def set_table_oid(self, oid, tablename, schemaname=None):
+        table = self.get_table(tablename, schemaname, create=True)
         table['oid'] = oid
 
 class PGDialect(default.DefaultDialect):
@@ -526,7 +526,7 @@ class PGDialect(default.DefaultDialect):
         """
         table_oid = None
         if info_cache:
-            table_oid = info_cache.getTableOID(tablename, schemaname)
+            table_oid = info_cache.get_table_oid(tablename, schemaname)
         if table_oid:
             return table_oid
         if schemaname is not None:
@@ -554,17 +554,14 @@ class PGDialect(default.DefaultDialect):
         c = connection.execute(s, table_name=tablename, schema=schemaname)
         table_oid = c.scalar()
         if table_oid is None:
-            raise exc.NoSuchTableError(table_name)
+            raise exc.NoSuchTableError(tablename)
         # cache it
         if info_cache:
-            info_cache.setTableOID(table_oid, tablename, schemaname)
+            info_cache.set_table_oid(table_oid, tablename, schemaname)
         return table_oid
 
+    @reflection.caches
     def get_schema_names(self, connection, info_cache=None):
-        if info_cache:
-            schema_names = info_cache.getSchemaNames()
-            if schema_names is not None:
-                return schema_names
         s = """
         SELECT nspname
         FROM pg_namespace
@@ -574,33 +571,23 @@ class PGDialect(default.DefaultDialect):
         # what about system tables?
         schema_names = [row[0].decode(self.encoding) for row in rp \
                         if not row[0].startswith('pg_')]
-        if info_cache:
-            info_cache.addAllSchemas(schema_names)
         return schema_names
 
+    @reflection.caches
     def get_table_names(self, connection, schemaname=None, info_cache=None):
         if schemaname is not None:
             current_schema = schemaname
         else:
             current_schema = self.get_default_schema_name(connection)
-        if info_cache:
-            table_names = info_cache.getTableNames(current_schema)
-            if table_names is not None:
-                return table_names
         table_names = self.table_names(connection, current_schema)
-        if info_cache:
-            info_cache.addAllTables(table_names, current_schema)
         return table_names
 
+    @reflection.caches
     def get_view_names(self, connection, schemaname=None, info_cache=None):
         if schemaname is not None:
             current_schema = schemaname
         else:
             current_schema = self.get_default_schema_name(connection)
-        if info_cache:
-            view_names = info_cache.getViewNames(current_schema)
-            if view_names is not None:
-                return view_names
         s = """
         SELECT relname
         FROM pg_class c
@@ -608,20 +595,15 @@ class PGDialect(default.DefaultDialect):
           AND '%(schema)s' = (select nspname from pg_namespace n where n.oid = c.relnamespace)
         """ % dict(schema=current_schema)
         view_names = [row[0].decode(self.encoding) for row in connection.execute(s)]
-        if info_cache:
-            info_cache.addAllViews(view_names, schemaname)
         return view_names
 
+    @reflection.caches
     def get_view_definition(self, connection, viewname, schemaname=None,
                                                             info_cache=None):
         if schemaname is not None:
             current_schema = schemaname
         else:
             current_schema = self.get_default_schema_name(connection)
-        if info_cache:
-            view_cache = info_cache.getView(viewname, current_schema)
-            if view_cache and 'definition' in view_cache:
-                return view_cache['definition']
         s = """
         SELECT definition FROM pg_views
         WHERE schemaname = :schemaname
@@ -631,18 +613,12 @@ class PGDialect(default.DefaultDialect):
                                 viewname=viewname, schemaname=current_schema)
         if rp:
             view_def = rp.scalar().decode(self.encoding)
-            if info_cache:
-                view = info_cache.getView(viewname, current_schema,
-                                          create=True)
-                view['definition'] = view_def
             return view_def
 
+    @reflection.caches
     def get_columns(self, connection, tablename, schemaname=None,
                     info_cache=None):
-        if info_cache:
-            columns = info_cache.getColumns(tablename, schemaname)
-            if columns is not None:
-                return columns
+
         table_oid = self._get_table_oid(connection, tablename, schemaname,
                                         info_cache)
         SQL_COLS = """
@@ -726,16 +702,11 @@ class PGDialect(default.DefaultDialect):
             column_info = dict(name=name, type=coltype, nullable=nullable,
                                default=default, colargs=colargs)
             columns.append(column_info)
-        if info_cache:
-            info_cache.setColumns(columns, tablename, schemaname)
         return columns
 
+    @reflection.caches
     def get_primary_keys(self, connection, tablename, schemaname=None,
                          info_cache=None):
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname)
-            if table_cache and 'primary_keys' in table_cache.keys():
-                return table_cache.get('primary_keys')
         table_oid = self._get_table_oid(connection, tablename, schemaname,
                                         info_cache)
         PK_SQL = """
@@ -749,18 +720,11 @@ class PGDialect(default.DefaultDialect):
         t = sql.text(PK_SQL, typemap={'attname':sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
         primary_keys = [r[0] for r in c.fetchall()]
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname,
-                                              create=True)
-            table_cache['primary_keys'] = primary_keys
         return primary_keys
 
+    @reflection.caches
     def get_foreign_keys(self, connection, tablename, schemaname=None,
                          info_cache=None):
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname)
-            if table_cache and 'foreign_keys' in table_cache.keys():
-                return table_cache.get('foreign_keys')
         preparer = self.identifier_preparer
         table_oid = self._get_table_oid(connection, tablename, schemaname,
                                         info_cache)
@@ -795,17 +759,10 @@ class PGDialect(default.DefaultDialect):
                 'referred_columns' : referred_columns
             }
             fkeys.append(fkey_d)
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname,
-                                              create=True)
-            table_cache['foreign_keys'] = fkeys
         return fkeys
 
+    @reflection.caches
     def get_indexes(self, connection, tablename, schemaname, info_cache=None):
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname)
-            if table_cache and 'indexes' in table_cache.keys():
-                return table_cache.get('indexes')
         table_oid = self._get_table_oid(connection, tablename, schemaname,
                                         info_cache)
         IDX_SQL = """
@@ -844,10 +801,6 @@ class PGDialect(default.DefaultDialect):
             index_d['name'] = idx_name
             index_d['column_names'].append(col)
             index_d['unique'] = unique
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname,
-                                              create=True)
-            table_cache['indexes'] = indexes
         return indexes
 
     def reflecttable(self, connection, table, include_columns):

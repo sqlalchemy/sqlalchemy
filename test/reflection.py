@@ -70,7 +70,7 @@ def createViews(con, schema=None):
         if schema:
             fullname = "%s.%s" % (schema, tablename)
         view_name = fullname + '_v'
-        query = "CREATE OR REPLACE VIEW %s AS SELECT * FROM %s" % (view_name,
+        query = "CREATE VIEW %s AS SELECT * FROM %s" % (view_name,
                                                                    fullname)
         con.execute(sa.sql.text(query))
 

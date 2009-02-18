@@ -18,7 +18,239 @@ I'm still trying to decide upon conventions for both the Inspector interface as 
 
 """
 import sqlalchemy
+from sqlalchemy import util
 from sqlalchemy.types import TypeEngine
+
+
+@util.decorator
+def caches(fn, self, con, *args, **kw):
+    # what are we caching?
+    fn_name = fn.__name__
+    if not fn_name.startswith('get_'):
+        # don't recognize this.
+        return fn(self, con, *args, **kw)
+    else:
+        attr_to_cache = fn_name[4:]
+    # The first arguments will always be self and con.
+    # Assuming *args and *kw will be acceptable to info_cache method.
+    if 'info_cache' in kw:
+        kw_cp = kw.copy()
+        info_cache = kw_cp.pop('info_cache')
+        methodname = "%s_%s" % ('get', attr_to_cache)
+        # fixme.
+        for bad_kw in ('dblink', 'resolve_synonyms'):
+            if bad_kw in kw_cp:
+                del kw_cp[bad_kw]
+        information = getattr(info_cache, methodname)(*args, **kw_cp)
+        if information:
+            return information
+    information = fn(self, con, *args, **kw)
+    if 'info_cache' in locals():
+        methodname = "%s_%s" % ('set', attr_to_cache)
+        getattr(info_cache, methodname)(information, *args, **kw_cp)
+    return information 
+
+class DefaultInfoCache(object):
+    """Default implementation of InfoCache
+
+    InfoCache provides a means for dialects to cache information obtained for
+    reflection and a convenient interface for setting and retrieving cached
+    data.
+
+    """
+    
+    def __init__(self):
+        self._cache = dict(schemas={})
+        self.tables_are_complete = False
+        self.schemas_are_complete = False
+        self.views_are_complete = False
+
+    def clear(self):
+        """Clear the cache."""
+        self._cache = dict(schemas={})
+
+    # schemas
+
+    def get_schemas(self):
+        """Return the schemas dict."""
+        return self._cache.get('schemas')
+
+
+    def get_schema(self, schemaname, create=False):
+        """Return cached schema and optionally create it if it does not exist.
+
+        """
+        schema = self._cache['schemas'].get(schemaname)
+        if schema is not None:
+            return schema
+        elif create:
+            return self.add_schema(schemaname)
+        return None
+
+    def add_schema(self, schemaname):
+        self._cache['schemas'][schemaname] = dict(tables={}, views={})
+        return self.get_schema(schemaname)
+
+    def get_schema_names(self, check_complete=True):
+        """Return cached schema names.
+
+        By default, only return them if they're complete.
+
+        """
+        if check_complete and self.schemas_are_complete:
+            return self.get_schemas().keys()
+        elif not check_complete:
+            return self.get_schemas().keys()
+        else:
+            return None
+
+    def set_schema_names(self, schemanames):
+        for schemaname in schemanames:
+            self.add_schema(schemaname)
+        self.schemas_are_complete = True
+
+    # tables
+
+    def get_table(self, tablename, schemaname=None, create=False,
+                                                        table_type='table'):
+        """Return cached table and optionally create it if it does not exist.
+
+
+        """
+        cache = self._cache
+        schema = self.get_schema(schemaname, create=create)
+        if schema is None:
+            return None
+        if table_type == 'view':
+            table = schema['views'].get(tablename)
+        else:
+            table = schema['tables'].get(tablename)
+        if table is not None:
+            return table
+        elif create:
+            return self.add_table(tablename, schemaname, table_type=table_type)
+        return None
+
+    def get_table_names(self, schemaname=None, check_complete=True,
+                                                        table_type='table'):
+        """Return cached table names.
+
+        By default, only return them if they're complete.
+
+        """
+        if table_type == 'view':
+            complete = self.views_are_complete
+        else:
+            complete = self.tables_are_complete
+        if check_complete and complete:
+            return self.get_tables(schemaname, table_type=table_type).keys()
+        elif not check_complete:
+            return self.get_tables(schemaname, table_type=table_type).keys()
+        else:
+            return None
+
+    def add_table(self, tablename, schemaname=None, table_type='table'):
+        schema = self.get_schema(schemaname, create=True)
+        if table_type == 'table':
+            schema['tables'][tablename] = dict(columns={})
+        else:
+            schema['views'][tablename] = dict(columns={})
+        return self.get_table(tablename, schemaname, table_type=table_type)
+
+    def set_table_names(self, tablenames, schemaname=None, table_type='table'):
+        for tablename in tablenames:
+            self.add_table(tablename, schemaname, table_type)
+        if table_type == 'view':
+            self.views_are_complete = True
+        else:
+            self.tables_are_complete = True
+            
+    # views
+
+    def get_view(self, viewname, schemaname=None, create=False):
+        return self.get_table(viewname, schemaname, create, 'view')
+
+    def get_view_names(self, schemaname=None, check_complete=True):
+        return self.get_table_names(schemaname, check_complete, 'view')
+
+    def add_view(self, viewname, schemaname=None):
+        return self.add_table(viewname, schemaname, 'view')
+
+    def set_view_names(self, viewnames, schemaname=None):
+        return self.set_table_names(viewnames, schemaname, 'view')
+
+    def get_view_definition(self, viewname, schemaname=None):
+        view_cache = self.get_view(viewname, schemaname)
+        if view_cache and 'definition' in view_cache:
+            return view_cache['definition']
+
+    def set_view_definition(self, definition, viewname, schemaname=None):
+        view_cache = self.get_view(viewname, schemaname, create=True)
+        view_cache['definition'] = definition
+
+    # table data
+
+    def _get_table_data(self, key, tablename, schemaname=None):
+        table_cache = self.get_table(tablename, schemaname)
+        if table_cache is not None and key in table_cache.keys():
+            return table_cache[key]
+
+    def _set_table_data(self, key, data, tablename, schemaname=None):
+        """Cache data for schemaname.tablename using key.
+
+        It will create a schema and table entry in the cache if needed.
+
+        """
+        table_cache = self.get_table(tablename, schemaname, create=True)
+        table_cache[key] = data
+
+    # columns
+
+    def get_columns(self, tablename, schemaname=None):
+        """Return columns list or None."""
+        
+        return self._get_table_data('columns', tablename, schemaname)
+
+    def set_columns(self, columns, tablename, schemaname=None):
+        """Add list of columns to table cache."""
+
+        return self._set_table_data('columns', columns, tablename, schemaname)
+
+    # primary keys
+
+    def get_primary_keys(self, tablename, schemaname=None):
+        """Return primary key list or None."""
+        
+        return self._get_table_data('primary_keys', tablename, schemaname)
+
+    def set_primary_keys(self, pkeys, tablename, schemaname=None):
+        """Add list of primary keys to table cache."""
+
+        return self._set_table_data('primary_keys', pkeys, tablename, schemaname)
+
+    # foreign keys
+
+    def get_foreign_keys(self, tablename, schemaname=None):
+        """Return foreign key list or None."""
+        
+        return self._get_table_data('foreign_keys', tablename, schemaname)
+
+    def set_foreign_keys(self, fkeys, tablename, schemaname=None):
+        """Add list of foreign keys to table cache."""
+
+        return self._set_table_data('foreign_keys', fkeys, tablename, schemaname)
+
+    # indexes
+
+    def get_indexes(self, tablename, schemaname=None):
+        """Return indexes list or None."""
+        
+        return self._get_table_data('indexes', tablename, schemaname)
+
+    def set_indexes(self, indexes, tablename, schemaname=None):
+        """Add list of indexes to table cache."""
+
+        return self._set_table_data('indexes', indexes, tablename, schemaname)
 
 class Inspector(object):
     """performs database introspection
@@ -129,7 +361,7 @@ class Inspector(object):
 
         col_defs = self.engine.dialect.get_columns(self.conn, tablename,
                                                    schemaname,
-                                                   self.info_cache)
+                                                   info_cache=self.info_cache)
         for col_def in col_defs:
             # make this easy and only return instances for coltype
             coltype = col_def['type']

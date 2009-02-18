@@ -78,6 +78,14 @@ ref_constraints = Table("referential_constraints", ischema,
     Column("delete_rule", String),
     schema="information_schema")
 
+views = Table("views", ischema,
+    Column("table_catalog", String),
+    Column("table_schema", String),
+    Column("table_name", String),
+    Column("view_definition", String),
+    Column("check_option", String),
+    Column("is_updatable", String),
+    schema="information_schema")
 
 def table_names(connection, schema):
     s = select([tables.c.table_name], tables.c.table_schema==schema)

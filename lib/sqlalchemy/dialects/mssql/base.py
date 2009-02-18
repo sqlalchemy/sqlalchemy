@@ -231,7 +231,7 @@ import datetime, decimal, inspect, operator, sys, re
 
 from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.sql import compiler, expression, operators as sql_operators, functions as sql_functions
-from sqlalchemy.engine import default, base
+from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
 
@@ -1044,10 +1044,10 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
         return value
 
 
-class MSInfoCache(default.DefaultInfoCache):
+class MSInfoCache(reflection.DefaultInfoCache):
     
     def __init__(self, *args, **kwargs):
-        default.DefaultInfoCache.__init__(self, *args, **kwargs)
+        reflection.DefaultInfoCache.__init__(self, *args, **kwargs)
 
 
 class MSDialect(default.DefaultDialect):
@@ -1147,27 +1147,19 @@ class MSDialect(default.DefaultDialect):
         row  = c.fetchone()
         return row is not None
 
+    @reflection.caches 
     def get_schema_names(self, connection, info_cache=None):
-        if info_cache:
-            schema_names = info_cache.getSchemaNames()
-            if schema_names is not None:
-                return schema_names
-        import sqlalchemy.databases.information_schema as ischema
+        import sqlalchemy.dialects.information_schema as ischema
         s = sql.select([self.uppercase_table(ischema.schemata).c.schema_name],
             order_by=[ischema.schemata.c.schema_name]
         )
         schema_names = [r[0] for r in connection.execute(s)]
-        if info_cache:
-            info_cache.addAllSchemas(schema_names)
         return schema_names
 
+    @reflection.caches
     def get_table_names(self, connection, schemaname, info_cache=None):
-        import sqlalchemy.databases.information_schema as ischema
+        import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
-        if info_cache:
-            table_names = info_cache.getTableNames(current_schema)
-            if table_names is not None:
-                return table_names
         tables = self.uppercase_table(ischema.tables)
         s = sql.select([tables.c.table_name],
             sql.and_(
@@ -1177,17 +1169,12 @@ class MSDialect(default.DefaultDialect):
             order_by=[tables.c.table_name]
         )
         table_names = [r[0] for r in connection.execute(s)]
-        if info_cache:
-            info_cache.addAllTables(table_names, current_schema)
         return table_names
 
+    @reflection.caches
     def get_view_names(self, connection, schemaname=None, info_cache=None):
-        import sqlalchemy.databases.information_schema as ischema
+        import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
-        if info_cache:
-            view_names = info_cache.getViewNames(current_schema)
-            if view_names is not None:
-                return view_names
         tables = self.uppercase_table(ischema.tables)
         s = sql.select([tables.c.table_name],
             sql.and_(
@@ -1197,17 +1184,12 @@ class MSDialect(default.DefaultDialect):
             order_by=[tables.c.table_name]
         )
         view_names = [r[0] for r in connection.execute(s)]
-        if info_cache:
-            info_cache.addAllViews(view_names, schemaname)
         return view_names
 
+    @reflection.caches
     def get_indexes(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
         current_schema = schemaname or self.get_default_schema_name(connection)
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, current_schema)
-            if table_cache and 'indexes' in table_cache:
-                return table_cache.get('indexes')
         full_tname = "%s.%s" % (current_schema, tablename)
         indexes = []
         s = sql.text("exec sp_helpindex '%s'" % full_tname)
@@ -1219,20 +1201,13 @@ class MSDialect(default.DefaultDialect):
                     'column_names' : row['index_keys'].split(','),
                     'unique': 'unique' in row['index_description']
                 })
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, current_schema,
-                                              create=True)
-            table_cache['indexes'] = indexes
         return indexes
 
+    @reflection.caches
     def get_view_definition(self, connection, viewname, schemaname=None,
                             info_cache=None):
-        import sqlalchemy.databases.information_schema as ischema
+        import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
-        if info_cache:
-            view_cache = info_cache.getView(viewname, current_schema)
-            if view_cache and 'definition' in view_cache.keys():
-                return view_cache.get('definition')
         views = self.uppercase_table(ischema.views)
         s = sql.select([views.c.view_definition],
             sql.and_(
@@ -1243,20 +1218,13 @@ class MSDialect(default.DefaultDialect):
         rp = connection.execute(s)
         if rp:
             view_def = rp.scalar()
-            if info_cache:
-                view_cache = info_cache.getView(viewname, current_schema,
-                                                create=True)
-                view_cache['definition'] = view_def
             return view_def
 
+    @reflection.caches
     def get_columns(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
         # Get base columns
         current_schema = schemaname or self.get_default_schema_name(connection)
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, current_schema)
-            if table_cache and 'columns' in table_cache.keys():
-                return table_cache.get('columns')
         import sqlalchemy.dialects.information_schema as ischema
         columns = self.uppercase_table(ischema.columns)
         s = sql.select([columns],
@@ -1311,20 +1279,13 @@ class MSDialect(default.DefaultDialect):
                 'attrs' : colargs
             }
             cols.append(cdict)
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, current_schema,
-                                              create=True)
-            table_cache['columns'] = cols
         return cols
 
+    @reflection.caches
     def get_primary_keys(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
         import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname)
-            if table_cache and 'primary_keys' in table_cache.keys():
-                return table_cache.get('primary_keys')
         pkeys = []
         # Add constraints
         RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
@@ -1342,20 +1303,13 @@ class MSDialect(default.DefaultDialect):
         for row in c:
             if 'PRIMARY' in row[TC.c.constraint_type.name]:
                 pkeys.append(row[0])
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, current_schema,
-                                              create=True)
-            table_cache['primary_keys'] = pkeys
         return pkeys
 
+    @reflection.caches
     def get_foreign_keys(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
         import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, schemaname)
-            if table_cache and 'foreign_keys' in table_cache.keys():
-                return table_cache.get('foreign_keys')
         # Add constraints
         RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
         TC = self.uppercase_table(ischema.constraints)        #information_schema.table_constraints
@@ -1392,8 +1346,8 @@ class MSDialect(default.DefaultDialect):
                 fknm, scols, rcols = (rfknm, [], [])
             if not scol in scols:
                 scols.append(scol)
-            if not (rschema, rtbl, rcol) in rcols:
-                rcols.append((rschema, rtbl, rcol))
+            if not rcol in rcols:
+                rcols.append(rcol)
         if fknm and scols:
             fkeys.append({
                 'name' : fknm,
@@ -1402,9 +1356,6 @@ class MSDialect(default.DefaultDialect):
                 'referred_table' : rtbl,
                 'referred_columns' : rcols
             })
-        if info_cache:
-            table_cache = info_cache.getTable(tablename, current_schema)
-            table_cache['foreign_keys'] = fkeys
         return fkeys
 
     def reflecttable(self, connection, table, include_columns):
@@ -1489,4 +1440,8 @@ class MSDialect(default.DefaultDialect):
             else:
                 schema.Table(rtbl, table.metadata, schema=rschema,
                              autoload=True, autoload_with=connection)
-            table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, s, t, c) for s, t, c in rcols], fknm, link_to_name=True))
+            ##table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, s, t, c) for s, t, c in rcols], fknm, link_to_name=True))
+            table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, rschema, rtbl, c) for c in rcols], fknm, link_to_name=True))
+
+# fixme.  I added this for the tests to run. -Randall
+MSSQLDialect = MSDialect
