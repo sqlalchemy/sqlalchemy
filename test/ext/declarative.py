@@ -768,7 +768,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         
         # compile succeeds because inherit_condition is honored
         compile_mappers()
-
+    
     def test_joined(self):
         class Company(Base, ComparableEntity):
             __tablename__ = 'companies'
@@ -837,6 +837,25 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         def go():
             assert sess.query(Person).filter(Manager.name=='dogbert').one().id
         self.assert_sql_count(testing.db, go, 1)
+
+    def test_subclass_mixin(self):
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column('id', Integer, primary_key=True)
+            name = Column('name', String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+        
+        class MyMixin(object):
+            pass
+            
+        class Engineer(MyMixin, Person):
+            __tablename__ = 'engineers'
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+            primary_language = Column('primary_language', String(50))
+            
+        assert class_mapper(Engineer).inherits is class_mapper(Person)
         
     def test_with_undefined_foreignkey(self):
         class Parent(Base):

@@ -400,6 +400,7 @@ from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property, class_mapper
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty
+from sqlalchemy.orm.util import _is_mapped_class
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import util as sql_util
 
@@ -483,10 +484,10 @@ def _as_declarative(cls, classname, dict_):
             
     mapper_args = getattr(cls, '__mapper_args__', {})
     if 'inherits' not in mapper_args:
-        inherits = cls.__mro__[1]
-        inherits = cls._decl_class_registry.get(inherits.__name__, None)
-        if inherits:
-            mapper_args['inherits'] = inherits
+        for c in cls.__bases__:
+            if _is_mapped_class(c):
+                mapper_args['inherits'] = cls._decl_class_registry.get(c.__name__, None)
+                break
 
     if hasattr(cls, '__mapper_cls__'):
         mapper_cls = util.unbound_method_to_callable(cls.__mapper_cls__)

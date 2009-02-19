@@ -93,10 +93,13 @@ CHANGES
     - Fixed a recursive pickling issue in serializer, triggered
       by an EXISTS or other embedded FROM construct.
 
+    - Declarative locates the "inherits" class using a search
+      through __bases__, to skip over mixins that are local
+      to subclasses.   
+      
     - Declarative figures out joined-table inheritance primary join
       condition even if "inherits" mapper argument is given 
-      explicitly.  Allows mixins to be used with joined table
-      inheritance.
+      explicitly. 
 
     - Declarative will properly interpret the "foreign_keys" argument
       on a backref() if it's a string.
