@@ -58,6 +58,10 @@ CHANGES
        been loaded from the database.   Helps with the creation of 
        homegrown collection loaders and such.
 
+     - Query won't fail with weakref error when a non-mapper/class
+       instrumented descriptor is passed, raises 
+       "Invalid column expession".
+       
 - sql
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used

@@ -593,9 +593,11 @@ def _is_mapped_class(cls):
         return True
     if isinstance(cls, expression.ClauseElement):
         return False
-    manager = attributes.manager_of_class(cls)
-    return manager and _INSTRUMENTOR in manager.info
-
+    if isinstance(cls, type):
+        manager = attributes.manager_of_class(cls)
+        return manager and _INSTRUMENTOR in manager.info
+    return False
+    
 def instance_str(instance):
     """Return a string describing an instance."""
 

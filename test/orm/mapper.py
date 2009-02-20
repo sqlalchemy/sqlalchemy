@@ -38,6 +38,38 @@ class MapperTest(_fixtures.FixtureTest):
         users.update().values({User.foobar:User.foobar + 'foo'}).execute()
         eq_(sa.select([User.foobar]).where(User.foobar=='name1foo').execute().fetchall(), [('name1foo',)])
         
+    @testing.resolve_artifact_names
+    def test_utils(self):
+        from sqlalchemy.orm.util import _is_mapped_class, _is_aliased_class
+        
+        class Foo(object):
+            x = "something"
+            @property
+            def y(self):
+                return "somethign else"
+        m = mapper(Foo, users)
+        a1 = aliased(Foo)
+        
+        f = Foo()
+
+        for fn, arg, ret in [
+            (_is_mapped_class, Foo.x, False),
+            (_is_mapped_class, Foo.y, False),
+            (_is_mapped_class, Foo, True),
+            (_is_mapped_class, f, False),
+            (_is_mapped_class, a1, True),
+            (_is_mapped_class, m, True),
+            (_is_aliased_class, a1, True),
+            (_is_aliased_class, Foo.x, False),
+            (_is_aliased_class, Foo.y, False),
+            (_is_aliased_class, Foo, False),
+            (_is_aliased_class, f, False),
+            (_is_aliased_class, a1, True),
+            (_is_aliased_class, m, False),
+        ]:
+            assert fn(arg) == ret
+
+
 
     @testing.resolve_artifact_names
     def test_prop_accessor(self):
