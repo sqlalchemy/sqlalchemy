@@ -65,12 +65,20 @@ class DeclarativeTest(DeclarativeTestBase):
         self.assertRaisesMessage(sa.exc.InvalidRequestError, "does not have a __table__", go)
 
     def test_cant_add_columns(self):
-        t = Table('t', Base.metadata, Column('id', Integer, primary_key=True))
+        t = Table('t', Base.metadata, Column('id', Integer, primary_key=True), Column('data', String))
         def go():
             class User(Base):
                 __table__ = t
                 foo = Column(Integer, primary_key=True)
-        self.assertRaisesMessage(sa.exc.ArgumentError, "add additional columns", go)
+        # can't specify new columns not already in the table
+        self.assertRaisesMessage(sa.exc.ArgumentError, "Can't add additional column 'foo' when specifying __table__", go)
+
+        # regular re-mapping works tho
+        class Bar(Base):
+            __table__ = t
+            some_data = t.c.data
+            
+        assert class_mapper(Bar).get_property('some_data').columns[0] is t.c.data
     
     def test_undefer_column_name(self):
         # TODO: not sure if there was an explicit

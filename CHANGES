@@ -108,6 +108,11 @@ CHANGES
     - Declarative will properly interpret the "foreign_keys" argument
       on a backref() if it's a string.
       
+    - Declarative will accept a table-bound column as a property
+      when used in conjunction with __table__, if the column is already
+      present in __table__.  The column will be remapped to the given 
+      key the same way as when added to the mapper() properties dict.
+      
 0.5.2
 ======
 
