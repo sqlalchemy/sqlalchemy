@@ -338,22 +338,28 @@ class Mapper(object):
             return
 
         if manager is not None:
-            if manager.class_ is not self.class_:
-                # An inherited manager.  Install one for this subclass.
-                # TODO: no coverage here
-                manager = None
-            elif manager.mapper:
+            assert manager.class_ is self.class_
+            if manager.mapper:
                 raise sa_exc.ArgumentError(
                     "Class '%s' already has a primary mapper defined. "
                     "Use non_primary=True to "
                     "create a non primary Mapper.  clear_mappers() will "
                     "remove *all* current mappers from all classes." %
                     self.class_)
-
+            #else:
+                # a ClassManager may already exist as 
+                # ClassManager.instrument_attribute() creates 
+                # new managers for each subclass if they don't yet exist.
+                
         _mapper_registry[self] = True
 
+        self.extension.instrument_class(self, self.class_)
+
         if manager is None:
-            manager = attributes.create_manager_for_cls(self.class_)
+            manager = attributes.register_class(self.class_, 
+                instance_state_factory = IdentityManagedState,
+                deferred_scalar_loader = _load_scalar_attributes
+            )
 
         self.class_manager = manager
 
@@ -362,12 +368,6 @@ class Mapper(object):
         # The remaining members can be added by any mapper, e_name None or not.
         if manager.info.get(_INSTRUMENTOR, False):
             return
-
-        self.extension.instrument_class(self, self.class_)
-
-        manager.instantiable = True
-        manager.instance_state_factory = IdentityManagedState
-        manager.deferred_scalar_loader = _load_scalar_attributes
 
         event_registry = manager.events
         event_registry.add_listener('on_init', _event_on_init)
@@ -390,16 +390,11 @@ class Mapper(object):
     def dispose(self):
         # Disable any attribute-based compilation.
         self.compiled = True
-        manager = self.class_manager
+        
         if hasattr(self, '_compile_failed'):
             del self._compile_failed
-        if not self.non_primary and manager.mapper is self:
-            manager.mapper = None
-            manager.events.remove_listener('on_init', _event_on_init)
-            manager.events.remove_listener('on_init_failure',
-                                           _event_on_init_failure)
-            manager.uninstall_member('__init__')
-            del manager.info[_INSTRUMENTOR]
+            
+        if not self.non_primary and self.class_manager.mapper is self:
             attributes.unregister_class(self.class_)
 
     def _configure_pks(self):

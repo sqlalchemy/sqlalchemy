@@ -158,7 +158,7 @@ class UserDefinedExtensionTest(_base.ORMTest):
             attributes.register_attribute(Foo, 'a', uselist=False, useobject=False)
             attributes.register_attribute(Foo, 'b', uselist=False, useobject=False)
             
-            assert Foo in attributes.instrumentation_registry.state_finders
+            assert Foo in attributes.instrumentation_registry._state_finders
             f = Foo()
             attributes.instance_state(f).expire_attributes(None)
             self.assertEquals(f.a, "this is a")
