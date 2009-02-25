@@ -598,7 +598,7 @@ The ``relation()`` function is extremely flexible, and could just have easily be
         # ....
         addresses = relation(Address, order_by=Address.id, backref="user")
 
-We are also free to not define a backref, and to define the func:`relation()` only on one class and not the other.   It is also possible to define two separate :func:`relation` constructs for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
+We are also free to not define a backref, and to define the :func:`relation()` only on one class and not the other.   It is also possible to define two separate :func:`relation` constructs for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
 
 When using the ``declarative`` extension, ``relation()`` gives us the option to use strings for most arguments that concern the target class, in the case that the target class has not yet been defined.  This **only** works in conjunction with ``declarative``:
 
