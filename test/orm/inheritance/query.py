@@ -280,6 +280,12 @@ def make_test(select_type):
                 sess.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).one(),
                 c2
                 )
+            
+            calias = aliased(Company)
+            self.assertEquals(
+                sess.query(calias).filter(calias.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).one(),
+                c2
+            )
 
             self.assertEquals(
                 sess.query(Company).filter(Company.employees.of_type(Boss).any(Boss.golf_swing=='fore')).one(),

@@ -472,7 +472,7 @@ class RelationProperty(StrategizedProperty):
             return op(self, *other, **kwargs)
 
         def of_type(self, cls):
-            return RelationProperty.Comparator(self.property, self.mapper, cls)
+            return RelationProperty.Comparator(self.property, self.mapper, cls, adapter=self.adapter)
 
         def in_(self, other):
             raise NotImplementedError("in_() not yet supported for relations.  For a "
@@ -511,7 +511,7 @@ class RelationProperty(StrategizedProperty):
                 source_selectable = self.__clause_element__()
             else:
                 source_selectable = None
-                
+            
             pj, sj, source, dest, secondary, target_adapter = \
                 self.property._create_joins(dest_polymorphic=True, dest_selectable=to_selectable, source_selectable=source_selectable)
 

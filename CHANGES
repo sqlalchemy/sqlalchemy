@@ -51,6 +51,10 @@ CHANGES
         query(A).join(A.bs).filter(B.foo=='bar'), were erroneously
         adapting "B.foo" as though it were an "A".
     
+     - Fixed adaptation of EXISTS clauses via any(), has(), etc.
+       in conjunction with an aliased object on the left and 
+       of_type() on the right.  [ticket:1325]
+       
      - Added an attribute helper method ``set_committed_value`` in 
        sqlalchemy.orm.attributes.  Given an object, attribute name,
        and value, will set the value on the object as part of its
