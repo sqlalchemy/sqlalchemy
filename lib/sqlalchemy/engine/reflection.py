@@ -22,6 +22,21 @@ from sqlalchemy import util
 from sqlalchemy.types import TypeEngine
 
 
+##@util.decorator
+def cache(fn):
+    def decorated(self, con, *args, **kw):
+        info_cache = kw.pop('info_cache', None)
+        if info_cache is None:
+            return fn(self, con, *args, **kw)
+        key = (fn.__name__, args, str(kw))
+        ret = info_cache.get(key)
+        if ret is None:
+            ret = fn(self, con, *args, **kw)
+            info_cache[key] = ret
+        return ret
+    return decorated
+
+# keeping this around until all dialects are fixed
 @util.decorator
 def caches(fn, self, con, *args, **kw):
     # what are we caching?
@@ -270,7 +285,11 @@ class Inspector(object):
             self.engine = conn.engine
         else:
             self.engine = conn
-        self.info_cache = self.engine.dialect.info_cache()
+        # fixme. This is just until all dialects are converted
+        if hasattr(self, 'info_cache'):
+            self.info_cache = self.engine.dialect.info_cache()
+        else:
+            self.info_cache = {}
 
     def default_schema_name(self):
         return self.engine.dialect.get_default_schema_name(self.conn)
@@ -282,7 +301,7 @@ class Inspector(object):
         """
         if hasattr(self.engine.dialect, 'get_schema_names'):
             return self.engine.dialect.get_schema_names(self.conn,
-                                                        self.info_cache)
+                                                    info_cache=self.info_cache)
         return []
 
     def get_table_names(self, schemaname=None, order_by=None):
@@ -296,7 +315,7 @@ class Inspector(object):
         """
         if hasattr(self.engine.dialect, 'get_table_names'):
             tnames = self.engine.dialect.get_table_names(self.conn, schemaname,
-                                                       self.info_cache)
+                                                    info_cache=self.info_cache)
         else:
             tnames = self.engine.table_names(schemaname)
         if order_by == 'foreign_key':
@@ -325,7 +344,7 @@ class Inspector(object):
 
         """
         return self.engine.dialect.get_view_names(self.conn, schemaname,
-                                                  self.info_cache)
+                                                  info_cache=self.info_cache)
 
     def get_view_definition(self, view_name, schemaname=None):
         """Return definition for `view_name`.
@@ -334,7 +353,7 @@ class Inspector(object):
 
         """
         return self.engine.dialect.get_view_definition(
-            self.conn, view_name, schemaname, self.info_cache)
+            self.conn, view_name, schemaname, info_cache=self.info_cache)
 
     def get_columns(self, tablename, schemaname=None):
         """Return information about columns in `tablename`.
@@ -379,7 +398,7 @@ class Inspector(object):
 
         pkeys = self.engine.dialect.get_primary_keys(self.conn, tablename,
                                                      schemaname,
-                                                     self.info_cache)
+                                            info_cache=self.info_cache)
 
         return pkeys
 
@@ -406,7 +425,7 @@ class Inspector(object):
 
         fk_defs = self.engine.dialect.get_foreign_keys(self.conn, tablename,
                                                        schemaname,
-                                                       self.info_cache)
+                                                info_cache=self.info_cache)
         for fk_def in fk_defs:
             referred_schema = fk_def['referred_schema']
             # always set the referred_schema.
@@ -435,5 +454,5 @@ class Inspector(object):
 
         indexes = self.engine.dialect.get_indexes(self.conn, tablename,
                                                   schemaname,
-                                                  self.info_cache)
+                                            info_cache=self.info_cache)
         return indexes
