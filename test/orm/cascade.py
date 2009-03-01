@@ -1200,7 +1200,7 @@ class PartialFlushTest(_base.MappedTest):
             Column("parent_id", Integer, ForeignKey("parent.id"))
         )
 
-
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_o2m_m2o(self):
         class Base(_base.ComparableEntity):
@@ -1250,6 +1250,7 @@ class PartialFlushTest(_base.MappedTest):
         assert c2 in sess and c2 not in sess.new
         assert b1 in sess and b1 in sess.new
 
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_circular_sort(self):
         """test ticket 1306"""

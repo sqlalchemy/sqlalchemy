@@ -1333,8 +1333,15 @@ class Session(object):
         objects
           Optional; a list or tuple collection.  Restricts the flush operation
           to only these objects, rather than all pending changes.
+          Deprecated - this flag prevents the session from properly maintaining
+          accounting among inter-object relations and can cause invalid results.
 
         """
+
+        if objects:
+            util.warn_deprecated(
+                "The 'objects' argument to session.flush() is deprecated; "
+                "Please do not add objects to the session which should not yet be persisted.")
         
         if self._flushing:
             raise sa_exc.InvalidRequestError("Session is already flushing")

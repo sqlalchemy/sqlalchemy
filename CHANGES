@@ -6,6 +6,13 @@ CHANGES
 0.5.3
 =====
 - orm
+    - The "objects" argument to session.flush() is deprecated.
+      State which represents the linkage between a parent and
+      child object does not support "flushed" status on
+      one side of the link and not the other, so supporting
+      this operation leads to misleading results.
+      [ticket:1315]
+    
     - Query now implements __clause_element__() which produces
       its selectable, which means a Query instance can be accepted 
       in many SQL expressions, including col.in_(query), 
