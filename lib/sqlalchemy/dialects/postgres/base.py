@@ -537,7 +537,7 @@ class PGDialect(default.DefaultDialect):
         return table_oid
 
     @reflection.cache
-    def get_schema_names(self, connection):
+    def get_schema_names(self, connection, **kw):
         s = """
         SELECT nspname
         FROM pg_namespace
@@ -550,7 +550,7 @@ class PGDialect(default.DefaultDialect):
         return schema_names
 
     @reflection.cache
-    def get_table_names(self, connection, schemaname=None):
+    def get_table_names(self, connection, schemaname=None, **kw):
         if schemaname is not None:
             current_schema = schemaname
         else:
@@ -559,7 +559,7 @@ class PGDialect(default.DefaultDialect):
         return table_names
 
     @reflection.cache
-    def get_view_names(self, connection, schemaname=None):
+    def get_view_names(self, connection, schemaname=None, **kw):
         if schemaname is not None:
             current_schema = schemaname
         else:
@@ -574,7 +574,7 @@ class PGDialect(default.DefaultDialect):
         return view_names
 
     @reflection.cache
-    def get_view_definition(self, connection, viewname, schemaname=None):
+    def get_view_definition(self, connection, viewname, schemaname=None, **kw):
         if schemaname is not None:
             current_schema = schemaname
         else:
@@ -591,7 +591,7 @@ class PGDialect(default.DefaultDialect):
             return view_def
 
     @reflection.cache
-    def get_columns(self, connection, tablename, schemaname=None):
+    def get_columns(self, connection, tablename, schemaname=None, **kw):
 
         table_oid = self._get_table_oid(connection, tablename, schemaname)
         SQL_COLS = """
@@ -678,7 +678,7 @@ class PGDialect(default.DefaultDialect):
         return columns
 
     @reflection.cache
-    def get_primary_keys(self, connection, tablename, schemaname=None):
+    def get_primary_keys(self, connection, tablename, schemaname=None, **kw):
         table_oid = self._get_table_oid(connection, tablename, schemaname)
         PK_SQL = """
           SELECT attname FROM pg_attribute
@@ -694,7 +694,7 @@ class PGDialect(default.DefaultDialect):
         return primary_keys
 
     @reflection.cache
-    def get_foreign_keys(self, connection, tablename, schemaname=None):
+    def get_foreign_keys(self, connection, tablename, schemaname=None, **kw):
         preparer = self.identifier_preparer
         table_oid = self._get_table_oid(connection, tablename, schemaname)
         FK_SQL = """
@@ -731,7 +731,7 @@ class PGDialect(default.DefaultDialect):
         return fkeys
 
     @reflection.cache
-    def get_indexes(self, connection, tablename, schemaname):
+    def get_indexes(self, connection, tablename, schemaname, **kw):
         table_oid = self._get_table_oid(connection, tablename, schemaname)
         IDX_SQL = """
           SELECT c.relname, i.indisunique, i.indexprs, i.indpred,
@@ -775,13 +775,15 @@ class PGDialect(default.DefaultDialect):
         preparer = self.identifier_preparer
         schemaname = table.schema
         tablename = table.name
+        info_cache = {}
         # Py2K
         if isinstance(schemaname, str):
             schemaname = schemaname.decode(self.encoding)
         if isinstance(tablename, str):
             tablename = tablename.decode(self.encoding)
         # end Py2K
-        for col_d in self.get_columns(connection, tablename, schemaname):
+        for col_d in self.get_columns(connection, tablename, schemaname,
+                                      info_cache=info_cache):
             name = col_d['name']
             coltype = col_d['type']
             nullable = col_d['nullable']
@@ -803,14 +805,16 @@ class PGDialect(default.DefaultDialect):
         # Now we have the table oid cached.
         table_oid = self._get_table_oid(connection, tablename, schemaname)
         # Primary keys
-        for pk in self.get_primary_keys(connection, tablename, schemaname):
+        for pk in self.get_primary_keys(connection, tablename, schemaname,
+                                        info_cache=info_cache):
             if pk in table.c:
                 col = table.c[pk]
                 table.primary_key.add(col)
                 if col.default is None:
                     col.autoincrement = False
         # Foreign keys
-        fkeys = self.get_foreign_keys(connection, tablename, schemaname)
+        fkeys = self.get_foreign_keys(connection, tablename, schemaname,
+                                      info_cache=info_cache)
         for fkey_d in fkeys:
             conname = fkey_d['name']
             constrained_columns = fkey_d['constrained_columns']
@@ -831,7 +835,8 @@ class PGDialect(default.DefaultDialect):
             table.append_constraint(schema.ForeignKeyConstraint(constrained_columns, refspec, conname, link_to_name=True))
 
         # Indexes 
-        indexes = self.get_indexes(connection, tablename, schemaname)
+        indexes = self.get_indexes(connection, tablename, schemaname,
+                                   info_cache=info_cache)
         for index_d in indexes:
             name = index_d['name']
             columns = index_d['column_names']

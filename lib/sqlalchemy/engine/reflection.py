@@ -22,19 +22,17 @@ from sqlalchemy import util
 from sqlalchemy.types import TypeEngine
 
 
-##@util.decorator
-def cache(fn):
-    def decorated(self, con, *args, **kw):
-        info_cache = kw.pop('info_cache', None)
-        if info_cache is None:
-            return fn(self, con, *args, **kw)
-        key = (fn.__name__, args, str(kw))
-        ret = info_cache.get(key)
-        if ret is None:
-            ret = fn(self, con, *args, **kw)
-            info_cache[key] = ret
-        return ret
-    return decorated
+@util.decorator
+def cache(fn, self, con, *args, **kw):
+    info_cache = kw.pop('info_cache', None)
+    if info_cache is None:
+        return fn(self, con, *args, **kw)
+    key = (fn.__name__, args, str(kw))
+    ret = info_cache.get(key)
+    if ret is None:
+        ret = fn(self, con, *args, **kw)
+        info_cache[key] = ret
+    return ret
 
 # keeping this around until all dialects are fixed
 @util.decorator
