@@ -17,6 +17,7 @@ I'm still trying to decide upon conventions for both the Inspector interface as 
 
 
 """
+import inspect
 import sqlalchemy
 from sqlalchemy import util
 from sqlalchemy.types import TypeEngine
@@ -266,7 +267,10 @@ class DefaultInfoCache(object):
         return self._set_table_data('indexes', indexes, tablename, schemaname)
 
 class Inspector(object):
-    """performs database introspection
+    """Performs database introspection.
+
+    The Inspector acts as a proxy to the dialects' reflection methods and
+    provides higher level functions for accessing database schema information.
 
     """
     
@@ -275,6 +279,20 @@ class Inspector(object):
 
         conn
           [sqlalchemy.engine.base.#Connectable]
+
+        Upon initialization, new members are added corresponding to the
+        refection members of the current dialect.
+
+        Dev Notes:
+        
+        I used attribute assignment rather than __getattr__ because 
+        I want the Inspector to be inspectable including providing proper
+        documentation strings for the methods is supports.
+        
+        The primary reason for this approach:
+
+        1. DRY.
+        2. Provides access to dialect specific reflection methods.
 
         """
         self.conn = conn
@@ -288,117 +306,31 @@ class Inspector(object):
             self.info_cache = self.engine.dialect.info_cache()
         else:
             self.info_cache = {}
+        # add methods from dialect
+        def filter_reflect_members(m):
+            if inspect.ismethod(m) and m.__name__.startswith('get_'):
+                argspec = inspect.getargspec(m)
+                if isinstance(argspec, tuple) and 'connection' in argspec[0]:
+                    return True
+            return False
+        reflection_members = inspect.getmembers(self.engine.dialect,
+                                                filter_reflect_members)
+        def wrap_reflection_method(fn):
+            def decorated(*args, **kwargs):
+                args = (self.conn,) + args
+                kwargs['info_cache'] = self.info_cache
+                return fn(*args, **kwargs)
+            return decorated
+        for (member_name, member) in reflection_members:
+            if not hasattr(self, member_name):
+                doc = "This method mirrors the dialect method %s." % member_name
+                wrapped_member = wrap_reflection_method(member)
+                wrapped_member.__doc__ = "%s\n\n%s" % (doc, member.__doc__)
+                setattr(self, member_name, wrapped_member)
 
+    @property
     def default_schema_name(self):
         return self.engine.dialect.get_default_schema_name(self.conn)
-    default_schema_name = property(default_schema_name)
-
-    def get_schema_names(self):
-        """Return all schema names.
-
-        """
-        if hasattr(self.engine.dialect, 'get_schema_names'):
-            return self.engine.dialect.get_schema_names(self.conn,
-                                                    info_cache=self.info_cache)
-        return []
-
-    def get_table_names(self, schemaname=None, order_by=None):
-        """Return all table names in `schemaname`.
-        schemaname:
-          Optional, retrieve names from a non-default schema.
-
-        This should probably not return view names or maybe it should return
-        them with an indicator t or v.
-
-        """
-        if hasattr(self.engine.dialect, 'get_table_names'):
-            tnames = self.engine.dialect.get_table_names(self.conn, schemaname,
-                                                    info_cache=self.info_cache)
-        else:
-            tnames = self.engine.table_names(schemaname)
-        if order_by == 'foreign_key':
-            ordered_tnames = tnames[:]
-            # Order based on foreign key dependencies.
-            for tname in tnames:
-                table_pos = tnames.index(tname)
-                fkeys = self.get_foreign_keys(tname, schemaname)
-                for fkey in fkeys:
-                    rtable = fkey['referred_table']
-                    if rtable in ordered_tnames:
-                        ref_pos = ordered_tnames.index(rtable)
-                        # Make sure it's lower in the list than anything it
-                        # references.
-                        if table_pos > ref_pos:
-                            ordered_tnames.pop(table_pos) # rtable moves up 1
-                            # insert just below rtable
-                            ordered_tnames.index(ref_pos, tname)
-            tnames = ordered_tnames
-        return tnames
-
-    def get_view_names(self, schemaname=None):
-        """Return all view names in `schemaname`.
-        schemaname:
-          Optional, retrieve names from a non-default schema.
-
-        """
-        return self.engine.dialect.get_view_names(self.conn, schemaname,
-                                                  info_cache=self.info_cache)
-
-    def get_view_definition(self, view_name, schemaname=None):
-        """Return definition for `view_name`.
-        schemaname:
-          Optional, retrieve names from a non-default schema.
-
-        """
-        return self.engine.dialect.get_view_definition(
-            self.conn, view_name, schemaname, info_cache=self.info_cache)
-
-    def get_columns(self, tablename, schemaname=None):
-        """Return information about columns in `tablename`.
-
-        Given a string `tablename` and an optional string `schemaname`, return
-        column information as a list of dicts with these keys:
-
-        name
-          the column's name
-
-        type
-          [sqlalchemy.types#TypeEngine]
-
-        nullable
-          boolean
-
-        default
-          the column's default value
-
-        attrs
-          dict containing optional column attributes
-
-        """
-
-        col_defs = self.engine.dialect.get_columns(self.conn, tablename,
-                                                   schemaname,
-                                                   info_cache=self.info_cache)
-        for col_def in col_defs:
-            # make this easy and only return instances for coltype
-            coltype = col_def['type']
-            if not isinstance(coltype, TypeEngine):
-                col_def['type'] = coltype()
-        return col_defs
-
-    def get_primary_keys(self, tablename, schemaname=None):
-        """Return information about primary keys in `tablename`.
-
-        Given a string `tablename`, and an optional string `schemaname`, return 
-        primary key information as a list of column names.
-
-        """
-
-        pkeys = self.engine.dialect.get_primary_keys(self.conn, tablename,
-                                                     schemaname,
-                                            info_cache=self.info_cache)
-
-        return pkeys
 
     def get_foreign_keys(self, tablename, schemaname=None):
         """Return information about foreign_keys in `tablename`.
@@ -433,24 +365,12 @@ class Inspector(object):
                 fk_def['referred_schema'] = referred_schema
         return fk_defs
 
-    def get_indexes(self, tablename, schemaname=None):
-        """Return information about indexes in `tablename`.
+    def get_relation_map(self, schemaname=None):
+        """Provide a mapping of the relations between all tables in schemaname.
 
-        Given a string `tablename` and an optional string `schemaname`, return
-        index information as a list of dicts with these keys:
-
-        name
-          the index's name
-
-        column_names
-          list of column names in order
-
-        unique
-          boolean
+        This is an example of a higher level function where Inspector can be
+        very useful.
 
         """
-
-        indexes = self.engine.dialect.get_indexes(self.conn, tablename,
-                                                  schemaname,
-                                            info_cache=self.info_cache)
-        return indexes
+        #todo
+        pass

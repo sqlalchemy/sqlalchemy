@@ -499,7 +499,8 @@ class PGDialect(default.DefaultDialect):
             raise AssertionError("Could not determine version from string '%s'" % v)
         return tuple([int(x) for x in m.group(1, 2, 3)])
 
-    def _get_table_oid(self, connection, tablename, schemaname=None):
+    @reflection.cache
+    def get_table_oid(self, connection, tablename, schemaname=None, **kw):
         """Fetch the oid for schemaname.tablename.
 
         Several reflection methods require the table oid.  The idea for using
@@ -593,7 +594,8 @@ class PGDialect(default.DefaultDialect):
     @reflection.cache
     def get_columns(self, connection, tablename, schemaname=None, **kw):
 
-        table_oid = self._get_table_oid(connection, tablename, schemaname)
+        table_oid = self.get_table_oid(connection, tablename, schemaname,
+                                       info_cache=kw.get('info_cache'))
         SQL_COLS = """
             SELECT a.attname,
               pg_catalog.format_type(a.atttypid, a.atttypmod),
@@ -679,7 +681,8 @@ class PGDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_primary_keys(self, connection, tablename, schemaname=None, **kw):
-        table_oid = self._get_table_oid(connection, tablename, schemaname)
+        table_oid = self.get_table_oid(connection, tablename, schemaname,
+                                       info_cache=kw.get('info_cache'))
         PK_SQL = """
           SELECT attname FROM pg_attribute
           WHERE attrelid = (
@@ -696,7 +699,8 @@ class PGDialect(default.DefaultDialect):
     @reflection.cache
     def get_foreign_keys(self, connection, tablename, schemaname=None, **kw):
         preparer = self.identifier_preparer
-        table_oid = self._get_table_oid(connection, tablename, schemaname)
+        table_oid = self.get_table_oid(connection, tablename, schemaname,
+                                       info_cache=kw.get('info_cache'))
         FK_SQL = """
           SELECT conname, pg_catalog.pg_get_constraintdef(oid, true) as condef
           FROM  pg_catalog.pg_constraint r
@@ -732,7 +736,8 @@ class PGDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_indexes(self, connection, tablename, schemaname, **kw):
-        table_oid = self._get_table_oid(connection, tablename, schemaname)
+        table_oid = self.get_table_oid(connection, tablename, schemaname,
+                                       info_cache=kw.get('info_cache'))
         IDX_SQL = """
           SELECT c.relname, i.indisunique, i.indexprs, i.indpred,
             a.attname
@@ -803,7 +808,8 @@ class PGDialect(default.DefaultDialect):
                 colargs.append(schema.DefaultClause(sql.text(default)))
             table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
         # Now we have the table oid cached.
-        table_oid = self._get_table_oid(connection, tablename, schemaname)
+        table_oid = self.get_table_oid(connection, tablename, schemaname,
+                                       info_cache=info_cache)
         # Primary keys
         for pk in self.get_primary_keys(connection, tablename, schemaname,
                                         info_cache=info_cache):
