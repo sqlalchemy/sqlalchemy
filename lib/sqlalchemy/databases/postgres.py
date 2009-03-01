@@ -193,6 +193,14 @@ class PGBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
 
+class PGBit(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "BIT"
+        
+class PGUuid(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "UUID"
+    
 class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     def __init__(self, item_type, mutable=True):
         if isinstance(item_type, type):
@@ -283,6 +291,8 @@ ischema_names = {
     'real' : PGFloat,
     'inet': PGInet,
     'cidr': PGCidr,
+    'uuid':PGUuid,
+    'bit':PGBit,
     'macaddr': PGMacAddr,
     'double precision' : PGFloat,
     'timestamp' : PGDateTime,
@@ -527,6 +537,7 @@ class PGDialect(default.DefaultDialect):
             elif attype == 'timestamp without time zone':
                 kwargs['timezone'] = False
 
+            coltype = None
             if attype in ischema_names:
                 coltype = ischema_names[attype]
             else:
@@ -540,8 +551,6 @@ class PGDialect(default.DefaultDialect):
                             # It can, however, override the default value, but can't set it to null.
                             default = domain['default']
                         coltype = ischema_names[domain['attype']]
-                else:
-                    coltype = None
 
             if coltype:
                 coltype = coltype(*args, **kwargs)

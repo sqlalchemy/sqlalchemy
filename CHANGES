@@ -89,6 +89,12 @@ CHANGES
 - postgres
     - Index reflection won't fail when an index with 
       multiple expressions is encountered.
+      
+    - Added PGUuid and PGBit types to 
+      sqlalchemy.databases.postgres. [ticket:1327]
+    
+    - Refection of unknown PG types won't crash when those
+      types are specified within a domain.  [ticket:1327]
 
 - mssql
     - Preliminary support for pymssql 1.0.1
