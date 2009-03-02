@@ -236,9 +236,6 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
         'vacuum', 'values', 'view', 'virtual', 'when', 'where',
         ])
 
-class SQLiteInfoCache(reflection.DefaultInfoCache):
-    pass
-
 class SQLiteDialect(default.DefaultDialect):
     name = 'sqlite'
     supports_alter = False
@@ -254,7 +251,6 @@ class SQLiteDialect(default.DefaultDialect):
     preparer = SQLiteIdentifierPreparer
     ischema_names = ischema_names
     colspecs = colspecs
-    info_cache = SQLiteInfoCache
     
     def table_names(self, connection, schema):
         if schema is not None:
@@ -295,7 +291,7 @@ class SQLiteDialect(default.DefaultDialect):
 
         return (row is not None)
 
-    @reflection.caches
+    @reflection.cache
     def get_columns(self, connection, tablename, schemaname=None,
                                                         info_cache=None):
         quote = self.identifier_preparer.quote_identifier
@@ -342,7 +338,7 @@ class SQLiteDialect(default.DefaultDialect):
             })
         return columns
 
-    @reflection.caches
+    @reflection.cache
     def get_foreign_keys(self, connection, tablename, schemaname=None,
                                                         info_cache=None):
         quote = self.identifier_preparer.quote_identifier

@@ -203,6 +203,11 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def get_table_names(self, connection, schema=None):
+        """Return a list of table names for `schema`."""
+
+        raise NotImplementedError
+
     def do_begin(self, connection):
         """Provide an implementation of *connection.begin()*, given a DB-API connection."""
 

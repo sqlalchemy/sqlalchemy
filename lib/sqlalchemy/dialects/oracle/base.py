@@ -74,7 +74,8 @@ is not in use this flag should be left off.
 
 import datetime, random, re
 
-from sqlalchemy import util, sql, schema, log
+from sqlalchemy import schema as sa_schema
+from sqlalchemy import util, sql, log
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy.sql import compiler, visitors, expression
 from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
@@ -447,9 +448,6 @@ class OracleIdentifierPreparer(compiler.IdentifierPreparer):
         name = re.sub(r'^_+', '', savepoint.ident)
         return super(OracleIdentifierPreparer, self).format_savepoint(savepoint, name)
         
-class OracleInfoCache(reflection.DefaultInfoCache):
-    pass
-
 class OracleDialect(default.DefaultDialect):
     name = 'oracle'
     supports_alter = True
@@ -474,7 +472,6 @@ class OracleDialect(default.DefaultDialect):
     type_compiler = OracleTypeCompiler
     preparer = OracleIdentifierPreparer
     defaultrunner = OracleDefaultRunner
-    info_cache = OracleInfoCache
     
     def __init__(self, 
                 use_ansi=True, 
@@ -568,50 +565,50 @@ class OracleDialect(default.DefaultDialect):
             else:
                 return None, None, None, None
 
-    def _prepare_reflection_args(self, connection, tablename, schemaname=None,
+    def _prepare_reflection_args(self, connection, table_name, schema=None,
                                  resolve_synonyms=False, dblink=''):
 
         if resolve_synonyms:
-            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(schemaname), desired_synonym=self._denormalize_name(tablename))
+            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(schema), desired_synonym=self._denormalize_name(table_name))
         else:
             actual_name, owner, dblink, synonym = None, None, None, None
         if not actual_name:
-            actual_name = self._denormalize_name(tablename)
+            actual_name = self._denormalize_name(table_name)
         if not dblink:
             dblink = ''
         if not owner:
-            owner = self._denormalize_name(schemaname or self.get_default_schema_name(connection))
+            owner = self._denormalize_name(schema or self.get_default_schema_name(connection))
         return (actual_name, owner, dblink, synonym)
 
-    @reflection.caches
-    def get_schema_names(self, connection, info_cache=None):
+    @reflection.cache
+    def get_schema_names(self, connection, **kw):
         s = "SELECT username FROM all_users ORDER BY username"
         cursor = connection.execute(s,)
         return [self._normalize_name(row[0]) for row in cursor]
 
-    @reflection.caches
-    def get_table_names(self, connection, schemaname=None, info_cache=None):
-        schemaname = self._denormalize_name(schemaname or self.get_default_schema_name(connection))
-        return self.table_names(connection, schemaname)
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
+        schema = self._denormalize_name(schema or self.get_default_schema_name(connection))
+        return self.table_names(connection, schema)
 
-    @reflection.caches
-    def get_view_names(self, connection, schemaname=None, info_cache=None):
-        schemaname = self._denormalize_name(schemaname or self.get_default_schema_name(connection))
+    @reflection.cache
+    def get_view_names(self, connection, schema=None, **kw):
+        schema = self._denormalize_name(schema or self.get_default_schema_name(connection))
         s = "select view_name from all_views where OWNER = :owner"
         cursor = connection.execute(s,
-                {'owner':self._denormalize_name(schemaname)})
+                {'owner':self._denormalize_name(schema)})
         return [self._normalize_name(row[0]) for row in cursor]
 
-    @reflection.caches
-    def get_columns(self, connection, tablename, schemaname=None,
-                    info_cache=None, resolve_synonyms=False, dblink=''):
+    @reflection.cache
+    def get_columns(self, connection, table_name, schema=None,
+                    resolve_synonyms=False, dblink='', **kw):
 
         
-        (tablename, schemaname, dblink, synonym) = \
-            self._prepare_reflection_args(connection, tablename, schemaname,
+        (table_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table_name, schema,
                                           resolve_synonyms, dblink)
         columns = []
-        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':tablename, 'owner':schemaname})
+        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':table_name, 'owner':schema})
 
         while True:
             row = c.fetchone()
@@ -645,7 +642,7 @@ class OracleDialect(default.DefaultDialect):
 
             colargs = []
             if default is not None:
-                colargs.append(schema.DefaultClause(sql.text(default)))
+                colargs.append(sa_schema.DefaultClause(sql.text(default)))
             cdict = {
                 'name': colname,
                 'type': coltype,
@@ -656,13 +653,13 @@ class OracleDialect(default.DefaultDialect):
             columns.append(cdict)
         return columns
 
-    @reflection.caches
-    def get_indexes(self, connection, tablename, schemaname=None,
-                    info_cache=None, resolve_synonyms=False, dblink=''):
+    @reflection.cache
+    def get_indexes(self, connection, table_name, schema=None,
+                    resolve_synonyms=False, dblink='', **kw):
 
         
-        (tablename, schemaname, dblink, synonym) = \
-            self._prepare_reflection_args(connection, tablename, schemaname,
+        (table_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table_name, schema,
                                           resolve_synonyms, dblink)
         indexes = []
         q = """
@@ -672,17 +669,18 @@ class OracleDialect(default.DefaultDialect):
             ON a.INDEX_NAME = b.INDEX_NAME
             AND a.TABLE_OWNER = b.TABLE_OWNER
             AND a.TABLE_NAME = b.TABLE_NAME
-        WHERE a.TABLE_NAME = :tablename
-        AND a.TABLE_OWNER = :schemaname
+        WHERE a.TABLE_NAME = :table_name
+        AND a.TABLE_OWNER = :schema
         ORDER BY a.INDEX_NAME, a.COLUMN_POSITION
         """ % dict(dblink=dblink)
         rp = connection.execute(q,
-            dict(tablename=self._denormalize_name(tablename),
-                 schemaname=self._denormalize_name(schemaname)))
+            dict(table_name=self._denormalize_name(table_name),
+                 schema=self._denormalize_name(schema)))
         indexes = []
         last_index_name = None
-        pkeys = self.get_primary_keys(connection, tablename, schemaname,
-                                      info_cache, resolve_synonyms, dblink)
+        pkeys = self.get_primary_keys(connection, table_name, schema,
+                                      resolve_synonyms, dblink,
+                                      info_cache=info_cache)
         uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
         for rset in rp:
             # don't include the primary key columns
@@ -696,8 +694,9 @@ class OracleDialect(default.DefaultDialect):
             last_index_name = rset.index_name
         return indexes
 
-    def _get_constraint_data(self, connection, tablename, schemaname=None,
-                             info_cache=None, dblink=''):
+    @reflection.cache
+    def _get_constraint_data(self, connection, table_name, schema=None,
+                            dblink='', **kw):
 
         rp = connection.execute("""SELECT
              ac.constraint_name,
@@ -718,19 +717,20 @@ class OracleDialect(default.DefaultDialect):
            AND ac.r_constraint_name = rem.constraint_name(+)
            -- order multiple primary keys correctly
            ORDER BY ac.constraint_name, loc.position, rem.position"""
-         % {'dblink':dblink}, {'table_name' : tablename, 'owner' : schemaname})
+         % {'dblink':dblink}, {'table_name' : table_name, 'owner' : schema})
         constraint_data = rp.fetchall()
         return constraint_data
 
-    @reflection.caches
-    def get_primary_keys(self, connection, tablename, schemaname=None,
-                         info_cache=None, resolve_synonyms=False, dblink=''):
-        (tablename, schemaname, dblink, synonym) = \
-            self._prepare_reflection_args(connection, tablename, schemaname,
+    @reflection.cache
+    def get_primary_keys(self, connection, table_name, schema=None,
+                         resolve_synonyms=False, dblink='', **kw):
+        (table_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table_name, schema,
                                           resolve_synonyms, dblink)
         pkeys = []
-        constraint_data = self._get_constraint_data(connection, tablename,
-                                        schemaname, info_cache, dblink)
+        constraint_data = self._get_constraint_data(connection, table_name,
+                                        schema, dblink,
+                                        info_cache=kw.get('info_cache'))
         for row in constraint_data:
             #print "ROW:" , row
             (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = row[0:2] + tuple([self._normalize_name(x) for x in row[2:]])
@@ -738,15 +738,16 @@ class OracleDialect(default.DefaultDialect):
                 pkeys.append(local_column)
         return pkeys
 
-    @reflection.caches
-    def get_foreign_keys(self, connection, tablename, schemaname=None,
-                         info_cache=None, resolve_synonyms=False, dblink=''):
-        (tablename, schemaname, dblink, synonym) = \
-            self._prepare_reflection_args(connection, tablename, schemaname,
+    @reflection.cache
+    def get_foreign_keys(self, connection, table_name, schema=None,
+                         resolve_synonyms=False, dblink='', **kw):
+        (table_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, table_name, schema,
                                           resolve_synonyms, dblink)
 
-        constraint_data = self._get_constraint_data(connection, tablename,
-                                                schemaname, info_cache, dblink)
+        constraint_data = self._get_constraint_data(connection, table_name,
+                                                schema, dblink,
+                                                info_cache=kw.get('info_cache'))
         fkeys = []
         fks = {}
         for row in constraint_data:
@@ -786,26 +787,26 @@ class OracleDialect(default.DefaultDialect):
                 fkeys.append(fkey_d)
         return fkeys
 
-    @reflection.caches
-    def get_view_definition(self, connection, viewname, schemaname=None,
-                            info_cache=None, resolve_synonyms=False, dblink=''):
-        (viewname, schemaname, dblink, synonym) = \
-            self._prepare_reflection_args(connection, viewname, schemaname,
+    @reflection.cache
+    def get_view_definition(self, connection, view_name, schema=None,
+                            resolve_synonyms=False, dblink='', **kw):
+        (view_name, schema, dblink, synonym) = \
+            self._prepare_reflection_args(connection, view_name, schema,
                                           resolve_synonyms, dblink)
         s = """
         SELECT text FROM all_views
-        WHERE owner = :schemaname
-        AND view_name = :viewname
+        WHERE owner = :schema
+        AND view_name = :view_name
         """
         rp = connection.execute(sql.text(s),
-                                viewname=viewname, schemaname=schemaname)
+                                view_name=view_name, schema=schema)
         if rp:
             view_def = rp.scalar().decode(self.encoding)
             return view_def
 
     def reflecttable(self, connection, table, include_columns):
         preparer = self.identifier_preparer
-        info_cache = OracleInfoCache()
+        info_cache = {}
 
         resolve_synonyms = table.kwargs.get('oracle_resolve_synonyms', False)
 
@@ -814,8 +815,8 @@ class OracleDialect(default.DefaultDialect):
                                           resolve_synonyms)
 
         # columns
-        columns = self.get_columns(connection, actual_name, owner, info_cache,
-                                                                        dblink)
+        columns = self.get_columns(connection, actual_name, owner, dblink,
+                                   info_cache=info_cache)
         for cdict in columns:
             colname = cdict['name']
             coltype = cdict['type']
@@ -823,14 +824,14 @@ class OracleDialect(default.DefaultDialect):
             colargs = cdict['attrs']
             if include_columns and colname not in include_columns:
                 continue
-            table.append_column(schema.Column(colname, coltype,
+            table.append_column(sa_schema.Column(colname, coltype,
                                               nullable=nullable, *colargs))
         if not table.columns:
             raise AssertionError("Couldn't find any column information for table %s" % actual_name)
 
         # primary keys
         for pkcol in self.get_primary_keys(connection, actual_name, owner,
-                                                           info_cache, dblink):
+                                           dblink, info_cache=info_cache):
             if pkcol in table.c:
                 table.primary_key.add(table.c[pkcol])
 
@@ -838,7 +839,8 @@ class OracleDialect(default.DefaultDialect):
         fks = {}
         fkeys = []
         fkeys = self.get_foreign_keys(connection, actual_name, owner,
-                                      info_cache, resolve_synonyms, dblink)
+                                      resolve_synonyms, dblink,
+                                      info_cache=info_cache)
         refspecs = []
         for fkey_d in fkeys:
             conname = fkey_d['name']
@@ -848,17 +850,17 @@ class OracleDialect(default.DefaultDialect):
             referred_columns = fkey_d['referred_columns']
             for (i, ref_col) in enumerate(referred_columns):
                 if not table.schema and self._denormalize_name(referred_schema) == self._denormalize_name(owner):
-                    t = schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
+                    t = sa_schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
 
                     refspec =  ".".join([referred_table, ref_col])
                 else:
                     refspec = '.'.join([x for x in [referred_schema,
                                     referred_table, ref_col] if x is not None])
 
-                    t = schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, schema=referred_schema, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
+                    t = sa_schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, schema=referred_schema, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
                 refspecs.append(refspec)
             table.append_constraint(
-                schema.ForeignKeyConstraint(constrained_columns, refspecs,
+                sa_schema.ForeignKeyConstraint(constrained_columns, refspecs,
                                         name=conname, link_to_name=True))
 
 

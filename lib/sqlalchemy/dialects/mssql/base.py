@@ -1044,12 +1044,6 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
         return value
 
 
-class MSInfoCache(reflection.DefaultInfoCache):
-    
-    def __init__(self, *args, **kwargs):
-        reflection.DefaultInfoCache.__init__(self, *args, **kwargs)
-
-
 class MSDialect(default.DefaultDialect):
     name = 'mssql'
     supports_default_values = True
@@ -1071,7 +1065,6 @@ class MSDialect(default.DefaultDialect):
     ddl_compiler = MSDDLCompiler
     type_compiler = MSTypeCompiler
     preparer = MSIdentifierPreparer
-    info_cache = MSInfoCache
 
     def __init__(self,
                  auto_identity_insert=True, query_timeout=None,
@@ -1147,7 +1140,7 @@ class MSDialect(default.DefaultDialect):
         row  = c.fetchone()
         return row is not None
 
-    @reflection.caches 
+    @reflection.cache
     def get_schema_names(self, connection, info_cache=None):
         import sqlalchemy.dialects.information_schema as ischema
         s = sql.select([self.uppercase_table(ischema.schemata).c.schema_name],
@@ -1156,7 +1149,7 @@ class MSDialect(default.DefaultDialect):
         schema_names = [r[0] for r in connection.execute(s)]
         return schema_names
 
-    @reflection.caches
+    @reflection.cache
     def get_table_names(self, connection, schemaname, info_cache=None):
         import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
@@ -1171,7 +1164,7 @@ class MSDialect(default.DefaultDialect):
         table_names = [r[0] for r in connection.execute(s)]
         return table_names
 
-    @reflection.caches
+    @reflection.cache
     def get_view_names(self, connection, schemaname=None, info_cache=None):
         import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
@@ -1186,7 +1179,7 @@ class MSDialect(default.DefaultDialect):
         view_names = [r[0] for r in connection.execute(s)]
         return view_names
 
-    @reflection.caches
+    @reflection.cache
     def get_indexes(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
         current_schema = schemaname or self.get_default_schema_name(connection)
@@ -1203,7 +1196,7 @@ class MSDialect(default.DefaultDialect):
                 })
         return indexes
 
-    @reflection.caches
+    @reflection.cache
     def get_view_definition(self, connection, viewname, schemaname=None,
                             info_cache=None):
         import sqlalchemy.dialects.information_schema as ischema
@@ -1220,7 +1213,7 @@ class MSDialect(default.DefaultDialect):
             view_def = rp.scalar()
             return view_def
 
-    @reflection.caches
+    @reflection.cache
     def get_columns(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
         # Get base columns
@@ -1281,7 +1274,7 @@ class MSDialect(default.DefaultDialect):
             cols.append(cdict)
         return cols
 
-    @reflection.caches
+    @reflection.cache
     def get_primary_keys(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
         import sqlalchemy.dialects.information_schema as ischema
@@ -1305,7 +1298,7 @@ class MSDialect(default.DefaultDialect):
                 pkeys.append(row[0])
         return pkeys
 
-    @reflection.caches
+    @reflection.cache
     def get_foreign_keys(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
         import sqlalchemy.dialects.information_schema as ischema
