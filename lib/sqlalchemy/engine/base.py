@@ -177,6 +177,112 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def get_columns(self, connection, table_name, schema=None, info_cache=None):
+        """Return information about columns in `table_name`.
+
+        Given a [sqlalchemy.engine#Connection], a string `table_name`, and an
+        optional string `schema`, return column information as a list of dicts
+        with these keys:
+
+        name
+          the column's name
+
+        type
+          [sqlalchemy.types#TypeEngine]
+
+        nullable
+          boolean
+
+        default
+          the column's default value
+
+        attrs
+          dict containing optional column attributes
+        """
+
+        raise NotImplementedError()
+
+    def get_primary_keys(self, connection, table_name, schema=None,
+                         info_cache=None):
+        """Return information about primary keys in `table_name`.
+
+        Given a [sqlalchemy.engine#Connection], a string `table_name`, and an
+        optional string `schema`, return primary key information as a list of
+        column names.
+
+        """
+
+        raise NotImplementedError()
+
+    def get_foreign_keys(self, connection, table_name, schema=None,
+                         info_cache=None):
+        """Return information about foreign_keys in `table_name`.
+
+        Given a [sqlalchemy.engine#Connection], a string `table_name`, and an
+        optional string `schema`, return foreign key information as a list of
+        dicts with these keys:
+
+        name
+          the constraint's name
+
+        constrained_columns
+          a list of column names that make up the foreign key
+
+        referred_schema
+          the name of the referred schema
+
+        referred_table
+          the name of the referred table
+
+        referred_columns
+          a list of column names in the referred table that correspond to
+          constrained_columns
+        """
+
+        raise NotImplementedError()
+
+    def get_view_names(self, connection, schema=None, info_cache=None):
+        """Return a list of all view names available in the database.
+
+        schema:
+          Optional, retrieve names from a non-default schema.
+
+        """
+
+        raise NotImplementedError()
+
+    def get_view_definition(self, connection, view_name, schema=None,
+                            info_cache=None):
+        """Return view definition.
+
+        Given a [sqlalchemy.engine#Connection], a string `view_name`, and an
+        optional string `schema`, return the view definition.
+
+        """
+
+        raise NotImplementedError()
+
+    def get_indexes(self, connection, table_name, schema=None, info_cache=None):
+        """Return information about indexes in `table_name`.
+
+        Given a [sqlalchemy.engine#Connection], a string `table_name` and an 
+        optional string `schema`, return index information as a list of dicts 
+        with these keys:
+
+        name
+          the index's name
+
+        column_names
+          list of column names in order
+
+        unique
+          boolean
+
+        """
+
+        raise NotImplementedError()
+
+
     def has_table(self, connection, table_name, schema=None):
         """Check the existence of a particular table in the database.
 
