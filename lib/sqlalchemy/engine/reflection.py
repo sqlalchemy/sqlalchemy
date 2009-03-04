@@ -205,9 +205,12 @@ class Inspector(object):
             referred_schema = fk_def['referred_schema']
             # always set the referred_schema.
             if referred_schema is None and schema is None:
-                referred_schema = self.dialect.get_default_schema_name(
+                try:
+                    referred_schema = self.dialect.get_default_schema_name(
                                                                     self.conn)
-                fk_def['referred_schema'] = referred_schema
+                    fk_def['referred_schema'] = referred_schema
+                except NotImplementedError:
+                    pass
         return fk_defs
 
     def get_indexes(self, table_name, schema=None):
