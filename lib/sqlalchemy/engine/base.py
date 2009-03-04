@@ -239,6 +239,11 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def get_table_names(self, connection, schema=None, **kw):
+        """Return a list of table names for `schema`."""
+
+        raise NotImplementedError
+
     def get_view_names(self, connection, schema=None, **kw):
         """Return a list of all view names available in the database.
 
@@ -304,11 +309,6 @@ class Dialect(object):
         """Return the string name of the currently selected schema given a :class:`~sqlalchemy.engine.Connection`."""
 
         raise NotImplementedError()
-
-    def get_table_names(self, connection, schema=None):
-        """Return a list of table names for `schema`."""
-
-        raise NotImplementedError
 
     def do_begin(self, connection):
         """Provide an implementation of *connection.begin()*, given a DB-API connection."""

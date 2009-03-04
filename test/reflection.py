@@ -15,6 +15,8 @@ if 'set' not in dir(__builtins__):
     from sets import Set as set
 
 def getSchema():
+    if testing.against('sqlite'):
+        return None
     if testing.against('oracle'):
         return 'test'
     else:
@@ -88,6 +90,7 @@ def dropViews(con, schema=None):
 
 class ReflectionTest(TestBase):
 
+    @testing.fails_on('sqlite', 'no schema support')
     def test_get_schema_names(self):
         meta = MetaData(testing.db)
         insp = Inspector(meta.bind)
@@ -221,8 +224,11 @@ class ReflectionTest(TestBase):
         try:
             expected_schema = schema
             if schema is None:
-                expected_schema = meta.bind.dialect.get_default_schema_name(
+                try:
+                    expected_schema = meta.bind.dialect.get_default_schema_name(
                                     meta.bind)
+                except NotImplementedError:
+                    expected_schema = None
             # users
             users_fkeys = insp.get_foreign_keys(users.name,
                                                 schema=schema)
