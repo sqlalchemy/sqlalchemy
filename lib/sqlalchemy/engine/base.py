@@ -177,7 +177,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_columns(self, connection, table_name, schema=None, info_cache=None):
+    def get_columns(self, connection, table_name, schema=None, **kw):
         """Return information about columns in `table_name`.
 
         Given a [sqlalchemy.engine#Connection], a string `table_name`, and an
@@ -202,8 +202,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_primary_keys(self, connection, table_name, schema=None,
-                         info_cache=None):
+    def get_primary_keys(self, connection, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.
 
         Given a [sqlalchemy.engine#Connection], a string `table_name`, and an
@@ -214,8 +213,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_foreign_keys(self, connection, table_name, schema=None,
-                         info_cache=None):
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
         """Return information about foreign_keys in `table_name`.
 
         Given a [sqlalchemy.engine#Connection], a string `table_name`, and an
@@ -241,7 +239,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_view_names(self, connection, schema=None, info_cache=None):
+    def get_view_names(self, connection, schema=None, **kw):
         """Return a list of all view names available in the database.
 
         schema:
@@ -251,8 +249,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_view_definition(self, connection, view_name, schema=None,
-                            info_cache=None):
+    def get_view_definition(self, connection, view_name, schema=None, **kw):
         """Return view definition.
 
         Given a [sqlalchemy.engine#Connection], a string `view_name`, and an
@@ -262,7 +259,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_indexes(self, connection, table_name, schema=None, info_cache=None):
+    def get_indexes(self, connection, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
 
         Given a [sqlalchemy.engine#Connection], a string `table_name` and an 
@@ -281,7 +278,6 @@ class Dialect(object):
         """
 
         raise NotImplementedError()
-
 
     def has_table(self, connection, table_name, schema=None):
         """Check the existence of a particular table in the database.
