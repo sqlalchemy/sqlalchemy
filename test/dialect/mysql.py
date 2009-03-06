@@ -986,10 +986,10 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 class RawReflectionTest(TestBase):
     def setUp(self):
         self.dialect = mysql.dialect()
-        self.reflector = mysql.MySQLSchemaReflector(self.dialect)
+        self.parser = mysql.MySQLTableDefinitionParser(self.dialect)
 
     def test_key_reflection(self):
-        regex = self.reflector._re_key
+        regex = self.parser._re_key
 
         assert regex.match('  PRIMARY KEY (`id`),')
         assert regex.match('  PRIMARY KEY USING BTREE (`id`),')
