@@ -1984,6 +1984,8 @@ class MySQLDialect(default.DefaultDialect):
         # primary keys
         pkey_cols = self.get_primary_keys(connection, table.name,
                                           table.schema, parsed_state=parsed_state)
+        if include_columns:
+            pkey_cols = [p for p in pkey_cols if p in include_columns]
         pkey = sa_schema.PrimaryKeyConstraint()
         for col in [table.c[name] for name in pkey_cols]:
             pkey.append_column(col)
@@ -1998,7 +2000,7 @@ class MySQLDialect(default.DefaultDialect):
             ref_schema = fkey_d['referred_schema']
             ref_name = fkey_d['referred_table']
             ref_names = fkey_d['referred_columns']
-            options = fkey_d['options']
+            con_kw = fkey_d['options']
             refspec = []
 
             # load related table
