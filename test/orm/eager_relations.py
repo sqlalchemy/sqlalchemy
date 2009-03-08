@@ -307,19 +307,19 @@ class EagerTest(_fixtures.FixtureTest):
         closed_mapper = mapper(Order, closedorders, non_primary=True)
         
         mapper(User, users, properties = dict(
-            addresses = relation(Address, lazy=False),
+            addresses = relation(Address, lazy=False, order_by=addresses.c.id),
             open_orders = relation(
                 open_mapper,
                 primaryjoin=sa.and_(openorders.c.isopen == 1,
                                  users.c.id==openorders.c.user_id),
-                lazy=False),
+                lazy=False, order_by=openorders.c.id),
             closed_orders = relation(
                 closed_mapper,
                 primaryjoin=sa.and_(closedorders.c.isopen == 0,
                                  users.c.id==closedorders.c.user_id),
-                lazy=False)))
+                lazy=False, order_by=closedorders.c.id)))
 
-        q = create_session().query(User)
+        q = create_session().query(User).order_by(User.id)
 
         def go():
             assert [

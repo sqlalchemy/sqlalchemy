@@ -120,6 +120,7 @@ class SerializeTest(testing.ORMTest):
 
         ualias = aliased(User)
         q = Session.query(User, ualias).join((ualias, User.id < ualias.id)).filter(User.id<9).order_by(User.id, ualias.id)
+        eq_(list(q.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9), (u8, u10)])
 
         q2 = serializer.loads(serializer.dumps(q), users.metadata, Session)
         
