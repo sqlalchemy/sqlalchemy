@@ -115,7 +115,7 @@ class SerializeTest(testing.ORMTest):
         
         eq_(list(q2.values(User.id, User.name)), [(9, u'fred')])
 
-    @testing.exclude('sqlite', '<=', '3.5.9', 'id comparison failing on the buildbot')
+    @testing.exclude('sqlite', '<=', (3, 5, 9), 'id comparison failing on the buildbot')
     def test_aliases(self):
         u7, u8, u9, u10 = Session.query(User).order_by(User.id).all()
 
