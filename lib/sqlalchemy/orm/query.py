@@ -697,6 +697,8 @@ class Query(object):
 
         criterion = list(chain(*[_orm_columns(c) for c in criterion]))
 
+        criterion = [self._adapt_clause(expression._literal_as_text(o), True, True) for o in criterion]
+
         if self._group_by is False:
             self._group_by = criterion
         else:

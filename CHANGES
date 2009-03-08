@@ -72,7 +72,11 @@ CHANGES
      - Query won't fail with weakref error when a non-mapper/class
        instrumented descriptor is passed, raises 
        "Invalid column expession".
-     
+    
+     - Query.group_by() properly takes into account aliasing applied
+       to the FROM clause, such as with select_from(), using
+       with_polymorphic(), or using from_self().
+        
 - sql
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used
