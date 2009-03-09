@@ -286,6 +286,9 @@ You can load a table whose name is specified at runtime with the entity() method
     >>> db.entity(tablename) == db.loans
     True
 
+entity() also takes an optional schema argument.  If none is specified, the
+default schema is used.
+
 
 Extra tests
 ===========
@@ -537,11 +540,11 @@ class SqlSoup:
         j = join(*args, **kwargs)
         return self.map(j)
 
-    def entity(self, attr):
+    def entity(self, attr, schema=None):
         try:
             t = self._cache[attr]
         except KeyError:
-            table = Table(attr, self._metadata, autoload=True, schema=self.schema)
+            table = Table(attr, self._metadata, autoload=True, schema=schema or self.schema)
             if not table.primary_key.columns:
                 raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys())))
             if table.columns:
