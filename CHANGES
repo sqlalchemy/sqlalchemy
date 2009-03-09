@@ -42,7 +42,12 @@ CHANGES
     - Added "post_configure_attribute" method to InstrumentationManager,
       so that the "listen_for_events.py" example works again.
       [ticket:1314]
-      
+    
+    - a forward and complementing backwards reference which are both
+      of the same direction, i.e. ONETOMANY or MANYTOONE, 
+      is now detected, and an error message is raised.   
+      Saves crazy CircularDependencyErrors later on.
+        
     - Fixed bugs in Query regarding simultaneous selection of 
       multiple joined-table inheritance entities with common base 
       classes:

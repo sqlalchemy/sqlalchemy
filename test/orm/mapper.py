@@ -447,7 +447,7 @@ class MapperTest(_fixtures.FixtureTest):
                      include_properties=('id', 'type', 'name'))
         e_m = mapper(Employee, inherits=p_m, polymorphic_identity='employee',
           properties={
-            'boss': relation(Manager, backref='peon')
+            'boss': relation(Manager, backref=backref('peon', ), remote_side=t.c.id)
           },
           exclude_properties=('vendor_id',))
 

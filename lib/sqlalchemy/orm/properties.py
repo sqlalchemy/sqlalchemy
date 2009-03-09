@@ -703,6 +703,10 @@ class RelationProperty(StrategizedProperty):
             raise sa_exc.ArgumentError("reverse_property %r on relation %s references "
                     "relation %s, which does not reference mapper %s" % (key, self, other, self.parent))
         
+        if self.direction in (ONETOMANY, MANYTOONE) and self.direction == other.direction:
+            raise sa_exc.ArgumentError("%s and back-reference %s are both of the same direction %r."
+                " Did you mean to set remote_side on the many-to-one side ?" % (self, other, self.direction))
+        
     def do_init(self):
         self._get_target()
         self._process_dependent_arguments()
