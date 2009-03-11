@@ -19,6 +19,10 @@ CHANGES
       union(query1, query2), select([foo]).select_from(query), 
       etc.
 
+    - Fixed bug where column_prefix wasn't being checked before
+      not mapping an attribute that already had class-level 
+      name present.
+
     - a session.expire() on a particular collection attribute
       will clear any pending backref additions as well, so that
       the next access correctly returns only what was present

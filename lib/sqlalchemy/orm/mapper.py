@@ -478,7 +478,7 @@ class Mapper(object):
         # pull properties from the inherited mapper if any.
         if self.inherits:
             for key, prop in self.inherits._props.iteritems():
-                if key not in self._props and not self._should_exclude(key, local=False):
+                if key not in self._props and not self._should_exclude(key, key, local=False):
                     self._adapt_inherited_property(key, prop, False)
 
         # create properties for each column in the mapped table,
@@ -487,10 +487,10 @@ class Mapper(object):
             if column in self._columntoproperty:
                 continue
 
-            if self._should_exclude(column.key, local=self.local_table.c.contains_column(column)):
-                continue
-
             column_key = (self.column_prefix or '') + column.key
+
+            if self._should_exclude(column.key, column_key, local=self.local_table.c.contains_column(column)):
+                continue
 
             # adjust the "key" used for this column to that
             # of the inheriting mapper
@@ -509,7 +509,7 @@ class Mapper(object):
                 col = self.polymorphic_on
             else:
                 dont_instrument = False
-            if self._should_exclude(col.key, local=False):
+            if self._should_exclude(col.key, col.key, local=False):
                 raise sa_exc.InvalidRequestError("Cannot exclude or override the discriminator column %r" % col.key)
             self._configure_property(col.key, ColumnProperty(col, _no_instrument=dont_instrument), init=False, setparent=True)
 
@@ -937,7 +937,7 @@ class Mapper(object):
     def _is_userland_descriptor(self, obj):
         return not isinstance(obj, (MapperProperty, attributes.InstrumentedAttribute)) and hasattr(obj, '__get__')
 
-    def _should_exclude(self, name, local):
+    def _should_exclude(self, name, assigned_name, local):
         """determine whether a particular property should be implicitly present on the class.
 
         This occurs when properties are propagated from an inherited class, or are
@@ -948,12 +948,12 @@ class Mapper(object):
         # check for descriptors, either local or from
         # an inherited class
         if local:
-            if self.class_.__dict__.get(name, None)\
-                and self._is_userland_descriptor(self.class_.__dict__[name]):
+            if self.class_.__dict__.get(assigned_name, None)\
+                and self._is_userland_descriptor(self.class_.__dict__[assigned_name]):
                 return True
         else:
-            if getattr(self.class_, name, None)\
-                and self._is_userland_descriptor(getattr(self.class_, name)):
+            if getattr(self.class_, assigned_name, None)\
+                and self._is_userland_descriptor(getattr(self.class_, assigned_name)):
                 return True
 
         if (self.include_properties is not None and

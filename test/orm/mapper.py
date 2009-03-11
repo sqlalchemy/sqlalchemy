@@ -443,6 +443,10 @@ class MapperTest(_fixtures.FixtureTest):
         class Hoho(object): pass
         class Lala(object): pass
 
+        class HasDef(object):
+            def name(self):
+                pass
+            
         p_m = mapper(Person, t, polymorphic_on=t.c.type,
                      include_properties=('id', 'type', 'name'))
         e_m = mapper(Employee, inherits=p_m, polymorphic_identity='employee',
@@ -460,6 +464,8 @@ class MapperTest(_fixtures.FixtureTest):
         l_m = mapper(Lala, t, exclude_properties=('vendor_id', 'boss_id'),
                      column_prefix="p_")
 
+        hd_m = mapper(HasDef, t, column_prefix="h_")
+        
         p_m.compile()
         #sa.orm.compile_mappers()
 
@@ -472,7 +478,8 @@ class MapperTest(_fixtures.FixtureTest):
             have = set([p.key for p in class_mapper(cls).iterate_properties])
             want = set(want)
             eq_(have, want)
-            
+        
+        assert_props(HasDef, ['h_boss_id', 'h_employee_number', 'h_id', 'name', 'h_name', 'h_vendor_id', 'h_type'])    
         assert_props(Person, ['id', 'name', 'type'])
         assert_instrumented(Person, ['id', 'name', 'type'])
         assert_props(Employee, ['boss', 'boss_id', 'employee_number',
