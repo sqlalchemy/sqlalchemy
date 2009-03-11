@@ -705,7 +705,7 @@ class RelationProperty(StrategizedProperty):
         
         if self.direction in (ONETOMANY, MANYTOONE) and self.direction == other.direction:
             raise sa_exc.ArgumentError("%s and back-reference %s are both of the same direction %r."
-                " Did you mean to set remote_side on the many-to-one side ?" % (self, other, self.direction))
+                "  Did you mean to set remote_side on the many-to-one side ?" % (self, other, self.direction))
         
     def do_init(self):
         self._get_target()
