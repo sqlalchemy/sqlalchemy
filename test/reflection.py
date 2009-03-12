@@ -128,9 +128,6 @@ class ReflectionTest(TestBase):
     def test_get_table_names_with_schema(self):
         self._test_get_table_names(getSchema())
 
-    def test_get_table_names_order_by_fk(self):
-        self._test_get_table_names(order_by='fk')
-
     def test_get_view_names(self):
         self._test_get_table_names(table_type='view')
 
@@ -263,6 +260,8 @@ class ReflectionTest(TestBase):
         meta.create_all()
         createIndexes(meta.bind, schema)
         try:
+            # The database may decide to create indexes for foreign keys, etc.
+            # so there may be more indexes than expected.
             insp = Inspector(meta.bind)
             indexes = insp.get_indexes('users', schema=schema)
             indexes.sort()
@@ -276,7 +275,13 @@ class ReflectionTest(TestBase):
                     {'unique': False,
                      'column_names': ['test1', 'test2'],
                      'name': 'users_t_idx'}]
-            self.assertEqual(indexes, expected_indexes)
+            index_names = [d['name'] for d in indexes]
+            for e_index in expected_indexes:
+                self.assertTrue(e_index['name'] in index_names)
+                index = indexes[index_names.index(e_index['name'])]
+                for key in e_index:
+                    self.assertEqual(e_index[key], index[key])
+
         finally:
             addresses.drop()
             users.drop()
