@@ -115,15 +115,23 @@ class SerializeTest(testing.ORMTest):
         
         eq_(list(q2.values(User.id, User.name)), [(9, u'fred')])
 
+    @testing.exclude('sqlite', '<=', (3, 5, 9), 'id comparison failing on the buildbot')
     def test_aliases(self):
         u7, u8, u9, u10 = Session.query(User).order_by(User.id).all()
 
         ualias = aliased(User)
         q = Session.query(User, ualias).join((ualias, User.id < ualias.id)).filter(User.id<9).order_by(User.id, ualias.id)
+        eq_(list(q.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9), (u8, u10)])
 
         q2 = serializer.loads(serializer.dumps(q), users.metadata, Session)
         
         eq_(list(q2.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9), (u8, u10)])
+
+    def test_any(self):
+        r = User.addresses.any(Address.email=='x')
+        ser = serializer.dumps(r)
+        x = serializer.loads(ser, users.metadata)
+        eq_(str(r), str(x))
         
 if __name__ == '__main__':
     testing.main()

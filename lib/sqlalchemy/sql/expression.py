@@ -2722,6 +2722,12 @@ class _FromGrouping(FromClause):
     def __getattr__(self, attr):
         return getattr(self.element, attr)
 
+    def __getstate__(self):
+        return {'element':self.element}
+
+    def __setstate__(self, state):
+        self.element = state['element']
+
 class _Label(ColumnElement):
     """Represents a column label (AS).
 

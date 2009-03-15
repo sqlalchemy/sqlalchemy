@@ -1519,7 +1519,64 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
         mapper(T2, t2)
         self.assertRaises(sa.exc.ArgumentError, sa.orm.compile_mappers)
 
+class InvalidRemoteSideTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        Table('t1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(50)),
+            Column('t_id', Integer, ForeignKey('t1.id'))
+            )
 
+    @testing.resolve_artifact_names
+    def setup_classes(self):
+        class T1(_base.ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def test_o2m_backref(self):
+        mapper(T1, t1, properties={
+            't1s':relation(T1, backref='parent')
+        })
+
+        self.assertRaisesMessage(sa.exc.ArgumentError, "T1.t1s and back-reference T1.parent are "
+                    "both of the same direction <symbol 'ONETOMANY>.  Did you "
+                    "mean to set remote_side on the many-to-one side ?", sa.orm.compile_mappers)
+
+    @testing.resolve_artifact_names
+    def test_m2o_backref(self):
+        mapper(T1, t1, properties={
+            't1s':relation(T1, backref=backref('parent', remote_side=t1.c.id), remote_side=t1.c.id)
+        })
+
+        self.assertRaisesMessage(sa.exc.ArgumentError, "T1.t1s and back-reference T1.parent are "
+                    "both of the same direction <symbol 'MANYTOONE>.  Did you "
+                    "mean to set remote_side on the many-to-one side ?", sa.orm.compile_mappers)
+
+    @testing.resolve_artifact_names
+    def test_o2m_explicit(self):
+        mapper(T1, t1, properties={
+            't1s':relation(T1, back_populates='parent'),
+            'parent':relation(T1, back_populates='t1s'),
+        })
+
+        # can't be sure of ordering here
+        self.assertRaisesMessage(sa.exc.ArgumentError, 
+                    "both of the same direction <symbol 'ONETOMANY>.  Did you "
+                    "mean to set remote_side on the many-to-one side ?", sa.orm.compile_mappers)
+
+    @testing.resolve_artifact_names
+    def test_m2o_explicit(self):
+        mapper(T1, t1, properties={
+            't1s':relation(T1, back_populates='parent', remote_side=t1.c.id),
+            'parent':relation(T1, back_populates='t1s', remote_side=t1.c.id)
+        })
+
+        # can't be sure of ordering here
+        self.assertRaisesMessage(sa.exc.ArgumentError, 
+                    "both of the same direction <symbol 'MANYTOONE>.  Did you "
+                    "mean to set remote_side on the many-to-one side ?", sa.orm.compile_mappers)
+
+        
 class InvalidRelationEscalationTest(_base.MappedTest):
 
     def define_tables(self, metadata):

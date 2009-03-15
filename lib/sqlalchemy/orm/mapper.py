@@ -338,22 +338,28 @@ class Mapper(object):
             return
 
         if manager is not None:
-            if manager.class_ is not self.class_:
-                # An inherited manager.  Install one for this subclass.
-                # TODO: no coverage here
-                manager = None
-            elif manager.mapper:
+            assert manager.class_ is self.class_
+            if manager.mapper:
                 raise sa_exc.ArgumentError(
                     "Class '%s' already has a primary mapper defined. "
                     "Use non_primary=True to "
                     "create a non primary Mapper.  clear_mappers() will "
                     "remove *all* current mappers from all classes." %
                     self.class_)
-
+            #else:
+                # a ClassManager may already exist as 
+                # ClassManager.instrument_attribute() creates 
+                # new managers for each subclass if they don't yet exist.
+                
         _mapper_registry[self] = True
 
+        self.extension.instrument_class(self, self.class_)
+
         if manager is None:
-            manager = attributes.create_manager_for_cls(self.class_)
+            manager = attributes.register_class(self.class_, 
+                instance_state_factory = IdentityManagedState,
+                deferred_scalar_loader = _load_scalar_attributes
+            )
 
         self.class_manager = manager
 
@@ -362,12 +368,6 @@ class Mapper(object):
         # The remaining members can be added by any mapper, e_name None or not.
         if manager.info.get(_INSTRUMENTOR, False):
             return
-
-        self.extension.instrument_class(self, self.class_)
-
-        manager.instantiable = True
-        manager.instance_state_factory = IdentityManagedState
-        manager.deferred_scalar_loader = _load_scalar_attributes
 
         event_registry = manager.events
         event_registry.add_listener('on_init', _event_on_init)
@@ -390,16 +390,11 @@ class Mapper(object):
     def dispose(self):
         # Disable any attribute-based compilation.
         self.compiled = True
-        manager = self.class_manager
+        
         if hasattr(self, '_compile_failed'):
             del self._compile_failed
-        if not self.non_primary and manager.mapper is self:
-            manager.mapper = None
-            manager.events.remove_listener('on_init', _event_on_init)
-            manager.events.remove_listener('on_init_failure',
-                                           _event_on_init_failure)
-            manager.uninstall_member('__init__')
-            del manager.info[_INSTRUMENTOR]
+            
+        if not self.non_primary and self.class_manager.mapper is self:
             attributes.unregister_class(self.class_)
 
     def _configure_pks(self):
@@ -483,7 +478,7 @@ class Mapper(object):
         # pull properties from the inherited mapper if any.
         if self.inherits:
             for key, prop in self.inherits._props.iteritems():
-                if key not in self._props and not self._should_exclude(key, local=False):
+                if key not in self._props and not self._should_exclude(key, key, local=False):
                     self._adapt_inherited_property(key, prop, False)
 
         # create properties for each column in the mapped table,
@@ -492,10 +487,10 @@ class Mapper(object):
             if column in self._columntoproperty:
                 continue
 
-            if self._should_exclude(column.key, local=self.local_table.c.contains_column(column)):
-                continue
-
             column_key = (self.column_prefix or '') + column.key
+
+            if self._should_exclude(column.key, column_key, local=self.local_table.c.contains_column(column)):
+                continue
 
             # adjust the "key" used for this column to that
             # of the inheriting mapper
@@ -514,7 +509,7 @@ class Mapper(object):
                 col = self.polymorphic_on
             else:
                 dont_instrument = False
-            if self._should_exclude(col.key, local=False):
+            if self._should_exclude(col.key, col.key, local=False):
                 raise sa_exc.InvalidRequestError("Cannot exclude or override the discriminator column %r" % col.key)
             self._configure_property(col.key, ColumnProperty(col, _no_instrument=dont_instrument), init=False, setparent=True)
 
@@ -942,7 +937,7 @@ class Mapper(object):
     def _is_userland_descriptor(self, obj):
         return not isinstance(obj, (MapperProperty, attributes.InstrumentedAttribute)) and hasattr(obj, '__get__')
 
-    def _should_exclude(self, name, local):
+    def _should_exclude(self, name, assigned_name, local):
         """determine whether a particular property should be implicitly present on the class.
 
         This occurs when properties are propagated from an inherited class, or are
@@ -953,12 +948,12 @@ class Mapper(object):
         # check for descriptors, either local or from
         # an inherited class
         if local:
-            if self.class_.__dict__.get(name, None)\
-                and self._is_userland_descriptor(self.class_.__dict__[name]):
+            if self.class_.__dict__.get(assigned_name, None)\
+                and self._is_userland_descriptor(self.class_.__dict__[assigned_name]):
                 return True
         else:
-            if getattr(self.class_, name, None)\
-                and self._is_userland_descriptor(getattr(self.class_, name)):
+            if getattr(self.class_, assigned_name, None)\
+                and self._is_userland_descriptor(getattr(self.class_, assigned_name)):
                 return True
 
         if (self.include_properties is not None and
@@ -1290,7 +1285,7 @@ class Mapper(object):
                             params[col._label] = mapper._get_state_attr_by_column(state, col)
                             params[col.key] = params[col._label] + 1
                             for prop in mapper._columntoproperty.itervalues():
-                                history = attributes.get_history(state, prop.key, passive=True)
+                                history = attributes.get_state_history(state, prop.key, passive=True)
                                 if history.added:
                                     hasdata = True
                         elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
@@ -1302,7 +1297,7 @@ class Mapper(object):
                                 continue
 
                             prop = mapper._columntoproperty[col]
-                            history = attributes.get_history(state, prop.key, passive=True)
+                            history = attributes.get_state_history(state, prop.key, passive=True)
                             if history.added:
                                 if isinstance(history.added[0], sql.ClauseElement):
                                     value_params[col] = history.added[0]

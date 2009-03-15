@@ -83,7 +83,7 @@ class Query(object):
         self._current_path = ()
         self._only_load_props = None
         self._refresh_state = None
-        self._from_obj = None
+        self._from_obj = ()
         self._polymorphic_adapters = {}
         self._filter_aliases = None
         self._from_obj_alias = None
@@ -135,11 +135,11 @@ class Query(object):
         if isinstance(from_obj, expression._SelectBaseMixin):
             from_obj = from_obj.alias()
 
-        self._from_obj = from_obj
+        self._from_obj = (from_obj,)
         equivs = self.__all_equivs()
 
         if isinstance(from_obj, expression.Alias):
-            self._from_obj_alias = sql_util.ColumnAdapter(self._from_obj, equivs)
+            self._from_obj_alias = sql_util.ColumnAdapter(from_obj, equivs)
 
     def _get_polymorphic_adapter(self, entity, selectable):
         self.__mapper_loads_polymorphically_with(entity.mapper, sql_util.ColumnAdapter(selectable, entity.mapper._equivalent_columns))
@@ -258,12 +258,6 @@ class Query(object):
         self._entities = [entity] + self._entities[1:]
         return entity
 
-    def __mapper_zero_from_obj(self):
-        if self._from_obj:
-            return self._from_obj
-        else:
-            return self._entity_zero().selectable
-
     def __all_equivs(self):
         equivs = {}
         for ent in self._mapper_entities:
@@ -276,7 +270,8 @@ class Query(object):
                 self._group_by:
             raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
 
-        self._statement = self._criterion = self._from_obj = None
+        self._from_obj = ()
+        self._statement = self._criterion = None
         self._order_by = self._group_by = self._distinct = False
         self.__joined_tables = {}
 
@@ -697,6 +692,8 @@ class Query(object):
 
         criterion = list(chain(*[_orm_columns(c) for c in criterion]))
 
+        criterion = [self._adapt_clause(expression._literal_as_text(o), True, True) for o in criterion]
+
         if self._group_by is False:
             self._group_by = criterion
         else:
@@ -897,10 +894,8 @@ class Query(object):
         if not from_joinpoint:
             self.__reset_joinpoint()
 
-        # join from our from_obj.  This is
-        # None unless select_from()/from_self() has been called.
-        clause = self._from_obj
-
+        clause = replace_clause_index = None
+        
         # after the method completes,
         # the query's joinpoint will be set to this.
         right_entity = None
@@ -961,10 +956,13 @@ class Query(object):
             elif not left_entity:
                 left_entity = self._joinpoint_zero()
 
-            # if no initial left-hand clause is set, extract
-            # this from the left_entity or as a last
-            # resort from the onclause argument, if it's
-            # a PropComparator.
+            if not clause and self._from_obj:
+                mp, left_selectable, is_aliased_class = _entity_info(left_entity)
+
+                replace_clause_index, clause = sql_util.find_join_source(self._from_obj, left_selectable)
+                if not clause:
+                    clause = left_selectable
+                    
             if not clause:
                 for ent in self._entities:
                     if ent.corresponds_to(left_entity):
@@ -1065,7 +1063,7 @@ class Query(object):
             # construct the onclause.
             join_to_left = not is_aliased_class or \
                             onclause is prop or \
-                            clause is self._from_obj and self._from_obj_alias
+                            self._from_obj_alias and clause is self._from_obj[0]
 
             # create the join
             clause = orm_join(clause, right_entity, onclause, isouter=outerjoin, join_to_left=join_to_left)
@@ -1084,9 +1082,12 @@ class Query(object):
                                         ORMAdapter(right_entity, equivalents=right_mapper._equivalent_columns)
                                     )
 
-        # loop finished.  we're selecting from
-        # our final clause now
-        self._from_obj = clause
+        if replace_clause_index is not None:
+            l = list(self._from_obj)
+            l[replace_clause_index] = clause
+            self._from_obj = tuple(l)
+        else:
+            self._from_obj = self._from_obj + (clause,)
 
         # future joins with from_joinpoint=True join from our established right_entity.
         self._joinpoint = right_entity
@@ -1113,7 +1114,13 @@ class Query(object):
         `from_obj` is a single table or selectable.
 
         """
+        
         if isinstance(from_obj, (tuple, list)):
+            # from_obj is actually a list again as of 0.5.3.   so this restriction here
+            # is somewhat artificial, but is still in place since select_from() implies aliasing all further
+            # criterion against what's placed here, and its less complex to only
+            # keep track of a single aliased FROM element being selected against.  This could in theory be opened
+            # up again to more complexity.
             util.warn_deprecated("select_from() now accepts a single Selectable as its argument, which replaces any existing FROM criterion.")
             from_obj = from_obj[-1]
         if not isinstance(from_obj, expression.FromClause):
@@ -1472,7 +1479,7 @@ class Query(object):
             entity.setup_context(self, context)
 
         if context.from_clause:
-            from_obj = [context.from_clause]
+            from_obj = list(context.from_clause)
         else:
             from_obj = context.froms
 
@@ -1724,7 +1731,7 @@ class Query(object):
         eager_joins = context.eager_joins.values()
 
         if context.from_clause:
-            froms = [context.from_clause]  # "load from a single FROM" mode, i.e. when select_from() or join() is used
+            froms = list(context.from_clause)  # "load from explicit FROMs" mode, i.e. when select_from() or join() is used
         else:
             froms = context.froms   # "load from discrete FROMs" mode, i.e. when each _MappedEntity has its own FROM
 

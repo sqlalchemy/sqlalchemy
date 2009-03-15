@@ -21,15 +21,31 @@ def sort_tables(tables):
         visitors.traverse(table, {'schema_visitor':True}, {'foreign_key':visit_foreign_key})    
     return topological.sort(tuples, tables)
 
-def search(clause, target):
-    if not clause:
-        return False
-    for elem in visitors.iterate(clause, {'column_collections':False}):
-        if elem is target:
-            return True
+def find_join_source(clauses, join_to):
+    """Given a list of FROM clauses and a selectable, 
+    return the first index and element from the list of 
+    clauses which can be joined against the selectable.  returns 
+    None, None if no match is found.
+    
+    e.g.::
+    
+        clause1 = table1.join(table2)
+        clause2 = table4.join(table5)
+        
+        join_to = table2.join(table3)
+        
+        find_join_source([clause1, clause2], join_to) == clause1
+    
+    """
+    
+    selectables = list(expression._from_objects(join_to))
+    for i, f in enumerate(clauses):
+        for s in selectables:
+            if f.is_derived_from(s):
+                return i, f
     else:
-        return False
-
+        return None, None
+    
 def find_tables(clause, check_columns=False, include_aliases=False, include_joins=False, include_selects=False):
     """locate Table objects within the given expression."""
     

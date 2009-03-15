@@ -81,6 +81,11 @@ class DefaultDialect(base.Dialect):
         # Py3K
         #self.supports_unicode_statements = True
         #self.supports_unicode_binds = True
+
+    def initialize(self, connection):
+        # TODO: all dialects need to implement this
+        if hasattr(self, '_get_server_version_info'):
+            self.server_version_info = self._get_server_version_info(connection)
     
     @classmethod
     def type_descriptor(cls, typeobj):

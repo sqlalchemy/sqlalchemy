@@ -151,7 +151,7 @@ class SQLite_pysqlite(SQLiteDialect):
                 raise e
         return sqlite
 
-    def server_version_info(self, connection):
+    def _get_server_version_info(self, connection):
         return self.dbapi.sqlite_version_info
 
     def create_connect_args(self, url):

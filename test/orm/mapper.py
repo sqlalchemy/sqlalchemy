@@ -38,6 +38,38 @@ class MapperTest(_fixtures.FixtureTest):
         users.update().values({User.foobar:User.foobar + 'foo'}).execute()
         eq_(sa.select([User.foobar]).where(User.foobar=='name1foo').execute().fetchall(), [('name1foo',)])
         
+    @testing.resolve_artifact_names
+    def test_utils(self):
+        from sqlalchemy.orm.util import _is_mapped_class, _is_aliased_class
+        
+        class Foo(object):
+            x = "something"
+            @property
+            def y(self):
+                return "somethign else"
+        m = mapper(Foo, users)
+        a1 = aliased(Foo)
+        
+        f = Foo()
+
+        for fn, arg, ret in [
+            (_is_mapped_class, Foo.x, False),
+            (_is_mapped_class, Foo.y, False),
+            (_is_mapped_class, Foo, True),
+            (_is_mapped_class, f, False),
+            (_is_mapped_class, a1, True),
+            (_is_mapped_class, m, True),
+            (_is_aliased_class, a1, True),
+            (_is_aliased_class, Foo.x, False),
+            (_is_aliased_class, Foo.y, False),
+            (_is_aliased_class, Foo, False),
+            (_is_aliased_class, f, False),
+            (_is_aliased_class, a1, True),
+            (_is_aliased_class, m, False),
+        ]:
+            assert fn(arg) == ret
+
+
 
     @testing.resolve_artifact_names
     def test_prop_accessor(self):
@@ -411,11 +443,15 @@ class MapperTest(_fixtures.FixtureTest):
         class Hoho(object): pass
         class Lala(object): pass
 
+        class HasDef(object):
+            def name(self):
+                pass
+            
         p_m = mapper(Person, t, polymorphic_on=t.c.type,
                      include_properties=('id', 'type', 'name'))
         e_m = mapper(Employee, inherits=p_m, polymorphic_identity='employee',
           properties={
-            'boss': relation(Manager, backref='peon')
+            'boss': relation(Manager, backref=backref('peon', ), remote_side=t.c.id)
           },
           exclude_properties=('vendor_id',))
 
@@ -428,6 +464,8 @@ class MapperTest(_fixtures.FixtureTest):
         l_m = mapper(Lala, t, exclude_properties=('vendor_id', 'boss_id'),
                      column_prefix="p_")
 
+        hd_m = mapper(HasDef, t, column_prefix="h_")
+        
         p_m.compile()
         #sa.orm.compile_mappers()
 
@@ -440,7 +478,8 @@ class MapperTest(_fixtures.FixtureTest):
             have = set([p.key for p in class_mapper(cls).iterate_properties])
             want = set(want)
             eq_(have, want)
-            
+        
+        assert_props(HasDef, ['h_boss_id', 'h_employee_number', 'h_id', 'name', 'h_name', 'h_vendor_id', 'h_type'])    
         assert_props(Person, ['id', 'name', 'type'])
         assert_instrumented(Person, ['id', 'name', 'type'])
         assert_props(Employee, ['boss', 'boss_id', 'employee_number',

@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 
 from testlib import sa
 from testlib.sa import MetaData, Table, Column, Integer, ForeignKey
-from testlib.sa.orm import mapper, relation, create_session, attributes
+from testlib.sa.orm import mapper, relation, create_session, attributes, class_mapper
 from testlib.testing import eq_, ne_
 from testlib.compat import _function_named
 from orm import _base
@@ -21,12 +21,11 @@ def modifies_instrumentation_finders(fn):
 def with_lookup_strategy(strategy):
     def decorate(fn):
         def wrapped(*args, **kw):
-            current = attributes._lookup_strategy
             try:
                 attributes._install_lookup_strategy(strategy)
                 return fn(*args, **kw)
             finally:
-                attributes._install_lookup_strategy(current)
+                attributes._install_lookup_strategy(sa.util.symbol('native'))
         return _function_named(wrapped, fn.func_name)
     return decorate
 
@@ -454,10 +453,10 @@ class MapperInitTest(_base.ORMTest):
             pass
 
         class C(B):
-            def __init__(self):
+            def __init__(self, x):
                 pass
 
-        mapper(A, self.fixture())
+        m = mapper(A, self.fixture())
 
         a = attributes.instance_state(A())
         assert isinstance(a, attributes.InstanceState)
@@ -467,11 +466,19 @@ class MapperInitTest(_base.ORMTest):
         assert isinstance(b, attributes.InstanceState)
         assert type(b) is not attributes.InstanceState
 
-        # C is unmanaged
-        cobj = C()
-        self.assertRaises((AttributeError, TypeError),
-                          attributes.instance_state, cobj)
+        # B is not mapped in the current implementation
+        self.assertRaises(sa.orm.exc.UnmappedClassError, class_mapper, B)
 
+        # the constructor of C is decorated too.  
+        # we don't support unmapped subclasses in any case,
+        # users should not be expecting any particular behavior
+        # from this scenario.
+        c = attributes.instance_state(C(3))
+        assert isinstance(c, attributes.InstanceState)
+        assert type(c) is not attributes.InstanceState
+
+        # C is not mapped in the current implementation
+        self.assertRaises(sa.orm.exc.UnmappedClassError, class_mapper, C)
 
 class InstrumentationCollisionTest(_base.ORMTest):
     def test_none(self):
@@ -653,7 +660,16 @@ class MiscTest(_base.ORMTest):
 
         a = A()
         assert not a.bs
-
+    
+    def test_uninstrument(self):
+        class A(object):pass
+        
+        manager = attributes.register_class(A)
+        
+        assert attributes.manager_of_class(A) is manager
+        attributes.unregister_class(A)
+        assert attributes.manager_of_class(A) is None
+        
     def test_compileonattr_rel_backref_a(self):
         m = MetaData()
         t1 = Table('t1', m,

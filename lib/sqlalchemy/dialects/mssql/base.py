@@ -1076,7 +1076,8 @@ class MSDialect(default.DefaultDialect):
         self.schema_name = schema_name
 
         self.use_scope_identity = bool(use_scope_identity)
-        self.max_identifier_length = int(max_identifier_length or 0) or 128
+        self.max_identifier_length = int(max_identifier_length or 0) or \
+                self.max_identifier_length
         super(MSDialect, self).__init__(**opts)
     
     def initialize(self, connection):

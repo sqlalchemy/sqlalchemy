@@ -1673,7 +1673,6 @@ Note that eager/lazy loading options cannot be used in conjunction dynamic relat
 Setting Noload 
 ~~~~~~~~~~~~~~~
 
-
 The opposite of the dynamic relation is simply "noload", specified using ``lazy=None``:
 
 .. sourcecode:: python+sql

@@ -86,6 +86,12 @@ class PGMacAddr(sqltypes.TypeEngine):
 class PGInterval(sqltypes.TypeEngine):
     __visit_name__ = 'INTERVAL'
 
+class PGBit(sqltypes.TypeEngine):
+    __visit_name__ = 'BIT'
+
+class PGUuid(sqltypes.TypeEngine):
+    __visit_name__ = 'UUID'
+
 class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     __visit_name__ = 'ARRAY'
     
@@ -166,6 +172,8 @@ ischema_names = {
     'real' : sqltypes.Float,
     'inet': PGInet,
     'cidr': PGCidr,
+    'uuid': PGUuid,
+    'bit':PGBit,
     'macaddr': PGMacAddr,
     'double precision' : sqltypes.Float,
     'timestamp' : sqltypes.TIMESTAMP,
@@ -383,6 +391,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_INTERVAL(self, type_):
         return "INTERVAL"
 
+    def visit_BIT(self, type_):
+        return "BIT"
+
+    def visit_UUID(self, type_):
+        return "UUID"
+
     def visit_binary(self, type_):
         return self.visit_BYTEA(type_)
         
@@ -506,7 +520,7 @@ class PGDialect(default.DefaultDialect):
         )
         return [row[0] for row in result]
 
-    def server_version_info(self, connection):
+    def _get_server_version_info(self, connection):
         v = connection.execute("select version()").scalar()
         m = re.match('PostgreSQL (\d+)\.(\d+)\.(\d+)', v)
         if not m:

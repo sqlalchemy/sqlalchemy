@@ -660,18 +660,26 @@ class EagerLoader(AbstractRelationLoader):
 
         if entity in context.eager_joins:
             entity_key, default_towrap = entity, entity.selectable
-        elif should_nest_selectable or not context.from_clause or not sql_util.search(context.from_clause, entity.selectable):
-            # if no from_clause, or a from_clause we can't join to, or a subquery is going to be generated, 
+
+        elif should_nest_selectable or not context.from_clause:
+            # if no from_clause, or a subquery is going to be generated, 
             # store eager joins per _MappedEntity; Query._compile_context will 
             # add them as separate selectables to the select(), or splice them together
             # after the subquery is generated
             entity_key, default_towrap = entity, entity.selectable
         else:
-            # otherwise, create a single eager join from the from clause.  
-            # Query._compile_context will adapt as needed and append to the
-            # FROM clause of the select().
-            entity_key, default_towrap = None, context.from_clause  
-
+            index, clause = sql_util.find_join_source(context.from_clause, entity.selectable)
+            if clause:
+                # join to an existing FROM clause on the query.
+                # key it to its list index in the eager_joins dict.
+                # Query._compile_context will adapt as needed and append to the
+                # FROM clause of the select().
+                entity_key, default_towrap = index, clause
+            else:
+                # if no from_clause to join to,
+                # store eager joins per _MappedEntity
+                entity_key, default_towrap = entity, entity.selectable
+                
         towrap = context.eager_joins.setdefault(entity_key, default_towrap)
 
         # create AliasedClauses object to build up the eager query.  
@@ -765,7 +773,7 @@ class EagerLoader(AbstractRelationLoader):
                         # when self-referential eager loading is used; the same instance may be present
                         # in two distinct sets of result columns
 
-                        collection = attributes.init_collection(state, key)
+                        collection = attributes.init_state_collection(state, key)
                         appender = util.UniqueAppender(collection, 'append_without_event')
 
                         context.attributes[(state, key)] = appender

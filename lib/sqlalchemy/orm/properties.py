@@ -472,7 +472,7 @@ class RelationProperty(StrategizedProperty):
             return op(self, *other, **kwargs)
 
         def of_type(self, cls):
-            return RelationProperty.Comparator(self.property, self.mapper, cls)
+            return RelationProperty.Comparator(self.property, self.mapper, cls, adapter=self.adapter)
 
         def in_(self, other):
             raise NotImplementedError("in_() not yet supported for relations.  For a "
@@ -511,7 +511,7 @@ class RelationProperty(StrategizedProperty):
                 source_selectable = self.__clause_element__()
             else:
                 source_selectable = None
-                
+            
             pj, sj, source, dest, secondary, target_adapter = \
                 self.property._create_joins(dest_polymorphic=True, dest_selectable=to_selectable, source_selectable=source_selectable)
 
@@ -702,6 +702,10 @@ class RelationProperty(StrategizedProperty):
         if not other._get_target().common_parent(self.parent):
             raise sa_exc.ArgumentError("reverse_property %r on relation %s references "
                     "relation %s, which does not reference mapper %s" % (key, self, other, self.parent))
+        
+        if self.direction in (ONETOMANY, MANYTOONE) and self.direction == other.direction:
+            raise sa_exc.ArgumentError("%s and back-reference %s are both of the same direction %r."
+                "  Did you mean to set remote_side on the many-to-one side ?" % (self, other, self.direction))
         
     def do_init(self):
         self._get_target()

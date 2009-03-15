@@ -6,11 +6,28 @@ CHANGES
 0.5.3
 =====
 - orm
+    - The "objects" argument to session.flush() is deprecated.
+      State which represents the linkage between a parent and
+      child object does not support "flushed" status on
+      one side of the link and not the other, so supporting
+      this operation leads to misleading results.
+      [ticket:1315]
+    
     - Query now implements __clause_element__() which produces
       its selectable, which means a Query instance can be accepted 
       in many SQL expressions, including col.in_(query), 
       union(query1, query2), select([foo]).select_from(query), 
       etc.
+
+    - Query.join() can now construct multiple FROM clauses, if 
+      needed.  Such as, query(A, B).join(A.x).join(B.y)
+      might say SELECT A.*, B.* FROM A JOIN X, B JOIN Y.  
+      Eager loading can also tack its joins onto those 
+      multiple FROM clauses.  [ticket:1337]
+      
+    - Fixed bug where column_prefix wasn't being checked before
+      not mapping an attribute that already had class-level 
+      name present.
 
     - a session.expire() on a particular collection attribute
       will clear any pending backref additions as well, so that
@@ -18,6 +35,10 @@ CHANGES
       in the database.  Presents some degree of a workaround for 
       [ticket:1315], although we are considering removing the 
       flush([objects]) feature altogether.
+    
+    - Session.scalar() now converts raw SQL strings to text()
+      the same way Session.execute() does and accepts same 
+      alternative **kw args.
       
     - improvements to the "determine direction" logic of 
       relation() such that the direction of tricky situations 
@@ -31,7 +52,12 @@ CHANGES
     - Added "post_configure_attribute" method to InstrumentationManager,
       so that the "listen_for_events.py" example works again.
       [ticket:1314]
-      
+    
+    - a forward and complementing backwards reference which are both
+      of the same direction, i.e. ONETOMANY or MANYTOONE, 
+      is now detected, and an error message is raised.   
+      Saves crazy CircularDependencyErrors later on.
+        
     - Fixed bugs in Query regarding simultaneous selection of 
       multiple joined-table inheritance entities with common base 
       classes:
@@ -46,7 +72,26 @@ CHANGES
       - Other filterings, like 
         query(A).join(A.bs).filter(B.foo=='bar'), were erroneously
         adapting "B.foo" as though it were an "A".
-      
+    
+     - Fixed adaptation of EXISTS clauses via any(), has(), etc.
+       in conjunction with an aliased object on the left and 
+       of_type() on the right.  [ticket:1325]
+       
+     - Added an attribute helper method ``set_committed_value`` in 
+       sqlalchemy.orm.attributes.  Given an object, attribute name,
+       and value, will set the value on the object as part of its
+       "committed" state, i.e. state that is understood to have 
+       been loaded from the database.   Helps with the creation of 
+       homegrown collection loaders and such.
+
+     - Query won't fail with weakref error when a non-mapper/class
+       instrumented descriptor is passed, raises 
+       "Invalid column expession".
+    
+     - Query.group_by() properly takes into account aliasing applied
+       to the FROM clause, such as with select_from(), using
+       with_polymorphic(), or using from_self().
+        
 - sql
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used
@@ -70,10 +115,40 @@ CHANGES
 - postgres
     - Index reflection won't fail when an index with 
       multiple expressions is encountered.
+      
+    - Added PGUuid and PGBit types to 
+      sqlalchemy.databases.postgres. [ticket:1327]
+    
+    - Refection of unknown PG types won't crash when those
+      types are specified within a domain.  [ticket:1327]
 
 - mssql
     - Preliminary support for pymssql 1.0.1
-    
+
+    - Corrected issue on mssql where max_identifier_length was
+      not being respected.
+
+- extensions
+
+    - Fixed a recursive pickling issue in serializer, triggered
+      by an EXISTS or other embedded FROM construct.
+
+    - Declarative locates the "inherits" class using a search
+      through __bases__, to skip over mixins that are local
+      to subclasses.   
+      
+    - Declarative figures out joined-table inheritance primary join
+      condition even if "inherits" mapper argument is given 
+      explicitly. 
+
+    - Declarative will properly interpret the "foreign_keys" argument
+      on a backref() if it's a string.
+      
+    - Declarative will accept a table-bound column as a property
+      when used in conjunction with __table__, if the column is already
+      present in __table__.  The column will be remapped to the given 
+      key the same way as when added to the mapper() properties dict.
+      
 0.5.2
 ======
 

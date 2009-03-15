@@ -773,6 +773,20 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         ] == create_session().query(User).filter(User.id.in_([8,9]))._from_self().\
             join('addresses').add_entity(Address).order_by(User.id, Address.id).all()
     
+    def test_group_by(self):
+        eq_(
+            create_session().query(Address.user_id, func.count(Address.id).label('count')).\
+                            group_by(Address.user_id).order_by(Address.user_id).all(),
+            [(7, 1), (8, 3), (9, 1)]
+        )
+
+        eq_(
+            create_session().query(Address.user_id, Address.id).\
+                            from_self(Address.user_id, func.count(Address.id)).\
+                            group_by(Address.user_id).order_by(Address.user_id).all(),
+            [(7, 1), (8, 3), (9, 1)]
+        )
+        
     def test_no_eagerload(self):
         """test that eagerloads are pushed outwards and not rendered in subqueries."""
         

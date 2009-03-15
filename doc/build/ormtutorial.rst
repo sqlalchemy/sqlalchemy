@@ -13,7 +13,7 @@ A quick check to verify that we are on at least **version 0.5** of SQLAlchemy::
     >>> import sqlalchemy
     >>> sqlalchemy.__version__ # doctest:+SKIP
     0.5.0
-    
+
 Connecting
 ==========
 
@@ -21,14 +21,14 @@ For this tutorial we will use an in-memory-only SQLite database.  To connect we 
 
     >>> from sqlalchemy import create_engine
     >>> engine = create_engine('sqlite:///:memory:', echo=True)
-    
+
 The ``echo`` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard ``logging`` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to ``False``.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see what's being generated.
-    
-Define and Create a Table 
+
+Define and Create a Table
 ==========================
 Next we want to tell SQLAlchemy about our tables.  We will start with just a single table called ``users``, which will store records for the end-users using our application (lets assume it's a website).  We define our tables within a catalog called ``MetaData``, using the ``Table`` construct, which is used in a manner similar to SQL's CREATE TABLE syntax::
 
-    >>> from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey    
+    >>> from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
     >>> metadata = MetaData()
     >>> users_table = Table('users', metadata,
     ...     Column('id', Integer, primary_key=True),
@@ -47,10 +47,10 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
     PRAGMA table_info("users")
     {}
     CREATE TABLE users (
-        id INTEGER NOT NULL, 
-        name VARCHAR, 
-        fullname VARCHAR, 
-        password VARCHAR, 
+        id INTEGER NOT NULL,
+        name VARCHAR,
+        fullname VARCHAR,
+        password VARCHAR,
         PRIMARY KEY (id)
     )
     {}
@@ -59,10 +59,10 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
 Users familiar with the syntax of CREATE TABLE may notice that the VARCHAR columns were generated without a length; on SQLite, this is a valid datatype, but on most databases it's not allowed.  So if running this tutorial on a database such as Postgres or MySQL, and you wish to use SQLAlchemy to generate the tables, a "length" may be provided to the ``String`` type as below::
 
     Column('name', String(50))
-    
+
 The length field on ``String``, as well as similar precision/scale fields available on ``Integer``, ``Numeric``, etc. are not referenced by SQLAlchemy other than when creating tables.
 
-Define a Python Class to be Mapped 
+Define a Python Class to be Mapped
 ===================================
 While the ``Table`` object defines information about our database, it does not say anything about the definition or behavior of the business objects used by our application;  SQLAlchemy views this as a separate concern.  To correspond to our ``users`` table, let's create a rudimentary ``User`` class.  It only need subclass Python's built-in ``object`` class (i.e. it's a new style class)::
 
@@ -84,7 +84,7 @@ With our ``users_table`` and ``User`` class, we now want to map the two together
     >>> from sqlalchemy.orm import mapper
     >>> mapper(User, users_table) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     <Mapper at 0x...; User>
-    
+
 The ``mapper()`` function creates a new ``Mapper`` object and stores it away for future reference, associated with our class.  Let's now create and inspect a ``User`` object::
 
     >>> ed_user = User('ed', 'Ed Jones', 'edspassword')
@@ -94,17 +94,17 @@ The ``mapper()`` function creates a new ``Mapper`` object and stores it away for
     'edspassword'
     >>> str(ed_user.id)
     'None'
-    
+
 The ``id`` attribute, which while not defined by our ``__init__()`` method, exists due to the ``id`` column present within the ``users_table`` object.  By default, the ``mapper`` creates class attributes for all columns present within the ``Table``.  These class attributes exist as Python descriptors, and define **instrumentation** for the mapped class.  The functionality of this instrumentation is very rich and includes the ability to track modifications and automatically load new data from the database when needed.
 
 Since we have not yet told SQLAlchemy to persist ``Ed Jones`` within the database, its id is ``None``.  When we persist the object later, this attribute will be populated with a newly generated value.
 
-Creating Table, Class and Mapper All at Once Declaratively 
+Creating Table, Class and Mapper All at Once Declaratively
 ===========================================================
 The preceding approach to configuration involving a ``Table``, user-defined class, and ``mapper()`` call illustrate classical SQLAlchemy usage, which values the highest separation of concerns possible.  A large number of applications don't require this degree of separation, and for those SQLAlchemy offers an alternate "shorthand" configurational style called **declarative**.  For many applications, this is the only style of configuration needed.  Our above example using this style is as follows::
 
     >>> from sqlalchemy.ext.declarative import declarative_base
-    
+
     >>> Base = declarative_base()
     >>> class User(Base):
     ...     __tablename__ = 'users'
@@ -127,7 +127,7 @@ Above, the ``declarative_base()`` function defines a new class which we name ``B
 The underlying ``Table`` object created by our ``declarative_base()`` version of ``User`` is accessible via the ``__table__`` attribute::
 
     >>> users_table = User.__table__
-    
+
 and the owning ``MetaData`` object is available as well::
 
     >>> metadata = Base.metadata
@@ -155,11 +155,11 @@ Later, when you create your engine with ``create_engine()``, connect it to the `
 .. sourcecode:: python+sql
 
     >>> Session.configure(bind=engine)  # once engine is available
-    
+
 This custom-made ``Session`` class will create new ``Session`` objects which are bound to our database.  Other transactional characteristics may be defined when calling ``sessionmaker()`` as well; these are described in a later chapter.  Then, whenever you need to have a conversation with the database, you instantiate a ``Session``::
 
     >>> session = Session()
-    
+
 The above ``Session`` is associated with our SQLite ``engine``, but it hasn't opened any connections yet.  When it's first used, it retrieves a connection from a pool of connections maintained by the ``engine``, and holds onto it until we commit all changes and/or close the session object.
 
 Adding new Objects
@@ -169,7 +169,7 @@ To persist our ``User`` object, we ``add()`` it to our ``Session``::
 
     >>> ed_user = User('ed', 'Ed Jones', 'edspassword')
     >>> session.add(ed_user)
-    
+
 At this point, the instance is **pending**; no SQL has yet been issued.  The ``Session`` will issue the SQL to persist ``Ed Jones`` as soon as is needed, using a process known as a **flush**.  If we query the database for ``Ed Jones``, all pending information will first be flushed, and the query is issued afterwards.
 
 For example, below we create a new ``Query`` object which loads instances of ``User``.  We "filter by" the ``name`` attribute of ``ed``, and indicate that we'd like only the first result in the full list of rows.  A ``User`` instance is returned which is equivalent to that which we've added:
@@ -180,8 +180,8 @@ For example, below we create a new ``Query`` object which loads instances of ``U
     BEGIN
     INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
     ['ed', 'Ed Jones', 'edspassword']
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE users.name = ?
      LIMIT 1 OFFSET 0
     ['ed']
@@ -216,16 +216,16 @@ The ``Session`` is paying attention.  It knows, for example, that ``Ed Jones`` h
 
     >>> session.dirty
     IdentitySet([<User('ed','Ed Jones', 'f8s7ccs')>])
-    
+
 and that three new ``User`` objects are pending:
 
 .. sourcecode:: python+sql
 
     >>> session.new  # doctest: +NORMALIZE_WHITESPACE
-    IdentitySet([<User('wendy','Wendy Williams', 'foobar')>, 
-    <User('mary','Mary Contrary', 'xxg527')>, 
+    IdentitySet([<User('wendy','Wendy Williams', 'foobar')>,
+    <User('mary','Mary Contrary', 'xxg527')>,
     <User('fred','Fred Flinstone', 'blah')>])
-    
+
 We tell the ``Session`` that we'd like to issue all remaining changes to the database and commit the transaction, which has been in progress throughout.  We do this via ``commit()``:
 
 .. sourcecode:: python+sql
@@ -249,8 +249,8 @@ If we look at Ed's ``id`` attribute, which earlier was ``None``, it now has a va
 
     {sql}>>> ed_user.id # doctest: +NORMALIZE_WHITESPACE
     BEGIN
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE users.id = ?
     [1]
     {stop}1
@@ -271,7 +271,7 @@ and we'll add another erroneous user, ``fake_user``:
 
     >>> fake_user = User('fakeuser', 'Invalid', '12345')
     >>> session.add(fake_user)
-    
+
 Querying the session, we can see that they're flushed into the current transaction:
 
 .. sourcecode:: python+sql
@@ -281,12 +281,12 @@ Querying the session, we can see that they're flushed into the current transacti
     ['Edwardo', 1]
     INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
     ['fakeuser', 'Invalid', '12345']
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE users.name IN (?, ?)
     ['Edwardo', 'fakeuser']
     {stop}[<User('Edwardo','Ed Jones', 'f8s7ccs')>, <User('fakeuser','Invalid', '12345')>]
-    
+
 Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and ``fake_user`` has been kicked out of the session:
 
 .. sourcecode:: python+sql
@@ -297,21 +297,21 @@ Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and ``fake_u
 
     {sql}>>> ed_user.name
     BEGIN
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE users.id = ?
     [1]
     {stop}u'ed'
     >>> fake_user in session
     False
-    
+
 issuing a SELECT illustrates the changes made to the database:
 
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).filter(User.name.in_(['ed', 'fakeuser'])).all()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE users.name IN (?, ?)
     ['ed', 'fakeuser']
     {stop}[<User('ed','Ed Jones', 'f8s7ccs')>]
@@ -324,9 +324,9 @@ A ``Query`` is created using the ``query()`` function on ``Session``.  This func
 .. sourcecode:: python+sql
 
     {sql}>>> for instance in session.query(User).order_by(User.id): # doctest: +NORMALIZE_WHITESPACE
-    ...     print instance.name, instance.fullname 
-    SELECT users.id AS users_id, users.name AS users_name, 
-    users.fullname AS users_fullname, users.password AS users_password 
+    ...     print instance.name, instance.fullname
+    SELECT users.id AS users_id, users.name AS users_name,
+    users.fullname AS users_fullname, users.password AS users_password
     FROM users ORDER BY users.id
     []
     {stop}ed Ed Jones
@@ -354,14 +354,14 @@ The tuples returned by ``Query`` are *named* tuples, and can be treated much lik
 
     {sql}>>> for row in session.query(User, User.name).all():
     ...    print row.User, row.name
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     []
     {stop}<User('ed','Ed Jones', 'f8s7ccs')> ed
     <User('wendy','Wendy Williams', 'foobar')> wendy
     <User('mary','Mary Contrary', 'xxg527')> mary
     <User('fred','Fred Flinstone', 'blah')> fred
-        
+
 You can control the names using the ``label()`` construct for scalar attributes and ``aliased()`` for class constructs:
 
 .. sourcecode:: python+sql
@@ -370,7 +370,7 @@ You can control the names using the ``label()`` construct for scalar attributes 
     >>> user_alias = aliased(User, name='user_alias')
     {sql}>>> for row in session.query(user_alias, user_alias.name.label('name_label')).all():
     ...    print row.user_alias, row.name_label
-    SELECT users_1.id AS users_1_id, users_1.name AS users_1_name, users_1.fullname AS users_1_fullname, users_1.password AS users_1_password, users_1.name AS name_label 
+    SELECT users_1.id AS users_1_id, users_1.name AS users_1_name, users_1.fullname AS users_1_fullname, users_1.password AS users_1_password, users_1.name AS name_label
     FROM users AS users_1
     []
     <User('ed','Ed Jones', 'f8s7ccs')> ed
@@ -384,8 +384,8 @@ Basic operations with ``Query`` include issuing LIMIT and OFFSET, most convenien
 
     {sql}>>> for u in session.query(User).order_by(User.id)[1:3]: #doctest: +NORMALIZE_WHITESPACE
     ...    print u
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users ORDER BY users.id 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users ORDER BY users.id
     LIMIT 2 OFFSET 1
     []
     {stop}<User('wendy','Wendy Williams', 'foobar')>
@@ -397,7 +397,7 @@ and filtering results, which is accomplished either with ``filter_by()``, which 
 
     {sql}>>> for name, in session.query(User.name).filter_by(fullname='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
     ...    print name
-    SELECT users.name AS users_name FROM users 
+    SELECT users.name AS users_name FROM users
     WHERE users.fullname = ?
     ['Ed Jones']
     {stop}ed
@@ -408,7 +408,7 @@ and filtering results, which is accomplished either with ``filter_by()``, which 
 
     {sql}>>> for name, in session.query(User.name).filter(User.fullname=='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
     ...    print name
-    SELECT users.name AS users_name FROM users 
+    SELECT users.name AS users_name FROM users
     WHERE users.fullname = ?
     ['Ed Jones']
     {stop}ed
@@ -419,8 +419,8 @@ The ``Query`` object is fully *generative*, meaning that most method calls retur
 
     {sql}>>> for user in session.query(User).filter(User.name=='ed').filter(User.fullname=='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
     ...    print user
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE users.name = ? AND users.fullname = ?
     ['ed', 'Ed Jones']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')>
@@ -442,20 +442,20 @@ Here's a rundown of some of the most common operators used in ``filter()``:
 * LIKE::
 
     query.filter(User.name.like('%ed%'))
-    
+
 * IN::
 
     query.filter(User.name.in_(['ed', 'wendy', 'jack']))
-    
+
 * IS NULL::
 
     filter(User.name == None)
-    
+
 * AND::
 
     from sqlalchemy import and_
     filter(and_(User.name == 'ed', User.fullname == 'Ed Jones'))
-    
+
     # or call filter()/filter_by() multiple times
     filter(User.name == 'ed').filter(User.fullname == 'Ed Jones')
 
@@ -469,8 +469,8 @@ Here's a rundown of some of the most common operators used in ``filter()``:
     query.filter(User.name.match('wendy'))
 
  The contents of the match parameter are database backend specific.
-        
-Returning Lists and Scalars 
+
+Returning Lists and Scalars
 ---------------------------
 
 The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue SQL and return a non-iterator value.  ``all()`` returns a list:
@@ -479,8 +479,8 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 
     >>> query = session.query(User).filter(User.name.like('%ed')).order_by(User.id)
     {sql}>>> query.all()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE users.name LIKE ? ORDER BY users.id
     ['%ed']
     {stop}[<User('ed','Ed Jones', 'f8s7ccs')>, <User('fred','Fred Flinstone', 'blah')>]
@@ -490,9 +490,9 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 .. sourcecode:: python+sql
 
     {sql}>>> query.first()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.name LIKE ? ORDER BY users.id 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
+    WHERE users.name LIKE ? ORDER BY users.id
      LIMIT 1 OFFSET 0
     ['%ed']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')>
@@ -501,13 +501,13 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 
 .. sourcecode:: python+sql
 
-    {sql}>>> try:  
-    ...     user = query.one() 
-    ... except Exception, e: 
+    {sql}>>> try:
+    ...     user = query.one()
+    ... except Exception, e:
     ...     print e
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.name LIKE ? ORDER BY users.id 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
+    WHERE users.name LIKE ? ORDER BY users.id
      LIMIT 2 OFFSET 0
     ['%ed']
     {stop}Multiple rows were found for one()
@@ -515,17 +515,17 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 .. sourcecode:: python+sql
 
     {sql}>>> try:
-    ...     user = query.filter(User.id == 99).one() 
-    ... except Exception, e: 
+    ...     user = query.filter(User.id == 99).one()
+    ... except Exception, e:
     ...     print e
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.name LIKE ? AND users.id = ? ORDER BY users.id 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
+    WHERE users.name LIKE ? AND users.id = ? ORDER BY users.id
      LIMIT 2 OFFSET 0
     ['%ed', 99]
     {stop}No row was found for one()
 
-Using Literal SQL 
+Using Literal SQL
 -----------------
 
 Literal strings can be used flexibly with ``Query``.  Most methods accept strings in addition to SQLAlchemy clause constructs.  For example, ``filter()`` and ``order_by()``:
@@ -534,24 +534,24 @@ Literal strings can be used flexibly with ``Query``.  Most methods accept string
 
     {sql}>>> for user in session.query(User).filter("id<224").order_by("id").all():
     ...     print user.name
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE id<224 ORDER BY id
     []
     {stop}ed
     wendy
     mary
     fred
-    
+
 Bind parameters can be specified with string-based SQL, using a colon.  To specify the values, use the ``params()`` method:
 
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).filter("id<:value and name=:name").\
     ...     params(value=224, name='fred').order_by(User.id).one() # doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE id<? and name=? ORDER BY users.id 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
+    WHERE id<? and name=? ORDER BY users.id
     LIMIT 2 OFFSET 0
     [224, 'fred']
     {stop}<User('fred','Fred Flinstone', 'blah')>
@@ -565,7 +565,7 @@ To use an entirely string-based statement, using ``from_statement()``; just ensu
     ['ed']
     {stop}[<User('ed','Ed Jones', 'f8s7ccs')>]
 
-Building a Relation 
+Building a Relation
 ====================
 
 Now let's consider a second table to be dealt with.  Users in our system also can store any number of email addresses associated with their username.  This implies a basic one to many association from the ``users_table`` to a new table which stores email addresses, which we will call ``addresses``.  Using declarative, we define this table along with its mapped class, ``Address``:
@@ -598,7 +598,7 @@ The ``relation()`` function is extremely flexible, and could just have easily be
         # ....
         addresses = relation(Address, order_by=Address.id, backref="user")
 
-We are also free to not define a backref, and to define the func:`relation()` only on one class and not the other.   It is also possible to define two separate :func:`relation` constructs for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
+We are also free to not define a backref, and to define the :func:`relation()` only on one class and not the other.   It is also possible to define two separate :func:`relation` constructs for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
 
 When using the ``declarative`` extension, ``relation()`` gives us the option to use strings for most arguments that concern the target class, in the case that the target class has not yet been defined.  This **only** works in conjunction with ``declarative``:
 
@@ -620,26 +620,26 @@ We'll need to create the ``addresses`` table in the database, so we will issue a
     PRAGMA table_info("addresses")
     {}
     CREATE TABLE addresses (
-        id INTEGER NOT NULL, 
-        email_address VARCHAR NOT NULL, 
-        user_id INTEGER, 
-        PRIMARY KEY (id), 
+        id INTEGER NOT NULL,
+        email_address VARCHAR NOT NULL,
+        user_id INTEGER,
+        PRIMARY KEY (id),
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
     {}
     COMMIT
 
-Working with Related Objects 
+Working with Related Objects
 =============================
 
-Now when we create a ``User``, a blank ``addresses`` collection will be present.  By default, the collection is a Python list.  Other collection types, such as sets and dictionaries, are available as well:
+Now when we create a ``User``, a blank ``addresses`` collection will be present.  Various collection types, such as sets and dictionaries, are possible here (see :ref:`advdatamapping_entitycollections` for details), but by default, the collection is a Python list.
 
 .. sourcecode:: python+sql
 
     >>> jack = User('jack', 'Jack Bean', 'gjffdd')
     >>> jack.addresses
     []
-    
+
 We are free to add ``Address`` objects on our ``User`` object.  In this case we just assign a full list directly:
 
 .. sourcecode:: python+sql
@@ -652,7 +652,7 @@ When using a bidirectional relationship, elements added in one direction automat
 
     >>> jack.addresses[1]
     <Address('j25@yahoo.com')>
-    
+
     >>> jack.addresses[1].user
     <User('jack','Jack Bean', 'gjffdd')>
 
@@ -669,62 +669,62 @@ Let's add and commit ``Jack Bean`` to the database.  ``jack`` as well as the two
     INSERT INTO addresses (email_address, user_id) VALUES (?, ?)
     ['j25@yahoo.com', 5]
     COMMIT
-    
+
 Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addresses:
 
 .. sourcecode:: python+sql
 
     {sql}>>> jack = session.query(User).filter_by(name='jack').one()
     BEGIN
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.name = ? 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
+    WHERE users.name = ?
      LIMIT 2 OFFSET 0
     ['jack']
-    
+
     >>> jack
     <User('jack','Jack Bean', 'gjffdd')>
-    
+
 Let's look at the ``addresses`` collection.  Watch the SQL:
 
 .. sourcecode:: python+sql
 
     {sql}>>> jack.addresses
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses 
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
+    FROM addresses
     WHERE ? = addresses.user_id ORDER BY addresses.id
     [5]
     {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
-    
-When we accessed the ``addresses`` collection, SQL was suddenly issued.  This is an example of a **lazy loading relation**.  The ``addresses`` collection is now loaded and behaves just like an ordinary list.  
-    
+
+When we accessed the ``addresses`` collection, SQL was suddenly issued.  This is an example of a **lazy loading relation**.  The ``addresses`` collection is now loaded and behaves just like an ordinary list.
+
 If you want to reduce the number of queries (dramatically, in many cases), we can apply an **eager load** to the query operation.   With the same query, we may apply an **option** to the query, indicating that we'd like ``addresses`` to load "eagerly".  SQLAlchemy then constructs an outer join between the ``users`` and ``addresses`` tables, and loads them at once, populating the ``addresses`` collection on each ``User`` object if it's not already populated:
 
 .. sourcecode:: python+sql
 
     >>> from sqlalchemy.orm import eagerload
-    
+
     {sql}>>> jack = session.query(User).options(eagerload('addresses')).filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
-    SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name, 
-    anon_1.users_fullname AS anon_1_users_fullname, anon_1.users_password AS anon_1_users_password, 
-    addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address, 
-    addresses_1.user_id AS addresses_1_user_id 
-        FROM (SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
+    SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name,
+    anon_1.users_fullname AS anon_1_users_fullname, anon_1.users_password AS anon_1_users_password,
+    addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
+    addresses_1.user_id AS addresses_1_user_id
+        FROM (SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
         users.password AS users_password
-        FROM users WHERE users.name = ? 
-         LIMIT 2 OFFSET 0) AS anon_1 LEFT OUTER JOIN addresses AS addresses_1 
+        FROM users WHERE users.name = ?
+         LIMIT 2 OFFSET 0) AS anon_1 LEFT OUTER JOIN addresses AS addresses_1
          ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id
         ['jack']
-    
+
     >>> jack
     <User('jack','Jack Bean', 'gjffdd')>
-    
+
     >>> jack.addresses
     [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
 SQLAlchemy has the ability to control exactly which attributes and how many levels deep should be joined together in a single SQL query.  More information on this feature is available in `advdatamapping_relation`.
 
-Querying with Joins 
+Querying with Joins
 ====================
 
 While the eager load created a JOIN specifically to populate a collection, we can also work explicitly with joins in many ways.  For example, to construct a simple inner join between ``User`` and ``Address``, we can just ``filter()`` their related columns together.  Below we load the ``User`` and ``Address`` entities at once using this method:
@@ -734,10 +734,10 @@ While the eager load created a JOIN specifically to populate a collection, we ca
     {sql}>>> for u, a in session.query(User, Address).filter(User.id==Address.user_id).\
     ...         filter(Address.email_address=='jack@google.com').all():   # doctest: +NORMALIZE_WHITESPACE
     ...     print u, a
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
-    users.password AS users_password, addresses.id AS addresses_id, 
-    addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM users, addresses 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
+    users.password AS users_password, addresses.id AS addresses_id,
+    addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
+    FROM users, addresses
     WHERE users.id = addresses.user_id AND addresses.email_address = ?
     ['jack@google.com']
     {stop}<User('jack','Jack Bean', 'gjffdd')> <Address('jack@google.com')>
@@ -749,8 +749,8 @@ Or we can make a real JOIN construct; one way to do so is to use the ORM ``join(
     >>> from sqlalchemy.orm import join
     {sql}>>> session.query(User).select_from(join(User, Address)).\
     ...         filter(Address.email_address=='jack@google.com').all()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users JOIN addresses ON users.id = addresses.user_id 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE addresses.email_address = ?
     ['jack@google.com']
     {stop}[<User('jack','Jack Bean', 'gjffdd')>]
@@ -762,15 +762,15 @@ Or we can make a real JOIN construct; one way to do so is to use the ORM ``join(
     join(User, Address, User.id==Address.user_id)  # explicit condition
     join(User, Address, User.addresses)            # specify relation from left to right
     join(User, Address, 'addresses')               # same, using a string
-    
+
 The functionality of ``join()`` is also available generatively from ``Query`` itself using ``Query.join``.  This is most easily used with just the "ON" clause portion of the join, such as:
 
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).join(User.addresses).\
     ...     filter(Address.email_address=='jack@google.com').all()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users JOIN addresses ON users.id = addresses.user_id 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE addresses.email_address = ?
     ['jack@google.com']
     {stop}[<User('jack','Jack Bean', 'gjffdd')>]
@@ -780,16 +780,16 @@ To explicitly specify the target of the join, use tuples to form an argument lis
 .. sourcecode:: python+sql
 
     session.query(User).join((Address, User.addresses))
-    
+
 Multiple joins can be created by passing a list of arguments:
 
 .. sourcecode:: python+sql
 
     session.query(Foo).join(Foo.bars, Bar.bats, (Bat, 'widgets'))
-    
+
 The above would produce SQL something like ``foo JOIN bars ON <onclause> JOIN bats ON <onclause> JOIN widgets ON <onclause>``.
-    
-Using Aliases 
+
+Using Aliases
 -------------
 
 When querying across multiple tables, if the same table needs to be referenced more than once, SQL typically requires that the table be *aliased* with another name, so that it can be distinguished against other occurrences of that table.  The ``Query`` supports this most explicitly using the ``aliased`` construct.  Below we join to the ``Address`` entity twice, to locate a user who has two distinct email addresses at the same time:
@@ -805,15 +805,15 @@ When querying across multiple tables, if the same table needs to be referenced m
     ...     filter(adalias1.email_address=='jack@google.com').\
     ...     filter(adalias2.email_address=='j25@yahoo.com'):
     ...     print username, email1, email2      # doctest: +NORMALIZE_WHITESPACE
-    SELECT users.name AS users_name, addresses_1.email_address AS addresses_1_email_address, 
-    addresses_2.email_address AS addresses_2_email_address 
-    FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
-    JOIN addresses AS addresses_2 ON users.id = addresses_2.user_id 
+    SELECT users.name AS users_name, addresses_1.email_address AS addresses_1_email_address,
+    addresses_2.email_address AS addresses_2_email_address
+    FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    JOIN addresses AS addresses_2 ON users.id = addresses_2.user_id
     WHERE addresses_1.email_address = ? AND addresses_2.email_address = ?
     ['jack@google.com', 'j25@yahoo.com']
     {stop}jack jack@google.com j25@yahoo.com
 
-Using Subqueries 
+Using Subqueries
 ----------------
 
 The ``Query`` is suitable for generating statements which can be used as subqueries.  Suppose we wanted to load ``User`` objects along with a count of how many ``Address`` records each user has.  The best way to generate SQL like this is to get the count of addresses grouped by user ids, and JOIN to the parent.  In this case we use a LEFT OUTER JOIN so that we get rows back for those users who don't have any addresses, e.g.::
@@ -822,11 +822,11 @@ The ``Query`` is suitable for generating statements which can be used as subquer
         (SELECT user_id, count(*) AS address_count FROM addresses GROUP BY user_id) AS adr_count
         ON users.id=adr_count.user_id
 
-Using the ``Query``, we build a statement like this from the inside out.  The ``statement`` accessor returns a SQL expression representing the statement generated by a particular ``Query`` - this is an instance of a ``select()`` construct, which are described in `sql`::
+Using the ``Query``, we build a statement like this from the inside out.  The ``statement`` accessor returns a SQL expression representing the statement generated by a particular ``Query`` - this is an instance of a ``select()`` construct, which are described in :ref:`sql`::
 
     >>> from sqlalchemy.sql import func
     >>> stmt = session.query(Address.user_id, func.count('*').label('address_count')).group_by(Address.user_id).subquery()
-    
+
 The ``func`` keyword generates SQL functions, and the ``subquery()`` method on ``Query`` produces a SQL expression construct representing a SELECT statement embedded within an alias (it's actually shorthand for ``query.statement.alias()``).
 
 Once we have our statement, it behaves like a ``Table`` construct, such as the one we created for ``users`` at the start of this tutorial.  The columns on the statement are accessible through an attribute called ``c``:
@@ -836,11 +836,11 @@ Once we have our statement, it behaves like a ``Table`` construct, such as the o
     {sql}>>> for u, count in session.query(User, stmt.c.address_count).\
     ...     outerjoin((stmt, User.id==stmt.c.user_id)).order_by(User.id): # doctest: +NORMALIZE_WHITESPACE
     ...     print u, count
-    SELECT users.id AS users_id, users.name AS users_name, 
-    users.fullname AS users_fullname, users.password AS users_password, 
-    anon_1.address_count AS anon_1_address_count 
-    FROM users LEFT OUTER JOIN (SELECT addresses.user_id AS user_id, count(?) AS address_count 
-    FROM addresses GROUP BY addresses.user_id) AS anon_1 ON users.id = anon_1.user_id 
+    SELECT users.id AS users_id, users.name AS users_name,
+    users.fullname AS users_fullname, users.password AS users_password,
+    anon_1.address_count AS anon_1_address_count
+    FROM users LEFT OUTER JOIN (SELECT addresses.user_id AS user_id, count(?) AS address_count
+    FROM addresses GROUP BY addresses.user_id) AS anon_1 ON users.id = anon_1.user_id
     ORDER BY users.id
     ['*']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')> None
@@ -862,10 +862,10 @@ There is an explicit EXISTS construct, which looks like this:
     >>> stmt = exists().where(Address.user_id==User.id)
     {sql}>>> for name, in session.query(User.name).filter(stmt):   # doctest: +NORMALIZE_WHITESPACE
     ...     print name
-    SELECT users.name AS users_name 
-    FROM users 
-    WHERE EXISTS (SELECT * 
-    FROM addresses 
+    SELECT users.name AS users_name
+    FROM users
+    WHERE EXISTS (SELECT *
+    FROM addresses
     WHERE addresses.user_id = users.id)
     []
     {stop}jack
@@ -876,10 +876,10 @@ The ``Query`` features several operators which make usage of EXISTS automaticall
 
     {sql}>>> for name, in session.query(User.name).filter(User.addresses.any()):   # doctest: +NORMALIZE_WHITESPACE
     ...     print name
-    SELECT users.name AS users_name 
-    FROM users 
-    WHERE EXISTS (SELECT 1 
-    FROM addresses 
+    SELECT users.name AS users_name
+    FROM users
+    WHERE EXISTS (SELECT 1
+    FROM addresses
     WHERE users.id = addresses.user_id)
     []
     {stop}jack
@@ -891,10 +891,10 @@ The ``Query`` features several operators which make usage of EXISTS automaticall
     {sql}>>> for name, in session.query(User.name).\
     ...     filter(User.addresses.any(Address.email_address.like('%google%'))):   # doctest: +NORMALIZE_WHITESPACE
     ...     print name
-    SELECT users.name AS users_name 
-    FROM users 
-    WHERE EXISTS (SELECT 1 
-    FROM addresses 
+    SELECT users.name AS users_name
+    FROM users
+    WHERE EXISTS (SELECT 1
+    FROM addresses
     WHERE users.id = addresses.user_id AND addresses.email_address LIKE ?)
     ['%google%']
     {stop}jack
@@ -904,16 +904,16 @@ The ``Query`` features several operators which make usage of EXISTS automaticall
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(Address).filter(~Address.user.has(User.name=='jack')).all() # doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, 
-    addresses.user_id AS addresses_user_id 
-    FROM addresses 
-    WHERE NOT (EXISTS (SELECT 1 
-    FROM users 
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address,
+    addresses.user_id AS addresses_user_id
+    FROM addresses
+    WHERE NOT (EXISTS (SELECT 1
+    FROM users
     WHERE users.id = addresses.user_id AND users.name = ?))
     ['jack']
     {stop}[]
-    
-Common Relation Operators 
+
+Common Relation Operators
 -------------------------
 
 Here's all the operators which build on relations:
@@ -937,7 +937,7 @@ Here's all the operators which build on relations:
 * any (used for one-to-many and many-to-many collections)::
 
     query.filter(User.addresses.any(Address.email_address == 'bar'))
-    
+
     # also takes keyword arguments:
     query.filter(User.addresses.any(email_address='bar'))
 
@@ -964,12 +964,12 @@ Let's try to delete ``jack`` and see how that goes.  We'll mark as deleted in th
     [None, 2]
     DELETE FROM users WHERE users.id = ?
     [5]
-    SELECT count(1) AS count_1 
-    FROM users 
+    SELECT count(1) AS count_1
+    FROM users
     WHERE users.name = ?
     ['jack']
     {stop}0
-    
+
 So far, so good.  How about Jack's ``Address`` objects ?
 
 .. sourcecode:: python+sql
@@ -978,14 +978,14 @@ So far, so good.  How about Jack's ``Address`` objects ?
     ...     Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
     ...  ).count() # doctest: +NORMALIZE_WHITESPACE
     SELECT count(1) AS count_1
-    FROM addresses 
+    FROM addresses
     WHERE addresses.email_address IN (?, ?)
     ['jack@google.com', 'j25@yahoo.com']
     {stop}2
-    
+
 Uh oh, they're still there !  Analyzing the flush SQL, we can see that the ``user_id`` column of each address was set to NULL, but the rows weren't deleted.  SQLAlchemy doesn't assume that deletes cascade, you have to tell it to do so.
 
-Configuring delete/delete-orphan Cascade 
+Configuring delete/delete-orphan Cascade
 ----------------------------------------
 
 We will configure **cascade** options on the ``User.addresses`` relation to change the behavior.  While SQLAlchemy allows you to add new attributes and relations to mappings at any point in time, in this case the existing relation needs to be removed, so we need to tear down the mappings completely and start again.  This is not a typical operation and is here just for illustrative purposes.
@@ -997,7 +997,7 @@ Removing all ORM state is as follows:
     >>> session.close()  # roll back and close the transaction
     >>> from sqlalchemy.orm import clear_mappers
     >>> clear_mappers() # clear mappers
-    
+
 Below, we use ``mapper()`` to reconfigure an ORM mapping for ``User`` and ``Address``, on our existing but currently un-mapped classes.  The ``User.addresses`` relation now has ``delete, delete-orphan`` cascade on it, which indicates that DELETE operations will cascade to attached ``Address`` objects as well as ``Address`` objects which are removed from their parent:
 
 .. sourcecode:: python+sql
@@ -1006,7 +1006,7 @@ Below, we use ``mapper()`` to reconfigure an ORM mapping for ``User`` and ``Addr
     ...     'addresses':relation(Address, backref='user', cascade="all, delete, delete-orphan")
     ... })
     <Mapper at 0x...; User>
-    
+
     >>> addresses_table = Address.__table__
     >>> mapper(Address, addresses_table) # doctest: +ELLIPSIS
     <Mapper at 0x...; Address>
@@ -1018,16 +1018,16 @@ Now when we load Jack (below using ``get()``, which loads by primary key), remov
     # load Jack by primary key
     {sql}>>> jack = session.query(User).get(5)    #doctest: +NORMALIZE_WHITESPACE
     BEGIN
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
     WHERE users.id = ?
     [5]
     {stop}
-    
+
     # remove one Address (lazy load fires off)
-    {sql}>>> del jack.addresses[1]  
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses 
+    {sql}>>> del jack.addresses[1]
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
+    FROM addresses
     WHERE ? = addresses.user_id
     [5]
     {stop}
@@ -1039,41 +1039,41 @@ Now when we load Jack (below using ``get()``, which loads by primary key), remov
     DELETE FROM addresses WHERE addresses.id = ?
     [2]
     SELECT count(1) AS count_1
-    FROM addresses 
+    FROM addresses
     WHERE addresses.email_address IN (?, ?)
     ['jack@google.com', 'j25@yahoo.com']
     {stop}1
-    
+
 Deleting Jack will delete both Jack and his remaining ``Address``:
 
 .. sourcecode:: python+sql
 
     >>> session.delete(jack)
-    
+
     {sql}>>> session.query(User).filter_by(name='jack').count() # doctest: +NORMALIZE_WHITESPACE
     DELETE FROM addresses WHERE addresses.id = ?
     [1]
     DELETE FROM users WHERE users.id = ?
     [5]
     SELECT count(1) AS count_1
-    FROM users 
+    FROM users
     WHERE users.name = ?
     ['jack']
     {stop}0
-    
+
     {sql}>>> session.query(Address).filter(
     ...    Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
     ... ).count() # doctest: +NORMALIZE_WHITESPACE
     SELECT count(1) AS count_1
-    FROM addresses 
+    FROM addresses
     WHERE addresses.email_address IN (?, ?)
     ['jack@google.com', 'j25@yahoo.com']
     {stop}0
 
-Building a Many To Many Relation 
+Building a Many To Many Relation
 =================================
 
-We're moving into the bonus round here, but lets show off a many-to-many relationship.  We'll sneak in some other features too, just to take a tour.  We'll make our application a blog application, where users can write ``BlogPost``s, which have ``Keywords`` associated with them.
+We're moving into the bonus round here, but lets show off a many-to-many relationship.  We'll sneak in some other features too, just to take a tour.  We'll make our application a blog application, where users can write ``BlogPost`` items, which have ``Keyword`` items associated with them.
 
 The declarative setup is as follows:
 
@@ -1115,7 +1115,7 @@ The declarative setup is as follows:
     ...     def __init__(self, keyword):
     ...         self.keyword = keyword
 
-Above, the many-to-many relation above is ``BlogPost.keywords``.  The defining feature of a many to many relation is the ``secondary`` keyword argument which references a ``Table`` object representing the association table.  This table only contains columns which reference the two sides of the relation; if it has *any* other columns, such as its own primary key, or foreign keys to other tables, SQLAlchemy requires a different usage pattern called the "association object", described at `association_pattern`.
+Above, the many-to-many relation is ``BlogPost.keywords``.  The defining feature of a many-to-many relation is the ``secondary`` keyword argument which references a ``Table`` object representing the association table.  This table only contains columns which reference the two sides of the relation; if it has *any* other columns, such as its own primary key, or foreign keys to other tables, SQLAlchemy requires a different usage pattern called the "association object", described at :ref:`association_pattern`.
 
 The many-to-many relation is also bi-directional using the ``backref`` keyword.  This is the one case where usage of ``backref`` is generally required, since if a separate ``posts`` relation were added to the ``Keyword`` entity, both relations would independently add and remove rows from the ``post_keywords`` table and produce conflicts.
 
@@ -1143,27 +1143,27 @@ Create new tables:
     PRAGMA table_info("post_keywords")
     {}
     CREATE TABLE posts (
-        id INTEGER NOT NULL, 
-        user_id INTEGER, 
-        headline VARCHAR(255) NOT NULL, 
-        body TEXT, 
-        PRIMARY KEY (id), 
+        id INTEGER NOT NULL,
+        user_id INTEGER,
+        headline VARCHAR(255) NOT NULL,
+        body TEXT,
+        PRIMARY KEY (id),
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
     {}
     COMMIT
     CREATE TABLE keywords (
-        id INTEGER NOT NULL, 
-        keyword VARCHAR(50) NOT NULL, 
-        PRIMARY KEY (id), 
+        id INTEGER NOT NULL,
+        keyword VARCHAR(50) NOT NULL,
+        PRIMARY KEY (id),
          UNIQUE (keyword)
     )
     {}
     COMMIT
     CREATE TABLE post_keywords (
-        post_id INTEGER, 
-        keyword_id INTEGER, 
-         FOREIGN KEY(post_id) REFERENCES posts (id), 
+        post_id INTEGER,
+        keyword_id INTEGER,
+         FOREIGN KEY(post_id) REFERENCES posts (id),
          FOREIGN KEY(keyword_id) REFERENCES keywords (id)
     )
     {}
@@ -1174,22 +1174,22 @@ Usage is not too different from what we've been doing.  Let's give Wendy some bl
 .. sourcecode:: python+sql
 
     {sql}>>> wendy = session.query(User).filter_by(name='wendy').one()
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password 
-    FROM users 
-    WHERE users.name = ? 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    FROM users
+    WHERE users.name = ?
      LIMIT 2 OFFSET 0
     ['wendy']
-    
+
     >>> post = BlogPost("Wendy's Blog Post", "This is a test", wendy)
     >>> session.add(post)
-    
+
 We're storing keywords uniquely in the database, but we know that we don't have any yet, so we can just create them:
 
 .. sourcecode:: python+sql
 
     >>> post.keywords.append(Keyword('wendy'))
     >>> post.keywords.append(Keyword('firstpost'))
-    
+
 We can now look up all blog posts with the keyword 'firstpost'.   We'll use the ``any`` operator to locate "blog posts where any of its keywords has the keyword string 'firstpost'":
 
 .. sourcecode:: python+sql
@@ -1203,24 +1203,24 @@ We can now look up all blog posts with the keyword 'firstpost'.   We'll use the 
     ['firstpost']
     INSERT INTO post_keywords (post_id, keyword_id) VALUES (?, ?)
     [[1, 1], [1, 2]]
-    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
-    FROM posts 
-    WHERE EXISTS (SELECT 1 
-    FROM post_keywords, keywords 
+    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
+    FROM posts
+    WHERE EXISTS (SELECT 1
+    FROM post_keywords, keywords
     WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)
     ['firstpost']
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
-    
+
 If we want to look up just Wendy's posts, we can tell the query to narrow down to her as a parent:
 
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(BlogPost).filter(BlogPost.author==wendy).\
     ... filter(BlogPost.keywords.any(keyword='firstpost')).all()
-    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
-    FROM posts 
-    WHERE ? = posts.user_id AND (EXISTS (SELECT 1 
-    FROM post_keywords, keywords 
+    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
+    FROM posts
+    WHERE ? = posts.user_id AND (EXISTS (SELECT 1
+    FROM post_keywords, keywords
     WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?))
     [2, 'firstpost']
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
@@ -1230,15 +1230,15 @@ Or we can use Wendy's own ``posts`` relation, which is a "dynamic" relation, to 
 .. sourcecode:: python+sql
 
     {sql}>>> wendy.posts.filter(BlogPost.keywords.any(keyword='firstpost')).all()
-    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
-    FROM posts 
-    WHERE ? = posts.user_id AND (EXISTS (SELECT 1 
-    FROM post_keywords, keywords 
+    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
+    FROM posts
+    WHERE ? = posts.user_id AND (EXISTS (SELECT 1
+    FROM post_keywords, keywords
     WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?))
     [2, 'firstpost']
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
-Further Reference 
+Further Reference
 ==================
 
 Query Reference: :ref:`query_api_toplevel`

@@ -71,7 +71,7 @@ between releases.  ClassManager is not public and no guarantees are made
 about stability.  Caveat emptor.
 
 This attribute is consulted by the default SQLAlchemy instrumentation
-resultion code.  If custom finders are installed in the global
+resolution code.  If custom finders are installed in the global
 instrumentation_finders list, they may or may not choose to honor this
 attribute.
 
@@ -431,9 +431,7 @@ class ScalarAttributeImpl(AttributeImpl):
 
         if self.extensions:
             self.fire_remove_event(state, old, None)
-            del state.dict[self.key]
-        else:
-            del state.dict[self.key]
+        del state.dict[self.key]
 
     def get_history(self, state, passive=PASSIVE_OFF):
         return History.from_attribute(
@@ -452,9 +450,7 @@ class ScalarAttributeImpl(AttributeImpl):
 
         if self.extensions:
             value = self.fire_replace_event(state, value, old, initiator)
-            state.dict[self.key] = value
-        else:
-            state.dict[self.key] = value
+        state.dict[self.key] = value
 
     def fire_replace_event(self, state, value, previous, initiator):
         for ext in self.extensions:
@@ -1145,12 +1141,14 @@ class ClassManager(dict):
 
     event_registry_factory = Events
     instance_state_factory = InstanceState
-
+    deferred_scalar_loader = None
+    
     def __init__(self, class_):
         self.class_ = class_
         self.factory = None  # where we came from, for inheritance bookkeeping
         self.info = {}
         self.mapper = None
+        self.new_init = None
         self.mutable_attributes = set()
         self.local_attrs = {}
         self.originals = {}
@@ -1160,28 +1158,73 @@ class ClassManager(dict):
             cls_state = manager_of_class(base)
             if cls_state:
                 self.update(cls_state)
-        self.registered = False
-        self._instantiable = False
         self.events = self.event_registry_factory()
+        self.manage()
+        self._instrument_init()
+    
+    def _configure_create_arguments(self, 
+                            _source=None, 
+                            instance_state_factory=None, 
+                            deferred_scalar_loader=None):
+        """Accept extra **kw arguments passed to create_manager_for_cls.
+        
+        The current contract of ClassManager and other managers is that they
+        take a single "cls" argument in their constructor (as per 
+        test/orm/instrumentation.py InstrumentationCollisionTest).  This
+        is to provide consistency with the current API of "class manager"
+        callables and such which may return various ClassManager and 
+        ClassManager-like instances.   So create_manager_for_cls sends
+        in ClassManager-specific arguments via this method once the 
+        non-proxied ClassManager is available.
+        
+        """
+        if _source:
+            instance_state_factory = _source.instance_state_factory
+            deferred_scalar_loader = _source.deferred_scalar_loader
 
-    def instantiable(self, boolean):
-        # experiment, probably won't stay in this form
-        assert boolean ^ self._instantiable, (boolean, self._instantiable)
-        if boolean:
-            self.events.original_init = self.class_.__init__
-            new_init = _generate_init(self.class_, self)
-            self.install_member('__init__', new_init)
-        else:
+        if instance_state_factory:
+            self.instance_state_factory = instance_state_factory
+        if deferred_scalar_loader:
+            self.deferred_scalar_loader = deferred_scalar_loader
+    
+    def _subclass_manager(self, cls):
+        """Create a new ClassManager for a subclass of this ClassManager's class.
+        
+        This is called automatically when attributes are instrumented so that
+        the attributes can be propagated to subclasses against their own
+        class-local manager, without the need for mappers etc. to have already
+        pre-configured managers for the full class hierarchy.   Mappers
+        can post-configure the auto-generated ClassManager when needed.
+        
+        """
+        manager = manager_of_class(cls)
+        if manager is None:
+            manager = _create_manager_for_cls(cls, _source=self)
+        return manager
+        
+    def _instrument_init(self):
+        # TODO: self.class_.__init__ is often the already-instrumented
+        # __init__ from an instrumented superclass.  We still need to make 
+        # our own wrapper, but it would
+        # be nice to wrap the original __init__ and not our existing wrapper
+        # of such, since this adds method overhead.
+        self.events.original_init = self.class_.__init__
+        self.new_init = _generate_init(self.class_, self)
+        self.install_member('__init__', self.new_init)
+        
+    def _uninstrument_init(self):
+        if self.new_init:
             self.uninstall_member('__init__')
-        self._instantiable = bool(boolean)
-    instantiable = property(lambda s: s._instantiable, instantiable)
+            self.new_init = None
 
     def manage(self):
         """Mark this instance as the manager for its class."""
+        
         setattr(self.class_, self.MANAGER_ATTR, self)
 
     def dispose(self):
-        """Dissasociate this instance from its class."""
+        """Dissasociate this manager from its class."""
+        
         delattr(self.class_, self.MANAGER_ATTR)
 
     def manager_getter(self):
@@ -1198,9 +1241,7 @@ class ClassManager(dict):
         for cls in self.class_.__subclasses__():
             if isinstance(cls, types.ClassType):
                 continue
-            manager = manager_of_class(cls)
-            if manager is None:
-                manager = create_manager_for_cls(cls)
+            manager = self._subclass_manager(cls)
             manager.instrument_attribute(key, inst, True)
 
     def post_configure_attribute(self, key):
@@ -1221,16 +1262,20 @@ class ClassManager(dict):
         for cls in self.class_.__subclasses__():
             if isinstance(cls, types.ClassType):
                 continue
-            manager = manager_of_class(cls)
-            if manager is None:
-                manager = create_manager_for_cls(cls)
+            manager = self._subclass_manager(cls)
             manager.uninstrument_attribute(key, True)
 
     def unregister(self):
+        """remove all instrumentation established by this ClassManager."""
+        
+        self._uninstrument_init()
+
+        self.mapper = self.events = None
+        self.info.clear()
+        
         for key in list(self):
             if key in self.local_attrs:
                 self.uninstrument_attribute(key)
-        self.registered = False
 
     def install_descriptor(self, key, inst):
         if key in (self.STATE_ATTR, self.MANAGER_ATTR):
@@ -1274,15 +1319,6 @@ class ClassManager(dict):
     @property
     def attributes(self):
         return self.itervalues()
-
-    @classmethod
-    def deferred_scalar_loader(cls, state, keys):
-        """Apply a scalar loader to the given state.
-        
-        Unimplemented by default, is patched
-        by the mapper.
-        
-        """
 
     ## InstanceState management
 
@@ -1341,9 +1377,9 @@ class ClassManager(dict):
 class _ClassInstrumentationAdapter(ClassManager):
     """Adapts a user-defined InstrumentationManager to a ClassManager."""
 
-    def __init__(self, class_, override):
-        ClassManager.__init__(self, class_)
+    def __init__(self, class_, override, **kw):
         self._adapted = override
+        ClassManager.__init__(self, class_, **kw)
 
     def manage(self):
         self._adapted.manage(self.class_, self)
@@ -1537,8 +1573,22 @@ class PendingCollection(object):
             self.added_items.remove(value)
         self.deleted_items.add(value)
 
+def _conditional_instance_state(obj):
+    if not isinstance(obj, InstanceState):
+        obj = instance_state(obj)
+    return obj
+        
+def get_history(obj, key, **kwargs):
+    """Return a History record for the given object and attribute key.
+    
+    obj is an instrumented object instance.  An InstanceState
+    is accepted directly for backwards compatibility but 
+    this usage is deprecated.
+    
+    """
+    return get_state_history(_conditional_instance_state(obj), key, **kwargs)
 
-def get_history(state, key, **kwargs):
+def get_state_history(state, key, **kwargs):
     return state.get_history(key, **kwargs)
 
 def has_parent(cls, obj, key, optimistic=False):
@@ -1547,25 +1597,21 @@ def has_parent(cls, obj, key, optimistic=False):
     state = instance_state(obj)
     return manager.has_parent(state, key, optimistic)
 
-def register_class(class_):
-    """TODO"""
-
-    # TODO: what's this function for ?  why would I call this and not
-    # create_manager_for_cls ?
+def register_class(class_, **kw):
+    """Register class instrumentation.
+    
+    Returns the existing or newly created class manager.
+    """
 
     manager = manager_of_class(class_)
     if manager is None:
-        manager = create_manager_for_cls(class_)
-    if not manager.instantiable:
-        manager.instantiable = True
-
+        manager = _create_manager_for_cls(class_, **kw)
+    return manager
+    
 def unregister_class(class_):
-    """TODO"""
-    manager = manager_of_class(class_)
-    assert manager
-    assert manager.instantiable
-    manager.instantiable = False
-    manager.unregister()
+    """Unregister class instrumentation."""
+    
+    instrumentation_registry.unregister(class_)
 
 def register_attribute(class_, key, **kw):
 
@@ -1577,18 +1623,34 @@ def register_attribute(class_, key, **kw):
     if not proxy_property:
         register_attribute_impl(class_, key, **kw)
     
-def register_attribute_impl(class_, key, **kw):
+def register_attribute_impl(class_, key,         
+        uselist=False, callable_=None, 
+        useobject=False, mutable_scalars=False, 
+        impl_class=None, **kw):
     
     manager = manager_of_class(class_)
-    uselist = kw.get('uselist', False)
     if uselist:
         factory = kw.pop('typecallable', None)
         typecallable = manager.instrument_collection_class(
             key, factory or list)
     else:
         typecallable = kw.pop('typecallable', None)
-        
-    manager[key].impl = _create_prop(class_, key, manager, typecallable=typecallable, **kw)
+
+    if impl_class:
+        impl = impl_class(class_, key, typecallable, **kw)
+    elif uselist:
+        impl = CollectionAttributeImpl(class_, key, callable_,
+                                       typecallable=typecallable, **kw)
+    elif useobject:
+        impl = ScalarObjectAttributeImpl(class_, key, callable_, **kw)
+    elif mutable_scalars:
+        impl = MutableScalarAttributeImpl(class_, key, callable_,
+                                          class_manager=manager, **kw)
+    else:
+        impl = ScalarAttributeImpl(class_, key, callable_, **kw)
+
+    manager[key].impl = impl
+    
     manager.post_configure_attribute(key)
     
 def register_descriptor(class_, key, proxy_property=None, comparator=None, parententity=None, property_=None):
@@ -1605,35 +1667,108 @@ def register_descriptor(class_, key, proxy_property=None, comparator=None, paren
 def unregister_attribute(class_, key):
     manager_of_class(class_).uninstrument_attribute(key)
 
-def init_collection(state, key):
+def init_collection(obj, key):
+    """Initialize a collection attribute and return the collection adapter.
+    
+    This function is used to provide direct access to collection internals
+    for a previously unloaded attribute.  e.g.::
+        
+        collection_adapter = init_collection(someobject, 'elements')
+        for elem in values:
+            collection_adapter.append_without_event(elem)
+    
+    For an easier way to do the above, see :func:`~sqlalchemy.orm.attributes.set_committed_value`.
+    
+    obj is an instrumented object instance.  An InstanceState
+    is accepted directly for backwards compatibility but 
+    this usage is deprecated.
+    
+    """
+
+    return init_state_collection(_conditional_instance_state(obj), key)
+    
+def init_state_collection(state, key):
     """Initialize a collection attribute and return the collection adapter."""
+    
     attr = state.get_impl(key)
     user_data = attr.initialize(state)
     return attr.get_collection(state, user_data)
 
+def set_committed_value(instance, key, value):
+    """Set the value of an attribute with no history events.
+    
+    Cancels any previous history present.  The value should be 
+    a scalar value for scalar-holding attributes, or
+    an iterable for any collection-holding attribute.
+
+    This is the same underlying method used when a lazy loader
+    fires off and loads additional data from the database.
+    In particular, this method can be used by application code
+    which has loaded additional attributes or collections through
+    separate queries, which can then be attached to an instance
+    as though it were part of its original loaded state.
+    
+    """
+    state = instance_state(instance)
+    state.get_impl(key).set_committed_value(instance, key, value)
+    
 def set_attribute(instance, key, value):
+    """Set the value of an attribute, firing history events.
+    
+    This function may be used regardless of instrumentation
+    applied directly to the class, i.e. no descriptors are required.
+    Custom attribute management schemes will need to make usage
+    of this method to establish attribute state as understood
+    by SQLAlchemy.
+    
+    """
     state = instance_state(instance)
     state.get_impl(key).set(state, value, None)
 
 def get_attribute(instance, key):
+    """Get the value of an attribute, firing any callables required.
+
+    This function may be used regardless of instrumentation
+    applied directly to the class, i.e. no descriptors are required.
+    Custom attribute management schemes will need to make usage
+    of this method to make usage of attribute state as understood
+    by SQLAlchemy.
+    
+    """
     state = instance_state(instance)
     return state.get_impl(key).get(state)
 
 def del_attribute(instance, key):
+    """Delete the value of an attribute, firing history events.
+
+    This function may be used regardless of instrumentation
+    applied directly to the class, i.e. no descriptors are required.
+    Custom attribute management schemes will need to make usage
+    of this method to establish attribute state as understood
+    by SQLAlchemy.
+    
+    """
     state = instance_state(instance)
     state.get_impl(key).delete(state)
 
 def is_instrumented(instance, key):
+    """Return True if the given attribute on the given instance is instrumented
+    by the attributes package.
+    
+    This function may be used regardless of instrumentation
+    applied directly to the class, i.e. no descriptors are required.
+    
+    """
     return manager_of_class(instance.__class__).is_instrumented(key, search=True)
 
 class InstrumentationRegistry(object):
     """Private instrumentation registration singleton."""
 
-    manager_finders = weakref.WeakKeyDictionary()
-    state_finders = util.WeakIdentityMapping()
-    extended = False
+    _manager_finders = weakref.WeakKeyDictionary()
+    _state_finders = util.WeakIdentityMapping()
+    _extended = False
 
-    def create_manager_for_cls(self, class_):
+    def create_manager_for_cls(self, class_, **kw):
         assert class_ is not None
         assert manager_of_class(class_) is None
 
@@ -1644,9 +1779,9 @@ class InstrumentationRegistry(object):
         else:
             factory = ClassManager
 
-        existing_factories = collect_management_factories_for(class_)
-        existing_factories.add(factory)
-        if len(existing_factories) > 1:
+        existing_factories = self._collect_management_factories_for(class_).\
+                                difference([factory])
+        if existing_factories:
             raise TypeError(
                 "multiple instrumentation implementations specified "
                 "in %s inheritance hierarchy: %r" % (
@@ -1655,21 +1790,49 @@ class InstrumentationRegistry(object):
         manager = factory(class_)
         if not isinstance(manager, ClassManager):
             manager = _ClassInstrumentationAdapter(class_, manager)
-        if factory != ClassManager and not self.extended:
-            self.extended = True
+            
+        if factory != ClassManager and not self._extended:
+            self._extended = True
             _install_lookup_strategy(self)
+        
+        manager._configure_create_arguments(**kw)
 
         manager.factory = factory
-        manager.manage()
-        self.manager_finders[class_] = manager.manager_getter()
-        self.state_finders[class_] = manager.state_getter()
+        self._manager_finders[class_] = manager.manager_getter()
+        self._state_finders[class_] = manager.state_getter()
         return manager
+
+    def _collect_management_factories_for(self, cls):
+        """Return a collection of factories in play or specified for a hierarchy.
+
+        Traverses the entire inheritance graph of a cls and returns a collection
+        of instrumentation factories for those classes.  Factories are extracted
+        from active ClassManagers, if available, otherwise
+        instrumentation_finders is consulted.
+
+        """
+        hierarchy = util.class_hierarchy(cls)
+        factories = set()
+        for member in hierarchy:
+            manager = manager_of_class(member)
+            if manager is not None:
+                factories.add(manager.factory)
+            else:
+                for finder in instrumentation_finders:
+                    factory = finder(member)
+                    if factory is not None:
+                        break
+                else:
+                    factory = None
+                factories.add(factory)
+        factories.discard(None)
+        return factories
 
     def manager_of_class(self, cls):
         if cls is None:
             return None
         try:
-            finder = self.manager_finders[cls]
+            finder = self._manager_finders[cls]
         except KeyError:
             return None
         else:
@@ -1679,7 +1842,7 @@ class InstrumentationRegistry(object):
         if instance is None:
             raise AttributeError("None has no persistent state.")
         try:
-            return self.state_finders[instance.__class__](instance)
+            return self._state_finders[instance.__class__](instance)
         except KeyError:
             raise AttributeError("%r is not instrumented" % instance.__class__)
 
@@ -1687,7 +1850,7 @@ class InstrumentationRegistry(object):
         if instance is None:
             return default
         try:
-            finder = self.state_finders[instance.__class__]
+            finder = self._state_finders[instance.__class__]
         except KeyError:
             return default
         else:
@@ -1699,44 +1862,33 @@ class InstrumentationRegistry(object):
                 raise
 
     def unregister(self, class_):
-        if class_ in self.manager_finders:
+        if class_ in self._manager_finders:
             manager = self.manager_of_class(class_)
+            manager.unregister()
             manager.dispose()
-            del self.manager_finders[class_]
-            del self.state_finders[class_]
-
-# Create a registry singleton and prepare placeholders for lookup functions.
+            del self._manager_finders[class_]
+            del self._state_finders[class_]
 
 instrumentation_registry = InstrumentationRegistry()
-create_manager_for_cls = None
-manager_of_class = None
-instance_state = None
-_lookup_strategy = None
 
 def _install_lookup_strategy(implementation):
-    """Switch between native and extended instrumentation modes.
-
-    Completely private.  Use the instrumentation_finders interface to
-    inject global instrumentation behavior.
-
+    """Replace global class/object management functions
+    with either faster or more comprehensive implementations,
+    based on whether or not extended class instrumentation
+    has been detected.
+    
+    This function is called only by InstrumentationRegistry()
+    and unit tests specific to this behavior.
+    
     """
-    global manager_of_class, instance_state, create_manager_for_cls
-    global _lookup_strategy
-
-    # Using a symbol here to make debugging a little friendlier.
-    if implementation is not util.symbol('native'):
-        manager_of_class = implementation.manager_of_class
-        instance_state = implementation.state_of
-        create_manager_for_cls = implementation.create_manager_for_cls
-    else:
-        def manager_of_class(class_):
-            return getattr(class_, ClassManager.MANAGER_ATTR, None)
-        manager_of_class = instrumentation_registry.manager_of_class
+    global instance_state
+    if implementation is util.symbol('native'):
         instance_state = attrgetter(ClassManager.STATE_ATTR)
-        create_manager_for_cls = instrumentation_registry.create_manager_for_cls
-    # TODO: maybe log an event when setting a strategy.
-    _lookup_strategy = implementation
-
+    else:
+        instance_state = instrumentation_registry.state_of
+    
+manager_of_class = instrumentation_registry.manager_of_class
+_create_manager_for_cls = instrumentation_registry.create_manager_for_cls
 _install_lookup_strategy(util.symbol('native'))
 
 def find_native_user_instrumentation_hook(cls):
@@ -1744,54 +1896,12 @@ def find_native_user_instrumentation_hook(cls):
     return getattr(cls, INSTRUMENTATION_MANAGER, None)
 instrumentation_finders.append(find_native_user_instrumentation_hook)
 
-def collect_management_factories_for(cls):
-    """Return a collection of factories in play or specified for a hierarchy.
-
-    Traverses the entire inheritance graph of a cls and returns a collection
-    of instrumentation factories for those classes.  Factories are extracted
-    from active ClassManagers, if available, otherwise
-    instrumentation_finders is consulted.
-
-    """
-    hierarchy = util.class_hierarchy(cls)
-    factories = set()
-    for member in hierarchy:
-        manager = manager_of_class(member)
-        if manager is not None:
-            factories.add(manager.factory)
-        else:
-            for finder in instrumentation_finders:
-                factory = finder(member)
-                if factory is not None:
-                    break
-            else:
-                factory = None
-            factories.add(factory)
-    factories.discard(None)
-    return factories
-
-def _create_prop(class_, key, class_manager, 
-                    uselist=False, callable_=None, typecallable=None, 
-                    useobject=False, mutable_scalars=False, 
-                    impl_class=None, **kwargs):
-    if impl_class:
-        return impl_class(class_, key, typecallable, **kwargs)
-    elif uselist:
-        return CollectionAttributeImpl(class_, key, callable_,
-                                       typecallable=typecallable,
-                                       **kwargs)
-    elif useobject:
-        return ScalarObjectAttributeImpl(class_, key, callable_,
-                                         **kwargs)
-    elif mutable_scalars:
-        return MutableScalarAttributeImpl(class_, key, callable_,
-                                          class_manager=class_manager, **kwargs)
-    else:
-        return ScalarAttributeImpl(class_, key, callable_, **kwargs)
-
 def _generate_init(class_, class_manager):
     """Build an __init__ decorator that triggers ClassManager events."""
 
+    # TODO: we should use the ClassManager's notion of the 
+    # original '__init__' method, once ClassManager is fixed
+    # to always reference that.
     original__init__ = class_.__init__
     assert original__init__
 
