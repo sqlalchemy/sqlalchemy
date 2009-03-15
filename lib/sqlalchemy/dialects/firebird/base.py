@@ -101,8 +101,9 @@ parameter when creating the queries::
 
 import datetime, decimal, re
 
-from sqlalchemy import exc, schema, types as sqltypes, sql, util
-from sqlalchemy.engine import base, default
+from sqlalchemy import schema as sa_schema
+from sqlalchemy import exc, types as sqltypes, sql, util
+from sqlalchemy.engine import base, default, reflection
 
 
 _initialized_kb = False
@@ -403,23 +404,8 @@ class FBDialect(default.DefaultDialect):
         else:
             return False
 
-    def reflecttable(self, connection, table, include_columns):
-        # Query to extract the details of all the fields of the given table
-        tblqry = """
-        SELECT DISTINCT r.rdb$field_name AS fname,
-                        r.rdb$null_flag AS null_flag,
-                        t.rdb$type_name AS ftype,
-                        f.rdb$field_sub_type AS stype,
-                        f.rdb$field_length AS flen,
-                        f.rdb$field_precision AS fprec,
-                        f.rdb$field_scale AS fscale,
-                        COALESCE(r.rdb$default_source, f.rdb$default_source) AS fdefault
-        FROM rdb$relation_fields r
-             JOIN rdb$fields f ON r.rdb$field_source=f.rdb$field_name
-             JOIN rdb$types t ON t.rdb$type=f.rdb$field_type AND t.rdb$field_name='RDB$FIELD_TYPE'
-        WHERE f.rdb$system_flag=0 AND r.rdb$relation_name=?
-        ORDER BY r.rdb$field_position
-        """
+    @reflection.cache
+    def get_primary_keys(self, connection, table_name, schema=None, **kw):
         # Query to extract the PK/FK constrained fields of the given table
         keyqry = """
         SELECT se.rdb$field_name AS fname
@@ -427,20 +413,17 @@ class FBDialect(default.DefaultDialect):
              JOIN rdb$index_segments se ON rc.rdb$index_name=se.rdb$index_name
         WHERE rc.rdb$constraint_type=? AND rc.rdb$relation_name=?
         """
-        # Query to extract the details of each UK/FK of the given table
-        fkqry = """
-        SELECT rc.rdb$constraint_name AS cname,
-               cse.rdb$field_name AS fname,
-               ix2.rdb$relation_name AS targetrname,
-               se.rdb$field_name AS targetfname
-        FROM rdb$relation_constraints rc
-             JOIN rdb$indices ix1 ON ix1.rdb$index_name=rc.rdb$index_name
-             JOIN rdb$indices ix2 ON ix2.rdb$index_name=ix1.rdb$foreign_key
-             JOIN rdb$index_segments cse ON cse.rdb$index_name=ix1.rdb$index_name
-             JOIN rdb$index_segments se ON se.rdb$index_name=ix2.rdb$index_name AND se.rdb$field_position=cse.rdb$field_position
-        WHERE rc.rdb$constraint_type=? AND rc.rdb$relation_name=?
-        ORDER BY se.rdb$index_name, se.rdb$field_position
-        """
+        tablename = self._denormalize_name(table.name)
+        # get primary key fields
+        c = connection.execute(keyqry, ["PRIMARY KEY", tablename])
+        pkfields = [self._normalize_name(r['fname']) for r in c.fetchall()]
+        return pkfields
+
+    @reflection.cache
+    def get_column_sequence(self, connection, table_name, column_name,
+                                                        schema=None, **kw):
+        tablename = self._denormalize_name(table_name)
+        colname = self._denormalize_name(column_name)
         # Heuristic-query to determine the generator associated to a PK field
         genqry = """
         SELECT trigdep.rdb$depended_on_name AS fgenerator
@@ -457,29 +440,38 @@ class FBDialect(default.DefaultDialect):
                FROM rdb$dependencies trigdep2
                WHERE trigdep2.rdb$dependent_name = trigdep.rdb$dependent_name) = 2
         """
+        genc = connection.execute(genqry, [tablename, colname])
+        genr = genc.fetchone()
+        if genr is not None:
+            return dict(name=self._normalize_name(genr['fgenerator']))
 
-        tablename = self._denormalize_name(table.name)
-
-        # get primary key fields
-        c = connection.execute(keyqry, ["PRIMARY KEY", tablename])
-        pkfields = [self._normalize_name(r['fname']) for r in c.fetchall()]
-
+    @reflection.cache
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        # Query to extract the details of all the fields of the given table
+        tblqry = """
+        SELECT DISTINCT r.rdb$field_name AS fname,
+                        r.rdb$null_flag AS null_flag,
+                        t.rdb$type_name AS ftype,
+                        f.rdb$field_sub_type AS stype,
+                        f.rdb$field_length AS flen,
+                        f.rdb$field_precision AS fprec,
+                        f.rdb$field_scale AS fscale,
+                        COALESCE(r.rdb$default_source, f.rdb$default_source) AS fdefault
+        FROM rdb$relation_fields r
+             JOIN rdb$fields f ON r.rdb$field_source=f.rdb$field_name
+             JOIN rdb$types t ON t.rdb$type=f.rdb$field_type AND t.rdb$field_name='RDB$FIELD_TYPE'
+        WHERE f.rdb$system_flag=0 AND r.rdb$relation_name=?
+        ORDER BY r.rdb$field_position
+        """
+        tablename = self._denormalize_name(table_name)
         # get all of the fields for this table
         c = connection.execute(tblqry, [tablename])
-
-        found_table = False
+        cols = []
         while True:
             row = c.fetchone()
             if row is None:
                 break
-            found_table = True
-
             name = self._normalize_name(row['fname'])
-            if include_columns and name not in include_columns:
-                continue
-            args = [name]
-
-            kw = {}
             # get the data type
             coltype = ischema_names.get(row['ftype'].rstrip())
             if coltype is None:
@@ -488,58 +480,123 @@ class FBDialect(default.DefaultDialect):
                 coltype = sqltypes.NULLTYPE
             else:
                 coltype = coltype(row)
+
+            # does it have a default value?
+            defvalue = None
+            if row['fdefault'] is not None:
+                # the value comes down as "DEFAULT 'value'"
+                assert row['fdefault'].upper().startswith('DEFAULT '), row
+                defvalue = row['fdefault'][8:]
+            col_d = {
+                'name' : name,
+                'type' : coltype,
+                'nullable' :  not bool(row['null_flag']),
+                'default' : defvalue
+            }
+            cols.append(col_d)
+        return cols
+
+    @reflection.cache
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        # Query to extract the details of each UK/FK of the given table
+        fkqry = """
+        SELECT rc.rdb$constraint_name AS cname,
+               cse.rdb$field_name AS fname,
+               ix2.rdb$relation_name AS targetrname,
+               se.rdb$field_name AS targetfname
+        FROM rdb$relation_constraints rc
+             JOIN rdb$indices ix1 ON ix1.rdb$index_name=rc.rdb$index_name
+             JOIN rdb$indices ix2 ON ix2.rdb$index_name=ix1.rdb$foreign_key
+             JOIN rdb$index_segments cse ON cse.rdb$index_name=ix1.rdb$index_name
+             JOIN rdb$index_segments se ON se.rdb$index_name=ix2.rdb$index_name AND se.rdb$field_position=cse.rdb$field_position
+        WHERE rc.rdb$constraint_type=? AND rc.rdb$relation_name=?
+        ORDER BY se.rdb$index_name, se.rdb$field_position
+        """
+        tablename = self._denormalize_name(table_name)
+        # get the foreign keys
+        c = connection.execute(fkqry, ["FOREIGN KEY", tablename])
+        fks = {}
+        fkeys = []
+        while True:
+            row = c.fetchone()
+            if not row:
+                break
+            cname = self._normalize_name(row['cname'])
+            if cname in fks:
+                fk = fks[cname]
+            else:
+                fk = {
+                    'name' : cname,
+                    'constrained_columns' : [],
+                    'referred_schema' : None,
+                    'referred_table' : None,
+                    'referred_columns' : []
+                }
+                fks[cname] = fk
+                fkeys.append(fk)
+            fk['referred_table'] = self._normalize_name(row['targetrname'])
+            fk['constrained_columns'].append(self._normalize_name(row['fname']))
+            fk['referred_columns'].append(
+                            self._normalize_name(row['targetfname']))
+            return fkeys
+
+    def reflecttable(self, connection, table, include_columns):
+
+        # get primary key fields
+        pkfields = self.get_primary_keys(connection, table.name)
+
+        found_table = False
+        for col_d in self.get_columns(connection, table.name):
+            found_table = True
+
+            name = col_d.get('name')
+            defvalue = col_d.get('default')
+            nullable = col_d.get('nullable')
+            coltype = col_d.get('type')
+
+            if include_columns and name not in include_columns:
+                continue
+            args = [name]
+
+            kw = {}
             args.append(coltype)
 
             # is it a primary key?
             kw['primary_key'] = name in pkfields
 
             # is it nullable?
-            kw['nullable'] = not bool(row['null_flag'])
+            kw['nullable'] = nullable
 
             # does it have a default value?
-            if row['fdefault'] is not None:
-                # the value comes down as "DEFAULT 'value'"
-                assert row['fdefault'].upper().startswith('DEFAULT '), row
-                defvalue = row['fdefault'][8:]
-                args.append(schema.DefaultClause(sql.text(defvalue)))
+            if defvalue:
+                args.append(sa_schema.DefaultClause(sql.text(defvalue)))
 
-            col = schema.Column(*args, **kw)
+            col = sa_schema.Column(*args, **kw)
             if kw['primary_key']:
                 # if the PK is a single field, try to see if its linked to
                 # a sequence thru a trigger
                 if len(pkfields)==1:
-                    genc = connection.execute(genqry, [tablename, row['fname']])
-                    genr = genc.fetchone()
-                    if genr is not None:
-                        col.sequence = schema.Sequence(self._normalize_name(genr['fgenerator']))
-
+                    sequence_name = self.get_column_sequence(connection,
+                                            table.name, name)
+                    if sequence_name is not None:
+                        col.sequence = sa_schema.Sequence(sequence_name)
             table.append_column(col)
 
         if not found_table:
             raise exc.NoSuchTableError(table.name)
 
         # get the foreign keys
-        c = connection.execute(fkqry, ["FOREIGN KEY", tablename])
-        fks = {}
-        while True:
-            row = c.fetchone()
-            if not row:
-                break
+        for fkey_d in self.get_foreign_keys(connection, table.name):
+            cname = fkey_d['name']
+            constrained_columns = fkey_d['constrained_columns']
+            rname = fkey_d['referred_table']
+            referred_columns = fkey_d['referred_columns']
 
-            cname = self._normalize_name(row['cname'])
-            try:
-                fk = fks[cname]
-            except KeyError:
-                fks[cname] = fk = ([], [])
-            rname = self._normalize_name(row['targetrname'])
-            schema.Table(rname, table.metadata, autoload=True, autoload_with=connection)
-            fname = self._normalize_name(row['fname'])
-            refspec = rname + '.' + self._normalize_name(row['targetfname'])
-            fk[0].append(fname)
-            fk[1].append(refspec)
-
-        for name, value in fks.iteritems():
-            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name, link_to_name=True))
+            sa_schema.Table(rname, table.metadata, autoload=True, autoload_with=connection)
+            refspec = ['.'.join(c) for c in \
+                                zip(constrained_columns, referred_columns)]
+            table.append_constraint(sa_schema.ForeignKeyConstraint(
+                constrained_columns, refspec, name=cname, link_to_name=True))
 
     def do_execute(self, cursor, statement, parameters, **kwargs):
         # kinterbase does not accept a None, but wants an empty list
