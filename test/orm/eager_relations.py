@@ -4,7 +4,7 @@ import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
 from sqlalchemy.orm import eagerload, deferred, undefer
 from testlib.sa import Table, Column, Integer, String, Date, ForeignKey, and_, select, func
-from testlib.sa.orm import mapper, relation, create_session, lazyload
+from testlib.sa.orm import mapper, relation, create_session, lazyload, aliased
 from testlib.testing import eq_
 from testlib.assertsql import CompiledSQL
 from orm import _base, _fixtures
@@ -1218,6 +1218,48 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     order_by(User.id, Order.id).all(),
             )
         self.assert_sql_count(testing.db, go, 1)
+
+    @testing.exclude('sqlite', '>', (0, 0, 0), "sqlite flat out blows it on the multiple JOINs")
+    @testing.resolve_artifact_names
+    def test_two_entities_with_joins(self):
+        sess = create_session()
+        
+        # two FROM clauses where there's a join on each one
+        def go():
+            u1 = aliased(User)
+            o1 = aliased(Order)
+            eq_(
+                [
+                    (
+                        User(addresses=[Address(email_address=u'fred@fred.com')], name=u'fred'), 
+                        Order(description=u'order 2', isopen=0, items=[Item(description=u'item 1'), Item(description=u'item 2'), Item(description=u'item 3')]),
+                        User(addresses=[Address(email_address=u'jack@bean.com')], name=u'jack'), 
+                        Order(description=u'order 3', isopen=1, items=[Item(description=u'item 3'), Item(description=u'item 4'), Item(description=u'item 5')])
+                    ), 
+
+                    (
+                        User(addresses=[Address(email_address=u'fred@fred.com')], name=u'fred'), 
+                        Order(description=u'order 2', isopen=0, items=[Item(description=u'item 1'), Item(description=u'item 2'), Item(description=u'item 3')]),
+                        User(addresses=[Address(email_address=u'jack@bean.com')], name=u'jack'), 
+                        Order(address_id=None, description=u'order 5', isopen=0, items=[Item(description=u'item 5')])
+                    ), 
+
+                    (
+                        User(addresses=[Address(email_address=u'fred@fred.com')], name=u'fred'), 
+                        Order(description=u'order 4', isopen=1, items=[Item(description=u'item 1'), Item(description=u'item 5')]),
+                        User(addresses=[Address(email_address=u'jack@bean.com')], name=u'jack'), 
+                        Order(address_id=None, description=u'order 5', isopen=0, items=[Item(description=u'item 5')])
+                    ), 
+                ],
+                sess.query(User, Order, u1, o1).\
+                        join((Order, User.orders)).options(eagerload(User.addresses), eagerload(Order.items)).filter(User.id==9).\
+                        join((o1, u1.orders)).options(eagerload(u1.addresses), eagerload(o1.items)).filter(u1.id==7).\
+                        filter(Order.id<o1.id).\
+                        order_by(User.id, Order.id, u1.id, o1.id).all(),
+            )
+        self.assert_sql_count(testing.db, go, 1)
+        
+        
 
     @testing.resolve_artifact_names
     def test_aliased_entity(self):

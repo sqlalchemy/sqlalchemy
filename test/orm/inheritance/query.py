@@ -210,6 +210,25 @@ def make_test(select_type):
             self.assertEquals(sess.query(Person).get(e1.person_id), Engineer(name="dilbert", primary_language="java"))
             self.assertEquals(sess.query(Engineer).get(e1.person_id), Engineer(name="dilbert", primary_language="java"))
             self.assertEquals(sess.query(Manager).get(b1.person_id), Boss(name="pointy haired boss", golf_swing="fore"))
+        
+        def test_multi_join(self):
+            sess = create_session()
+
+            e = aliased(Person)
+            c = aliased(Company)
+            
+            q = sess.query(Company, Person, c, e).join((Person, Company.employees)).join((e, c.employees)).\
+                    filter(Person.name=='dilbert').filter(e.name=='wally')
+            
+            self.assertEquals(q.count(), 1)
+            self.assertEquals(q.all(), [
+                (
+                    Company(company_id=1,name=u'MegaCorp, Inc.'), 
+                    Engineer(status=u'regular engineer',engineer_name=u'dilbert',name=u'dilbert',company_id=1,primary_language=u'java',person_id=1,type=u'engineer'),
+                    Company(company_id=1,name=u'MegaCorp, Inc.'), 
+                    Engineer(status=u'regular engineer',engineer_name=u'wally',name=u'wally',company_id=1,primary_language=u'c++',person_id=2,type=u'engineer')
+                )
+            ])
             
         def test_filter_on_subclass(self):
             sess = create_session()

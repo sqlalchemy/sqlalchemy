@@ -19,6 +19,12 @@ CHANGES
       union(query1, query2), select([foo]).select_from(query), 
       etc.
 
+    - Query.join() can now construct multiple FROM clauses, if 
+      needed.  Such as, query(A, B).join(A.x).join(B.y)
+      might say SELECT A.*, B.* FROM A JOIN X, B JOIN Y.  
+      Eager loading can also tack its joins onto those 
+      multiple FROM clauses.  [ticket:1337]
+      
     - Fixed bug where column_prefix wasn't being checked before
       not mapping an attribute that already had class-level 
       name present.
