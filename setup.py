@@ -18,7 +18,7 @@ def find_packages(dir_):
 if sys.version_info < (2, 4):
     raise Exception("SQLAlchemy requires Python 2.4 or higher.")
 
-v = file(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.py'))
+v = open(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(v.read()).group(1)
 v.close()
 
