@@ -44,6 +44,13 @@ CHANGES
       creates an arbitrarily large number of engines
       or dialects.   There is a small performance penalty
       which will be resolved in 0.6.  [ticket:1299]
+
+-sqlite
+    - Fixed SQLite reflection methods so that non-present
+      cursor.description, which triggers an auto-cursor
+      close, will be detected so that no results doesn't
+      fail on recent versions of pysqlite which raise 
+      an error when fetchone() called with no rows present.
       
 - postgres
     - Added Index reflection support to Postgres, using a
