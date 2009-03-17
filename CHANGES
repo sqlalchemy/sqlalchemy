@@ -112,6 +112,13 @@ CHANGES
       or dialects.   There is a small performance penalty
       which will be resolved in 0.6.  [ticket:1299]
 
+- sqlite
+    - Fixed SQLite reflection methods so that non-present
+      cursor.description, which triggers an auto-cursor
+      close, will be detected so that no results doesn't
+      fail on recent versions of pysqlite which raise 
+      an error when fetchone() called with no rows present.
+      
 - postgres
     - Index reflection won't fail when an index with 
       multiple expressions is encountered.

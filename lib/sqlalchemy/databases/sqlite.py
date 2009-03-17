@@ -439,7 +439,8 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             pragma = "PRAGMA "
         qtable = quote(table_name)
-        cursor = connection.execute("%stable_info(%s)" % (pragma, qtable))
+        cursor = _pragma_cursor(connection.execute("%stable_info(%s)" % (pragma, qtable)))
+            
         row = cursor.fetchone()
 
         # consume remaining rows, to work around
@@ -457,7 +458,7 @@ class SQLiteDialect(default.DefaultDialect):
             pragma = "PRAGMA %s." % preparer.quote_identifier(table.schema)
         qtable = preparer.format_table(table, False)
 
-        c = connection.execute("%stable_info(%s)" % (pragma, qtable))
+        c = _pragma_cursor(connection.execute("%stable_info(%s)" % (pragma, qtable)))
         found_table = False
         while True:
             row = c.fetchone()
@@ -496,7 +497,7 @@ class SQLiteDialect(default.DefaultDialect):
         if not found_table:
             raise exc.NoSuchTableError(table.name)
 
-        c = connection.execute("%sforeign_key_list(%s)" % (pragma, qtable))
+        c = _pragma_cursor(connection.execute("%sforeign_key_list(%s)" % (pragma, qtable)))
         fks = {}
         while True:
             row = c.fetchone()
@@ -524,7 +525,7 @@ class SQLiteDialect(default.DefaultDialect):
         for name, value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], link_to_name=True))
         # check for UNIQUE indexes
-        c = connection.execute("%sindex_list(%s)" % (pragma, qtable))
+        c = _pragma_cursor(connection.execute("%sindex_list(%s)" % (pragma, qtable)))
         unique_indexes = []
         while True:
             row = c.fetchone()
@@ -542,7 +543,11 @@ class SQLiteDialect(default.DefaultDialect):
                     break
                 cols.append(row[2])
 
-
+def _pragma_cursor(cursor):
+    if cursor.closed:
+        cursor._fetchone_impl = lambda: None
+    return cursor
+        
 class SQLiteCompiler(compiler.DefaultCompiler):
     functions = compiler.DefaultCompiler.functions.copy()
     functions.update (
