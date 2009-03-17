@@ -181,8 +181,8 @@ class Dialect(object):
         """Return information about columns in `table_name`.
 
         Given a [sqlalchemy.engine#Connection], a string `table_name`, and an
-        optional string `schema`, return column information as a list of dicts
-        with these keys:
+        optional string `schema`, return column information as a list of
+        dictionaries with these keys:
 
         name
           the column's name
@@ -268,8 +268,8 @@ class Dialect(object):
         """Return information about indexes in `table_name`.
 
         Given a [sqlalchemy.engine#Connection], a string `table_name` and an 
-        optional string `schema`, return index information as a list of dicts 
-        with these keys:
+        optional string `schema`, return index information as a list of
+        dictionaries with these keys:
 
         name
           the index's name
