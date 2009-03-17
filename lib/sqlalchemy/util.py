@@ -5,7 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import inspect, itertools, operator, sys, warnings, weakref
+# Py2K
 import __builtin__
+# end Py2K
 types = __import__('types')
 
 from sqlalchemy import exc
@@ -51,11 +53,13 @@ else:
     except ImportError:
         import pickle
 
+# Py2K
 # a controversial feature, required by MySQLdb currently
 def buffer(x):
     return x 
     
 buffer = getattr(__builtin__, 'buffer', buffer)
+# end Py2K
         
 if sys.version_info >= (2, 5):
     class PopulateDict(dict):
