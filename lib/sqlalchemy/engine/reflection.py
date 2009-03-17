@@ -1,19 +1,20 @@
 """Provides an abstraction for obtaining database schema information.
 
-Development Notes:
+Usage Notes:
 
-I'm still trying to decide upon conventions for both the Inspector interface as well as the dialect interface the Inspector is to consume.  Below are some of the current conventions.
 
-  1. Inspector methods should return lists of dicts in most cases for the 
-     following reasons:
-    * They're both simple standard types.
+Here are some general conventions when accessing the low level inspector
+methods such as get_table_names, get_columns, etc.
+
+  1. Inspector methods return lists of dicts in most cases for the following
+     reasons:
+    * They're both standard types that can be serialized.
     * Using a dict instead of a tuple allows easy expansion of attributes.
     * Using a list for the outer structure maintains order and is easy to work 
        with (e.g. list comprehension [d['name'] for d in cols]).
-    * Being consistent is just good.
   2. Records that contain a name, such as the column name in a column record
-     should use the key 'name' in the dict.  This allows the user to expect a
-     'name' key and to know what it will reference.
+     use the key 'name'. So for most return values, each record will have a
+     'name' attribute..
 
 
 """
