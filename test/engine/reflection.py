@@ -8,10 +8,11 @@ from testlib import TestBase, ComparesTables, testing, engines, sa as tsa
 
 create_inspector = Inspector.from_engine
 
+# Py2K
 if 'set' not in dir(__builtins__):
     from sets import Set as set
 
-
+# end Py2K
 metadata, users = None, None
 
 class ReflectionTest(TestBase, ComparesTables):
