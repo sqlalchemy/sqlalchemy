@@ -93,6 +93,11 @@ CHANGES
        with_polymorphic(), or using from_self().
         
 - sql
+    - An alias() of a select() will convert to a "scalar subquery"
+      when used in an unambiguously scalar context, i.e. it's used 
+      in a comparison operation.  This applies to
+      the ORM when using query.subquery() as well.
+      
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used
       in an ORM column_property()).  [ticket:1302]
