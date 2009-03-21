@@ -396,23 +396,23 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
         con = testing.db.connect()
         for ddl in ('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42',
-                    'CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0'):
+                    'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0'):
             try:
                 con.execute(ddl)
             except exc.SQLError, e:
                 if not "already exists" in str(e):
                     raise e
         con.execute('CREATE TABLE testtable (question integer, answer testdomain)')
-        con.execute('CREATE TABLE alt_schema.testtable(question integer, answer alt_schema.testdomain, anything integer)')
-        con.execute('CREATE TABLE crosschema (question integer, answer alt_schema.testdomain)')
+        con.execute('CREATE TABLE test_schema.testtable(question integer, answer test_schema.testdomain, anything integer)')
+        con.execute('CREATE TABLE crosschema (question integer, answer test_schema.testdomain)')
 
     def tearDownAll(self):
         con = testing.db.connect()
         con.execute('DROP TABLE testtable')
-        con.execute('DROP TABLE alt_schema.testtable')
+        con.execute('DROP TABLE test_schema.testtable')
         con.execute('DROP TABLE crosschema')
         con.execute('DROP DOMAIN testdomain')
-        con.execute('DROP DOMAIN alt_schema.testdomain')
+        con.execute('DROP DOMAIN test_schema.testdomain')
 
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -426,15 +426,15 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         self.assertEquals(str(table.columns.answer.server_default.arg), '42', "Reflected default value didn't equal expected value")
         self.assertFalse(table.columns.answer.nullable, "Expected reflected column to not be nullable.")
 
-    def test_table_is_reflected_alt_schema(self):
+    def test_table_is_reflected_test_schema(self):
         metadata = MetaData(testing.db)
-        table = Table('testtable', metadata, autoload=True, schema='alt_schema')
+        table = Table('testtable', metadata, autoload=True, schema='test_schema')
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer', 'anything']), "Columns of reflected table didn't equal expected columns")
         assert isinstance(table.c.anything.type, Integer)
 
     def test_schema_domain_is_reflected(self):
         metadata = MetaData(testing.db)
-        table = Table('testtable', metadata, autoload=True, schema='alt_schema')
+        table = Table('testtable', metadata, autoload=True, schema='test_schema')
         self.assertEquals(str(table.columns.answer.server_default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
 
@@ -529,26 +529,26 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             'FROM mytable')
 
     def test_schema_reflection(self):
-        """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
+        """note: this test requires that the 'test_schema' schema be separate and accessible by the test user"""
 
         meta1 = MetaData(testing.db)
         users = Table('users', meta1,
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(30), nullable = False),
-            schema="alt_schema"
+            schema="test_schema"
             )
 
         addresses = Table('email_addresses', meta1,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
-            schema="alt_schema"
+            schema="test_schema"
         )
         meta1.create_all()
         try:
             meta2 = MetaData(testing.db)
-            addresses = Table('email_addresses', meta2, autoload=True, schema="alt_schema")
-            users = Table('users', meta2, mustexist=True, schema="alt_schema")
+            addresses = Table('email_addresses', meta2, autoload=True, schema="test_schema")
+            users = Table('users', meta2, mustexist=True, schema="test_schema")
 
             print users
             print addresses
@@ -567,12 +567,12 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         referer = Table("referer", meta1,
                         Column("id", Integer, primary_key=True),
                         Column("ref", Integer, ForeignKey('subject.id')),
-                        schema="alt_schema")
+                        schema="test_schema")
         meta1.create_all()
         try:
             meta2 = MetaData(testing.db)
             subject = Table("subject", meta2, autoload=True)
-            referer = Table("referer", meta2, schema="alt_schema", autoload=True)
+            referer = Table("referer", meta2, schema="test_schema", autoload=True)
             print str(subject.join(referer).onclause)
             self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
         finally:
@@ -582,19 +582,19 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         meta1 = MetaData(testing.db)
         subject = Table("subject", meta1,
                         Column("id", Integer, primary_key=True),
-                        schema='alt_schema_2'
+                        schema='test_schema_2'
                         )
 
         referer = Table("referer", meta1,
                         Column("id", Integer, primary_key=True),
-                        Column("ref", Integer, ForeignKey('alt_schema_2.subject.id')),
-                        schema="alt_schema")
+                        Column("ref", Integer, ForeignKey('test_schema_2.subject.id')),
+                        schema="test_schema")
 
         meta1.create_all()
         try:
             meta2 = MetaData(testing.db)
-            subject = Table("subject", meta2, autoload=True, schema="alt_schema_2")
-            referer = Table("referer", meta2, schema="alt_schema", autoload=True)
+            subject = Table("subject", meta2, autoload=True, schema="test_schema_2")
+            referer = Table("referer", meta2, schema="test_schema", autoload=True)
             print str(subject.join(referer).onclause)
             self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
         finally:
@@ -604,7 +604,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         meta = MetaData(testing.db)
         users = Table('users', meta,
             Column('id', Integer, primary_key=True),
-            Column('name', String(50)), schema='alt_schema')
+            Column('name', String(50)), schema='test_schema')
         users.create()
         try:
             users.insert().execute(id=1, name='name1')

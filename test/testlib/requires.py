@@ -74,6 +74,14 @@ def savepoints(fn):
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
         )
 
+def schemas(fn):
+    """Target database must support external schemas, and have one named 'test_schema'."""
+    
+    return _chain_decorators_on(
+        fn,
+        no_support('sqlite', 'no schema support')
+    )
+    
 def sequences(fn):
     """Target database must support SEQUENCEs."""
     return _chain_decorators_on(

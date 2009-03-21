@@ -52,7 +52,7 @@ class MockReconnectTest(TestBase):
         dbapi = MockDBAPI()
 
         # create engine using our current dburi
-        db = tsa.create_engine('postgres://foo:bar@localhost/test', module=dbapi)
+        db = tsa.create_engine('postgres://foo:bar@localhost/test', module=dbapi, _initialize=False)
 
         # monkeypatch disconnect checker
         db.dialect.is_disconnect = lambda e: isinstance(e, MockDisconnect)

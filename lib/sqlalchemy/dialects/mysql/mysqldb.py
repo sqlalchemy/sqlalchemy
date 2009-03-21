@@ -115,10 +115,6 @@ class MySQL_mysqldb(MySQLDialect):
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
 
-        # Allow user override, won't sniff if force_charset is set.
-        if ('mysql', 'force_charset') in connection.info:
-            return connection.info[('mysql', 'force_charset')]
-
         # Note: MySQL-python 1.2.1c7 seems to ignore changes made
         # on a connection via set_character_set()
         if self.server_version_info < (4, 1, 0):

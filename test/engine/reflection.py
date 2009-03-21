@@ -8,11 +8,6 @@ from testlib import TestBase, ComparesTables, testing, engines, sa as tsa
 
 create_inspector = Inspector.from_engine
 
-# Py2K
-if 'set' not in dir(__builtins__):
-    from sets import Set as set
-
-# end Py2K
 metadata, users = None, None
 
 class ReflectionTest(TestBase, ComparesTables):
@@ -805,12 +800,9 @@ class HasSequenceTest(TestBase):
 
 # Tests related to engine.reflection
 
-def getSchema():
-    if testing.against('sqlite'):
-        return None
-
-    if testing.against('sqlite'):
-        return 'main'
+def get_schema():
+#    if testing.against('sqlite'):
+#        return None
     if testing.against('oracle'):
         return 'test'
     else:
@@ -884,10 +876,12 @@ def dropViews(con, schema=None):
 
 class ReflectionTest(TestBase):
 
+    @testing.fails_on('sqlite', 'no schemas')
     def test_get_schema_names(self):
         meta = MetaData(testing.db)
         insp = Inspector(meta.bind)
-        self.assert_(getSchema() in insp.get_schema_names())
+        
+        self.assert_(get_schema() in insp.get_schema_names())
 
     def _test_get_table_names(self, schema=None, table_type='table',
                               order_by=None):
@@ -918,14 +912,16 @@ class ReflectionTest(TestBase):
     def test_get_table_names(self):
         self._test_get_table_names()
 
+    @testing.requires.schemas
     def test_get_table_names_with_schema(self):
-        self._test_get_table_names(getSchema())
+        self._test_get_table_names(get_schema())
 
     def test_get_view_names(self):
         self._test_get_table_names(table_type='view')
 
+    @testing.requires.schemas
     def test_get_view_names_with_schema(self):
-        self._test_get_table_names(getSchema(), table_type='view')
+        self._test_get_table_names(get_schema(), table_type='view')
 
     def _test_get_columns(self, schema=None, table_type='table'):
         meta = MetaData(testing.db)
@@ -974,14 +970,16 @@ class ReflectionTest(TestBase):
     def test_get_columns(self):
         self._test_get_columns()
 
+    @testing.requires.schemas
     def test_get_columns_with_schema(self):
-        self._test_get_columns(schema=getSchema())
+        self._test_get_columns(schema=get_schema())
 
     def test_get_view_columns(self):
         self._test_get_columns(table_type='view')
 
+    @testing.requires.schemas
     def test_get_view_columns_with_schema(self):
-        self._test_get_columns(schema=getSchema(), table_type='view')
+        self._test_get_columns(schema=get_schema(), table_type='view')
 
     def _test_get_primary_keys(self, schema=None):
         meta = MetaData(testing.db)
@@ -1003,8 +1001,9 @@ class ReflectionTest(TestBase):
     def test_get_primary_keys(self):
         self._test_get_primary_keys()
 
+    @testing.fails_on('sqlite', 'no schemas')
     def test_get_primary_keys_with_schema(self):
-        self._test_get_primary_keys(schema=getSchema())
+        self._test_get_primary_keys(schema=get_schema())
 
     def _test_get_foreign_keys(self, schema=None):
         meta = MetaData(testing.db)
@@ -1044,8 +1043,9 @@ class ReflectionTest(TestBase):
     def test_get_foreign_keys(self):
         self._test_get_foreign_keys()
 
+    @testing.requires.schemas
     def test_get_foreign_keys_with_schema(self):
-        self._test_get_foreign_keys(schema=getSchema())
+        self._test_get_foreign_keys(schema=get_schema())
 
     def _test_get_indexes(self, schema=None):
         meta = MetaData(testing.db)
@@ -1082,8 +1082,9 @@ class ReflectionTest(TestBase):
     def test_get_indexes(self):
         self._test_get_indexes()
 
+    @testing.requires.schemas
     def test_get_indexes_with_schema(self):
-        self._test_get_indexes(schema=getSchema())
+        self._test_get_indexes(schema=get_schema())
 
     def _test_get_view_definition(self, schema=None):
         meta = MetaData(testing.db)
@@ -1106,8 +1107,9 @@ class ReflectionTest(TestBase):
     def test_get_view_definition(self):
         self._test_get_view_definition()
 
+    @testing.requires.schemas
     def test_get_view_definition_with_schema(self):
-        self._test_get_view_definition(schema=getSchema())
+        self._test_get_view_definition(schema=get_schema())
 
     def _test_get_table_oid(self, table_name, schema=None):
         if testing.against('postgres'):
@@ -1125,8 +1127,9 @@ class ReflectionTest(TestBase):
     def test_get_table_oid(self):
         self._test_get_table_oid('users')
 
+    @testing.requires.schemas
     def test_get_table_oid_with_schema(self):
-        self._test_get_table_oid('users', schema=getSchema())
+        self._test_get_table_oid('users', schema=get_schema())
 
 
 if __name__ == "__main__":

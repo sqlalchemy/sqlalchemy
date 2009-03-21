@@ -13,7 +13,7 @@ from operator import attrgetter
 from sqlalchemy.engine import base, threadlocal, url
 from sqlalchemy import util, exc
 from sqlalchemy import pool as poollib
-
+from sqlalchemy import interfaces
 
 strategies = {}
 
@@ -123,13 +123,15 @@ class DefaultEngineStrategy(EngineStrategy):
                                     engineclass.__name__))
                                     
         engine = engineclass(pool, dialect, u, **engine_args)
-        
+
         if _initialize:
-            conn = engine.connect()
-            try:
-                dialect.initialize(conn)
-            finally:
-                conn.close()
+            class OnInit(interfaces.PoolListener):
+                def connect(self, conn, rec):
+                    c = base.Connection(engine, connection=conn)
+                    dialect.initialize(c)
+                    pool._on_connect.remove(self)
+            pool._on_connect.insert(0, OnInit())
+        
         return engine
 
     def pool_threadlocal(self):

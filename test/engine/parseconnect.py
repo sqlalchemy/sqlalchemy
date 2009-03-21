@@ -42,15 +42,22 @@ class CreateEngineTest(TestBase):
     def test_connect_query(self):
         dbapi = MockDBAPI(foober='12', lala='18', fooz='somevalue')
 
-        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
-        e = create_engine('postgres://scott:tiger@somehost/test?foober=12&lala=18&fooz=somevalue', module=dbapi)
+        e = create_engine(
+                'postgres://scott:tiger@somehost/test?foober=12&lala=18&fooz=somevalue', 
+                module=dbapi,
+                _initialize=False
+                )
         c = e.connect()
 
     def test_kwargs(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
 
-        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
-        e = create_engine('postgres://scott:tiger@somehost/test?fooz=somevalue', connect_args={'foober':12, 'lala':18, 'hoho':{'this':'dict'}}, module=dbapi)
+        e = create_engine(
+                'postgres://scott:tiger@somehost/test?fooz=somevalue', 
+                connect_args={'foober':12, 'lala':18, 'hoho':{'this':'dict'}}, 
+                module=dbapi,
+                _initialize=False
+                )
         c = e.connect()
 
     def test_coerce_config(self):
@@ -118,7 +125,7 @@ pool_timeout=10
             return dbapi.connect(foober=12, lala=18, fooz='somevalue', hoho={'this':'dict'})
 
         # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
-        e = create_engine('postgres://', creator=connect, module=dbapi)
+        e = create_engine('postgres://', creator=connect, module=dbapi, _initialize=False)
         c = e.connect()
 
     def test_recycle(self):
@@ -145,7 +152,8 @@ pool_timeout=10
         self.assertRaises(TypeError, create_engine, 'sqlite://', max_overflow=5)
 
         # raises DBAPIerror due to use_unicode not a sqlite arg
-        self.assertRaises(tsa.exc.DBAPIError, create_engine, 'sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
+        e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
+        self.assertRaises(tsa.exc.DBAPIError, e.connect)
 
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""

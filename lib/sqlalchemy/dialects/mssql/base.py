@@ -1080,9 +1080,6 @@ class MSDialect(default.DefaultDialect):
                 self.max_identifier_length
         super(MSDialect, self).__init__(**opts)
     
-    def initialize(self, connection):
-        self.server_version_info = self._get_server_version_info(connection)
-    
     def do_begin(self, connection):
         cursor = connection.cursor()
         cursor.execute("SET IMPLICIT_TRANSACTIONS OFF")

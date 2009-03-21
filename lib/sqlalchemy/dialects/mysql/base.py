@@ -1778,11 +1778,10 @@ class MySQLDialect(default.DefaultDialect):
 
     def _extract_error_code(self, exception):
         raise NotImplementedError()
-        
+    
+    @engine_base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
         return connection.execute('SELECT DATABASE()').scalar()
-    get_default_schema_name = engine_base.connection_memoize(
-        ('dialect', 'default_schema_name'))(get_default_schema_name)
 
     def table_names(self, connection, schema):
         """Return a Unicode SHOW TABLES from a given schema."""
