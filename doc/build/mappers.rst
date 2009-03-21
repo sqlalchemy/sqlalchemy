@@ -1285,6 +1285,8 @@ Theres no restriction on how many times you can relate from parent to child.  SQ
                     addresses_table.c.city=='New York')),
     })
 
+.. _alternate_collection_implementations:
+
 Alternate Collection Implementations 
 -------------------------------------
 

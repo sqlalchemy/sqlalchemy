@@ -7,6 +7,7 @@ sqlalchemy.orm
     :glob:
 
     mapping
+    collections
     query
     sessions
     interfaces
