@@ -172,14 +172,26 @@ class FlushTest(_fixtures.FixtureTest):
         sess.flush()
 
         assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
-            (1, u1.id, 'foo')
+            (a1.id, u1.id, 'foo')
         ]
         
         u1.addresses.remove(a1)
         sess.flush()
         assert testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)) == 0
         
-        
+        u1.addresses.append(a1)
+        sess.flush()
+        assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
+            (a1.id, u1.id, 'foo')
+        ]
+
+        a2= Address(email_address='bar')
+        u1.addresses.remove(a1)
+        u1.addresses.append(a2)
+        sess.flush()
+        assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
+            (a2.id, u1.id, 'bar')
+        ]
         
         
     @testing.resolve_artifact_names
