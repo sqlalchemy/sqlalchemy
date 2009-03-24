@@ -19,7 +19,7 @@ from sqlalchemy.orm import (
     )
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import _state_has_identity, has_identity
-
+from sqlalchemy.orm import attributes
 
 class DynaLoader(strategies.AbstractRelationLoader):
     def init_class_attribute(self, mapper):
@@ -70,10 +70,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         collection_history = self._modified_event(state)
         collection_history.added_items.append(value)
 
-        if self.trackparent and value is not None:
-            self.sethasparent(attributes.instance_state(value), True)
         for ext in self.extensions:
             ext.append(state, value, initiator or self)
+
+        if self.trackparent and value is not None:
+            self.sethasparent(attributes.instance_state(value), True)
 
     def fire_remove_event(self, state, value, initiator):
         collection_history = self._modified_event(state)
@@ -86,9 +87,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             ext.remove(state, value, initiator or self)
 
     def _modified_event(self, state):
-        state.modified = True
+        
         if self.key not in state.committed_state:
             state.committed_state[self.key] = CollectionHistory(self, state)
+
+        state.modified_event(self, False, attributes.NEVER_SET, passive=attributes.PASSIVE_NO_INITIALIZE)
 
         # this is a hack to allow the _base.ComparableEntity fixture
         # to work

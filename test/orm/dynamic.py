@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import operator
 from sqlalchemy.orm import dynamic_loader, backref
 from testlib import testing
-from testlib.sa import Table, Column, Integer, String, ForeignKey, desc
+from testlib.sa import Table, Column, Integer, String, ForeignKey, desc, select, func
 from testlib.sa.orm import mapper, relation, create_session, Query
 from testlib.testing import eq_
 from testlib.compat import _function_named
@@ -155,6 +155,33 @@ class DynamicTest(_fixtures.FixtureTest):
 class FlushTest(_fixtures.FixtureTest):
     run_inserts = None
 
+    @testing.resolve_artifact_names
+    def test_events(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session()
+        u1 = User(name='jack')
+        a1 = Address(email_address='foo')
+        sess.add_all([u1, a1])
+        sess.flush()
+        
+        assert testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)) == 0
+        u1 = sess.query(User).get(u1.id)
+        u1.addresses.append(a1)
+        sess.flush()
+
+        assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
+            (1, u1.id, 'foo')
+        ]
+        
+        u1.addresses.remove(a1)
+        sess.flush()
+        assert testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)) == 0
+        
+        
+        
+        
     @testing.resolve_artifact_names
     def test_basic(self):
         mapper(User, users, properties={

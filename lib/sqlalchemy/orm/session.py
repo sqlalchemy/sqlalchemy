@@ -1357,6 +1357,7 @@ class Session(object):
             not self._deleted and not self._new):
             return
 
+        
         dirty = self._dirty_states
         if not dirty and not self._deleted and not self._new:
             self.identity_map.modified = False

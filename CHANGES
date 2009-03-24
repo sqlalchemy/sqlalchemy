@@ -24,6 +24,10 @@ CHANGES
       might say SELECT A.*, B.* FROM A JOIN X, B JOIN Y.  
       Eager loading can also tack its joins onto those 
       multiple FROM clauses.  [ticket:1337]
+
+    - Fixed bug in dynamic_loader() where append/remove events
+      after construction time were not being propagated to the 
+      UOW to pick up on flush(). [ticket:1347]
       
     - Fixed bug where column_prefix wasn't being checked before
       not mapping an attribute that already had class-level 
