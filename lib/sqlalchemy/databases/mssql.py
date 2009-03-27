@@ -827,9 +827,9 @@ def _has_implicit_sequence(column):
         isinstance(column.type, sqltypes.Integer) and \
         not column.foreign_keys and \
         (
-            column.default is None or 
+            column.default is None or
             (
-                isinstance(column.default, schema.Sequence) and 
+                isinstance(column.default, schema.Sequence) and
                 column.default.optional)
             )
 
@@ -859,7 +859,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 self.IINSERT = False
 
             if self.IINSERT:
-                self.cursor.execute("SET IDENTITY_INSERT %s ON" % 
+                self.cursor.execute("SET IDENTITY_INSERT %s ON" %
                     self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
 
     def handle_dbapi_exception(self, e):
@@ -1089,21 +1089,11 @@ class MSSQLDialect(default.DefaultDialect):
         from sqlalchemy.databases import information_schema as ischema
         return ischema.table_names(connection, schema)
 
-    def uppercase_table(self, t):
-        # convert all names to uppercase -- fixes refs to INFORMATION_SCHEMA for case-senstive DBs, and won't matter for case-insensitive
-        t.name = t.name.upper()
-        if t.schema:
-            t.schema = t.schema.upper()
-        for c in t.columns:
-            c.name = c.name.upper()
-        return t
-
-
     def has_table(self, connection, tablename, schema=None):
         import sqlalchemy.databases.information_schema as ischema
 
         current_schema = schema or self.get_default_schema_name(connection)
-        columns = self.uppercase_table(ischema.columns)
+        columns = ischema.columns
         s = sql.select([columns],
                    current_schema
                        and sql.and_(columns.c.table_name==tablename, columns.c.table_schema==current_schema)
@@ -1122,7 +1112,7 @@ class MSSQLDialect(default.DefaultDialect):
         else:
             current_schema = self.get_default_schema_name(connection)
 
-        columns = self.uppercase_table(ischema.columns)
+        columns = ischema.columns
         s = sql.select([columns],
                    current_schema
                        and sql.and_(columns.c.table_name==table.name, columns.c.table_schema==current_schema)
@@ -1205,10 +1195,10 @@ class MSSQLDialect(default.DefaultDialect):
                 pass
 
         # Add constraints
-        RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
-        TC = self.uppercase_table(ischema.constraints)        #information_schema.table_constraints
-        C  = self.uppercase_table(ischema.pg_key_constraints).alias('C') #information_schema.constraint_column_usage: the constrained column
-        R  = self.uppercase_table(ischema.pg_key_constraints).alias('R') #information_schema.constraint_column_usage: the referenced column
+        RR = ischema.ref_constraints    #information_schema.referential_constraints
+        TC = ischema.constraints        #information_schema.table_constraints
+        C  = ischema.key_constraints.alias('C') #information_schema.constraint_column_usage: the constrained column
+        R  = ischema.key_constraints.alias('R') #information_schema.constraint_column_usage: the referenced column
 
         # Primary key constraints
         s = sql.select([C.c.column_name, TC.c.constraint_type], sql.and_(TC.c.constraint_name == C.c.constraint_name,
@@ -1299,7 +1289,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
             if self.dbapi.version_info > (0, 8, 0):
                 r[1]['timeout'] = self.query_timeout
             else:
-                self.dbapi._mssql.set_query_timeout(self.query_timeout) 
+                self.dbapi._mssql.set_query_timeout(self.query_timeout)
         return r
 
     def make_connect_string(self, keys, query):
@@ -1375,10 +1365,10 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             else:
                 connectors.append("TrustedConnection=Yes")
 
-            # if set to 'Yes', the ODBC layer will try to automagically convert 
-            # textual data from your database encoding to your client encoding 
-            # This should obviously be set to 'No' if you query a cp1253 encoded 
-            # database from a latin1 client... 
+            # if set to 'Yes', the ODBC layer will try to automagically convert
+            # textual data from your database encoding to your client encoding
+            # This should obviously be set to 'No' if you query a cp1253 encoded
+            # database from a latin1 client...
             if 'odbc_autotranslate' in keys:
                 connectors.append("AutoTranslate=%s" % keys.pop("odbc_autotranslate"))
 
@@ -1474,7 +1464,7 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         """ MS-SQL puts TOP, it's version of LIMIT here """
         if select._distinct or select._limit:
             s = select._distinct and "DISTINCT " or ""
-            
+
             if select._limit:
                 if not select._offset:
                     s += "TOP %s " % (select._limit,)
@@ -1632,10 +1622,10 @@ class MSSQLSchemaGenerator(compiler.SchemaGenerator):
                 colspec += " NOT NULL"
             else:
                 colspec += " NULL"
-        
+
         if not column.table:
             raise exc.InvalidRequestError("mssql requires Table-bound columns in order to generate DDL")
-            
+
         seq_col = _table_sequence_column(column.table)
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column

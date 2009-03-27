@@ -12,7 +12,12 @@ CHANGES
       otherwise modified events would not be fired correctly.
       Set collection is now compatible with merge(), 
       fixes [ticket:1352].
-      
+
+- mssql
+    - Corrected problem with information schema not working with a
+      binary collation based database. Cleaned up information
+      schema since it is only used by mssql now. [ticket:1343]
+
 0.5.3
 =====
 - orm
