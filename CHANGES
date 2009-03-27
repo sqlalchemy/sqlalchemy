@@ -13,11 +13,17 @@ CHANGES
       Set collection is now compatible with merge(), 
       fixes [ticket:1352].
 
+- sql
+    - Fixed __repr__() and other _get_colspec() methods on 
+      ForeignKey constructed from __clause_element__() style
+      construct (i.e. declarative columns).  [ticket:1353]
+      
 - mssql
     - Corrected problem with information schema not working with a
       binary collation based database. Cleaned up information
       schema since it is only used by mssql now. [ticket:1343]
 
+>>>>>>> .r5862
 0.5.3
 =====
 - orm
