@@ -19,7 +19,7 @@ from sqlalchemy.orm import (
     )
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import _state_has_identity, has_identity
-from sqlalchemy.orm import attributes
+from sqlalchemy.orm import attributes, collections
 
 class DynaLoader(strategies.AbstractRelationLoader):
     def init_class_attribute(self, mapper):
@@ -102,12 +102,19 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if initiator is self:
             return
 
+        self._set_iterable(state, value)
+
+    def _set_iterable(self, state, iterable, adapter=None):
+
         collection_history = self._modified_event(state)
+        new_values = list(iterable)
+        
         if _state_has_identity(state):
             old_collection = list(self.get(state))
         else:
             old_collection = []
-        collection_history.replace(old_collection, value)
+
+        collections.bulk_replace(new_values, DynCollectionAdapter(self, state, old_collection), DynCollectionAdapter(self, state, new_values))
 
     def delete(self, *args, **kwargs):
         raise NotImplementedError()
@@ -135,6 +142,28 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if initiator is not self:
             self.fire_remove_event(state, value, initiator)
 
+class DynCollectionAdapter(object):
+    """the dynamic analogue to orm.collections.CollectionAdapter"""
+    
+    def __init__(self, attr, owner_state, data):
+        self.attr = attr
+        self.state = owner_state
+        self.data = data
+    
+    def __iter__(self):
+        return iter(self.data)
+        
+    def append_with_event(self, item, initiator=None):
+        self.attr.append(self.state, item, initiator)
+
+    def remove_with_event(self, item, initiator=None):
+        self.attr.remove(self.state, item, initiator)
+
+    def append_without_event(self, item):
+        pass
+    
+    def remove_without_event(self, item):
+        pass
         
 class AppenderMixin(object):
     query_class = None
@@ -239,8 +268,4 @@ class CollectionHistory(object):
             self.deleted_items = []
             self.added_items = []
             self.unchanged_items = []
-            
-    def replace(self, olditems, newitems):
-        self.added_items = newitems
-        self.deleted_items = olditems
         

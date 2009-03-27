@@ -3,6 +3,16 @@
 =======
 CHANGES
 =======
+0.5.4
+=====
+- orm
+    - Fixed the "set collection" function on "dynamic" relations
+      to initiate events correctly.  Previously a collection
+      could only be assigned to a pending parent instance,
+      otherwise modified events would not be fired correctly.
+      Set collection is now compatible with merge(), 
+      fixes [ticket:1352].
+      
 0.5.3
 =====
 - orm

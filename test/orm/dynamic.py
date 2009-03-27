@@ -3,7 +3,7 @@ import operator
 from sqlalchemy.orm import dynamic_loader, backref
 from testlib import testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey, desc, select, func
-from testlib.sa.orm import mapper, relation, create_session, Query
+from testlib.sa.orm import mapper, relation, create_session, Query, attributes
 from testlib.testing import eq_
 from testlib.compat import _function_named
 from orm import _base, _fixtures
@@ -152,7 +152,7 @@ class DynamicTest(_fixtures.FixtureTest):
         assert type(q).__name__ == 'MyQuery'
 
 
-class FlushTest(_fixtures.FixtureTest):
+class SessionTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @testing.resolve_artifact_names
@@ -193,9 +193,43 @@ class FlushTest(_fixtures.FixtureTest):
             (a2.id, u1.id, 'bar')
         ]
         
+
+    @testing.resolve_artifact_names
+    def test_merge(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=addresses.c.email_address)
+        })
+        sess = create_session()
+        u1 = User(name='jack')
+        a1 = Address(email_address='a1')
+        a2 = Address(email_address='a2')
+        a3 = Address(email_address='a3')
+        
+        u1.addresses.append(a2)
+        u1.addresses.append(a3)
+        
+        sess.add_all([u1, a1])
+        sess.flush()
+        
+        u1 = User(id=u1.id, name='jack')
+        u1.addresses.append(a1)
+        u1.addresses.append(a3)
+        u1 = sess.merge(u1)
+        assert attributes.get_history(u1, 'addresses') == (
+            [a1], 
+            [a3], 
+            [a2]
+        )
+
+        sess.flush()
+        
+        eq_(
+            list(u1.addresses),
+            [a1, a3]
+        )
         
     @testing.resolve_artifact_names
-    def test_basic(self):
+    def test_flush(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -231,6 +265,31 @@ class FlushTest(_fixtures.FixtureTest):
         assert 'addresses' not in u1.__dict__.keys()
         u1.addresses = [Address(email_address='test')]
         assert 'addresses' in dir(u1)
+    
+    @testing.resolve_artifact_names
+    def test_collection_set(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=addresses.c.email_address)
+        })
+        sess = create_session(autoflush=True, autocommit=False)
+        u1 = User(name='jack')
+        a1 = Address(email_address='a1')
+        a2 = Address(email_address='a2')
+        a3 = Address(email_address='a3')
+        a4 = Address(email_address='a4')
+        
+        sess.add(u1)
+        u1.addresses = [a1, a3]
+        assert list(u1.addresses) == [a1, a3]
+        u1.addresses = [a1, a2, a4]
+        assert list(u1.addresses) == [a1, a2, a4]
+        u1.addresses = [a2, a3]
+        assert list(u1.addresses) == [a2, a3]
+        u1.addresses = []
+        assert list(u1.addresses) == []
+        
+        
+
         
     @testing.resolve_artifact_names
     def test_rollback(self):
@@ -392,7 +451,7 @@ def create_backref_test(autoflush, saveuser):
     test_backref = _function_named(
         test_backref, "test%s%s" % ((autoflush and "_autoflush" or ""),
                                     (saveuser and "_saveuser" or "_savead")))
-    setattr(FlushTest, test_backref.__name__, test_backref)
+    setattr(SessionTest, test_backref.__name__, test_backref)
 
 for autoflush in (False, True):
     for saveuser in (False, True):
