@@ -9,6 +9,7 @@ db_label, db_url, db_opts = None, None, {}
 
 options = None
 file_config = None
+coverage_enabled = False
 
 base_config = """
 [db]
@@ -77,24 +78,50 @@ def _log(option, opt_str, value, parser):
     elif opt_str.endswith('-debug'):
         logging.getLogger(value).setLevel(logging.DEBUG)
 
-def _start_coverage(option, opt_str, value, parser):
+def _start_cumulative_coverage(option, opt_str, value, parser):
+    _start_coverage(option, opt_str, value, parser, erase=False)
+
+def _start_coverage(option, opt_str, value, parser, erase=True):
     import sys, atexit, coverage
     true_out = sys.stdout
-
-    def _iter_covered_files():
-        import sqlalchemy
-        for rec in os.walk(os.path.dirname(sqlalchemy.__file__)):
+    
+    global coverage_enabled
+    coverage_enabled = True
+    
+    def _iter_covered_files(mod, recursive=True):
+        
+        if recursive:
+            ff = os.walk
+        else:
+            ff = os.listdir
+            
+        for rec in ff(os.path.dirname(mod.__file__)):
             for x in rec[2]:
                 if x.endswith('.py'):
                     yield os.path.join(rec[0], x)
+            
     def _stop():
         coverage.stop()
         true_out.write("\nPreparing coverage report...\n")
-        coverage.report(list(_iter_covered_files()),
-                        show_missing=False, ignore_errors=False,
-                        file=true_out)
+
+        from sqlalchemy import sql, orm, engine, \
+                            ext, databases, log
+                        
+        import sqlalchemy
+        
+        for modset in [
+            _iter_covered_files(sqlalchemy, recursive=False),
+            _iter_covered_files(databases),
+            _iter_covered_files(engine),
+            _iter_covered_files(ext),
+            _iter_covered_files(orm),
+        ]:
+            coverage.report(list(modset),
+                            show_missing=False, ignore_errors=False,
+                            file=true_out)
     atexit.register(_stop)
-    coverage.erase()
+    if erase:
+        coverage.erase()
     coverage.start()
 
 def _list_dbs(*args):
@@ -151,6 +178,8 @@ opt("--table-option", action="append", dest="tableopts", default=[],
     help="Add a dialect-specific table option, key=value")
 opt("--coverage", action="callback", callback=_start_coverage,
     help="Dump a full coverage report after running tests")
+opt("--cumulative-coverage", action="callback", callback=_start_cumulative_coverage,
+    help="Like --coverage, but accumlate coverage into the current DB")
 opt("--profile", action="append", dest="profile_targets", default=[],
     help="Enable a named profile target (multiple OK.)")
 opt("--profile-sort", action="store", dest="profile_sort", default=None,

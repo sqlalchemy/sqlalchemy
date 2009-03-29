@@ -131,6 +131,9 @@ statements that are missed with !, by running the coverage.py utility with the
 This will create a new annotated file ./lib/sqlalchemy/sql.py,cover. Pretty
 cool!
 
+BIG COVERAGE TIP !!!  There is an issue where existing .pyc files may
+store the incorrect filepaths, which will break the coverage system.  If
+coverage numbers are coming out as low/zero, try deleting all .pyc files.
 
 TESTING NEW DIALECTS
 --------------------

@@ -11,6 +11,9 @@ def suite():
         'profiling.zoomark_orm',
         )
     alltests = unittest.TestSuite()
+    if testenv.testlib.config.coverage_enabled:
+        return alltests
+        
     for name in modules_to_test:
         mod = __import__(name)
         for token in name.split('.')[1:]:
