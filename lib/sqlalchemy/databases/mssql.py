@@ -242,8 +242,8 @@ Known Issues
 import datetime, decimal, inspect, operator, re, sys, urllib
 
 from sqlalchemy import sql, schema, exc, util
-from sqlalchemy.sql import compiler, expression, operators as sqlops, functions as sql_functions
-from sqlalchemy.sql import compiler, expression, operators as sql_operators, functions as sql_functions
+from sqlalchemy import Table, MetaData, Column, ForeignKey, String, Integer
+from sqlalchemy.sql import select, compiler, expression, operators as sql_operators, functions as sql_functions
 from sqlalchemy.engine import default, base
 from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
@@ -820,6 +820,68 @@ class MSVariant(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "SQL_VARIANT"
 
+ischema = MetaData()
+
+schemata = Table("SCHEMATA", ischema,
+    Column("CATALOG_NAME", String, key="catalog_name"),
+    Column("SCHEMA_NAME", String, key="schema_name"),
+    Column("SCHEMA_OWNER", String, key="schema_owner"),
+    schema="INFORMATION_SCHEMA")
+
+tables = Table("TABLES", ischema,
+    Column("TABLE_CATALOG", String, key="table_catalog"),
+    Column("TABLE_SCHEMA", String, key="table_schema"),
+    Column("TABLE_NAME", String, key="table_name"),
+    Column("TABLE_TYPE", String, key="table_type"),
+    schema="INFORMATION_SCHEMA")
+
+columns = Table("COLUMNS", ischema,
+    Column("TABLE_SCHEMA", String, key="table_schema"),
+    Column("TABLE_NAME", String, key="table_name"),
+    Column("COLUMN_NAME", String, key="column_name"),
+    Column("IS_NULLABLE", Integer, key="is_nullable"),
+    Column("DATA_TYPE", String, key="data_type"),
+    Column("ORDINAL_POSITION", Integer, key="ordinal_position"),
+    Column("CHARACTER_MAXIMUM_LENGTH", Integer, key="character_maximum_length"),
+    Column("NUMERIC_PRECISION", Integer, key="numeric_precision"),
+    Column("NUMERIC_SCALE", Integer, key="numeric_scale"),
+    Column("COLUMN_DEFAULT", Integer, key="column_default"),
+    Column("COLLATION_NAME", String, key="collation_name"),
+    schema="INFORMATION_SCHEMA")
+
+constraints = Table("TABLE_CONSTRAINTS", ischema,
+    Column("TABLE_SCHEMA", String, key="table_schema"),
+    Column("TABLE_NAME", String, key="table_name"),
+    Column("CONSTRAINT_NAME", String, key="constraint_name"),
+    Column("CONSTRAINT_TYPE", String, key="constraint_type"),
+    schema="INFORMATION_SCHEMA")
+
+column_constraints = Table("CONSTRAINT_COLUMN_USAGE", ischema,
+    Column("TABLE_SCHEMA", String, key="table_schema"),
+    Column("TABLE_NAME", String, key="table_name"),
+    Column("COLUMN_NAME", String, key="column_name"),
+    Column("CONSTRAINT_NAME", String, key="constraint_name"),
+    schema="INFORMATION_SCHEMA")
+
+key_constraints = Table("KEY_COLUMN_USAGE", ischema,
+    Column("TABLE_SCHEMA", String, key="table_schema"),
+    Column("TABLE_NAME", String, key="table_name"),
+    Column("COLUMN_NAME", String, key="column_name"),
+    Column("CONSTRAINT_NAME", String, key="constraint_name"),
+    Column("ORDINAL_POSITION", Integer, key="ordinal_position"),
+    schema="INFORMATION_SCHEMA")
+
+ref_constraints = Table("REFERENTIAL_CONSTRAINTS", ischema,
+    Column("CONSTRAINT_CATALOG", String, key="constraint_catalog"),
+    Column("CONSTRAINT_SCHEMA", String, key="constraint_schema"),
+    Column("CONSTRAINT_NAME", String, key="constraint_name"),
+    Column("UNIQUE_CONSTRAINT_CATLOG", String, key="unique_constraint_catalog"),
+    Column("UNIQUE_CONSTRAINT_SCHEMA", String, key="unique_constraint_schema"),
+    Column("UNIQUE_CONSTRAINT_NAME", String, key="unique_constraint_name"),
+    Column("MATCH_OPTION", String, key="match_option"),
+    Column("UPDATE_RULE", String, key="update_rule"),
+    Column("DELETE_RULE", String, key="delete_rule"),
+    schema="INFORMATION_SCHEMA")
 
 def _has_implicit_sequence(column):
     return column.primary_key and  \
@@ -1086,14 +1148,13 @@ class MSSQLDialect(default.DefaultDialect):
         return self.schema_name
 
     def table_names(self, connection, schema):
-        from sqlalchemy.databases import information_schema as ischema
-        return ischema.table_names(connection, schema)
+        s = select([tables.c.table_name], tables.c.table_schema==schema)
+        return [row[0] for row in connection.execute(s)]
+
 
     def has_table(self, connection, tablename, schema=None):
-        import sqlalchemy.databases.information_schema as ischema
 
         current_schema = schema or self.get_default_schema_name(connection)
-        columns = ischema.columns
         s = sql.select([columns],
                    current_schema
                        and sql.and_(columns.c.table_name==tablename, columns.c.table_schema==current_schema)
@@ -1105,14 +1166,12 @@ class MSSQLDialect(default.DefaultDialect):
         return row is not None
 
     def reflecttable(self, connection, table, include_columns):
-        import sqlalchemy.databases.information_schema as ischema
         # Get base columns
         if table.schema is not None:
             current_schema = table.schema
         else:
             current_schema = self.get_default_schema_name(connection)
 
-        columns = ischema.columns
         s = sql.select([columns],
                    current_schema
                        and sql.and_(columns.c.table_name==table.name, columns.c.table_schema==current_schema)
@@ -1195,10 +1254,10 @@ class MSSQLDialect(default.DefaultDialect):
                 pass
 
         # Add constraints
-        RR = ischema.ref_constraints    #information_schema.referential_constraints
-        TC = ischema.constraints        #information_schema.table_constraints
-        C  = ischema.key_constraints.alias('C') #information_schema.constraint_column_usage: the constrained column
-        R  = ischema.key_constraints.alias('R') #information_schema.constraint_column_usage: the referenced column
+        RR = ref_constraints
+        TC = constraints
+        C  = key_constraints.alias('C') #information_schema.constraint_column_usage: the constrained column
+        R  = key_constraints.alias('R') #information_schema.constraint_column_usage: the referenced column
 
         # Primary key constraints
         s = sql.select([C.c.column_name, TC.c.constraint_type], sql.and_(TC.c.constraint_name == C.c.constraint_name,
