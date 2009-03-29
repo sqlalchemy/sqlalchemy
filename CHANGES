@@ -13,6 +13,14 @@ CHANGES
       Set collection is now compatible with merge(), 
       fixes [ticket:1352].
 
+    - Lazy loader will not use get() if the "lazy load"
+      SQL clause matches the clause used by get(), but
+      contains some parameters hardcoded.  Previously
+      the lazy strategy would fail with the get().  Ideally
+      get() would be used with the hardcoded parameters
+      but this would require further development.
+      [ticket:1357]
+
 - sql
     - Fixed __repr__() and other _get_colspec() methods on 
       ForeignKey constructed from __clause_element__() style

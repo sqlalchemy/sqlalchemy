@@ -404,6 +404,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             "myothertable.othername = :othername_2 OR myothertable.otherid = :otherid_1) AND sysdate() = today()",
             checkparams = {'othername_1': 'asdf', 'othername_2':'foo', 'otherid_1': 9, 'myid_1': 12}
         )
+        
 
     def test_distinct(self):
         self.assert_compile(

@@ -2013,7 +2013,7 @@ class _BindParamClause(ColumnElement):
         the same type.
 
         """
-        return isinstance(other, _BindParamClause) and other.type.__class__ == self.type.__class__
+        return isinstance(other, _BindParamClause) and other.type.__class__ == self.type.__class__ and self.value == other.value
 
     def __getstate__(self):
         """execute a deferred value for serialization purposes."""
