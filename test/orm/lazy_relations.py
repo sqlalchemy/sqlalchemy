@@ -174,6 +174,27 @@ class LazyTest(_fixtures.FixtureTest):
         assert [User(id=7, address=Address(id=1))] == l
 
     @testing.resolve_artifact_names
+    def test_many_to_one_binds(self):
+        mapper(Address, addresses, primary_key=[addresses.c.user_id, addresses.c.email_address])
+        
+        mapper(User, users, properties = dict(
+            address = relation(Address, uselist=False,
+                primaryjoin=sa.and_(users.c.id==addresses.c.user_id, addresses.c.email_address=='ed@bettyboop.com')
+            )
+        ))
+        q = create_session().query(User)
+        eq_(
+            [
+                User(id=7, address=None),
+                User(id=8, address=Address(id=3)),
+                User(id=9, address=None),
+                User(id=10, address=None),
+            ], 
+            list(q)
+        )
+        
+
+    @testing.resolve_artifact_names
     def test_double(self):
         """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
 

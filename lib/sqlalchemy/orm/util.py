@@ -547,7 +547,7 @@ def object_mapper(instance):
         raise exc.UnmappedInstanceError(instance)
 
 def class_mapper(class_, compile=True):
-    """Given a class (or an object), return the primary Mapper associated with the key.
+    """Given a class, return the primary Mapper associated with the key.
 
     Raises UnmappedClassError if no mapping is configured.
 
@@ -597,7 +597,7 @@ def _is_mapped_class(cls):
         manager = attributes.manager_of_class(cls)
         return manager and _INSTRUMENTOR in manager.info
     return False
-    
+
 def instance_str(instance):
     """Return a string describing an instance."""
 

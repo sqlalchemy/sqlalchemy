@@ -282,7 +282,7 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             pragma = "PRAGMA "
         qtable = quote(table_name)
-        cursor = connection.execute("%stable_info(%s)" % (pragma, qtable))
+        cursor = _pragma_cursor(connection.execute("%stable_info(%s)" % (pragma, qtable)))
         row = cursor.fetchone()
 
         # consume remaining rows, to work around
@@ -354,7 +354,7 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             pragma = "PRAGMA "
         qtable = quote(table_name)
-        c = connection.execute("%stable_info(%s)" % (pragma, qtable))
+        c = _pragma_cursor(connection.execute("%stable_info(%s)" % (pragma, qtable)))
         found_table = False
         columns = []
         while True:
@@ -409,7 +409,7 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             pragma = "PRAGMA "
         qtable = quote(table_name)
-        c = connection.execute("%sforeign_key_list(%s)" % (pragma, qtable))
+        c = _pragma_cursor(connection.execute("%sforeign_key_list(%s)" % (pragma, qtable)))
         fkeys = []
         fks = {}
         while True:
@@ -449,7 +449,7 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             pragma = "PRAGMA "
         qtable = quote(table_name)
-        c = connection.execute("%sindex_list(%s)" % (pragma, qtable))
+        c = _pragma_cursor(connection.execute("%sindex_list(%s)" % (pragma, qtable)))
         indexes = []
         while True:
             row = c.fetchone()
@@ -474,7 +474,7 @@ class SQLiteDialect(default.DefaultDialect):
         else:
             pragma = "PRAGMA "
         qtable = quote(table_name)
-        c = connection.execute("%sindex_list(%s)" % (pragma, qtable))
+        c = _pragma_cursor(connection.execute("%sindex_list(%s)" % (pragma, qtable)))
         unique_indexes = []
         while True:
             row = c.fetchone()
@@ -484,7 +484,7 @@ class SQLiteDialect(default.DefaultDialect):
                 unique_indexes.append(row[1])
         # loop thru unique indexes for one that includes the primary key
         for idx in unique_indexes:
-            c = connection.execute("%sindex_info(%s)" % (pragma, idx))
+            c = _pragma_cursor(connection.execute("%sindex_info(%s)" % (pragma, idx)))
             cols = []
             while True:
                 row = c.fetchone()
@@ -532,3 +532,11 @@ class SQLiteDialect(default.DefaultDialect):
         # this doesn't do anything ???
         unique_indexes = self.get_unique_indexes(connection, table_name, 
                                     schema, info_cache=info_cache)
+
+
+def _pragma_cursor(cursor):
+    """work around SQLite issue whereby cursor.description is blank when PRAGMA returns no rows."""
+    
+    if cursor.closed:
+        cursor._fetchone_impl = lambda: None
+    return cursor

@@ -842,8 +842,13 @@ class ForeignKey(SchemaItem):
             return schema + "." + self.column.table.name + "." + self.column.key
         elif isinstance(self._colspec, basestring):
             return self._colspec
+        elif hasattr(self._colspec, '__clause_element__'):
+            _column = self._colspec.__clause_element__()
         else:
-            return "%s.%s" % (self._colspec.table.fullname, self._colspec.key)
+            _column = self._colspec
+            
+        return "%s.%s" % (_column.table.fullname, _column.key)
+
     target_fullname = property(_get_colspec)
 
     def references(self, table):

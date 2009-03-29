@@ -525,7 +525,16 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         l = list(session.query(User).instances(s.execute(emailad = 'jack@bean.com')))
         eq_([User(id=7)], l)
 
-
+    def test_scalar_subquery(self):
+        session = create_session()
+        
+        q = session.query(User.id).filter(User.id==7).subquery()
+        
+        q = session.query(User).filter(User.id==q)
+        
+        eq_(User(id=7), q.one())
+        
+        
     def test_in(self):
         session = create_session()
         s = session.query(User.id).join(User.addresses).group_by(User.id).having(func.count(Address.id) > 2)
@@ -1742,7 +1751,7 @@ class MixedEntitiesTest(QueryTest):
         q2 = q.group_by([User.name.like('%j%')]).order_by(desc(User.name.like('%j%'))).values(User.name.like('%j%'), func.count(User.name.like('%j%')))
         self.assertEquals(list(q2), [(True, 1), (False, 3)])
 
-    def test_scalar_subquery(self):
+    def test_correlated_subquery(self):
         """test that a subquery constructed from ORM attributes doesn't leak out 
         those entities to the outermost query.
         

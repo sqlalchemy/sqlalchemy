@@ -235,6 +235,8 @@ from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
 
+import information_schema as ischema
+
 MS_2008_VERSION = (10,)
 #MS_2005_VERSION = ??
 #MS_2000_VERSION = ??
@@ -1110,22 +1112,9 @@ class MSDialect(default.DefaultDialect):
         return self.schema_name
 
     def table_names(self, connection, schema):
-        from sqlalchemy.dialects import information_schema as ischema
         return ischema.table_names(connection, schema)
 
-    def uppercase_table(self, t):
-        # convert all names to uppercase -- fixes refs to INFORMATION_SCHEMA for case-senstive DBs, and won't matter for case-insensitive
-        t.name = t.name.upper()
-        if t.schema:
-            t.schema = t.schema.upper()
-        for c in t.columns:
-            c.name = c.name.upper()
-        return t
-
-
     def has_table(self, connection, tablename, schema=None):
-        import sqlalchemy.dialects.information_schema as ischema
-
         current_schema = schema or self.get_default_schema_name(connection)
         columns = self.uppercase_table(ischema.columns)
         s = sql.select([columns],
@@ -1140,7 +1129,6 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_schema_names(self, connection, info_cache=None):
-        import sqlalchemy.dialects.information_schema as ischema
         s = sql.select([self.uppercase_table(ischema.schemata).c.schema_name],
             order_by=[ischema.schemata.c.schema_name]
         )
@@ -1149,7 +1137,6 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_names(self, connection, schemaname, info_cache=None):
-        import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
         tables = self.uppercase_table(ischema.tables)
         s = sql.select([tables.c.table_name],
@@ -1164,7 +1151,6 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_view_names(self, connection, schemaname=None, info_cache=None):
-        import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
         tables = self.uppercase_table(ischema.tables)
         s = sql.select([tables.c.table_name],
@@ -1197,7 +1183,6 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     def get_view_definition(self, connection, viewname, schemaname=None,
                             info_cache=None):
-        import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
         views = self.uppercase_table(ischema.views)
         s = sql.select([views.c.view_definition],
@@ -1216,7 +1201,6 @@ class MSDialect(default.DefaultDialect):
                                                             info_cache=None):
         # Get base columns
         current_schema = schemaname or self.get_default_schema_name(connection)
-        import sqlalchemy.dialects.information_schema as ischema
         columns = self.uppercase_table(ischema.columns)
         s = sql.select([columns],
                    current_schema
@@ -1275,7 +1259,6 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     def get_primary_keys(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
-        import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
         pkeys = []
         # Add constraints
@@ -1299,7 +1282,6 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     def get_foreign_keys(self, connection, tablename, schemaname=None,
                                                             info_cache=None):
-        import sqlalchemy.dialects.information_schema as ischema
         current_schema = schemaname or self.get_default_schema_name(connection)
         # Add constraints
         RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
@@ -1350,7 +1332,6 @@ class MSDialect(default.DefaultDialect):
         return fkeys
 
     def reflecttable(self, connection, table, include_columns):
-        import sqlalchemy.dialects.information_schema as ischema
         # Get base columns
         if table.schema is not None:
             current_schema = table.schema

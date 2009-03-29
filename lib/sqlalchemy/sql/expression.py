@@ -1548,7 +1548,7 @@ class _CompareMixin(ColumnOperators):
             return other.__clause_element__()
         elif not isinstance(other, ClauseElement):
             return self._bind_param(other)
-        elif isinstance(other, _SelectBaseMixin):
+        elif isinstance(other, (_SelectBaseMixin, Alias)):
             return other.as_scalar()
         else:
             return other
@@ -1790,7 +1790,21 @@ class FromClause(Selectable):
         return Join(self, right, onclause, True)
 
     def alias(self, name=None):
-        """return an alias of this ``FromClause`` against another ``FromClause``."""
+        """return an alias of this ``FromClause``.
+        
+        For table objects, this has the effect of the table being rendered
+        as ``tablename AS aliasname`` in a SELECT statement.  
+        For select objects, the effect is that of creating a named
+        subquery, i.e. ``(select ...) AS aliasname``.
+        The ``alias()`` method is the general way to create
+        a "subquery" out of an existing SELECT.
+        
+        The ``name`` parameter is optional, and if left blank an 
+        "anonymous" name will be generated at compile time, guaranteed
+        to be unique against other anonymous constructs used in the
+        same statement.
+        
+        """
 
         return Alias(self, name)
 
@@ -2020,7 +2034,7 @@ class _BindParamClause(ColumnElement):
         the same type.
 
         """
-        return isinstance(other, _BindParamClause) and other.type.__class__ == self.type.__class__
+        return isinstance(other, _BindParamClause) and other.type.__class__ == self.type.__class__ and self.value == other.value
 
     def __getstate__(self):
         """execute a deferred value for serialization purposes."""
@@ -2625,6 +2639,12 @@ class Alias(FromClause):
         return self.name.encode('ascii', 'backslashreplace')
         # end Py2K
 
+    def as_scalar(self):
+        try:
+            return self.element.as_scalar()
+        except AttributeError:
+            raise AttributeError("Element %s does not support 'as_scalar()'" % self.element)
+        
     def is_derived_from(self, fromclause):
         if fromclause in self._cloned_set:
             return True

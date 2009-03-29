@@ -45,7 +45,7 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
 
     {sql}>>> metadata.create_all(engine) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     PRAGMA table_info("users")
-    {}
+    ()
     CREATE TABLE users (
         id INTEGER NOT NULL,
         name VARCHAR,
@@ -53,7 +53,7 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
         password VARCHAR,
         PRIMARY KEY (id)
     )
-    {}
+    ()
     COMMIT
 
 Users familiar with the syntax of CREATE TABLE may notice that the VARCHAR columns were generated without a length; on SQLite, this is a valid datatype, but on most databases it's not allowed.  So if running this tutorial on a database such as Postgres or MySQL, and you wish to use SQLAlchemy to generate the tables, a "length" may be provided to the ``String`` type as below::
@@ -276,7 +276,7 @@ Querying the session, we can see that they're flushed into the current transacti
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query(User).filter(User.name.in_(['Edwardo', 'fakeuser'])).all()
+    {sql}>>> session.query(User).filter(User.name.in_(['Edwardo', 'fakeuser'])).all() #doctest: +NORMALIZE_WHITESPACE
     UPDATE users SET name=? WHERE users.id = ?
     ['Edwardo', 1]
     INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
@@ -295,7 +295,7 @@ Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and ``fake_u
     ROLLBACK
     {stop}
 
-    {sql}>>> ed_user.name
+    {sql}>>> ed_user.name #doctest: +NORMALIZE_WHITESPACE
     BEGIN
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
@@ -309,7 +309,7 @@ issuing a SELECT illustrates the changes made to the database:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query(User).filter(User.name.in_(['ed', 'fakeuser'])).all()
+    {sql}>>> session.query(User).filter(User.name.in_(['ed', 'fakeuser'])).all() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name IN (?, ?)
@@ -352,7 +352,7 @@ The tuples returned by ``Query`` are *named* tuples, and can be treated much lik
 
 .. sourcecode:: python+sql
 
-    {sql}>>> for row in session.query(User, User.name).all():
+    {sql}>>> for row in session.query(User, User.name).all(): #doctest: +NORMALIZE_WHITESPACE
     ...    print row.User, row.name
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
@@ -368,7 +368,7 @@ You can control the names using the ``label()`` construct for scalar attributes 
 
     >>> from sqlalchemy.orm import aliased
     >>> user_alias = aliased(User, name='user_alias')
-    {sql}>>> for row in session.query(user_alias, user_alias.name.label('name_label')).all():
+    {sql}>>> for row in session.query(user_alias, user_alias.name.label('name_label')).all(): #doctest: +NORMALIZE_WHITESPACE
     ...    print row.user_alias, row.name_label
     SELECT users_1.id AS users_1_id, users_1.name AS users_1_name, users_1.fullname AS users_1_fullname, users_1.password AS users_1_password, users_1.name AS name_label
     FROM users AS users_1
@@ -478,7 +478,7 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 .. sourcecode:: python+sql
 
     >>> query = session.query(User).filter(User.name.like('%ed')).order_by(User.id)
-    {sql}>>> query.all()
+    {sql}>>> query.all() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name LIKE ? ORDER BY users.id
@@ -489,7 +489,7 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 
 .. sourcecode:: python+sql
 
-    {sql}>>> query.first()
+    {sql}>>> query.first() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name LIKE ? ORDER BY users.id
@@ -501,7 +501,7 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 
 .. sourcecode:: python+sql
 
-    {sql}>>> try:
+    {sql}>>> try: #doctest: +NORMALIZE_WHITESPACE
     ...     user = query.one()
     ... except Exception, e:
     ...     print e
@@ -514,7 +514,7 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 
 .. sourcecode:: python+sql
 
-    {sql}>>> try:
+    {sql}>>> try: #doctest: +NORMALIZE_WHITESPACE
     ...     user = query.filter(User.id == 99).one()
     ... except Exception, e:
     ...     print e
@@ -532,7 +532,7 @@ Literal strings can be used flexibly with ``Query``.  Most methods accept string
 
 .. sourcecode:: python+sql
 
-    {sql}>>> for user in session.query(User).filter("id<224").order_by("id").all():
+    {sql}>>> for user in session.query(User).filter("id<224").order_by("id").all(): #doctest: +NORMALIZE_WHITESPACE
     ...     print user.name
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
@@ -616,9 +616,9 @@ We'll need to create the ``addresses`` table in the database, so we will issue a
 
     {sql}>>> metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
     PRAGMA table_info("users")
-    {}
+    ()
     PRAGMA table_info("addresses")
-    {}
+    ()
     CREATE TABLE addresses (
         id INTEGER NOT NULL,
         email_address VARCHAR NOT NULL,
@@ -626,7 +626,7 @@ We'll need to create the ``addresses`` table in the database, so we will issue a
         PRIMARY KEY (id),
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    {}
+    ()
     COMMIT
 
 Working with Related Objects
@@ -674,7 +674,7 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
 
 .. sourcecode:: python+sql
 
-    {sql}>>> jack = session.query(User).filter_by(name='jack').one()
+    {sql}>>> jack = session.query(User).filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
     BEGIN
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
@@ -689,7 +689,7 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> jack.addresses
+    {sql}>>> jack.addresses #doctest: +NORMALIZE_WHITESPACE
     SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id ORDER BY addresses.id
@@ -748,7 +748,7 @@ Or we can make a real JOIN construct; one way to do so is to use the ORM ``join(
 
     >>> from sqlalchemy.orm import join
     {sql}>>> session.query(User).select_from(join(User, Address)).\
-    ...         filter(Address.email_address=='jack@google.com').all()
+    ...         filter(Address.email_address=='jack@google.com').all() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE addresses.email_address = ?
@@ -768,7 +768,7 @@ The functionality of ``join()`` is also available generatively from ``Query`` it
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).join(User.addresses).\
-    ...     filter(Address.email_address=='jack@google.com').all()
+    ...     filter(Address.email_address=='jack@google.com').all() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE addresses.email_address = ?
@@ -848,6 +848,26 @@ Once we have our statement, it behaves like a ``Table`` construct, such as the o
     <User('mary','Mary Contrary', 'xxg527')> None
     <User('fred','Fred Flinstone', 'blah')> None
     <User('jack','Jack Bean', 'gjffdd')> 2
+
+Selecting Entities from Subqueries
+----------------------------------
+
+Above, we just selected a result that included a column from a subquery.  What if we wanted our subquery to map to an entity ?   For this we use ``aliased()`` to associate an "alias" of a mapped class to a subquery:
+
+.. sourcecode:: python+sql
+
+    {sql}>>> stmt = session.query(Address).filter(Address.email_address != 'j25@yahoo.com').subquery()
+    >>> adalias = aliased(Address, stmt)
+    >>> for user, address in session.query(User, adalias).join((adalias, User.addresses)): # doctest: +NORMALIZE_WHITESPACE
+    ...     print user, address
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
+    users.password AS users_password, anon_1.id AS anon_1_id, 
+    anon_1.email_address AS anon_1_email_address, anon_1.user_id AS anon_1_user_id 
+    FROM users JOIN (SELECT addresses.id AS id, addresses.email_address AS email_address, addresses.user_id AS user_id 
+    FROM addresses 
+    WHERE addresses.email_address != ?) AS anon_1 ON users.id = anon_1.user_id
+    ['j25@yahoo.com']
+    {stop}<User('jack','Jack Bean', 'gjffdd')> <Address('jack@google.com')>
 
 Using EXISTS
 ------------
@@ -1025,7 +1045,7 @@ Now when we load Jack (below using ``get()``, which loads by primary key), remov
     {stop}
 
     # remove one Address (lazy load fires off)
-    {sql}>>> del jack.addresses[1]
+    {sql}>>> del jack.addresses[1] #doctest: +NORMALIZE_WHITESPACE
     SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id
@@ -1133,15 +1153,15 @@ Create new tables:
 
     {sql}>>> metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
     PRAGMA table_info("users")
-    {}
+    ()
     PRAGMA table_info("addresses")
-    {}
+    ()
     PRAGMA table_info("posts")
-    {}
+    ()
     PRAGMA table_info("keywords")
-    {}
+    ()
     PRAGMA table_info("post_keywords")
-    {}
+    ()
     CREATE TABLE posts (
         id INTEGER NOT NULL,
         user_id INTEGER,
@@ -1150,7 +1170,7 @@ Create new tables:
         PRIMARY KEY (id),
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    {}
+    ()
     COMMIT
     CREATE TABLE keywords (
         id INTEGER NOT NULL,
@@ -1158,7 +1178,7 @@ Create new tables:
         PRIMARY KEY (id),
          UNIQUE (keyword)
     )
-    {}
+    ()
     COMMIT
     CREATE TABLE post_keywords (
         post_id INTEGER,
@@ -1166,14 +1186,14 @@ Create new tables:
          FOREIGN KEY(post_id) REFERENCES posts (id),
          FOREIGN KEY(keyword_id) REFERENCES keywords (id)
     )
-    {}
+    ()
     COMMIT
 
 Usage is not too different from what we've been doing.  Let's give Wendy some blog posts:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> wendy = session.query(User).filter_by(name='wendy').one()
+    {sql}>>> wendy = session.query(User).filter_by(name='wendy').one() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name = ?
@@ -1194,19 +1214,19 @@ We can now look up all blog posts with the keyword 'firstpost'.   We'll use the 
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query(BlogPost).filter(BlogPost.keywords.any(keyword='firstpost')).all()
-    INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
-    [2, "Wendy's Blog Post", 'This is a test']
+    {sql}>>> session.query(BlogPost).filter(BlogPost.keywords.any(keyword='firstpost')).all() #doctest: +NORMALIZE_WHITESPACE
     INSERT INTO keywords (keyword) VALUES (?)
     ['wendy']
     INSERT INTO keywords (keyword) VALUES (?)
     ['firstpost']
+    INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
+    [2, "Wendy's Blog Post", 'This is a test']
     INSERT INTO post_keywords (post_id, keyword_id) VALUES (?, ?)
-    [[1, 1], [1, 2]]
-    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
-    FROM posts
-    WHERE EXISTS (SELECT 1
-    FROM post_keywords, keywords
+    [[1, 2], [1, 1]]
+    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
+    FROM posts 
+    WHERE EXISTS (SELECT 1 
+    FROM post_keywords, keywords 
     WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)
     ['firstpost']
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
@@ -1216,7 +1236,7 @@ If we want to look up just Wendy's posts, we can tell the query to narrow down t
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(BlogPost).filter(BlogPost.author==wendy).\
-    ... filter(BlogPost.keywords.any(keyword='firstpost')).all()
+    ... filter(BlogPost.keywords.any(keyword='firstpost')).all() #doctest: +NORMALIZE_WHITESPACE
     SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
     FROM posts
     WHERE ? = posts.user_id AND (EXISTS (SELECT 1
@@ -1229,7 +1249,7 @@ Or we can use Wendy's own ``posts`` relation, which is a "dynamic" relation, to 
 
 .. sourcecode:: python+sql
 
-    {sql}>>> wendy.posts.filter(BlogPost.keywords.any(keyword='firstpost')).all()
+    {sql}>>> wendy.posts.filter(BlogPost.keywords.any(keyword='firstpost')).all() #doctest: +NORMALIZE_WHITESPACE
     SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
     FROM posts
     WHERE ? = posts.user_id AND (EXISTS (SELECT 1

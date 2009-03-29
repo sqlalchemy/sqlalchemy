@@ -3,6 +3,34 @@
 =======
 CHANGES
 =======
+0.5.4
+=====
+- orm
+    - Fixed the "set collection" function on "dynamic" relations
+      to initiate events correctly.  Previously a collection
+      could only be assigned to a pending parent instance,
+      otherwise modified events would not be fired correctly.
+      Set collection is now compatible with merge(), 
+      fixes [ticket:1352].
+
+    - Lazy loader will not use get() if the "lazy load"
+      SQL clause matches the clause used by get(), but
+      contains some parameters hardcoded.  Previously
+      the lazy strategy would fail with the get().  Ideally
+      get() would be used with the hardcoded parameters
+      but this would require further development.
+      [ticket:1357]
+
+- sql
+    - Fixed __repr__() and other _get_colspec() methods on 
+      ForeignKey constructed from __clause_element__() style
+      construct (i.e. declarative columns).  [ticket:1353]
+      
+- mssql
+    - Corrected problem with information schema not working with a
+      binary collation based database. Cleaned up information
+      schema since it is only used by mssql now. [ticket:1343]
+
 0.5.3
 =====
 - orm
@@ -24,6 +52,10 @@ CHANGES
       might say SELECT A.*, B.* FROM A JOIN X, B JOIN Y.  
       Eager loading can also tack its joins onto those 
       multiple FROM clauses.  [ticket:1337]
+
+    - Fixed bug in dynamic_loader() where append/remove events
+      after construction time were not being propagated to the 
+      UOW to pick up on flush(). [ticket:1347]
       
     - Fixed bug where column_prefix wasn't being checked before
       not mapping an attribute that already had class-level 
@@ -93,6 +125,11 @@ CHANGES
        with_polymorphic(), or using from_self().
         
 - sql
+    - An alias() of a select() will convert to a "scalar subquery"
+      when used in an unambiguously scalar context, i.e. it's used 
+      in a comparison operation.  This applies to
+      the ORM when using query.subquery() as well.
+      
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used
       in an ORM column_property()).  [ticket:1302]
@@ -112,6 +149,13 @@ CHANGES
       or dialects.   There is a small performance penalty
       which will be resolved in 0.6.  [ticket:1299]
 
+- sqlite
+    - Fixed SQLite reflection methods so that non-present
+      cursor.description, which triggers an auto-cursor
+      close, will be detected so that no results doesn't
+      fail on recent versions of pysqlite which raise 
+      an error when fetchone() called with no rows present.
+      
 - postgres
     - Index reflection won't fail when an index with 
       multiple expressions is encountered.
