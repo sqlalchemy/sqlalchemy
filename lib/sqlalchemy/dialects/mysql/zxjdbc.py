@@ -1,26 +1,25 @@
 from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext
-from sqlalchemy.connectors.pyodbc import PyODBCConnector
-from sqlalchemy.engine import base as engine_base
+from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy import util
 import re
 
-class MySQL_pyodbcExecutionContext(MySQLExecutionContext):
+class MySQL_jdbcExecutionContext(MySQLExecutionContext):
+    def _real_lastrowid(self, cursor):
+        return cursor.lastrowid
+
     def _lastrowid(self, cursor):
         cursor.execute("SELECT LAST_INSERT_ID()")
         return cursor.fetchone()[0]
 
-class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
-    supports_unicode_statements = False
-    execution_ctx_cls = MySQL_pyodbcExecutionContext
+class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
+    execution_ctx_cls = MySQL_jdbcExecutionContext
 
-    pyodbc_driver_name = "MySQL"
+    supports_sane_rowcount = False
+    supports_sane_multi_rowcount = False
+
+    jdbc_db_name = 'mysql'
+    jdbc_driver_name = "org.gjt.mm.mysql.Driver"
     
-    def __init__(self, **kw):
-        # deal with http://code.google.com/p/pyodbc/issues/detail?id=25
-        kw.setdefault('convert_unicode', True)
-        MySQLDialect.__init__(self, **kw)
-        PyODBCConnector.__init__(self, **kw)
-
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
 
@@ -38,13 +37,31 @@ class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
 
         util.warn("Could not detect the connection character set.  Assuming latin1.")
         return 'latin1'
+
+    def _driver_kwargs(self):
+        """return kw arg dict to be sent to connect()."""
+        
+        return {'CHARSET':self.encoding}
     
     def _extract_error_code(self, exception):
-        m = re.compile(r"\((\d+)\)").search(str(exception.orig.args))
+        # e.g.: DBAPIError: (Error) Table 'test.u2' doesn't exist [SQLCode: 1146], [SQLState: 42S02] 'DESCRIBE `u2`' ()
+        
+        m = re.compile(r"\[SQLCode\: (\d+)\]").search(str(exception.orig.args))
         c = m.group(1)
         if c:
             return int(c)
         else:
             return None
 
-dialect = MySQL_pyodbc
+    def _get_server_version_info(self,connection):
+        dbapi_con = connection.connection
+        version = []
+        r = re.compile('[.\-]')
+        for n in r.split(dbapi_con.dbversion):
+            try:
+                version.append(int(n))
+            except ValueError:
+                version.append(n)
+        return tuple(version)
+
+dialect = MySQL_jdbc

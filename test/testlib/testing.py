@@ -288,6 +288,10 @@ def _server_version(bind=None):
 
     if bind is None:
         bind = config.db
+    
+    # force metadata to be retrieved
+    bind.connect()
+    
     return getattr(bind.dialect, 'server_version_info', ())
 
 def skip_if(predicate, reason=None):

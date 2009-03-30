@@ -17,7 +17,7 @@ __all__ = ['BufferedColumnResultProxy', 'BufferedColumnRow', 'BufferedRowResultP
         'Connection', 'DefaultRunner', 'Dialect', 'Engine', 'ExecutionContext', 'NestedTransaction', 'ResultProxy', 
         'RootTransaction', 'RowProxy', 'SchemaIterator', 'StringIO', 'Transaction', 'TwoPhaseTransaction', 'connection_memoize']
 
-import inspect, StringIO
+import inspect, StringIO, sys
 from sqlalchemy import exc, schema, util, types, log
 from sqlalchemy.sql import expression
 
@@ -1046,7 +1046,7 @@ class Connection(Connectable):
         
     def _handle_dbapi_exception(self, e, statement, parameters, cursor, context):
         if getattr(self, '_reentrant_error', False):
-            raise exc.DBAPIError.instance(None, None, e)
+            raise exc.DBAPIError.instance_cls(e), (None, None, e), sys.exc_info()[2]
         self._reentrant_error = True
         try:
             if not isinstance(e, self.dialect.dbapi.Error):
@@ -1065,7 +1065,7 @@ class Connection(Connectable):
                 self._autorollback()
                 if self.__close_with_result:
                     self.close()
-            raise exc.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect)
+            raise exc.DBAPIError.instance_cls(e), (statement, parameters, e, is_disconnect), sys.exc_info()[2]
         finally:
             del self._reentrant_error
 
@@ -1581,7 +1581,7 @@ class ResultProxy(object):
             self._rowcount = self.context.get_rowcount()
             self.close()
             return
-            
+                
         self._rowcount = None
         self._props = util.populate_column_dict(None)
         self._props.creator = self.__key_fallback()

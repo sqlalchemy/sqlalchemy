@@ -481,7 +481,7 @@ class PGDialect(default.DefaultDialect):
 
     @base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
-        return connection.scalar("select current_schema()", None)
+        return connection.scalar("select current_schema()")
 
     def has_table(self, connection, table_name, schema=None):
         # seems like case gets folded in pg_class...

@@ -72,8 +72,11 @@ class QueryTest(TestBase):
             if result.lastrow_has_defaults():
                 criterion = and_(*[col==id for col, id in zip(table.primary_key, result.last_inserted_ids())])
                 row = table.select(criterion).execute().fetchone()
-                for c in table.c:
-                    ret[c.key] = row[c]
+                try:
+                    for c in table.c:
+                        ret[c.key] = row[c]
+                finally:
+                    row.close()
             return ret
 
         for supported, table, values, assertvalues in [
@@ -524,30 +527,46 @@ class QueryTest(TestBase):
             users.select().alias(users.name),
         ):
             row = s.select(use_labels=True).execute().fetchone()
-            assert row[s.c.user_id] == 7
-            assert row[s.c.user_name] == 'ed'
+            try:
+                assert row[s.c.user_id] == 7
+                assert row[s.c.user_name] == 'ed'
+            finally:
+                row.close()
 
     def test_keys(self):
         users.insert().execute(user_id=1, user_name='foo')
         r = users.select().execute().fetchone()
-        self.assertEqual([x.lower() for x in r.keys()], ['user_id', 'user_name'])
+        try:
+            self.assertEqual([x.lower() for x in r.keys()], ['user_id', 'user_name'])
+        finally:
+            r.close()
 
     def test_items(self):
         users.insert().execute(user_id=1, user_name='foo')
         r = users.select().execute().fetchone()
-        self.assertEqual([(x[0].lower(), x[1]) for x in r.items()], [('user_id', 1), ('user_name', 'foo')])
+        try:
+            self.assertEqual([(x[0].lower(), x[1]) for x in r.items()], [('user_id', 1), ('user_name', 'foo')])
+        finally:
+            r.close()
 
     def test_len(self):
         users.insert().execute(user_id=1, user_name='foo')
-        r = users.select().execute().fetchone()
-        self.assertEqual(len(r), 2)
-        r.close()
+        try:
+            r = users.select().execute().fetchone()
+            self.assertEqual(len(r), 2)
+        finally:
+            r.close()
+            
         r = testing.db.execute('select user_name, user_id from query_users').fetchone()
-        self.assertEqual(len(r), 2)
-        r.close()
-        r = testing.db.execute('select user_name from query_users').fetchone()
-        self.assertEqual(len(r), 1)
-        r.close()
+        try:
+            self.assertEqual(len(r), 2)
+        finally:
+            r.close()
+        try:
+            r = testing.db.execute('select user_name from query_users').fetchone()
+            self.assertEqual(len(r), 1)
+        finally:
+            r.close()
 
     def test_cant_execute_join(self):
         try:

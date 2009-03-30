@@ -77,7 +77,8 @@ class DefaultEngineStrategy(EngineStrategy):
                 try:
                     return dbapi.connect(*cargs, **cparams)
                 except Exception, e:
-                    raise exc.DBAPIError.instance(None, None, e)
+                    import sys
+                    raise exc.DBAPIError.instance_cls(e), (None, None, e), sys.exc_info()[2]
             creator = kwargs.pop('creator', connect)
 
             poolclass = (kwargs.pop('poolclass', None) or

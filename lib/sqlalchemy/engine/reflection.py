@@ -65,10 +65,10 @@ class Inspector(object):
         if hasattr(engine.dialect, 'inspector'):
             return engine.dialect.inspector(engine)
         return Inspector(engine)
-
+    
+    @property
     def default_schema_name(self):
         return self.dialect.get_default_schema_name(self.conn)
-    default_schema_name = property(default_schema_name)
 
     def get_schema_names(self):
         """Return all schema names.

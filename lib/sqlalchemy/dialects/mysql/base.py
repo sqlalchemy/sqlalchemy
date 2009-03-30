@@ -1689,7 +1689,10 @@ class MySQLDialect(default.DefaultDialect):
     supports_alter = True
     # identifiers are 64, however aliases can be 255...
     max_identifier_length = 255
+    
     supports_sane_rowcount = True
+    supports_sane_multi_rowcount = False
+    
     default_paramstyle = 'format'
     colspecs = colspecs
     
@@ -1700,11 +1703,6 @@ class MySQLDialect(default.DefaultDialect):
     
     def __init__(self, use_ansiquotes=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
-
-    def do_executemany(self, cursor, statement, parameters, context=None):
-        rowcount = cursor.executemany(statement, parameters)
-        if context is not None:
-            context._rowcount = rowcount
 
     def do_commit(self, connection):
         """Execute a COMMIT."""
@@ -1848,6 +1846,7 @@ class MySQLDialect(default.DefaultDialect):
         charset = self._connection_charset
         rp = connection.execute("SHOW FULL TABLES FROM %s" %
                 self.identifier_preparer.quote_identifier(schema))
+        
         return [row[0] for row in self._compat_fetchall(rp, charset=charset)\
                                                     if row[1] == 'BASE TABLE']
 
@@ -1973,7 +1972,7 @@ class MySQLDialect(default.DefaultDialect):
         except AttributeError:
             preparer = self.identifier_preparer
             if (self.server_version_info < (4, 1) and
-                self._server_use_ansiquotes):
+                self._server_ansiquotes):
                 # ANSI_QUOTES doesn't affect SHOW CREATE TABLE on < 4.1
                 preparer = MySQLIdentifierPreparer(self)
             self.parser = parser = MySQLTableDefinitionParser(self, preparer)

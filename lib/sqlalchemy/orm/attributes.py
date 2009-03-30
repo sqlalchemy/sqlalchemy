@@ -139,10 +139,11 @@ class QueryableAttribute(interfaces.PropComparator):
     def __str__(self):
         return repr(self.parententity) + "." + self.property.key
 
-    @property
-    def property(self):
-        return self.comparator.property
-
+#    @property
+#    def property(self):
+#        return self.comparator.property
+    
+QueryableAttribute.property = property(lambda self:self.comparator.property)
 
 class InstrumentedAttribute(QueryableAttribute):
     """Public-facing descriptor, placed in the mapped class dictionary."""
@@ -833,6 +834,7 @@ class InstanceState(object):
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
+        
         self.obj = weakref.ref(obj, self._cleanup)
         self.dict = obj.__dict__
         self.modified = False
@@ -844,11 +846,17 @@ class InstanceState(object):
         
     def detach(self):
         if self.session_id:
-            del self.session_id
+            try:
+                del self.session_id
+            except AttributeError:
+                pass
 
     def dispose(self):
         if self.session_id:
-            del self.session_id
+            try:
+                del self.session_id
+            except AttributeError:
+                pass
         del self.obj
         del self.dict
     

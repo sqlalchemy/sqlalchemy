@@ -190,7 +190,7 @@ class GetTest(QueryTest):
         assert u.addresses[0].email_address == 'jack@bean.com'
         assert u.orders[1].items[2].description == 'item 5'
 
-    @testing.fails_on_everything_except('sqlite', '+pyodbc')
+    @testing.fails_on_everything_except('sqlite', '+pyodbc', '+zxjdbc')
     def test_query_str(self):
         s = create_session()
         q = s.query(User).filter(User.id==1)
@@ -1748,8 +1748,8 @@ class MixedEntitiesTest(QueryTest):
         sess = create_session()
 
         q = sess.query(User)
-        q2 = q.group_by([User.name.like('%j%')]).order_by(desc(User.name.like('%j%'))).values(User.name.like('%j%'), func.count(User.name.like('%j%')))
-        self.assertEquals(list(q2), [(True, 1), (False, 3)])
+        q2 = q.order_by(desc(User.name.like('%j%'))).values(User.name.like('%j%'))
+        self.assertEquals(list(q2), [(True,), (False,), (False,), (False,)])
 
     def test_correlated_subquery(self):
         """test that a subquery constructed from ORM attributes doesn't leak out 

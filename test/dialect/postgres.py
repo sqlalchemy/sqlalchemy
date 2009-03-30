@@ -340,6 +340,15 @@ class InsertTest(TestBase, AssertsExecutionResults):
 
     def _assert_data_noautoincrement(self, table):
         table.insert().execute({'id':30, 'data':'d1'})
+        
+        if testing.db.driver == 'pg8000':
+            exception_cls = ProgrammingError
+        else:
+            exception_cls = IntegrityError
+        
+        self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'})
+        self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'}, {'data':'d3'})
+
         try:
             table.insert().execute({'data':'d2'})
             assert False
@@ -367,16 +376,9 @@ class InsertTest(TestBase, AssertsExecutionResults):
         m2 = MetaData(testing.db)
         table = Table(table.name, m2, autoload=True)
         table.insert().execute({'id':30, 'data':'d1'})
-        try:
-            table.insert().execute({'data':'d2'})
-            assert False
-        except exc.IntegrityError, e:
-            assert "violates not-null constraint" in str(e)
-        try:
-            table.insert().execute({'data':'d2'}, {'data':'d3'})
-            assert False
-        except exc.IntegrityError, e:
-            assert "violates not-null constraint" in str(e)
+
+        self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'})
+        self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'}, {'data':'d3'})
 
         table.insert().execute({'id':31, 'data':'d2'}, {'id':32, 'data':'d3'})
         table.insert(inline=True).execute({'id':33, 'data':'d4'})
@@ -858,7 +860,7 @@ class TimeStampTest(TestBase, AssertsExecutionResults):
         self.assertEqual(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 
 class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgres+psycopg2'
 
     def setUpAll(self):
         global ss_engine

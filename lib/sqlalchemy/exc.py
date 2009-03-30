@@ -103,7 +103,8 @@ class DBAPIError(SQLAlchemyError):
 
     """
 
-    def instance(cls, statement, params, orig, connection_invalidated=False):
+    @classmethod
+    def instance_cls(cls, orig):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
         if isinstance(orig, (KeyboardInterrupt, SystemExit)):
@@ -114,8 +115,7 @@ class DBAPIError(SQLAlchemyError):
             if name in glob and issubclass(glob[name], DBAPIError):
                 cls = glob[name]
 
-        return cls(statement, params, orig, connection_invalidated)
-    instance = classmethod(instance)
+        return cls
 
     def __init__(self, statement, params, orig, connection_invalidated=False):
         try:

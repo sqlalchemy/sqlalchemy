@@ -45,6 +45,9 @@ class MySQL_mysqldbCompiler(MySQLCompiler):
 class MySQL_mysqldb(MySQLDialect):
     driver = 'mysqldb'
     supports_unicode_statements = False
+    supports_sane_rowcount = True
+    supports_sane_multi_rowcount = True
+
     default_paramstyle = 'format'
     execution_ctx_cls = MySQL_mysqldbExecutionContext
     statement_compiler = MySQL_mysqldbCompiler
@@ -52,6 +55,11 @@ class MySQL_mysqldb(MySQLDialect):
     @classmethod
     def dbapi(cls):
         return __import__('MySQLdb')
+
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        rowcount = cursor.executemany(statement, parameters)
+        if context is not None:
+            context._rowcount = rowcount
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(database='db', username='user',
