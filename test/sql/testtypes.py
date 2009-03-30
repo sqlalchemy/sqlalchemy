@@ -100,11 +100,6 @@ class AdaptTest(TestBase):
 class UserDefinedTest(TestBase):
     """tests user-defined types."""
 
-    def testbasic(self):
-        print users.c.goofy4.type
-        print users.c.goofy4.type.dialect_impl(testing.db.dialect)
-        print users.c.goofy4.type.dialect_impl(testing.db.dialect).get_col_spec()
-
     def testprocessing(self):
 
         global users
@@ -259,7 +254,6 @@ class ColumnsTest(TestBase, AssertsExecutionResults):
             for key, value in expectedResults.items():
                 expectedResults[key] = '%s NULL' % value
 
-        print db.engine.__module__
         testTable = Table('testColumns', MetaData(db),
             Column('int_column', Integer),
             Column('smallint_column', SmallInteger),
@@ -310,7 +304,6 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             self.assert_(testing.against('sqlite', 'mssql'))
             if not testing.against('sqlite'):
                 self.assert_(x['plain_varchar'] == unicodedata)
-            print "it's %s!" % testing.db.name
         else:
             self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
 
@@ -374,10 +367,6 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                                            unicode_text=unicodedata,
                                            plain_varchar=rawdata)
             x = unicode_table.select().execute().fetchone()
-            print 0, repr(unicodedata)
-            print 1, repr(x['unicode_varchar'])
-            print 2, repr(x['unicode_text'])
-            print 3, repr(x['plain_varchar'])
             self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
             self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
             if not testing.against('sqlite', 'mssql'):
@@ -450,8 +439,6 @@ class BinaryTest(TestBase, AssertsExecutionResults):
             text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType, 'mypickle':MyPickleType}, bind=testing.db)
         ):
             l = stmt.execute().fetchall()
-            print type(stream1), type(l[0]['data']), type(l[0]['data_slice'])
-            print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
             self.assertEquals(list(stream1), list(l[0]['data']))
             self.assertEquals(list(stream1[0:100]), list(l[0]['data_slice']))
             self.assertEquals(list(stream2), list(l[1]['data']))
@@ -633,14 +620,12 @@ class DateTest(TestBase, AssertsExecutionResults):
             "select user_datetime from query_users_with_date",
             typemap={'user_datetime':DateTime}).execute().fetchall()
 
-        print repr(x)
         self.assert_(isinstance(x[0][0], datetime.datetime))
 
         x = testing.db.text(
             "select * from query_users_with_date where user_datetime=:somedate",
             bindparams=[bindparam('somedate', type_=types.DateTime)]).execute(
             somedate=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
-        print repr(x)
 
     def testdate2(self):
         meta = MetaData(testing.db)
@@ -717,7 +702,6 @@ class NumericTest(TestBase, AssertsExecutionResults):
             ncasdec=Decimal("12.4"), fcasdec=Decimal("15.75"))
 
         l = numeric_table.select().execute().fetchall()
-        print l
         rounded = [
             (l[0][0], l[0][1], round(l[0][2], 5), l[0][3], l[0][4]),
             (l[1][0], l[1][1], round(l[1][2], 5), l[1][3], l[1][4]),
@@ -809,11 +793,9 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         bool_table.insert().execute(id=5, value=True)
 
         res = bool_table.select(bool_table.c.value==True).execute().fetchall()
-        print res
         assert(res==[(1, True),(3, True),(4, True),(5, True)])
 
         res2 = bool_table.select(bool_table.c.value==False).execute().fetchall()
-        print res2
         assert(res2==[(2, False)])
 
 class PickleTest(TestBase):
