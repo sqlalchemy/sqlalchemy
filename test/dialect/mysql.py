@@ -982,6 +982,19 @@ class SQLTest(TestBase, AssertsCompiledSQL):
         for type_, expected in specs:
             self.assert_compile(cast(t.c.col, type_), expected)
 
+    def test_extract(self):
+        t = sql.table('t', sql.column('col1'))
+
+        for field in 'year', 'month', 'day':
+            self.assert_compile(
+                select([extract(field, t.c.col1)]),
+                "SELECT EXTRACT(%s FROM t.col1) AS anon_1 FROM t" % field)
+
+        # millsecondS to millisecond
+        self.assert_compile(
+            select([extract('milliseconds', t.c.col1)]),
+            "SELECT EXTRACT(millisecond FROM t.col1) AS anon_1 FROM t")
+
 
 class RawReflectionTest(TestBase):
     def setUp(self):

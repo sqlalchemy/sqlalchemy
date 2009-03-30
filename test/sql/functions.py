@@ -271,6 +271,44 @@ class ExecuteTest(TestBase):
 
         assert x == y == z == w == q == r
 
+    def test_extract_bind(self):
+        """Basic common denominator execution tests for extract()"""
+
+        date = datetime.date(2010, 5, 1)
+
+        def execute(field):
+            return testing.db.execute(select([extract(field, date)])).scalar()
+
+        assert execute('year') == 2010
+        assert execute('month') == 5
+        assert execute('day') == 1
+
+        date = datetime.datetime(2010, 5, 1, 12, 11, 10)
+
+        assert execute('year') == 2010
+        assert execute('month') == 5
+        assert execute('day') == 1
+
+    def test_extract_expression(self):
+        meta = MetaData(testing.db)
+        table = Table('test', meta,
+                      Column('dt', DateTime),
+                      Column('d', Date))
+        meta.create_all()
+        try:
+            table.insert().execute(
+                {'dt': datetime.datetime(2010, 5, 1, 12, 11, 10),
+                 'd': datetime.date(2010, 5, 1) })
+            rs = select([extract('year', table.c.dt),
+                         extract('month', table.c.d)]).execute()
+            row = rs.fetchone()
+            assert row[0] == 2010
+            assert row[1] == 5
+            rs.close()
+        finally:
+            meta.drop_all()
+
+
 def exec_sorted(statement, *args, **kw):
     """Executes a statement and returns a sorted list plain tuple rows."""
 

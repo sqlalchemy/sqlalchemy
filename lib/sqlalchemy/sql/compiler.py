@@ -108,6 +108,23 @@ FUNCTIONS = {
     functions.user: 'USER'
 }
 
+EXTRACT_MAP = {
+    'month': 'month',
+    'day': 'day',
+    'year': 'year',
+    'second': 'second',
+    'hour': 'hour',
+    'doy': 'doy',
+    'minute': 'minute',
+    'quarter': 'quarter',
+    'dow': 'dow',
+    'week': 'week',
+    'epoch': 'epoch',
+    'milliseconds': 'milliseconds',
+    'microseconds': 'microseconds',
+    'timezone_hour': 'timezone_hour',
+    'timezone_minute': 'timezone_minute'
+}
 
 class _CompileLabel(visitors.Visitable):
     """lightweight label object which acts as an expression._Label."""
@@ -133,6 +150,7 @@ class DefaultCompiler(engine.Compiled):
 
     operators = OPERATORS
     functions = FUNCTIONS
+    extract_map = EXTRACT_MAP
 
     # if we are insert/update/delete. 
     # set to true when we visit an INSERT, UPDATE or DELETE
@@ -345,6 +363,10 @@ class DefaultCompiler(engine.Compiled):
 
     def visit_cast(self, cast, **kwargs):
         return "CAST(%s AS %s)" % (self.process(cast.clause), self.process(cast.typeclause))
+
+    def visit_extract(self, extract, **kwargs):
+        field = self.extract_map.get(extract.field, extract.field)
+        return "EXTRACT(%s FROM %s)" % (field, self.process(extract.expr))
 
     def visit_function(self, func, result_map=None, **kwargs):
         if result_map is not None:

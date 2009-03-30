@@ -831,12 +831,6 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
              "SELECT values.id FROM values WHERE values.val1 / (values.val2 - values.val1) / values.val1 > :param_1"
          )
 
-    def test_extract(self):
-        """test the EXTRACT function"""
-        self.assert_compile(select([extract("month", table3.c.otherstuff)]), "SELECT extract(month FROM thirdtable.otherstuff) AS extract_1 FROM thirdtable")
-
-        self.assert_compile(select([extract("day", func.to_date("03/20/2005", "MM/DD/YYYY"))]), "SELECT extract(day FROM to_date(:to_date_1, :to_date_2)) AS extract_1")
-
     def test_collate(self):
         for expr in (select([table1.c.name.collate('latin1_german2_ci')]),
                      select([collate(table1.c.name, 'latin1_german2_ci')])):

@@ -328,6 +328,20 @@ class AccessDialect(default.DefaultDialect):
 
 
 class AccessCompiler(compiler.DefaultCompiler):
+    extract_map = compiler.DefaultCompiler.extract_map.copy()
+    extract_map.update ({
+            'month': 'm',
+            'day': 'd',
+            'year': 'yyyy',
+            'second': 's',
+            'hour': 'h',
+            'doy': 'y',
+            'minute': 'n',
+            'quarter': 'q',
+            'dow': 'w',
+            'week': 'ww'
+    })
+
     def visit_select_precolumns(self, select):
         """Access puts TOP, it's version of LIMIT here """
         s = select.distinct and "DISTINCT " or ""
@@ -374,6 +388,10 @@ class AccessCompiler(compiler.DefaultCompiler):
     def visit_join(self, join, asfrom=False, **kwargs):
         return (self.process(join.left, asfrom=True) + (join.isouter and " LEFT OUTER JOIN " or " INNER JOIN ") + \
             self.process(join.right, asfrom=True) + " ON " + self.process(join.onclause))
+
+    def visit_extract(self, extract):
+        field = self.extract_map.get(extract.field, extract.field)
+        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
 
 
 class AccessSchemaGenerator(compiler.SchemaGenerator):

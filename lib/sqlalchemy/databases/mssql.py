@@ -1515,6 +1515,14 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         }
     )
 
+    extract_map = compiler.DefaultCompiler.extract_map.copy()
+    extract_map.update ({
+        'doy': 'dayofyear',
+        'dow': 'weekday',
+        'milliseconds': 'millisecond',
+        'microseconds': 'microsecond'
+    })
+
     def __init__(self, *args, **kwargs):
         super(MSSQLCompiler, self).__init__(*args, **kwargs)
         self.tablealiases = {}
@@ -1585,6 +1593,10 @@ class MSSQLCompiler(compiler.DefaultCompiler):
         self.tablealiases[alias.original] = alias
         kwargs['mssql_aliased'] = True
         return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
+
+    def visit_extract(self, extract):
+        field = self.extract_map.get(extract.field, extract.field)
+        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
 
     def visit_savepoint(self, savepoint_stmt):
         util.warn("Savepoint support in mssql is experimental and may lead to data loss.")

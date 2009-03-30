@@ -792,6 +792,12 @@ class PGCompiler(compiler.DefaultCompiler):
         else:
             return text
 
+    def visit_extract(self, extract, **kwargs):
+        field = self.extract_map.get(extract.field, extract.field)
+        return "EXTRACT(%s FROM %s::timestamp)" % (
+            field, self.process(extract.expr))
+
+
 class PGSchemaGenerator(compiler.SchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)

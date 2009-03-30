@@ -22,6 +22,8 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
 
 class CompileTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = postgres.dialect()
+
     def test_update_returning(self):
         dialect = postgres.dialect()
         table1 = table('mytable',
@@ -57,6 +59,16 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
         i = insert(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
+
+    def test_extract(self):
+        t = table('t', column('col1'))
+
+        for field in 'year', 'month', 'day':
+            self.assert_compile(
+                select([extract(field, t.c.col1)]),
+                "SELECT EXTRACT(%s FROM t.col1::timestamp) AS anon_1 "
+                "FROM t" % field)
+
 
 class ReturningTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'

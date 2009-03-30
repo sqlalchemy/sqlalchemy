@@ -125,6 +125,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(func.current_date(), "GETDATE()")
         self.assert_compile(func.length(3), "LEN(:length_1)")
 
+    def test_extract(self):
+        t = table('t', column('col1'))
+
+        for field in 'day', 'month', 'year':
+            self.assert_compile(
+                select([extract(field, t.c.col1)]),
+                'SELECT DATEPART("%s", t.col1) AS anon_1 FROM t' % field)
+
 
 class IdentityInsertTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'mssql'
