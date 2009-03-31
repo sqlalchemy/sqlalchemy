@@ -64,11 +64,11 @@ ref_constraints = Table("REFERENTIAL_CONSTRAINTS", ischema,
     schema="INFORMATION_SCHEMA")
 
 views = Table("VIEWS", ischema,
-    Column("TABLE_CATALOG", String),
-    Column("TABLE_SCHEMA", String),
-    Column("TABLE_NAME", String),
-    Column("VIEW_DEFINITION", String),
-    Column("CHECK_OPTION", String),
-    Column("IS_UPDATABLE", String),
+    Column("TABLE_CATALOG", String, key="table_catalog"),
+    Column("TABLE_SCHEMA", String, key="table_schema"),
+    Column("TABLE_NAME", String, key="table_name"),
+    Column("VIEW_DEFINITION", String, key="view_definition"),
+    Column("CHECK_OPTION", String, key="check_option"),
+    Column("IS_UPDATABLE", String, key="is_updatable"),
     schema="INFORMATION_SCHEMA")
 

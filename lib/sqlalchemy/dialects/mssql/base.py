@@ -229,7 +229,7 @@ Known Issues
 """
 import datetime, decimal, inspect, operator, sys, re
 
-from sqlalchemy import sql, schema, exc, util
+from sqlalchemy import sql, schema as sa_schema, exc, util
 from sqlalchemy.sql import select, compiler, expression, operators as sql_operators, functions as sql_functions
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
@@ -740,7 +740,7 @@ def _has_implicit_sequence(column):
         (
             column.default is None or 
             (
-                isinstance(column.default, schema.Sequence) and 
+                isinstance(column.default, sa_schema.Sequence) and 
                 column.default.optional)
             )
 
@@ -1145,7 +1145,7 @@ class MSDialect(default.DefaultDialect):
         return row is not None
 
     @reflection.cache
-    def get_schema_names(self, connection):
+    def get_schema_names(self, connection, **kw):
         s = sql.select([ischema.schemata.c.schema_name],
             order_by=[ischema.schemata.c.schema_name]
         )
@@ -1191,7 +1191,7 @@ class MSDialect(default.DefaultDialect):
             if 'primary key' not in row['index_description']:
                 indexes.append({
                     'name' : row['index_name'],
-                    'column_names' : row['index_keys'].split(','),
+                    'column_names' : [c.strip() for c in row['index_keys'].split(',')],
                     'unique': 'unique' in row['index_description']
                 })
         return indexes
@@ -1259,7 +1259,7 @@ class MSDialect(default.DefaultDialect):
             coltype = coltype(**kwargs)
             colargs = []
             if default is not None:
-                colargs.append(schema.DefaultClause(sql.text(default)))
+                colargs.append(sa_schema.DefaultClause(sql.text(default)))
             cdict = {
                 'name' : name,
                 'type' : coltype,
@@ -1344,12 +1344,14 @@ class MSDialect(default.DefaultDialect):
         return fkeys
 
     def reflecttable(self, connection, table, include_columns):
+        info_cache = {}
+
         # Get base columns
         if table.schema is not None:
             current_schema = table.schema
         else:
             current_schema = self.get_default_schema_name(connection)
-        columns = self.get_columns(connection, table.name, current_schema)
+        columns = self.get_columns(connection, table.name, current_schema, info_cache=info_cache)
 
         found_table = False
         for cdict in columns:
@@ -1361,7 +1363,7 @@ class MSDialect(default.DefaultDialect):
             found_table = True
             if include_columns and name not in include_columns:
                 continue
-            table.append_column(schema.Column(name, coltype, nullable=nullable, autoincrement=False, *colargs))
+            table.append_column(sa_schema.Column(name, coltype, nullable=nullable, autoincrement=False, *colargs))
         if not found_table:
             raise exc.NoSuchTableError(table.name)
 
@@ -1377,7 +1379,7 @@ class MSDialect(default.DefaultDialect):
                 ic = table.c[col_name]
                 ic.autoincrement = True
                 # setup a psuedo-sequence to represent the identity attribute - we interpret this at table.create() time as the identity attribute
-                ic.sequence = schema.Sequence(ic.name + '_identity', 1, 1)
+                ic.sequence = sa_schema.Sequence(ic.name + '_identity', 1, 1)
                 # MSSQL: only one identity per table allowed
                 cursor.close()
                 break
@@ -1395,7 +1397,7 @@ class MSDialect(default.DefaultDialect):
 
         # Primary key constraints
         pkeys = self.get_primary_keys(connection, table.name,
-                                      current_schema)
+                                      current_schema, info_cache=info_cache)
         for pkey in pkeys:
             if pkey in table.c:
                 table.primary_key.add(table.c[pkey])
@@ -1407,7 +1409,7 @@ class MSDialect(default.DefaultDialect):
             else:
                 return '.'.join([rschema, rtbl, rcol])
 
-        fkeys = self.get_foreign_keys(connection, table.name, current_schema)
+        fkeys = self.get_foreign_keys(connection, table.name, current_schema, info_cache=info_cache)
         for fkey_d in fkeys:
             fknm = fkey_d['name']
             scols = fkey_d['constrained_columns']
@@ -1417,13 +1419,12 @@ class MSDialect(default.DefaultDialect):
             # if the reflected schema is the default schema then don't set it because this will
             # play into the metadata key causing duplicates.
             if rschema == current_schema and not table.schema:
-                schema.Table(rtbl, table.metadata, autoload=True,
+                sa_schema.Table(rtbl, table.metadata, autoload=True,
                              autoload_with=connection)
             else:
-                schema.Table(rtbl, table.metadata, schema=rschema,
+                sa_schema.Table(rtbl, table.metadata, schema=rschema,
                              autoload=True, autoload_with=connection)
-            ##table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, s, t, c) for s, t, c in rcols], fknm, link_to_name=True))
-            table.append_constraint(schema.ForeignKeyConstraint(scols, [_gen_fkref(table, rschema, rtbl, c) for c in rcols], fknm, link_to_name=True))
+            table.append_constraint(sa_schema.ForeignKeyConstraint(scols, [_gen_fkref(table, rschema, rtbl, c) for c in rcols], fknm, link_to_name=True))
 
 # fixme.  I added this for the tests to run. -Randall
 MSSQLDialect = MSDialect
