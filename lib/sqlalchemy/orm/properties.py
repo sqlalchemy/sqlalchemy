@@ -650,7 +650,7 @@ class RelationProperty(StrategizedProperty):
             dest_list = []
             for current in instances:
                 _recursive[(current, self)] = True
-                obj = session.merge(current, dont_load=dont_load, _recursive=_recursive)
+                obj = session._merge(current, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     dest_list.append(obj)
             if dont_load:
@@ -663,7 +663,7 @@ class RelationProperty(StrategizedProperty):
             current = instances[0]
             if current is not None:
                 _recursive[(current, self)] = True
-                obj = session.merge(current, dont_load=dont_load, _recursive=_recursive)
+                obj = session._merge(current, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     if dont_load:
                         dest_state.dict[self.key] = obj

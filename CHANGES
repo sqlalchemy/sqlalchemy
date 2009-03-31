@@ -21,6 +21,10 @@ CHANGES
       parameters but this would require further development.
       [ticket:1357]
 
+    - Fixed another location where autoflush was interfering
+      with session.merge().  autoflush is disabled completely
+      for the duration of merge() now. [ticket:1360]
+      
 - sql
     - ``sqlalchemy.extract()`` is now dialect sensitive and can
       extract components of timestamps idiomatically across the
