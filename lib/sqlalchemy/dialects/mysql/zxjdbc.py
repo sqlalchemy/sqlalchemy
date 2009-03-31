@@ -14,9 +14,6 @@ class MySQL_jdbcExecutionContext(MySQLExecutionContext):
 class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
     execution_ctx_cls = MySQL_jdbcExecutionContext
 
-    supports_sane_rowcount = False
-    supports_sane_multi_rowcount = False
-
     jdbc_db_name = 'mysql'
     jdbc_driver_name = "org.gjt.mm.mysql.Driver"
     

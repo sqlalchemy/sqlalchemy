@@ -3,6 +3,7 @@ import inspect
 import sys
 import types
 from testlib import config, sa, testing
+from testlib.engines import drop_all_tables
 from testlib.testing import resolve_artifact_names, adict
 from testlib.compat import _function_named
 
@@ -173,7 +174,7 @@ class MappedTest(ORMTest):
 
         if self.run_define_tables == 'each':
             self.tables.clear()
-            self.metadata.drop_all()
+            drop_all_tables(self.metadata)
             self.metadata.clear()
             self.define_tables(self.metadata)
             self.metadata.create_all()
@@ -213,7 +214,8 @@ class MappedTest(ORMTest):
         for cls in self.classes.values():
             self.unregister_class(cls)
         ORMTest.tearDownAll(self)
-        self.metadata.drop_all()
+        
+        drop_all_tables(self.metadata)
         self.metadata.bind = None
 
     def define_tables(self, metadata):

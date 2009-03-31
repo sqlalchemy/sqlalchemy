@@ -2,8 +2,8 @@
 
 import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
-from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, func
-from testlib.sa.engine import default
+from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, func, engine, util
+default = engine.default
 from testlib.sa.orm import mapper, relation, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
 from testlib.sa.orm import defer, deferred, synonym, attributes, column_property, composite, relation, dynamic_loader, comparable_property
 from testlib.testing import eq_, AssertsCompiledSQL
@@ -1448,12 +1448,12 @@ class DeferredTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_group(self):
         """Deferred load with a group"""
-        mapper(Order, orders, properties={
-            'userident': deferred(orders.c.user_id, group='primary'),
-            'addrident': deferred(orders.c.address_id, group='primary'),
-            'description': deferred(orders.c.description, group='primary'),
-            'opened': deferred(orders.c.isopen, group='primary')
-        })
+        mapper(Order, orders, properties=util.OrderedDict([
+            ('userident', deferred(orders.c.user_id, group='primary')),
+            ('addrident', deferred(orders.c.address_id, group='primary')),
+            ('description', deferred(orders.c.description, group='primary')),
+            ('opened', deferred(orders.c.isopen, group='primary'))
+        ]))
 
         sess = create_session()
         q = sess.query(Order).order_by(Order.id)
@@ -1559,10 +1559,12 @@ class DeferredTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_undefer_group(self):
-        mapper(Order, orders, properties={
-            'userident':deferred(orders.c.user_id, group='primary'),
-            'description':deferred(orders.c.description, group='primary'),
-            'opened':deferred(orders.c.isopen, group='primary')})
+        mapper(Order, orders, properties=util.OrderedDict([
+            ('userident',deferred(orders.c.user_id, group='primary')),
+            ('description',deferred(orders.c.description, group='primary')),
+            ('opened',deferred(orders.c.isopen, group='primary'))
+            ]
+            ))
 
         sess = create_session()
         q = sess.query(Order).order_by(Order.id)
@@ -2450,8 +2452,6 @@ class MagicNamesTest(_base.MappedTest):
                  'instrumentation attribute of the same name'),
                 mapper, M, maps, properties={
                   reserved: maps.c.state})
-
-
 
 if __name__ == "__main__":
     testenv.main()

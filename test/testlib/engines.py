@@ -38,6 +38,10 @@ class ConnectionKiller(object):
 
 testing_reaper = ConnectionKiller()
 
+def drop_all_tables(metadata):
+    testing_reaper.rollback_all()
+    metadata.drop_all()
+    
 def assert_conns_closed(fn):
     def decorated(*args, **kw):
         try:

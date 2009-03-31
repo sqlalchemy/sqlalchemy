@@ -13,6 +13,7 @@ from cStringIO import StringIO
 
 import testlib.config as config
 from testlib.compat import _function_named
+from testlib.engines import drop_all_tables
 
 # Delayed imports
 MetaData = None
@@ -849,7 +850,7 @@ class ORMTest(TestBase, AssertsExecutionResults):
             from sqlalchemy.orm import clear_mappers
 
         clear_mappers()
-        _otest_metadata.drop_all()
+        drop_all_tables(_otest_metadata)
 
     def tearDown(self):
         global Session

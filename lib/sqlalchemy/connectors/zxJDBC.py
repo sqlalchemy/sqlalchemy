@@ -7,8 +7,9 @@ import urllib
 class ZxJDBCConnector(Connector):
     driver='zxjdbc'
     
-    supports_sane_rowcount = True
-    supports_sane_multi_rowcount = True
+    supports_sane_rowcount = False
+    supports_sane_multi_rowcount = False
+    
     supports_unicode_binds = True
     supports_unicode_statements = False
     default_paramstyle = 'qmark'

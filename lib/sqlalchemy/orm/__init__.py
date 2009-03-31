@@ -850,8 +850,13 @@ def clear_mappers():
     """
     mapperlib._COMPILE_MUTEX.acquire()
     try:
-        for mapper in list(_mapper_registry):
-            mapper.dispose()
+        while _mapper_registry:
+            try:
+                # can't even reliably call list(weakdict) in jython
+                mapper, b = _mapper_registry.popitem()
+                mapper.dispose()
+            except KeyError:
+                pass
     finally:
         mapperlib._COMPILE_MUTEX.release()
 

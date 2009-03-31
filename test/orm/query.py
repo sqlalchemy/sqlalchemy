@@ -104,12 +104,7 @@ class GetTest(QueryTest):
             pass
         s = users.select(users.c.id!=12).alias('users')
         m = mapper(SomeUser, s)
-        print s.primary_key
-        print m.primary_key
         assert s.primary_key == m.primary_key
-
-        row = s.select(use_labels=True).execute().fetchone()
-        print row[s.primary_key[0]]
 
         sess = create_session()
         assert sess.query(SomeUser).get(7).name == 'jack'
@@ -921,7 +916,7 @@ class AggregateTest(QueryTest):
         orders = sess.query(Order).filter(Order.id.in_([2, 3, 4]))
         self.assertEquals(orders.values(func.sum(Order.user_id * Order.address_id)).next(), (79,))
         self.assertEquals(orders.value(func.sum(Order.user_id * Order.address_id)), 79)
-
+        
     def test_apply(self):
         sess = create_session()
         assert sess.query(func.sum(Order.user_id * Order.address_id)).filter(Order.id.in_([2, 3, 4])).one() == (79,)
