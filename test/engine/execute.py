@@ -18,8 +18,10 @@ class ExecuteTest(TestBase):
         )
         metadata.create_all()
 
+    @engines.close_first
     def tearDown(self):
         testing.db.connect().execute(users.delete())
+        
     def tearDownAll(self):
         metadata.drop_all()
 

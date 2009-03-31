@@ -39,7 +39,7 @@ class ConnectionKiller(object):
 testing_reaper = ConnectionKiller()
 
 def drop_all_tables(metadata):
-    testing_reaper.rollback_all()
+    testing_reaper.close_all()
     metadata.drop_all()
     
 def assert_conns_closed(fn):
@@ -60,6 +60,14 @@ def rollback_open_connections(fn):
             testing_reaper.rollback_all()
     return _function_named(decorated, fn.__name__)
 
+def close_first(fn):
+    """Decorator that closes all connections before fn execution."""
+    def decorated(*args, **kw):
+        testing_reaper.close_all()
+        fn(*args, **kw)
+    return _function_named(decorated, fn.__name__)
+    
+    
 def close_open_connections(fn):
     """Decorator that closes all connections after fn execution."""
 

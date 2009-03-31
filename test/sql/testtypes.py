@@ -308,6 +308,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
     def tearDownAll(self):
         metadata.drop_all()
 
+    @engines.close_first
     def tearDown(self):
         unicode_table.delete().execute()
 
@@ -405,6 +406,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         )
         binary_table.create()
 
+    @engines.close_first
     def tearDown(self):
         binary_table.delete().execute()
 
@@ -691,6 +693,7 @@ class NumericTest(TestBase, AssertsExecutionResults):
     def tearDownAll(self):
         metadata.drop_all()
 
+    @engines.close_first
     def tearDown(self):
         numeric_table.delete().execute()
 
@@ -764,6 +767,7 @@ class IntervalTest(TestBase, AssertsExecutionResults):
             )
         metadata.create_all()
 
+    @engines.close_first
     def tearDown(self):
         interval_table.delete().execute()
 

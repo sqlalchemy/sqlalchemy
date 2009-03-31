@@ -26,6 +26,7 @@ class QueryTest(TestBase):
         )
         metadata.create_all()
 
+    @engines.close_first
     def tearDown(self):
         addresses.delete().execute()
         users.delete().execute()
@@ -879,7 +880,11 @@ class CompoundTest(TestBase):
             dict(col2="t3col2r2", col3="bbb", col4="aaa"),
             dict(col2="t3col2r3", col3="ccc", col4="bbb"),
         ])
-
+        
+    @engines.close_first
+    def tearDown(self):
+        pass
+        
     def tearDownAll(self):
         metadata.drop_all()
 

@@ -180,7 +180,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
 
 class ExecuteTest(TestBase):
-
+    @engines.close_first
+    def tearDown(self):
+        pass
+        
     def test_standalone_execute(self):
         x = testing.db.func.current_date().execute().scalar()
         y = testing.db.func.current_date().select().execute().scalar()
@@ -202,6 +205,7 @@ class ExecuteTest(TestBase):
             conn.close()
         assert (x == y == z) is True
 
+    @engines.close_first
     def test_update(self):
         """
         Tests sending functions and SQL expressions to the VALUES and SET

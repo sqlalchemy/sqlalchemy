@@ -56,6 +56,7 @@ class UnicodeSchemaTest(TestBase):
                        )
         metadata.create_all()
 
+    @engines.close_first
     def tearDown(self):
         if metadata.tables:
             t3.delete().execute()

@@ -34,6 +34,7 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
         maxlen = testing.db.dialect.max_identifier_length
         testing.db.dialect.max_identifier_length = IDENT_LENGTH
 
+    @engines.close_first
     def tearDown(self):
         table1.delete().execute()
 
