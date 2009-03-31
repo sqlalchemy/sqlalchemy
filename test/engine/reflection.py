@@ -12,6 +12,7 @@ metadata, users = None, None
 
 class ReflectionTest(TestBase, ComparesTables):
 
+    @testing.exclude('mssql', '<', (10, 0, 0), 'Date is only supported on MSSQL 2008+')
     @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_basic_reflection(self):
         meta = MetaData(testing.db)
@@ -801,12 +802,7 @@ class HasSequenceTest(TestBase):
 # Tests related to engine.reflection
 
 def get_schema():
-#    if testing.against('sqlite'):
-#        return None
-    if testing.against('oracle'):
-        return 'test'
-    else:
-        return 'test_schema'
+    return 'alt_schema'
 
 def createTables(meta, schema=None):
     if schema:

@@ -1,7 +1,7 @@
 from sqlalchemy import Table, MetaData, Column, ForeignKey, String, Integer
 
 ischema = MetaData()
- 
+
 schemata = Table("SCHEMATA", ischema,
     Column("CATALOG_NAME", String, key="catalog_name"),
     Column("SCHEMA_NAME", String, key="schema_name"),
@@ -61,5 +61,14 @@ ref_constraints = Table("REFERENTIAL_CONSTRAINTS", ischema,
     Column("MATCH_OPTION", String, key="match_option"),
     Column("UPDATE_RULE", String, key="update_rule"),
     Column("DELETE_RULE", String, key="delete_rule"),
+    schema="INFORMATION_SCHEMA")
+
+views = Table("VIEWS", ischema,
+    Column("TABLE_CATALOG", String),
+    Column("TABLE_SCHEMA", String),
+    Column("TABLE_NAME", String),
+    Column("VIEW_DEFINITION", String),
+    Column("CHECK_OPTION", String),
+    Column("IS_UPDATABLE", String),
     schema="INFORMATION_SCHEMA")
 

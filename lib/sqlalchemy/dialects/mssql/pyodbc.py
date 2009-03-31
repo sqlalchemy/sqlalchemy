@@ -32,6 +32,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     supports_sane_multi_rowcount = False
     # PyODBC unicode is broken on UCS-4 builds
     supports_unicode = sys.maxunicode == 65535
+    supports_unicode_binds = supports_unicode
     supports_unicode_statements = supports_unicode
     execution_ctx_cls = MSExecutionContext_pyodbc
 

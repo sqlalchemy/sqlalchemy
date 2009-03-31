@@ -411,7 +411,6 @@ class BinaryTest(TestBase, AssertsExecutionResults):
     def tearDownAll(self):
         binary_table.drop()
 
-    @testing.fails_on('mssql', 'MSSQl BINARY type right pads the fixed length with \x00')
     def test_round_trip(self):
         testobj1 = pickleable.Foo('im foo 1')
         testobj2 = pickleable.Foo('im foo 2')

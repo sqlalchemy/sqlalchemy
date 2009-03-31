@@ -181,8 +181,49 @@ class IdentityInsertTest(TestBase, AssertsCompiledSQL):
         self.assertEqual([(91, 'Smalltalk'), (90, 'PHP')], list(lastcats))
 
 
-class ReflectionTest(TestBase):
+class ReflectionTest(TestBase, ComparesTables):
     __only_on__ = 'mssql'
+
+    def test_basic_reflection(self):
+        meta = MetaData(testing.db)
+
+        users = Table('engine_users', meta,
+            Column('user_id', types.INT, primary_key=True),
+            Column('user_name', types.VARCHAR(20), nullable=False),
+            Column('test1', types.CHAR(5), nullable=False),
+            Column('test2', types.Float(5), nullable=False),
+            Column('test3', types.Text),
+            Column('test4', types.Numeric, nullable = False),
+            Column('test5', types.DateTime),
+            Column('parent_user_id', types.Integer,
+                   ForeignKey('engine_users.user_id')),
+            Column('test6', types.DateTime, nullable=False),
+            Column('test7', types.Text),
+            Column('test8', types.Binary),
+            Column('test_passivedefault2', types.Integer, server_default='5'),
+            Column('test9', types.Binary(100)),
+            Column('test_numeric', types.Numeric()),
+            test_needs_fk=True,
+        )
+
+        addresses = Table('engine_email_addresses', meta,
+            Column('address_id', types.Integer, primary_key = True),
+            Column('remote_user_id', types.Integer, ForeignKey(users.c.user_id)),
+            Column('email_address', types.String(20)),
+            test_needs_fk=True,
+        )
+        meta.create_all()
+
+        try:
+            meta2 = MetaData()
+            reflected_users = Table('engine_users', meta2, autoload=True,
+                                    autoload_with=testing.db)
+            reflected_addresses = Table('engine_email_addresses', meta2,
+                                        autoload=True, autoload_with=testing.db)
+            self.assert_tables_equal(users, reflected_users)
+            self.assert_tables_equal(addresses, reflected_addresses)
+        finally:
+            meta.drop_all()
 
     def testidentity(self):
         meta = MetaData(testing.db)
