@@ -13,7 +13,6 @@ from operator import attrgetter
 from sqlalchemy.engine import base, threadlocal, url
 from sqlalchemy import util, exc
 from sqlalchemy import pool as poollib
-from sqlalchemy import interfaces
 
 strategies = {}
 
@@ -75,7 +74,7 @@ class DefaultEngineStrategy(EngineStrategy):
         if pool is None:
             def connect():
                 try:
-                    return dbapi.connect(*cargs, **cparams)
+                    return dialect.connect(*cargs, **cparams)
                 except Exception, e:
                     import sys
                     raise exc.DBAPIError.instance(None, None, e), None, sys.exc_info()[2]
@@ -126,13 +125,14 @@ class DefaultEngineStrategy(EngineStrategy):
         engine = engineclass(pool, dialect, u, **engine_args)
 
         if _initialize:
-            class OnInit(interfaces.PoolListener):
-                def connect(self, conn, rec):
+            class OnInit(object):
+                def first_connect(self, conn, rec):
                     c = base.Connection(engine, connection=conn)
                     dialect.initialize(c)
-                    pool._on_connect.remove(self)
-            pool._on_connect.insert(0, OnInit())
-        
+            pool._on_first_connect.insert(0, OnInit())
+
+        dialect.visit_pool(pool)
+
         return engine
 
     def pool_threadlocal(self):

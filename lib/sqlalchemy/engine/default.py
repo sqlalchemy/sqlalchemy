@@ -102,7 +102,10 @@ class DefaultDialect(base.Dialect):
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
             raise exc.IdentifierError("Identifier '%s' exceeds maximum length of %d characters" % (ident, self.max_identifier_length))
-        
+
+    def connect(self, *cargs, **cparams):
+        return self.dbapi.connect(*cargs, **cparams)
+
     def do_begin(self, connection):
         """Implementations might want to put logic here for turning
         autocommit on/off, etc.

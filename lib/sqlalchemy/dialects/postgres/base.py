@@ -445,7 +445,25 @@ class PGDialect(default.DefaultDialect):
     preparer = PGIdentifierPreparer
     defaultrunner = PGDefaultRunner
     inspector = PGInspector
+    isolation_level = None
 
+    def __init__(self, isolation_level=None, **kwargs):
+        default.DefaultDialect.__init__(self, **kwargs)
+        self.isolation_level = isolation_level
+
+    def visit_pool(self, pool):
+        if self.isolation_level is not None:
+            class SetIsolationLevel(object):
+                def __init__(self, isolation_level):
+                    self.isolation_level = isolation_level
+
+                def connect(self, conn, rec):
+                    cursor = conn.cursor()
+                    cursor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL %s"
+                                   % self.isolation_level)
+                    cursor.execute("COMMIT")
+                    cursor.close()
+            pool.add_listener(SetIsolationLevel(self.isolation_level))
 
     def do_begin_twophase(self, connection, xid):
         self.do_begin(connection.connection)

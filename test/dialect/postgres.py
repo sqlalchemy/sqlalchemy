@@ -708,6 +708,20 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             warnings.warn = capture_warnings._orig_showwarning
             m1.drop_all()
 
+    def test_set_isolation_level(self):
+        """Test setting the isolation level with create_engine"""
+        eng = create_engine(testing.db.url)
+        self.assertEquals(
+            eng.execute("show transaction isolation level").scalar(),
+            'read committed')
+        eng = create_engine(testing.db.url, isolation_level="SERIALIZABLE")
+        self.assertEquals(
+            eng.execute("show transaction isolation level").scalar(),
+            'serializable')
+        eng = create_engine(testing.db.url, isolation_level="FOO")
+        self.assertRaises(eng.dialect.dbapi.ProgrammingError, eng.execute,
+            "show transaction isolation level")
+
 
 class TimezoneTest(TestBase, AssertsExecutionResults):
     """Test timezone-aware datetimes.

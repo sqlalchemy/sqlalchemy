@@ -390,6 +390,9 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def visit_pool(self, pool):
+        """Executed after a pool is created."""
+
 
 class ExecutionContext(object):
     """A messenger object for a Dialect that corresponds to a single execution.

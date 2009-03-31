@@ -7,11 +7,18 @@
       There is no implicit fallback onto "fetch".   Failure of evaluation is based
       on the structure of criteria, so success/failure is deterministic based on 
       code structure.
-    
+
+- engines
+    - transaction isolation level may be specified with
+      create_engine(... isolation_level="..."); available on
+      postgresql and sqlite. [ticket:443]
+
 - dialect refactor
     - server_version_info becomes a static attribute.
-    - create_engine() now establishes an initial connection immediately upon
-      creation, which is passed to the dialect to determine connection properties.
+    - dialects receive an initialize() event on initial connection to
+      determine connection properties.
+    - dialects receive a visit_pool event have an opportunity to
+      establish pool listeners.
     - cached TypeEngine classes are cached per-dialect class instead of per-dialect.
     
 - mysql

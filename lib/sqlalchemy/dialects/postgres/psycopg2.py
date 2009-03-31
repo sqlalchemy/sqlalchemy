@@ -24,6 +24,10 @@ psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.cre
   uses special row-buffering behavior when this feature is enabled, such that groups of 100 rows 
   at a time are fetched over the wire to reduce conversational overhead.
 
+* *isolation_level* - Sets the transaction isolation level for each transaction
+  within the engine. Valid isolation levels are `READ_COMMITTED`,
+  `READ_UNCOMMITTED`, `REPEATABLE_READ`, and `SERIALIZABLE`.
+
 Transactions
 ------------
 
@@ -116,7 +120,6 @@ class Postgres_psycopg2(PGDialect):
         }
     )
 
-    
     def __init__(self, server_side_cursors=False, **kwargs):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors

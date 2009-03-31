@@ -108,6 +108,7 @@ class Pool(object):
         self.echo = echo
         self.listeners = []
         self._on_connect = []
+        self._on_first_connect = []
         self._on_checkout = []
         self._on_checkin = []
 
@@ -178,12 +179,14 @@ class Pool(object):
 
         """
 
-        listener = as_interface(
-            listener, methods=('connect', 'checkout', 'checkin'))
+        listener = as_interface(listener,
+            methods=('connect', 'first_connect', 'checkout', 'checkin'))
 
         self.listeners.append(listener)
         if hasattr(listener, 'connect'):
             self._on_connect.append(listener)
+        if hasattr(listener, 'first_connect'):
+            self._on_first_connect.append(listener)
         if hasattr(listener, 'checkout'):
             self._on_checkout.append(listener)
         if hasattr(listener, 'checkin'):
@@ -197,6 +200,10 @@ class _ConnectionRecord(object):
         self.__pool = pool
         self.connection = self.__connect()
         self.info = {}
+        ls = pool.__dict__.pop('_on_first_connect', None)
+        if ls is not None:
+            for l in ls:
+                l.first_connect(self.connection, self)
         if pool._on_connect:
             for l in pool._on_connect:
                 l.connect(self.connection, self)
