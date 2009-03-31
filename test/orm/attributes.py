@@ -7,7 +7,6 @@ from sqlalchemy import exc as sa_exc
 from testlib import *
 from testlib.testing import eq_
 from orm import _base
-import gc
 
 # global for pickling tests
 MyTest = None

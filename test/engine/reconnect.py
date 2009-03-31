@@ -2,9 +2,8 @@ import testenv; testenv.configure_for_tests()
 import weakref
 from testlib.sa import select, MetaData, Table, Column, Integer, String, pool
 import testlib.sa as tsa
-from testlib import TestBase, testing, engines
+from testlib import TestBase, testing, engines, gc
 import time
-import gc
 
 class MockDisconnect(Exception):
     pass

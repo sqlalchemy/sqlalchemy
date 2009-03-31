@@ -1,7 +1,8 @@
 import testenv; testenv.simple_setup()
-import time, gc, resource
+import time, resource
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from testlib import gc
 
 
 db = create_engine('sqlite://')

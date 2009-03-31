@@ -1,5 +1,5 @@
 import testenv; testenv.configure_for_tests()
-import time, gc, resource
+import time, resource
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *

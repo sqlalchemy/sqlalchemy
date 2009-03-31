@@ -1,8 +1,7 @@
 """Attribute/instance expiration, deferral of attributes, etc."""
 
 import testenv; testenv.configure_for_tests()
-import gc
-from testlib import sa, testing
+from testlib import gc, sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey, exc as sa_exc
 from testlib.sa.orm import mapper, relation, create_session, attributes, deferred
 from orm import _base, _fixtures

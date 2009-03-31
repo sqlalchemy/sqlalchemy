@@ -1,9 +1,9 @@
 import testenv; testenv.simple_setup()
-import gc
 
 import random, string
 
 from sqlalchemy.orm import attributes
+from testlib import gc
 
 # with this test, run top.  make sure the Python process doenst grow in size arbitrarily.
 

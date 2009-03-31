@@ -1,5 +1,4 @@
 import testenv; testenv.configure_for_tests()
-import gc
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import collection

@@ -17,6 +17,7 @@ from testlib.testing import \
 from testlib.orm import mapper
 import testlib.profiling as profiling
 import testlib.engines as engines
+import testlib.sa_gc as gc
 import testlib.requires as requires
 from testlib.compat import _function_named
 
@@ -27,7 +28,7 @@ __all__ = ('testing',
            'rowset',
            'TestBase', 'AssertsExecutionResults', 'ORMTest',
            'AssertsCompiledSQL', 'ComparesTables',
-           'profiling', 'engines',
+           'profiling', 'engines', 'gc',
            '_function_named')
 
 

@@ -1008,7 +1008,6 @@ class DistinctTest(QueryTest):
 
 class YieldTest(QueryTest):
     def test_basic(self):
-        import gc
         sess = create_session()
         q = iter(sess.query(User).yield_per(1).from_statement("select * from users"))
 

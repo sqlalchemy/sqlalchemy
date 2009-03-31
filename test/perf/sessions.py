@@ -3,7 +3,6 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
 from testlib import fixtures
-import gc
 
 # in this test we are specifically looking for time spent in the attributes.InstanceState.__cleanup() method.
 

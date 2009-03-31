@@ -2,8 +2,8 @@
 import testenv; testenv.simple_setup()
 
 from sqlalchemy.orm import attributes
+from testlib import gc
 import time
-import gc
 
 manage_attributes = True
 init_attributes = manage_attributes and True

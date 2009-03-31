@@ -1,4 +1,3 @@
-import gc
 import inspect
 import sys
 import types

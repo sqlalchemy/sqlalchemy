@@ -1,10 +1,9 @@
 import testenv; testenv.configure_for_tests()
-import gc
 from sqlalchemy.orm import mapper, relation, create_session, clear_mappers, sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
 import operator
-from testlib import testing
+from testlib import gc, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, PickleType
 import sqlalchemy as sa
 from sqlalchemy.sql import column

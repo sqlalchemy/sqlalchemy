@@ -6,7 +6,6 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from testlib import *
 from testlib.fixtures import *
-import gc
 
 class TransactionTest(FixtureTest):
     keep_mappers = True
