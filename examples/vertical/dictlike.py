@@ -122,7 +122,8 @@ class VerticalPropertyDictMixin(object):
 
 
 if __name__ == '__main__':
-    from sqlalchemy import *
+    from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
+        ForeignKey, UnicodeText, and_, not_)
     from sqlalchemy.orm import mapper, relation, create_session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
@@ -183,9 +184,9 @@ if __name__ == '__main__':
     # stoat.facts collection:
     print stoat.facts[u'color']
 
-    session.save(stoat)
+    session.add(stoat)
     session.flush()
-    session.clear()
+    session.expunge_all()
 
     critter = session.query(Animal).filter(Animal.name == u'stoat').one()
     print critter[u'color']
@@ -201,17 +202,17 @@ if __name__ == '__main__':
     marten = Animal(u'marten')
     marten[u'color'] = u'brown'
     marten[u'cuteness'] = u'somewhat'
-    session.save(marten)
+    session.add(marten)
 
     shrew = Animal(u'shrew')
     shrew[u'cuteness'] = u'somewhat'
     shrew[u'poisonous-part'] = u'saliva'
-    session.save(shrew)
+    session.add(shrew)
 
     loris = Animal(u'slow loris')
     loris[u'cuteness'] = u'fairly'
     loris[u'poisonous-part'] = u'elbows'
-    session.save(loris)
+    session.add(loris)
     session.flush()
 
     q = (session.query(Animal).

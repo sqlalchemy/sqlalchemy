@@ -20,8 +20,9 @@ the associated target object from those which associate with it.
 
 """
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import MetaData, Table, Column, Integer, String, and_
+from sqlalchemy.orm import (mapper, relation, create_session, class_mapper,
+    backref)
 
 metadata = MetaData('sqlite://')
 
@@ -124,11 +125,11 @@ a3 = o1.create_address()
 a3.street = '444 park ave.'
 
 sess = create_session()
-sess.save(u1)
-sess.save(o1)
+sess.add(u1)
+sess.add(o1)
 sess.flush()
 
-sess.clear()
+sess.expunge_all()
 
 # query objects, get their addresses
 

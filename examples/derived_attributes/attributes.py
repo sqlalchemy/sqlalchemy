@@ -36,8 +36,8 @@ def hybrid_property(fget, fset=None, fdel=None):
 
 ### Example code
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import MetaData, Table, Column, Integer
+from sqlalchemy.orm import mapper, create_session
 
 metadata = MetaData('sqlite://')
 metadata.bind.echo = True
@@ -99,14 +99,14 @@ session = create_session()
 intervals = [Interval1(1,4), Interval1(3,15), Interval1(11,16)]
 
 for interval in intervals:
-    session.save(interval)
-    session.save(Interval2(interval.start, interval.length))
+    session.add(interval)
+    session.add(Interval2(interval.start, interval.length))
 
 session.flush()
 
 print "Clear the cache and do some queries"
 
-session.clear()
+session.expunge_all()
 
 for Interval in (Interval1, Interval2):
     print "Querying using interval class %s" % Interval.__name__

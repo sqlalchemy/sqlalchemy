@@ -9,8 +9,10 @@ of "instance.__dict__".  Note that the default collection implementations can be
 with a custom attribute system as well.
 
 """
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import (create_engine, MetaData, Table, Column, Integer, Text,
+    ForeignKey)
+from sqlalchemy.orm import (mapper, relation, create_session,
+    InstrumentationManager)
 
 from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute, is_instrumented
 from sqlalchemy.orm.collections import collection_adapter
@@ -170,10 +172,10 @@ if __name__ == '__main__':
     assert isinstance(a1.bs, MyCollection)
 
     sess = create_session()
-    sess.save(a1)
+    sess.add(a1)
 
     sess.flush()
-    sess.clear()
+    sess.expunge_all()
 
     a1 = sess.query(A).get(a1.id)
 
@@ -184,7 +186,7 @@ if __name__ == '__main__':
     a1.bs.remove(a1.bs[0])
 
     sess.flush()
-    sess.clear()
+    sess.expunge_all()
 
     a1 = sess.query(A).get(a1.id)
     assert len(a1.bs) == 1

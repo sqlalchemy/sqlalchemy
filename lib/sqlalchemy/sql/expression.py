@@ -2204,13 +2204,17 @@ class _Case(ColumnElement):
             whenlist = [(_literal_as_binds(c).self_group(), _literal_as_binds(r)) for (c, r) in whens]
         else:
             whenlist = [(_no_literals(c).self_group(), _literal_as_binds(r)) for (c, r) in whens]
-            
+
         if whenlist:
             type_ = list(whenlist[-1])[-1].type
         else:
             type_ = None
-            
-        self.value = value
+
+        if value is None:
+            self.value = None
+        else:
+            self.value = _literal_as_binds(value)
+
         self.type = type_
         self.whens = whenlist
         if else_ is not None:
@@ -2236,7 +2240,7 @@ class _Case(ColumnElement):
 
     @property
     def _from_objects(self):
-        return itertools.chain(*[x._from_objects for x in self.get_children()])
+        return list(itertools.chain(*[x._from_objects for x in self.get_children()]))
 
 class Function(ColumnElement, FromClause):
     """Describe a SQL function."""

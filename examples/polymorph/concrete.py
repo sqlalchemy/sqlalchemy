@@ -1,5 +1,5 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
+from sqlalchemy.orm import mapper, create_session, polymorphic_union
 
 metadata = MetaData()
 
@@ -56,11 +56,11 @@ m1 = Manager("pointy haired boss", "manager1")
 e1 = Engineer("wally", "engineer1")
 e2 = Engineer("dilbert", "engineer2")
 
-session.save(m1)
-session.save(e1)
-session.save(e2)
+session.add(m1)
+session.add(e1)
+session.add(e2)
 session.flush()
 
-employees = session.query(Employee).select()
+employees = session.query(Employee)
 print [e for e in employees]
 

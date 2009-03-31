@@ -6,8 +6,9 @@ structure in distinct rows using two additional mapped entities.  Note that the 
 styles of persistence are identical, as is the structure of the main Document class.
 """
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import (create_engine, MetaData, Table, Column, Integer, String,
+    PickleType)
+from sqlalchemy.orm import mapper, create_session
 
 import sys, os
 
@@ -20,7 +21,7 @@ logging.basicConfig()
 # uncomment to show SQL statements and result sets
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 
-from elementtree import ElementTree
+from xml.etree import ElementTree
 
 engine = create_engine('sqlite://')
 meta = MetaData(engine)
@@ -53,11 +54,11 @@ doc = ElementTree.parse(filename)
     
 # save to DB
 session = create_session()
-session.save(Document("test.xml", doc))
+session.add(Document("test.xml", doc))
 session.flush()
 
 # clear session (to illustrate a full load), restore
-session.clear()
+session.expunge_all()
 document = session.query(Document).filter_by(filename="test.xml").first()
 
 # print

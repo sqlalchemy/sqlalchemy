@@ -6,8 +6,8 @@ function "association" which creates a new polymorphic association
 "interface".
 """
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
+from sqlalchemy.orm import mapper, relation, create_session, class_mapper
 
 metadata = MetaData('sqlite://')
 
@@ -133,11 +133,11 @@ o1.address = Address()
 o1.address.street = '444 park ave.'
 
 sess = create_session()
-sess.save(u1)
-sess.save(o1)
+sess.add(u1)
+sess.add(o1)
 sess.flush()
 
-sess.clear()
+sess.expunge_all()
 
 # query objects, get their addresses
 

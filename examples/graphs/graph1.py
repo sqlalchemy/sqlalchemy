@@ -1,7 +1,7 @@
 """a directed graph example."""
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import MetaData, Table, Column, Integer, ForeignKey
+from sqlalchemy.orm import mapper, relation, create_session
 
 import logging
 logging.basicConfig()
@@ -70,10 +70,10 @@ n7.add_neighbor(n2)
 n1.add_neighbor(n3)
 n2.add_neighbor(n1)
 
-[session.save(x) for x in [n1, n2, n3, n4, n5, n6, n7]]
+[session.add(x) for x in [n1, n2, n3, n4, n5, n6, n7]]
 session.flush()
 
-session.clear()
+session.expunge_all()
 
 n2 = session.query(Node).get(2)
 n3 = session.query(Node).get(3)

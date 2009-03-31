@@ -1,7 +1,8 @@
 """illustrates one way to use a custom pickler that is session-aware."""
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import MetaData, Table, Column, Integer, String, PickleType
+from sqlalchemy.orm import (mapper, create_session, MapperExtension,
+    class_mapper, EXT_CONTINUE)
 from sqlalchemy.orm.session import object_session
 from cStringIO import StringIO
 from pickle import Pickler, Unpickler
@@ -28,7 +29,7 @@ class MyPickler(object):
         if getattr(obj, "id", None) is None:
             sess = MyPickler.sessions.current
             newsess = create_session(bind=sess.connection(class_mapper(Bar)))
-            newsess.save(obj)
+            newsess.add(obj)
             newsess.flush()
         key = "%s:%s" % (type(obj).__name__, obj.id)
         return key
@@ -74,9 +75,9 @@ mapper(Bar, bar_table)
 sess = create_session()
 f = Foo()
 f.bar = Bar('some bar')
-sess.save(f)
+sess.add(f)
 sess.flush()
-sess.clear()
+sess.expunge_all()
 
 del MyPickler.sessions.current
 

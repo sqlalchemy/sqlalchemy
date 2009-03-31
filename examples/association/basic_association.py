@@ -10,13 +10,14 @@ the price paid by the user for that particular order, which is independent
 of the price on each Item (since those can change).
 """
 
-import logging
 from datetime import datetime
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
+    String, DateTime, Numeric, ForeignKey, and_)
+from sqlalchemy.orm import mapper, relation, create_session
 
 # Uncomment these to watch database activity.
+#import logging
 #logging.basicConfig(format='%(message)s')
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
@@ -72,10 +73,10 @@ mapper(OrderItem, orderitems, properties={
 session = create_session()
 
 # create our catalog
-session.save(Item('SA T-Shirt', 10.99))
-session.save(Item('SA Mug', 6.50))
-session.save(Item('SA Hat', 8.99))
-session.save(Item('MySQL Crowbar', 16.99))
+session.add(Item('SA T-Shirt', 10.99))
+session.add(Item('SA Mug', 6.50))
+session.add(Item('SA Hat', 8.99))
+session.add(Item('MySQL Crowbar', 16.99))
 session.flush()
 
 # function to return items from the DB
@@ -89,10 +90,10 @@ order = Order('john smith')
 order.order_items.append(OrderItem(item('SA Mug')))
 order.order_items.append(OrderItem(item('MySQL Crowbar'), 10.99))
 order.order_items.append(OrderItem(item('SA Hat')))
-session.save(order)
+session.add(order)
 session.flush()
 
-session.clear()
+session.expunge_all()
 
 # query the order, print items
 order = session.query(Order).filter_by(customer_name='john smith').one()

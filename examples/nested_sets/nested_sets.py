@@ -4,9 +4,9 @@ http://www.intelligententerprise.com/001020/celko.jhtml
 
 """
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from sqlalchemy.orm import attributes
+from sqlalchemy import (create_engine, Column, Integer, String, select, case,
+    func)
+from sqlalchemy.orm import sessionmaker, MapperExtension, aliased
 from sqlalchemy.ext.declarative import declarative_base
 
 engine = create_engine('sqlite://', echo=True)
