@@ -1214,7 +1214,7 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     def get_columns(self, connection, tablename, schema=None, **kw):
         # Get base columns
-        current_schema = schemaname or self.get_default_schema_name(connection)
+        current_schema = schema or self.get_default_schema_name(connection)
         columns = ischema.columns
         s = sql.select([columns],
                    current_schema

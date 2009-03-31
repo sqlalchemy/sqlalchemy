@@ -108,7 +108,7 @@ class DBAPIError(SQLAlchemyError):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
         if isinstance(orig, (KeyboardInterrupt, SystemExit)):
-            return orig
+            return type(orig)
 
         if orig is not None:
             name, glob = orig.__class__.__name__, globals()

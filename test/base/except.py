@@ -25,23 +25,23 @@ class OutOfSpec(DatabaseError):
 class WrapTest(unittest.TestCase):
     def test_db_error_normal(self):
         try:
-            raise sa_exceptions.DBAPIError.instance(
-                '', [], OperationalError())
+            raise sa_exceptions.DBAPIError.instance_cls(OperationalError()), \
+                ('', [], OperationalError())
         except sa_exceptions.DBAPIError:
             self.assert_(True)
 
     def test_db_error_busted_dbapi(self):
         try:
-            raise sa_exceptions.DBAPIError.instance(
-                '', [], ProgrammingError())
+            raise sa_exceptions.DBAPIError.instance_cls(ProgrammingError()), \
+                ('', [], ProgrammingError())
         except sa_exceptions.DBAPIError, e:
             self.assert_(True)
             self.assert_('Error in str() of DB-API' in e.args[0])
 
     def test_db_error_noncompliant_dbapi(self):
         try:
-            raise sa_exceptions.DBAPIError.instance(
-                '', [], OutOfSpec())
+            raise sa_exceptions.DBAPIError.instance_cls(OutOfSpec()), \
+                ('', [], OutOfSpec())
         except sa_exceptions.DBAPIError, e:
             self.assert_(e.__class__ is sa_exceptions.DBAPIError)
         except OutOfSpec:
@@ -50,8 +50,8 @@ class WrapTest(unittest.TestCase):
         # Make sure the DatabaseError recognition logic is limited to
         # subclasses of sqlalchemy.exceptions.DBAPIError
         try:
-            raise sa_exceptions.DBAPIError.instance(
-                '', [], sa_exceptions.ArgumentError())
+            raise sa_exceptions.DBAPIError.instance_cls(sa_exceptions.ArgumentError()), \
+                ('', [], sa_exceptions.ArgumentError())
         except sa_exceptions.DBAPIError, e:
             self.assert_(e.__class__ is sa_exceptions.DBAPIError)
         except sa_exceptions.ArgumentError:
@@ -59,8 +59,8 @@ class WrapTest(unittest.TestCase):
 
     def test_db_error_keyboard_interrupt(self):
         try:
-            raise sa_exceptions.DBAPIError.instance(
-                '', [], KeyboardInterrupt())
+            raise sa_exceptions.DBAPIError.instance_cls(KeyboardInterrupt()), \
+                ('', [], KeyboardInterrupt())
         except sa_exceptions.DBAPIError:
             self.assert_(False)
         except KeyboardInterrupt:
@@ -68,8 +68,8 @@ class WrapTest(unittest.TestCase):
 
     def test_db_error_system_exit(self):
         try:
-            raise sa_exceptions.DBAPIError.instance(
-                '', [], SystemExit())
+            raise sa_exceptions.DBAPIError.instance_cls(SystemExit()), \
+                ('', [], SystemExit())
         except sa_exceptions.DBAPIError:
             self.assert_(False)
         except SystemExit:
