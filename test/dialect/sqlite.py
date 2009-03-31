@@ -270,6 +270,21 @@ class DialectTest(TestBase, AssertsExecutionResults):
                 pass
             raise
 
+    def test_set_isolation_level(self):
+        """Test setting the read uncommitted/serializable levels"""
+        eng = create_engine(testing.db.url)
+        self.assertEquals(eng.execute("PRAGMA read_uncommitted").scalar(), 0)
+
+        eng = create_engine(testing.db.url, isolation_level="READ UNCOMMITTED")
+        self.assertEquals(eng.execute("PRAGMA read_uncommitted").scalar(), 1)
+
+        eng = create_engine(testing.db.url, isolation_level="SERIALIZABLE")
+        self.assertEquals(eng.execute("PRAGMA read_uncommitted").scalar(), 0)
+
+        self.assertRaises(exc.ArgumentError, create_engine, testing.db.url,
+            isolation_level="FOO")
+
+
 class InsertTest(TestBase, AssertsExecutionResults):
     """Tests inserts and autoincrement."""
 

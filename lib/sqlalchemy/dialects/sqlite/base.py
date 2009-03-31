@@ -252,7 +252,32 @@ class SQLiteDialect(default.DefaultDialect):
     preparer = SQLiteIdentifierPreparer
     ischema_names = ischema_names
     colspecs = colspecs
-    
+    isolation_level = None
+
+    def __init__(self, isolation_level=None, **kwargs):
+        default.DefaultDialect.__init__(self, **kwargs)
+        if isolation_level and isolation_level not in ('SERIALIZABLE',
+                'READ UNCOMMITTED'):
+            raise exc.ArgumentError("Invalid value for isolation_level. "
+                "Valid isolation levels for sqlite are 'SERIALIZABLE' and "
+                "'READ UNCOMMITTED'.")
+        self.isolation_level = isolation_level
+
+    def visit_pool(self, pool):
+        if self.isolation_level is not None:
+            class SetIsolationLevel(object):
+                def __init__(self, isolation_level):
+                    if isolation_level == 'READ UNCOMMITTED':
+                        self.isolation_level = 1
+                    else:
+                        self.isolation_level = 0
+
+                def connect(self, conn, rec):
+                    cursor = conn.cursor()
+                    cursor.execute("PRAGMA read_uncommitted = %d" % self.isolation_level)
+                    cursor.close()
+            pool.add_listener(SetIsolationLevel(self.isolation_level))
+
     def table_names(self, connection, schema):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
