@@ -276,7 +276,7 @@ class _ConnectionRecord(object):
 
 
 def _finalize_fairy(connection, connection_record, pool, ref=None):
-    if ref is not None and connection_record.backref is not ref:
+    if ref is not None and (connection_record.backref is not ref or isinstance(pool, AssertionPool)):
         return
     if connection is not None:
         try:
@@ -753,7 +753,8 @@ class StaticPool(Pool):
         Pool.__init__(self, creator, **params)
         self._conn = creator()
         self.connection = _ConnectionRecord(self)
-
+        self.connection = None
+        
     def status(self):
         return "StaticPool"
 
@@ -785,68 +786,41 @@ class AssertionPool(Pool):
 
     ## TODO: modify this to handle an arbitrary connection count.
 
-    def __init__(self, creator, **params):
-        """
-        Construct an AssertionPool.
-
-        :param creator: a callable function that returns a DB-API
-          connection object.  The function will be called with
-          parameters.
-
-        :param recycle: If set to non -1, number of seconds between
-          connection recycling, which means upon checkout, if this
-          timeout is surpassed the connection will be closed and
-          replaced with a newly opened connection. Defaults to -1.
-
-        :param echo: If True, connections being pulled and retrieved
-          from the pool will be logged to the standard output, as well
-          as pool sizing information.  Echoing can also be achieved by
-          enabling logging for the "sqlalchemy.pool"
-          namespace. Defaults to False.
-
-        :param use_threadlocal: If set to True, repeated calls to
-          :meth:`connect` within the same application thread will be
-          guaranteed to return the same connection object, if one has
-          already been retrieved from the pool and has not been
-          returned yet.  Offers a slight performance advantage at the
-          cost of individual transactions by default.  The
-          :meth:`unique_connection` method is provided to bypass the
-          threadlocal behavior installed into :meth:`connect`.
-
-        :param reset_on_return: If true, reset the database state of
-          connections returned to the pool.  This is typically a
-          ROLLBACK to release locks and transaction resources.
-          Disable at your own peril.  Defaults to True.
-
-        :param listeners: A list of
-          :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
-          dictionaries of callables that receive events when DB-API
-          connections are created, checked out and checked in to the
-          pool.
-
-        """
-        Pool.__init__(self, creator, **params)
-        self.connection = _ConnectionRecord(self)
-        self._conn = self.connection
-
+    def __init__(self, *args, **kw):
+        self._conn = None
+        self._checked_out = False
+        Pool.__init__(self, *args, **kw)
+        
     def status(self):
         return "AssertionPool"
 
-    def create_connection(self):
-        raise AssertionError("Invalid")
-
     def do_return_conn(self, conn):
-        assert conn is self._conn and self.connection is None
-        self.connection = conn
+        if not self._checked_out:
+            raise AssertionError("connection is not checked out")
+        self._checked_out = False
+        assert conn is self._conn
 
     def do_return_invalid(self, conn):
-        raise AssertionError("Invalid")
+        self._conn = None
+        self._checked_out = False
+    
+    def dispose(self):
+        self._checked_out = False
+        self._conn.close()
 
+    def recreate(self):
+        self.log("Pool recreating")
+        return AssertionPool(self._creator, echo=self._should_log_info, listeners=self.listeners)
+        
     def do_get(self):
-        assert self.connection is not None
-        c = self.connection
-        self.connection = None
-        return c
+        if self._checked_out:
+            raise AssertionError("connection is already checked out")
+            
+        if not self._conn:
+            self._conn = self.create_connection()
+        
+        self._checked_out = True
+        return self._conn
 
 class _DBProxy(object):
     """Layers connection pooling behavior on top of a standard DB-API module.

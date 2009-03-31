@@ -1,8 +1,10 @@
 import sys, types, __builtin__
 
-__all__ = '_function_named', 'callable'
+__all__ = '_function_named', 'callable', 'py3k', 'jython'
 
 py3k = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
+
+jython = sys.platform.startswith('java')
 
 def _function_named(fn, name):
     """Return a function with a given __name__.

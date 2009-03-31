@@ -1,6 +1,7 @@
 import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
-from testlib.sa.util import OrderedSet
+from testlib.sa import util
+OrderedSet = util.OrderedSet
 from testlib.sa.orm import mapper, relation, create_session, PropComparator, synonym, comparable_property
 from testlib.testing import eq_, ne_
 from orm import _base, _fixtures

@@ -1,5 +1,5 @@
 import testenv; testenv.configure_for_tests()
-from testlib import sa_unittest as unittest
+from testlib import sa_unittest as unittest, testing
 
 
 def suite():
@@ -11,7 +11,7 @@ def suite():
         'profiling.zoomark_orm',
         )
     alltests = unittest.TestSuite()
-    if testenv.testlib.config.coverage_enabled:
+    if testenv.testlib.config.coverage_enabled or testing.jython:
         return alltests
         
     for name in modules_to_test:
