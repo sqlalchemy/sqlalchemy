@@ -139,11 +139,10 @@ class QueryableAttribute(interfaces.PropComparator):
     def __str__(self):
         return repr(self.parententity) + "." + self.property.key
 
-#    @property
-#    def property(self):
-#        return self.comparator.property
-    
-QueryableAttribute.property = property(lambda self:self.comparator.property)
+    @property
+    def property(self):
+        return self.comparator.property
+
 
 class InstrumentedAttribute(QueryableAttribute):
     """Public-facing descriptor, placed in the mapped class dictionary."""
