@@ -5,6 +5,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from testlib import *
+from testlib.compat import gc_collect
 from testlib.testing import eq_
 from orm import _base
 
@@ -115,7 +116,7 @@ class AttributesTest(_base.ORMTest):
         f.bar = "foo"
         assert state.dict == {'bar':'foo', state.manager.STATE_ATTR:state}
         del f
-        gc.collect()
+        gc_collect()
         assert state.obj() is None
         assert state.dict == {}
         

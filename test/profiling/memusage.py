@@ -2,8 +2,10 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy.orm import mapper, relation, create_session, clear_mappers, sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
+import gc
 import operator
-from testlib import gc, testing
+from testlib import testing
+from testlib.compat import gc_collect
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, PickleType
 import sqlalchemy as sa
 from sqlalchemy.sql import column
@@ -21,11 +23,11 @@ def profile_memory(func):
     # run the test 50 times.  if length of gc.get_objects()
     # keeps growing, assert false
     def profile(*args):
-        gc.collect()
+        gc_collect()
         samples = [0 for x in range(0, 50)]
         for x in range(0, 50):
             func(*args)
-            gc.collect()
+            gc_collect()
             samples[x] = len(gc.get_objects())
         print "sample gc sizes:", samples
 
@@ -49,7 +51,7 @@ def profile_memory(func):
 
 def assert_no_mappers():
     clear_mappers()
-    gc.collect()
+    gc_collect()
     assert len(_mapper_registry) == 0
 
 class EnsureZeroed(_base.ORMTest):
@@ -381,7 +383,7 @@ class MemUsageTest(EnsureZeroed):
             testing.eq_(len(session.identity_map._mutable_attrs), 12)
             testing.eq_(len(session.identity_map), 12)
             obj = None
-            gc.collect()
+            gc_collect()
             testing.eq_(len(session.identity_map._mutable_attrs), 0)
             testing.eq_(len(session.identity_map), 0)
             

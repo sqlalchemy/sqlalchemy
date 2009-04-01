@@ -1,4 +1,9 @@
-import sys, types, __builtin__
+import gc
+import sys
+import time
+import types
+import __builtin__
+
 
 __all__ = '_function_named', 'callable', 'py3k', 'jython'
 
@@ -26,3 +31,12 @@ if py3k:
 else:
     callable = __builtin__.callable
 
+if sys.platform.startswith('java'):
+    def gc_collect(*args):
+        gc.collect()
+        time.sleep(0.1)
+        gc.collect()
+        gc.collect()
+        return 0
+else:
+    gc_collect = gc.collect

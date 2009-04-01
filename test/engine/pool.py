@@ -2,7 +2,8 @@ import testenv; testenv.configure_for_tests()
 import threading, time
 from sqlalchemy import pool, interfaces, create_engine
 import testlib.sa as tsa
-from testlib import TestBase, gc, testing
+from testlib import TestBase, testing
+from testlib.compat import gc_collect
 
 
 mcid = 1
@@ -542,7 +543,7 @@ class QueuePoolTest(PoolTestBase):
        c2 = None
        del c1
        del c2
-       gc.collect()
+       gc_collect()
        assert p.checkedout() == 0
        c3 = p.connect()
        assert c3 is not None

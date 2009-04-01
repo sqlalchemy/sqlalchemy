@@ -5,7 +5,9 @@ from sqlalchemy.orm import attributes
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from testlib import *
+from testlib.compat import gc_collect
 from testlib.fixtures import *
+
 
 class TransactionTest(FixtureTest):
     keep_mappers = True
@@ -104,7 +106,7 @@ class AutoExpireTest(TransactionTest):
         assert u1_state not in s.identity_map.all_states()
         assert u1_state not in s._deleted
         del u1
-        gc.collect()
+        gc_collect()
         assert u1_state.obj() is None
         
         s.rollback()

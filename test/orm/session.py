@@ -2,7 +2,8 @@ import testenv; testenv.configure_for_tests()
 import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes
-from testlib import engines, gc, sa, testing, config
+from testlib import engines, sa, testing, config
+from testlib.compat import gc_collect
 from testlib.sa import Table, Column, Integer, String, Sequence
 from testlib.sa.orm import mapper, relation, backref
 from testlib.testing import eq_
@@ -225,7 +226,7 @@ class SessionTest(_fixtures.FixtureTest):
         u = sess.query(User).get(u.id)
         q = sess.query(Address).filter(Address.user==u)
         del u
-        gc.collect()
+        gc_collect()
         eq_(q.one(), Address(email_address='foo'))
 
 
@@ -757,18 +758,18 @@ class SessionTest(_fixtures.FixtureTest):
 
         user = s.query(User).one()
         del user
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 0
 
         user = s.query(User).one()
         user.name = 'fred'
         del user
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 1
         assert len(s.dirty) == 1
         assert None not in s.dirty
         s.flush()
-        gc.collect()
+        gc_collect()
         assert not s.dirty
         assert not s.identity_map
 
@@ -787,7 +788,7 @@ class SessionTest(_fixtures.FixtureTest):
         user = s.query(User).one()
         user = None
         print s.identity_map
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 1
 
         user = s.query(User).one()
@@ -810,7 +811,7 @@ class SessionTest(_fixtures.FixtureTest):
         self.assert_(len(s.identity_map) == 0)
         self.assert_(s.prune() == 0)
         s.flush()
-        gc.collect()
+        gc_collect()
         self.assert_(s.prune() == 9)
         self.assert_(len(s.identity_map) == 1)
 

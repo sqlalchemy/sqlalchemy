@@ -2,6 +2,7 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from testlib import *
+from testlib.compat import gc_collect
 from testlib import fixtures
 
 # in this test we are specifically looking for time spent in the attributes.InstanceState.__cleanup() method.
@@ -58,7 +59,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
 
             sess.close()
             del sess
-            gc.collect()
+            gc_collect()
 
     @profiling.profiled('dirty', report=True)
     def test_session_dirty(self):
@@ -72,11 +73,11 @@ class SessionTest(TestBase, AssertsExecutionResults):
                     t2.c2 = 'this is some modified text'
 
             del t1s
-            gc.collect()
+            gc_collect()
             
             sess.close()
             del sess
-            gc.collect()
+            gc_collect()
 
     @profiling.profiled('noclose', report=True)
     def test_session_noclose(self):
@@ -87,8 +88,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
                 t1s[index].t2s
 
             del sess
-            gc.collect()
-        
+            gc_collect()
 
 
 if __name__ == '__main__':

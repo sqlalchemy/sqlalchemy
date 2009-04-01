@@ -1,7 +1,7 @@
 """Profiling support for unit and performance tests."""
 
 import os, sys
-from testlib.compat import _function_named
+from testlib.compat import _function_named, gc_collect
 import testlib.config
 
 __all__ = 'profiled', 'function_call_count', 'conditional_call_count'
@@ -179,7 +179,7 @@ def _profile_cProfile(filename, fn, *args, **kw):
     import cProfile, gc, pstats, time
 
     load_stats = lambda: pstats.Stats(filename)
-    gc.collect()
+    gc_collect()
 
     began = time.time()
     cProfile.runctx('result = fn(*args, **kw)', globals(), locals(),
@@ -192,7 +192,7 @@ def _profile_hotshot(filename, fn, *args, **kw):
     import gc, hotshot, hotshot.stats, time
     load_stats = lambda: hotshot.stats.load(filename)
 
-    gc.collect()
+    gc_collect()
     prof = hotshot.Profile(filename)
     began = time.time()
     prof.start()

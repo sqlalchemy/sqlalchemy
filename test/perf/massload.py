@@ -42,7 +42,7 @@ class LoadTest(TestBase, AssertsExecutionResults):
         query = sess.query(Item)
         for x in range (1,NUM/100):
             # this is not needed with cpython which clears non-circular refs immediately
-            #gc.collect()
+            #gc_collect()
             l = query.filter(items.c.item_id.between(x*100 - 100 + 1, x*100)).all()
             assert len(l) == 100
             print "loaded ", len(l), " items "

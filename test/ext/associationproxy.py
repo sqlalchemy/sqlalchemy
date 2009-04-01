@@ -4,6 +4,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.ext.associationproxy import *
 from testlib import *
+from testlib.compat import gc_collect
 
 
 class DictCollection(dict):
@@ -864,7 +865,7 @@ class ReconstitutionTest(TestBase):
 
 
         add_child('p1', 'c1')
-        gc.collect()
+        gc_collect()
         add_child('p1', 'c2')
 
         session.flush()
@@ -877,7 +878,7 @@ class ReconstitutionTest(TestBase):
         p.kids.extend(['c1', 'c2'])
         p_copy = copy.copy(p)
         del p
-        gc.collect()
+        gc_collect()
 
         assert set(p_copy.kids) == set(['c1', 'c2']), p.kids
 

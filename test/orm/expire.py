@@ -1,7 +1,8 @@
 """Attribute/instance expiration, deferral of attributes, etc."""
 
 import testenv; testenv.configure_for_tests()
-from testlib import gc, sa, testing
+from testlib import sa, testing
+from testlib.compat import gc_collect
 from testlib.sa import Table, Column, Integer, String, ForeignKey, exc as sa_exc
 from testlib.sa.orm import mapper, relation, create_session, attributes, deferred
 from orm import _base, _fixtures
@@ -662,7 +663,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert self.static.user_address_result == userlist
         assert len(list(sess)) == 9
         sess.expire_all()
-        gc.collect()
+        gc_collect()
         assert len(list(sess)) == 4 # since addresses were gc'ed
 
         userlist = sess.query(User).order_by(User.id).all()

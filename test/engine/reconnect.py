@@ -1,9 +1,11 @@
 import testenv; testenv.configure_for_tests()
+import time
 import weakref
 from testlib.sa import select, MetaData, Table, Column, Integer, String, pool
 import testlib.sa as tsa
-from testlib import TestBase, testing, engines, gc
-import time
+from testlib import TestBase, testing, engines
+from testlib.compat import gc_collect
+
 
 class MockDisconnect(Exception):
     pass
@@ -95,7 +97,7 @@ class MockReconnectTest(TestBase):
         assert id(db.pool) != pid
 
         # ensure all connections closed (pool was recycled)
-        gc.collect()
+        gc_collect()
         assert len(dbapi.connections) == 0
 
         conn =db.connect()
@@ -115,7 +117,7 @@ class MockReconnectTest(TestBase):
             pass
 
         # assert was invalidated
-        gc.collect()
+        gc_collect()
         assert len(dbapi.connections) == 0
         assert not conn.closed
         assert conn.invalidated
@@ -165,7 +167,7 @@ class MockReconnectTest(TestBase):
         assert conn.invalidated
 
         # ensure all connections closed (pool was recycled)
-        gc.collect()
+        gc_collect()
         assert len(dbapi.connections) == 0
 
         # test reconnects
