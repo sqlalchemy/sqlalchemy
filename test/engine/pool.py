@@ -2,7 +2,7 @@ import testenv; testenv.configure_for_tests()
 import threading, time
 from sqlalchemy import pool, interfaces, create_engine
 import testlib.sa as tsa
-from testlib import TestBase, gc testing
+from testlib import TestBase, gc, testing
 
 
 mcid = 1
