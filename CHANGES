@@ -24,6 +24,11 @@ CHANGES
     - Fixed another location where autoflush was interfering
       with session.merge().  autoflush is disabled completely
       for the duration of merge() now. [ticket:1360]
+
+    - Fixed bug in relation(), introduced in 0.5.3, 
+      whereby a self referential relation
+      from a base class to a joined-table subclass would 
+      not configure correctly.
       
 - sql
     - ``sqlalchemy.extract()`` is now dialect sensitive and can

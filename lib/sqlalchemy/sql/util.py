@@ -45,6 +45,7 @@ def find_join_source(clauses, join_to):
                 return i, f
     else:
         return None, None
+
     
 def find_tables(clause, check_columns=False, include_aliases=False, include_joins=False, include_selects=False):
     """locate Table objects within the given expression."""

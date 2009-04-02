@@ -1021,7 +1021,11 @@ class RelationProperty(StrategizedProperty):
         
 
     def _refers_to_parent_table(self):
-        return self.parent.mapped_table is self.target
+        for c, f in self.synchronize_pairs:
+            if c.table is f.table:
+                return True
+        else:
+            return False
 
     def _is_self_referential(self):
         return self.mapper.common_parent(self.parent)

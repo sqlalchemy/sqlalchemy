@@ -8,6 +8,8 @@ from sqlalchemy import util
 from sqlalchemy.orm import *
 from testlib import *
 from testlib import fixtures
+from orm import _base
+from testlib.testing import eq_
 
 class AttrSettable(object):
     def __init__(self, **kwargs):
@@ -610,7 +612,50 @@ class RelationTest7(ORMTest):
         for p in r:
             assert p.car_id == p.car.car_id
 
+class RelationTest8(ORMTest):
+    def define_tables(self, metadata):
+        global taggable, users
+        taggable = Table('taggable', metadata,
+                         Column('id', Integer, primary_key=True),
+                         Column('type', String(30)),
+                         Column('owner_id', Integer, ForeignKey('taggable.id')),
+                         )
+        users = Table ('users', metadata,
+                       Column('id', Integer, ForeignKey('taggable.id'), primary_key=True),
+                       Column('data', String(50)),
+                       )
+
+    def test_selfref_onjoined(self):
+        class Taggable(_base.ComparableEntity):
+            pass
+
+        class User(Taggable):
+            pass
+
+        mapper( Taggable, taggable, polymorphic_on=taggable.c.type, polymorphic_identity='taggable', properties = {
+            'owner' : relation (User,
+                               primaryjoin=taggable.c.owner_id ==taggable.c.id,
+                                remote_side=taggable.c.id
+                                ),
+        })
+
+
+        mapper(User, users, inherits=Taggable, polymorphic_identity='user',
+               inherit_condition=users.c.id == taggable.c.id,
+               )
+
+
+        u1 = User(data='u1')
+        t1 = Taggable(owner=u1)
+        sess = create_session()
+        sess.add(t1)
+        sess.flush()
         
+        sess.expunge_all()
+        eq_(
+            sess.query(Taggable).order_by(Taggable.id).all(),
+            [User(data='u1'), Taggable(owner=User(data='u1'))]
+        )
         
 class GenerativeTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):
