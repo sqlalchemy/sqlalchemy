@@ -22,6 +22,7 @@ def suite():
         'orm.assorted_eager',
 
         'orm.naturalpks',
+        'orm.defaults',
         'orm.unitofwork',
         'orm.session',
         'orm.transaction',
