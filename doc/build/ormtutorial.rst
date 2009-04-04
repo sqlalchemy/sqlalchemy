@@ -501,9 +501,10 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 
 .. sourcecode:: python+sql
 
-    {sql}>>> try: #doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> from sqlalchemy.orm.exc import MultipleResultsFound
+    >>> try: #doctest: +NORMALIZE_WHITESPACE
     ...     user = query.one()
-    ... except Exception, e:
+    ... except MultipleResultsFound, e:
     ...     print e
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
@@ -514,9 +515,10 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 
 .. sourcecode:: python+sql
 
-    {sql}>>> try: #doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> from sqlalchemy.orm.exc import NoResultFound
+    >>> try: #doctest: +NORMALIZE_WHITESPACE
     ...     user = query.filter(User.id == 99).one()
-    ... except Exception, e:
+    ... except NoResultFound, e:
     ...     print e
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
