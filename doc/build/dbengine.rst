@@ -92,8 +92,12 @@ Available drivernames are ``sqlite``, ``mysql``, ``postgres``, ``oracle``, ``mss
     # mysql
     mysql_db = create_engine('mysql://localhost/foo')
 
+    # oracle
+    oracle_db = create_engine('oracle://scott:tiger@host:port/dbname?key1=value1&key2=value2')
+
     # oracle via TNS name
-    oracle_db = create_engine('oracle://scott:tiger@dsn')
+    oracle_db = create_engine('oracle://scott:tiger@tnsname')
+    oracle_db = create_engine('oracle://scott:tiger@tnsname/?key1=value1&key2=value2')
 
     # oracle will feed host/port/SID into cx_oracle.makedsn
     oracle_db = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
@@ -102,7 +106,8 @@ Available drivernames are ``sqlite``, ``mysql``, ``postgres``, ``oracle``, ``mss
     mssql_db = create_engine('mssql://username:password@localhost/database')
 
     # mssql via a DSN connection
-    mssql_db = create_engine('mssql://username:password@/?dsn=mydsn') 
+    mssql_db = create_engine('mssql://mydsn')
+    mssql_db = create_engine('mssql://username:password@mydsn')
 
 The :class:`~sqlalchemy.engine.base.Engine` will ask the connection pool for a connection when the ``connect()`` or ``execute()`` methods are called.  The default connection pool, :class:`~sqlalchemy.pool.QueuePool`, as well as the default connection pool used with SQLite, :class:`~sqlalchemy.pool.SingletonThreadPool`, will open connections to the database on an as-needed basis.  As concurrent statements are executed, :class:`~sqlalchemy.pool.QueuePool` will grow its pool of connections to a default size of five, and will allow a default "overflow" of ten.   Since the ``Engine`` is essentially "home base" for the connection pool, it follows that you should keep a single :class:`~sqlalchemy.engine.base.Engine` per database established within an application, rather than creating a new one for each connection.
 
