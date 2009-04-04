@@ -632,7 +632,7 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
         'reindex', 'rename', 'replace', 'restrict', 'right', 'rollback',
         'row', 'select', 'set', 'table', 'temp', 'temporary', 'then', 'to',
         'transaction', 'trigger', 'true', 'union', 'unique', 'update', 'using',
-        'vacuum', 'values', 'view', 'virtual', 'when', 'where',
+        'vacuum', 'values', 'view', 'virtual', 'when', 'where', 'indexed',
         ])
 
     def __init__(self, dialect):
