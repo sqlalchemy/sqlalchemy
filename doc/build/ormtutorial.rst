@@ -682,7 +682,7 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
      LIMIT 2 OFFSET 0
     ['jack']
 
-    >>> jack
+    {stop}>>> jack
     <User('jack','Jack Bean', 'gjffdd')>
 
 Let's look at the ``addresses`` collection.  Watch the SQL:
@@ -709,14 +709,14 @@ If you want to reduce the number of queries (dramatically, in many cases), we ca
     anon_1.users_fullname AS anon_1_users_fullname, anon_1.users_password AS anon_1_users_password,
     addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id
-        FROM (SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-        users.password AS users_password
-        FROM users WHERE users.name = ?
-         LIMIT 2 OFFSET 0) AS anon_1 LEFT OUTER JOIN addresses AS addresses_1
-         ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id
-        ['jack']
+    FROM (SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
+    users.password AS users_password
+    FROM users WHERE users.name = ?
+    LIMIT 2 OFFSET 0) AS anon_1 LEFT OUTER JOIN addresses AS addresses_1
+    ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id
+    ['jack']
 
-    >>> jack
+    {stop}>>> jack
     <User('jack','Jack Bean', 'gjffdd')>
 
     >>> jack.addresses
