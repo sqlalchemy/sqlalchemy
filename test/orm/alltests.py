@@ -41,6 +41,8 @@ def suite():
         'orm.onetoone',
         'orm.dynamic',
 
+        'orm.evaluator',
+
         'orm.deprecations',
         )
     alltests = unittest.TestSuite()

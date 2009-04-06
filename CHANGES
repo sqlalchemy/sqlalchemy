@@ -8,6 +8,8 @@ CHANGES
 =====
 
 - orm
+    - Fixed the evaluator not being able to evaluate IS NULL clauses.
+
     - Fixed the "set collection" function on "dynamic" relations to
       initiate events correctly.  Previously a collection could only
       be assigned to a pending parent instance, otherwise modified

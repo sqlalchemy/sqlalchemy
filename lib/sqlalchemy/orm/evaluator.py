@@ -68,7 +68,7 @@ class EvaluatorCompiler(object):
         if operator is operators.is_:
             def evaluate(obj):
                 return eval_left(obj) == eval_right(obj)
-        if operator is operators.isnot:
+        elif operator is operators.isnot:
             def evaluate(obj):
                 return eval_left(obj) != eval_right(obj)
         elif operator in _straight_ops:
