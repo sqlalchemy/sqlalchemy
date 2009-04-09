@@ -31,6 +31,10 @@ CHANGES
       whereby a self referential relation
       from a base class to a joined-table subclass would 
       not configure correctly.
+
+    - Fixed documentation for session weak_identity_map - 
+      the default value is True, indicating a weak
+      referencing map in use.
       
 - sql
     - ``sqlalchemy.extract()`` is now dialect sensitive and can

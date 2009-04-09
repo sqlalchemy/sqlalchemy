@@ -158,13 +158,13 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       before each transaction is committed.
 
     weak_identity_map
-      When set to the default value of ``False``, a weak-referencing map is
+      When set to the default value of ``True``, a weak-referencing map is
       used; instances which are not externally referenced will be garbage
       collected immediately. For dereferenced instances which have pending
       changes present, the attribute management system will create a temporary
       strong-reference to the object which lasts until the changes are flushed
       to the database, at which point it's again dereferenced. Alternatively,
-      when using the value ``True``, the identity map uses a regular Python
+      when using the value ``False``, the identity map uses a regular Python
       dictionary to store instances. The session will maintain all instances
       present until they are removed using expunge(), clear(), or purge().
 
