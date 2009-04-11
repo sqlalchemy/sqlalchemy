@@ -1733,6 +1733,11 @@ class MSSQLIdentifierPreparer(compiler.IdentifierPreparer):
         #TODO: determine MSSQL's escaping rules
         return value
 
+    def quote_schema(self, schema, force=True):
+        """Prepare a quoted table and schema name."""
+        result = '.'.join([self.quote(x, force) for x in schema.split('.')])
+        return result
+
 dialect = MSSQLDialect
 dialect.statement_compiler = MSSQLCompiler
 dialect.schemagenerator = MSSQLSchemaGenerator

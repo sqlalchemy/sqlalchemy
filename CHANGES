@@ -40,7 +40,13 @@ CHANGES
       key attribute on an item contained within a collection 
       owned by an object being deleted would not be set to
       None if the relation() was self-referential. [ticket:1376]
-      
+
+- schema
+    - Added a quote_schema() method to the IdentifierPreparer class
+      so that dialects can override how schemas get handled. This
+      enables the MSSQL dialect to treat schemas as multipart
+      identifiers, such as 'database.owner'. [ticket: 594, 1341]
+
 - sql
     - ``sqlalchemy.extract()`` is now dialect sensitive and can
       extract components of timestamps idiomatically across the

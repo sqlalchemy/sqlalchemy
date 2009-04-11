@@ -88,6 +88,30 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         s = select([tbl.c.id]).where(tbl.c.id==1)
         self.assert_compile(tbl.delete().where(tbl.c.id==(s)), "DELETE FROM paj.test WHERE paj.test.id IN (SELECT test_1.id FROM paj.test AS test_1 WHERE test_1.id = :id_1)")
 
+    def test_delete_schema_multipart(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata, Column('id', Integer, primary_key=True), schema='banana.paj')
+        self.assert_compile(tbl.delete(tbl.c.id == 1), "DELETE FROM banana.paj.test WHERE banana.paj.test.id = :id_1")
+
+        s = select([tbl.c.id]).where(tbl.c.id==1)
+        self.assert_compile(tbl.delete().where(tbl.c.id==(s)), "DELETE FROM banana.paj.test WHERE banana.paj.test.id IN (SELECT test_1.id FROM banana.paj.test AS test_1 WHERE test_1.id = :id_1)")
+
+    def test_delete_schema_multipart_needs_quoting(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata, Column('id', Integer, primary_key=True), schema='banana split.paj')
+        self.assert_compile(tbl.delete(tbl.c.id == 1), "DELETE FROM [banana split].paj.test WHERE [banana split].paj.test.id = :id_1")
+
+        s = select([tbl.c.id]).where(tbl.c.id==1)
+        self.assert_compile(tbl.delete().where(tbl.c.id==(s)), "DELETE FROM [banana split].paj.test WHERE [banana split].paj.test.id IN (SELECT test_1.id FROM [banana split].paj.test AS test_1 WHERE test_1.id = :id_1)")
+
+    def test_delete_schema_multipart_both_need_quoting(self):
+        metadata = MetaData()
+        tbl = Table('test', metadata, Column('id', Integer, primary_key=True), schema='banana split.paj with a space')
+        self.assert_compile(tbl.delete(tbl.c.id == 1), "DELETE FROM [banana split].[paj with a space].test WHERE [banana split].[paj with a space].test.id = :id_1")
+
+        s = select([tbl.c.id]).where(tbl.c.id==1)
+        self.assert_compile(tbl.delete().where(tbl.c.id==(s)), "DELETE FROM [banana split].[paj with a space].test WHERE [banana split].[paj with a space].test.id IN (SELECT test_1.id FROM [banana split].[paj with a space].test AS test_1 WHERE test_1.id = :id_1)")                
+
     def test_union(self):
         t1 = table('t1',
             column('col1'),
