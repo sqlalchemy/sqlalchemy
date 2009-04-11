@@ -108,7 +108,27 @@ class SelfReferentialTest(_base.MappedTest):
         sess.delete(a)
         sess.flush()
 
-
+    @testing.resolve_artifact_names
+    def test_setnull_ondelete(self):
+        mapper(C1, t1, properties={
+            'children':relation(C1)
+        })
+        
+        sess = create_session()
+        c1 = C1()
+        c2 = C1()
+        c1.children.append(c2)
+        sess.add(c1)
+        sess.flush()
+        assert c2.parent_c1 == c1.c1
+        
+        sess.delete(c1)
+        sess.flush()
+        assert c2.parent_c1 is None
+        
+        sess.expire_all()
+        assert c2.parent_c1 is None
+        
 class SelfReferentialNoPKTest(_base.MappedTest):
     """A self-referential relationship that joins on a column other than the primary key column"""
 

@@ -36,6 +36,11 @@ CHANGES
       the default value is True, indicating a weak
       referencing map in use.
       
+    - Fixed a unit of work issue whereby the foreign
+      key attribute on an item contained within a collection 
+      owned by an object being deleted would not be set to
+      None if the relation() was self-referential. [ticket:1376]
+      
 - sql
     - ``sqlalchemy.extract()`` is now dialect sensitive and can
       extract components of timestamps idiomatically across the
