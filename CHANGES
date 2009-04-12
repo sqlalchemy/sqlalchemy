@@ -57,6 +57,9 @@ CHANGES
       construct (i.e. declarative columns).  [ticket:1353]
 
 - mssql
+    - Added in reserved words for MSSQL that covers version 2008
+      and all prior versions. [ticket:1310]
+
     - Corrected problem with information schema not working with a
       binary collation based database. Cleaned up information schema
       since it is only used by mssql now. [ticket:1343]

@@ -249,7 +249,36 @@ from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
 
 
-MSSQL_RESERVED_WORDS = set(['function'])
+RESERVED_WORDS = set(
+    ['add', 'all', 'alter', 'and', 'any', 'as', 'asc', 'authorization',
+     'backup', 'begin', 'between', 'break', 'browse', 'bulk', 'by', 'cascade',
+     'case', 'check', 'checkpoint', 'close', 'clustered', 'coalesce',
+     'collate', 'column', 'commit', 'compute', 'constraint', 'contains',
+     'containstable', 'continue', 'convert', 'create', 'cross', 'current',
+     'current_date', 'current_time', 'current_timestamp', 'current_user',
+     'cursor', 'database', 'dbcc', 'deallocate', 'declare', 'default',
+     'delete', 'deny', 'desc', 'disk', 'distinct', 'distributed', 'double',
+     'drop', 'dump', 'else', 'end', 'errlvl', 'escape', 'except', 'exec',
+     'execute', 'exists', 'exit', 'external', 'fetch', 'file', 'fillfactor',
+     'for', 'foreign', 'freetext', 'freetexttable', 'from', 'full',
+     'function', 'goto', 'grant', 'group', 'having', 'holdlock', 'identity',
+     'identity_insert', 'identitycol', 'if', 'in', 'index', 'inner', 'insert',
+     'intersect', 'into', 'is', 'join', 'key', 'kill', 'left', 'like',
+     'lineno', 'load', 'merge', 'national', 'nocheck', 'nonclustered', 'not',
+     'null', 'nullif', 'of', 'off', 'offsets', 'on', 'open', 'opendatasource',
+     'openquery', 'openrowset', 'openxml', 'option', 'or', 'order', 'outer',
+     'over', 'percent', 'pivot', 'plan', 'precision', 'primary', 'print',
+     'proc', 'procedure', 'public', 'raiserror', 'read', 'readtext',
+     'reconfigure', 'references', 'replication', 'restore', 'restrict',
+     'return', 'revert', 'revoke', 'right', 'rollback', 'rowcount',
+     'rowguidcol', 'rule', 'save', 'schema', 'securityaudit', 'select',
+     'session_user', 'set', 'setuser', 'shutdown', 'some', 'statistics',
+     'system_user', 'table', 'tablesample', 'textsize', 'then', 'to', 'top',
+     'tran', 'transaction', 'trigger', 'truncate', 'tsequal', 'union',
+     'unique', 'unpivot', 'update', 'updatetext', 'use', 'user', 'values',
+     'varying', 'view', 'waitfor', 'when', 'where', 'while', 'with',
+     'writetext',
+    ])
 
 
 class _StringType(object):
@@ -1724,7 +1753,7 @@ class MSSQLSchemaDropper(compiler.SchemaDropper):
 
 
 class MSSQLIdentifierPreparer(compiler.IdentifierPreparer):
-    reserved_words = compiler.IdentifierPreparer.reserved_words.union(MSSQL_RESERVED_WORDS)
+    reserved_words = RESERVED_WORDS
 
     def __init__(self, dialect):
         super(MSSQLIdentifierPreparer, self).__init__(dialect, initial_quote='[', final_quote=']')
