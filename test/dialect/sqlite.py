@@ -73,7 +73,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
                  ( Numeric(10, 2), sqlite.SLNumeric(10, 2), ),
                  ( DECIMAL, sqlite.SLNumeric(), ),
                  ( DECIMAL(10, 2), sqlite.SLNumeric(10, 2), ),
-                 ( Float, sqlite.SLNumeric(), ),
+                 ( Float, sqlite.SLFloat(), ),
                  ( sqlite.SLNumeric(), ),
                  ( INT, sqlite.SLInteger(), ),
                  ( Integer, sqlite.SLInteger(), ),

@@ -64,6 +64,10 @@ CHANGES
       binary collation based database. Cleaned up information schema
       since it is only used by mssql now. [ticket:1343]
 
+- sqlite
+    - Corrected the float type so that it correctly maps to a
+      SLFloat type when being reflected. [ticket:1273]
+
 0.5.3
 =====
 - orm
