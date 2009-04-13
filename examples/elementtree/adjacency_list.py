@@ -155,7 +155,7 @@ session = create_session()
 
 # get ElementTree documents
 for file in ('test.xml', 'test2.xml', 'test3.xml'):
-    filename = os.path.join(os.path.dirname(sys.argv[0]), file)
+    filename = os.path.join(os.path.dirname(__file__), file)
     doc = ElementTree.parse(filename)
     session.add(Document(file, doc))
 

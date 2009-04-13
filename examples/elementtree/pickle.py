@@ -49,7 +49,7 @@ mapper(Document, documents)
 ###### time to test ! #########
 
 # get ElementTree document
-filename = os.path.join(os.path.dirname(sys.argv[0]), "test.xml")
+filename = os.path.join(os.path.dirname(__file__), "test.xml")
 doc = ElementTree.parse(filename)
     
 # save to DB
