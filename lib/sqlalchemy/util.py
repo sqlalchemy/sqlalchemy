@@ -688,6 +688,12 @@ class OrderedDict(dict):
         self._list = []
         dict.clear(self)
 
+    def copy(self):
+        return self.__copy__()
+
+    def __copy__(self):
+        return OrderedDict(self)
+
     def sort(self, *arg, **kw):
         self._list.sort(*arg, **kw)
 

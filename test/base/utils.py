@@ -1,5 +1,5 @@
 import testenv; testenv.configure_for_tests()
-import threading, unittest
+import copy, threading, unittest
 from sqlalchemy import util, sql, exc
 from testlib import TestBase
 from testlib.testing import eq_, is_, ne_
@@ -54,6 +54,18 @@ class OrderedDictTest(TestBase):
     def test_odict_constructor(self):
         o = util.OrderedDict([('name', 'jbe'), ('fullname', 'jonathan'), ('password', '')])
         eq_(o.keys(), ['name', 'fullname', 'password'])
+
+    def test_odict_copy(self):
+        o = util.OrderedDict()
+        o["zzz"] = 1
+        o["aaa"] = 2
+        eq_(o.keys(), ['zzz', 'aaa'])
+
+        o2 = o.copy()
+        eq_(o2.keys(), o.keys())
+
+        o3 = copy.copy(o)
+        eq_(o3.keys(), o.keys())
 
 class OrderedSetTest(TestBase):
     def test_mutators_against_iter(self):
