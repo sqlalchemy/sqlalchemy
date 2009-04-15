@@ -40,7 +40,7 @@ class Dialect(object):
       (i.e. 'sqlite')
 
     driver
-      identitfying name for the dialect's DBAPI
+      identifying name for the dialect's DBAPI
 
     positional
       True if the paramstyle for this Dialect is positional.
