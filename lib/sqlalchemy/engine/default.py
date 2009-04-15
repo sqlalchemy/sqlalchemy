@@ -20,6 +20,7 @@ from sqlalchemy import exc, types as sqltypes
 AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
                                re.I | re.UNICODE)
 
+
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
 
@@ -31,7 +32,7 @@ class DefaultDialect(base.Dialect):
     supports_alter = True
     supports_sequences = False
     sequences_optional = False
-    
+
     # Py3K
     #supports_unicode_statements = True
     #supports_unicode_binds = True
@@ -39,7 +40,7 @@ class DefaultDialect(base.Dialect):
     supports_unicode_statements = False
     supports_unicode_binds = False
     # end Py2K
-    
+
     name = 'default'
     max_identifier_length = 9999
     supports_sane_rowcount = True
@@ -48,11 +49,11 @@ class DefaultDialect(base.Dialect):
     supports_pk_autoincrement = True
     dbapi_type_map = {}
     default_paramstyle = 'named'
-    supports_default_values = False 
+    supports_default_values = False
     supports_empty_insert = True
 
     def __init__(self, convert_unicode=False, assert_unicode=False,
-                 encoding='utf-8', paramstyle=None, dbapi=None, 
+                 encoding='utf-8', paramstyle=None, dbapi=None,
                  label_length=None, **kwargs):
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
@@ -69,15 +70,16 @@ class DefaultDialect(base.Dialect):
         self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
         self.type_compiler = self.type_compiler(self)
-        
+
         if label_length and label_length > self.max_identifier_length:
             raise exc.ArgumentError("Label length of %d is greater than this dialect's"
-                    " maximum identifier length of %d" % (label_length, self.max_identifier_length))
+                                    " maximum identifier length of %d" %
+                                    (label_length, self.max_identifier_length))
         self.label_length = label_length
-        
+
         if not hasattr(self, 'description_encoding'):
             self.description_encoding = getattr(self, 'description_encoding', encoding)
-        
+
         # Py3K
         #self.supports_unicode_statements = True
         #self.supports_unicode_binds = True
@@ -86,16 +88,16 @@ class DefaultDialect(base.Dialect):
         # TODO: all dialects need to implement this
         if hasattr(self, '_get_server_version_info'):
             self.server_version_info = self._get_server_version_info(connection)
-    
+
     @classmethod
     def type_descriptor(cls, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given
         the generic object which comes from the types module.
 
-        This method looks for a dictionary called 
+        This method looks for a dictionary called
         ``colspecs`` as a class or instance-level variable,
         and passes on to ``types.adapt_type()``.
-        
+
         """
         return sqltypes.adapt_type(typeobj, cls.colspecs)
 
@@ -131,7 +133,8 @@ class DefaultDialect(base.Dialect):
         """Create a random two-phase transaction ID.
 
         This id will be passed to do_begin_twophase(), do_rollback_twophase(),
-        do_commit_twophase().  Its format is unspecified."""
+        do_commit_twophase().  Its format is unspecified.
+        """
 
         return "_sa_%032x" % random.randint(0, 2 ** 128)
 
@@ -239,9 +242,10 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self._connection._branch()
 
     def __encode_param_keys(self, params):
-        """apply string encoding to the keys of dictionary-based bind parameters.
+        """Apply string encoding to the keys of dictionary-based bind parameters.
 
-        This is only used executing textual, non-compiled SQL expressions."""
+        This is only used executing textual, non-compiled SQL expressions.
+        """
 
         if self.dialect.positional or self.dialect.supports_unicode_statements:
             if params:
@@ -260,7 +264,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             return [proc(d) for d in params] or [{}]
 
     def __convert_compiled_params(self, compiled_parameters):
-        """convert the dictionary of bind parameter values into a dict or list
+        """Convert the dictionary of bind parameter values into a dict or list
         to be sent to the DBAPI's execute() or executemany() method.
         """
 
@@ -306,7 +310,7 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def post_exec(self):
         pass
-    
+
     def handle_dbapi_exception(self, e):
         pass
 
@@ -318,7 +322,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             return self._rowcount
         else:
             return self.cursor.rowcount
-        
+
     def supports_sane_rowcount(self):
         return self.dialect.supports_sane_rowcount
 
@@ -341,12 +345,11 @@ class DefaultExecutionContext(base.ExecutionContext):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
-        
         """
 
         if not hasattr(self.compiled, 'bind_names'):
             return
-            
+
         types = dict(
                 (self.compiled.bind_names[bindparam], bindparam.type)
                  for bindparam in self.compiled.bind_names)
@@ -379,8 +382,9 @@ class DefaultExecutionContext(base.ExecutionContext):
                 raise
 
     def __process_defaults(self):
-        """generate default values for compiled insert/update statements,
-        and generate last_inserted_ids() collection."""
+        """Generate default values for compiled insert/update statements,
+        and generate last_inserted_ids() collection.
+        """
 
         if self.executemany:
             if len(self.compiled.prefetch):

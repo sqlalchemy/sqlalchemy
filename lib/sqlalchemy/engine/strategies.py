@@ -6,8 +6,8 @@ underlying behavior for the "strategy" keyword argument available on
 ``plain``, ``threadlocal``, and ``mock``.
 
 New strategies can be added via new ``EngineStrategy`` classes.
-
 """
+
 from operator import attrgetter
 
 from sqlalchemy.engine import base, threadlocal, url
@@ -15,6 +15,7 @@ from sqlalchemy import util, exc
 from sqlalchemy import pool as poollib
 
 strategies = {}
+
 
 class EngineStrategy(object):
     """An adaptor that processes input arguements and produces an Engine.
@@ -36,6 +37,7 @@ class EngineStrategy(object):
         """Given arguments, returns a new Engine instance."""
 
         raise NotImplementedError()
+
 
 class DefaultEngineStrategy(EngineStrategy):
     """Base class for built-in stratgies."""
@@ -141,6 +143,7 @@ class DefaultEngineStrategy(EngineStrategy):
     def get_engine_cls(self):
         raise NotImplementedError()
 
+
 class PlainEngineStrategy(DefaultEngineStrategy):
     """Strategy for configuring a regular Engine."""
 
@@ -154,6 +157,7 @@ class PlainEngineStrategy(DefaultEngineStrategy):
         return base.Engine
 
 PlainEngineStrategy()
+
 
 class ThreadLocalEngineStrategy(DefaultEngineStrategy):
     """Strategy for configuring an Engine with thredlocal behavior."""

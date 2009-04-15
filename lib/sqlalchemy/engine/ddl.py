@@ -1,15 +1,22 @@
-"""routines to handle CREATE/DROP workflow."""
+# engine/ddl.py
+# Copyright (C) 2009 Michael Bayer mike_mp@zzzcomputing.com
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-### TOOD: CREATE TABLE and DROP TABLE have been moved out so far.
+"""Routines to handle CREATE/DROP workflow."""
+
+### TODO: CREATE TABLE and DROP TABLE have been moved out so far.
 ### Index, ForeignKey, etc. still need to move.
 
 from sqlalchemy import engine, schema
 from sqlalchemy.sql import util as sql_util
 
+
 class DDLBase(schema.SchemaVisitor):
     def __init__(self, connection):
         self.connection = connection
-    
+
     def find_alterables(self, tables):
         alterables = []
         class FindAlterables(schema.SchemaVisitor):
@@ -68,13 +75,15 @@ class SchemaGenerator(DDLBase):
 
     def visit_sequence(self, sequence):
         if self.dialect.supports_sequences:
-            if \
-                (not self.dialect.sequences_optional or not sequence.optional) and \
-                (not self.checkfirst or not self.dialect.has_sequence(self.connection, sequence.name)):
+            if ((not self.dialect.sequences_optional or
+                 not sequence.optional) and
+                (not self.checkfirst or
+                 not self.dialect.has_sequence(self.connection, sequence.name))):
                 self.connection.execute(schema.CreateSequence(sequence))
 
     def visit_index(self, index):
         self.connection.execute(schema.CreateIndex(index))
+
 
 class SchemaDropper(DDLBase):
     def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
@@ -112,7 +121,7 @@ class SchemaDropper(DDLBase):
         for column in table.columns:
             if column.default is not None:
                 self.traverse_single(column.default)
-        
+
         self.connection.execute(schema.DropTable(table))
 
         for listener in table.ddl_listeners['after-drop']:
@@ -120,7 +129,8 @@ class SchemaDropper(DDLBase):
 
     def visit_sequence(self, sequence):
         if self.dialect.supports_sequences:
-            if \
-                (not self.dialect.sequences_optional or not sequence.optional) and \
-                (not self.checkfirst or self.dialect.has_sequence(self.connection, sequence.name)):
+            if ((not self.dialect.sequences_optional or
+                 not sequence.optional) and
+                (not self.checkfirst or
+                 self.dialect.has_sequence(self.connection, sequence.name))):
                 self.connection.execute(schema.DropSequence(sequence))

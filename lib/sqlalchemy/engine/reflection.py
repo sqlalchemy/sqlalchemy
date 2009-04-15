@@ -2,22 +2,22 @@
 
 Usage Notes:
 
-
 Here are some general conventions when accessing the low level inspector
 methods such as get_table_names, get_columns, etc.
 
-  1. Inspector methods return lists of dicts in most cases for the following
-     reasons:
-    * They're both standard types that can be serialized.
-    * Using a dict instead of a tuple allows easy expansion of attributes.
-    * Using a list for the outer structure maintains order and is easy to work 
-       with (e.g. list comprehension [d['name'] for d in cols]).
-  2. Records that contain a name, such as the column name in a column record
-     use the key 'name'. So for most return values, each record will have a
-     'name' attribute..
+1. Inspector methods return lists of dicts in most cases for the following
+   reasons:
 
+   * They're both standard types that can be serialized.
+   * Using a dict instead of a tuple allows easy expansion of attributes.
+   * Using a list for the outer structure maintains order and is easy to work
+     with (e.g. list comprehension [d['name'] for d in cols]).
 
+2. Records that contain a name, such as the column name in a column record
+   use the key 'name'. So for most return values, each record will have a
+   'name' attribute..
 """
+
 import sqlalchemy
 from sqlalchemy import util
 from sqlalchemy.types import TypeEngine
@@ -41,16 +41,14 @@ class Inspector(object):
 
     The Inspector acts as a proxy to the dialects' reflection methods and
     provides higher level functions for accessing database schema information.
-
     """
-    
+
     def __init__(self, conn):
+        """Initialize the instance.
+
+        :param conn: a :class:`~sqlalchemy.engine.base.Connectable`
         """
 
-        conn
-          [sqlalchemy.engine.base.#Connectable]
-
-        """
         self.conn = conn
         # set the engine
         if hasattr(conn, 'engine'):
@@ -65,15 +63,15 @@ class Inspector(object):
         if hasattr(engine.dialect, 'inspector'):
             return engine.dialect.inspector(engine)
         return Inspector(engine)
-    
+
     @property
     def default_schema_name(self):
         return self.dialect.get_default_schema_name(self.conn)
 
     def get_schema_names(self):
         """Return all schema names.
-
         """
+
         if hasattr(self.dialect, 'get_schema_names'):
             return self.dialect.get_schema_names(self.conn,
                                                     info_cache=self.info_cache)
@@ -81,13 +79,15 @@ class Inspector(object):
 
     def get_table_names(self, schema=None, order_by=None):
         """Return all table names in `schema`.
-        schema:
-          Optional, retrieve names from a non-default schema.
+
+        :param schema: Optional, retrieve names from a non-default schema.
+        :param order_by: Optional, may be the string "foreign_key" to sort
+                         the result on foreign key dependencies.
 
         This should probably not return view names or maybe it should return
         them with an indicator t or v.
-
         """
+
         if hasattr(self.dialect, 'get_table_names'):
             tnames = self.dialect.get_table_names(self.conn,
             schema,
@@ -115,19 +115,19 @@ class Inspector(object):
 
     def get_view_names(self, schema=None):
         """Return all view names in `schema`.
-        schema:
-          Optional, retrieve names from a non-default schema.
 
+        :param schema: Optional, retrieve names from a non-default schema.
         """
+
         return self.dialect.get_view_names(self.conn, schema,
                                                   info_cache=self.info_cache)
 
     def get_view_definition(self, view_name, schema=None):
         """Return definition for `view_name`.
-        schema:
-          Optional, retrieve names from a non-default schema.
 
+        :param schema: Optional, retrieve names from a non-default schema.
         """
+
         return self.dialect.get_view_definition(
             self.conn, view_name, schema, info_cache=self.info_cache)
 
@@ -141,7 +141,7 @@ class Inspector(object):
           the column's name
 
         type
-          [sqlalchemy.types#TypeEngine]
+          :class:`~sqlalchemy.types.TypeEngine`
 
         nullable
           boolean
@@ -151,7 +151,6 @@ class Inspector(object):
 
         attrs
           dict containing optional column attributes
-
         """
 
         col_defs = self.dialect.get_columns(self.conn, table_name,
@@ -167,9 +166,8 @@ class Inspector(object):
     def get_primary_keys(self, table_name, schema=None):
         """Return information about primary keys in `table_name`.
 
-        Given a string `table_name`, and an optional string `schema`, return 
+        Given a string `table_name`, and an optional string `schema`, return
         primary key information as a list of column names.
-
         """
 
         pkeys = self.dialect.get_primary_keys(self.conn, table_name,
@@ -181,7 +179,7 @@ class Inspector(object):
     def get_foreign_keys(self, table_name, schema=None):
         """Return information about foreign_keys in `table_name`.
 
-        Given a string `table_name`, and an optional string `schema`, return 
+        Given a string `table_name`, and an optional string `schema`, return
         foreign key information as a list of dicts with these keys:
 
         constrained_columns
@@ -196,7 +194,6 @@ class Inspector(object):
         referred_columns
           a list of column names in the referred table that correspond to
           constrained_columns
-
         """
 
         fk_defs = self.dialect.get_foreign_keys(self.conn, table_name,
@@ -228,7 +225,6 @@ class Inspector(object):
 
         unique
           boolean
-
         """
 
         indexes = self.dialect.get_indexes(self.conn, table_name,
