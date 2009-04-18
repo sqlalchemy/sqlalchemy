@@ -614,11 +614,6 @@ def mapper(class_, local_table=None, *args, **params):
         alternative, see the method `populate_existing()` on
         :class:`~sqlalchemy.orm.query.Query`.
 
-      allow_column_override
-        If True, allows the usage of a ``relation()`` which has the
-        same name as a column in the mapped table.  The table column
-        will no longer be mapped.
-
       allow_null_pks
         Indicates that composite primary keys where one or more (but not all)
         columns contain NULL is a valid primary key.  Primary keys which
