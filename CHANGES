@@ -68,6 +68,11 @@ CHANGES
     - Corrected the float type so that it correctly maps to a
       SLFloat type when being reflected. [ticket:1273]
 
+- extensions
+
+    - Fixed adding of deferred or other column properties to a
+      declarative class. [ticket:1379]
+
 0.5.3
 =====
 - orm

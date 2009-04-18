@@ -552,6 +552,12 @@ class DeclarativeMeta(type):
                 _undefer_column_name(key, value)
                 cls.__table__.append_column(value)
                 cls.__mapper__.add_property(key, value)
+            elif isinstance(value, ColumnProperty):
+                for col in value.columns:
+                    if isinstance(col, Column) and col.table is None:
+                        _undefer_column_name(key, col)
+                        cls.__table__.append_column(col)
+                cls.__mapper__.add_property(key, value)
             elif isinstance(value, MapperProperty):
                 cls.__mapper__.add_property(key, _deferred_relation(cls, value))
             else:

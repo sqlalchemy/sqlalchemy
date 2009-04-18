@@ -4,7 +4,7 @@ from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc, Index
-from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union
+from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
 from testlib.testing import eq_
 from orm._base import ComparableEntity, MappedTest
 
@@ -1081,6 +1081,29 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             sess.query(Engineer).filter_by(primary_language='cobol').one(),
             Engineer(name="vlad", primary_language="cobol") 
         )
+
+    def test_add_deferred(self):
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column('id', Integer, primary_key=True)
+
+        Person.name = deferred(Column(String(10)))
+
+        Base.metadata.create_all()
+        sess = create_session()
+        p = Person(name='ratbert')
+
+        sess.add(p)
+        sess.flush()
+        sess.expunge_all()
+        eq_(
+            sess.query(Person).all(),
+            [
+                Person(name='ratbert')
+            ]
+        )
+        person = sess.query(Person).filter(Person.name == 'ratbert').one()
+        assert 'name' not in person.__dict__
 
     def test_single_fksonsub(self):
         """test single inheritance with a foreign key-holding column on a subclass.
