@@ -182,7 +182,8 @@ IRC!
 
 TIPS
 ----
-Postgres: The tests require an 'alt_schema' and 'alt_schema_2' to be present in
+
+The tests require an 'test_schema' and 'test_schema_2' to be present in
 the testing database.
 
 Postgres: When running the tests on postgres, postgres can get slower and

@@ -802,7 +802,7 @@ class HasSequenceTest(TestBase):
 # Tests related to engine.reflection
 
 def get_schema():
-    return 'alt_schema'
+    return 'test_schema'
 
 def createTables(meta, schema=None):
     if schema:

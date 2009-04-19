@@ -212,24 +212,24 @@ class DialectTest(TestBase, AssertsExecutionResults):
     def test_attached_as_schema(self):
         cx = testing.db.connect()
         try:
-            cx.execute('ATTACH DATABASE ":memory:" AS  alt_schema')
+            cx.execute('ATTACH DATABASE ":memory:" AS  test_schema')
             dialect = cx.dialect
-            assert dialect.table_names(cx, 'alt_schema') == []
+            assert dialect.table_names(cx, 'test_schema') == []
 
             meta = MetaData(cx)
             Table('created', meta, Column('id', Integer),
-                  schema='alt_schema')
+                  schema='test_schema')
             alt_master = Table('sqlite_master', meta, autoload=True,
-                               schema='alt_schema')
+                               schema='test_schema')
             meta.create_all(cx)
 
-            self.assertEquals(dialect.table_names(cx, 'alt_schema'),
+            self.assertEquals(dialect.table_names(cx, 'test_schema'),
                               ['created'])
             assert len(alt_master.c) > 0
 
             meta.clear()
             reflected = Table('created', meta, autoload=True,
-                              schema='alt_schema')
+                              schema='test_schema')
             assert len(reflected.c) == 1
 
             cx.execute(reflected.insert(), dict(id=1))
@@ -247,9 +247,9 @@ class DialectTest(TestBase, AssertsExecutionResults):
             # note that sqlite_master is cleared, above
             meta.drop_all()
 
-            assert dialect.table_names(cx, 'alt_schema') == []
+            assert dialect.table_names(cx, 'test_schema') == []
         finally:
-            cx.execute('DETACH DATABASE alt_schema')
+            cx.execute('DETACH DATABASE test_schema')
 
     @testing.exclude('sqlite', '<', (2, 6), 'no database support')
     def test_temp_table_reflection(self):
