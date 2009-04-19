@@ -342,9 +342,9 @@ class InsertTest(TestBase, AssertsExecutionResults):
         table.insert().execute({'id':30, 'data':'d1'})
         
         if testing.db.driver == 'pg8000':
-            exception_cls = ProgrammingError
+            exception_cls = exc.ProgrammingError
         else:
-            exception_cls = IntegrityError
+            exception_cls = exc.IntegrityError
         
         self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'})
         self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'}, {'data':'d3'})
