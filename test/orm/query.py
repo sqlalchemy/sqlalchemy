@@ -2792,9 +2792,17 @@ class UpdateDeleteTest(_base.MappedTest):
               Column('id', Integer, primary_key=True),
               Column('name', String(32)),
               Column('age', Integer))
+
+        Table('documents', metadata,
+              Column('id', Integer, primary_key=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('title', String(32)))
     
     def setup_classes(self):
         class User(_base.ComparableEntity):
+            pass
+
+        class Document(_base.ComparableEntity):
             pass
     
     @testing.resolve_artifact_names
@@ -2805,10 +2813,21 @@ class UpdateDeleteTest(_base.MappedTest):
             dict(id=3, name='jill', age=29),
             dict(id=4, name='jane', age=37),
         ])
+
+    @testing.resolve_artifact_names
+    def insert_documents(self):
+        documents.insert().execute([
+            dict(id=1, user_id=1, title='foo'),
+            dict(id=2, user_id=1, title='bar'),
+            dict(id=3, user_id=2, title='baz'),
+        ])
     
     @testing.resolve_artifact_names
     def setup_mappers(self):
         mapper(User, users)
+        mapper(Document, documents, properties={
+            'user': relation(User, lazy=False, backref=backref('documents', lazy=True))
+        })
     
     @testing.resolve_artifact_names
     def test_delete(self):
@@ -2989,6 +3008,38 @@ class UpdateDeleteTest(_base.MappedTest):
 
         rowcount = sess.query(User).filter(User.age > 26).delete(synchronize_session=False)
         self.assertEquals(rowcount, 3)
+
+    @testing.resolve_artifact_names
+    def test_update_with_eager_relations(self):
+        self.insert_documents()
+
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        foo,bar,baz = sess.query(Document).order_by(Document.id).all()
+        sess.query(Document).filter(Document.user_id == 1).update({'title': Document.title+Document.title}, synchronize_session='evaluate')
+
+        eq_([foo.title, bar.title, baz.title], ['foofoo','barbar', 'baz'])
+        eq_(sess.query(Document.title).order_by(Document.id).all(), zip(['foofoo','barbar', 'baz']))
+
+    @testing.resolve_artifact_names
+    def test_update_with_explicit_eagerload(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).options(eagerload(User.documents)).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='expire')
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
+        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
+
+    @testing.resolve_artifact_names
+    def test_delete_with_eager_relations(self):
+        self.insert_documents()
+
+        sess = create_session(bind=testing.db, autocommit=False)
+
+        sess.query(Document).filter(Document.user_id == 1).delete(synchronize_session=False)
+
+        eq_(sess.query(Document.title).all(), zip(['baz']))
 
 if __name__ == '__main__':
     testenv.main()

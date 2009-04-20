@@ -1549,6 +1549,8 @@ class Query(object):
         if synchronize_session not in [False, 'evaluate', 'fetch']:
             raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'fetch'")
 
+        self = self.enable_eagerloads(False)
+
         context = self._compile_context()
         if len(context.statement.froms) != 1 or not isinstance(context.statement.froms[0], schema.Table):
             raise sa_exc.ArgumentError("Only deletion via a single table query is currently supported")
@@ -1642,6 +1644,8 @@ class Query(object):
 
         if synchronize_session not in [False, 'evaluate', 'expire']:
             raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'expire'")
+
+        self = self.enable_eagerloads(False)
 
         context = self._compile_context()
         if len(context.statement.froms) != 1 or not isinstance(context.statement.froms[0], schema.Table):

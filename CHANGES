@@ -41,6 +41,9 @@ CHANGES
       owned by an object being deleted would not be set to
       None if the relation() was self-referential. [ticket:1376]
 
+    - Fixed Query.update() and Query.delete() failures with eagerloaded
+      relations. [ticket:1378]
+
 - schema
     - Added a quote_schema() method to the IdentifierPreparer class
       so that dialects can override how schemas get handled. This
