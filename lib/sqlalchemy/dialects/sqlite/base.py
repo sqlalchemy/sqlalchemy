@@ -404,15 +404,12 @@ class SQLiteDialect(default.DefaultDialect):
             if args is not None:
                 args = re.findall(r'(\d+)', args)
                 coltype = coltype(*[int(a) for a in args])
-            colargs = []
-            if has_default:
-                colargs.append(DefaultClause(sql.text(default)))
             columns.append({
                 'name' : name,
                 'type' : coltype,
                 'nullable' : nullable,
                 'default' : default,
-                'colargs' : colargs,
+                'attrs' : {},
                 'primary_key': primary_key
             })
         return columns
@@ -519,45 +516,8 @@ class SQLiteDialect(default.DefaultDialect):
         return unique_indexes
 
     def reflecttable(self, connection, table, include_columns):
-        preparer = self.identifier_preparer
-        table_name = table.name
-        schema = table.schema
-        found_table = False
-
-        info_cache = {}
-
-        # columns
-        for column in self.get_columns(connection, table_name, schema,
-                                                        info_cache=info_cache):
-            name = column['name']
-            coltype = column['type']
-            nullable = column['nullable']
-            default = column['default']
-            colargs = column['colargs']
-            primary_key = column['primary_key']
-            found_table = True
-            if include_columns and name not in include_columns:
-                continue
-            table.append_column(sa_schema.Column(name, coltype, primary_key = primary_key, nullable = nullable, *colargs))
-        if not found_table:
-            raise exc.NoSuchTableError(table.name)
-
-        # foreign keys
-        for fkey_d in self.get_foreign_keys(connection, table_name, schema,
-                                                        info_cache=info_cache):
-
-            rtbl = fkey_d['referred_table']
-            rcols = fkey_d['referred_columns']
-            lcols = fkey_d['constrained_columns']
-            # look up the table based on the given table's engine, not 'self',
-            # since it could be a ProxyEngine
-            remotetable = sa_schema.Table(rtbl, table.metadata, autoload=True, autoload_with=connection)
-            refspecs = ["%s.%s" % (rtbl, rcol) for rcol in rcols]
-            table.append_constraint(sa_schema.ForeignKeyConstraint(lcols, refspecs, link_to_name=True))
-        # this doesn't do anything ???
-        unique_indexes = self.get_unique_indexes(connection, table_name, 
-                                    schema, info_cache=info_cache)
-
+        insp = reflection.Inspector.from_engine(connection)
+        return insp.reflecttable(table, include_columns)
 
 def _pragma_cursor(cursor):
     """work around SQLite issue whereby cursor.description is blank when PRAGMA returns no rows."""

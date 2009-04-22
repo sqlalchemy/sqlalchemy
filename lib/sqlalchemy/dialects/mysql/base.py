@@ -1866,6 +1866,12 @@ class MySQLDialect(default.DefaultDialect):
                                                     if row[1] == 'VIEW']
 
     @reflection.cache
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+
+        parsed_state = self._parsed_state_or_create(connection, table_name, schema, **kw)
+        return parsed_state.table_options
+
+    @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
 
         parsed_state = self._parsed_state_or_create(connection, table_name, schema, **kw)
@@ -1990,93 +1996,8 @@ class MySQLDialect(default.DefaultDialect):
     def reflecttable(self, connection, table, include_columns):
         """Load column definitions from the server."""
 
-        charset = self._connection_charset
-        self._adjust_casing(table)
-        parsed_state = self._setup_parser(connection, table.name, table.schema)
-
-        # check the table name
-        if parsed_state.table_name is not None:
-            table.name = parsed_state.table_name
-        # apply table options
-        if parsed_state.table_options:
-            table.kwargs.update(parsed_state.table_options)
-        # columns
-        for col_d in self.get_columns(connection, table.name, table.schema,
-                                      parsed_state=parsed_state):
-            name = col_d['name']
-            coltype = col_d['type']
-            nullable = col_d.get('nullable', True)
-            default = col_d['default']
-            colargs = col_d['colargs']
-            if include_columns and name not in include_columns:
-                continue
-            if default is not None and default != 'NULL':
-                colargs.append(sa_schema.DefaultClause(default))
-            # Can I not specify nullable=True?
-            col_kw = {}
-            if nullable is False:
-                col_kw['nullable'] = False
-            if 'autoincrement' in col_d:
-                col_kw['autoincrement'] = col_d['autoincrement']
-            table.append_column(sa_schema.Column(name, coltype,
-                                *colargs, **col_kw))
-
-        # primary keys
-        pkey_cols = self.get_primary_keys(connection, table.name,
-                                          table.schema, parsed_state=parsed_state)
-        if include_columns:
-            pkey_cols = [p for p in pkey_cols if p in include_columns]
-        pkey = sa_schema.PrimaryKeyConstraint()
-        for col in [table.c[name] for name in pkey_cols]:
-            pkey.append_column(col)
-        table.append_constraint(pkey)
-
-        fkeys = self.get_foreign_keys(connection, table.name,
-                                      table.schema, parsed_state=parsed_state)
-        # foreign keys
-        for fkey_d in fkeys:
-            conname = fkey_d['name']
-            loc_names = fkey_d['constrained_columns']
-            ref_schema = fkey_d['referred_schema']
-            ref_name = fkey_d['referred_table']
-            ref_names = fkey_d['referred_columns']
-            con_kw = fkey_d['options']
-            refspec = []
-
-            # load related table
-            ref_key = sa_schema._get_table_key(ref_name, ref_schema)
-            if ref_key in table.metadata.tables:
-                ref_table = table.metadata.tables[ref_key]
-            else:
-                ref_table = sa_schema.Table(
-                    ref_name, table.metadata, schema=ref_schema,
-                    autoload=True, autoload_with=connection)
-
-            if ref_schema:
-                refspec = [".".join([ref_schema, ref_name, column]) for column in ref_names]
-            else:
-                refspec = [".".join([ref_name, column]) for column in ref_names]
-            key = sa_schema.ForeignKeyConstraint(loc_names, refspec,
-                                                link_to_name=True, **con_kw)
-            table.append_constraint(key)
-
-        # Indexes 
-        indexes = self.get_indexes(connection, table.name, table.schema,
-                                   parsed_state=parsed_state)
-        for index_d in indexes:
-            name = index_d['name']
-            col_names = index_d['column_names']
-            unique = index_d['unique']
-            flavor = index_d['type']
-            if include_columns and \
-                            not set(col_names).issubset(include_columns):
-                self.logger.info(
-                    "Omitting %s KEY for (%s), key covers ommitted columns." %
-                    (flavor, ', '.join(col_names)))
-                continue
-            key = sa_schema.Index(name, unique=unique)
-            for col in [table.c[name] for name in col_names]:
-                key.append_column(col)
+        insp = reflection.Inspector.from_engine(connection)
+        return insp.reflecttable(table, include_columns)
 
     def _adjust_casing(self, table, charset=None):
         """Adjust Table name to the server case sensitivity, if needed."""
@@ -2399,6 +2320,7 @@ class MySQLTableDefinitionParser(object):
         col_args, col_kw = [], {}
 
         # NOT NULL
+        col_kw['nullable'] = True
         if spec.get('notnull', False):
             col_kw['nullable'] = False
 
@@ -2419,7 +2341,10 @@ class MySQLTableDefinitionParser(object):
                     default = sql.text(default)
             else:
                 default = default[1:-1]
-        col_d = dict(name=name, type=type_instance, colargs=col_args,
+        elif default == 'NULL':
+            # eliminates the need to deal with this later.
+            default = None
+        col_d = dict(name=name, type=type_instance, attrs={},
                      default=default)
         col_d.update(col_kw)
         state.columns.append(col_d)

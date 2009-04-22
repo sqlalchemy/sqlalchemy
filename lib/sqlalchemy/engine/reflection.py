@@ -19,8 +19,10 @@ methods such as get_table_names, get_columns, etc.
 """
 
 import sqlalchemy
+from sqlalchemy import sql
 from sqlalchemy import util
 from sqlalchemy.types import TypeEngine
+from sqlalchemy import schema as sa_schema
 
 
 @util.decorator
@@ -113,6 +115,13 @@ class Inspector(object):
             tnames = ordered_tnames
         return tnames
 
+    def get_table_options(self, table_name, schema=None, **kw):
+        if hasattr(self.dialect, 'get_table_options'):
+            return self.dialect.get_table_options(self.conn, table_name, schema,
+                                                  info_cache=self.info_cache,
+                                                  **kw)
+        return {}
+
     def get_view_names(self, schema=None):
         """Return all view names in `schema`.
 
@@ -131,7 +140,7 @@ class Inspector(object):
         return self.dialect.get_view_definition(
             self.conn, view_name, schema, info_cache=self.info_cache)
 
-    def get_columns(self, table_name, schema=None):
+    def get_columns(self, table_name, schema=None, **kw):
         """Return information about columns in `table_name`.
 
         Given a string `table_name` and an optional string `schema`, return
@@ -153,9 +162,9 @@ class Inspector(object):
           dict containing optional column attributes
         """
 
-        col_defs = self.dialect.get_columns(self.conn, table_name,
-                                                   schema,
-                                                   info_cache=self.info_cache)
+        col_defs = self.dialect.get_columns(self.conn, table_name, schema,
+                                            info_cache=self.info_cache,
+                                            **kw)
         for col_def in col_defs:
             # make this easy and only return instances for coltype
             coltype = col_def['type']
@@ -163,20 +172,20 @@ class Inspector(object):
                 col_def['type'] = coltype()
         return col_defs
 
-    def get_primary_keys(self, table_name, schema=None):
+    def get_primary_keys(self, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.
 
         Given a string `table_name`, and an optional string `schema`, return
         primary key information as a list of column names.
         """
 
-        pkeys = self.dialect.get_primary_keys(self.conn, table_name,
-                                                     schema,
-                                            info_cache=self.info_cache)
+        pkeys = self.dialect.get_primary_keys(self.conn, table_name, schema,
+                                              info_cache=self.info_cache,
+                                              **kw)
 
         return pkeys
 
-    def get_foreign_keys(self, table_name, schema=None):
+    def get_foreign_keys(self, table_name, schema=None, **kw):
         """Return information about foreign_keys in `table_name`.
 
         Given a string `table_name`, and an optional string `schema`, return
@@ -196,19 +205,9 @@ class Inspector(object):
           constrained_columns
         """
 
-        fk_defs = self.dialect.get_foreign_keys(self.conn, table_name,
-                                                       schema,
-                                                info_cache=self.info_cache)
-        for fk_def in fk_defs:
-            referred_schema = fk_def['referred_schema']
-            # always set the referred_schema.
-            if referred_schema is None and schema is None:
-                try:
-                    referred_schema = self.dialect.get_default_schema_name(
-                                                                    self.conn)
-                    fk_def['referred_schema'] = referred_schema
-                except NotImplementedError:
-                    pass
+        fk_defs = self.dialect.get_foreign_keys(self.conn, table_name, schema,
+                                                info_cache=self.info_cache,
+                                                **kw)
         return fk_defs
 
     def get_indexes(self, table_name, schema=None):
@@ -231,3 +230,132 @@ class Inspector(object):
                                                   schema,
                                             info_cache=self.info_cache)
         return indexes
+
+    def reflecttable(self, table, include_columns):
+
+        # for some work arounds
+        from sqlalchemy.dialects.mysql.mysqldb import MySQLDialect
+
+        dialect = self.conn.dialect
+
+        # MySQL dialect does this.  Applicable with other dialects?
+        if hasattr(dialect, '_connection_charset') \
+                                        and hasattr(dialect, '_adjust_casing'):
+            charset = dialect._connection_charset
+            dialect._adjust_casing(table)
+
+        # table attributes we might need.
+        oracle_resolve_synonyms = table.kwargs.get('oracle_resolve_synonyms',
+                                                   False)
+
+        # oracle stuff; could be made for generic synonym support.
+        (actual_name, owner, dblink, synonym) = (None, None, None, None)
+        if oracle_resolve_synonyms:
+            (actual_name, owner, dblink, synonym) = dialect._resolve_synonym(
+                self.conn,
+                desired_owner=dialect._denormalize_name(table.schema),
+                desired_synonym=dialect._denormalize_name(table.name)
+            )
+
+        # some properties that need to be figured out
+        fk_use_existing = True
+
+        schema = table.schema
+        table_name = table.name
+
+        # apply table options
+        tbl_opts = self.get_table_options(table_name, schema, **table.kwargs)
+        if tbl_opts:
+            table.kwargs.update(tbl_opts)
+
+        # table.kwargs will need to be passed to each reflection method.  Make
+        # sure keywords are strings.
+        tblkw = table.kwargs.copy()
+        for (k, v) in tblkw.items():
+            del tblkw[k]
+            tblkw[str(k)] = v
+
+        # Py2K
+        if isinstance(schema, str):
+            schema = schema.decode(self.dialect.encoding)
+        if isinstance(table_name, str):
+            table_name = table_name.decode(self.dialect.encoding)
+        # end Py2K
+        # columns
+        for col_d in self.get_columns(table_name, schema, **tblkw):
+            name = col_d['name']
+            coltype = col_d['type']
+            nullable = col_d['nullable']
+            default = col_d['default']
+            attrs = col_d['attrs']
+            # construct additional colargs with attrs
+            # currently, it's not used here.
+            colargs = []
+            col_kw = {}
+            if 'autoincrement' in col_d:
+                col_kw['autoincrement'] = col_d['autoincrement']
+            if include_columns and name not in include_columns:
+                continue
+            if default is not None:
+                # fixme
+                # mysql does not use sql.text
+                if isinstance(dialect, MySQLDialect):
+                    colargs.append(sa_schema.DefaultClause(default))
+                else:
+                    colargs.append(sa_schema.DefaultClause(sql.text(default)))
+            table.append_column(sa_schema.Column(name, coltype,
+                                nullable=nullable, *colargs, **col_kw))
+        # Primary keys
+        for pk in self.get_primary_keys(table_name, schema, **tblkw):
+            if pk in table.c:
+                col = table.c[pk]
+                table.primary_key.add(col)
+                # fixme
+                if not isinstance(dialect, MySQLDialect):
+                    if col.default is None:
+                        col.autoincrement = False
+        # Foreign keys
+        fkeys = self.get_foreign_keys(table_name, schema, **tblkw)
+        for fkey_d in fkeys:
+            conname = fkey_d['name']
+            constrained_columns = fkey_d['constrained_columns']
+            referred_schema = fkey_d['referred_schema']
+            referred_table = fkey_d['referred_table']
+            referred_columns = fkey_d['referred_columns']
+            refspec = []
+            if referred_schema is not None:
+                sa_schema.Table(referred_table, table.metadata,
+                                autoload=True, schema=referred_schema,
+                                autoload_with=self.conn,
+                                oracle_resolve_synonyms=oracle_resolve_synonyms,
+                                useexisting=fk_use_existing
+                                )
+                for column in referred_columns:
+                    refspec.append(".".join(
+                        [referred_schema, referred_table, column]))
+            else:
+                sa_schema.Table(referred_table, table.metadata, autoload=True,
+                                autoload_with=self.conn,
+                                oracle_resolve_synonyms=oracle_resolve_synonyms,
+                                useexisting=fk_use_existing
+                                )
+                for column in referred_columns:
+                    refspec.append(".".join([referred_table, column]))
+            table.append_constraint(
+                sa_schema.ForeignKeyConstraint(constrained_columns, refspec,
+                                               conname, link_to_name=True))
+        # Indexes 
+        indexes = self.get_indexes(table_name, schema)
+        for index_d in indexes:
+            name = index_d['name']
+            columns = index_d['column_names']
+            unique = index_d['unique']
+            flavor = index_d.get('type', 'unknown type')
+            if include_columns and \
+                            not set(columns).issubset(include_columns):
+                self.logger.info(
+                    "Omitting %s KEY for (%s), key covers ommitted columns." %
+                    (flavor, ', '.join(columns)))
+                continue
+            sa_schema.Index(name, *[table.columns[c] for c in columns], 
+                         **dict(unique=unique))

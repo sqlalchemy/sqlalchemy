@@ -1,6 +1,7 @@
 import testenv; testenv.configure_for_tests()
 import StringIO, unicodedata
 import sqlalchemy as sa
+from sqlalchemy import types as sql_types
 from sqlalchemy import schema
 from sqlalchemy.engine.reflection import Inspector
 from testlib.sa import MetaData, Table, Column
@@ -802,6 +803,8 @@ class HasSequenceTest(TestBase):
 # Tests related to engine.reflection
 
 def get_schema():
+    if testing.against('oracle'):
+        return 'scott'
     return 'test_schema'
 
 def createTables(meta, schema=None):
@@ -1008,12 +1011,6 @@ class ReflectionTest(TestBase):
         insp = Inspector(meta.bind)
         try:
             expected_schema = schema
-            if schema is None:
-                try:
-                    expected_schema = meta.bind.dialect.get_default_schema_name(
-                                    meta.bind)
-                except NotImplementedError:
-                    expected_schema = None
             # users
             users_fkeys = insp.get_foreign_keys(users.name,
                                                 schema=schema)

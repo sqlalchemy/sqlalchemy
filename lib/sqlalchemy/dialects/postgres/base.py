@@ -719,9 +719,19 @@ class PGDialect(default.DefaultDialect):
                 util.warn("Did not recognize type '%s' of column '%s'" %
                           (attype, name))
                 coltype = sqltypes.NULLTYPE
-            colargs = []
+            # adjust the default value
+            if default is not None:
+                match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
+                if match is not None:
+                    # the default is related to a Sequence
+                    sch = schema
+                    if '.' not in match.group(2) and sch is not None:
+                        # unconditionally quote the schema name.  this could
+                        # later be enhanced to obey quoting rules / "quote schema"
+                        default = match.group(1) + ('"%s"' % sch) + '.' + match.group(2) + match.group(3)
+
             column_info = dict(name=name, type=coltype, nullable=nullable,
-                               default=default, colargs=colargs)
+                               default=default, attrs={})
             columns.append(column_info)
         return columns
 
@@ -823,78 +833,8 @@ class PGDialect(default.DefaultDialect):
         return indexes
 
     def reflecttable(self, connection, table, include_columns):
-        preparer = self.identifier_preparer
-        schema = table.schema
-        table_name = table.name
-        info_cache = {}
-        # Py2K
-        if isinstance(schema, str):
-            schema = schema.decode(self.encoding)
-        if isinstance(table_name, str):
-            table_name = table_name.decode(self.encoding)
-        # end Py2K
-        for col_d in self.get_columns(connection, table_name, schema,
-                                      info_cache=info_cache):
-            name = col_d['name']
-            coltype = col_d['type']
-            nullable = col_d['nullable']
-            default = col_d['default']
-            colargs = col_d['colargs']
-            if include_columns and name not in include_columns:
-                continue
-            if default is not None:
-                match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
-                if match is not None:
-                    # the default is related to a Sequence
-                    sch = schema
-                    if '.' not in match.group(2) and sch is not None:
-                        # unconditionally quote the schema name.  this could
-                        # later be enhanced to obey quoting rules / "quote schema"
-                        default = match.group(1) + ('"%s"' % sch) + '.' + match.group(2) + match.group(3)
-                colargs.append(sa_schema.DefaultClause(sql.text(default)))
-            table.append_column(sa_schema.Column(name, coltype, nullable=nullable, *colargs))
-        # Now we have the table oid cached.
-        table_oid = self.get_table_oid(connection, table_name, schema,
-                                       info_cache=info_cache)
-        # Primary keys
-        for pk in self.get_primary_keys(connection, table_name, schema,
-                                        info_cache=info_cache):
-            if pk in table.c:
-                col = table.c[pk]
-                table.primary_key.add(col)
-                if col.default is None:
-                    col.autoincrement = False
-        # Foreign keys
-        fkeys = self.get_foreign_keys(connection, table_name, schema,
-                                      info_cache=info_cache)
-        for fkey_d in fkeys:
-            conname = fkey_d['name']
-            constrained_columns = fkey_d['constrained_columns']
-            referred_schema = fkey_d['referred_schema']
-            referred_table = fkey_d['referred_table']
-            referred_columns = fkey_d['referred_columns']
-            refspec = []
-            if referred_schema is not None:
-                sa_schema.Table(referred_table, table.metadata, autoload=True, schema=referred_schema,
-                            autoload_with=connection)
-                for column in referred_columns:
-                    refspec.append(".".join([referred_schema, referred_table, column]))
-            else:
-                sa_schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection)
-                for column in referred_columns:
-                    refspec.append(".".join([referred_table, column]))
-
-            table.append_constraint(sa_schema.ForeignKeyConstraint(constrained_columns, refspec, conname, link_to_name=True))
-
-        # Indexes 
-        indexes = self.get_indexes(connection, table_name, schema,
-                                   info_cache=info_cache)
-        for index_d in indexes:
-            name = index_d['name']
-            columns = index_d['column_names']
-            unique = index_d['unique']
-            sa_schema.Index(name, *[table.columns[c] for c in columns], 
-                         **dict(unique=unique))
+        insp = reflection.Inspector.from_engine(connection)
+        return insp.reflecttable(table, include_columns)
 
     def _load_domains(self, connection):
         ## Load data types for domains:

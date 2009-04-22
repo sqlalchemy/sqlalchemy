@@ -600,10 +600,20 @@ class OracleDialect(default.DefaultDialect):
         return [self._normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
-    def get_columns(self, connection, table_name, schema=None,
-                    resolve_synonyms=False, dblink='', **kw):
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        """
 
-        
+        kw arguments can be:
+
+            oracle_resolve_synonyms
+
+            dblink
+
+        """
+
+        resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
+        dblink = kw.get('dblink', '')
+
         (table_name, schema, dblink, synonym) = \
             self._prepare_reflection_args(connection, table_name, schema,
                                           resolve_synonyms, dblink)
@@ -639,16 +649,12 @@ class OracleDialect(default.DefaultDialect):
                     util.warn("Did not recognize type '%s' of column '%s'" %
                               (coltype, colname))
                     coltype = sqltypes.NULLTYPE
-
-            colargs = []
-            if default is not None:
-                colargs.append(sa_schema.DefaultClause(sql.text(default)))
             cdict = {
                 'name': colname,
                 'type': coltype,
                 'nullable': nullable,
                 'default': default,
-                'attrs': colargs
+                'attrs': {}
             }
             columns.append(cdict)
         return columns
@@ -679,8 +685,9 @@ class OracleDialect(default.DefaultDialect):
         indexes = []
         last_index_name = None
         pkeys = self.get_primary_keys(connection, table_name, schema,
-                                      resolve_synonyms, dblink,
-                                      info_cache=info_cache)
+                                      resolve_synonyms=resolve_synonyms,
+                                      dblink=dblink,
+                                      info_cache=kw.get('info_cache'))
         uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
         for rset in rp:
             # don't include the primary key columns
@@ -722,8 +729,20 @@ class OracleDialect(default.DefaultDialect):
         return constraint_data
 
     @reflection.cache
-    def get_primary_keys(self, connection, table_name, schema=None,
-                         resolve_synonyms=False, dblink='', **kw):
+    def get_primary_keys(self, connection, table_name, schema=None, **kw):
+        """
+
+        kw arguments can be:
+
+            oracle_resolve_synonyms
+
+            dblink
+
+        """
+
+        resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
+        dblink = kw.get('dblink', '')
+
         (table_name, schema, dblink, synonym) = \
             self._prepare_reflection_args(connection, table_name, schema,
                                           resolve_synonyms, dblink)
@@ -739,8 +758,21 @@ class OracleDialect(default.DefaultDialect):
         return pkeys
 
     @reflection.cache
-    def get_foreign_keys(self, connection, table_name, schema=None,
-                         resolve_synonyms=False, dblink='', **kw):
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        """
+
+        kw arguments can be:
+
+            oracle_resolve_synonyms
+
+            dblink
+
+        """
+
+        requested_schema = schema # to check later on
+        resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
+        dblink = kw.get('dblink', '')
+
         (table_name, schema, dblink, synonym) = \
             self._prepare_reflection_args(connection, table_name, schema,
                                           resolve_synonyms, dblink)
@@ -777,6 +809,10 @@ class OracleDialect(default.DefaultDialect):
                     fk[1].append(remote_column)
         for (name, value) in fks.items():
             if remote_table and value[1]:
+                if requested_schema is None and remote_owner is not None:
+                    default_schema = self.get_default_schema_name(connection) 
+                    if remote_owner.lower() == default_schema.lower():
+                        remote_owner = None
                 fkey_d = {
                     'name' : name,
                     'constrained_columns' : value[0],
@@ -805,63 +841,8 @@ class OracleDialect(default.DefaultDialect):
             return view_def
 
     def reflecttable(self, connection, table, include_columns):
-        preparer = self.identifier_preparer
-        info_cache = {}
-
-        resolve_synonyms = table.kwargs.get('oracle_resolve_synonyms', False)
-
-        (actual_name, owner, dblink, synonym) = \
-            self._prepare_reflection_args(connection, table.name, table.schema,
-                                          resolve_synonyms)
-
-        # columns
-        columns = self.get_columns(connection, actual_name, owner, dblink,
-                                   info_cache=info_cache)
-        for cdict in columns:
-            colname = cdict['name']
-            coltype = cdict['type']
-            nullable = cdict['nullable']
-            colargs = cdict['attrs']
-            if include_columns and colname not in include_columns:
-                continue
-            table.append_column(sa_schema.Column(colname, coltype,
-                                              nullable=nullable, *colargs))
-        if not table.columns:
-            raise AssertionError("Couldn't find any column information for table %s" % actual_name)
-
-        # primary keys
-        for pkcol in self.get_primary_keys(connection, actual_name, owner,
-                                           dblink, info_cache=info_cache):
-            if pkcol in table.c:
-                table.primary_key.add(table.c[pkcol])
-
-        # foreign keys
-        fks = {}
-        fkeys = []
-        fkeys = self.get_foreign_keys(connection, actual_name, owner,
-                                      resolve_synonyms, dblink,
-                                      info_cache=info_cache)
-        refspecs = []
-        for fkey_d in fkeys:
-            conname = fkey_d['name']
-            constrained_columns = fkey_d['constrained_columns']
-            referred_schema = fkey_d['referred_schema']
-            referred_table = fkey_d['referred_table']
-            referred_columns = fkey_d['referred_columns']
-            for (i, ref_col) in enumerate(referred_columns):
-                if not table.schema and self._denormalize_name(referred_schema) == self._denormalize_name(owner):
-                    t = sa_schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
-
-                    refspec =  ".".join([referred_table, ref_col])
-                else:
-                    refspec = '.'.join([x for x in [referred_schema,
-                                    referred_table, ref_col] if x is not None])
-
-                    t = sa_schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, schema=referred_schema, oracle_resolve_synonyms=resolve_synonyms, useexisting=True)
-                refspecs.append(refspec)
-            table.append_constraint(
-                sa_schema.ForeignKeyConstraint(constrained_columns, refspecs,
-                                        name=conname, link_to_name=True))
+        insp = reflection.Inspector.from_engine(connection)
+        return insp.reflecttable(table, include_columns)
 
 
 class _OuterJoinColumn(sql.ClauseElement):

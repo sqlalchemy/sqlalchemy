@@ -405,6 +405,15 @@ class FBDialect(default.DefaultDialect):
             return False
 
     @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
+        s = """
+        SELECT DISTINCT rdb$relation_name
+        FROM rdb$relation_fields WHERE
+        rdb$system_flag=0 AND rdb$view_context IS NULL
+        """
+        return [self._normalize_name(row[0]) for row in connection.execute(s)]
+
+    @reflection.cache
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
         # Query to extract the PK/FK constrained fields of the given table
         keyqry = """
