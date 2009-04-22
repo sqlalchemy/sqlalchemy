@@ -733,7 +733,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                 # in a view, e.g. char -> varchar, tinyblob -> mediumblob
                 #
                 # Not sure exactly which point version has the fix.
-                if db.dialect.server_version_info(db.connect()) < (5, 0, 11):
+                if db.dialect.server_version_info < (5, 0, 11):
                     tables = rt,
                 else:
                     tables = rt, rv
