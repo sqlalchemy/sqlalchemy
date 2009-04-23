@@ -93,7 +93,7 @@ class MySQL_mysqldb(MySQLDialect):
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
             try:
-                CLIENT_FLAGS = __import__('MySQLdb.constants').constants.CLIENT
+                import MySQLdb.constants.CLIENT as CLIENT_FLAGS
                 client_flag |= CLIENT_FLAGS.FOUND_ROWS
             except:
                 pass
@@ -103,7 +103,8 @@ class MySQL_mysqldb(MySQLDialect):
     def do_ping(self, connection):
         connection.ping()
 
-    def _get_server_version_info(self,connection):
+    #@engine_base.connection_memoize(('mysql', 'server_version_info'))
+    def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []
         r = re.compile('[.\-]')
