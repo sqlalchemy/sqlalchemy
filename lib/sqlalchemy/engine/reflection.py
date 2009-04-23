@@ -19,7 +19,7 @@ methods such as get_table_names, get_columns, etc.
 """
 
 import sqlalchemy
-from sqlalchemy import sql
+from sqlalchemy import exc, sql
 from sqlalchemy import util
 from sqlalchemy.types import TypeEngine
 from sqlalchemy import schema as sa_schema
@@ -282,7 +282,9 @@ class Inspector(object):
             table_name = table_name.decode(self.dialect.encoding)
         # end Py2K
         # columns
+        found_table = False
         for col_d in self.get_columns(table_name, schema, **tblkw):
+            found_table = True
             name = col_d['name']
             coltype = col_d['type']
             nullable = col_d['nullable']
@@ -305,6 +307,9 @@ class Inspector(object):
                     colargs.append(sa_schema.DefaultClause(sql.text(default)))
             table.append_column(sa_schema.Column(name, coltype,
                                 nullable=nullable, *colargs, **col_kw))
+
+        if not found_table:
+            raise exc.NoSuchTableError(table.name)
         # Primary keys
         for pk in self.get_primary_keys(table_name, schema, **tblkw):
             if pk in table.c:
