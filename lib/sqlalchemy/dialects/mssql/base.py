@@ -1105,7 +1105,6 @@ class MSDialect(default.DefaultDialect):
     def do_release_savepoint(self, connection, name):
         pass
 
-    @base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
         query = "SELECT user_name() as user_name;"
         user_name = connection.scalar(sql.text(query))

@@ -103,7 +103,6 @@ class MySQL_mysqldb(MySQLDialect):
     def do_ping(self, connection):
         connection.ping()
 
-    #@engine_base.connection_memoize(('mysql', 'server_version_info'))
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []

@@ -509,7 +509,6 @@ class OracleDialect(default.DefaultDialect):
         else:
             return name.encode(self.encoding)
 
-    @base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
         return self._normalize_name(connection.execute('SELECT USER FROM DUAL').scalar())
 

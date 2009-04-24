@@ -1009,37 +1009,10 @@ class ExecutionTest(TestBase):
 
         cx = engine.connect()
         meta = MetaData()
-
-        assert ('mysql', 'charset') not in cx.info
-        assert ('mysql', 'force_charset') not in cx.info
-
-        cx.execute(text("SELECT 1")).fetchall()
-        assert ('mysql', 'charset') not in cx.info
-
-        meta.reflect(cx)
-        assert ('mysql', 'charset') in cx.info
-
-        cx.execute(text("SET @squiznart=123"))
-        assert ('mysql', 'charset') in cx.info
-
-        # the charset invalidation is very conservative
-        cx.execute(text("SET TIMESTAMP = DEFAULT"))
-        assert ('mysql', 'charset') not in cx.info
-
-        cx.info[('mysql', 'force_charset')] = 'latin1'
-
         assert engine.dialect._detect_charset(cx) == 'latin1'
-        assert cx.info[('mysql', 'charset')] == 'latin1'
-
-        del cx.info[('mysql', 'force_charset')]
-        del cx.info[('mysql', 'charset')]
 
         meta.reflect(cx)
-        assert ('mysql', 'charset') in cx.info
-
-        # String execution doesn't go through the detector.
-        cx.execute("SET TIMESTAMP = DEFAULT")
-        assert ('mysql', 'charset') in cx.info
+        assert cx.dialect._connection_charset == 'latin1'
 
 
 class MatchTest(TestBase, AssertsCompiledSQL):

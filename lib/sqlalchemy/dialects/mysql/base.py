@@ -1777,7 +1777,6 @@ class MySQLDialect(default.DefaultDialect):
     def _extract_error_code(self, exception):
         raise NotImplementedError()
     
-    @engine_base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
         return connection.execute('SELECT DATABASE()').scalar()
 
@@ -2010,11 +2009,9 @@ class MySQLDialect(default.DefaultDialect):
             lc_alias = schema._get_table_key(table.name, table.schema)
             table.metadata.tables[lc_alias] = table
 
-    #@engine_base.connection_memoize(('mysql', 'charset'))
     def _detect_charset(self, connection):
         raise NotImplementedError()
 
-    #@engine_base.connection_memoize(('mysql', 'lower_case_table_names'))
     def _detect_casing(self, connection):
         """Sniff out identifier case sensitivity.
 
@@ -2042,7 +2039,6 @@ class MySQLDialect(default.DefaultDialect):
             row.close()
         return cs
 
-    #@engine_base.connection_memoize(('mysql', 'collations'))
     def _detect_collations(self, connection):
         """Pull the active COLLATIONS list from the server.
 

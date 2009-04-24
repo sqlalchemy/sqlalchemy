@@ -497,7 +497,6 @@ class PGDialect(default.DefaultDialect):
         resultset = connection.execute(sql.text("SELECT gid FROM pg_prepared_xacts"))
         return [row[0] for row in resultset]
 
-    @base.connection_memoize(('dialect', 'default_schema_name'))
     def get_default_schema_name(self, connection):
         return connection.scalar("select current_schema()")
 
