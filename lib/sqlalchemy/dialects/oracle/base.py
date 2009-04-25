@@ -653,7 +653,6 @@ class OracleDialect(default.DefaultDialect):
                 'type': coltype,
                 'nullable': nullable,
                 'default': default,
-                'attrs': {}
             }
             columns.append(cdict)
         return columns

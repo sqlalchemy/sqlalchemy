@@ -198,8 +198,14 @@ class Dialect(object):
         default
           the column's default value
 
-        attrs
-          dict containing optional column attributes
+        autoincrement
+          boolean
+
+        sequence
+          a dictionary of the form
+              {'name' : str, 'start' :int, 'increment': int}
+
+        Additional column attributes may be present.
         """
 
         raise NotImplementedError()

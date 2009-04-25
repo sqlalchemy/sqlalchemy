@@ -283,9 +283,6 @@ class Inspector(object):
             coltype = col_d['type']
             nullable = col_d['nullable']
             default = col_d['default']
-            attrs = col_d['attrs']
-            # construct additional colargs with attrs
-            # currently, it's not used here.
             colargs = []
             col_kw = {}
             if 'autoincrement' in col_d:

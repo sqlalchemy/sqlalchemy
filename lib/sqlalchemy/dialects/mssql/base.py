@@ -1255,13 +1255,11 @@ class MSDialect(default.DefaultDialect):
                 kwargs['precision'] = numericprec
 
             coltype = coltype(**kwargs)
-            colargs = []
             cdict = {
                 'name' : name,
                 'type' : coltype,
                 'nullable' : nullable,
                 'default' : default,
-                'attrs' : colargs
             }
             cols.append(cdict)
         # autoincrement and identity

@@ -2343,8 +2343,7 @@ class MySQLTableDefinitionParser(object):
         elif default == 'NULL':
             # eliminates the need to deal with this later.
             default = None
-        col_d = dict(name=name, type=type_instance, attrs={},
-                     default=default)
+        col_d = dict(name=name, type=type_instance, default=default)
         col_d.update(col_kw)
         state.columns.append(col_d)
 
