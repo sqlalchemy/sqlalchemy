@@ -233,10 +233,10 @@ class Inspector(object):
 
     def reflecttable(self, table, include_columns):
 
+        dialect = self.conn.dialect
+
         # for some work arounds
         from sqlalchemy.dialects.mysql.mysqldb import MySQLDialect
-
-        dialect = self.conn.dialect
 
         # MySQL dialect does this.  Applicable with other dialects?
         if hasattr(dialect, '_connection_charset') \
@@ -247,15 +247,6 @@ class Inspector(object):
         # table attributes we might need.
         oracle_resolve_synonyms = table.kwargs.get('oracle_resolve_synonyms',
                                                    False)
-
-        # oracle stuff; could be made for generic synonym support.
-        (actual_name, owner, dblink, synonym) = (None, None, None, None)
-        if oracle_resolve_synonyms:
-            (actual_name, owner, dblink, synonym) = dialect._resolve_synonym(
-                self.conn,
-                desired_owner=dialect._denormalize_name(table.schema),
-                desired_synonym=dialect._denormalize_name(table.name)
-            )
 
         # some properties that need to be figured out
         fk_use_existing = True
