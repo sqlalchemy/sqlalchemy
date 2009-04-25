@@ -8,6 +8,10 @@ CHANGES
 =====
 
 - orm
+    - Modified query_cls on DynamicAttributeImpl to accept a full
+      mixin version of the AppenderQuery, which allows subclassing
+      the AppenderMixin.
+
     - Fixed the evaluator not being able to evaluate IS NULL clauses.
 
     - Fixed the "set collection" function on "dynamic" relations to

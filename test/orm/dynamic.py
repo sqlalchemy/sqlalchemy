@@ -4,6 +4,7 @@ from sqlalchemy.orm import dynamic_loader, backref
 from testlib import testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey, desc, select, func
 from testlib.sa.orm import mapper, relation, create_session, Query, attributes
+from sqlalchemy.orm.dynamic import AppenderMixin
 from testlib.testing import eq_
 from testlib.compat import _function_named
 from orm import _base, _fixtures
@@ -151,6 +152,44 @@ class DynamicTest(_fixtures.FixtureTest):
         assert not hasattr(q, 'append')
         assert type(q).__name__ == 'MyQuery'
 
+    @testing.resolve_artifact_names
+    def test_custom_query_with_custom_mixin(self):
+        class MyAppenderMixin(AppenderMixin):
+            def add(self, items):
+                if isinstance(items, list):
+                    for item in items:
+                        self.append(item)
+                else:
+                    self.append(items)
+
+        class MyQuery(Query):
+            pass
+
+        class MyAppenderQuery(MyAppenderMixin, MyQuery):
+            query_class = MyQuery
+
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses),
+                                       query_class=MyAppenderQuery)
+        })
+        sess = create_session()
+        u = User()
+        sess.add(u)
+
+        col = u.addresses
+        assert isinstance(col, Query)
+        assert isinstance(col, MyQuery)
+        assert hasattr(col, 'append')
+        assert hasattr(col, 'add')
+        assert type(col).__name__ == 'MyAppenderQuery'
+
+        q = col.limit(1)
+        assert isinstance(q, Query)
+        assert isinstance(q, MyQuery)
+        assert not hasattr(q, 'append')
+        assert not hasattr(q, 'add')
+        assert type(q).__name__ == 'MyQuery'
+
 
 class SessionTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -165,7 +204,7 @@ class SessionTest(_fixtures.FixtureTest):
         a1 = Address(email_address='foo')
         sess.add_all([u1, a1])
         sess.flush()
-        
+
         assert testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)) == 0
         u1 = sess.query(User).get(u1.id)
         u1.addresses.append(a1)
@@ -174,11 +213,11 @@ class SessionTest(_fixtures.FixtureTest):
         assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
             (a1.id, u1.id, 'foo')
         ]
-        
+
         u1.addresses.remove(a1)
         sess.flush()
         assert testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)) == 0
-        
+
         u1.addresses.append(a1)
         sess.flush()
         assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
@@ -192,7 +231,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
             (a2.id, u1.id, 'bar')
         ]
-        
+
 
     @testing.resolve_artifact_names
     def test_merge(self):
@@ -204,30 +243,30 @@ class SessionTest(_fixtures.FixtureTest):
         a1 = Address(email_address='a1')
         a2 = Address(email_address='a2')
         a3 = Address(email_address='a3')
-        
+
         u1.addresses.append(a2)
         u1.addresses.append(a3)
-        
+
         sess.add_all([u1, a1])
         sess.flush()
-        
+
         u1 = User(id=u1.id, name='jack')
         u1.addresses.append(a1)
         u1.addresses.append(a3)
         u1 = sess.merge(u1)
         assert attributes.get_history(u1, 'addresses') == (
-            [a1], 
-            [a3], 
+            [a1],
+            [a3],
             [a2]
         )
 
         sess.flush()
-        
+
         eq_(
             list(u1.addresses),
             [a1, a3]
         )
-        
+
     @testing.resolve_artifact_names
     def test_flush(self):
         mapper(User, users, properties={
@@ -240,10 +279,10 @@ class SessionTest(_fixtures.FixtureTest):
         u1.addresses.append(Address(email_address='lala@hoho.com'))
         sess.add_all((u1, u2))
         sess.flush()
-        
+
         from sqlalchemy.orm import attributes
         self.assertEquals(attributes.get_history(attributes.instance_state(u1), 'addresses'), ([], [Address(email_address='lala@hoho.com')], []))
-        
+
         sess.expunge_all()
 
         # test the test fixture a little bit
@@ -254,18 +293,18 @@ class SessionTest(_fixtures.FixtureTest):
             User(name='jack', addresses=[Address(email_address='lala@hoho.com')]),
             User(name='ed', addresses=[Address(email_address='foo@bar.com')])
         ] == sess.query(User).all()
-    
+
     @testing.resolve_artifact_names
     def test_hasattr(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
         u1 = User(name='jack')
-        
+
         assert 'addresses' not in u1.__dict__.keys()
         u1.addresses = [Address(email_address='test')]
         assert 'addresses' in dir(u1)
-    
+
     @testing.resolve_artifact_names
     def test_collection_set(self):
         mapper(User, users, properties={
@@ -277,7 +316,7 @@ class SessionTest(_fixtures.FixtureTest):
         a2 = Address(email_address='a2')
         a3 = Address(email_address='a3')
         a4 = Address(email_address='a4')
-        
+
         sess.add(u1)
         u1.addresses = [a1, a3]
         assert list(u1.addresses) == [a1, a3]
@@ -287,10 +326,10 @@ class SessionTest(_fixtures.FixtureTest):
         assert list(u1.addresses) == [a2, a3]
         u1.addresses = []
         assert list(u1.addresses) == []
-        
-        
 
-        
+
+
+
     @testing.resolve_artifact_names
     def test_rollback(self):
         mapper(User, users, properties={
