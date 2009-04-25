@@ -275,12 +275,15 @@ class Inspector(object):
             del tblkw[k]
             tblkw[str(k)] = v
 
-        # Py2K
-        if isinstance(schema, str):
-            schema = schema.decode(self.dialect.encoding)
-        if isinstance(table_name, str):
-            table_name = table_name.decode(self.dialect.encoding)
+        ### Py2K
+        # fixme
+        # This is breaking mssql, which can't bind unicode.
+        ##if isinstance(schema, str):
+        ##    schema = schema.decode(dialect.encoding)
+        ##if isinstance(table_name, str):
+        ##    table_name = table_name.decode(dialect.encoding)
         # end Py2K
+
         # columns
         found_table = False
         for col_d in self.get_columns(table_name, schema, **tblkw):
@@ -305,11 +308,19 @@ class Inspector(object):
                     colargs.append(sa_schema.DefaultClause(default))
                 else:
                     colargs.append(sa_schema.DefaultClause(sql.text(default)))
-            table.append_column(sa_schema.Column(name, coltype,
-                                nullable=nullable, *colargs, **col_kw))
+            col = sa_schema.Column(name, coltype,nullable=nullable, *colargs, **col_kw)
+            if 'sequence' in col_d:
+                seq = col_d['sequence']
+                col.sequence = sa_schema.Sequence(seq['name'], 1, 1)
+                if 'start' in seq:
+                    col.sequence.start = seq['start']
+                if 'increment' in seq:
+                    col.sequence.increment = seq['increment']
+            table.append_column(col)
 
         if not found_table:
             raise exc.NoSuchTableError(table.name)
+
         # Primary keys
         for pk in self.get_primary_keys(table_name, schema, **tblkw):
             if pk in table.c:
