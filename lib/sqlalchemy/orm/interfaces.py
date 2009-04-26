@@ -682,6 +682,27 @@ class PropertyOption(MapperOption):
             else:
                 return None
 
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d['key'] = ret = []
+        for token in util.to_list(self.key):
+            if isinstance(token, PropComparator):
+                ret.append((token.mapper.class_, token.key))
+            else:
+                ret.append(token)
+        return d
+
+    def __setstate__(self, state):
+        ret = []
+        for key in state['key']:
+            if isinstance(key, tuple):
+                cls, propkey = key
+                ret.append(getattr(cls, propkey))
+            else:
+                ret.append(key)
+        state['key'] = tuple(ret)
+        self.__dict__ = state
+
     def __get_paths(self, query, raiseerr):
         path = None
         entity = None
