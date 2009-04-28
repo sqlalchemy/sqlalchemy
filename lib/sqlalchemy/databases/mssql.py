@@ -1147,10 +1147,10 @@ class MSSQLDialect(default.DefaultDialect):
             newobj.dialect = self
         return newobj
 
-    def do_begin(self, connection):
-        cursor = connection.cursor()
-        cursor.execute("SET IMPLICIT_TRANSACTIONS OFF")
-        cursor.execute("BEGIN TRANSACTION")
+    def do_savepoint(self, connection, name):
+        util.warn("Savepoint support in mssql is experimental and may lead to data loss.")
+        connection.execute("IF @@TRANCOUNT = 0 BEGIN TRANSACTION")
+        connection.execute("SAVE TRANSACTION %s" % name)
 
     def do_release_savepoint(self, connection, name):
         pass
@@ -1626,10 +1626,6 @@ class MSSQLCompiler(compiler.DefaultCompiler):
     def visit_extract(self, extract):
         field = self.extract_map.get(extract.field, extract.field)
         return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
-
-    def visit_savepoint(self, savepoint_stmt):
-        util.warn("Savepoint support in mssql is experimental and may lead to data loss.")
-        return "SAVE TRANSACTION %s" % self.preparer.format_savepoint(savepoint_stmt)
 
     def visit_rollback_to_savepoint(self, savepoint_stmt):
         return "ROLLBACK TRANSACTION %s" % self.preparer.format_savepoint(savepoint_stmt)

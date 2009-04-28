@@ -69,6 +69,10 @@ CHANGES
       construct (i.e. declarative columns).  [ticket:1353]
 
 - mssql
+    - Modified how savepoint logic works to prevent it from
+      stepping on non-savepoint oriented routines. Savepoint
+      support is still very experimental.
+
     - Added in reserved words for MSSQL that covers version 2008
       and all prior versions. [ticket:1310]
 
