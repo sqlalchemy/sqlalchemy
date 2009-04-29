@@ -566,7 +566,7 @@ class OracleDialect(default.DefaultDialect):
 
     @reflection.cache
     def _prepare_reflection_args(self, connection, table_name, schema=None,
-                                 resolve_synonyms=False, dblink=''):
+                                 resolve_synonyms=False, dblink='', **kw):
 
         if resolve_synonyms:
             actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(schema), desired_synonym=self._denormalize_name(table_name))
@@ -613,10 +613,12 @@ class OracleDialect(default.DefaultDialect):
 
         resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
         dblink = kw.get('dblink', '')
+        info_cache = kw.get('info_cache')
 
         (table_name, schema, dblink, synonym) = \
             self._prepare_reflection_args(connection, table_name, schema,
-                                          resolve_synonyms, dblink)
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
         columns = []
         c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':table_name, 'owner':schema})
 
@@ -663,9 +665,11 @@ class OracleDialect(default.DefaultDialect):
                     resolve_synonyms=False, dblink='', **kw):
 
         
+        info_cache = kw.get('info_cache')
         (table_name, schema, dblink, synonym) = \
             self._prepare_reflection_args(connection, table_name, schema,
-                                          resolve_synonyms, dblink)
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
         indexes = []
         q = """
         SELECT a.INDEX_NAME, a.COLUMN_NAME, b.UNIQUENESS
@@ -741,10 +745,12 @@ class OracleDialect(default.DefaultDialect):
 
         resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
         dblink = kw.get('dblink', '')
+        info_cache = kw.get('info_cache')
 
         (table_name, schema, dblink, synonym) = \
             self._prepare_reflection_args(connection, table_name, schema,
-                                          resolve_synonyms, dblink)
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
         pkeys = []
         constraint_data = self._get_constraint_data(connection, table_name,
                                         schema, dblink,
@@ -771,10 +777,12 @@ class OracleDialect(default.DefaultDialect):
         requested_schema = schema # to check later on
         resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
         dblink = kw.get('dblink', '')
+        info_cache = kw.get('info_cache')
 
         (table_name, schema, dblink, synonym) = \
             self._prepare_reflection_args(connection, table_name, schema,
-                                          resolve_synonyms, dblink)
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
 
         constraint_data = self._get_constraint_data(connection, table_name,
                                                 schema, dblink,
@@ -825,9 +833,11 @@ class OracleDialect(default.DefaultDialect):
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None,
                             resolve_synonyms=False, dblink='', **kw):
+        info_cache = kw.get('info_cache')
         (view_name, schema, dblink, synonym) = \
             self._prepare_reflection_args(connection, view_name, schema,
-                                          resolve_synonyms, dblink)
+                                          resolve_synonyms, dblink,
+                                          info_cache=info_cache)
         s = """
         SELECT text FROM all_views
         WHERE owner = :schema
