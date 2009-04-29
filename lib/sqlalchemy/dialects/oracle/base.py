@@ -564,6 +564,7 @@ class OracleDialect(default.DefaultDialect):
             else:
                 return None, None, None, None
 
+    @reflection.cache
     def _prepare_reflection_args(self, connection, table_name, schema=None,
                                  resolve_synonyms=False, dblink=''):
 
