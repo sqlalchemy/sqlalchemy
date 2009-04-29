@@ -1201,7 +1201,7 @@ Usage is not too different from what we've been doing.  Let's give Wendy some bl
     WHERE users.name = ?
      LIMIT 2 OFFSET 0
     ['wendy']
-
+    {stop}
     >>> post = BlogPost("Wendy's Blog Post", "This is a test", wendy)
     >>> session.add(post)
 
