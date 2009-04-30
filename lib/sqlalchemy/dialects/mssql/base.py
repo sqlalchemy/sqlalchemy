@@ -1179,6 +1179,7 @@ class MSDialect(default.DefaultDialect):
         view_names = [r[0] for r in connection.execute(s)]
         return view_names
 
+    # The cursor reports it is closed after executing the sp.
     @reflection.cache
     def get_indexes(self, connection, tablename, schema=None, **kw):
         current_schema = schema or self.get_default_schema_name(connection)
@@ -1186,6 +1187,9 @@ class MSDialect(default.DefaultDialect):
         indexes = []
         s = sql.text("exec sp_helpindex '%s'" % full_tname)
         rp = connection.execute(s)
+        if rp.closed:
+            # did not work for this setup.
+            return []
         for row in rp:
             if 'primary key' not in row['index_description']:
                 indexes.append({
