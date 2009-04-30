@@ -23,7 +23,7 @@ class EvaluateTest(_base.MappedTest):
     def define_tables(self, metadata):
         Table('users', metadata,
               Column('id', Integer, primary_key=True),
-              Column('name', String))
+              Column('name', String(64)))
     
     def setup_classes(self):
         class User(_base.ComparableEntity):
