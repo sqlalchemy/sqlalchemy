@@ -2,6 +2,7 @@ import testenv; testenv.configure_for_tests()
 import threading, unittest
 from sqlalchemy import util, sql, exc
 from testlib import TestBase
+from testlib.compat import gc_collect
 from testlib.testing import eq_, is_, ne_
 
 class OrderedDictTest(TestBase):
@@ -638,6 +639,8 @@ class WeakIdentityMappingTest(TestBase):
         assert len(data) == len(wim) == len(wim.by_id)
 
         del data[:]
+        gc_collect()
+
         eq_(wim, {})
         eq_(wim.by_id, {})
         eq_(wim._weakrefs, {})
@@ -649,6 +652,7 @@ class WeakIdentityMappingTest(TestBase):
 
         oid = id(data[0])
         del data[0]
+        gc_collect()
 
         assert len(data) == len(wim) == len(wim.by_id)
         assert oid not in wim.by_id
@@ -671,6 +675,7 @@ class WeakIdentityMappingTest(TestBase):
         th.start()
         cv.wait()
         cv.release()
+        gc_collect()
 
         eq_(wim, {})
         eq_(wim.by_id, {})
