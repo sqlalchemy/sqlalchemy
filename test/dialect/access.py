@@ -1,14 +1,33 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
+from sqlalchemy import sql
 from sqlalchemy.databases import access
 from testlib import *
 
 
-class BasicTest(TestBase, AssertsExecutionResults):
-    # A simple import of the database/ module should work on all systems.
-    def test_import(self):
-        # we got this far, right?
-        return True
+class CompileTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = access.dialect()
+
+    def test_extract(self):
+        t = sql.table('t', sql.column('col1'))
+
+        mapping = {
+            'month': 'm',
+            'day': 'd',
+            'year': 'yyyy',
+            'second': 's',
+            'hour': 'h',
+            'doy': 'y',
+            'minute': 'n',
+            'quarter': 'q',
+            'dow': 'w',
+            'week': 'ww'
+            }
+
+        for field, subst in mapping.items():
+            self.assert_compile(
+                select([extract(field, t.c.col1)]),
+                'SELECT DATEPART("%s", t.col1) AS anon_1 FROM t' % subst)
 
 
 if __name__ == "__main__":

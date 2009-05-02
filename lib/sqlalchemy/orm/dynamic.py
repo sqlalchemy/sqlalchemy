@@ -28,9 +28,9 @@ class DynaLoader(strategies.AbstractRelationLoader):
         strategies._register_attribute(self,
             mapper,
             useobject=True,
-            impl_class=DynamicAttributeImpl, 
-            target_mapper=self.parent_property.mapper, 
-            order_by=self.parent_property.order_by, 
+            impl_class=DynamicAttributeImpl,
+            target_mapper=self.parent_property.mapper,
+            order_by=self.parent_property.order_by,
             query_class=self.parent_property.query_class
         )
 
@@ -43,13 +43,15 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True
     accepts_scalar_loader = False
 
-    def __init__(self, class_, key, typecallable, 
+    def __init__(self, class_, key, typecallable,
                      target_mapper, order_by, query_class=None, **kwargs):
         super(DynamicAttributeImpl, self).__init__(class_, key, typecallable, **kwargs)
         self.target_mapper = target_mapper
         self.order_by = order_by
         if not query_class:
             self.query_class = AppenderQuery
+        elif AppenderMixin in query_class.mro():
+            self.query_class = query_class
         else:
             self.query_class = mixin_user_query(query_class)
 
@@ -87,7 +89,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             ext.remove(state, value, initiator or self)
 
     def _modified_event(self, state):
-        
+
         if self.key not in state.committed_state:
             state.committed_state[self.key] = CollectionHistory(self, state)
 
@@ -108,7 +110,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
         collection_history = self._modified_event(state)
         new_values = list(iterable)
-        
+
         if _state_has_identity(state):
             old_collection = list(self.get(state))
         else:
@@ -128,31 +130,31 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             c = state.committed_state[self.key]
         else:
             c = CollectionHistory(self, state)
-            
+
         if not passive:
             return CollectionHistory(self, state, apply_to=c)
         else:
             return c
-        
+
     def append(self, state, value, initiator, passive=False):
         if initiator is not self:
             self.fire_append_event(state, value, initiator)
-    
+
     def remove(self, state, value, initiator, passive=False):
         if initiator is not self:
             self.fire_remove_event(state, value, initiator)
 
 class DynCollectionAdapter(object):
     """the dynamic analogue to orm.collections.CollectionAdapter"""
-    
+
     def __init__(self, attr, owner_state, data):
         self.attr = attr
         self.state = owner_state
         self.data = data
-    
+
     def __iter__(self):
         return iter(self.data)
-        
+
     def append_with_event(self, item, initiator=None):
         self.attr.append(self.state, item, initiator)
 
@@ -161,10 +163,10 @@ class DynCollectionAdapter(object):
 
     def append_without_event(self, item):
         pass
-    
+
     def remove_without_event(self, item):
         pass
-        
+
 class AppenderMixin(object):
     query_class = None
 
@@ -172,7 +174,7 @@ class AppenderMixin(object):
         Query.__init__(self, attr.target_mapper, None)
         self.instance = state.obj()
         self.attr = attr
-    
+
     def __session(self):
         sess = object_session(self.instance)
         if sess is not None and self.autoflush and sess.autoflush and self.instance in sess:
@@ -181,11 +183,11 @@ class AppenderMixin(object):
             return None
         else:
             return sess
-    
+
     def session(self):
         return self.__session()
     session = property(session, lambda s, x:None)
-    
+
     def __iter__(self):
         sess = self.__session()
         if sess is None:
@@ -203,7 +205,7 @@ class AppenderMixin(object):
                 passive=True).added_items.__getitem__(index)
         else:
             return self._clone(sess).__getitem__(index)
-    
+
     def count(self):
         sess = self.__session()
         if sess is None:
@@ -253,7 +255,7 @@ def mixin_user_query(cls):
     name = 'Appender' + cls.__name__
     return type(name, (AppenderMixin, cls), {'query_class': cls})
 
-class CollectionHistory(object): 
+class CollectionHistory(object):
     """Overrides AttributeHistory to receive append/remove events directly."""
 
     def __init__(self, attr, state, apply_to=None):
@@ -268,4 +270,4 @@ class CollectionHistory(object):
             self.deleted_items = []
             self.added_items = []
             self.unchanged_items = []
-        
+

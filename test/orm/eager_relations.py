@@ -894,6 +894,20 @@ class SelfReferentialEagerTest(_base.MappedTest):
         sess.flush()
         sess.expunge_all()
         def go():
+            d = sess.query(Node).filter_by(data='n1').all()[0]
+            assert Node(data='n1', children=[
+                Node(data='n11'),
+                Node(data='n12', children=[
+                    Node(data='n121'),
+                    Node(data='n122'),
+                    Node(data='n123')
+                ]),
+                Node(data='n13')
+            ]) == d
+        self.assert_sql_count(testing.db, go, 1)
+
+        sess.expunge_all()
+        def go():
             d = sess.query(Node).filter_by(data='n1').first()
             assert Node(data='n1', children=[
                 Node(data='n11'),

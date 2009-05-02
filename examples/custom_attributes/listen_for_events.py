@@ -39,8 +39,8 @@ class AttributeListener(AttributeExtension):
 
 if __name__ == '__main__':
 
-    from sqlalchemy import *
-    from sqlalchemy.orm import *
+    from sqlalchemy import Column, Integer, String, ForeignKey
+    from sqlalchemy.orm import relation
     from sqlalchemy.ext.declarative import declarative_base
 
     class Base(object):

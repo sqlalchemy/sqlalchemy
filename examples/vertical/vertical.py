@@ -2,8 +2,9 @@
 represented in distinct database rows.  This allows objects to be created with dynamically changing
 fields that are all persisted in a normalized fashion."""
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import (create_engine, MetaData, Table, Column, Integer, String,
+    ForeignKey, PickleType, DateTime, and_)
+from sqlalchemy.orm import mapper, relation, sessionmaker, scoped_session
 from sqlalchemy.orm.collections import mapped_collection
 import datetime
 

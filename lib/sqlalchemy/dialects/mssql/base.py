@@ -241,7 +241,36 @@ MS_2008_VERSION = (10,)
 MS_2005_VERSION = (9,)
 MS_2000_VERSION = (8,)
 
-MSSQL_RESERVED_WORDS = set(['function'])
+RESERVED_WORDS = set(
+    ['add', 'all', 'alter', 'and', 'any', 'as', 'asc', 'authorization',
+     'backup', 'begin', 'between', 'break', 'browse', 'bulk', 'by', 'cascade',
+     'case', 'check', 'checkpoint', 'close', 'clustered', 'coalesce',
+     'collate', 'column', 'commit', 'compute', 'constraint', 'contains',
+     'containstable', 'continue', 'convert', 'create', 'cross', 'current',
+     'current_date', 'current_time', 'current_timestamp', 'current_user',
+     'cursor', 'database', 'dbcc', 'deallocate', 'declare', 'default',
+     'delete', 'deny', 'desc', 'disk', 'distinct', 'distributed', 'double',
+     'drop', 'dump', 'else', 'end', 'errlvl', 'escape', 'except', 'exec',
+     'execute', 'exists', 'exit', 'external', 'fetch', 'file', 'fillfactor',
+     'for', 'foreign', 'freetext', 'freetexttable', 'from', 'full',
+     'function', 'goto', 'grant', 'group', 'having', 'holdlock', 'identity',
+     'identity_insert', 'identitycol', 'if', 'in', 'index', 'inner', 'insert',
+     'intersect', 'into', 'is', 'join', 'key', 'kill', 'left', 'like',
+     'lineno', 'load', 'merge', 'national', 'nocheck', 'nonclustered', 'not',
+     'null', 'nullif', 'of', 'off', 'offsets', 'on', 'open', 'opendatasource',
+     'openquery', 'openrowset', 'openxml', 'option', 'or', 'order', 'outer',
+     'over', 'percent', 'pivot', 'plan', 'precision', 'primary', 'print',
+     'proc', 'procedure', 'public', 'raiserror', 'read', 'readtext',
+     'reconfigure', 'references', 'replication', 'restore', 'restrict',
+     'return', 'revert', 'revoke', 'right', 'rollback', 'rowcount',
+     'rowguidcol', 'rule', 'save', 'schema', 'securityaudit', 'select',
+     'session_user', 'set', 'setuser', 'shutdown', 'some', 'statistics',
+     'system_user', 'table', 'tablesample', 'textsize', 'then', 'to', 'top',
+     'tran', 'transaction', 'trigger', 'truncate', 'tsequal', 'union',
+     'unique', 'unpivot', 'update', 'updatetext', 'use', 'user', 'values',
+     'varying', 'view', 'waitfor', 'when', 'where', 'while', 'with',
+     'writetext',
+    ])
 
 
 class MSNumeric(sqltypes.Numeric):
@@ -859,6 +888,14 @@ class MSSQLCompiler(compiler.SQLCompiler):
         }
     )
 
+    extract_map = compiler.SQLCompiler.extract_map.copy()
+    extract_map.update ({
+        'doy': 'dayofyear',
+        'dow': 'weekday',
+        'milliseconds': 'millisecond',
+        'microseconds': 'microsecond'
+    })
+
     def __init__(self, *args, **kwargs):
         super(MSSQLCompiler, self).__init__(*args, **kwargs)
         self.tablealiases = {}
@@ -927,9 +964,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
         kwargs['mssql_aliased'] = True
         return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
 
-    def visit_savepoint(self, savepoint_stmt):
-        util.warn("Savepoint support in mssql is experimental and may lead to data loss.")
-        return "SAVE TRANSACTION %s" % self.preparer.format_savepoint(savepoint_stmt)
+    def visit_extract(self, extract):
+        field = self.extract_map.get(extract.field, extract.field)
+        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
 
     def visit_rollback_to_savepoint(self, savepoint_stmt):
         return "ROLLBACK TRANSACTION %s" % self.preparer.format_savepoint(savepoint_stmt)
@@ -1051,7 +1088,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
 
 class MSIdentifierPreparer(compiler.IdentifierPreparer):
-    reserved_words = compiler.IdentifierPreparer.reserved_words.union(MSSQL_RESERVED_WORDS)
+    reserved_words = RESERVED_WORDS
 
     def __init__(self, dialect):
         super(MSIdentifierPreparer, self).__init__(dialect, initial_quote='[', final_quote=']')
@@ -1060,6 +1097,10 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
         #TODO: determine MSSQL's escaping rules
         return value
 
+    def quote_schema(self, schema, force=True):
+        """Prepare a quoted table and schema name."""
+        result = '.'.join([self.quote(x, force) for x in schema.split('.')])
+        return result
 
 class MSDialect(default.DefaultDialect):
     name = 'mssql'
@@ -1097,10 +1138,10 @@ class MSDialect(default.DefaultDialect):
                 self.max_identifier_length
         super(MSDialect, self).__init__(**opts)
     
-    def do_begin(self, connection):
-        cursor = connection.cursor()
-        cursor.execute("SET IMPLICIT_TRANSACTIONS OFF")
-        cursor.execute("BEGIN TRANSACTION")
+    def do_savepoint(self, connection, name):
+        util.warn("Savepoint support in mssql is experimental and may lead to data loss.")
+        connection.execute("IF @@TRANCOUNT = 0 BEGIN TRANSACTION")
+        connection.execute("SAVE TRANSACTION %s" % name)
 
     def do_release_savepoint(self, connection, name):
         pass

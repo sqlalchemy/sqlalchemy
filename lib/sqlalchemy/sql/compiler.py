@@ -110,6 +110,23 @@ FUNCTIONS = {
     functions.user: 'USER'
 }
 
+EXTRACT_MAP = {
+    'month': 'month',
+    'day': 'day',
+    'year': 'year',
+    'second': 'second',
+    'hour': 'hour',
+    'doy': 'doy',
+    'minute': 'minute',
+    'quarter': 'quarter',
+    'dow': 'dow',
+    'week': 'week',
+    'epoch': 'epoch',
+    'milliseconds': 'milliseconds',
+    'microseconds': 'microseconds',
+    'timezone_hour': 'timezone_hour',
+    'timezone_minute': 'timezone_minute'
+}
 
 class _CompileLabel(visitors.Visitable):
     """lightweight label object which acts as an expression._Label."""
@@ -135,6 +152,7 @@ class SQLCompiler(engine.Compiled):
 
     operators = OPERATORS
     functions = FUNCTIONS
+    extract_map = EXTRACT_MAP
 
     # class-level defaults which can be set at the instance
     # level to define if this Compiled instance represents
@@ -273,7 +291,7 @@ class SQLCompiler(engine.Compiled):
             return name
         else:
             if column.table.schema:
-                schema_prefix = self.preparer.quote(column.table.schema, column.table.quote_schema) + '.'
+                schema_prefix = self.preparer.quote_schema(column.table.schema, column.table.quote_schema) + '.'
             else:
                 schema_prefix = ''
             tablename = column.table.name
@@ -344,6 +362,10 @@ class SQLCompiler(engine.Compiled):
 
     def visit_cast(self, cast, **kwargs):
         return "CAST(%s AS %s)" % (self.process(cast.clause), self.process(cast.typeclause))
+
+    def visit_extract(self, extract, **kwargs):
+        field = self.extract_map.get(extract.field, extract.field)
+        return "EXTRACT(%s FROM %s)" % (field, self.process(extract.expr))
 
     def visit_function(self, func, result_map=None, **kwargs):
         if result_map is not None:
@@ -589,7 +611,7 @@ class SQLCompiler(engine.Compiled):
     def visit_table(self, table, asfrom=False, **kwargs):
         if asfrom:
             if getattr(table, "schema", None):
-                return self.preparer.quote(table.schema, table.quote_schema) + "." + self.preparer.quote(table.name, table.quote)
+                return self.preparer.quote_schema(table.schema, table.quote_schema) + "." + self.preparer.quote(table.name, table.quote)
             else:
                 return self.preparer.quote(table.name, table.quote)
         else:
@@ -1118,7 +1140,15 @@ class IdentifierPreparer(object):
                 or self.illegal_initial_characters.match(value[0])
                 or not self.legal_characters.match(unicode(value))
                 or (lc_value != value))
-    
+
+    def quote_schema(self, schema, force):
+        """Quote a schema.
+
+        Subclasses should override this to provide database-dependent 
+        quoting behavior.
+        """
+        return self.quote(schema, force)
+
     def quote(self, ident, force):
         if force is None:
             if ident in self._strings:
@@ -1137,7 +1167,7 @@ class IdentifierPreparer(object):
     def format_sequence(self, sequence, use_schema=True):
         name = self.quote(sequence.name, sequence.quote)
         if not self.omit_schema and use_schema and sequence.schema is not None:
-            name = self.quote(sequence.schema, sequence.quote) + "." + name
+            name = self.quote_schema(sequence.schema, sequence.quote) + "." + name
         return name
 
     def format_label(self, label, name=None):
@@ -1159,7 +1189,7 @@ class IdentifierPreparer(object):
             name = table.name
         result = self.quote(name, table.quote)
         if not self.omit_schema and use_schema and getattr(table, "schema", None):
-            result = self.quote(table.schema, table.quote_schema) + "." + result
+            result = self.quote_schema(table.schema, table.quote_schema) + "." + result
         return result
 
     def format_column(self, column, use_table=False, name=None, table_name=None):
@@ -1187,7 +1217,7 @@ class IdentifierPreparer(object):
         # a longer sequence.
 
         if not self.omit_schema and use_schema and getattr(table, 'schema', None):
-            return (self.quote(table.schema, table.quote_schema),
+            return (self.quote_schema(table.schema, table.quote_schema),
                     self.format_table(table, use_schema=False))
         else:
             return (self.format_table(table, use_schema=False), )

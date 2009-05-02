@@ -177,11 +177,33 @@ class SQLiteCompiler(compiler.SQLCompiler):
         }
     )
 
+    extract_map = compiler.SQLCompiler.extract_map.copy()
+    extract_map.update({
+        'month': '%m',
+        'day': '%d',
+        'year': '%Y',
+        'second': '%S',
+        'hour': '%H',
+        'doy': '%j',
+        'minute': '%M',
+        'epoch': '%s',
+        'dow': '%w',
+        'week': '%W'
+    })
+
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
             return super(SQLiteCompiler, self).visit_cast(cast)
         else:
             return self.process(cast.clause)
+
+    def visit_extract(self, extract):
+        try:
+            return "CAST(STRFTIME('%s', %s) AS INTEGER)" % (
+                self.extract_map[extract.field], self.process(extract.expr))
+        except KeyError:
+            raise exc.ArgumentError(
+                "%s is not a valid extract argument." % extract.field)
 
     def limit_clause(self, select):
         text = ""
@@ -227,7 +249,7 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
         'drop', 'each', 'else', 'end', 'escape', 'except', 'exclusive',
         'explain', 'false', 'fail', 'for', 'foreign', 'from', 'full', 'glob',
         'group', 'having', 'if', 'ignore', 'immediate', 'in', 'index',
-        'initially', 'inner', 'insert', 'instead', 'intersect', 'into', 'is',
+        'indexed', 'initially', 'inner', 'insert', 'instead', 'intersect', 'into', 'is',
         'isnull', 'join', 'key', 'left', 'like', 'limit', 'match', 'natural',
         'not', 'notnull', 'null', 'of', 'offset', 'on', 'or', 'order', 'outer',
         'plan', 'pragma', 'primary', 'query', 'raise', 'references',

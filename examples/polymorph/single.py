@@ -1,5 +1,5 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
+from sqlalchemy.orm import mapper, relation, create_session
 
 metadata = MetaData('sqlite://')
 metadata.bind.echo = 'debug'
@@ -48,7 +48,7 @@ engineer_mapper = mapper(Engineer, inherits=person_mapper, polymorphic_identity=
 
 
 mapper(Company, companies, properties={
-    'employees': relation(Person, lazy=True, private=True, backref='company')
+    'employees': relation(Person, lazy=True, backref='company')
 })
 
 session = create_session()
@@ -58,29 +58,29 @@ c.employees.append(Engineer(name='dilbert', status='BBA', engineer_name='enginee
 c.employees.append(Person(name='joesmith', status='HHH'))
 c.employees.append(Engineer(name='wally', status='CGG', engineer_name='engineer2', primary_language='python'))
 c.employees.append(Manager(name='jsmith', status='ABA', manager_name='manager2'))
-session.save(c)
+session.add(c)
 session.flush()
 
-session.clear()
+session.expunge_all()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e, e._instance_key, e.company
+    print e, e._sa_instance_state.key, e.company
 
 print "\n"
 
-dilbert = session.query(Person).get_by(name='dilbert')
-dilbert2 = session.query(Engineer).get_by(name='dilbert')
+dilbert = session.query(Person).filter_by(name='dilbert').one()
+dilbert2 = session.query(Engineer).filter_by(name='dilbert').one()
 assert dilbert is dilbert2
 
 dilbert.engineer_name = 'hes dibert!'
 
 session.flush()
-session.clear()
+session.expunge_all()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e, e._instance_key
+    print e, e._sa_instance_state.key
 
 session.delete(c)
 session.flush()

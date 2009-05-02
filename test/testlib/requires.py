@@ -59,6 +59,7 @@ def row_triggers(fn):
     return _chain_decorators_on(
         fn,
         # no access to same table
+        no_support('mysql', 'requires SUPER priv'),
         exclude('mysql', '<', (5, 0, 10), 'not supported by database'),
         no_support('postgres', 'not supported by database: no statements'),
         )

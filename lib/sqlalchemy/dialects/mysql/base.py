@@ -1300,6 +1300,11 @@ class MySQLCompiler(compiler.SQLCompiler):
             "utc_timestamp":"UTC_TIMESTAMP"
         })
 
+    extract_map = compiler.SQLCompiler.extract_map.copy()
+    extract_map.update ({
+        'milliseconds': 'millisecond',
+    })
+
     def visit_typeclause(self, typeclause):
         type_ = typeclause.type.dialect_impl(self.dialect)
         if isinstance(type_, MSInteger):

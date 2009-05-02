@@ -99,7 +99,36 @@ class PickleTest(_fixtures.FixtureTest):
         self.assertEquals(ad.email_address, 'ed@bar.com')
         self.assertEquals(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
+    @testing.resolve_artifact_names
+    def test_options_with_descriptors(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref="user")
+        })
+        mapper(Address, addresses)
+        sess = create_session()
+        u1 = User(name='ed')
+        u1.addresses.append(Address(email_address='ed@bar.com'))
+        sess.add(u1)
+        sess.flush()
+        sess.expunge_all()
 
+        for opt in [
+            sa.orm.eagerload(User.addresses),
+            sa.orm.eagerload("addresses"),
+            sa.orm.defer("name"),
+            sa.orm.defer(User.name),
+            sa.orm.defer([User.name]),
+            sa.orm.eagerload("addresses", User.addresses),
+            sa.orm.eagerload(["addresses", User.addresses]),
+        ]:
+            opt2 = pickle.loads(pickle.dumps(opt))
+            self.assertEquals(opt.key, opt2.key)
+        
+        u1 = sess.query(User).options(opt).first()
+        
+        u2 = pickle.loads(pickle.dumps(u1))
+        
+        
 class PolymorphicDeferredTest(_base.MappedTest):
     def define_tables(self, metadata):
         Table('users', metadata,

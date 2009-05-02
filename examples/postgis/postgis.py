@@ -28,11 +28,10 @@ Includes:
  * a standalone operator example.
 
 The implementation is limited to only public, well known
-and simple to use extension points, with the exception
-of one temporary monkeypatch in the DDL extension.  
-Future SQLAlchemy expansion points may allow more seamless
-integration of some features.
- 
+and simple to use extension points. Future SQLAlchemy
+expansion points may allow more seamless integration of
+some features.
+
 """
 
 from sqlalchemy.orm.interfaces import AttributeExtension
@@ -227,8 +226,9 @@ def GISColumn(*args, **kw):
 
 # illustrate usage
 if __name__ == '__main__':
-    from sqlalchemy import *
-    from sqlalchemy.orm import *
+    from sqlalchemy import (create_engine, MetaData, Column, Integer, String,
+        func, literal, select)
+    from sqlalchemy.orm import sessionmaker, column_property
     from sqlalchemy.ext.declarative import declarative_base
 
     engine = create_engine('postgres://scott:tiger@localhost/gistest', echo=True)

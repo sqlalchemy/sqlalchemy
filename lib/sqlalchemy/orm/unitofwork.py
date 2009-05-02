@@ -720,6 +720,10 @@ class UOWExecutor(object):
 
     def execute_save_steps(self, trans, task):
         self.save_objects(trans, task)
+        for dep in task.polymorphic_cyclical_dependencies:
+            self.execute_dependency(trans, dep, False)
+        for dep in task.polymorphic_cyclical_dependencies:
+            self.execute_dependency(trans, dep, True)
         self.execute_cyclical_dependencies(trans, task, False)
         self.execute_dependencies(trans, task)
 
@@ -735,7 +739,5 @@ class UOWExecutor(object):
             self.execute_dependency(trans, dep, True)
 
     def execute_cyclical_dependencies(self, trans, task, isdelete):
-        for dep in task.polymorphic_cyclical_dependencies:
-            self.execute_dependency(trans, dep, isdelete)
         for t in task.dependent_tasks:
             self.execute(trans, [t], isdelete)

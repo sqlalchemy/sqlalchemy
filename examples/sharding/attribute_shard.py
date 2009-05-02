@@ -18,8 +18,9 @@ To set up a sharding system, you need:
 """
 
 # step 1. imports
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
+    String, ForeignKey, Float, DateTime)
+from sqlalchemy.orm import sessionmaker, mapper, relation
 from sqlalchemy.orm.shard import ShardedSession
 from sqlalchemy.sql import operators
 from sqlalchemy import sql
@@ -27,10 +28,10 @@ import datetime
 
 # step 2. databases
 echo = True
-db1 = create_engine('sqlite:///shard1.db', echo=echo)
-db2 = create_engine('sqlite:///shard2.db', echo=echo)
-db3 = create_engine('sqlite:///shard3.db', echo=echo)
-db4 = create_engine('sqlite:///shard4.db', echo=echo)
+db1 = create_engine('sqlite://', echo=echo)
+db2 = create_engine('sqlite://', echo=echo)
+db3 = create_engine('sqlite://', echo=echo)
+db4 = create_engine('sqlite://', echo=echo)
 
 
 # step 3. create session function.  this binds the shard ids
@@ -183,10 +184,10 @@ quito.reports.append(Report(85))
 
 sess = create_session()
 for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
-    sess.save(c)
+    sess.add(c)
 sess.flush()
 
-sess.clear()
+sess.expunge_all()
 
 t = sess.query(WeatherLocation).get(tokyo.id)
 assert t.city == tokyo.city
@@ -195,6 +196,6 @@ assert t.reports[0].temperature == 80.0
 north_american_cities = sess.query(WeatherLocation).filter(WeatherLocation.continent == 'North America')
 assert [c.city for c in north_american_cities] == ['New York', 'Toronto']
 
-asia_and_europe = sess.query(WeatherLocation).filter(WeatherLocation.continent.in_('Europe', 'Asia'))
+asia_and_europe = sess.query(WeatherLocation).filter(WeatherLocation.continent.in_(['Europe', 'Asia']))
 assert set([c.city for c in asia_and_europe]) == set(['Tokyo', 'London', 'Dublin'])
 

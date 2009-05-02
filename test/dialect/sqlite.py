@@ -3,7 +3,7 @@
 import testenv; testenv.configure_for_tests()
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exc
+from sqlalchemy import exc, sql
 from sqlalchemy.dialects.sqlite import base as sqlite, pysqlite as pysqlite_dialect
 from testlib import *
 
@@ -283,6 +283,35 @@ class DialectTest(TestBase, AssertsExecutionResults):
 
         self.assertRaises(exc.ArgumentError, create_engine, testing.db.url,
             isolation_level="FOO")
+
+
+class SQLTest(TestBase, AssertsCompiledSQL):
+    """Tests SQLite-dialect specific compilation."""
+
+    __dialect__ = sqlite.dialect()
+
+
+    def test_extract(self):
+        t = sql.table('t', sql.column('col1'))
+
+        mapping = {
+            'month': '%m',
+            'day': '%d',
+            'year': '%Y',
+            'second': '%S',
+            'hour': '%H',
+            'doy': '%j',
+            'minute': '%M',
+            'epoch': '%s',
+            'dow': '%w',
+            'week': '%W',
+            }
+
+        for field, subst in mapping.items():
+            self.assert_compile(
+                select([extract(field, t.c.col1)]),
+                "SELECT CAST(STRFTIME('%s', t.col1) AS INTEGER) AS anon_1 "
+                "FROM t" % subst)
 
 
 class InsertTest(TestBase, AssertsExecutionResults):

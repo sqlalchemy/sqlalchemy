@@ -4,8 +4,10 @@ Also see the docs regarding the new "dynamic" relation option, which
 presents a more refined version of some of these patterns.
 """
 
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
+from sqlalchemy.orm import (mapper, relation, create_session, MapperExtension,
+    object_session)
+
 meta = MetaData('sqlite://')
 meta.bind.echo = True
 
@@ -56,11 +58,11 @@ org.members.append(Member('member one'))
 org.members.append(Member('member two'))
 org.members.append(Member('member three'))
 
-sess.save(org)
+sess.add(org)
 
 print "-------------------------\nflush one - save org + 3 members"
 sess.flush()
-sess.clear()
+sess.expunge_all()
 
 # reload. load the org and some child members
 print "-------------------------\nload subset of members"
@@ -68,7 +70,7 @@ org = sess.query(Organization).get(org.org_id)
 members = org.member_query.filter(member_table.c.name.like('%member t%')).all()
 print members
 
-sess.clear()
+sess.expunge_all()
 
 
 # reload.  create some more members and flush, without loading any of the original members
@@ -80,7 +82,7 @@ org.members.append(Member('member six'))
 print "-------------------------\nflush two - save 3 more members"
 sess.flush()
 
-sess.clear()
+sess.expunge_all()
 org = sess.query(Organization).get(org.org_id)
 
 # now delete.  note that this will explictily delete members four, five and six because they are in the session,

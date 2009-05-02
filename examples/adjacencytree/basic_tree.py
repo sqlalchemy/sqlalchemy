@@ -72,7 +72,7 @@ print "Flushing:"
 print "----------------------------"
 
 session = create_session()
-session.save(node)
+session.add(node)
 session.flush()
 
 print "\n\n\n----------------------------"
@@ -113,7 +113,7 @@ print "Clearing session, selecting "
 print "tree new where node_id=%d:" % nodeid
 print "----------------------------"
 
-session.clear()
+session.expunge_all()
 t = session.query(TreeNode).filter(TreeNode.id==nodeid)[0]
 
 print "\n\n\n----------------------------"

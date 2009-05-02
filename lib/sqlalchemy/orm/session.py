@@ -158,13 +158,13 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       before each transaction is committed.
 
     weak_identity_map
-      When set to the default value of ``False``, a weak-referencing map is
+      When set to the default value of ``True``, a weak-referencing map is
       used; instances which are not externally referenced will be garbage
       collected immediately. For dereferenced instances which have pending
       changes present, the attribute management system will create a temporary
       strong-reference to the object which lasts until the changes are flushed
       to the database, at which point it's again dereferenced. Alternatively,
-      when using the value ``True``, the identity map uses a regular Python
+      when using the value ``False``, the identity map uses a regular Python
       dictionary to store instances. The session will maintain all instances
       present until they are removed using expunge(), clear(), or purge().
 
@@ -1141,8 +1141,7 @@ class Session(object):
         for state, m, o in cascade_states:
             self._delete_impl(state)
 
-    def merge(self, instance, dont_load=False,
-              _recursive=None):
+    def merge(self, instance, dont_load=False):
         """Copy the state an instance onto the persistent instance with the same identifier.
 
         If there is no persistent instance currently associated with the
@@ -1155,13 +1154,18 @@ class Session(object):
         mapped with ``cascade="merge"``.
 
         """
-        if _recursive is None:
-            # TODO: this should be an IdentityDict for instances, but will
-            # need a separate dict for PropertyLoader tuples
-            _recursive = {}
-            # Autoflush only on the topmost call
-            self._autoflush()
-
+        # TODO: this should be an IdentityDict for instances, but will
+        # need a separate dict for PropertyLoader tuples
+        _recursive = {}
+        self._autoflush()
+        autoflush = self.autoflush
+        try:
+            self.autoflush = False
+            return self._merge(instance, dont_load=dont_load, _recursive=_recursive)
+        finally:
+            self.autoflush = autoflush
+        
+    def _merge(self, instance, dont_load=False, _recursive=None):
         mapper = _object_mapper(instance)
         if instance in _recursive:
             return _recursive[instance]
@@ -1169,6 +1173,7 @@ class Session(object):
         new_instance = False
         state = attributes.instance_state(instance)
         key = state.key
+
         if key is None:
             if dont_load:
                 raise sa_exc.InvalidRequestError(
@@ -1194,7 +1199,7 @@ class Session(object):
                 self._update_impl(merged_state)
                 new_instance = True
             else:
-                merged = self.query(mapper.class_).autoflush(False).get(key[1])
+                merged = self.query(mapper.class_).get(key[1])
 
         if merged is None:
             merged = mapper.class_manager.new_instance()

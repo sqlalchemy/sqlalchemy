@@ -22,6 +22,8 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
 
 class CompileTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = postgres.dialect()
+
     def test_update_returning(self):
         dialect = postgres.dialect()
         table1 = table('mytable',
@@ -65,6 +67,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(schema.CreateIndex(idx), 
             "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgres.dialect())
 
+    def test_extract(self):
+        t = table('t', column('col1'))
+
+        for field in 'year', 'month', 'day':
+            self.assert_compile(
+                select([extract(field, t.c.col1)]),
+                "SELECT EXTRACT(%s FROM t.col1::timestamp) AS anon_1 "
+                "FROM t" % field)
 
 class ReturningTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'

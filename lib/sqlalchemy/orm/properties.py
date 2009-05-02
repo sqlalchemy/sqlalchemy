@@ -650,7 +650,7 @@ class RelationProperty(StrategizedProperty):
             dest_list = []
             for current in instances:
                 _recursive[(current, self)] = True
-                obj = session.merge(current, dont_load=dont_load, _recursive=_recursive)
+                obj = session._merge(current, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     dest_list.append(obj)
             if dont_load:
@@ -663,7 +663,7 @@ class RelationProperty(StrategizedProperty):
             current = instances[0]
             if current is not None:
                 _recursive[(current, self)] = True
-                obj = session.merge(current, dont_load=dont_load, _recursive=_recursive)
+                obj = session._merge(current, dont_load=dont_load, _recursive=_recursive)
                 if obj is not None:
                     if dont_load:
                         dest_state.dict[self.key] = obj
@@ -1021,7 +1021,11 @@ class RelationProperty(StrategizedProperty):
         
 
     def _refers_to_parent_table(self):
-        return self.parent.mapped_table is self.target
+        for c, f in self.synchronize_pairs:
+            if c.table is f.table:
+                return True
+        else:
+            return False
 
     def _is_self_referential(self):
         return self.mapper.common_parent(self.parent)

@@ -29,8 +29,8 @@ Note: Something much like 'comparable_property' is slated for inclusion in a
       future version of SQLAlchemy.
 """
 
-from sqlalchemy.orm.interfaces import PropComparator, MapperProperty
-from sqlalchemy.orm import session as sessionlib, comparable_property
+from sqlalchemy.orm.interfaces import PropComparator
+from sqlalchemy.orm import comparable_property
 
 # Using the VerticalPropertyDictMixin from the base example
 from dictlike import VerticalPropertyDictMixin
@@ -131,7 +131,9 @@ class PolymorphicVerticalProperty(object):
 
 
 if __name__ == '__main__':
-    from sqlalchemy import *
+    from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
+        ForeignKey, UnicodeText, and_, not_, or_, String, Boolean, cast, text,
+        null, case)
     from sqlalchemy.orm import mapper, relation, create_session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
@@ -198,9 +200,9 @@ if __name__ == '__main__':
     stoat[u'cuteness'] = 7
     stoat[u'weasel-like'] = True
 
-    session.save(stoat)
+    session.add(stoat)
     session.flush()
-    session.clear()
+    session.expunge_all()
 
     critter = session.query(Animal).filter(Animal.name == u'stoat').one()
     print critter[u'color']
@@ -217,14 +219,14 @@ if __name__ == '__main__':
     marten[u'cuteness'] = 5
     marten[u'weasel-like'] = True
     marten[u'poisonous'] = False
-    session.save(marten)
+    session.add(marten)
 
     shrew = Animal(u'shrew')
     shrew[u'cuteness'] = 5
     shrew[u'weasel-like'] = False
     shrew[u'poisonous'] = True
 
-    session.save(shrew)
+    session.add(shrew)
     session.flush()
 
     q = (session.query(Animal).

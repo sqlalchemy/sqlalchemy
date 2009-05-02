@@ -277,6 +277,11 @@ class PGCompiler(compiler.SQLCompiler):
         else:
             return text
 
+    def visit_extract(self, extract, **kwargs):
+        field = self.extract_map.get(extract.field, extract.field)
+        return "EXTRACT(%s FROM %s::timestamp)" % (
+            field, self.process(extract.expr))
+
 class PGDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
@@ -325,6 +330,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 [(key,bind.value) for key,bind in compiler.binds.iteritems()])
             text += " WHERE " + inlined_clause
         return text
+
 
 class PGDefaultRunner(base.DefaultRunner):
     def __init__(self, context):

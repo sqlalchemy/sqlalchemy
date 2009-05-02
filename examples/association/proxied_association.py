@@ -2,8 +2,9 @@
 the usage of the associationproxy extension."""
 
 from datetime import datetime
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
+    String, DateTime, Float, ForeignKey, and_)
+from sqlalchemy.orm import mapper, relation, create_session
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
 engine = create_engine('sqlite://')
@@ -82,7 +83,7 @@ order.items.append(item('SA Hat'))
 session.add(order)
 session.flush()
 
-session.clear()
+session.expunge_all()
 
 # query the order, print items
 order = session.query(Order).filter_by(customer_name='john smith').one()

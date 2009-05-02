@@ -7,8 +7,9 @@ styles of persistence are identical, as is the structure of the main Document cl
 """
 
 ################################# PART I - Imports/Coniguration ###########################################
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
+    Unicode, and_)
+from sqlalchemy.orm import mapper, relation, create_session, lazyload
 
 import sys, os, StringIO, re
 
@@ -22,8 +23,7 @@ logging.basicConfig()
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 
 
-from elementtree import ElementTree
-from elementtree.ElementTree import Element, SubElement
+from xml.etree import ElementTree
 
 meta = MetaData()
 meta.bind = 'sqlite://'
@@ -155,16 +155,16 @@ session = create_session()
 
 # get ElementTree documents
 for file in ('test.xml', 'test2.xml', 'test3.xml'):
-    filename = os.path.join(os.path.dirname(sys.argv[0]), file)
+    filename = os.path.join(os.path.dirname(__file__), file)
     doc = ElementTree.parse(filename)
-    session.save(Document(file, doc))
+    session.add(Document(file, doc))
 
 print "\nSaving three documents...", line
 session.flush()
 print "Done."
 
 # clear session (to illustrate a full load), restore
-session.clear()
+session.expunge_all()
 
 print "\nFull text of document 'text.xml':", line
 document = session.query(Document).filter_by(filename="test.xml").first()

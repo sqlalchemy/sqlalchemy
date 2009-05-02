@@ -1,5 +1,5 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
+from sqlalchemy.orm import mapper, relation, create_session
 import sets
 
 # this example illustrates a polymorphic load of two classes
@@ -58,12 +58,12 @@ class Company(object):
 
 person_join = people.outerjoin(engineers).outerjoin(managers)
 
-person_mapper = mapper(Person, people, select_table=person_join,polymorphic_on=people.c.type, polymorphic_identity='person')
+person_mapper = mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
 mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
 mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
 
 mapper(Company, companies, properties={
-    'employees': relation(Person, lazy=False, private=True, backref='company')
+    'employees': relation(Person, lazy=False, backref='company', cascade="all, delete-orphan")
 })
 
 session = create_session(echo_uow=False)
@@ -73,30 +73,30 @@ c.employees.append(Engineer(name='dilbert', status='BBA', engineer_name='enginee
 c.employees.append(Person(name='joesmith', status='HHH'))
 c.employees.append(Engineer(name='wally', status='CGG', engineer_name='engineer2', primary_language='python'))
 c.employees.append(Manager(name='jsmith', status='ABA', manager_name='manager2'))
-session.save(c)
+session.add(c)
 
 print session.new
 session.flush()
-session.clear()
+session.expunge_all()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e, e._instance_key, e.company
+    print e, e._sa_instance_state.key, e.company
 assert sets.Set([e.name for e in c.employees]) == sets.Set(['pointy haired boss', 'dilbert', 'joesmith', 'wally', 'jsmith'])
 print "\n"
 
-dilbert = session.query(Person).get_by(name='dilbert')
-dilbert2 = session.query(Engineer).get_by(name='dilbert')
+dilbert = session.query(Person).filter_by(name='dilbert').one()
+dilbert2 = session.query(Engineer).filter_by(name='dilbert').one()
 assert dilbert is dilbert2
 
 dilbert.engineer_name = 'hes dibert!'
 
 session.flush()
-session.clear()
+session.expunge_all()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e, e._instance_key
+    print e, e._sa_instance_state.key
 
 session.delete(c)
 session.flush()

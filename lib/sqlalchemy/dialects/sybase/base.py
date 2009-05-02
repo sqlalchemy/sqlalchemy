@@ -217,6 +217,13 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         sql_operators.mod: lambda x, y: "MOD(%s, %s)" % (x, y),
     })
 
+    extract_map = compiler.SQLCompiler.extract_map.copy()
+    extract_map.update ({
+        'doy': 'dayofyear',
+        'dow': 'weekday',
+        'milliseconds': 'millisecond'
+    })
+
     def bindparam_string(self, name):
         res = super(SybaseSQLCompiler, self).bindparam_string(name)
         if name.lower().startswith('literal'):
@@ -269,6 +276,10 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
             # res = self.visit_cast(cast)
             res = "CAST(%s AS %s)" % (res, self.process(cast.typeclause))
         return res
+
+    def visit_extract(self, extract):
+        field = self.extract_map.get(extract.field, extract.field)
+        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
 
     def for_update_clause(self, select):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use

@@ -708,7 +708,6 @@ class NumericTest(TestBase, AssertsExecutionResults):
             ncasdec=Decimal("12.4"), fcasdec=Decimal("15.75"))
 
         l = numeric_table.select().execute().fetchall()
-        print l
         rounded = [
             (l[0][0], l[0][1], round(l[0][2], 5), l[0][3], l[0][4]),
             (l[1][0], l[1][1], round(l[1][2], 5), l[1][3], l[1][4]),
@@ -802,11 +801,9 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         bool_table.insert().execute(id=5, value=True)
 
         res = bool_table.select(bool_table.c.value==True).execute().fetchall()
-        print res
         assert(res==[(1, True),(3, True),(4, True),(5, True)])
 
         res2 = bool_table.select(bool_table.c.value==False).execute().fetchall()
-        print res2
         assert(res2==[(2, False)])
 
 class PickleTest(TestBase):
