@@ -3016,7 +3016,7 @@ class UpdateDeleteTest(_base.MappedTest):
         sess = create_session(bind=testing.db, autocommit=False)
 
         foo,bar,baz = sess.query(Document).order_by(Document.id).all()
-        sess.query(Document).filter(Document.user_id == 1).update({'title': Document.title+Document.title}, synchronize_session='evaluate')
+        sess.query(Document).filter(Document.user_id == 1).update({'title': Document.title+Document.title}, synchronize_session='expire')
 
         eq_([foo.title, bar.title, baz.title], ['foofoo','barbar', 'baz'])
         eq_(sess.query(Document.title).order_by(Document.id).all(), zip(['foofoo','barbar', 'baz']))
