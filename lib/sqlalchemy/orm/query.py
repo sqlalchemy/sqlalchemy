@@ -2115,7 +2115,7 @@ class QueryContext(object):
         self.froms = []
         self.adapter = None
 
-        self.options = query._with_options
+        self.options = set(query._with_options)
         self.attributes = query._attributes.copy()
 
 class AliasOption(interfaces.MapperOption):

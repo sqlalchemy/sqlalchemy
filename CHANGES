@@ -32,6 +32,15 @@ CHANGES
       parameters but this would require further development.
       [ticket:1357]
 
+    - MapperOptions and other state associated with query.options()
+      is no longer bundled within callables associated with each 
+      lazy/deferred-loading attribute during a load.
+      The options are now associated with the instance's
+      state object just once when it's populated.  This removes
+      the need in most cases for per-instance/attribute loader 
+      objects, improving load speed and memory overhead for
+      individual instances. [ticket:1391]
+      
     - Fixed another location where autoflush was interfering
       with session.merge().  autoflush is disabled completely
       for the duration of merge() now. [ticket:1360]

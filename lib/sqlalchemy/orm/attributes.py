@@ -828,6 +828,8 @@ class InstanceState(object):
     key = None
     runid = None
     expired_attributes = EMPTY_SET
+    load_options = EMPTY_SET
+    load_path = ()
     insert_order = None
     
     def __init__(self, obj, manager):
@@ -937,6 +939,8 @@ class InstanceState(object):
                 'parents': self.parents,
                 'modified': self.modified,
                 'expired':self.expired,
+                'load_options':self.load_options,
+                'load_path':interfaces.serialize_path(self.load_path),
                 'instance': self.obj(),
                 'expired_attributes':self.expired_attributes,
                 'callables': self.callables}
@@ -949,6 +953,8 @@ class InstanceState(object):
         self.pending = state['pending']
         self.modified = state['modified']
         self.obj = weakref.ref(state['instance'])
+        self.load_options = state['load_options'] or EMPTY_SET
+        self.load_path = interfaces.deserialize_path(state['load_path'])
         self.class_ = self.obj().__class__
         self.manager = manager_of_class(self.class_)
         self.dict = self.obj().__dict__

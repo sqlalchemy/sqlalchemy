@@ -1515,6 +1515,12 @@ class Mapper(object):
         existing_populators = []
 
         def populate_state(state, row, isnew, only_load_props, **flags):
+            if isnew:
+                if context.options:
+                    state.load_options = context.options
+                if state.load_options:
+                    state.load_path = context.query._current_path + path
+
             if not new_populators:
                 new_populators[:], existing_populators[:] = self._populators(context, path, row, adapter)
 
