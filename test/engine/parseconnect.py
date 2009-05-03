@@ -173,12 +173,8 @@ pool_timeout=10
         # these args work for QueuePool
         e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=MockDBAPI())
 
-        try:
-            # but not SingletonThreadPool
-            e = create_engine('sqlite://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.SingletonThreadPool)
-            assert False
-        except TypeError:
-            assert True
+        # but not SingletonThreadPool
+        self.assertRaises(TypeError, create_engine, 'sqlite://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.SingletonThreadPool)
 
 class MockDBAPI(object):
     def __init__(self, **kwargs):
