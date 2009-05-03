@@ -164,20 +164,22 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
     edges = _EdgeCollection()
 
     for item in list(allitems) + [t[0] for t in tuples] + [t[1] for t in tuples]:
-        if id(item) not in nodes:
+        item_id = id(item)
+        if item_id not in nodes:
             node = _Node(item)
-            nodes[item] = node
+            nodes[item_id] = node
 
     for t in tuples:
+        id0 = id(t[0])
         if t[0] is t[1]:
             if allow_cycles:
-                n = nodes[t[0]]
+                n = nodes[id0]
                 n.cycles = set([n])
             elif not ignore_self_cycles:
                 raise CircularDependencyError("Self-referential dependency detected " + repr(t))
             continue
-        childnode = nodes[t[1]]
-        parentnode = nodes[t[0]]
+        childnode = nodes[id(t[1])]
+        parentnode = nodes[id0]
         edges.add((parentnode, childnode))
 
     queue = []
@@ -213,7 +215,7 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
         node = queue.pop()
         if not hasattr(node, '_cyclical'):
             output.append(node)
-        del nodes[node.item]
+        del nodes[id(node.item)]
         for childnode in edges.pop_node(node):
             queue.append(childnode)
     return output
