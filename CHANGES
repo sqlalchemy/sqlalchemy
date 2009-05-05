@@ -90,6 +90,9 @@ CHANGES
       since it is only used by mssql now. [ticket:1343]
 
 - sqlite
+    - Corrected the SLBoolean type so that it properly treats only 1
+      as True. [ticket:1402]
+
     - Corrected the float type so that it correctly maps to a
       SLFloat type when being reflected. [ticket:1273]
 
