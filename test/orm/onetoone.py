@@ -1,7 +1,7 @@
 import testenv; testenv.configure_for_tests()
 from testlib import sa, testing
 from testlib.sa import Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import mapper, relation
+from testlib.sa.orm import mapper, relation, create_session
 from orm import _base
 
 
@@ -19,50 +19,56 @@ class O2OTest(_base.MappedTest):
               Column('description', String(100)),
               Column('jack_id', Integer, ForeignKey("jack.id")))
 
+    @testing.resolve_artifact_names
     def setup_mappers(self):
         class Jack(_base.BasicEntity):
             pass
         class Port(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
-    def test_1(self):
-        ctx = sa.orm.scoped_session(sa.orm.create_session)
 
-        mapper(Port, port, extension=ctx.extension)
+    @testing.resolve_artifact_names
+    def test_basic(self):
+        mapper(Port, port)
         mapper(Jack, jack,
                order_by=[jack.c.number],
                properties=dict(
                    port=relation(Port, backref='jack',
-                                 uselist=False, lazy=True)),
-               extension=ctx.extension)
+                                 uselist=False,
+                                 )),
+               )
+
+        session = create_session()
 
         j = Jack(number='101')
+        session.add(j)
         p = Port(name='fa0/1')
+        session.add(p)
+        
         j.port=p
-        ctx.flush()
+        session.flush()
         jid = j.id
         pid = p.id
 
-        j=ctx.query(Jack).get(jid)
-        p=ctx.query(Port).get(pid)
+        j=session.query(Jack).get(jid)
+        p=session.query(Port).get(pid)
         assert p.jack is not None
         assert p.jack is  j
         assert j.port is not None
         p.jack = None
         assert j.port is None
 
-        ctx.expunge_all()
+        session.expunge_all()
 
-        j = ctx.query(Jack).get(jid)
-        p = ctx.query(Port).get(pid)
+        j = session.query(Jack).get(jid)
+        p = session.query(Port).get(pid)
 
         j.port=None
         self.assert_(p.jack is None)
-        ctx.flush()
+        session.flush()
 
-        ctx.delete(j)
-        ctx.flush()
+        session.delete(j)
+        session.flush()
 
 if __name__ == "__main__":
     testenv.main()

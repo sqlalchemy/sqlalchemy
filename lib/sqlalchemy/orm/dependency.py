@@ -261,7 +261,8 @@ class OneToManyDP(DependencyProcessor):
                     if not history:
                         history = uowcommit.get_attribute_history(state, self.key, passive=False)
                     for child in history.unchanged:
-                        uowcommit.register_object(child)
+                        if child is not None:
+                            uowcommit.register_object(child)
 
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         source = state
