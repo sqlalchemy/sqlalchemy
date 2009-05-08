@@ -839,8 +839,8 @@ class RelationProperty(StrategizedProperty):
                     if self._foreign_keys:
                         raise sa_exc.ArgumentError("Could not determine relation direction for "
                             "primaryjoin condition '%s', on relation %s. "
-                            "Are the columns in 'foreign_keys' present within the given "
-                            "join condition ?" % (self.primaryjoin, self))
+                            "Do the columns in 'foreign_keys' represent only the 'foreign' columns "
+                            "in this join condition ?" % (self.primaryjoin, self))
                     else:
                         raise sa_exc.ArgumentError("Could not determine relation direction for "
                             "primaryjoin condition '%s', on relation %s. "

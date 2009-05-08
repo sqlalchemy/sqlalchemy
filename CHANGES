@@ -66,6 +66,11 @@ CHANGES
     - Fixed Query.update() and Query.delete() failures with eagerloaded
       relations. [ticket:1378]
 
+    - It is now an error to specify both columns of a binary primaryjoin
+      condition in the foreign_keys or remote_side collection.  Whereas
+      previously it was just nonsensical, but would succeed in a 
+      non-deterministic way.
+      
 - schema
     - Added a quote_schema() method to the IdentifierPreparer class
       so that dialects can override how schemas get handled. This

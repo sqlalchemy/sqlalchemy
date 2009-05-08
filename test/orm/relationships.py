@@ -835,7 +835,7 @@ class JoinConditionErrorTest(testing.TestBase):
         mapper(C2, t3)
         
         self.assertRaises(sa.exc.NoReferencedColumnError, compile_mappers)
-
+    
     def test_join_error_raised(self):
         m = MetaData()
         t1 = Table('t1', m, 
@@ -1640,6 +1640,53 @@ class InvalidRelationEscalationTest(_base.MappedTest):
             "Could not locate any equated, locally mapped column pairs "
             "for primaryjoin condition", sa.orm.compile_mappers)
 
+    @testing.resolve_artifact_names
+    def test_ambiguous_fks(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar,
+                            primaryjoin=foos.c.id==bars.c.fid,
+                            foreign_keys=[foos.c.id, bars.c.fid])})
+        mapper(Bar, bars)
+
+        self.assertRaisesMessage(
+            sa.exc.ArgumentError, 
+                "Do the columns in 'foreign_keys' represent only the "
+                "'foreign' columns in this join condition ?", 
+                sa.orm.compile_mappers)
+
+    @testing.resolve_artifact_names
+    def test_ambiguous_remoteside_o2m(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar,
+                            primaryjoin=foos.c.id==bars.c.fid,
+                            foreign_keys=[bars.c.fid],
+                            remote_side=[foos.c.id, bars.c.fid],
+                            viewonly=True
+                            )})
+        mapper(Bar, bars)
+
+        self.assertRaisesMessage(
+            sa.exc.ArgumentError, 
+                "could not determine any local/remote column pairs",
+                sa.orm.compile_mappers)
+
+    @testing.resolve_artifact_names
+    def test_ambiguous_remoteside_m2o(self):
+        mapper(Foo, foos, properties={
+            'bars':relation(Bar,
+                            primaryjoin=foos.c.id==bars.c.fid,
+                            foreign_keys=[foos.c.id],
+                            remote_side=[foos.c.id, bars.c.fid],
+                            viewonly=True
+                            )})
+        mapper(Bar, bars)
+
+        self.assertRaisesMessage(
+            sa.exc.ArgumentError, 
+                "could not determine any local/remote column pairs",
+                sa.orm.compile_mappers)
+        
+    
     @testing.resolve_artifact_names
     def test_no_equated_self_ref(self):
         mapper(Foo, foos, properties={
