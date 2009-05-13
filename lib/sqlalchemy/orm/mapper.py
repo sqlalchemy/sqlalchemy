@@ -682,7 +682,7 @@ class Mapper(object):
         for key, prop in l:
             self._log("initialize prop " + key)
             
-            if not prop._compile_started:
+            if prop.parent is self and not prop._compile_started:
                 prop.init()
             
             if prop._compile_finished:

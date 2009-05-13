@@ -54,6 +54,10 @@ CHANGES
       from a base class to a joined-table subclass would 
       not configure correctly.
 
+    - Fixed obscure mapper compilation issue when inheriting
+      mappers are used which would result in un-initialized
+      attributes.
+      
     - Fixed documentation for session weak_identity_map - 
       the default value is True, indicating a weak
       referencing map in use.
