@@ -394,13 +394,16 @@ class NonPKCascadeTest(_base.MappedTest):
         Table('users', metadata,
             Column('id', Integer, primary_key=True),
             Column('username', String(50), unique=True),
-            Column('fullname', String(100)))
+            Column('fullname', String(100)),
+            test_needs_fk=True)
 
         Table('addresses', metadata,
               Column('id', Integer, primary_key=True),
               Column('email', String(50)),
               Column('username', String(50),
-                     ForeignKey('users.username', onupdate="cascade")))
+                     ForeignKey('users.username', onupdate="cascade")),
+                     test_needs_fk=True
+                     )
 
     def setup_classes(self):
         class User(_base.ComparableEntity):
