@@ -138,6 +138,13 @@ CHANGES
       identifiers, such as 'database.owner'. [ticket: 594, 1341]
 
 - sql
+    - Back-ported the "compiler" extension from SQLA 0.6.  This
+      is a standardized interface which allows the creation of custom
+      ClauseElement subclasses and compilers.  In particular it's
+      handy as an alternative to text() when you'd like to 
+      build a construct that has database-specific compilations.
+      See the extension docs for details.
+      
     - Exception messages are truncated when the list of bound 
       parameters is larger than 10, preventing enormous
       multi-page exceptions from filling up screens and logfiles

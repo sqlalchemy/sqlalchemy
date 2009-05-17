@@ -23,6 +23,7 @@ AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
 
+    name = 'default'
     schemagenerator = compiler.SchemaGenerator
     schemadropper = compiler.SchemaDropper
     statement_compiler = compiler.DefaultCompiler
