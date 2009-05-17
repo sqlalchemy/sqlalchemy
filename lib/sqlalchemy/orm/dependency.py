@@ -64,17 +64,21 @@ class DependencyProcessor(object):
     def register_dependencies(self, uowcommit):
         """Tell a ``UOWTransaction`` what mappers are dependent on
         which, with regards to the two or three mappers handled by
-        this ``PropertyLoader``.
+        this ``DependencyProcessor``.
 
-        Also register itself as a *processor* for one of its mappers,
-        which will be executed after that mapper's objects have been
-        saved or before they've been deleted.  The process operation
-        manages attributes and dependent operations upon the objects
-        of one of the involved mappers.
         """
 
         raise NotImplementedError()
 
+    def register_processors(self, uowcommit):
+        """Tell a ``UOWTransaction`` about this object as a processor,
+        which will be executed after that mapper's objects have been
+        saved or before they've been deleted.  The process operation
+        manages attributes and dependent operations between two mappers.
+        
+        """
+        raise NotImplementedError()
+        
     def whose_dependent_on_who(self, state1, state2):
         """Given an object pair assuming `obj2` is a child of `obj1`,
         return a tuple with the dependent object second, or None if
@@ -181,9 +185,13 @@ class OneToManyDP(DependencyProcessor):
         if self.post_update:
             uowcommit.register_dependency(self.mapper, self.dependency_marker)
             uowcommit.register_dependency(self.parent, self.dependency_marker)
-            uowcommit.register_processor(self.dependency_marker, self, self.parent)
         else:
             uowcommit.register_dependency(self.parent, self.mapper)
+
+    def register_processors(self, uowcommit):
+        if self.post_update:
+            uowcommit.register_processor(self.dependency_marker, self, self.parent)
+        else:
             uowcommit.register_processor(self.parent, self, self.parent)
 
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
@@ -285,6 +293,9 @@ class DetectKeySwitch(DependencyProcessor):
     no_dependencies = True
 
     def register_dependencies(self, uowcommit):
+        pass
+
+    def register_processors(self, uowcommit):
         uowcommit.register_processor(self.parent, self, self.mapper)
 
     def preprocess_dependencies(self, task, deplist, uowcommit, delete=False):
@@ -330,11 +341,14 @@ class ManyToOneDP(DependencyProcessor):
         if self.post_update:
             uowcommit.register_dependency(self.mapper, self.dependency_marker)
             uowcommit.register_dependency(self.parent, self.dependency_marker)
-            uowcommit.register_processor(self.dependency_marker, self, self.parent)
         else:
             uowcommit.register_dependency(self.mapper, self.parent)
+    
+    def register_processors(self, uowcommit):
+        if self.post_update:
+            uowcommit.register_processor(self.dependency_marker, self, self.parent)
+        else:
             uowcommit.register_processor(self.mapper, self, self.parent)
-
 
     def process_dependencies(self, task, deplist, uowcommit, delete=False):
         if delete:
@@ -408,8 +422,10 @@ class ManyToManyDP(DependencyProcessor):
 
         uowcommit.register_dependency(self.parent, self.dependency_marker)
         uowcommit.register_dependency(self.mapper, self.dependency_marker)
-        uowcommit.register_processor(self.dependency_marker, self, self.parent)
 
+    def register_processors(self, uowcommit):
+        uowcommit.register_processor(self.dependency_marker, self, self.parent)
+        
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         connection = uowcommit.transaction.connection(self.mapper)
         secondary_delete = []
@@ -525,6 +541,9 @@ class MapperStub(object):
         return iter((self,))
 
     def _register_dependencies(self, uowcommit):
+        pass
+
+    def _register_procesors(self, uowcommit):
         pass
 
     def _save_obj(self, *args, **kwargs):

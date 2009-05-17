@@ -96,6 +96,8 @@ class UOWTransaction(object):
         # information.
         self.attributes = {}
         
+        self.processors = set()
+        
     def get_attribute_history(self, state, key, passive=True):
         hashkey = ("history", state, key)
 
@@ -136,6 +138,16 @@ class UOWTransaction(object):
         else:
             task.append(state, listonly=listonly, isdelete=isdelete)
 
+        # ensure the mapper for this object has had its 
+        # DependencyProcessors added.
+        if mapper not in self.processors:
+            mapper._register_processors(self)
+            self.processors.add(mapper)
+
+            if mapper.base_mapper not in self.processors:
+                mapper.base_mapper._register_processors(self)
+                self.processors.add(mapper.base_mapper)
+            
     def set_row_switch(self, state):
         """mark a deleted object as a 'row switch'.
 
@@ -147,7 +159,7 @@ class UOWTransaction(object):
         task = self.get_task_by_mapper(mapper)
         taskelement = task._objects[state]
         taskelement.isdelete = "rowswitch"
-
+    
     def is_deleted(self, state):
         """return true if the given state is marked as deleted within this UOWTransaction."""
 
@@ -201,9 +213,9 @@ class UOWTransaction(object):
         self.dependencies.add((mapper, dependency))
 
     def register_processor(self, mapper, processor, mapperfrom):
-        """register a dependency processor, corresponding to dependencies between
-        the two given mappers.
-
+        """register a dependency processor, corresponding to 
+        operations which occur between two mappers.
+        
         """
         # correct for primary mapper
         mapper = mapper.primary_mapper()

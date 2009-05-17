@@ -371,7 +371,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
                     )
 
         u7 = User(id=7)
-        attributes.instance_state(u7).commit_all()
+        attributes.instance_state(u7).commit_all(attributes.instance_dict(u7))
         
         self._test(Address.user == u7, ":param_1 = addresses.user_id")
 

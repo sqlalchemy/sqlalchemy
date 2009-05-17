@@ -55,21 +55,21 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         else:
             self.query_class = mixin_user_query(query_class)
 
-    def get(self, state, passive=False):
+    def get(self, state, dict_, passive=False):
         if passive:
             return self._get_collection_history(state, passive=True).added_items
         else:
             return self.query_class(self, state)
 
-    def get_collection(self, state, user_data=None, passive=True):
+    def get_collection(self, state, dict_, user_data=None, passive=True):
         if passive:
             return self._get_collection_history(state, passive=passive).added_items
         else:
             history = self._get_collection_history(state, passive=passive)
             return history.added_items + history.unchanged_items
 
-    def fire_append_event(self, state, value, initiator):
-        collection_history = self._modified_event(state)
+    def fire_append_event(self, state, dict_, value, initiator):
+        collection_history = self._modified_event(state, dict_)
         collection_history.added_items.append(value)
 
         for ext in self.extensions:
@@ -78,8 +78,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if self.trackparent and value is not None:
             self.sethasparent(attributes.instance_state(value), True)
 
-    def fire_remove_event(self, state, value, initiator):
-        collection_history = self._modified_event(state)
+    def fire_remove_event(self, state, dict_, value, initiator):
+        collection_history = self._modified_event(state, dict_)
         collection_history.deleted_items.append(value)
 
         if self.trackparent and value is not None:
@@ -88,31 +88,31 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         for ext in self.extensions:
             ext.remove(state, value, initiator or self)
 
-    def _modified_event(self, state):
+    def _modified_event(self, state, dict_):
 
         if self.key not in state.committed_state:
             state.committed_state[self.key] = CollectionHistory(self, state)
 
-        state.modified_event(self, False, attributes.NEVER_SET, passive=attributes.PASSIVE_NO_INITIALIZE)
+        state.modified_event(dict_, self, False, attributes.NEVER_SET, passive=attributes.PASSIVE_NO_INITIALIZE)
 
         # this is a hack to allow the _base.ComparableEntity fixture
         # to work
-        state.dict[self.key] = True
+        dict_[self.key] = True
         return state.committed_state[self.key]
 
-    def set(self, state, value, initiator):
+    def set(self, state, dict_, value, initiator):
         if initiator is self:
             return
 
-        self._set_iterable(state, value)
+        self._set_iterable(state, dict_, value)
 
-    def _set_iterable(self, state, iterable, adapter=None):
+    def _set_iterable(self, state, dict_, iterable, adapter=None):
 
-        collection_history = self._modified_event(state)
+        collection_history = self._modified_event(state, dict_)
         new_values = list(iterable)
 
         if _state_has_identity(state):
-            old_collection = list(self.get(state))
+            old_collection = list(self.get(state, dict_))
         else:
             old_collection = []
 
@@ -121,7 +121,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     def delete(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def get_history(self, state, passive=False):
+    def get_history(self, state, dict_, passive=False):
         c = self._get_collection_history(state, passive)
         return attributes.History(c.added_items, c.unchanged_items, c.deleted_items)
 
@@ -136,13 +136,13 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         else:
             return c
 
-    def append(self, state, value, initiator, passive=False):
+    def append(self, state, dict_, value, initiator, passive=False):
         if initiator is not self:
-            self.fire_append_event(state, value, initiator)
+            self.fire_append_event(state, dict_, value, initiator)
 
-    def remove(self, state, value, initiator, passive=False):
+    def remove(self, state, dict_, value, initiator, passive=False):
         if initiator is not self:
-            self.fire_remove_event(state, value, initiator)
+            self.fire_remove_event(state, dict_, value, initiator)
 
 class DynCollectionAdapter(object):
     """the dynamic analogue to orm.collections.CollectionAdapter"""
@@ -156,10 +156,10 @@ class DynCollectionAdapter(object):
         return iter(self.data)
 
     def append_with_event(self, item, initiator=None):
-        self.attr.append(self.state, item, initiator)
+        self.attr.append(self.state, self.state.dict, item, initiator)
 
     def remove_with_event(self, item, initiator=None):
-        self.attr.remove(self.state, item, initiator)
+        self.attr.remove(self.state, self.state.dict, item, initiator)
 
     def append_without_event(self, item):
         pass
@@ -240,10 +240,10 @@ class AppenderMixin(object):
         return query
 
     def append(self, item):
-        self.attr.append(attributes.instance_state(self.instance), item, None)
+        self.attr.append(attributes.instance_state(self.instance), attributes.instance_dict(self.instance), item, None)
 
     def remove(self, item):
-        self.attr.remove(attributes.instance_state(self.instance), item, None)
+        self.attr.remove(attributes.instance_state(self.instance), attributes.instance_dict(self.instance), item, None)
 
 
 class AppenderQuery(AppenderMixin, Query):

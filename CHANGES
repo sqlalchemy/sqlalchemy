@@ -8,6 +8,48 @@ CHANGES
 =====
 
 - orm
+    - Significant performance enhancements regarding Sessions/flush()
+      in conjunction with large mapper graphs, large numbers of 
+      objects:
+      
+      - The Session's "weak referencing" behavior is now *full* -
+        no strong references whatsoever are made to a mapped object
+        or related items/collections in its __dict__.  Backrefs and 
+        other cycles in objects no longer affect the Session's ability 
+        to lose all references to unmodified objects.  Objects with 
+        pending changes still are maintained strongly until flush.  
+        [ticket:1398]
+        
+        The implementation also improves performance by moving
+        the "resurrection" process of garbage collected items
+        to only be relevant for mappings that map "mutable" 
+        attributes (i.e. PickleType, composite attrs).  This removes
+        overhead from the gc process and simplifies internal 
+        behavior.
+        
+        If a "mutable" attribute change is the sole change on an object 
+        which is then dereferenced, the mapper will not have access to 
+        other attribute state when the UPDATE is issued.  This may present 
+        itself differently to some MapperExtensions.
+        
+        The change also affects the internal attribute API, but not
+        the AttributeExtension interface nor any of the publically
+        documented attribute functions.
+        
+      - The unit of work no longer genererates a graph of "dependency"
+        processors for the full graph of mappers during flush(), instead
+        creating such processors only for those mappers which represent
+        objects with pending changes.  This saves a tremendous number
+        of method calls in the context of a large interconnected 
+        graph of mappers.
+        
+      - Cached a wasteful "table sort" operation that previously
+        occured multiple times per flush, also removing significant
+        method call count from flush().
+        
+      - Other redundant behaviors have been simplified in 
+        mapper._save_obj().
+      
     - Modified query_cls on DynamicAttributeImpl to accept a full
       mixin version of the AppenderQuery, which allows subclassing
       the AppenderMixin.

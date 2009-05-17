@@ -1751,9 +1751,9 @@ class CompositeTypesTest(_base.MappedTest):
                 return [self.x, self.y]
             __hash__ = None
             def __eq__(self, other):
-                return other.x == self.x and other.y == self.y
+                return isinstance(other, Point) and other.x == self.x and other.y == self.y
             def __ne__(self, other):
-                return not self.__eq__(other)
+                return not isinstance(other, Point) or not self.__eq__(other)
 
         class Graph(object):
             pass
@@ -1818,6 +1818,12 @@ class CompositeTypesTest(_base.MappedTest):
 
         # query by columns
         eq_(sess.query(Edge.start, Edge.end).all(), [(3, 4, 5, 6), (14, 5, 19, 5)])
+
+        e = g.edges[1]
+        e.end.x = e.end.y = None
+        sess.flush()
+        eq_(sess.query(Edge.start, Edge.end).all(), [(3, 4, 5, 6), (14, 5, None, None)])
+
 
     @testing.resolve_artifact_names
     def test_pk(self):

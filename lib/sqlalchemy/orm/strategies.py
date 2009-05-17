@@ -115,8 +115,8 @@ class ColumnLoader(LoaderStrategy):
         if adapter:
             col = adapter.columns[col]
         if col in row:
-            def new_execute(state, row, **flags):
-                state.dict[key] = row[col]
+            def new_execute(state, dict_, row, **flags):
+                dict_[key] = row[col]
                 
             if self._should_log_debug:
                 new_execute = self.debug_callable(new_execute, self.logger,
@@ -125,7 +125,7 @@ class ColumnLoader(LoaderStrategy):
                 )
             return (new_execute, None)
         else:
-            def new_execute(state, row, isnew, **flags):
+            def new_execute(state, dict_, row, isnew, **flags):
                 if isnew:
                     state.expire_attributes([key])
             if self._should_log_debug:
@@ -171,15 +171,15 @@ class CompositeColumnLoader(ColumnLoader):
             columns = [adapter.columns[c] for c in columns]
         for c in columns:
             if c not in row:
-                def new_execute(state, row, isnew, **flags):
+                def new_execute(state, dict_, row, isnew, **flags):
                     if isnew:
                         state.expire_attributes([key])
                 if self._should_log_debug:
                     self.logger.debug("%s deferring load" % self)
                 return (new_execute, None)
         else:
-            def new_execute(state, row, **flags):
-                state.dict[key] = composite_class(*[row[c] for c in columns])
+            def new_execute(state, dict_, row, **flags):
+                dict_[key] = composite_class(*[row[c] for c in columns])
 
             if self._should_log_debug:
                 new_execute = self.debug_callable(new_execute, self.logger,
@@ -202,13 +202,13 @@ class DeferredColumnLoader(LoaderStrategy):
             return self.parent_property._get_strategy(ColumnLoader).create_row_processor(selectcontext, path, mapper, row, adapter)
 
         elif not self.is_class_level:
-            def new_execute(state, row, **flags):
+            def new_execute(state, dict_, row, **flags):
                 state.set_callable(self.key, LoadDeferredColumns(state, self.key))
         else:
-            def new_execute(state, row, **flags):
+            def new_execute(state, dict_, row, **flags):
                 # reset state on the key so that deferred callables
                 # fire off on next access.
-                state.reset(self.key)
+                state.reset(self.key, dict_)
 
         if self._should_log_debug:
             new_execute = self.debug_callable(new_execute, self.logger, None,
@@ -340,7 +340,7 @@ class NoLoader(AbstractRelationLoader):
         )
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        def new_execute(state, row, **flags):
+        def new_execute(state, dict_, row, **flags):
             self._init_instance_attribute(state)
 
         if self._should_log_debug:
@@ -437,7 +437,7 @@ class LazyLoader(AbstractRelationLoader):
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         if not self.is_class_level:
-            def new_execute(state, row, **flags):
+            def new_execute(state, dict_, row, **flags):
                 # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
                 # which will override the class-level behavior.
                 # this currently only happens when using a "lazyload" option on a "no load" attribute -
@@ -451,11 +451,11 @@ class LazyLoader(AbstractRelationLoader):
 
             return (new_execute, None)
         else:
-            def new_execute(state, row, **flags):
+            def new_execute(state, dict_, row, **flags):
                 # we are the primary manager for this attribute on this class - reset its per-instance attribute state, 
                 # so that the class-level lazy loader is executed when next referenced on this instance.
                 # this is needed in populate_existing() types of scenarios to reset any existing state.
-                state.reset(self.key)
+                state.reset(self.key, dict_)
 
             if self._should_log_debug:
                 new_execute = self.debug_callable(new_execute, self.logger, None,
@@ -735,24 +735,24 @@ class EagerLoader(AbstractRelationLoader):
             _instance = self.mapper._instance_processor(context, path + (self.mapper.base_mapper,), eager_adapter)
             
             if not self.uselist:
-                def execute(state, row, isnew, **flags):
+                def execute(state, dict_, row, isnew, **flags):
                     if isnew:
                         # set a scalar object instance directly on the
                         # parent object, bypassing InstrumentedAttribute
                         # event handlers.
-                        state.dict[key] = _instance(row, None)
+                        dict_[key] = _instance(row, None)
                     else:
                         # call _instance on the row, even though the object has been created,
                         # so that we further descend into properties
                         _instance(row, None)
             else:
-                def execute(state, row, isnew, **flags):
+                def execute(state, dict_, row, isnew, **flags):
                     if isnew or (state, key) not in context.attributes:
                         # appender_key can be absent from context.attributes with isnew=False
                         # when self-referential eager loading is used; the same instance may be present
                         # in two distinct sets of result columns
 
-                        collection = attributes.init_state_collection(state, key)
+                        collection = attributes.init_state_collection(state, dict_, key)
                         appender = util.UniqueAppender(collection, 'append_without_event')
 
                         context.attributes[(state, key)] = appender

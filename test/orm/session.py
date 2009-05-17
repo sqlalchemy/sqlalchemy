@@ -5,7 +5,7 @@ import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes
 from testlib import engines, sa, testing, config
 from testlib.sa import Table, Column, Integer, String, Sequence
-from testlib.sa.orm import mapper, relation, backref
+from testlib.sa.orm import mapper, relation, backref, eagerload
 from testlib.testing import eq_
 from engine import _base as engine_base
 from orm import _base, _fixtures
@@ -776,7 +776,66 @@ class SessionTest(_fixtures.FixtureTest):
         user = s.query(User).one()
         assert user.name == 'fred'
         assert s.identity_map
+    
+    @testing.resolve_artifact_names
+    def test_weakref_with_cycles_o2m(self):
+        s = sessionmaker()()
+        mapper(User, users, properties={
+            "addresses":relation(Address, backref="user")
+        })
+        mapper(Address, addresses)
+        s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
+        s.commit()
+        
+        user = s.query(User).options(eagerload(User.addresses)).one()
+        user.addresses[0].user # lazyload
+        eq_(user, User(name="ed", addresses=[Address(email_address="ed1")]))
+        
+        del user
+        gc.collect()
+        assert len(s.identity_map) == 0
 
+        user = s.query(User).options(eagerload(User.addresses)).one()
+        user.addresses[0].email_address='ed2'
+        user.addresses[0].user # lazyload
+        del user
+        gc.collect()
+        assert len(s.identity_map) == 2
+        
+        s.commit()
+        user = s.query(User).options(eagerload(User.addresses)).one()
+        eq_(user, User(name="ed", addresses=[Address(email_address="ed2")]))
+        
+    @testing.resolve_artifact_names
+    def test_weakref_with_cycles_o2o(self):
+        s = sessionmaker()()
+        mapper(User, users, properties={
+            "address":relation(Address, backref="user", uselist=False)
+        })
+        mapper(Address, addresses)
+        s.add(User(name="ed", address=Address(email_address="ed1")))
+        s.commit()
+
+        user = s.query(User).options(eagerload(User.address)).one()
+        user.address.user
+        eq_(user, User(name="ed", address=Address(email_address="ed1")))
+
+        del user
+        gc.collect()
+        assert len(s.identity_map) == 0
+
+        user = s.query(User).options(eagerload(User.address)).one()
+        user.address.email_address='ed2'
+        user.address.user # lazyload
+
+        del user
+        gc.collect()
+        assert len(s.identity_map) == 2
+        
+        s.commit()
+        user = s.query(User).options(eagerload(User.address)).one()
+        eq_(user, User(name="ed", address=Address(email_address="ed2")))
+    
     @testing.resolve_artifact_names
     def test_strong_ref(self):
         s = create_session(weak_identity_map=False)

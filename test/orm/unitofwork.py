@@ -14,6 +14,7 @@ from orm import _base, _fixtures
 from engine import _base as engine_base
 import pickleable
 from testlib.assertsql import AllOf, CompiledSQL
+import gc
 
 class UnitOfWorkTest(object):
     pass
@@ -366,6 +367,28 @@ class MutableTypesTest(_base.MappedTest):
              "WHERE mutable_t.id = :mutable_t_id",
              {'mutable_t_id': f1.id, 'val': u'hi', 'data':f1.data})])
 
+
+    @testing.resolve_artifact_names
+    def test_resurrect(self):
+        f1 = Foo()
+        f1.data = pickleable.Bar(4,5)
+        f1.val = u'hi'
+
+        session = create_session(autocommit=False)
+        session.add(f1)
+        session.commit()
+
+        f1.data.y = 19
+        del f1
+        
+        gc.collect()
+        assert len(session.identity_map) == 1
+        
+        session.commit()
+        
+        assert session.query(Foo).one().data == pickleable.Bar(4, 19)
+        
+        
     @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_nocomparison(self):
