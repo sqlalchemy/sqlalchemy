@@ -852,9 +852,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert len(s.identity_map) == 1
 
         user = s.query(User).one()
-        assert not s.identity_map.modified
+        assert not s.identity_map._modified
         user.name = 'u2'
-        assert s.identity_map.modified
+        assert s.identity_map._modified
         s.flush()
         eq_(users.select().execute().fetchall(), [(user.id, 'u2')])
         

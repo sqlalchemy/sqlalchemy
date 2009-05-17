@@ -265,12 +265,13 @@ class OneToManyDP(DependencyProcessor):
                                 uowcommit.register_object(
                                     attributes.instance_state(c),
                                     isdelete=True)
-                if not self.passive_updates and self._pks_changed(uowcommit, state):
+                if self._pks_changed(uowcommit, state):
                     if not history:
-                        history = uowcommit.get_attribute_history(state, self.key, passive=False)
-                    for child in history.unchanged:
-                        if child is not None:
-                            uowcommit.register_object(child)
+                        history = uowcommit.get_attribute_history(state, self.key, passive=self.passive_updates)
+                    if history:
+                        for child in history.unchanged:
+                            if child is not None:
+                                uowcommit.register_object(child)
 
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         source = state
@@ -284,7 +285,7 @@ class OneToManyDP(DependencyProcessor):
             sync.populate(source, self.parent, dest, self.mapper, self.prop.synchronize_pairs)
 
     def _pks_changed(self, uowcommit, state):
-        return sync.source_changes(uowcommit, state, self.parent, self.prop.synchronize_pairs)
+        return sync.source_modified(uowcommit, state, self.parent, self.prop.synchronize_pairs)
 
 class DetectKeySwitch(DependencyProcessor):
     """a special DP that works for many-to-one relations, fires off for
@@ -326,11 +327,11 @@ class DetectKeySwitch(DependencyProcessor):
                     elem.dict[self.key] is not None and 
                     attributes.instance_state(elem.dict[self.key]) in switchers
                 ]:
-                uowcommit.register_object(s, listonly=self.passive_updates)
+                uowcommit.register_object(s)
                 sync.populate(attributes.instance_state(s.dict[self.key]), self.mapper, s, self.parent, self.prop.synchronize_pairs)
 
     def _pks_changed(self, uowcommit, state):
-        return sync.source_changes(uowcommit, state, self.mapper, self.prop.synchronize_pairs)
+        return sync.source_modified(uowcommit, state, self.mapper, self.prop.synchronize_pairs)
 
 class ManyToOneDP(DependencyProcessor):
     def __init__(self, prop):
@@ -519,7 +520,7 @@ class ManyToManyDP(DependencyProcessor):
         sync.populate_dict(child, self.mapper, associationrow, self.prop.secondary_synchronize_pairs)
 
     def _pks_changed(self, uowcommit, state):
-        return sync.source_changes(uowcommit, state, self.parent, self.prop.synchronize_pairs)
+        return sync.source_modified(uowcommit, state, self.parent, self.prop.synchronize_pairs)
 
 class MapperStub(object):
     """Represent a many-to-many dependency within a flush 

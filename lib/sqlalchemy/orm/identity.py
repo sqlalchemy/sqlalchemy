@@ -12,8 +12,8 @@ from sqlalchemy.orm import attributes
 
 class IdentityMap(dict):
     def __init__(self):
-        self._mutable_attrs = {}
-        self.modified = False
+        self._mutable_attrs = set()
+        self._modified = set()
         self._wr = weakref.ref(self)
 
     def replace(self, state):
@@ -34,28 +34,29 @@ class IdentityMap(dict):
     def _manage_incoming_state(self, state):
         state._instance_dict = self._wr
         
-        if state.modified:  
-            self.modified = True
+        if state.modified:
+            self._modified.add(state)  
         if state.manager.mutable_attributes:
-            self._mutable_attrs[state] = True
+            self._mutable_attrs.add(state)
     
     def _manage_removed_state(self, state):
         del state._instance_dict
+        self._mutable_attrs.discard(state)
+        self._modified.discard(state)
+    
+    def _dirty_states(self):
+        return self._modified.union(s for s in self._mutable_attrs if s.modified)
         
-        if state in self._mutable_attrs:
-            del self._mutable_attrs[state]
-            
     def check_modified(self):
         """return True if any InstanceStates present have been marked as 'modified'."""
         
-        if not self.modified:
-            for state in list(self._mutable_attrs):
-                if state.check_modified():
-                    return True
-            else:
-                return False
-        else:
+        if self._modified:
             return True
+        else:
+            for state in self._mutable_attrs:
+                if state.modified:
+                    return True
+        return False
             
     def has_key(self, key):
         return key in self

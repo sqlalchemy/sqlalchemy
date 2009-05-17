@@ -12,6 +12,16 @@ CHANGES
       in conjunction with large mapper graphs, large numbers of 
       objects:
       
+      - Removed all* O(N) scanning behavior from the flush() process,
+        i.e. operations that were scanning the full session, 
+        including an extremely expensive one that was erroneously
+        assuming primary key values were changing when this 
+        was not the case.
+        
+        * one edge case remains which may invoke a full scan,
+          if an existing primary key attribute is modified
+          to a new value.
+      
       - The Session's "weak referencing" behavior is now *full* -
         no strong references whatsoever are made to a mapped object
         or related items/collections in its __dict__.  Backrefs and 

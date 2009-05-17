@@ -193,12 +193,20 @@ class InstanceState(object):
             key for key in self.manager.iterkeys()
             if key not in self.committed_state and key not in self.dict)
 
-    def expire_attributes(self, attribute_names):
+    def expire_attributes(self, attribute_names, instance_dict=None):
         self.expired_attributes = set(self.expired_attributes)
 
         if attribute_names is None:
             attribute_names = self.manager.keys()
             self.expired = True
+            if self.modified:
+                if not instance_dict:
+                    instance_dict = self._instance_dict()
+                    if instance_dict:
+                        instance_dict._modified.discard(self)
+                else:
+                    instance_dict._modified.discard(self)
+                    
             self.modified = False
             filter_deferred = True
         else:
@@ -248,13 +256,14 @@ class InstanceState(object):
             if needs_committed:
                 self.committed_state[attr.key] = previous
 
+        if not self.modified:
+            instance_dict = self._instance_dict()
+            if instance_dict:
+                instance_dict._modified.add(self)
+
         self.modified = True
         self._strong_obj = self.obj()
 
-        instance_dict = self._instance_dict()
-        if instance_dict:
-            instance_dict.modified = True
-        
     def commit(self, dict_, keys):
         """Commit attributes.
 
@@ -279,7 +288,7 @@ class InstanceState(object):
                 self.expired_attributes.remove(key)
                 self.callables.pop(key, None)
 
-    def commit_all(self, dict_):
+    def commit_all(self, dict_, instance_dict=None):
         """commit all attributes unconditionally.
 
         This is used after a flush() or a full load/refresh
@@ -307,6 +316,9 @@ class InstanceState(object):
         for key in self.manager.mutable_attributes:
             if key in dict_:
                 self.manager[key].impl.commit_to_state(self, dict_, self.committed_state)
+
+        if instance_dict and self.modified:
+            instance_dict._modified.discard(self)
 
         self.modified = self.expired = False
         self._strong_obj = None

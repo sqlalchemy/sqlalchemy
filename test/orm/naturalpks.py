@@ -220,12 +220,13 @@ class NaturalPKTest(_base.MappedTest):
         u1.address = a1
         sess.add(a1)
         sess.flush()
-        
+
         u1.username = 'ed'
 
         def go():
             sess.flush()
         if passive_updates:
+            sess.expire(u1, ['address'])
             self.assert_sql_count(testing.db, go, 1)
         else:
             self.assert_sql_count(testing.db, go, 2)
@@ -234,7 +235,6 @@ class NaturalPKTest(_base.MappedTest):
             sess.flush()
         self.assert_sql_count(testing.db, go, 0)
 
-        assert a1.username == 'ed'
         sess.expunge_all()
         self.assertEquals([Address(username='ed')], sess.query(Address).all())
         
@@ -269,6 +269,7 @@ class NaturalPKTest(_base.MappedTest):
         def go():
             sess.flush()
         if passive_updates:
+            sess.expire(u1, ['addresses'])
             self.assert_sql_count(testing.db, go, 1)
         else:
             self.assert_sql_count(testing.db, go, 3)
@@ -279,11 +280,11 @@ class NaturalPKTest(_base.MappedTest):
         u1 = sess.query(User).get('ed')
         assert len(u1.addresses) == 2    # load addresses
         u1.username = 'fred'
-        print "--------------------------------"
         def go():
             sess.flush()
         # check that the passive_updates is on on the other side
         if passive_updates:
+            sess.expire(u1, ['addresses'])
             self.assert_sql_count(testing.db, go, 1)
         else:
             self.assert_sql_count(testing.db, go, 3)
