@@ -134,6 +134,11 @@ CHANGES
       identifiers, such as 'database.owner'. [ticket: 594, 1341]
 
 - sql
+    - Exception messages are truncated when the list of bound 
+      parameters is larger than 10, preventing enormous
+      multi-page exceptions from filling up screens and logfiles
+      for large executemany() statements. [ticket:1413]
+      
     - ``sqlalchemy.extract()`` is now dialect sensitive and can
       extract components of timestamps idiomatically across the
       supported databases, including SQLite.
