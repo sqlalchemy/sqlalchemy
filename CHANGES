@@ -64,6 +64,10 @@ CHANGES
       mixin version of the AppenderQuery, which allows subclassing
       the AppenderMixin.
 
+    - The "polymorphic discriminator" column may be part of a 
+      primary key, and it will be populated with the correct 
+      discriminator value.  [ticket:1300]
+      
     - Fixed the evaluator not being able to evaluate IS NULL clauses.
 
     - Fixed the "set collection" function on "dynamic" relations to

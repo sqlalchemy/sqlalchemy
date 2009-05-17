@@ -1587,7 +1587,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
     def shares_lineage(self, othercolumn):
         """Return True if the given ``ColumnElement`` has a common ancestor to this ``ColumnElement``."""
 
-        return len(self.proxy_set.intersection(othercolumn.proxy_set)) > 0
+        return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
     def _make_proxy(self, selectable, name=None):
         """Create a new ``ColumnElement`` representing this

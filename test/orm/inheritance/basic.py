@@ -5,6 +5,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
 from testlib import *
 from testlib import fixtures
+from orm import _base, _fixtures
 
 class O2MTest(ORMTest):
     """deals with inheritance and one-to-many relationships"""
@@ -924,6 +925,49 @@ class OptimizedLoadTest(ORMTest):
         # the optimized load needs to return "None" so regular full-row loading proceeds
         s1 = sess.query(Base).get(s1.id)
         assert s1.sub == 's1sub'
+
+class PKDiscriminatorTest(_base.MappedTest):
+    def define_tables(self, metadata):
+        parents = Table('parents', metadata,
+                           Column('id', Integer, primary_key=True),
+                           Column('name', String(60)))
+                           
+        children = Table('children', metadata,
+                        Column('id', Integer, ForeignKey('parents.id'), primary_key=True),
+                        Column('type', Integer,primary_key=True),
+                        Column('name', String(60)))
+
+    @testing.resolve_artifact_names
+    def test_pk_as_discriminator(self):
+        class Parent(object):
+                def __init__(self, name=None):
+                    self.name = name
+
+        class Child(object):
+            def __init__(self, name=None):
+                self.name = name
+
+        class A(Child):
+            pass
+            
+        mapper(Parent, parents, properties={
+            'children': relation(Child, backref='parent'),
+        })
+        mapper(Child, children, polymorphic_on=children.c.type,
+            polymorphic_identity=1)
+            
+        mapper(A, inherits=Child, polymorphic_identity=2)
+
+        s = create_session()
+        p = Parent('p1')
+        a = A('a1')
+        p.children.append(a)
+        s.add(p)
+        s.flush()
+
+        assert a.id
+        assert a.type == 2
+        
         
 class DeleteOrphanTest(ORMTest):
     def define_tables(self, metadata):

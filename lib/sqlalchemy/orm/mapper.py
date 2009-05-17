@@ -1297,10 +1297,6 @@ class Mapper(object):
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
                             params[col.key] = 1
-                        elif col in pks:
-                            value = mapper._get_state_attr_by_column(state, col)
-                            if value is not None:
-                                params[col.key] = value
                         elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
                             if self._should_log_debug:
                                 self._log_debug("Using polymorphic identity '%s' for insert column '%s'" % (mapper.polymorphic_identity, col.key))
@@ -1308,6 +1304,10 @@ class Mapper(object):
                             if ((col.default is None and
                                  col.server_default is None) or
                                 value is not None):
+                                params[col.key] = value
+                        elif col in pks:
+                            value = mapper._get_state_attr_by_column(state, col)
+                            if value is not None:
                                 params[col.key] = value
                         else:
                             value = mapper._get_state_attr_by_column(state, col)
