@@ -147,6 +147,11 @@ CHANGES
       ForeignKey constructed from __clause_element__() style
       construct (i.e. declarative columns).  [ticket:1353]
 
+- mysql
+    - Reflecting a FOREIGN KEY construct will take into account
+      a dotted schema.tablename combination, if the foreign key
+      references a table in a remote schema. [ticket:1405]
+      
 - mssql
     - Modified how savepoint logic works to prevent it from
       stepping on non-savepoint oriented routines. Savepoint
