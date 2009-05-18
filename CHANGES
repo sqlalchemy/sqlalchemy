@@ -4,6 +4,13 @@
 CHANGES
 =======
 
+0.5.4p1
+=======
+
+- orm
+    - Fixed an attribute error introduced in 0.5.4 which would 
+      occur when merge() was used with an incomplete object.
+    
 0.5.4
 =====
 

@@ -221,6 +221,15 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(on_load.called, 6)
 
     @testing.resolve_artifact_names
+    def test_merge_empty_attributes(self):
+        mapper(User, dingalings)
+        u1 = User(id=1)
+        sess = create_session()
+        sess.merge(u1)
+        sess.flush()
+        assert u1.address_id is u1.data is None
+        
+    @testing.resolve_artifact_names
     def test_attribute_cascade(self):
         """Merge of a persistent entity with two child persistent entities."""
 

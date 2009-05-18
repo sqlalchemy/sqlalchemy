@@ -376,7 +376,7 @@ class AttributeImpl(object):
                         return self.set_committed_value(state, dict_, value)
                     else:
                         if self.key not in dict_:
-                            return self.get(state, passive=passive)
+                            return self.get(state, dict_, passive=passive)
                         return dict_[self.key]
 
             # Return a new, empty value
