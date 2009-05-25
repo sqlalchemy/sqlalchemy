@@ -4,6 +4,13 @@
 CHANGES
 =======
 
+0.5.4p2
+=======
+
+- sql
+    - Repaired the printing of SQL exceptions which are not 
+      based on parameters.
+
 0.5.4p1
 =======
 
