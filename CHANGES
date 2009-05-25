@@ -4,14 +4,77 @@
 CHANGES
 =======
 
+0.5.4p1
+=======
+
+- orm
+    - Fixed an attribute error introduced in 0.5.4 which would 
+      occur when merge() was used with an incomplete object.
+    
 0.5.4
 =====
 
 - orm
+    - Significant performance enhancements regarding Sessions/flush()
+      in conjunction with large mapper graphs, large numbers of 
+      objects:
+      
+      - Removed all* O(N) scanning behavior from the flush() process,
+        i.e. operations that were scanning the full session, 
+        including an extremely expensive one that was erroneously
+        assuming primary key values were changing when this 
+        was not the case.
+        
+        * one edge case remains which may invoke a full scan,
+          if an existing primary key attribute is modified
+          to a new value.
+      
+      - The Session's "weak referencing" behavior is now *full* -
+        no strong references whatsoever are made to a mapped object
+        or related items/collections in its __dict__.  Backrefs and 
+        other cycles in objects no longer affect the Session's ability 
+        to lose all references to unmodified objects.  Objects with 
+        pending changes still are maintained strongly until flush.  
+        [ticket:1398]
+        
+        The implementation also improves performance by moving
+        the "resurrection" process of garbage collected items
+        to only be relevant for mappings that map "mutable" 
+        attributes (i.e. PickleType, composite attrs).  This removes
+        overhead from the gc process and simplifies internal 
+        behavior.
+        
+        If a "mutable" attribute change is the sole change on an object 
+        which is then dereferenced, the mapper will not have access to 
+        other attribute state when the UPDATE is issued.  This may present 
+        itself differently to some MapperExtensions.
+        
+        The change also affects the internal attribute API, but not
+        the AttributeExtension interface nor any of the publically
+        documented attribute functions.
+        
+      - The unit of work no longer genererates a graph of "dependency"
+        processors for the full graph of mappers during flush(), instead
+        creating such processors only for those mappers which represent
+        objects with pending changes.  This saves a tremendous number
+        of method calls in the context of a large interconnected 
+        graph of mappers.
+        
+      - Cached a wasteful "table sort" operation that previously
+        occured multiple times per flush, also removing significant
+        method call count from flush().
+        
+      - Other redundant behaviors have been simplified in 
+        mapper._save_obj().
+      
     - Modified query_cls on DynamicAttributeImpl to accept a full
       mixin version of the AppenderQuery, which allows subclassing
       the AppenderMixin.
 
+    - The "polymorphic discriminator" column may be part of a 
+      primary key, and it will be populated with the correct 
+      discriminator value.  [ticket:1300]
+      
     - Fixed the evaluator not being able to evaluate IS NULL clauses.
 
     - Fixed the "set collection" function on "dynamic" relations to
@@ -44,12 +107,20 @@ CHANGES
     - Fixed another location where autoflush was interfering
       with session.merge().  autoflush is disabled completely
       for the duration of merge() now. [ticket:1360]
-
+    
+    - Fixed bug which prevented "mutable primary key" dependency
+      logic from functioning properly on a one-to-one
+      relation().  [ticket:1406]
+      
     - Fixed bug in relation(), introduced in 0.5.3, 
       whereby a self referential relation
       from a base class to a joined-table subclass would 
       not configure correctly.
 
+    - Fixed obscure mapper compilation issue when inheriting
+      mappers are used which would result in un-initialized
+      attributes.
+      
     - Fixed documentation for session weak_identity_map - 
       the default value is True, indicating a weak
       referencing map in use.
@@ -62,6 +133,11 @@ CHANGES
     - Fixed Query.update() and Query.delete() failures with eagerloaded
       relations. [ticket:1378]
 
+    - It is now an error to specify both columns of a binary primaryjoin
+      condition in the foreign_keys or remote_side collection.  Whereas
+      previously it was just nonsensical, but would succeed in a 
+      non-deterministic way.
+      
 - schema
     - Added a quote_schema() method to the IdentifierPreparer class
       so that dialects can override how schemas get handled. This
@@ -69,6 +145,18 @@ CHANGES
       identifiers, such as 'database.owner'. [ticket: 594, 1341]
 
 - sql
+    - Back-ported the "compiler" extension from SQLA 0.6.  This
+      is a standardized interface which allows the creation of custom
+      ClauseElement subclasses and compilers.  In particular it's
+      handy as an alternative to text() when you'd like to 
+      build a construct that has database-specific compilations.
+      See the extension docs for details.
+      
+    - Exception messages are truncated when the list of bound 
+      parameters is larger than 10, preventing enormous
+      multi-page exceptions from filling up screens and logfiles
+      for large executemany() statements. [ticket:1413]
+      
     - ``sqlalchemy.extract()`` is now dialect sensitive and can
       extract components of timestamps idiomatically across the
       supported databases, including SQLite.
@@ -77,6 +165,11 @@ CHANGES
       ForeignKey constructed from __clause_element__() style
       construct (i.e. declarative columns).  [ticket:1353]
 
+- mysql
+    - Reflecting a FOREIGN KEY construct will take into account
+      a dotted schema.tablename combination, if the foreign key
+      references a table in a remote schema. [ticket:1405]
+      
 - mssql
     - Modified how savepoint logic works to prevent it from
       stepping on non-savepoint oriented routines. Savepoint
@@ -90,6 +183,9 @@ CHANGES
       since it is only used by mssql now. [ticket:1343]
 
 - sqlite
+    - Corrected the SLBoolean type so that it properly treats only 1
+      as True. [ticket:1402]
+
     - Corrected the float type so that it correctly maps to a
       SLFloat type when being reflected. [ticket:1273]
 

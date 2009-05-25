@@ -12,9 +12,12 @@ from sqlalchemy.orm import attributes
 
 class IdentityMap(dict):
     def __init__(self):
-        self._mutable_attrs = {}
-        self.modified = False
+        self._mutable_attrs = set()
+        self._modified = set()
         self._wr = weakref.ref(self)
+
+    def replace(self, state):
+        raise NotImplementedError()
         
     def add(self, state):
         raise NotImplementedError()
@@ -31,28 +34,29 @@ class IdentityMap(dict):
     def _manage_incoming_state(self, state):
         state._instance_dict = self._wr
         
-        if state.modified:  
-            self.modified = True
+        if state.modified:
+            self._modified.add(state)  
         if state.manager.mutable_attributes:
-            self._mutable_attrs[state] = True
+            self._mutable_attrs.add(state)
     
     def _manage_removed_state(self, state):
         del state._instance_dict
+        self._mutable_attrs.discard(state)
+        self._modified.discard(state)
+    
+    def _dirty_states(self):
+        return self._modified.union(s for s in self._mutable_attrs if s.modified)
         
-        if state in self._mutable_attrs:
-            del self._mutable_attrs[state]
-            
     def check_modified(self):
         """return True if any InstanceStates present have been marked as 'modified'."""
         
-        if not self.modified:
-            for state in list(self._mutable_attrs):
-                if state.check_modified():
-                    return True
-            else:
-                return False
-        else:
+        if self._modified:
             return True
+        else:
+            for state in self._mutable_attrs:
+                if state.modified:
+                    return True
+        return False
             
     def has_key(self, key):
         return key in self
@@ -102,6 +106,17 @@ class WeakInstanceDict(IdentityMap):
     def contains_state(self, state):
         return dict.get(self, state.key) is state
         
+    def replace(self, state):
+        if dict.__contains__(self, state.key):
+            existing = dict.__getitem__(self, state.key)
+            if existing is not state:
+                self._manage_removed_state(existing)
+            else:
+                return
+                
+        dict.__setitem__(self, state.key, state)
+        self._manage_incoming_state(state)
+                 
     def add(self, state):
         if state.key in self:
             if dict.__getitem__(self, state.key) is not state:
@@ -176,12 +191,24 @@ class StrongInstanceDict(IdentityMap):
     def contains_state(self, state):
         return state.key in self and attributes.instance_state(self[state.key]) is state
     
+    def replace(self, state):
+        if dict.__contains__(self, state.key):
+            existing = dict.__getitem__(self, state.key)
+            existing = attributes.instance_state(existing)
+            if existing is not state:
+                self._manage_removed_state(existing)
+            else:
+                return
+
+        dict.__setitem__(self, state.key, state.obj())
+        self._manage_incoming_state(state)
+        
     def add(self, state):
         dict.__setitem__(self, state.key, state.obj())
         self._manage_incoming_state(state)
     
     def remove(self, state):
-        if dict.pop(self, state.key) is not state:
+        if attributes.instance_state(dict.pop(self, state.key)) is not state:
             raise AssertionError("State %s is not present in this identity map" % state)
         self._manage_removed_state(state)
     
@@ -191,7 +218,7 @@ class StrongInstanceDict(IdentityMap):
             self._manage_removed_state(state)
             
     def remove_key(self, key):
-        state = dict.__getitem__(self, key)
+        state = attributes.instance_state(dict.__getitem__(self, key))
         self.remove(state)
 
     def prune(self):
@@ -205,62 +232,3 @@ class StrongInstanceDict(IdentityMap):
         self.modified = bool(dirty)
         return ref_count - len(self)
         
-class IdentityManagedState(attributes.InstanceState):
-    def _instance_dict(self):
-        return None
-    
-    def modified_event(self, attr, should_copy, previous, passive=False):
-        attributes.InstanceState.modified_event(self, attr, should_copy, previous, passive)
-        
-        instance_dict = self._instance_dict()
-        if instance_dict:
-            instance_dict.modified = True
-    
-    def _is_really_none(self):
-        """do a check modified/resurrect.
-        
-        This would be called in the extremely rare
-        race condition that the weakref returned None but
-        the cleanup handler had not yet established the 
-        __resurrect callable as its replacement.
-        
-        """
-        if self.check_modified():
-            self.obj = self.__resurrect
-            return self.obj()
-        else:
-            return None
-            
-    def _cleanup(self, ref):
-        """weakref callback.
-        
-        This method may be called by an asynchronous
-        gc.
-        
-        If the state shows pending changes, the weakref
-        is replaced by the __resurrect callable which will
-        re-establish an object reference on next access,
-        else removes this InstanceState from the owning
-        identity map, if any.
-        
-        """
-        if self.check_modified():
-            self.obj = self.__resurrect
-        else:
-            instance_dict = self._instance_dict()
-            if instance_dict:
-                instance_dict.remove(self)
-            self.dispose()
-            
-    def __resurrect(self):
-        """A substitute for the obj() weakref function which resurrects."""
-        
-        # store strong ref'ed version of the object; will revert
-        # to weakref when changes are persisted
-        obj = self.manager.new_instance(state=self)
-        self.obj = weakref.ref(obj, self._cleanup)
-        self._strong_obj = obj
-        obj.__dict__.update(self.dict)
-        self.dict = obj.__dict__
-        self._run_on_load(obj)
-        return obj

@@ -117,7 +117,7 @@ class UserDefinedExtensionTest(_base.ORMTest):
         u.user_id = 7
         u.user_name = 'john'
         u.email_address = 'lala@123.com'
-        self.assert_(u.__dict__ == {'_my_state':u._my_state, '_goofy_dict':{'user_id':7, 'user_name':'john', 'email_address':'lala@123.com'}})
+        self.assert_(u.__dict__ == {'_my_state':u._my_state, '_goofy_dict':{'user_id':7, 'user_name':'john', 'email_address':'lala@123.com'}}, u.__dict__)
         
     def test_basic(self):
         for base in (object, MyBaseClass, MyClass):
@@ -135,7 +135,7 @@ class UserDefinedExtensionTest(_base.ORMTest):
             u.email_address = 'lala@123.com'
 
             self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
-            attributes.instance_state(u).commit_all()
+            attributes.instance_state(u).commit_all(attributes.instance_dict(u))
             self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
 
             u.user_name = 'heythere'
@@ -182,7 +182,7 @@ class UserDefinedExtensionTest(_base.ORMTest):
             self.assertEquals(f.a, None)
             self.assertEquals(f.b, 12)
 
-            attributes.instance_state(f).commit_all()
+            attributes.instance_state(f).commit_all(attributes.instance_dict(f))
             self.assertEquals(f.a, None)
             self.assertEquals(f.b, 12)
 
@@ -272,8 +272,8 @@ class UserDefinedExtensionTest(_base.ORMTest):
             f1.bars.append(b1)
             self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b1], [], []))
 
-            attributes.instance_state(f1).commit_all()
-            attributes.instance_state(b1).commit_all()
+            attributes.instance_state(f1).commit_all(attributes.instance_dict(f1))
+            attributes.instance_state(b1).commit_all(attributes.instance_dict(b1))
 
             self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'name'), ((), ['f1'], ()))
             self.assertEquals(attributes.get_history(attributes.instance_state(f1), 'bars'), ((), [b1], ()))

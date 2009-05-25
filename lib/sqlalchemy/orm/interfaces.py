@@ -359,7 +359,7 @@ class MapperProperty(object):
 
         Callables are of the following form::
 
-            def new_execute(state, row, **flags):
+            def new_execute(state, dict_, row, **flags):
                 # process incoming instance state and given row.  the instance is
                 # "new" and was just created upon receipt of this row.
                 # flags is a dictionary containing at least the following
@@ -368,7 +368,7 @@ class MapperProperty(object):
                 #           result of reading this row
                 #   instancekey - identity key of the instance
 
-            def existing_execute(state, row, **flags):
+            def existing_execute(state, dict_, row, **flags):
                 # process incoming instance state and given row.  the instance is
                 # "existing" and was created based on a previous row.
 
@@ -427,13 +427,23 @@ class MapperProperty(object):
     def register_dependencies(self, *args, **kwargs):
         """Called by the ``Mapper`` in response to the UnitOfWork
         calling the ``Mapper``'s register_dependencies operation.
-        Should register with the UnitOfWork all inter-mapper
-        dependencies as well as dependency processors (see UOW docs
-        for more details).
+        Establishes a topological dependency between two mappers
+        which will affect the order in which mappers persist data.
+        
         """
 
         pass
 
+    def register_processors(self, *args, **kwargs):
+        """Called by the ``Mapper`` in response to the UnitOfWork
+        calling the ``Mapper``'s register_processors operation.
+        Establishes a processor object between two mappers which
+        will link data and state between parent/child objects.
+        
+        """
+
+        pass
+        
     def is_primary(self):
         """Return True if this ``MapperProperty``'s mapper is the
         primary mapper for its class.
@@ -939,3 +949,7 @@ class InstrumentationManager(object):
 
     def state_getter(self, class_):
         return lambda instance: getattr(instance, '_default_state')
+
+    def dict_getter(self, class_):
+        return lambda inst: self.get_instance_dict(class_, inst)
+        

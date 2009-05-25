@@ -14,20 +14,23 @@ class NaturalPKTest(_base.MappedTest):
     def define_tables(self, metadata):
         users = Table('users', metadata,
             Column('username', String(50), primary_key=True),
-            Column('fullname', String(100)))
+            Column('fullname', String(100)),
+            test_needs_fk=True)
 
         addresses = Table('addresses', metadata,
             Column('email', String(50), primary_key=True),
-            Column('username', String(50), ForeignKey('users.username', onupdate="cascade")))
+            Column('username', String(50), ForeignKey('users.username', onupdate="cascade")),
+            test_needs_fk=True)
 
         items = Table('items', metadata,
             Column('itemname', String(50), primary_key=True),
-            Column('description', String(100)))
+            Column('description', String(100)), 
+            test_needs_fk=True)
 
         users_to_items = Table('users_to_items', metadata,
             Column('username', String(50), ForeignKey('users.username', onupdate='cascade'), primary_key=True),
             Column('itemname', String(50), ForeignKey('items.itemname', onupdate='cascade'), primary_key=True),
-        )
+            test_needs_fk=True)
 
     def setup_classes(self):
         class User(_base.ComparableEntity):
@@ -101,8 +104,7 @@ class NaturalPKTest(_base.MappedTest):
         assert sess.query(User).get('ed').fullname == 'jack'
         
 
-    @testing.fails_on('mysql', 'FIXME: unknown')
-    @testing.fails_on('sqlite', 'FIXME: unknown')
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 
@@ -153,8 +155,7 @@ class NaturalPKTest(_base.MappedTest):
         self.assertEquals(User(username='fred', fullname='jack'), u1)
         
 
-    @testing.fails_on('sqlite', 'FIXME: unknown')
-    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     def test_manytoone_passive(self):
         self._test_manytoone(True)
 
@@ -181,8 +182,6 @@ class NaturalPKTest(_base.MappedTest):
 
         u1.username = 'ed'
 
-        print id(a1), id(a2), id(u1)
-        print sa.orm.attributes.instance_state(u1).parents
         def go():
             sess.flush()
         if passive_updates:
@@ -198,8 +197,48 @@ class NaturalPKTest(_base.MappedTest):
         sess.expunge_all()
         self.assertEquals([Address(username='ed'), Address(username='ed')], sess.query(Address).all())
 
-    @testing.fails_on('sqlite', 'FIXME: unknown')
-    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    def test_onetoone_passive(self):
+        self._test_onetoone(True)
+
+    def test_onetoone_nonpassive(self):
+        self._test_onetoone(False)
+
+    @testing.resolve_artifact_names
+    def _test_onetoone(self, passive_updates):
+        mapper(User, users, properties={
+            "address":relation(Address, passive_updates=passive_updates, uselist=False)
+        })
+        mapper(Address, addresses)
+
+        sess = create_session()
+        u1 = User(username='jack', fullname='jack')
+        sess.add(u1)
+        sess.flush()
+        
+        a1 = Address(email='jack1')
+        u1.address = a1
+        sess.add(a1)
+        sess.flush()
+
+        u1.username = 'ed'
+
+        def go():
+            sess.flush()
+        if passive_updates:
+            sess.expire(u1, ['address'])
+            self.assert_sql_count(testing.db, go, 1)
+        else:
+            self.assert_sql_count(testing.db, go, 2)
+
+        def go():
+            sess.flush()
+        self.assert_sql_count(testing.db, go, 0)
+
+        sess.expunge_all()
+        self.assertEquals([Address(username='ed')], sess.query(Address).all())
+        
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     def test_bidirectional_passive(self):
         self._test_bidirectional(True)
 
@@ -230,6 +269,7 @@ class NaturalPKTest(_base.MappedTest):
         def go():
             sess.flush()
         if passive_updates:
+            sess.expire(u1, ['addresses'])
             self.assert_sql_count(testing.db, go, 1)
         else:
             self.assert_sql_count(testing.db, go, 3)
@@ -240,11 +280,11 @@ class NaturalPKTest(_base.MappedTest):
         u1 = sess.query(User).get('ed')
         assert len(u1.addresses) == 2    # load addresses
         u1.username = 'fred'
-        print "--------------------------------"
         def go():
             sess.flush()
         # check that the passive_updates is on on the other side
         if passive_updates:
+            sess.expire(u1, ['addresses'])
             self.assert_sql_count(testing.db, go, 1)
         else:
             self.assert_sql_count(testing.db, go, 3)
@@ -252,11 +292,11 @@ class NaturalPKTest(_base.MappedTest):
         self.assertEquals([Address(username='fred'), Address(username='fred')], sess.query(Address).all())
 
 
-    @testing.fails_on('sqlite', 'FIXME: unknown')
-    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     def test_manytomany_passive(self):
         self._test_manytomany(True)
 
+    @testing.fails_on('mysql', 'the executemany() of the association table fails to report the correct row count')
     def test_manytomany_nonpassive(self):
         self._test_manytomany(False)
 
@@ -355,13 +395,16 @@ class NonPKCascadeTest(_base.MappedTest):
         Table('users', metadata,
             Column('id', Integer, primary_key=True),
             Column('username', String(50), unique=True),
-            Column('fullname', String(100)))
+            Column('fullname', String(100)),
+            test_needs_fk=True)
 
         Table('addresses', metadata,
               Column('id', Integer, primary_key=True),
               Column('email', String(50)),
               Column('username', String(50),
-                     ForeignKey('users.username', onupdate="cascade")))
+                     ForeignKey('users.username', onupdate="cascade")),
+                     test_needs_fk=True
+                     )
 
     def setup_classes(self):
         class User(_base.ComparableEntity):
@@ -369,8 +412,7 @@ class NonPKCascadeTest(_base.MappedTest):
         class Address(_base.ComparableEntity):
             pass
 
-    @testing.fails_on('sqlite', 'FIXME: unknown')
-    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 

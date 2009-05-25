@@ -1,8 +1,8 @@
 import testenv; testenv.configure_for_tests()
 
 from testlib import sa
-from testlib.sa import MetaData, Table, Column, Integer, ForeignKey
-from testlib.sa.orm import mapper, relation, create_session, attributes, class_mapper
+from testlib.sa import MetaData, Table, Column, Integer, ForeignKey, util
+from testlib.sa.orm import mapper, relation, create_session, attributes, class_mapper, clear_mappers
 from testlib.testing import eq_, ne_
 from testlib.compat import _function_named
 from orm import _base
@@ -458,24 +458,8 @@ class MapperInitTest(_base.ORMTest):
 
         m = mapper(A, self.fixture())
 
-        a = attributes.instance_state(A())
-        assert isinstance(a, attributes.InstanceState)
-        assert type(a) is not attributes.InstanceState
-
-        b = attributes.instance_state(B())
-        assert isinstance(b, attributes.InstanceState)
-        assert type(b) is not attributes.InstanceState
-
         # B is not mapped in the current implementation
         self.assertRaises(sa.orm.exc.UnmappedClassError, class_mapper, B)
-
-        # the constructor of C is decorated too.  
-        # we don't support unmapped subclasses in any case,
-        # users should not be expecting any particular behavior
-        # from this scenario.
-        c = attributes.instance_state(C(3))
-        assert isinstance(c, attributes.InstanceState)
-        assert type(c) is not attributes.InstanceState
 
         # C is not mapped in the current implementation
         self.assertRaises(sa.orm.exc.UnmappedClassError, class_mapper, C)
@@ -573,6 +557,10 @@ class OnLoadTest(_base.ORMTest):
         finally:
             del A
 
+    def tearDownAll(self):
+        clear_mappers()
+        attributes._install_lookup_strategy(util.symbol('native'))
+
 
 class ExtendedEventsTest(_base.ORMTest):
     """Allow custom Events implementations."""
@@ -591,6 +579,7 @@ class ExtendedEventsTest(_base.ORMTest):
         attributes.register_class(A)
         manager = attributes.manager_of_class(A)
         assert isinstance(manager.events, MyEvents)
+
 
 
 class NativeInstrumentationTest(_base.ORMTest):

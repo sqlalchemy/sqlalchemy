@@ -38,7 +38,7 @@ class AttributesTest(_base.ORMTest):
         u.email_address = 'lala@123.com'
 
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
-        attributes.instance_state(u).commit_all()
+        attributes.instance_state(u).commit_all(attributes.instance_dict(u))
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
 
         u.user_name = 'heythere'
@@ -158,7 +158,7 @@ class AttributesTest(_base.ORMTest):
         eq_(f.a, None)
         eq_(f.b, 12)
 
-        attributes.instance_state(f).commit_all()
+        attributes.instance_state(f).commit_all(attributes.instance_dict(f))
         eq_(f.a, None)
         eq_(f.b, 12)
 
@@ -205,7 +205,7 @@ class AttributesTest(_base.ORMTest):
         u.addresses.append(a)
 
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
-        u, attributes.instance_state(a).commit_all()
+        u, attributes.instance_state(a).commit_all(attributes.instance_dict(a))
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
 
         u.user_name = 'heythere'
@@ -272,7 +272,7 @@ class AttributesTest(_base.ORMTest):
         p1 = Post()
         attributes.instance_state(b).set_callable('posts', lambda:[p1])
         attributes.instance_state(p1).set_callable('blog', lambda:b)
-        p1, attributes.instance_state(b).commit_all()
+        p1, attributes.instance_state(b).commit_all(attributes.instance_dict(b))
 
         # no orphans (called before the lazy loaders fire off)
         assert attributes.has_parent(Blog, p1, 'posts', optimistic=True)
@@ -353,7 +353,7 @@ class AttributesTest(_base.ORMTest):
         x = Bar()
         x.element = el
         eq_(attributes.get_history(attributes.instance_state(x), 'element'), ([el], (), ()))
-        attributes.instance_state(x).commit_all()
+        attributes.instance_state(x).commit_all(attributes.instance_dict(x))
 
         (added, unchanged, deleted) = attributes.get_history(attributes.instance_state(x), 'element')
         assert added == ()
@@ -381,7 +381,7 @@ class AttributesTest(_base.ORMTest):
         attributes.register_attribute(Bar, 'id', uselist=False, useobject=True)
 
         x = Foo()
-        attributes.instance_state(x).commit_all()
+        attributes.instance_state(x).commit_all(attributes.instance_dict(x))
         x.col2.append(bar4)
         eq_(attributes.get_history(attributes.instance_state(x), 'col2'), ([bar4], [bar1, bar2, bar3], []))
 
@@ -427,7 +427,7 @@ class AttributesTest(_base.ORMTest):
         attributes.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x], mutable_scalars=True, useobject=False)
         x = Foo()
         x.element = ['one', 'two', 'three']
-        attributes.instance_state(x).commit_all()
+        attributes.instance_state(x).commit_all(attributes.instance_dict(x))
         x.element[1] = 'five'
         assert attributes.instance_state(x).check_modified()
 
@@ -437,7 +437,7 @@ class AttributesTest(_base.ORMTest):
         attributes.register_attribute(Foo, 'element', uselist=False, useobject=False)
         x = Foo()
         x.element = ['one', 'two', 'three']
-        attributes.instance_state(x).commit_all()
+        attributes.instance_state(x).commit_all(attributes.instance_dict(x))
         x.element[1] = 'five'
         assert not attributes.instance_state(x).check_modified()
 
@@ -699,8 +699,8 @@ class PendingBackrefTest(_base.ORMTest):
 
         b = Blog("blog 1")
         p1.blog = b
-        attributes.instance_state(b).commit_all()
-        attributes.instance_state(p1).commit_all()
+        attributes.instance_state(b).commit_all(attributes.instance_dict(b))
+        attributes.instance_state(p1).commit_all(attributes.instance_dict(p1))
         assert b.posts == [Post("post 1")]
 
 class HistoryTest(_base.ORMTest):
@@ -713,17 +713,17 @@ class HistoryTest(_base.ORMTest):
         attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=False)
 
         f = Foo()
-        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
+        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f), attributes.instance_dict(f)), None)
 
         f.someattr = 3
-        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
+        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f), attributes.instance_dict(f)), None)
 
         f = Foo()
         f.someattr = 3
-        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), None)
+        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f), attributes.instance_dict(f)), None)
         
-        attributes.instance_state(f).commit(['someattr'])
-        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f)), 3)
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
+        eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f), attributes.instance_dict(f)), 3)
 
     def test_scalar(self):
         class Foo(_base.BasicEntity):
@@ -739,13 +739,13 @@ class HistoryTest(_base.ORMTest):
         f.someattr = "hi"
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['hi'], (), ()))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), ['hi'], ()))
 
         f.someattr = 'there'
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['there'], (), ['hi']))
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), ['there'], ()))
 
@@ -760,7 +760,7 @@ class HistoryTest(_base.ORMTest):
         f.someattr = 'old'
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['old'], (), ['new']))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), ['old'], ()))
 
         # setting None on uninitialized is currently a change for a scalar attribute
@@ -778,7 +778,7 @@ class HistoryTest(_base.ORMTest):
 
         # set same value twice
         f = Foo()
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         f.someattr = 'one'
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['one'], (), ()))
         f.someattr = 'two'
@@ -799,7 +799,7 @@ class HistoryTest(_base.ORMTest):
         f.someattr = {'foo':'hi'}
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'hi'}], (), ()))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [{'foo':'hi'}], ()))
         eq_(attributes.instance_state(f).committed_state['someattr'], {'foo':'hi'})
 
@@ -807,7 +807,7 @@ class HistoryTest(_base.ORMTest):
         eq_(attributes.instance_state(f).committed_state['someattr'], {'foo':'hi'})
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'there'}], (), [{'foo':'hi'}]))
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [{'foo':'there'}], ()))
 
@@ -819,7 +819,7 @@ class HistoryTest(_base.ORMTest):
         f.someattr = {'foo':'old'}
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([{'foo':'old'}], (), [{'foo':'new'}]))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [{'foo':'old'}], ()))
 
 
@@ -847,13 +847,13 @@ class HistoryTest(_base.ORMTest):
         f.someattr = hi
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], (), ()))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [hi], ()))
 
         f.someattr = there
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], (), [hi]))
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [there], ()))
 
@@ -868,7 +868,7 @@ class HistoryTest(_base.ORMTest):
         f.someattr = old
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], (), ['new']))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [old], ()))
 
         # setting None on uninitialized is currently not a change for an object attribute
@@ -887,7 +887,7 @@ class HistoryTest(_base.ORMTest):
 
         # set same value twice
         f = Foo()
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         f.someattr = 'one'
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), (['one'], (), ()))
         f.someattr = 'two'
@@ -915,13 +915,13 @@ class HistoryTest(_base.ORMTest):
         f.someattr = [hi]
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [hi], ()))
 
         f.someattr = [there]
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [], [hi]))
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [there], ()))
 
@@ -935,13 +935,13 @@ class HistoryTest(_base.ORMTest):
         f = Foo()
         collection = attributes.init_collection(attributes.instance_state(f), 'someattr')
         collection.append_without_event(new)
-        attributes.instance_state(f).commit_all()
+        attributes.instance_state(f).commit_all(attributes.instance_dict(f))
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [new], ()))
 
         f.someattr = [old]
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], [], [new]))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [old], ()))
 
     def test_dict_collections(self):
@@ -969,7 +969,7 @@ class HistoryTest(_base.ORMTest):
         f.someattr['there'] = there
         eq_(tuple([set(x) for x in attributes.get_history(attributes.instance_state(f), 'someattr')]), (set([hi, there]), set(), set()))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(tuple([set(x) for x in attributes.get_history(attributes.instance_state(f), 'someattr')]), (set(), set([hi, there]), set()))
 
     def test_object_collections_mutate(self):
@@ -994,13 +994,13 @@ class HistoryTest(_base.ORMTest):
         f.someattr.append(hi)
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi], [], []))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [hi], ()))
 
         f.someattr.append(there)
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([there], [hi], []))
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
 
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [hi, there], ()))
 
@@ -1010,7 +1010,7 @@ class HistoryTest(_base.ORMTest):
         f.someattr.append(old)
         f.someattr.append(new)
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old, new], [hi], [there]))
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [hi, old, new], ()))
 
         f.someattr.pop(0)
@@ -1021,19 +1021,19 @@ class HistoryTest(_base.ORMTest):
         f.__dict__['id'] = 1
         collection = attributes.init_collection(attributes.instance_state(f), 'someattr')
         collection.append_without_event(new)
-        attributes.instance_state(f).commit_all()
+        attributes.instance_state(f).commit_all(attributes.instance_dict(f))
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [new], ()))
 
         f.someattr.append(old)
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([old], [new], []))
 
-        attributes.instance_state(f).commit(['someattr'])
+        attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [new, old], ()))
 
         f = Foo()
         collection = attributes.init_collection(attributes.instance_state(f), 'someattr')
         collection.append_without_event(new)
-        attributes.instance_state(f).commit_all()
+        attributes.instance_state(f).commit_all(attributes.instance_dict(f))
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [new], ()))
 
         f.id = 1
@@ -1056,7 +1056,7 @@ class HistoryTest(_base.ORMTest):
         f.someattr.append(hi)
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ([hi, there, hi], [], []))
 
-        attributes.instance_state(f).commit_all()
+        attributes.instance_state(f).commit_all(attributes.instance_dict(f))
         eq_(attributes.get_history(attributes.instance_state(f), 'someattr'), ((), [hi, there, hi], ()))
         
         f.someattr = []

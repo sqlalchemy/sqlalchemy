@@ -134,7 +134,7 @@ class SLBoolean(sqltypes.Boolean):
         def process(value):
             if value is None:
                 return None
-            return value and True or False
+            return value == 1
         return process
 
 colspecs = {

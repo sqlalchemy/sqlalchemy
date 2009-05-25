@@ -11,6 +11,28 @@ from testlib import *
 class TestTypes(TestBase, AssertsExecutionResults):
     __only_on__ = 'sqlite'
 
+    def test_boolean(self):
+        """Test that the boolean only treats 1 as True
+
+        """
+
+        meta = MetaData(testing.db)
+        t = Table('bool_table', meta,
+                  Column('id', Integer, primary_key=True),
+                  Column('boo', sqlite.SLBoolean))
+
+        try:
+            meta.create_all()
+            testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (1, 'false');")
+            testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (2, 'true');")
+            testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (3, '1');")
+            testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (4, '0');")
+            testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (5, 1);")
+            testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (6, 0);")
+            assert t.select(t.c.boo).order_by(t.c.id).execute().fetchall() == [(3, True,), (5, True,)]
+        finally:
+            meta.drop_all()
+
     def test_string_dates_raise(self):
         self.assertRaises(TypeError, testing.db.execute, select([1]).where(bindparam("date", type_=Date)), date=str(datetime.date(2007, 10, 30)))
     

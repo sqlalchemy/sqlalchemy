@@ -12,7 +12,7 @@ import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import util, sql, engine, log
 from sqlalchemy.sql import util as sql_util, expression
 from sqlalchemy.orm import (
-    SessionExtension, attributes, exc, query, unitofwork, util as mapperutil,
+    SessionExtension, attributes, exc, query, unitofwork, util as mapperutil, state
     )
 from sqlalchemy.orm.util import object_mapper as _object_mapper
 from sqlalchemy.orm.util import class_mapper as _class_mapper
@@ -299,14 +299,14 @@ class SessionTransaction(object):
             self.session._expunge_state(s)
 
         for s in self.session.identity_map.all_states():
-            _expire_state(s, None)
+            _expire_state(s, None, instance_dict=self.session.identity_map)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
 
         if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
-                _expire_state(s, None)
+                _expire_state(s, None, instance_dict=self.session.identity_map)
 
     def _connection_for_bind(self, bind):
         self._assert_is_active()
@@ -899,8 +899,8 @@ class Session(object):
             self.flush()
 
     def _finalize_loaded(self, states):
-        for state in states:
-            state.commit_all()
+        for state, dict_ in states.items():
+            state.commit_all(dict_, self.identity_map)
 
     def refresh(self, instance, attribute_names=None):
         """Refresh the attributes on the given instance.
@@ -935,7 +935,7 @@ class Session(object):
         """Expires all persistent instances within this Session."""
 
         for state in self.identity_map.all_states():
-            _expire_state(state, None)
+            _expire_state(state, None, instance_dict=self.identity_map)
 
     def expire(self, instance, attribute_names=None):
         """Expire the attributes on an instance.
@@ -956,14 +956,14 @@ class Session(object):
             raise exc.UnmappedInstanceError(instance)
         self._validate_persistent(state)
         if attribute_names:
-            _expire_state(state, attribute_names=attribute_names)
+            _expire_state(state, attribute_names=attribute_names, instance_dict=self.identity_map)
         else:
             # pre-fetch the full cascade since the expire is going to
             # remove associations
             cascaded = list(_cascade_state_iterator('refresh-expire', state))
-            _expire_state(state, None)
+            _expire_state(state, None, instance_dict=self.identity_map)
             for (state, m, o) in cascaded:
-                _expire_state(state, None)
+                _expire_state(state, None, instance_dict=self.identity_map)
 
     def prune(self):
         """Remove unreferenced instances cached in the identity map.
@@ -1020,12 +1020,10 @@ class Session(object):
                 # primary key switch
                 self.identity_map.remove(state)
                 state.key = instance_key
-
-            if state.key in self.identity_map and not self.identity_map.contains_state(state):
-                self.identity_map.remove_key(state.key)
-            self.identity_map.add(state)
-            state.commit_all()
-
+            
+            self.identity_map.replace(state)
+            state.commit_all(state.dict, self.identity_map)
+            
         # remove from new last, might be the last strong ref
         if state in self._new:
             if self._enable_transaction_accounting and self.transaction:
@@ -1213,7 +1211,7 @@ class Session(object):
             prop.merge(self, instance, merged, dont_load, _recursive)
 
         if dont_load:
-            attributes.instance_state(merged).commit_all()  # remove any history
+            attributes.instance_state(merged).commit_all(attributes.instance_dict(merged), self.identity_map)  # remove any history
 
         if new_instance:
             merged_state._run_on_load(merged)
@@ -1362,13 +1360,12 @@ class Session(object):
             not self._deleted and not self._new):
             return
 
-        
         dirty = self._dirty_states
         if not dirty and not self._deleted and not self._new:
-            self.identity_map.modified = False
+            self.identity_map._modified.clear()
             return
 
-        flush_context   = UOWTransaction(self)
+        flush_context = UOWTransaction(self)
 
         if self.extensions:
             for ext in self.extensions:
@@ -1391,15 +1388,19 @@ class Session(object):
                     raise exc.UnmappedInstanceError(o)
                 objset.add(state)
         else:
-            # or just everything
-            objset = set(self.identity_map.all_states()).union(new)
+            objset = None
 
         # store objects whose fate has been decided
         processed = set()
 
         # put all saves/updates into the flush context.  detect top-level
         # orphans and throw them into deleted.
-        for state in new.union(dirty).intersection(objset).difference(deleted):
+        if objset:
+            proc = new.union(dirty).intersection(objset).difference(deleted)
+        else:
+            proc = new.union(dirty).difference(deleted)
+            
+        for state in proc:
             is_orphan = _state_mapper(state)._is_orphan(state)
             if is_orphan and not _state_has_identity(state):
                 path = ", nor ".join(
@@ -1415,7 +1416,11 @@ class Session(object):
             processed.add(state)
 
         # put all remaining deletes into the flush context.
-        for state in deleted.intersection(objset).difference(processed):
+        if objset:
+            proc = deleted.intersection(objset).difference(processed)
+        else:
+            proc = deleted.difference(processed)
+        for state in proc:
             flush_context.register_object(state, isdelete=True)
 
         if len(flush_context.tasks) == 0:
@@ -1435,9 +1440,13 @@ class Session(object):
         
         flush_context.finalize_flush_changes()
 
-        if not objects:
-            self.identity_map.modified = False
-
+        # useful assertions:
+        #if not objects:
+        #    assert not self.identity_map._modified
+        #else:
+        #    assert self.identity_map._modified == self.identity_map._modified.difference(objects)
+        #self.identity_map._modified.clear()
+        
         for ext in self.extensions:
             ext.after_flush_postexec(self, flush_context)
 
@@ -1486,10 +1495,7 @@ class Session(object):
         those that were possibly deleted.
 
         """
-        return util.IdentitySet(
-            [state
-             for state in self.identity_map.all_states()
-             if state.check_modified()])
+        return self.identity_map._dirty_states()
 
     @property
     def dirty(self):
@@ -1528,7 +1534,7 @@ class Session(object):
 
         return util.IdentitySet(self._new.values())
 
-_expire_state = attributes.InstanceState.expire_attributes
+_expire_state = state.InstanceState.expire_attributes
     
 UOWEventHandler = unitofwork.UOWEventHandler
 
@@ -1548,16 +1554,19 @@ def _cascade_unknown_state_iterator(cascade, state, **kwargs):
         yield _state_for_unknown_persistence_instance(o), m
 
 def _state_for_unsaved_instance(instance, create=False):
-    manager = attributes.manager_of_class(instance.__class__)
-    if manager is None:
+    try:
+        state = attributes.instance_state(instance)
+    except AttributeError:
         raise exc.UnmappedInstanceError(instance)
-    if manager.has_state(instance):
-        state = manager.state_of(instance)
+    if state:
         if state.key is not None:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is already persistent" %
                 mapperutil.state_str(state))
     elif create:
+        manager = attributes.manager_of_class(instance.__class__)
+        if manager is None:
+            raise exc.UnmappedInstanceError(instance)
         state = manager.setup_instance(instance)
     else:
         raise exc.UnmappedInstanceError(instance)
