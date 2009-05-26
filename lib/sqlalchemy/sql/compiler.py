@@ -244,8 +244,6 @@ class SQLCompiler(engine.Compiled):
                     pd[self.bind_names[bindparam]] = bindparam.value
             return pd
 
-    params = property(construct_params)
-
     def default_from(self):
         """Called when a SELECT statement has no froms, and no FROM clause is to be appended.
 

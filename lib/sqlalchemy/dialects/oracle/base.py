@@ -473,6 +473,9 @@ class OracleDialect(default.DefaultDialect):
     preparer = OracleIdentifierPreparer
     defaultrunner = OracleDefaultRunner
     
+    reflection_options = ('oracle_resolve_synonyms', )
+    
+    
     def __init__(self, 
                 use_ansi=True, 
                 optimize_limits=False, 

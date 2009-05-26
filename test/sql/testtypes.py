@@ -728,33 +728,6 @@ class NumericTest(TestBase, AssertsExecutionResults):
             assert isinstance(row['ncasdec'], decimal.Decimal)
             assert isinstance(row['fcasdec'], decimal.Decimal)
 
-    def test_length_deprecation(self):
-        self.assertRaises(exc.SADeprecationWarning, Numeric, length=8)
-        
-        @testing.uses_deprecated(".*is deprecated for Numeric")
-        def go():
-            n = Numeric(length=12)
-            assert n.scale == 12
-        go()
-        
-        n = Numeric(scale=12)
-        for dialect in engines.all_dialects():
-            n2 = dialect.type_descriptor(n)
-            eq_(n2.scale, 12, dialect.name)
-            
-            # test colspec generates successfully using 'scale'
-            assert dialect.type_compiler.process(n2)
-            
-            # test constructor of the dialect-specific type
-            n3 = n2.__class__(scale=5)
-            eq_(n3.scale, 5, dialect.name)
-            
-            @testing.uses_deprecated(".*is deprecated for Numeric")
-            def go():
-                n3 = n2.__class__(length=6)
-                eq_(n3.scale, 6, dialect.name)
-            go()
-                
             
 class IntervalTest(TestBase, AssertsExecutionResults):
     def setUpAll(self):

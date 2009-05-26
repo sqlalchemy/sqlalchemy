@@ -403,6 +403,12 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
                     return MaxDBResultProxy(self)
         return engine_base.ResultProxy(self)
 
+    @property
+    def rowcount(self):
+        if hasattr(self, '_rowcount'):
+            return self._rowcount
+        else:
+            return self.cursor.rowcount
 
 class MaxDBCachedColumnRow(engine_base.RowProxy):
     """A RowProxy that only runs result_processors once per column."""

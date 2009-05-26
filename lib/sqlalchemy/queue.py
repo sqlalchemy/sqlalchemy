@@ -1,8 +1,8 @@
 """An adaptation of Py2.3/2.4's Queue module which supports reentrant
 behavior, using RLock instead of Lock for its mutex object.
 
-This is to support the connection pool's usage of ``__del__`` to return
-connections to the underlying Queue, which can apparently in extremely
+This is to support the connection pool's usage of weakref callbacks to return
+connections to the underlying Queue, which can in extremely
 rare cases be invoked within the ``get()`` method of the Queue itself,
 producing a ``put()`` inside the ``get()`` and therefore a reentrant
 condition."""

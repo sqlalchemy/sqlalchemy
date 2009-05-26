@@ -51,6 +51,7 @@ class DefaultDialect(base.Dialect):
     default_paramstyle = 'named'
     supports_default_values = False
     supports_empty_insert = True
+    reflection_options = ()
 
     def __init__(self, convert_unicode=False, assert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
@@ -81,11 +82,11 @@ class DefaultDialect(base.Dialect):
             self.description_encoding = getattr(self, 'description_encoding', encoding)
 
         # Py3K
+        ## work around dialects that might change these values
         #self.supports_unicode_statements = True
         #self.supports_unicode_binds = True
 
     def initialize(self, connection):
-        # TODO: all dialects need to implement this
         if hasattr(self, '_get_server_version_info'):
             self.server_version_info = self._get_server_version_info(connection)
 
@@ -316,12 +317,10 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def get_result_proxy(self):
         return base.ResultProxy(self)
-
-    def get_rowcount(self):
-        if hasattr(self, '_rowcount'):
-            return self._rowcount
-        else:
-            return self.cursor.rowcount
+    
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
 
     def supports_sane_rowcount(self):
         return self.dialect.supports_sane_rowcount

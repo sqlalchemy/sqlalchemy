@@ -245,11 +245,7 @@ class Inspector(object):
             dialect._adjust_casing(table)
 
         # table attributes we might need.
-        oracle_resolve_synonyms = table.kwargs.get('oracle_resolve_synonyms',
-                                                   False)
-
-        # some properties that need to be figured out
-        fk_use_existing = True
+        reflection_options = dict((k, table.kwargs.get(k)) for k in dialect.reflection_options if k in table.kwargs)
 
         schema = table.schema
         table_name = table.name
@@ -267,12 +263,10 @@ class Inspector(object):
             tblkw[str(k)] = v
 
         ### Py2K
-        # fixme
-        # This is breaking mssql, which can't bind unicode.
-        ##if isinstance(schema, str):
-        ##    schema = schema.decode(dialect.encoding)
-        ##if isinstance(table_name, str):
-        ##    table_name = table_name.decode(dialect.encoding)
+        if isinstance(schema, str):
+            schema = schema.decode(dialect.encoding)
+        if isinstance(table_name, str):
+            table_name = table_name.decode(dialect.encoding)
         # end Py2K
 
         # columns
@@ -314,10 +308,6 @@ class Inspector(object):
             if pk in table.c:
                 col = table.c[pk]
                 table.primary_key.add(col)
-                # fixme
-                if not isinstance(dialect, MySQLDialect):
-                    if col.default is None:
-                        col.autoincrement = False
         # Foreign keys
         fkeys = self.get_foreign_keys(table_name, schema, **tblkw)
         for fkey_d in fkeys:
@@ -331,8 +321,7 @@ class Inspector(object):
                 sa_schema.Table(referred_table, table.metadata,
                                 autoload=True, schema=referred_schema,
                                 autoload_with=self.conn,
-                                oracle_resolve_synonyms=oracle_resolve_synonyms,
-                                useexisting=fk_use_existing
+                                **reflection_options
                                 )
                 for column in referred_columns:
                     refspec.append(".".join(
@@ -340,8 +329,7 @@ class Inspector(object):
             else:
                 sa_schema.Table(referred_table, table.metadata, autoload=True,
                                 autoload_with=self.conn,
-                                oracle_resolve_synonyms=oracle_resolve_synonyms,
-                                useexisting=fk_use_existing
+                                **reflection_options
                                 )
                 for column in referred_columns:
                     refspec.append(".".join([referred_table, column]))

@@ -576,11 +576,6 @@ class Compiled(object):
 
         return self.string or ''
 
-    @util.deprecated('Deprecated. Use construct_params(). '
-                     '(supports Unicode key names.)')
-    def get_params(self, **params):
-        return self.construct_params(params)
-
     def construct_params(self, params=None):
         """Return the bind params for this compiled object.
 
@@ -590,6 +585,12 @@ class Compiled(object):
         """
 
         raise NotImplementedError()
+
+    params = property(construct_params, doc="""
+        Return the bind params for this compiled object.
+    
+    """)
+
 
     def execute(self, *multiparams, **params):
         """Execute this compiled object."""
@@ -1558,7 +1559,6 @@ class ResultProxy(object):
     _process_row = RowProxy
 
     def __init__(self, context):
-        """ResultProxy objects are constructed via the execute() method on SQLEngine."""
         self.context = context
         self.dialect = context.dialect
         self.closed = False
@@ -1567,12 +1567,9 @@ class ResultProxy(object):
         self._echo = context.engine._should_log_info
         self._init_metadata()
 
-    @property
+    @util.memoized_property
     def rowcount(self):
-        if self._rowcount is None:
-            return self.context.get_rowcount()
-        else:
-            return self._rowcount
+        return self.context.rowcount
 
     @property
     def lastrowid(self):
@@ -1587,11 +1584,10 @@ class ResultProxy(object):
         if metadata is None:
             # no results, get rowcount (which requires open cursor on some DB's such as firebird),
             # then close
-            self._rowcount = self.context.get_rowcount()
+            self.rowcount
             self.close()
             return
 
-        self._rowcount = None
         self._props = util.populate_column_dict(None)
         self._props.creator = self.__key_fallback()
         self.keys = []

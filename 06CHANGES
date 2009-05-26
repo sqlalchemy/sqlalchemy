@@ -14,12 +14,19 @@
       postgresql and sqlite. [ticket:443]
 
 - dialect refactor
+    - the "owner" keyword argument is removed from Table.  Use "schema" to 
+      represent any namespaces to be prepended to the table name.
     - server_version_info becomes a static attribute.
     - dialects receive an initialize() event on initial connection to
       determine connection properties.
     - dialects receive a visit_pool event have an opportunity to
       establish pool listeners.
     - cached TypeEngine classes are cached per-dialect class instead of per-dialect.
+    - Deprecated Dialect.get_params() removed.
+    - Dialect.get_rowcount() has been renamed to a descriptor "rowcount", and calls 
+      cursor.rowcount directly.  Dialects which need to hardwire a rowcount in for 
+      certain calls should override the method to provide different behavior.
+    
     
 - mysql
     - all the _detect_XXX() functions now run once underneath dialect.initialize()
@@ -40,3 +47,6 @@
       unless the "comparator" argument with a comparsion function is specified to the type.  
       Objects being pickled will be compared based on identity (which defeats the purpose
       of mutable=True) if __eq__() is not overridden or a comparison function is not provided.
+    - The default "precision" and "scale" arguments of Numeric and Float have been removed 
+      and now default to None.   NUMERIC and FLOAT will be rendered with no numeric arguments
+      by default unless these values are provided.

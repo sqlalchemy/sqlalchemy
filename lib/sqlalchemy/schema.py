@@ -91,13 +91,15 @@ class _TableSingleton(visitors.VisitableType):
     """A metaclass used by the ``Table`` object to provide singleton behavior."""
 
     def __call__(self, name, metadata, *args, **kwargs):
-        schema = kwargs.get('schema', kwargs.get('owner', None))
+        schema = kwargs.get('schema', None)
         useexisting = kwargs.pop('useexisting', False)
         mustexist = kwargs.pop('mustexist', False)
         key = _get_table_key(name, schema)
         try:
             table = metadata.tables[key]
-            if not useexisting and table._cant_override(*args, **kwargs):
+            if not useexisting and bool(args):
+                import pdb
+                pdb.set_trace()
                 raise exc.InvalidRequestError(
                     "Table '%s' is already defined for this MetaData instance.  "
                     "Specify 'useexisting=True' to redefine options and "
@@ -203,7 +205,7 @@ class Table(SchemaItem, expression.TableClause):
         """
         super(Table, self).__init__(name)
         self.metadata = metadata
-        self.schema = kwargs.pop('schema', kwargs.pop('owner', None))
+        self.schema = kwargs.pop('schema', None)
         self.indexes = set()
         self.constraints = set()
         self._columns = expression.ColumnCollection()
@@ -268,16 +270,6 @@ class Table(SchemaItem, expression.TableClause):
 
         self.__extra_kwargs(**kwargs)
         self.__post_init(*args, **kwargs)
-
-    def _cant_override(self, *args, **kwargs):
-        """Return True if any argument is not supported as an override.
-
-        Takes arguments that would be sent to Table.__init__, and returns
-        True if any of them would be disallowed if sent to an existing
-        Table singleton.
-        """
-        return bool(args) or bool(set(kwargs).difference(
-            ['autoload', 'autoload_with', 'schema', 'owner']))
 
     def __extra_kwargs(self, **kwargs):
         # validate remaining kwargs that they all specify DB prefixes

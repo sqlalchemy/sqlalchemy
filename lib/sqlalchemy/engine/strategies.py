@@ -22,15 +22,10 @@ class EngineStrategy(object):
 
     Provides a ``create`` method that receives input arguments and
     produces an instance of base.Engine or a subclass.
+    
     """
 
-    def __init__(self, name):
-        """Construct a new EngineStrategy object.
-
-        Sets it in the list of available strategies under this name.
-        """
-
-        self.name = name
+    def __init__(self):
         strategies[self.name] = self
 
     def create(self, *args, **kwargs):
@@ -42,6 +37,8 @@ class EngineStrategy(object):
 class DefaultEngineStrategy(EngineStrategy):
     """Base class for built-in stratgies."""
 
+    pool_threadlocal = False
+    
     def create(self, name_or_url, **kwargs):
         # create url.URL object
         u = url.make_url(name_or_url)
@@ -96,7 +93,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 tk = translate.get(k, k)
                 if tk in kwargs:
                     pool_args[k] = kwargs.pop(tk)
-            pool_args.setdefault('use_threadlocal', self.pool_threadlocal())
+            pool_args.setdefault('use_threadlocal', self.pool_threadlocal)
             pool = poolclass(creator, **pool_args)
         else:
             if isinstance(pool, poollib._DBProxy):
@@ -105,7 +102,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 pool = pool
 
         # create engine.
-        engineclass = self.get_engine_cls()
+        engineclass = self.engine_cls
         engine_args = {}
         for k in util.get_cls_kwargs(engineclass):
             if k in kwargs:
@@ -127,6 +124,8 @@ class DefaultEngineStrategy(EngineStrategy):
         engine = engineclass(pool, dialect, u, **engine_args)
 
         if _initialize:
+            # some unit tests pass through _initialize=False
+            # to help mock engines work
             class OnInit(object):
                 def first_connect(self, conn, rec):
                     c = base.Connection(engine, connection=conn)
@@ -137,39 +136,22 @@ class DefaultEngineStrategy(EngineStrategy):
 
         return engine
 
-    def pool_threadlocal(self):
-        raise NotImplementedError()
-
-    def get_engine_cls(self):
-        raise NotImplementedError()
-
 
 class PlainEngineStrategy(DefaultEngineStrategy):
     """Strategy for configuring a regular Engine."""
 
-    def __init__(self):
-        DefaultEngineStrategy.__init__(self, 'plain')
-
-    def pool_threadlocal(self):
-        return False
-
-    def get_engine_cls(self):
-        return base.Engine
-
+    name = 'plain'
+    engine_cls = base.Engine
+    
 PlainEngineStrategy()
 
 
 class ThreadLocalEngineStrategy(DefaultEngineStrategy):
     """Strategy for configuring an Engine with thredlocal behavior."""
-
-    def __init__(self):
-        DefaultEngineStrategy.__init__(self, 'threadlocal')
-
-    def pool_threadlocal(self):
-        return True
-
-    def get_engine_cls(self):
-        return threadlocal.TLEngine
+    
+    name = 'threadlocal'
+    pool_threadlocal = True
+    engine_cls = threadlocal.TLEngine
 
 ThreadLocalEngineStrategy()
 
@@ -179,11 +161,11 @@ class MockEngineStrategy(EngineStrategy):
 
     Produces a single mock Connectable object which dispatches
     statement execution to a passed-in function.
+    
     """
 
-    def __init__(self):
-        EngineStrategy.__init__(self, 'mock')
-
+    name = 'mock'
+    
     def create(self, name_or_url, executor, **kwargs):
         # create url.URL object
         u = url.make_url(name_or_url)

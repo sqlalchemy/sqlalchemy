@@ -635,7 +635,7 @@ class Numeric(TypeEngine):
 
     __visit_name__ = 'numeric'
     
-    def __init__(self, precision=10, scale=2, asdecimal=True, length=None):
+    def __init__(self, precision=None, scale=None, asdecimal=True):
         """
         Construct a Numeric.
 
@@ -649,9 +649,6 @@ class Numeric(TypeEngine):
           use.
 
         """
-        if length:
-            util.warn_deprecated("'length' is deprecated for Numeric.  Use 'scale'.")
-            scale = length
         self.precision = precision
         self.scale = scale
         self.asdecimal = asdecimal
@@ -687,7 +684,7 @@ class Float(Numeric):
 
     __visit_name__ = 'float'
     
-    def __init__(self, precision=10, asdecimal=False, **kwargs):
+    def __init__(self, precision=None, asdecimal=False, **kwargs):
         """
         Construct a Float.
 

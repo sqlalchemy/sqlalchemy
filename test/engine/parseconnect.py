@@ -29,8 +29,6 @@ class ParseConnectTest(TestBase):
             'dbtype://username:apples%2Foranges@hostspec/mydatabase',
         ):
             u = url.make_url(text)
-            print u, text
-            print "username=", u.username, "password=", u.password,  "database=", u.database, "host=", u.host
             assert u.drivername == 'dbtype'
             assert u.username == 'username' or u.username is None
             assert u.password == 'password' or u.password == 'apples/oranges' or u.password is None

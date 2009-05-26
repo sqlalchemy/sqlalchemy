@@ -31,6 +31,14 @@ class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
     def _lastrowid(self, cursor):
         return cursor.lastrowid
 
+    @property
+    def rowcount(self):
+        if hasattr(self, '_rowcount'):
+            return self._rowcount
+        else:
+            return self.cursor.rowcount
+        
+        
 class MySQL_mysqldbCompiler(MySQLCompiler):
     operators = util.update_copy(
         MySQLCompiler.operators,

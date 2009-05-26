@@ -2128,6 +2128,8 @@ class MySQLDialect(default.DefaultDialect):
         return rows
 
 class ReflectedState(object):
+    """Stores raw information about a SHOW CREATE TABLE statement."""
+    
     def __init__(self):
         self.columns = []
         self.table_options = {}
@@ -2136,17 +2138,11 @@ class ReflectedState(object):
         self.constraints = []
         
 class MySQLTableDefinitionParser(object):
-
-    def __init__(self, dialect, preparer=None):
-        """Construct a MySQLSchemaReflector.
-
-        identifier_preparer
-          An ANSIIdentifierPreparer type, used to determine the identifier
-          quoting style in effect.
-        """
-
+    """Parses the results of a SHOW CREATE TABLE statement."""
+    
+    def __init__(self, dialect, preparer):
         self.dialect = dialect
-        self.preparer = preparer or dialect.identifier_preparer
+        self.preparer = preparer
         self._prep_regexes()
 
     def parse(self, show_create, charset):
