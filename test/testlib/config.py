@@ -1,4 +1,5 @@
-import optparse, os, sys, re, ConfigParser, StringIO, time, warnings
+import optparse, os, sys, re, ConfigParser, time, warnings
+import StringIO
 logging, require = None, None
 
 
