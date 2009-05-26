@@ -359,16 +359,9 @@ class InsertTest(TestBase, AssertsExecutionResults):
         self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'})
         self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'}, {'data':'d3'})
 
-        try:
-            table.insert().execute({'data':'d2'})
-            assert False
-        except exc.IntegrityError, e:
-            assert "violates not-null constraint" in str(e)
-        try:
-            table.insert().execute({'data':'d2'}, {'data':'d3'})
-            assert False
-        except exc.IntegrityError, e:
-            assert "violates not-null constraint" in str(e)
+        self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'})
+
+        self.assertRaisesMessage(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'}, {'data':'d3'})
 
         table.insert().execute({'id':31, 'data':'d2'}, {'id':32, 'data':'d3'})
         table.insert(inline=True).execute({'id':33, 'data':'d4'})
@@ -790,6 +783,10 @@ class ArrayTest(TestBase, AssertsExecutionResults):
             Column('strarr', postgres.PGArray(String(convert_unicode=True)), nullable=False)
         )
         metadata.create_all()
+        
+    def tearDown(self):
+        arrtable.delete().execute()
+        
     def tearDownAll(self):
         metadata.drop_all()
 
@@ -807,23 +804,23 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0]['intarr'], [1,2,3])
         self.assertEquals(results[0]['strarr'], ['abc','def'])
-        arrtable.delete().execute()
 
+    @testing.fails_on('postgres+pg8000', 'pg8000 has poor support for PG arrays')
     def test_array_where(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         arrtable.insert().execute(intarr=[4,5,6], strarr='ABC')
         results = arrtable.select().where(arrtable.c.intarr == [1,2,3]).execute().fetchall()
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0]['intarr'], [1,2,3])
-        arrtable.delete().execute()
 
+    @testing.fails_on('postgres+pg8000', 'pg8000 has poor support for PG arrays')
     def test_array_concat(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         results = select([arrtable.c.intarr + [4,5,6]]).execute().fetchall()
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0][0], [1,2,3,4,5,6])
-        arrtable.delete().execute()
 
+    @testing.fails_on('postgres+pg8000', 'pg8000 has poor support for PG arrays')
     def test_array_subtype_resultprocessor(self):
         arrtable.insert().execute(intarr=[4,5,6], strarr=[[u'm\xe4\xe4'], [u'm\xf6\xf6']])
         arrtable.insert().execute(intarr=[1,2,3], strarr=[u'm\xe4\xe4', u'm\xf6\xf6'])
@@ -831,8 +828,8 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         self.assertEquals(len(results), 2)
         self.assertEquals(results[0]['strarr'], [u'm\xe4\xe4', u'm\xf6\xf6'])
         self.assertEquals(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
-        arrtable.delete().execute()
 
+    @testing.fails_on('postgres+pg8000', 'pg8000 has poor support for PG arrays')
     def test_array_mutability(self):
         class Foo(object): pass
         footable = Table('foo', metadata,
@@ -874,12 +871,14 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         sess.add(foo)
         sess.flush()
 
-class TimeStampTest(TestBase, AssertsExecutionResults):
+class TimestampTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
+
     def test_timestamp(self):
         engine = testing.db
         connection = engine.connect()
-        s = select([func.TIMESTAMP("12/25/07").label("ts")])
+        
+        s = select(["timestamp '12/25/07'"])
         result = connection.execute(s).fetchone()
         self.assertEqual(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 
@@ -988,8 +987,13 @@ class MatchTest(TestBase, AssertsCompiledSQL):
     def tearDownAll(self):
         metadata.drop_all()
 
-    def test_expression(self):
+    @testing.fails_on('postgres+pg8000', 'uses positional')
+    def test_expression_pyformat(self):
         self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%(title_1)s)")
+
+    @testing.fails_on('postgres+psycopg2', 'uses pyformat')
+    def test_expression_positional(self):
+        self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%s)")
 
     def test_simple_match(self):
         results = matchtable.select().where(matchtable.c.title.match('python')).order_by(matchtable.c.id).execute().fetchall()

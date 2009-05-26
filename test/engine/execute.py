@@ -52,7 +52,7 @@ class ExecuteTest(TestBase):
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
     @testing.skip_if(lambda: testing.against('mysql+mysqldb'), 'db-api flaky')
-    @testing.fails_on_everything_except('postgres')
+    @testing.fails_on_everything_except('postgres+psycopg2')
     def test_raw_python(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':1, 'name':'jack'})
@@ -101,6 +101,7 @@ class ProxyConnectionTest(TestBase):
                 return execute(clauseelement, *multiparams, **params)
 
             def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
+                print "CE", statement, parameters
                 cursor_stmts.append(
                     (statement, parameters, None)
                 )
@@ -144,12 +145,12 @@ class ProxyConnectionTest(TestBase):
 
             if engine.dialect.preexecute_pk_sequences:
                 cursor = [
-                    ("CREATE TABLE t1", {}, None),
+                    ("CREATE TABLE t1", {}, ()),
                     ("INSERT INTO t1 (c1, c2)", {'c2': 'some data', 'c1': 5}, [5, 'some data']),
                     ("SELECT lower", {'lower_2':'Foo'}, ['Foo']),
                     ("INSERT INTO t1 (c1, c2)", {'c2': 'foo', 'c1': 6}, [6, 'foo']),
-                    ("select * from t1", {}, None),
-                    ("DROP TABLE t1", {}, None)
+                    ("select * from t1", {}, ()),
+                    ("DROP TABLE t1", {}, ())
                 ]
             else:
                 cursor = [

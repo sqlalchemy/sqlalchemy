@@ -5,7 +5,7 @@ import types
 import __builtin__
 
 
-__all__ = '_function_named', 'callable', 'py3k', 'jython'
+__all__ = '_function_named', 'callable', 'py3k', 'jython', 'to_list'
 
 py3k = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 
@@ -24,6 +24,14 @@ def _function_named(fn, name):
         fn = types.FunctionType(fn.func_code, fn.func_globals, name,
                           fn.func_defaults, fn.func_closure)
     return fn
+
+def to_list(x, default=None):
+    if x is None:
+        return default
+    if not isinstance(x, (list, tuple)):
+        return [x]
+    else:
+        return x
 
 if py3k:
     def callable(fn):

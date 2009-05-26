@@ -203,13 +203,6 @@ class PGCompiler(compiler.SQLCompiler):
         }
     )
 
-    functions = util.update_copy(
-        compiler.SQLCompiler.functions,
-        {
-            'TIMESTAMP':lambda x:'TIMESTAMP %s' % x,
-        }
-    )
-
     def post_process_text(self, text):
         if '%%' in text:
             util.warn("The SQLAlchemy postgres dialect now automatically escapes '%' in text() expressions to '%%'.")
@@ -475,16 +468,16 @@ class PGDialect(default.DefaultDialect):
         self.do_begin(connection.connection)
 
     def do_prepare_twophase(self, connection, xid):
-        connection.execute(sql.text("PREPARE TRANSACTION :tid", bindparams=[sql.bindparam('tid', xid)]))
+        connection.execute("PREPARE TRANSACTION '%s'" % xid)
 
     def do_rollback_twophase(self, connection, xid, is_prepared=True, recover=False):
         if is_prepared:
             if recover:
                 #FIXME: ugly hack to get out of transaction context when commiting recoverable transactions
                 # Must find out a way how to make the dbapi not open a transaction.
-                connection.execute(sql.text("ROLLBACK"))
-            connection.execute(sql.text("ROLLBACK PREPARED :tid", bindparams=[sql.bindparam('tid', xid)]))
-            connection.execute(sql.text("BEGIN"))
+                connection.execute("ROLLBACK")
+            connection.execute("ROLLBACK PREPARED '%s'" % xid)
+            connection.execute("BEGIN")
             self.do_rollback(connection.connection)
         else:
             self.do_rollback(connection.connection)
@@ -492,9 +485,9 @@ class PGDialect(default.DefaultDialect):
     def do_commit_twophase(self, connection, xid, is_prepared=True, recover=False):
         if is_prepared:
             if recover:
-                connection.execute(sql.text("ROLLBACK"))
-            connection.execute(sql.text("COMMIT PREPARED :tid", bindparams=[sql.bindparam('tid', xid)]))
-            connection.execute(sql.text("BEGIN"))
+                connection.execute("ROLLBACK")
+            connection.execute("COMMIT PREPARED '%s'" % xid)
+            connection.execute("BEGIN")
             self.do_rollback(connection.connection)
         else:
             self.do_commit(connection.connection)

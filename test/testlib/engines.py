@@ -11,7 +11,7 @@ class ConnectionKiller(object):
         self.proxy_refs[con_proxy] = True
 
     def _apply_all(self, methods):
-        for rec in self.proxy_refs:
+        for rec in list(self.proxy_refs):
             if rec is not None and rec.is_valid:
                 try:
                     for name in methods:

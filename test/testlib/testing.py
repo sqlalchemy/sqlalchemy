@@ -935,15 +935,18 @@ class TTestSuite(unittest.TestSuite):
                 if check(test_suite)() != 'ok':
                     # The requirement will perform messaging.
                     return True
-        if (hasattr(cls, '__unsupported_on__') and
-            config.db.name in cls.__unsupported_on__):
-            print "'%s' unsupported on DB implementation '%s'" % (
-                cls.__class__.__name__, config.db.name)
-            return True
-        if (getattr(cls, '__only_on__', None) not in (None,config.db.name)):
-            print "'%s' unsupported on DB implementation '%s'" % (
-                cls.__class__.__name__, config.db.name)
-            return True
+        if cls.__unsupported_on__:
+            spec = db_spec(*cls.__unsupported_on__)
+            if spec(config.db):
+                print "'%s' unsupported on DB implementation '%s'" % (
+                    cls.__class__.__name__, config.db.name)
+                return True
+        if getattr(cls, '__only_on__', None):
+            spec = db_spec(*to_list(cls.__only_on__))
+            if not spec(config.db):
+                print "'%s' unsupported on DB implementation '%s'" % (
+                    cls.__class__.__name__, config.db.name)
+                return True
         if (getattr(cls, '__skip_if__', False)):
             for c in getattr(cls, '__skip_if__'):
                 if c():
