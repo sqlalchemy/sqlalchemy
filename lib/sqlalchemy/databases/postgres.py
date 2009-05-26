@@ -706,7 +706,6 @@ class PGDialect(default.DefaultDialect):
         return domains
 
 
-
 class PGCompiler(compiler.DefaultCompiler):
     operators = compiler.DefaultCompiler.operators.copy()
     operators.update(
@@ -721,7 +720,7 @@ class PGCompiler(compiler.DefaultCompiler):
     functions = compiler.DefaultCompiler.functions.copy()
     functions.update (
         {
-            'TIMESTAMP':lambda x:'TIMESTAMP %s' % x,
+            'TIMESTAMP':util.deprecated(message="Use a literal string 'timestamp <value>' instead")(lambda x:'TIMESTAMP %s' % x),
         }
     )
 

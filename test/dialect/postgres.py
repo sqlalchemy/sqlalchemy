@@ -865,6 +865,8 @@ class ArrayTest(TestBase, AssertsExecutionResults):
 
 class TimeStampTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
+    
+    @testing.uses_deprecated()
     def test_timestamp(self):
         engine = testing.db
         connection = engine.connect()

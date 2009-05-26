@@ -25,7 +25,14 @@ class WrapTest(unittest.TestCase):
                 '', [], OperationalError())
         except sa_exceptions.DBAPIError:
             self.assert_(True)
-
+    
+    def test_tostring(self):
+        try:
+            raise sa_exceptions.DBAPIError.instance(
+                'this is a message', None, OperationalError())
+        except sa_exceptions.DBAPIError, exc:
+            assert str(exc) == "(OperationalError)  'this is a message' None"
+        
     def test_db_error_busted_dbapi(self):
         try:
             raise sa_exceptions.DBAPIError.instance(

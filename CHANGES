@@ -10,7 +10,17 @@ CHANGES
 - sql
     - Repaired the printing of SQL exceptions which are not 
       based on parameters.
-
+      
+- postgres
+    - Deprecated the hardcoded TIMESTAMP function, which when
+      used as func.TIMESTAMP(value) would render "TIMESTAMP value".
+      This breaks on some platforms as Postgres doesn't allow
+      bind parameters to be used in this context.  The hard-coded
+      uppercase is also inappropriate and there's lots of other
+      PG casts that we'd need to support.  So instead, use
+      text constructs i.e. select(["timestamp '12/05/09'"]).
+      
+      
 0.5.4p1
 =======
 
