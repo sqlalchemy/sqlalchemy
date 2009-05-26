@@ -132,11 +132,11 @@ class DBAPIError(SQLAlchemyError):
         self.connection_invalidated = connection_invalidated
 
     def __str__(self):
-        if self.params and len(self.params) > 10:
+        if isinstance(self.params, (list, tuple)) and len(self.params) > 10 and isinstance(self.params[0], (list, dict, tuple)):
             return ' '.join((SQLAlchemyError.__str__(self),
                              repr(self.statement),
                              repr(self.params[:2]),
-                             '... and a total of %i bound parameters' % len(self.params)))
+                             '... and a total of %i bound parameter sets' % len(self.params)))
         return ' '.join((SQLAlchemyError.__str__(self),
                          repr(self.statement), repr(self.params)))
 

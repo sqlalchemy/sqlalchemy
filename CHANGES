@@ -9,7 +9,7 @@ CHANGES
 
 - sql
     - Repaired the printing of SQL exceptions which are not 
-      based on parameters.
+      based on parameters or are not executemany() style.
       
 - postgres
     - Deprecated the hardcoded TIMESTAMP function, which when
