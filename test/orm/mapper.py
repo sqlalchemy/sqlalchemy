@@ -1915,6 +1915,13 @@ class CompositeTypesTest(_base.MappedTest):
         sess.flush()
 
         assert f1.foob == FBComposite(2, 5, 15, None)
+        
+        
+        f2 = Foobar()
+        sess.add(f2)
+        sess.flush()
+        assert f2.foob == FBComposite(2, None, 15, None)
+        
     
     @testing.resolve_artifact_names
     def test_set_composite_values(self):
