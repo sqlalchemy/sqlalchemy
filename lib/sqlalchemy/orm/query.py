@@ -579,7 +579,11 @@ class Query(object):
     def value(self, column):
         """Return a scalar result corresponding to the given column expression."""
         try:
+            # Py3K
+            #return self.values(column).__next__()[0]
+            # Py2K
             return self.values(column).next()[0]
+            # end Py2K
         except StopIteration:
             return None
 

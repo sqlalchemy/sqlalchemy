@@ -41,7 +41,7 @@ import sys
 import traceback
 import os
 import types
-from testlib.compat import callable
+from testlib.compat import callable, cmp
 
 ##############################################################################
 # Exported classes and functions

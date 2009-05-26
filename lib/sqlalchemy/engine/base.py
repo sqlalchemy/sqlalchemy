@@ -1601,8 +1601,11 @@ class ResultProxy(object):
         for i, item in enumerate(metadata):
             colname = item[0]
 
+            # Py3K
+            # Py2K
             if self.dialect.description_encoding:
                 colname = colname.decode(self.dialect.description_encoding)
+            # end Py2K
 
             if '.' in colname:
                 # sqlite will in some circumstances prepend table name to colnames, so strip

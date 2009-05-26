@@ -5,7 +5,7 @@ import types
 import __builtin__
 
 
-__all__ = '_function_named', 'callable', 'py3k', 'jython', 'to_list'
+__all__ = '_function_named', 'callable', 'py3k', 'jython', 'to_list', 'cmp'
 
 py3k = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 
@@ -36,9 +36,13 @@ def to_list(x, default=None):
 if py3k:
     def callable(fn):
         return hasattr(fn, '__call__')
+    def cmp(a, b):
+            return (a > b) - (a < b)
+        
 else:
     callable = __builtin__.callable
-
+    cmp = __builtin__.cmp
+    
 if sys.platform.startswith('java'):
     def gc_collect(*args):
         gc.collect()
