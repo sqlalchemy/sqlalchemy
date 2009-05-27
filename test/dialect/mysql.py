@@ -55,11 +55,11 @@ class TypesTest(TestBase, AssertsExecutionResults):
             # column type, args, kwargs, expected ddl
             # e.g. Column(Integer(10, unsigned=True)) == 'INTEGER(10) UNSIGNED'
             (mysql.MSNumeric, [], {},
-             'NUMERIC(10, 2)'),
+             'NUMERIC'),
             (mysql.MSNumeric, [None], {},
              'NUMERIC'),
             (mysql.MSNumeric, [12], {},
-             'NUMERIC(12, 2)'),
+             'NUMERIC(12)'),
             (mysql.MSNumeric, [12, 4], {'unsigned':True},
              'NUMERIC(12, 4) UNSIGNED'),
             (mysql.MSNumeric, [12, 4], {'zerofill':True},
@@ -68,11 +68,11 @@ class TypesTest(TestBase, AssertsExecutionResults):
              'NUMERIC(12, 4) UNSIGNED ZEROFILL'),
 
             (mysql.MSDecimal, [], {},
-             'DECIMAL(10, 2)'),
+             'DECIMAL'),
             (mysql.MSDecimal, [None], {},
              'DECIMAL'),
             (mysql.MSDecimal, [12], {},
-             'DECIMAL(12, 2)'),
+             'DECIMAL(12)'),
             (mysql.MSDecimal, [12, None], {},
              'DECIMAL(12)'),
             (mysql.MSDecimal, [12, 4], {'unsigned':True},
@@ -909,11 +909,11 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             (m.MSBit, "t.col"),
 
             # this is kind of sucky.  thank you default arguments!
-            (NUMERIC, "CAST(t.col AS DECIMAL(10, 2))"),
-            (DECIMAL, "CAST(t.col AS DECIMAL(10, 2))"),
-            (Numeric, "CAST(t.col AS DECIMAL(10, 2))"),
-            (m.MSNumeric, "CAST(t.col AS DECIMAL(10, 2))"),
-            (m.MSDecimal, "CAST(t.col AS DECIMAL(10, 2))"),
+            (NUMERIC, "CAST(t.col AS DECIMAL)"),
+            (DECIMAL, "CAST(t.col AS DECIMAL)"),
+            (Numeric, "CAST(t.col AS DECIMAL)"),
+            (m.MSNumeric, "CAST(t.col AS DECIMAL)"),
+            (m.MSDecimal, "CAST(t.col AS DECIMAL)"),
 
             (FLOAT, "t.col"),
             (Float, "t.col"),
@@ -998,8 +998,8 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 
 class RawReflectionTest(TestBase):
     def setUp(self):
-        self.dialect = mysql.dialect()
-        self.parser = mysql.MySQLTableDefinitionParser(self.dialect)
+        dialect = mysql.dialect()
+        self.parser = mysql.MySQLTableDefinitionParser(dialect, dialect.identifier_preparer)
 
     def test_key_reflection(self):
         regex = self.parser._re_key

@@ -586,11 +586,9 @@ class Compiled(object):
 
         raise NotImplementedError()
 
-    params = property(construct_params, doc="""
-        Return the bind params for this compiled object.
-    
-    """)
-
+    def params(self):
+        """Return the bind params for this compiled object."""
+        return self.construct_params()
 
     def execute(self, *multiparams, **params):
         """Execute this compiled object."""

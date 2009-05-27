@@ -245,7 +245,8 @@ class Inspector(object):
             dialect._adjust_casing(table)
 
         # table attributes we might need.
-        reflection_options = dict((k, table.kwargs.get(k)) for k in dialect.reflection_options if k in table.kwargs)
+        reflection_options = dict(
+            (k, table.kwargs.get(k)) for k in dialect.reflection_options if k in table.kwargs)
 
         schema = table.schema
         table_name = table.name
@@ -274,30 +275,30 @@ class Inspector(object):
         for col_d in self.get_columns(table_name, schema, **tblkw):
             found_table = True
             name = col_d['name']
-            coltype = col_d['type']
-            nullable = col_d['nullable']
-            default = col_d['default']
-            colargs = []
-            col_kw = {}
-            if 'autoincrement' in col_d:
-                col_kw['autoincrement'] = col_d['autoincrement']
             if include_columns and name not in include_columns:
                 continue
-            if default is not None:
-                # fixme
-                # mysql does not use sql.text
-                if isinstance(dialect, MySQLDialect):
-                    colargs.append(sa_schema.DefaultClause(default))
-                else:
-                    colargs.append(sa_schema.DefaultClause(sql.text(default)))
-            col = sa_schema.Column(name, coltype,nullable=nullable, *colargs, **col_kw)
+
+            coltype = col_d['type']
+            col_kw = {
+                'nullable':col_d['nullable'],
+                'autoincrement':col_d.get('autoincrement', False)
+            }
+            
+            colargs = []
+            if col_d.get('default') is not None:
+                colargs.append(sa_schema.DefaultClause(col_d['default']))
+                
             if 'sequence' in col_d:
+                # TODO: whos using this ?
                 seq = col_d['sequence']
-                col.sequence = sa_schema.Sequence(seq['name'], 1, 1)
+                sequence = sa_schema.Sequence(seq['name'], 1, 1)
                 if 'start' in seq:
-                    col.sequence.start = seq['start']
+                    sequence.start = seq['start']
                 if 'increment' in seq:
-                    col.sequence.increment = seq['increment']
+                    sequence.increment = seq['increment']
+                colargs.append(sequence)
+                
+            col = sa_schema.Column(name, coltype, *colargs, **col_kw)
             table.append_column(col)
 
         if not found_table:

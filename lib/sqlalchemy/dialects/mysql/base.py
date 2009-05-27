@@ -292,7 +292,7 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
     
     __visit_name__ = 'NUMERIC'
     
-    def __init__(self, precision=10, scale=2, asdecimal=True, **kw):
+    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a NUMERIC.
 
         :param precision: Total digits in this number.  If scale and precision
@@ -331,7 +331,7 @@ class MSDecimal(MSNumeric):
     
     __visit_name__ = 'DECIMAL'
     
-    def __init__(self, precision=10, scale=2, asdecimal=True, **kw):
+    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         """Construct a DECIMAL.
 
         :param precision: Total digits in this number.  If scale and precision
@@ -1523,6 +1523,8 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def visit_NUMERIC(self, type_):
         if type_.precision is None:
             return self._extend_numeric(type_, "NUMERIC")
+        elif type_.scale is None:
+            return self._extend_numeric(type_, "NUMERIC(%(precision)s)" % {'precision': type_.precision})
         else:
             return self._extend_numeric(type_, "NUMERIC(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : type_.scale})
 
@@ -2335,11 +2337,7 @@ class MySQLTableDefinitionParser(object):
         if default is not None and default != 'NULL':
             # Defaults should be in the native charset for the moment
             default = default.encode(charset)
-            if type_ == 'timestamp':
-                # can't be NULL for TIMESTAMPs
-                if (default[0], default[-1]) != ("'", "'"):
-                    default = sql.text(default)
-            else:
+            if type_ != 'timestamp':
                 default = default[1:-1]
         elif default == 'NULL':
             # eliminates the need to deal with this later.
