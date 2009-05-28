@@ -41,10 +41,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         meta  = MetaData()
         parent = Table('parent', meta, Column('id', Integer, primary_key=True), 
            Column('name', String(50)),
-           owner='ed')
+           schema='ed')
         child = Table('child', meta, Column('id', Integer, primary_key=True),
            Column('parent_id', Integer, ForeignKey('ed.parent.id')),
-           owner = 'ed')
+           schema = 'ed')
 
         self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id")
 

@@ -1125,10 +1125,10 @@ UNION SELECT mytable.myid FROM mytable"
                 self.assert_compile(stmt, expected_positional_stmt, dialect=sqlite.dialect())
                 nonpositional = stmt.compile()
                 positional = stmt.compile(dialect=sqlite.dialect())
-                pp = positional.get_params()
+                pp = positional.params
                 assert [pp[k] for k in positional.positiontup] == expected_default_params_list
-                assert nonpositional.get_params(**test_param_dict) == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict)))
-                pp = positional.get_params(**test_param_dict)
+                assert nonpositional.construct_params(test_param_dict) == expected_test_params_dict, "expected :%s got %s" % (str(expected_test_params_dict), str(nonpositional.get_params(**test_param_dict)))
+                pp = positional.construct_params(test_param_dict)
                 assert [pp[k] for k in positional.positiontup] == expected_test_params_list
 
         # check that params() doesnt modify original statement
@@ -1147,7 +1147,7 @@ UNION SELECT mytable.myid FROM mytable"
             ":myid_1) AS anon_1 FROM mytable WHERE mytable.myid = (SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1)")
         positional = s2.compile(dialect=sqlite.dialect())
 
-        pp = positional.get_params()
+        pp = positional.params
         assert [pp[k] for k in positional.positiontup] == [12, 12]
 
         # check that conflicts with "unique" params are caught

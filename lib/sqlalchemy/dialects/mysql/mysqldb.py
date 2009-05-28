@@ -101,7 +101,7 @@ class MySQL_mysqldb(MySQLDialect):
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
             try:
-                import MySQLdb.constants.CLIENT as CLIENT_FLAGS
+                from MySQLdb.constants import CLIENT as CLIENT_FLAGS
                 client_flag |= CLIENT_FLAGS.FOUND_ROWS
             except:
                 pass

@@ -683,10 +683,10 @@ class NumericTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         numeric_table = Table('numeric_table', metadata,
             Column('id', Integer, Sequence('numeric_id_seq', optional=True), primary_key=True),
-            Column('numericcol', Numeric(asdecimal=False)),
-            Column('floatcol', Float),
-            Column('ncasdec', Numeric),
-            Column('fcasdec', Float(asdecimal=True))
+            Column('numericcol', Numeric(precision=10, scale=2, asdecimal=False)),
+            Column('floatcol', Float(precision=10, )),
+            Column('ncasdec', Numeric(precision=10, scale=2)),
+            Column('fcasdec', Float(precision=10, asdecimal=True))
         )
         metadata.create_all()
 
