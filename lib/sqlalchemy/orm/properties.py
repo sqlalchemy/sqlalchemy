@@ -171,7 +171,7 @@ class CompositeProperty(ColumnProperty):
         obj = state.get_impl(self.key).get(state, state.dict)
         if obj is None:
             obj = self.composite_class(*[None for c in self.columns])
-            state.get_impl(self.key).set(state, obj, None)
+            state.get_impl(self.key).set(state, state.dict, obj, None)
 
         if hasattr(obj, '__set_composite_values__'):
             values = list(obj.__composite_values__())
