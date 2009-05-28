@@ -98,8 +98,6 @@ class _TableSingleton(visitors.VisitableType):
         try:
             table = metadata.tables[key]
             if not useexisting and bool(args):
-                import pdb
-                pdb.set_trace()
                 raise exc.InvalidRequestError(
                     "Table '%s' is already defined for this MetaData instance.  "
                     "Specify 'useexisting=True' to redefine options and "

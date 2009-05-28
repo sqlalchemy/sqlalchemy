@@ -6,9 +6,6 @@
 
 """Routines to handle CREATE/DROP workflow."""
 
-### TODO: CREATE TABLE and DROP TABLE have been moved out so far.
-### Index, ForeignKey, etc. still need to move.
-
 from sqlalchemy import engine, schema
 from sqlalchemy.sql import util as sql_util
 
