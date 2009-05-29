@@ -235,9 +235,6 @@ class Inspector(object):
 
         dialect = self.conn.dialect
 
-        # for some work arounds
-        from sqlalchemy.dialects.mysql.mysqldb import MySQLDialect
-
         # MySQL dialect does this.  Applicable with other dialects?
         if hasattr(dialect, '_connection_charset') \
                                         and hasattr(dialect, '_adjust_casing'):
@@ -263,7 +260,7 @@ class Inspector(object):
             del tblkw[k]
             tblkw[str(k)] = v
 
-        ### Py2K
+        # Py2K
         if isinstance(schema, str):
             schema = schema.decode(dialect.encoding)
         if isinstance(table_name, str):

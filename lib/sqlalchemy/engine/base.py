@@ -1067,7 +1067,12 @@ class Connection(Connectable):
                 self._autorollback()
                 if self.__close_with_result:
                     self.close()
+            # Py3K
+            #raise exc.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect).with_traceback(sys.exc_info()[2])
+            # Py2K
             raise exc.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect), None, sys.exc_info()[2]
+            # end Py2K
+            
         finally:
             del self._reentrant_error
 

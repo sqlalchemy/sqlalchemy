@@ -170,8 +170,10 @@ def _parse_rfc1738_args(name):
             tokens = components['database'].split('?', 2)
             components['database'] = tokens[0]
             query = (len(tokens) > 1 and dict(cgi.parse_qsl(tokens[1]))) or None
+            # Py2K
             if query is not None:
                 query = dict((k.encode('ascii'), query[k]) for k in query)
+            # end Py2K
         else:
             query = None
         components['query'] = query

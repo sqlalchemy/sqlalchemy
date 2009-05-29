@@ -1020,7 +1020,9 @@ class ColumnDefault(DefaultGenerator):
             return lambda ctx: fn()
 
         positionals = len(argspec[0])
-        if inspect.ismethod(inspectable):
+        
+        # Py3K compat - no unbound methods
+        if inspect.ismethod(inspectable) or inspect.isclass(fn):
             positionals -= 1
 
         if positionals == 0:

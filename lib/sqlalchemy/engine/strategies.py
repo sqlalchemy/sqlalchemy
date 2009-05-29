@@ -76,7 +76,13 @@ class DefaultEngineStrategy(EngineStrategy):
                     return dialect.connect(*cargs, **cparams)
                 except Exception, e:
                     import sys
+
+                    # Py3K
+                    #raise exc.DBAPIError.instance(None, None, e).with_traceback(sys.exc_info()[2])
+                    # Py2K
                     raise exc.DBAPIError.instance(None, None, e), None, sys.exc_info()[2]
+                    # end Py2K
+                    
             creator = kwargs.pop('creator', connect)
 
             poolclass = (kwargs.pop('poolclass', None) or

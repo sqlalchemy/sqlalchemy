@@ -7,7 +7,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import pyodbc
-import sqlalchemy.engine.url as url
+from sqlalchemy.engine import url
 from testlib import *
 from testlib.testing import eq_
 

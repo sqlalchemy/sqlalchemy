@@ -1,5 +1,6 @@
 import testenv; testenv.configure_for_tests()
-import ConfigParser, StringIO
+import ConfigParser
+import StringIO
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config
 import testlib.sa as tsa

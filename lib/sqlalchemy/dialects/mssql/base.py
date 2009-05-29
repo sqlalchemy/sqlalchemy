@@ -235,7 +235,7 @@ from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
 
-import information_schema as ischema
+from sqlalchemy.dialects.mssql import information_schema as ischema
 
 MS_2008_VERSION = (10,)
 MS_2005_VERSION = (9,)
