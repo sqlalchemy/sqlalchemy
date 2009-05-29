@@ -2077,7 +2077,7 @@ class _TextClause(ClauseElement):
         if bindparams is not None:
             for b in bindparams:
                 self.bindparams[b.key] = b
-
+                
     @property
     def type(self):
         if self.typemap is not None and len(self.typemap) == 1:

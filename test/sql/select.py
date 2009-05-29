@@ -1154,7 +1154,21 @@ UNION SELECT mytable.myid FROM mytable"
         s = select([table1], or_(table1.c.myid==7, table1.c.myid==8, table1.c.myid==bindparam('myid_1')))
         self.assertRaisesMessage(exc.CompileError, "conflicts with unique bind parameter of the same name", str, s)
 
-
+    def test_binds_no_hash_collision(self):
+        """test that construct_params doesn't corrupt dict due to hash collisions"""
+        
+        total_params = 100000
+        
+        in_clause = [':in%d' % i for i in range(total_params)]
+        params = dict(('in%d' % i, i) for i in range(total_params))
+        sql = 'text clause %s' % ', '.join(in_clause)
+        t = text(sql)
+        assert len(t.bindparams) == total_params
+        c = t.compile()
+        pp = c.construct_params(params)
+        assert len(set(pp)) == total_params
+        assert len(set(pp.values())) == total_params
+        
 
     def test_bind_as_col(self):
         t = table('foo', column('id'))

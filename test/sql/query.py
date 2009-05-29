@@ -307,21 +307,6 @@ class QueryTest(TestBase):
         r = s.execute(userid='fred').fetchall()
         assert len(r) == 1
 
-        u = bindparam('userid', unique=True)
-        s = users.select(and_(users.c.user_name==u, users.c.user_name==u))
-        r = s.execute({u:'fred'}).fetchall()
-        assert len(r) == 1
-
-    def test_bindparams_in_params(self):
-        """test that a _BindParamClause itself can be a key in the params dict"""
-
-        users.insert().execute(user_id = 7, user_name = 'jack')
-        users.insert().execute(user_id = 8, user_name = 'fred')
-
-        u = bindparam('userid')
-        r = users.select(users.c.user_name==u).execute({u:'fred'}).fetchall()
-        assert len(r) == 1
-
     def test_bindparam_shortname(self):
         """test the 'shortname' field on BindParamClause."""
         users.insert().execute(user_id = 7, user_name = 'jack')

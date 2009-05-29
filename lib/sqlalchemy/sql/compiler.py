@@ -226,7 +226,7 @@ class DefaultCompiler(engine.Compiled):
             params = util.column_dict(params)
             pd = {}
             for bindparam, name in self.bind_names.iteritems():
-                for paramname in (bindparam, bindparam.key, bindparam.shortname, name):
+                for paramname in (bindparam.key, bindparam.shortname, name):
                     if paramname in params:
                         pd[name] = params[paramname]
                         break

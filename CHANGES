@@ -9,6 +9,21 @@ CHANGES
 - orm
     - Fixed bug introduced in 0.5.4 whereby Composite types
       fail when default-holding columns are flushed.
+
+- sql
+    - Removed an obscure feature of execute() (including connection,
+      engine, Session) whereby a bindparam() construct can be sent as 
+      a key to the params dictionary.  This usage is undocumented
+      and is at the core of an issue whereby the bindparam() object
+      created implicitly by a text() construct may have the same 
+      hash value as a string placed in the params dictionary and
+      may result in an inappropriate match when computing the final
+      bind parameters.   Internal checks for this condition would
+      add significant latency to the critical task of parameter 
+      rendering, so the behavior is removed.  This is a backwards
+      incompatible change for any application that may have been
+      using this feature, however the feature has never been
+      documented.
     
 0.5.4p2
 =======
