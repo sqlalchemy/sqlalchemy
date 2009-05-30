@@ -954,7 +954,8 @@ def _list_decorators():
                 
                 if step == 1:
                     for i in xrange(start, stop, step):
-                        del self[index.start or 0]
+                        if len(self) > start:
+                            del self[start]
                     
                     for i, item in enumerate(value):
                         self.insert(i + start, item)

@@ -240,7 +240,8 @@ class OrderingList(list):
     _raw_append = collection.adds(1)(_raw_append)
 
     def insert(self, index, entity):
-        self[index:index] = [entity]
+        super(OrderingList, self).insert(index, entity)
+        self._reorder()
 
     def remove(self, entity):
         super(OrderingList, self).remove(entity)
@@ -253,7 +254,15 @@ class OrderingList(list):
 
     def __setitem__(self, index, entity):
         if isinstance(index, slice):
-            for i in range(index.start or 0, index.stop or 0, index.step or 1):
+            step = index.step or 1
+            start = index.start or 0
+            if start < 0:
+                start += len(self)
+            stop = index.stop or len(self)
+            if stop < 0:
+                stop += len(self)
+            
+            for i in xrange(start, stop, step):
                 self.__setitem__(i, entity[i])
         else:
             self._order_entity(index, entity, True)
@@ -263,6 +272,7 @@ class OrderingList(list):
         super(OrderingList, self).__delitem__(index)
         self._reorder()
 
+    # Py2K
     def __setslice__(self, start, end, values):
         super(OrderingList, self).__setslice__(start, end, values)
         self._reorder()
@@ -270,7 +280,8 @@ class OrderingList(list):
     def __delslice__(self, start, end):
         super(OrderingList, self).__delslice__(start, end)
         self._reorder()
-
+    # end Py2K
+    
     for func_name, func in locals().items():
         if (util.callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(list, func_name)):

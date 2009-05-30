@@ -207,6 +207,19 @@ class CollectionsTest(_base.ORMTest):
             assert_eq()
         
         if hasattr(direct, '__setitem__') or hasattr(direct, '__setslice__'):
+            
+            values = [creator(), creator()]
+            direct[:] = values
+            control[:] = values
+            assert_eq()
+            
+            # test slice assignment where
+            # slice size goes over the number of items
+            values = [creator(), creator()]
+            direct[1:3] = values
+            control[1:3] = values
+            assert_eq()
+            
             values = [creator(), creator()]
             direct[0:1] = values
             control[0:1] = values
