@@ -1048,7 +1048,11 @@ class Connection(Connectable):
 
     def _handle_dbapi_exception(self, e, statement, parameters, cursor, context):
         if getattr(self, '_reentrant_error', False):
+            # Py3K
+            #raise exc.DBAPIError.instance(statement, parameters, e) as e
+            # Py2K
             raise exc.DBAPIError.instance(statement, parameters, e), None, sys.exc_info()[2]
+            # end Py2K
         self._reentrant_error = True
         try:
             if not isinstance(e, self.dialect.dbapi.Error):
@@ -1068,7 +1072,7 @@ class Connection(Connectable):
                 if self.__close_with_result:
                     self.close()
             # Py3K
-            #raise exc.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect).with_traceback(sys.exc_info()[2])
+            #raise exc.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect) as e
             # Py2K
             raise exc.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect), None, sys.exc_info()[2]
             # end Py2K

@@ -75,11 +75,10 @@ class DefaultEngineStrategy(EngineStrategy):
                 try:
                     return dialect.connect(*cargs, **cparams)
                 except Exception, e:
-                    import sys
-
                     # Py3K
-                    #raise exc.DBAPIError.instance(None, None, e).with_traceback(sys.exc_info()[2])
+                    #raise exc.DBAPIError.instance(None, None, e) as e
                     # Py2K
+                    import sys
                     raise exc.DBAPIError.instance(None, None, e), None, sys.exc_info()[2]
                     # end Py2K
                     

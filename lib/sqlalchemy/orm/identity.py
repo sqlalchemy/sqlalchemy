@@ -226,7 +226,11 @@ class StrongInstanceDict(IdentityMap):
         
         ref_count = len(self)
         dirty = [s.obj() for s in self.all_states() if s.check_modified()]
-        keepers = weakref.WeakValueDictionary(self)
+
+        # work around http://bugs.python.org/issue6149
+        keepers = weakref.WeakValueDictionary()
+        keepers.update(self)
+
         dict.clear(self)
         dict.update(self, keepers)
         self.modified = bool(dirty)

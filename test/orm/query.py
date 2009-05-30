@@ -143,7 +143,12 @@ class GetTest(QueryTest):
             Column('data', Unicode(40)))
         try:
             metadata.create_all()
+            # Py3K
+            #ustring = 'petit voix m\xe2\x80\x99a'
+            # Py2K
             ustring = 'petit voix m\xe2\x80\x99a'.decode('utf-8')
+            # end Py2K
+            
             table.insert().execute(id=ustring, data=ustring)
             class LocalFoo(Base):
                 pass
@@ -299,7 +304,12 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_arithmetic(self):
         create_session().query(User)
         for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
-                                (operator.sub, '-'), (operator.div, '/'),
+                                (operator.sub, '-'), 
+                                # Py3k
+                                #(operator.truediv, '/'),
+                                # Py2K
+                                (operator.div, '/'),
+                                # end Py2K
                                 ):
             for (lhs, rhs, res) in (
                 (5, User.id, ':id_1 %s users.id'),
