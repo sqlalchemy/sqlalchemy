@@ -165,6 +165,13 @@ class CollectionsTest(_base.ORMTest):
                 control[slice(0,-1)] = values
                 assert_eq()
 
+                values = [creator(),creator(),creator()]
+                control[:] = values
+                direct[:] = values
+                def invalid():
+                    direct[slice(0, 6, 2)] = [creator()]
+                self.assertRaises(ValueError, invalid)
+                
         if hasattr(direct, '__delitem__'):
             e = creator()
             direct.append(e)
@@ -224,6 +231,17 @@ class CollectionsTest(_base.ORMTest):
             direct[1::2] = values
             control[1::2] = values
             assert_eq()
+            
+            values = [creator(), creator()]
+            direct[-1:-3] = values
+            control[-1:-3] = values
+            assert_eq()
+
+            values = [creator(), creator()]
+            direct[-2:-1] = values
+            control[-2:-1] = values
+            assert_eq()
+            
 
         if hasattr(direct, '__delitem__') or hasattr(direct, '__delslice__'):
             for i in range(1, 4):
@@ -1554,10 +1572,9 @@ class DictHelpersTest(_base.MappedTest):
         collection_class = lambda: Ordered2(lambda v: (v.a, v.b))
         self._test_composite_mapped(collection_class)
 
-# TODO: are these tests redundant vs. the above tests ?
-# remove if so
 class CustomCollectionsTest(_base.MappedTest):
-
+    """test the integration of collections with mapped classes."""
+    
     def define_tables(self, metadata):
         Table('sometable', metadata,
               Column('col1',Integer, primary_key=True),
@@ -1678,15 +1695,50 @@ class CustomCollectionsTest(_base.MappedTest):
         replaced = set([id(b) for b in f.bars.values()])
         self.assert_(existing != replaced)
 
-    @testing.resolve_artifact_names
     def test_list(self):
+        self._test_list(list)
+
+    def test_list_no_setslice(self):
+        class ListLike(object):
+            def __init__(self):
+                self.data = list()
+            def append(self, item):
+                self.data.append(item)
+            def remove(self, item):
+                self.data.remove(item)
+            def insert(self, index, item):
+                self.data.insert(index, item)
+            def pop(self, index=-1):
+                return self.data.pop(index)
+            def extend(self):
+                assert False
+            def __len__(self):
+                return len(self.data)
+            def __setitem__(self, key, value):
+                self.data[key] = value
+            def __getitem__(self, key):
+                return self.data[key]
+            def __delitem__(self, key):
+                del self.data[key]
+            def __iter__(self):
+                return iter(self.data)
+            __hash__ = object.__hash__
+            def __eq__(self, other):
+                return self.data == other
+            def __repr__(self):
+                return 'ListLike(%s)' % repr(self.data)
+        
+        self._test_list(ListLike)
+        
+    @testing.resolve_artifact_names
+    def _test_list(self, listcls):
         class Parent(object):
             pass
         class Child(object):
             pass
 
         mapper(Parent, sometable, properties={
-            'children':relation(Child, collection_class=list)
+            'children':relation(Child, collection_class=listcls)
         })
         mapper(Child, someothertable)
 

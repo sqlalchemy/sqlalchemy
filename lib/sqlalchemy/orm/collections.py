@@ -944,23 +944,22 @@ def _list_decorators():
                 fn(self, index, value)
             else:
                 # slice assignment requires __delitem__, insert, __len__
-                if index.stop is None:
-                    stop = len(self)
-                elif index.stop < 0:
-                    stop = len(self) + index.stop
-                else:
-                    stop = index.stop
-                start = index.start or 0
                 step = index.step or 1
-                rng = range(start, stop, step)
+                start = index.start or 0
+                if start < 0:
+                    start += len(self)
+                stop = index.stop or len(self)
+                if stop < 0:
+                    stop += len(self)
+                
                 if step == 1:
-                    for i in rng:
-                        del self[start]
-                    i = start
-                    for item in value:
-                        self.insert(i, item)
-                        i += 1
+                    for i in xrange(start, stop, step):
+                        del self[index.start or 0]
+                    
+                    for i, item in enumerate(value):
+                        self.insert(i + start, item)
                 else:
+                    rng = range(start, stop, step)
                     if len(value) != len(rng):
                         raise ValueError(
                             "attempt to assign sequence of size %s to "
