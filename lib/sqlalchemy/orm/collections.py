@@ -945,17 +945,18 @@ def _list_decorators():
             else:
                 # slice assignment requires __delitem__, insert, __len__
                 if index.stop is None:
-                    stop = 0
+                    stop = len(self)
                 elif index.stop < 0:
                     stop = len(self) + index.stop
                 else:
                     stop = index.stop
+                start = index.start or 0
                 step = index.step or 1
-                rng = range(index.start or 0, stop, step)
+                rng = range(start, stop, step)
                 if step == 1:
                     for i in rng:
-                        del self[index.start]
-                    i = index.start
+                        del self[start]
+                    i = start
                     for item in value:
                         self.insert(i, item)
                         i += 1
@@ -985,7 +986,7 @@ def _list_decorators():
                 fn(self, index)
         _tidy(__delitem__)
         return __delitem__
-    
+
     # Py2K
     def __setslice__(fn):
         def __setslice__(self, start, end, values):

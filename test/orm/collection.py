@@ -189,7 +189,7 @@ class CollectionsTest(_base.ORMTest):
                 del direct[::2]
                 del control[::2]
                 assert_eq()
-
+            
         if hasattr(direct, 'remove'):
             e = creator()
             direct.append(e)
@@ -199,8 +199,7 @@ class CollectionsTest(_base.ORMTest):
             control.remove(e)
             assert_eq()
         
-        # Py2K
-        if hasattr(direct, '__setslice__'):
+        if hasattr(direct, '__setitem__') or hasattr(direct, '__setslice__'):
             values = [creator(), creator()]
             direct[0:1] = values
             control[0:1] = values
@@ -226,7 +225,7 @@ class CollectionsTest(_base.ORMTest):
             control[1::2] = values
             assert_eq()
 
-        if hasattr(direct, '__delslice__'):
+        if hasattr(direct, '__delitem__') or hasattr(direct, '__delslice__'):
             for i in range(1, 4):
                 e = creator()
                 direct.append(e)
@@ -243,7 +242,6 @@ class CollectionsTest(_base.ORMTest):
             del direct[:]
             del control[:]
             assert_eq()
-        # end Py2K
         
         if hasattr(direct, 'extend'):
             values = [creator(), creator(), creator()]
@@ -342,6 +340,45 @@ class CollectionsTest(_base.ORMTest):
         self._test_adapter(list)
         self._test_list(list)
         self._test_list_bulk(list)
+
+    def test_list_setitem_with_slices(self):
+        
+        # this is a "list" that has no __setslice__
+        # or __delslice__ methods.  The __setitem__
+        # and __delitem__ must therefore accept
+        # slice objects (i.e. as in py3k)
+        class ListLike(object):
+            def __init__(self):
+                self.data = list()
+            def append(self, item):
+                self.data.append(item)
+            def remove(self, item):
+                self.data.remove(item)
+            def insert(self, index, item):
+                self.data.insert(index, item)
+            def pop(self, index=-1):
+                return self.data.pop(index)
+            def extend(self):
+                assert False
+            def __len__(self):
+                return len(self.data)
+            def __setitem__(self, key, value):
+                self.data[key] = value
+            def __getitem__(self, key):
+                return self.data[key]
+            def __delitem__(self, key):
+                del self.data[key]
+            def __iter__(self):
+                return iter(self.data)
+            __hash__ = object.__hash__
+            def __eq__(self, other):
+                return self.data == other
+            def __repr__(self):
+                return 'ListLike(%s)' % repr(self.data)
+
+        self._test_adapter(ListLike)
+        self._test_list(ListLike)
+        self._test_list_bulk(ListLike)
 
     def test_list_subclass(self):
         class MyList(list):
