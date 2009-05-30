@@ -973,9 +973,8 @@ class ClassManager(dict):
             self.local_attrs[key] = inst
             self.install_descriptor(key, inst)
         self[key] = inst
+        
         for cls in self.class_.__subclasses__():
-            if isinstance(cls, types.ClassType):
-                continue
             manager = self._subclass_manager(cls)
             manager.instrument_attribute(key, inst, True)
 
@@ -995,8 +994,6 @@ class ClassManager(dict):
         if key in self.mutable_attributes:
             self.mutable_attributes.remove(key)
         for cls in self.class_.__subclasses__():
-            if isinstance(cls, types.ClassType):
-                continue
             manager = self._subclass_manager(cls)
             manager.uninstrument_attribute(key, True)
 
