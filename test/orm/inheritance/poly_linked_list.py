@@ -69,7 +69,7 @@ class PolymorphicCircularTest(ORMTest):
                                    polymorphic_on=table1.c.type,
                                    polymorphic_identity='table1',
                                    properties={
-                                    'next': relation(Table1,
+                                    'nxt': relation(Table1,
                                         backref=backref('prev', foreignkey=join.c.id, uselist=False),
                                         uselist=False, primaryjoin=join.c.id==join.c.related_id),
                                     'data':relation(mapper(Data, data))
@@ -83,15 +83,16 @@ class PolymorphicCircularTest(ORMTest):
 
         # currently, the "eager" relationships degrade to lazy relationships
         # due to the polymorphic load.
-        # the "next" relation used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential"
+        # the "nxt" relation used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential"
         # exception now.  since eager loading would never work for that relation anyway, its better that the user
         # gets an exception instead of it silently not eager loading.
+        # NOTE: using "nxt" instead of "next" to avoid 2to3 turning it into __next__() for some reason.
         table1_mapper = mapper(Table1, table1,
                                #select_table=join,
                                polymorphic_on=table1.c.type,
                                polymorphic_identity='table1',
                                properties={
-                               'next': relation(Table1,
+                               'nxt': relation(Table1,
                                    backref=backref('prev', remote_side=table1.c.id, uselist=False),
                                    uselist=False, primaryjoin=table1.c.id==table1.c.related_id),
                                'data':relation(mapper(Data, data), lazy=False, order_by=data.c.id)
@@ -144,7 +145,7 @@ class PolymorphicCircularTest(ORMTest):
             else:
                 newobj = c
             if obj is not None:
-                obj.next = newobj
+                obj.nxt = newobj
             else:
                 t = newobj
             obj = newobj
@@ -158,7 +159,7 @@ class PolymorphicCircularTest(ORMTest):
         node = t
         while (node):
             assertlist.append(node)
-            n = node.next
+            n = node.nxt
             if n is not None:
                 assert n.prev is node
             node = n
@@ -171,7 +172,7 @@ class PolymorphicCircularTest(ORMTest):
         assertlist = []
         while (node):
             assertlist.append(node)
-            n = node.next
+            n = node.nxt
             if n is not None:
                 assert n.prev is node
             node = n
@@ -185,7 +186,7 @@ class PolymorphicCircularTest(ORMTest):
             assertlist.insert(0, node)
             n = node.prev
             if n is not None:
-                assert n.next is node
+                assert n.nxt is node
             node = n
         backwards = repr(assertlist)
 
