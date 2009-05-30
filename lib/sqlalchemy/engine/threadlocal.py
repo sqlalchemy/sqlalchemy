@@ -172,7 +172,7 @@ class TLEngine(base.Engine):
         """Construct a new TLEngine."""
 
         super(TLEngine, self).__init__(*args, **kwargs)
-        self.context = util.ThreadLocal()
+        self.context = util.threading.local()
 
         proxy = kwargs.get('proxy')
         if proxy:

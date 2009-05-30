@@ -1833,7 +1833,7 @@ class ThreadLocalMetaData(MetaData):
     def __init__(self):
         """Construct a ThreadLocalMetaData."""
 
-        self.context = util.ThreadLocal()
+        self.context = util.threading.local()
         self.__engines = {}
         super(ThreadLocalMetaData, self).__init__()
 

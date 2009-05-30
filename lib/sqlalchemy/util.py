@@ -11,12 +11,9 @@ types = __import__('types')
 from sqlalchemy import exc
 
 try:
-    import thread, threading
-    from threading import local as ThreadLocal
+    import threading
 except ImportError:
-    import dummy_thread as thread
     import dummy_threading as threading
-    from dummy_threading import local as ThreadLocal
 
 py3k = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 

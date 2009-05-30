@@ -20,7 +20,7 @@ import weakref, time, threading
 
 from sqlalchemy import exc, log
 from sqlalchemy import queue as Queue
-from sqlalchemy.util import thread, threading, pickle, as_interface
+from sqlalchemy.util import threading, pickle, as_interface
 
 proxies = {}
 

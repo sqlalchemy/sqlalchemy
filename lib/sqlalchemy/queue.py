@@ -1,7 +1,7 @@
 """An adaptation of Py2.3/2.4's Queue module which supports reentrant
 behavior, using RLock instead of Lock for its mutex object.
 
-This is to support the connection pool's usage of ``__del__`` to return
+This is to support the connection pool's usage of weakref callbacks to return
 connections to the underlying Queue, which can apparently in extremely
 rare cases be invoked within the ``get()`` method of the Queue itself,
 producing a ``put()`` inside the ``get()`` and therefore a reentrant
@@ -9,7 +9,7 @@ condition."""
 
 from collections import deque
 from time import time as _time
-
+from sqlalchemy.util import threading
 
 __all__ = ['Empty', 'Full', 'Queue']
 
@@ -30,10 +30,6 @@ class Queue:
         If `maxsize` is <= 0, the queue size is infinite.
         """
 
-        try:
-            import threading
-        except ImportError:
-            import dummy_threading as threading
         self._init(maxsize)
         # mutex must be held whenever the queue is mutating.  All methods
         # that acquire mutex must release it before returning.  mutex
