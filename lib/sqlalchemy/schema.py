@@ -1572,27 +1572,6 @@ class MetaData(SchemaItem):
 
         return self._bind is not None
 
-    @util.deprecated('Deprecated. Use ``metadata.bind = <engine>`` or '
-                     '``metadata.bind = <url>``.')
-    def connect(self, bind, **kwargs):
-        """Bind this MetaData to an Engine.
-
-        bind
-          A string, ``URL``, ``Engine`` or ``Connection`` instance.  If a
-          string or ``URL``, will be passed to ``create_engine()`` along with
-          ``\**kwargs`` to produce the engine which to connect to.  Otherwise
-          connects directly to the given ``Engine``.
-          
-        """
-        global URL
-        if URL is None:
-            from sqlalchemy.engine.url import URL
-        if isinstance(bind, (basestring, URL)):
-            from sqlalchemy import create_engine
-            self._bind = create_engine(bind, **kwargs)
-        else:
-            self._bind = bind
-
     def bind(self):
         """An Engine or Connection to which this MetaData is bound.
 
@@ -1825,34 +1804,9 @@ class ThreadLocalMetaData(MetaData):
     def __init__(self):
         """Construct a ThreadLocalMetaData."""
 
-        self.context = util.ThreadLocal()
+        self.context = util.threading.local()
         self.__engines = {}
         super(ThreadLocalMetaData, self).__init__()
-
-    @util.deprecated('Deprecated. Use ``metadata.bind = <engine>`` or '
-                     '``metadata.bind = <url>``.')
-    def connect(self, bind, **kwargs):
-        """Bind to an Engine in the caller's thread.
-
-        bind
-          A string, ``URL``, ``Engine`` or ``Connection`` instance.  If a
-          string or ``URL``, will be passed to ``create_engine()`` along with
-          ``\**kwargs`` to produce the engine which to connect to.  Otherwise
-          connects directly to the given ``Engine``.
-        """
-
-        global URL
-        if URL is None:
-            from sqlalchemy.engine.url import URL
-
-        if isinstance(bind, (basestring, URL)):
-            try:
-                engine = self.__engines[bind]
-            except KeyError:
-                from sqlalchemy import create_engine
-                engine = create_engine(bind, **kwargs)
-            bind = engine
-        self._bind_to(bind)
 
     def bind(self):
         """The bound Engine or Connection for this thread.

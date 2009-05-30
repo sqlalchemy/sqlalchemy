@@ -13,6 +13,10 @@
       create_engine(... isolation_level="..."); available on
       postgresql and sqlite. [ticket:443]
 
+- schema
+    - metadata.connect() and threadlocalmetadata.connect() have been removed.
+    - new CreateTable,DropTable,CreateSequence,DropSequence, etc.
+     
 - dialect refactor
     - the "owner" keyword argument is removed from Table.  Use "schema" to 
       represent any namespaces to be prepended to the table name.

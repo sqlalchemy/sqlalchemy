@@ -118,7 +118,7 @@ class BindTest(testing.TestBase):
                 table = Table('test_table', metadata,
                     Column('foo', Integer))
 
-                metadata.connect(bind)
+                metadata.bind = bind
 
                 assert metadata.bind is table.bind is bind
                 metadata.create_all()

@@ -150,7 +150,7 @@ class TestDefaults(TestBase, AssertsExecutionResults):
             rt = Table('t_defaults', m2, autoload=True)
             expected = [c[1] for c in specs]
             for i, reflected in enumerate(rt.c):
-                self.assertEquals(reflected.server_default.arg.text, expected[i])
+                self.assertEquals(reflected.server_default.arg, expected[i])
         finally:
             m.drop_all()
 
@@ -171,7 +171,7 @@ class TestDefaults(TestBase, AssertsExecutionResults):
 
             rt = Table('r_defaults', m, autoload=True)
             for i, reflected in enumerate(rt.c):
-                self.assertEquals(reflected.server_default.arg.text, expected[i])
+                self.assertEquals(reflected.server_default.arg, expected[i])
         finally:
             db.execute("DROP TABLE r_defaults")
 
