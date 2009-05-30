@@ -9,7 +9,7 @@ condition."""
 
 from collections import deque
 from time import time as _time
-
+from sqlalchemy.util import threading
 
 __all__ = ['Empty', 'Full', 'Queue']
 
@@ -30,10 +30,6 @@ class Queue:
         If `maxsize` is <= 0, the queue size is infinite.
         """
 
-        try:
-            import threading
-        except ImportError:
-            import dummy_threading as threading
         self._init(maxsize)
         # mutex must be held whenever the queue is mutating.  All methods
         # that acquire mutex must release it before returning.  mutex
