@@ -222,7 +222,6 @@ class SQLCompiler(engine.Compiled):
         """return a dictionary of bind parameter keys and values"""
 
         if params:
-            params = util.column_dict(params)
             pd = {}
             for bindparam, name in self.bind_names.iteritems():
                 for paramname in (bindparam.key, bindparam.shortname, name):

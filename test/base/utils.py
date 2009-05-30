@@ -376,21 +376,21 @@ class DictlikeIteritemsTest(unittest.TestCase):
 
 
 class DuckTypeCollectionTest(TestBase):
-    # Py3K
-    #pass
-    
-    # Py2K
     def test_sets(self):
+        # Py2K
         import sets
+        # end Py2K
         class SetLike(object):
             def add(self):
                 pass
 
         class ForcedSet(list):
             __emulates__ = set
-
+        
         for type_ in (set,
+                      # Py2K
                       sets.Set,
+                      # end Py2K
                       SetLike,
                       ForcedSet):
             eq_(util.duck_type_collection(type_), set)
@@ -398,11 +398,13 @@ class DuckTypeCollectionTest(TestBase):
             eq_(util.duck_type_collection(instance), set)
 
         for type_ in (frozenset,
-                      sets.ImmutableSet):
+                      # Py2K
+                      sets.ImmutableSet
+                      # end Py2K
+                      ):
             is_(util.duck_type_collection(type_), None)
             instance = type_()
             is_(util.duck_type_collection(instance), None)
-    # end Py2K
 
 class ArgInspectionTest(TestBase):
     def test_get_cls_kwargs(self):

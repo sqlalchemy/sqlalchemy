@@ -529,7 +529,11 @@ class CollectionAdapter(object):
         if getattr(obj, '_sa_adapter', None) is not None:
             return getattr(obj, '_sa_adapter')
         elif setting_type == dict:
+            # Py3K
+            #return obj.values()
+            # Py2K
             return getattr(obj, 'itervalues', getattr(obj, 'values'))()
+            # end Py2K
         else:
             return iter(obj)
 
@@ -561,7 +565,9 @@ class CollectionAdapter(object):
 
     def __iter__(self):
         """Iterate over entities in the collection."""
-        return getattr(self._data(), '_sa_iterator')()
+        
+        # Py3K requires iter() here
+        return iter(getattr(self._data(), '_sa_iterator')())
 
     def __len__(self):
         """Count entities in the collection."""
@@ -1321,9 +1327,14 @@ class InstrumentedSet(set):
 class InstrumentedDict(dict):
     """An instrumented version of the built-in dict."""
 
+    # Py3K
+    #__instrumentation__ = {
+    #    'iterator': 'values', }
+    # Py2K
     __instrumentation__ = {
         'iterator': 'itervalues', }
-
+    # end Py2K
+    
 __canned_instrumentation = {
     list: InstrumentedList,
     set: InstrumentedSet,
@@ -1340,8 +1351,13 @@ __interfaces = {
           'iterator': '__iter__',
           '_decorators': _set_decorators(), },
     # decorators are required for dicts and object collections.
+    # Py3K
+    #dict: {'iterator': 'values',
+    #       '_decorators': _dict_decorators(), },
+    # Py2K
     dict: {'iterator': 'itervalues',
            '_decorators': _dict_decorators(), },
+    # end Py2K
     # < 0.4 compatible naming, deprecated- use decorators instead.
     None: {}
     }
