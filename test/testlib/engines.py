@@ -154,16 +154,18 @@ def utf8_engine(url=None, options=None):
 
     return testing_engine(url, options)
 
-def mock_engine(db=None):
+def mock_engine(db=None, dialect_name=None):
     """Provides a mocking engine based on the current testing.db."""
     
     from sqlalchemy import create_engine
     
-    dbi = db or config.db
+    if not dialect_name:
+        dbi = db or config.db
+        dialect_name = dbi.name
     buffer = []
     def executor(sql, *a, **kw):
         buffer.append(sql)
-    engine = create_engine(dbi.name + '://',
+    engine = create_engine(dialect_name + '://',
                            strategy='mock', executor=executor)
     assert not hasattr(engine, 'mock')
     engine.mock = buffer

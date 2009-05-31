@@ -1,5 +1,5 @@
 import testenv; testenv.configure_for_tests()
-from sqlalchemy.schema import DDL
+from sqlalchemy.schema import DDL, CheckConstraint, AddConstraint, DropConstraint
 from sqlalchemy import create_engine
 from testlib.sa import MetaData, Table, Column, Integer, String
 import testlib.sa as tsa
@@ -230,7 +230,40 @@ class DDLExecutionTest(TestBase):
         assert 'klptzyxm' not in strings
         assert 'xyzzy' in strings
         assert 'fnord' in strings
+    
+    def test_conditional_constraint(self):
+        metadata, users, engine = self.metadata, self.users, self.engine
+        nonpg_mock = engines.mock_engine(dialect_name='sqlite')
+        pg_mock = engines.mock_engine(dialect_name='postgres')
+        
+        constraint = CheckConstraint('a < b',name="my_test_constraint", table=users)
+        
+        AddConstraint(constraint, on='postgres').execute_at("after-create", users)
+        DropConstraint(constraint, on='postgres').execute_at("before-drop", users)
+        
+        # TODO: need to figure out how to achieve
+        # finer grained control of the DDL process in a
+        # consistent way.
+        # Constraint should get a new flag that is not part of the constructor:
+        # "manual_ddl" or similar.  The flag is public but is normally 
+        # set automatically by DDLElement.execute_at(), so that the
+        # remove() step here is not needed.
+        users.constraints.remove(constraint)
+        
+        metadata.create_all(bind=nonpg_mock)
+        strings = " ".join(str(x) for x in nonpg_mock.mock)
+        assert "my_test_constraint" not in strings
+        metadata.drop_all(bind=nonpg_mock)
+        strings = " ".join(str(x) for x in nonpg_mock.mock)
+        assert "my_test_constraint" not in strings
 
+        metadata.create_all(bind=pg_mock)
+        strings = " ".join(str(x) for x in pg_mock.mock)
+        assert "my_test_constraint" in strings
+        metadata.drop_all(bind=pg_mock)
+        strings = " ".join(str(x) for x in pg_mock.mock)
+        assert "my_test_constraint" in strings
+        
     def test_metadata(self):
         metadata, engine = self.metadata, self.engine
         DDL('mxyzptlk').execute_at('before-create', metadata)
@@ -295,7 +328,6 @@ class DDLTest(TestBase, AssertsCompiledSQL):
 
     def test_tokens(self):
         m = MetaData()
-        bind = self.mock_engine()
         sane_alone = Table('t', m, Column('id', Integer))
         sane_schema = Table('t', m, Column('id', Integer), schema='s')
         insane_alone = Table('t t', m, Column('id', Integer))
@@ -303,7 +335,7 @@ class DDLTest(TestBase, AssertsCompiledSQL):
 
         ddl = DDL('%(schema)s-%(table)s-%(fullname)s')
 
-        dialect = bind.dialect
+        dialect = testing.db.dialect
         self.assert_compile(ddl.against(sane_alone), '-t-t', dialect=dialect)
         self.assert_compile(ddl.against(sane_schema), 's-t-s.t', dialect=dialect)
         self.assert_compile(ddl.against(insane_alone), '-"t t"-"t t"', dialect=dialect)

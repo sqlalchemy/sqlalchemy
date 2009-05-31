@@ -586,6 +586,7 @@ class Compiled(object):
 
         raise NotImplementedError()
 
+    @property
     def params(self):
         """Return the bind params for this compiled object."""
         return self.construct_params()

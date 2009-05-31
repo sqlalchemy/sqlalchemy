@@ -51,7 +51,7 @@ class SchemaGenerator(DDLBase):
             self.traverse_single(table)
         if self.dialect.supports_alter:
             for alterable in self.find_alterables(collection):
-                self.connection.execute(schema.AddForeignKey(alterable))
+                self.connection.execute(schema.AddConstraint(alterable))
 
     def visit_table(self, table):
         for listener in table.ddl_listeners['before-create']:
@@ -98,7 +98,7 @@ class SchemaDropper(DDLBase):
         collection = [t for t in reversed(sql_util.sort_tables(tables)) if self._can_drop(t)]
         if self.dialect.supports_alter:
             for alterable in self.find_alterables(collection):
-                self.connection.execute(schema.DropForeignKey(alterable))
+                self.connection.execute(schema.DropConstraint(alterable))
         for table in collection:
             self.traverse_single(table)
 

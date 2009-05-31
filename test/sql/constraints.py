@@ -6,6 +6,7 @@ from testlib import config, engines
 from sqlalchemy.engine import ddl
 from testlib.testing import eq_
 from testlib.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
+from sqlalchemy.dialects.postgres import base as postgres
 
 class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
@@ -200,7 +201,7 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         )
 
     
-class ConstraintCompilationTest(TestBase):
+class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
 
     def _test_deferrable(self, constraint_factory):
         t = Table('tbl', MetaData(),
@@ -253,9 +254,10 @@ class ConstraintCompilationTest(TestBase):
                          ForeignKey('tbl.a', deferrable=True,
                                     initially='DEFERRED')))
 
-        sql = str(schema.CreateTable(t).compile(bind=testing.db))
-        assert 'DEFERRABLE' in sql
-        assert 'INITIALLY DEFERRED' in sql
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl (a INTEGER, b INTEGER, FOREIGN KEY(b) REFERENCES tbl (a) DEFERRABLE INITIALLY DEFERRED)",
+        )
 
     def test_deferrable_unique(self):
         factory = lambda **kw: UniqueConstraint('b', **kw)
@@ -272,10 +274,71 @@ class ConstraintCompilationTest(TestBase):
                          CheckConstraint('a < b',
                                          deferrable=True,
                                          initially='DEFERRED')))
-        sql = str(schema.CreateTable(t).compile(bind=testing.db))
-        assert 'DEFERRABLE' in sql
-        assert 'INITIALLY DEFERRED' in sql
+        
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl (a INTEGER, b INTEGER  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
+        )
+    
+    def test_add_drop_constraint(self):
+        m = MetaData()
+        
+        t = Table('tbl', m,
+                  Column('a', Integer),
+                  Column('b', Integer)
+        )
+        
+        t2 = Table('t2', m,
+                Column('a', Integer),
+                Column('b', Integer)
+        )
+        
+        constraint = CheckConstraint('a < b',name="my_test_constraint", deferrable=True,initially='DEFERRED', table=t)
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+        )
 
+        self.assert_compile(
+            schema.DropConstraint(constraint),
+            "ALTER TABLE tbl DROP CONSTRAINT my_test_constraint"
+        )
 
+        constraint = ForeignKeyConstraint(["b"], ["t2.a"])
+        t.append_constraint(constraint)
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD FOREIGN KEY(b) REFERENCES t2 (a)"
+        )
+
+        constraint = ForeignKeyConstraint([t.c.a], [t2.c.b])
+        t.append_constraint(constraint)
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD FOREIGN KEY(a) REFERENCES t2 (b)"
+        )
+
+        constraint = UniqueConstraint("a", "b", name="uq_cst")
+        t2.append_constraint(constraint)
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE t2 ADD CONSTRAINT uq_cst  UNIQUE (a, b)"
+        )
+        
+        constraint = UniqueConstraint(t2.c.a, t2.c.b, name="uq_cs2")
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE t2 ADD CONSTRAINT uq_cs2  UNIQUE (a, b)"
+        )
+        
+        assert t.c.a.primary_key is False
+        constraint = PrimaryKeyConstraint(t.c.a)
+        assert t.c.a.primary_key is True
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD PRIMARY KEY (a)"
+        )
+    
+        
 if __name__ == "__main__":
     testenv.main()

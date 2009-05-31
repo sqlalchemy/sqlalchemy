@@ -13,10 +13,40 @@
       create_engine(... isolation_level="..."); available on
       postgresql and sqlite. [ticket:443]
 
+
 - schema
-    - metadata.connect() and threadlocalmetadata.connect() have been removed.
-    - new CreateTable,DropTable,CreateSequence,DropSequence, etc.
-     
+    - deprecated metadata.connect() and threadlocalmetadata.connect() have been 
+      removed - send the "bind" attribute to bind a metadata.
+    - deprecated metadata.table_iterator() method removed (use sorted_tables)
+    - the "metadata" argument is removed from DefaultGenerator and subclasses.
+    - Removed public mutability from Index and Constraint objects:
+        - ForeignKeyConstraint.append_element()
+        - Index.append_column()
+        - UniqueConstraint.append_column()
+        - PrimaryKeyConstraint.add()
+        - PrimaryKeyConstraint.remove()
+      These should be constructed declaratively (i.e. in one construction).
+    - UniqueConstraint, Index, PrimaryKeyConstraint all accept lists
+      of column names or column objects as arguments.
+    - Other removed things:
+        - Table.key (no idea what this was for)
+        - Table.primary_key is not assignable - use table.append_constraint(PrimaryKeyConstraint(...))
+        - Column.bind       (get via column.table.bind)
+        - Column.metadata   (get via column.table.metadata)
+        
+- DDL
+    - the DDL() system has been greatly expanded:
+        - CreateTable()
+        - DropTable()
+        - AddConstraint()
+        - DropConstraint()
+        - CreateIndex()
+        - DropIndex()
+        - CreateSequence()
+        - DropSequence()
+        - these support "on" and "execute-at()" just like
+          plain DDL() does.
+    
 - dialect refactor
     - the "owner" keyword argument is removed from Table.  Use "schema" to 
       represent any namespaces to be prepended to the table name.

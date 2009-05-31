@@ -733,19 +733,6 @@ class FBCompiler(sql.compiler.SQLCompiler):
 class FBSchemaGenerator(sql.compiler.SchemaGenerator):
     """Firebird syntactic idiosincrasies"""
 
-    def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column)
-        colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
-
-        default = self.get_column_default_string(column)
-        if default is not None:
-            colspec += " DEFAULT " + default
-
-        if not column.nullable or column.primary_key:
-            colspec += " NOT NULL"
-
-        return colspec
-
     def visit_sequence(self, sequence):
         """Generate a ``CREATE GENERATOR`` statement for the sequence."""
 

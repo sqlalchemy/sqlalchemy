@@ -780,6 +780,9 @@ class DDLCompiler(engine.Compiled):
     @property
     def preparer(self):
         return self.dialect.identifier_preparer
+
+    def construct_params(self, params=None):
+        return None
         
     def visit_ddl(self, ddl, **kwargs):
         # table events can substitute table and schema name
@@ -819,16 +822,21 @@ class DDLCompiler(engine.Compiled):
             text += "\t" + self.get_column_specification(column, first_pk=column.primary_key and not first_pk)
             if column.primary_key:
                 first_pk = True
-            for constraint in column.constraints:
-                text += self.process(constraint)
+            const = " ".join(self.process(constraint) for constraint in column.constraints)
+            if const:
+                text += " " + const
 
         # On some DB order is significant: visit PK first, then the
         # other constraints (engine.ReflectionTest.testbasic failed on FB2)
         if table.primary_key:
-            text += self.process(table.primary_key)
-
-        for constraint in [c for c in table.constraints if c is not table.primary_key]:
-            text += self.process(constraint)
+            text += ", \n\t" + self.process(table.primary_key)
+        
+        const = ", \n\t".join(
+                        self.process(constraint) for constraint in table.constraints if constraint is not table.primary_key
+                        and (not self.dialect.supports_alter or not getattr(constraint, 'use_alter', False))
+                )
+        if const:
+            text += ", \n\t" + const
 
         text += "\n)%s\n\n" % self.post_create_table(table)
         return text
@@ -836,15 +844,6 @@ class DDLCompiler(engine.Compiled):
     def visit_drop_table(self, drop):
         return "\nDROP TABLE " + self.preparer.format_table(drop.element)
         
-    def visit_add_foreignkey(self, add):
-        return "ALTER TABLE %s ADD " % self.preparer.format_table(add.element.table) + \
-            self.define_foreign_key(add.element)
-
-    def visit_drop_foreignkey(self, drop):
-        return "ALTER TABLE %s DROP CONSTRAINT %s" % (
-            self.preparer.format_table(drop.element.table),
-            self.preparer.format_constraint(drop.element))
-
     def visit_create_index(self, create):
         index = create.element
         preparer = self.preparer
@@ -862,8 +861,29 @@ class DDLCompiler(engine.Compiled):
         index = drop.element
         return "\nDROP INDEX " + self.preparer.quote(self._validate_identifier(index.name, False), index.quote)
 
-    def get_column_specification(self, column, first_pk=False):
-        raise NotImplementedError()
+    def visit_add_constraint(self, create):
+        preparer = self.preparer
+        return "ALTER TABLE %s ADD %s" % (
+            self.preparer.format_table(create.element.table),
+            self.process(create.element)
+        )
+        
+    def visit_drop_constraint(self, drop):
+        preparer = self.preparer
+        return "ALTER TABLE %s DROP CONSTRAINT %s" % (
+            self.preparer.format_table(drop.element.table),
+            self.preparer.format_constraint(drop.element)
+        )
+        
+    def get_column_specification(self, column, **kwargs):
+        colspec = self.preparer.format_column(column) + " " + self.dialect.type_compiler.process(column.type)
+        default = self.get_column_default_string(column)
+        if default is not None:
+            colspec += " DEFAULT " + default
+
+        if not column.nullable:
+            colspec += " NOT NULL"
+        return colspec
 
     def post_create_table(self, table):
         return ''
@@ -896,7 +916,7 @@ class DDLCompiler(engine.Compiled):
             return None
 
     def visit_check_constraint(self, constraint):
-        text = ", \n\t"
+        text = ""
         if constraint.name is not None:
             text += "CONSTRAINT %s " % \
                         self.preparer.format_constraint(constraint)
@@ -912,7 +932,7 @@ class DDLCompiler(engine.Compiled):
     def visit_primary_key_constraint(self, constraint):
         if len(constraint) == 0:
             return ''
-        text = ", \n\t"
+        text = ""
         if constraint.name is not None:
             text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
         text += "PRIMARY KEY "
@@ -922,24 +942,18 @@ class DDLCompiler(engine.Compiled):
         return text
 
     def visit_foreign_key_constraint(self, constraint):
-        if constraint.use_alter and self.dialect.supports_alter:
-            return ''
-        
-        return ", \n\t " + self.define_foreign_key(constraint)
-
-    def define_foreign_key(self, constraint):
         preparer = self.dialect.identifier_preparer
         text = ""
         if constraint.name is not None:
             text += "CONSTRAINT %s " % \
                         preparer.format_constraint(constraint)
-        table = list(constraint.elements)[0].column.table
+        remote_table = list(constraint._elements.values())[0].column.table
         text += "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
             ', '.join(preparer.quote(f.parent.name, f.parent.quote)
-                      for f in constraint.elements),
-            preparer.format_table(table),
+                      for f in constraint._elements.values()),
+            preparer.format_table(remote_table),
             ', '.join(preparer.quote(f.column.name, f.column.quote)
-                      for f in constraint.elements)
+                      for f in constraint._elements.values())
         )
         if constraint.ondelete is not None:
             text += " ON DELETE %s" % constraint.ondelete
@@ -949,7 +963,7 @@ class DDLCompiler(engine.Compiled):
         return text
 
     def visit_unique_constraint(self, constraint):
-        text = ", \n\t"
+        text = ""
         if constraint.name is not None:
             text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
         text += " UNIQUE (%s)" % (', '.join(self.preparer.quote(c.name, c.quote) for c in constraint))

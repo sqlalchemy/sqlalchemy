@@ -1088,6 +1088,11 @@ class ClauseElement(Visitable):
     def self_group(self, against=None):
         return self
 
+    # TODO: remove .bind as a method from the root ClauseElement.
+    # we should only be deriving binds from FromClause elements
+    # and certain SchemaItem subclasses.
+    # the "search_for_bind" functionality can still be used by
+    # execute(), however.
     @property
     def bind(self):
         """Returns the Engine or Connection to which this ClauseElement is bound, or None if none found."""

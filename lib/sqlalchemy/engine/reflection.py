@@ -302,10 +302,13 @@ class Inspector(object):
             raise exc.NoSuchTableError(table.name)
 
         # Primary keys
-        for pk in self.get_primary_keys(table_name, schema, **tblkw):
-            if pk in table.c:
-                col = table.c[pk]
-                table.primary_key.add(col)
+        primary_key_constraint = sa_schema.PrimaryKeyConstraint(*[
+            table.c[pk] for pk in self.get_primary_keys(table_name, schema, **tblkw)
+            if pk in table.c
+        ])
+
+        table.append_constraint(primary_key_constraint)
+
         # Foreign keys
         fkeys = self.get_foreign_keys(table_name, schema, **tblkw)
         for fkey_d in fkeys:

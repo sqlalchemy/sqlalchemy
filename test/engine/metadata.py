@@ -82,7 +82,7 @@ class MetaDataTest(TestBase, ComparesTables):
 
         meta.create_all(testing.db)
         try:
-            for test, has_constraints in ((test_to_metadata, True), (test_pickle, True), (test_pickle_via_reflect, False)):
+            for test, has_constraints in ((test_to_metadata, True), (test_pickle, True),(test_pickle_via_reflect, False)):
                 table_c, table2_c = test()
                 self.assert_tables_equal(table, table_c)
                 self.assert_tables_equal(table2, table2_c)

@@ -651,7 +651,7 @@ class AssertsCompiledSQL(object):
 
         print "\nSQL String:\n" + str(c) + repr(getattr(c, 'params', {}))
 
-        cc = re.sub(r'\n', '', str(c))
+        cc = re.sub(r'[\n\t]', '', str(c))
 
         self.assertEquals(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
