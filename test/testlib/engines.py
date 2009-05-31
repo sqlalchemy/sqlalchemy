@@ -131,7 +131,11 @@ def testing_engine(url=None, options=None):
     listeners.append(testing_reaper)
 
     engine = create_engine(url, **options)
-
+    
+    # may want to call this, results
+    # in first-connect initializers
+    #engine.connect()
+    
     return engine
 
 def utf8_engine(url=None, options=None):

@@ -328,7 +328,7 @@ class DDLTest(TestBase, AssertsCompiledSQL):
 
         ddl = DDL('%(schema)s-%(table)s-%(fullname)s')
 
-        dialect = testing.db.dialect
+        dialect = self.mock_engine().dialect
         self.assert_compile(ddl.against(sane_alone), '-t-t', dialect=dialect)
         self.assert_compile(ddl.against(sane_schema), 's-t-s.t', dialect=dialect)
         self.assert_compile(ddl.against(insane_alone), '-"t t"-"t t"', dialect=dialect)

@@ -1466,10 +1466,12 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                     (self.preparer.quote(self._validate_identifier(index.name, False), index.quote),
                      self.preparer.format_table(index.table))
 
-    def visit_drop_foreignkey(self, drop):
+    def visit_drop_constraint(self, drop):
         constraint = drop.element
-        return "ALTER TABLE %s DROP FOREIGN KEY %s" % \
+        is_fk = isinstance(constraint, sa_schema.ForeignKeyConstraint)
+        return "ALTER TABLE %s DROP %s%s" % \
                     (self.preparer.format_table(constraint.table),
+                    is_fk and "FOREIGN KEY " or "",
                      self.preparer.format_constraint(constraint))
 
 class MySQLTypeCompiler(compiler.GenericTypeCompiler):
@@ -1832,6 +1834,7 @@ class MySQLDialect(default.DefaultDialect):
         self._server_casing = self._detect_casing(connection)
         self._server_collations = self._detect_collations(connection)
         self._server_ansiquotes = self._detect_ansiquotes(connection)
+            
         if self._server_ansiquotes:
             self.preparer = MySQLANSIIdentifierPreparer
         else:
@@ -2068,6 +2071,7 @@ class MySQLDialect(default.DefaultDialect):
         row = self._compat_fetchone(
             connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
                                charset=self._connection_charset)
+
         if not row:
             mode = ''
         else:
@@ -2609,7 +2613,7 @@ class MySQLIdentifierPreparer(_MySQLIdentifierPreparer):
 
     def __init__(self, dialect):
         super(MySQLIdentifierPreparer, self).__init__(dialect, initial_quote="`")
-
+        
     def _escape_identifier(self, value):
         return value.replace('`', '``')
 
