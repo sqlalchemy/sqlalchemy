@@ -17,7 +17,9 @@ def suite():
     else:
         doctest_modules = (
             ('sqlalchemy.ext.orderinglist', {'optionflags': doctest.ELLIPSIS}),
+            # Py2K
             ('sqlalchemy.ext.sqlsoup', {})
+            # end Py2K
             )
 
     alltests = unittest.TestSuite()

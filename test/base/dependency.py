@@ -28,7 +28,7 @@ class DependencySortTest(TestBase):
         items = set()
         def assert_unique(node):
             for item in [i for i in node[1] or [node[0]]]:
-                assert item not in items
+                assert item not in items, str(node)
                 items.add(item)
                 if item in collection:
                     collection.remove(item)
