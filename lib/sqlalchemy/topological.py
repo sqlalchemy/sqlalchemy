@@ -19,6 +19,7 @@ conditions.
 """
 
 from sqlalchemy.exc import CircularDependencyError
+from sqlalchemy import util
 
 __all__ = ['sort', 'sort_with_cycles', 'sort_as_tree']
 
@@ -93,18 +94,14 @@ class _EdgeCollection(object):
     """A collection of directed edges."""
 
     def __init__(self):
-        self.parent_to_children = {}
-        self.child_to_parents = {}
+        self.parent_to_children = util.defaultdict(set)
+        self.child_to_parents = util.defaultdict(set)
 
     def add(self, edge):
         """Add an edge to this collection."""
 
-        (parentnode, childnode) = edge
-        if parentnode not in self.parent_to_children:
-            self.parent_to_children[parentnode] = set()
+        parentnode, childnode = edge
         self.parent_to_children[parentnode].add(childnode)
-        if childnode not in self.child_to_parents:
-            self.child_to_parents[childnode] = set()
         self.child_to_parents[childnode].add(parentnode)
         parentnode.dependencies.add(childnode)
 
@@ -117,13 +114,13 @@ class _EdgeCollection(object):
         (parentnode, childnode) = edge
         self.parent_to_children[parentnode].remove(childnode)
         self.child_to_parents[childnode].remove(parentnode)
-        if len(self.child_to_parents[childnode]) == 0:
+        if not self.child_to_parents[childnode]:
             return childnode
         else:
             return None
 
     def has_parents(self, node):
-        return node in self.child_to_parents and len(self.child_to_parents[node]) > 0
+        return node in self.child_to_parents and bool(self.child_to_parents[node])
 
     def edges_by_parent(self, node):
         if node in self.parent_to_children:

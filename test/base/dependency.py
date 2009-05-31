@@ -24,16 +24,16 @@ class DependencySortTest(TestBase):
             assert_tuple(list(tuple), node)
 
         if collection is None:
-            collection = []
+            collection = set()
         items = set()
-        def assert_unique(node):
-            for item in [i for i in node[1] or [node[0]]]:
-                assert item not in items
+        def assert_unique(n):
+            for item in [i for i in n[1] or [n[0]]]:
+                assert item not in items, node
                 items.add(item)
                 if item in collection:
                     collection.remove(item)
-            for c in node[2]:
-                assert_unique(c)
+            for item in n[2]:
+                assert_unique(item)
         assert_unique(node)
         assert len(collection) == 0
 
@@ -171,8 +171,10 @@ class DependencySortTest(TestBase):
         self.assert_sort(tuples, head)
 
     def testcircular3(self):
-        nodes = {}
-        tuples = [('Question', 'Issue'), ('ProviderService', 'Issue'), ('Provider', 'Question'), ('Question', 'Provider'), ('ProviderService', 'Question'), ('Provider', 'ProviderService'), ('Question', 'Answer'), ('Issue', 'Question')]
+        question, issue, providerservice, answer, provider = "Question", "Issue", "ProviderService", "Answer", "Provider"
+
+        tuples = [(question, issue), (providerservice, issue), (provider, question), (question, provider), (providerservice, question), (provider, providerservice), (question, answer), (issue, question)]
+
         head = topological.sort_as_tree(tuples, [], with_cycles=True)
         self.assert_sort(tuples, head)
 
