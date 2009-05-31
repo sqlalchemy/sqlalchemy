@@ -13,25 +13,25 @@ class DDLEventTest(TestBase):
             self.schema_item = schema_item
             self.bind = bind
 
-        def before_create(self, action, schema_item, bind):
+        def before_create(self, action, schema_item, bind, **kw):
             assert self.state is None
             assert schema_item is self.schema_item
             assert bind is self.bind
             self.state = action
 
-        def after_create(self, action, schema_item, bind):
+        def after_create(self, action, schema_item, bind, **kw):
             assert self.state in ('before-create', 'skipped')
             assert schema_item is self.schema_item
             assert bind is self.bind
             self.state = action
 
-        def before_drop(self, action, schema_item, bind):
+        def before_drop(self, action, schema_item, bind, **kw):
             assert self.state is None
             assert schema_item is self.schema_item
             assert bind is self.bind
             self.state = action
 
-        def after_drop(self, action, schema_item, bind):
+        def after_drop(self, action, schema_item, bind, **kw):
             assert self.state in ('before-drop', 'skipped')
             assert schema_item is self.schema_item
             assert bind is self.bind
@@ -237,18 +237,11 @@ class DDLExecutionTest(TestBase):
         pg_mock = engines.mock_engine(dialect_name='postgres')
         
         constraint = CheckConstraint('a < b',name="my_test_constraint", table=users)
-        
+
+        # by placing the constraint in an Add/Drop construct,
+        # the 'inline_ddl' flag is set to False
         AddConstraint(constraint, on='postgres').execute_at("after-create", users)
         DropConstraint(constraint, on='postgres').execute_at("before-drop", users)
-        
-        # TODO: need to figure out how to achieve
-        # finer grained control of the DDL process in a
-        # consistent way.
-        # Constraint should get a new flag that is not part of the constructor:
-        # "manual_ddl" or similar.  The flag is public but is normally 
-        # set automatically by DDLElement.execute_at(), so that the
-        # remove() step here is not needed.
-        users.constraints.remove(constraint)
         
         metadata.create_all(bind=nonpg_mock)
         strings = " ".join(str(x) for x in nonpg_mock.mock)

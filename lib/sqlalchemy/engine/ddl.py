@@ -14,19 +14,6 @@ class DDLBase(schema.SchemaVisitor):
     def __init__(self, connection):
         self.connection = connection
 
-    def find_alterables(self, tables):
-        alterables = []
-        class FindAlterables(schema.SchemaVisitor):
-            def visit_foreign_key_constraint(self, constraint):
-                if constraint.use_alter and constraint.table in tables:
-                    alterables.append(constraint)
-        findalterables = FindAlterables()
-        for table in tables:
-            for c in table.constraints:
-                findalterables.traverse(c)
-        return alterables
-
-
 class SchemaGenerator(DDLBase):
     def __init__(self, dialect, connection, checkfirst=False, tables=None, **kwargs):
         super(SchemaGenerator, self).__init__(connection, **kwargs)
@@ -47,11 +34,15 @@ class SchemaGenerator(DDLBase):
         else:
             tables = metadata.tables.values()
         collection = [t for t in sql_util.sort_tables(tables) if self._can_create(t)]
+        
+        for listener in metadata.ddl_listeners['before-create']:
+            listener('before-create', metadata, self.connection, tables=collection)
+            
         for table in collection:
             self.traverse_single(table)
-        if self.dialect.supports_alter:
-            for alterable in self.find_alterables(collection):
-                self.connection.execute(schema.AddConstraint(alterable))
+
+        for listener in metadata.ddl_listeners['after-create']:
+            listener('after-create', metadata, self.connection, tables=collection)
 
     def visit_table(self, table):
         for listener in table.ddl_listeners['before-create']:
@@ -96,11 +87,15 @@ class SchemaDropper(DDLBase):
         else:
             tables = metadata.tables.values()
         collection = [t for t in reversed(sql_util.sort_tables(tables)) if self._can_drop(t)]
-        if self.dialect.supports_alter:
-            for alterable in self.find_alterables(collection):
-                self.connection.execute(schema.DropConstraint(alterable))
+
+        for listener in metadata.ddl_listeners['before-drop']:
+            listener('before-drop', metadata, self.connection, tables=collection)
+        
         for table in collection:
             self.traverse_single(table)
+
+        for listener in metadata.ddl_listeners['after-drop']:
+            listener('after-drop', metadata, self.connection, tables=collection)
 
     def _can_drop(self, table):
         self.dialect.validate_identifier(table.name)

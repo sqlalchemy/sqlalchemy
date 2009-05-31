@@ -833,6 +833,7 @@ class DDLCompiler(engine.Compiled):
         
         const = ", \n\t".join(
                         self.process(constraint) for constraint in table.constraints if constraint is not table.primary_key
+                        and constraint.inline_ddl
                         and (not self.dialect.supports_alter or not getattr(constraint, 'use_alter', False))
                 )
         if const:

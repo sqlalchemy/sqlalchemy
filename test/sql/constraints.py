@@ -280,6 +280,30 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
             "CREATE TABLE tbl (a INTEGER, b INTEGER  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
         )
     
+    def test_use_alter(self):
+        m = MetaData()
+        t = Table('t', m,
+                  Column('a', Integer),
+        )
+        
+        t2 = Table('t2', m,
+                Column('a', Integer, ForeignKey('t.a', use_alter=True, name='fk_ta')),
+        )
+
+        e = engines.mock_engine(dialect_name='postgres')
+        m.create_all(e)
+        m.drop_all(e)
+
+        e.assert_sql([
+            "CREATE TABLE t (a INTEGER)",
+            "CREATE TABLE t2 (a INTEGER)",
+            "ALTER TABLE t2 ADD CONSTRAINT fk_ta FOREIGN KEY(a) REFERENCES t (a)",
+            "ALTER TABLE t2 DROP CONSTRAINT fk_ta",
+            "DROP TABLE t2",
+            "DROP TABLE t",
+        ])
+        
+        
     def test_add_drop_constraint(self):
         m = MetaData()
         

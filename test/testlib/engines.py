@@ -2,6 +2,7 @@ import sys, types, weakref
 from collections import deque
 from testlib import config
 from testlib.compat import _function_named, callable
+import re
 
 class ConnectionKiller(object):
     def __init__(self):
@@ -154,21 +155,35 @@ def utf8_engine(url=None, options=None):
 
     return testing_engine(url, options)
 
-def mock_engine(db=None, dialect_name=None):
-    """Provides a mocking engine based on the current testing.db."""
+def mock_engine(dialect_name=None):
+    """Provides a mocking engine based on the current testing.db.
+    
+    This is normally used to test DDL generation flow as emitted
+    by an Engine.
+    
+    It should not be used in other cases, as assert_compile() and
+    assert_sql_execution() are much better choices with fewer 
+    moving parts.
+    
+    """
     
     from sqlalchemy import create_engine
     
     if not dialect_name:
-        dbi = db or config.db
-        dialect_name = dbi.name
+        dialect_name = config.db.name
+
     buffer = []
     def executor(sql, *a, **kw):
         buffer.append(sql)
+    def assert_sql(stmts):
+        recv = [re.sub(r'[\n\t]', '', str(s)) for s in buffer]
+        assert  recv == stmts, recv
+        
     engine = create_engine(dialect_name + '://',
                            strategy='mock', executor=executor)
     assert not hasattr(engine, 'mock')
     engine.mock = buffer
+    engine.assert_sql = assert_sql
     return engine
 
 class ReplayableSession(object):

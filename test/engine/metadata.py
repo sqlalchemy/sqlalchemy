@@ -1,10 +1,10 @@
 import testenv; testenv.configure_for_tests()
 import pickle
-from sqlalchemy import MetaData
 from testlib.sa import Table, Column, Integer, String, UniqueConstraint, \
-     CheckConstraint, ForeignKey
+     CheckConstraint, ForeignKey, MetaData
+from sqlalchemy import schema
 import testlib.sa as tsa
-from testlib import TestBase, ComparesTables, testing, engines
+from testlib import TestBase, ComparesTables, AssertsCompiledSQL, testing, engines
 from testlib.testing import eq_
 
 class MetaDataTest(TestBase, ComparesTables):
@@ -142,23 +142,24 @@ class MetaDataTest(TestBase, ComparesTables):
                           MetaData(testing.db), autoload=True)
 
 
-class TableOptionsTest(TestBase):
-    def setUp(self):
-        self.engine = engines.mock_engine()
-        self.metadata = MetaData(self.engine)
-
+class TableOptionsTest(TestBase, AssertsCompiledSQL):
     def test_prefixes(self):
-        table1 = Table("temporary_table_1", self.metadata,
+        table1 = Table("temporary_table_1", MetaData(),
                       Column("col1", Integer),
                       prefixes = ["TEMPORARY"])
-        table1.create()
-        assert [str(x) for x in self.engine.mock if 'CREATE TEMPORARY TABLE' in str(x)]
-        del self.engine.mock[:]
-        table2 = Table("temporary_table_2", self.metadata,
+                      
+        self.assert_compile(
+            schema.CreateTable(table1), 
+            "CREATE TEMPORARY TABLE temporary_table_1 (col1 INTEGER)"
+        )
+
+        table2 = Table("temporary_table_2", MetaData(),
                       Column("col1", Integer),
                       prefixes = ["VIRTUAL"])
-        table2.create()
-        assert [str(x) for x in self.engine.mock if 'CREATE VIRTUAL TABLE' in str(x)]
+        self.assert_compile(
+          schema.CreateTable(table2), 
+          "CREATE VIRTUAL TABLE temporary_table_2 (col1 INTEGER)"
+        )
 
 if __name__ == '__main__':
     testenv.main()

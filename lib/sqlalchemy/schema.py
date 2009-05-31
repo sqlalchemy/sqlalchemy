@@ -773,7 +773,10 @@ class ForeignKey(SchemaItem):
     def __init__(self, column, constraint=None, use_alter=False, name=None, onupdate=None, 
                     ondelete=None, deferrable=None, initially=None, link_to_name=False):
         """
-        Construct a column-level FOREIGN KEY.
+        Construct a column-level FOREIGN KEY.  
+        
+        The :class:`ForeignKey` object when constructed generates a :class:`ForeignKeyConstraint`
+        which is associated with the parent :class:`Table` object's collection of constraints.
 
         :param column: A single target column for the key relationship.  A :class:`Column`
           object or a column name as a string: ``tablename.columnkey`` or
@@ -805,10 +808,10 @@ class ForeignKey(SchemaItem):
         :param link_to_name: if True, the string name given in ``column`` is the rendered
           name of the referenced column, not its locally assigned ``key``.
           
-        :param use_alter: If True, do not emit this key as part of the CREATE TABLE
-          definition.  Instead, use ALTER TABLE after table creation to add
-          the key.  Useful for circular dependencies.
-          
+        :param use_alter: passed to the underlying :class:`ForeignKeyConstraint` to indicate the
+          constraint should be generated/dropped externally from the CREATE TABLE/
+          DROP TABLE statement.  See that classes' constructor for details.
+        
         """
 
         self._colspec = column
@@ -971,7 +974,7 @@ class DefaultGenerator(SchemaItem):
 
     __visit_name__ = 'default_generator'
 
-    def __init__(self, for_update=False, metadata=None):
+    def __init__(self, for_update=False):
         self.for_update = for_update
 
     def _set_parent(self, column):
@@ -989,8 +992,10 @@ class DefaultGenerator(SchemaItem):
     @property
     def bind(self):
         """Return the connectable associated with this default."""
-
-        return self.column.table.bind
+        if getattr(self, 'column', None):
+            return self.column.table.bind
+        else:
+            return None
 
     def __repr__(self):
         return "DefaultGenerator()"
@@ -1060,15 +1065,15 @@ class Sequence(DefaultGenerator):
     __visit_name__ = 'sequence'
 
     def __init__(self, name, start=None, increment=None, schema=None,
-                 optional=False, quote=None, **kwargs):
-        super(Sequence, self).__init__(**kwargs)
+                 optional=False, quote=None, metadata=None, for_update=False):
+        super(Sequence, self).__init__(for_update=for_update)
         self.name = name
         self.start = start
         self.increment = increment
         self.optional = optional
         self.quote = quote
         self.schema = schema
-        self.kwargs = kwargs
+        self.metadata = metadata
 
     def __repr__(self):
         return "Sequence(%s)" % ', '.join(
@@ -1079,7 +1084,15 @@ class Sequence(DefaultGenerator):
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
         column.sequence = self
-
+        self.metadata = column.table.metadata
+        
+    @property
+    def bind(self):
+        if self.metadata:
+            return self.metadata.bind
+        else:
+            return None
+        
     def create(self, bind=None, checkfirst=True):
         """Creates this sequence in the database."""
 
@@ -1133,7 +1146,7 @@ class Constraint(SchemaItem):
 
     __visit_name__ = 'constraint'
 
-    def __init__(self, name=None, deferrable=None, initially=None):
+    def __init__(self, name=None, deferrable=None, initially=None, inline_ddl=True):
         """Create a SQL constraint.
 
         name
@@ -1146,11 +1159,21 @@ class Constraint(SchemaItem):
         initially
           Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
+          
+        inline_ddl
+          if True, DDL for this Constraint will be generated within the span of a
+          CREATE TABLE or DROP TABLE statement, when the associated table's
+          DDL is generated.  if False, no DDL is issued within that process.
+          Instead, it is expected that an AddConstraint or DropConstraint 
+          construct will be used to issue DDL for this Contraint.
+          The AddConstraint/DropConstraint constructs set this flag automatically
+          as well.
         """
 
         self.name = name
         self.deferrable = deferrable
         self.initially = initially
+        self.inline_ddl = inline_ddl
 
     @property
     def table(self):
@@ -1275,7 +1298,8 @@ class ForeignKeyConstraint(Constraint):
     """
     __visit_name__ = 'foreign_key_constraint'
 
-    def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, deferrable=None, initially=None, use_alter=False, link_to_name=False, table=None):
+    def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, 
+                    deferrable=None, initially=None, use_alter=False, link_to_name=False, table=None):
         """Construct a composite-capable FOREIGN KEY.
 
         :param columns: A sequence of local column names.  The named columns must be defined
@@ -1304,9 +1328,14 @@ class ForeignKeyConstraint(Constraint):
         :param link_to_name: if True, the string name given in ``column`` is the rendered
           name of the referenced column, not its locally assigned ``key``.
 
-        :param use_alter: If True, do not emit this constraint as part of the CREATE TABLE
-          definition.  Instead, use ALTER TABLE after table creation to add
-          the key.  Useful for circular dependencies and conditional constraint generation.
+        :param use_alter: If True, do not emit the DDL for this constraint
+          as part of the CREATE TABLE definition.  Instead, generate it via an 
+          ALTER TABLE statement issued after the full collection of tables have been 
+          created, and drop it via an ALTER TABLE statement before the full collection 
+          of tables are dropped.   This is shorthand for the usage of 
+          :class:`AddConstraint` and :class:`DropConstraint` applied as "after-create"
+          and "before-drop" events on the MetaData object.   This is normally used to
+          generate/drop constraints on objects that are mutually dependent on each other.
           
         """
         super(ForeignKeyConstraint, self).__init__(name, deferrable, initially)
@@ -1339,7 +1368,13 @@ class ForeignKeyConstraint(Constraint):
             if isinstance(col, basestring):
                 col = table.c[col]
             fk._set_parent(col)
-
+            
+        if self.use_alter:
+            def supports_alter(event, schema_item, bind, **kw):
+                return table in set(kw['tables']) and bind.dialect.supports_alter
+            AddConstraint(self, on=supports_alter).execute_at('after-create', table.metadata)
+            DropConstraint(self, on=supports_alter).execute_at('before-drop', table.metadata)
+            
     def copy(self, **kw):
         return ForeignKeyConstraint(
                     [x.parent.name for x in self._elements.values()], 
@@ -1699,12 +1734,7 @@ class MetaData(SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        # TODO!!! the listener stuff here needs to move to engine/ddl.py
-        for listener in self.ddl_listeners['before-create']:
-            listener('before-create', self, bind)
         bind.create(self, checkfirst=checkfirst, tables=tables)
-        for listener in self.ddl_listeners['after-create']:
-            listener('after-create', self, bind)
 
     def drop_all(self, bind=None, tables=None, checkfirst=True):
         """Drop all tables stored in this metadata.
@@ -1727,12 +1757,7 @@ class MetaData(SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        # TODO!!! the listener stuff here needs to move to engine/ddl.py
-        for listener in self.ddl_listeners['before-drop']:
-            listener('before-drop', self, bind)
         bind.drop(self, checkfirst=checkfirst, tables=tables)
-        for listener in self.ddl_listeners['after-drop']:
-            listener('after-drop', self, bind)
 
 class ThreadLocalMetaData(MetaData):
     """A MetaData variant that presents a different ``bind`` in every thread.
@@ -1851,7 +1876,7 @@ class DDLElement(expression.ClauseElement):
         will be executed using the same Connection and transactional context
         as the Table create/drop itself.  The ``.bind`` property of this
         statement is ignored.
-
+        
         event
           One of the events defined in the schema item's ``.ddl_events``;
           e.g. 'before-create', 'after-create', 'before-drop' or 'after-drop'
@@ -1898,10 +1923,10 @@ class DDLElement(expression.ClauseElement):
 
         self.schema_item = schema_item
 
-    def __call__(self, event, schema_item, bind):
+    def __call__(self, event, schema_item, bind, **kw):
         """Execute the DDL as a ddl_listener."""
 
-        if self._should_execute(event, schema_item, bind):
+        if self._should_execute(event, schema_item, bind, **kw):
             return bind.execute(self.against(schema_item))
 
     def _check_ddl_on(self, on):
@@ -1911,13 +1936,13 @@ class DDLElement(expression.ClauseElement):
                 "Expected the name of a database dialect or a callable for "
                 "'on' criteria, got type '%s'." % type(on).__name__)
 
-    def _should_execute(self, event, schema_item, bind):
+    def _should_execute(self, event, schema_item, bind, **kw):
         if self.on is None:
             return True
         elif isinstance(self.on, basestring):
             return self.on == bind.engine.name
         else:
-            return self.on(event, schema_item, bind)
+            return self.on(event, schema_item, bind, **kw)
 
     def bind(self):
         if self._bind:
@@ -1978,7 +2003,8 @@ class DDL(DDLElement):
 
             DDL('something', on='postgres')
 
-          If a callable, it will be invoked with three positional arguments:
+          If a callable, it will be invoked with three positional arguments
+          as well as optional keyword arguments:
 
             event
               The name of the event that has triggered this DDL, such as
@@ -1991,6 +2017,12 @@ class DDL(DDLElement):
             connection
               The ``Connection`` being used for DDL execution
 
+            **kw
+              Keyword arguments which may be sent include:
+                tables - a list of Table objects which are to be created/
+                dropped within a MetaData.create_all() or drop_all() method
+                call.
+              
           If the callable returns a true value, the DDL statement will be
           executed.
 
@@ -2051,7 +2083,7 @@ class _CreateDropBase(DDLElement):
         self._check_ddl_on(on)
         self.on = on
         self.bind = bind
-        
+        element.inline_ddl = False
 
 class CreateTable(_CreateDropBase):
     """Represent a CREATE TABLE statement."""
