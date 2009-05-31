@@ -1,5 +1,6 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
+from sqlalchemy.types import TypeEngine
 from sqlalchemy.sql.expression import ClauseElement, ColumnClause
 from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles
@@ -27,7 +28,35 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             select([MyThingy('x'), MyThingy('y')]).where(MyThingy() == 5),
             "SELECT >>x<<, >>y<< WHERE >>MYTHINGY!<< = :MYTHINGY!_1"
         )
+    
+    def test_types(self):
+        class MyType(TypeEngine):
+            pass
+        
+        @compiles(MyType, 'sqlite')
+        def visit_type(type, compiler, **kw):
+            return "SQLITE_FOO"
 
+        @compiles(MyType, 'postgres')
+        def visit_type(type, compiler, **kw):
+            return "POSTGRES_FOO"
+
+        from sqlalchemy.dialects.sqlite import base as sqlite
+        from sqlalchemy.dialects.postgres import base as postgres
+
+        self.assert_compile(
+            MyType(),
+            "SQLITE_FOO",
+            dialect=sqlite.dialect()
+        )
+
+        self.assert_compile(
+            MyType(),
+            "POSTGRES_FOO",
+            dialect=postgres.dialect()
+        )
+        
+        
     def test_stateful(self):
         class MyThingy(ColumnClause):
             def __init__(self):
