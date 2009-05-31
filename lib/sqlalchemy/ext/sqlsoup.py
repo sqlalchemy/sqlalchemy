@@ -549,7 +549,7 @@ class SqlSoup:
             table = Table(attr, self._metadata, autoload=True, schema=schema or self.schema)
             if not table.primary_key.columns:
                 # Py3K
-                #raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys()))) as ke
+                #raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys()))) from ke
                 # Py2K
                 raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys())))
                 # end Py2K
