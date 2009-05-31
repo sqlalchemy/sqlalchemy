@@ -1228,8 +1228,8 @@ class ColumnCollectionConstraint(Constraint):
         return x in self.columns
 
     def copy(self, **kw):
-        return self.__class__(*self.columns.keys(), 
-                    name=self.name, deferrable=self.deferrable, initially=self.initially)
+        return self.__class__(name=self.name, deferrable=self.deferrable,
+                              initially=self.initially, *self.columns.keys())
 
     def contains_column(self, col):
         return self.columns.contains_column(col)
