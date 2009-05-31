@@ -19,6 +19,7 @@ conditions.
 """
 
 from sqlalchemy.exc import CircularDependencyError
+from sqlalchemy import util
 
 __all__ = ['sort', 'sort_with_cycles', 'sort_as_tree']
 
@@ -93,18 +94,14 @@ class _EdgeCollection(object):
     """A collection of directed edges."""
 
     def __init__(self):
-        self.parent_to_children = {}
-        self.child_to_parents = {}
+        self.parent_to_children = util.defaultdict(set)
+        self.child_to_parents = util.defaultdict(set)
 
     def add(self, edge):
         """Add an edge to this collection."""
 
-        (parentnode, childnode) = edge
-        if parentnode not in self.parent_to_children:
-            self.parent_to_children[parentnode] = set()
+        parentnode, childnode = edge
         self.parent_to_children[parentnode].add(childnode)
-        if childnode not in self.child_to_parents:
-            self.child_to_parents[childnode] = set()
         self.child_to_parents[childnode].add(parentnode)
         parentnode.dependencies.add(childnode)
 
@@ -117,13 +114,13 @@ class _EdgeCollection(object):
         (parentnode, childnode) = edge
         self.parent_to_children[parentnode].remove(childnode)
         self.child_to_parents[childnode].remove(parentnode)
-        if len(self.child_to_parents[childnode]) == 0:
+        if not self.child_to_parents[childnode]:
             return childnode
         else:
             return None
 
     def has_parents(self, node):
-        return node in self.child_to_parents and len(self.child_to_parents[node]) > 0
+        return node in self.child_to_parents and bool(self.child_to_parents[node])
 
     def edges_by_parent(self, node):
         if node in self.parent_to_children:
@@ -166,11 +163,10 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
     for item in list(allitems) + [t[0] for t in tuples] + [t[1] for t in tuples]:
         item_id = id(item)
         if item_id not in nodes:
-            node = _Node(item)
-            nodes[item_id] = node
+            nodes[item_id] = _Node(item)
 
     for t in tuples:
-        id0 = id(t[0])
+        id0, id1 = id(t[0]), id(t[1])
         if t[0] is t[1]:
             if allow_cycles:
                 n = nodes[id0]
@@ -178,7 +174,7 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
             elif not ignore_self_cycles:
                 raise CircularDependencyError("Self-referential dependency detected " + repr(t))
             continue
-        childnode = nodes[id(t[1])]
+        childnode = nodes[id1]
         parentnode = nodes[id0]
         edges.add((parentnode, childnode))
 
@@ -298,8 +294,8 @@ def _find_cycles(edges):
     for parent in edges.get_parents():
         traverse(parent)
 
-    # sets are not hashable, so uniquify with id
-    unique_cycles = dict((id(s), s) for s in cycles.values()).values()
+    unique_cycles = set(tuple(s) for s in cycles.values())
+    
     for cycle in unique_cycles:
         edgecollection = [edge for edge in edges
                           if edge[0] in cycle and edge[1] in cycle]
