@@ -9,6 +9,10 @@ CHANGES
 - orm
     - Fixed bug introduced in 0.5.4 whereby Composite types
       fail when default-holding columns are flushed.
+      
+    - Fixed another 0.5.4 bug whereby mutable attributes (i.e. PickleType)
+      wouldn't be deserialized correctly when the whole object
+      was serialized.  [ticket:1426]
 
 - sql
     - Removed an obscure feature of execute() (including connection,
