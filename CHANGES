@@ -4,7 +4,7 @@
 CHANGES
 =======
 
-0.5.4p3
+0.5.5
 =======
 - orm
     - Fixed bug introduced in 0.5.4 whereby Composite types
