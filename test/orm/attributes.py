@@ -51,17 +51,18 @@ class AttributesTest(_base.ORMTest):
         attributes.register_attribute(MyTest, 'user_id', uselist=False, useobject=False)
         attributes.register_attribute(MyTest, 'user_name', uselist=False, useobject=False)
         attributes.register_attribute(MyTest, 'email_address', uselist=False, useobject=False)
+        attributes.register_attribute(MyTest, 'some_mutable_data', mutable_scalars=True, copy_function=list, compare_function=cmp, uselist=False, useobject=False)
         attributes.register_attribute(MyTest2, 'a', uselist=False, useobject=False)
         attributes.register_attribute(MyTest2, 'b', uselist=False, useobject=False)
         # shouldnt be pickling callables at the class level
         def somecallable(*args):
             return None
-        attr_name = 'mt2'
-        attributes.register_attribute(MyTest, attr_name, uselist = True, trackparent=True, callable_=somecallable, useobject=True)
+        attributes.register_attribute(MyTest, "mt2", uselist = True, trackparent=True, callable_=somecallable, useobject=True)
 
         o = MyTest()
         o.mt2.append(MyTest2())
         o.user_id=7
+        o.some_mutable_data = [1,2,3]
         o.mt2[0].a = 'abcde'
         pk_o = pickle.dumps(o)
 
@@ -100,6 +101,7 @@ class AttributesTest(_base.ORMTest):
         self.assert_(o4.user_id == 7)
         self.assert_(o4.user_name is None)
         self.assert_(o4.email_address is None)
+        self.assert_(o4.some_mutable_data == [1,2,3])
         self.assert_(len(o4.mt2) == 1)
         self.assert_(o4.mt2[0].a == 'abcde')
         self.assert_(o4.mt2[0].b is None)

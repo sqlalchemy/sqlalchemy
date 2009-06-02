@@ -13,7 +13,7 @@ types = __import__('types')
 from sqlalchemy import exc
 
 try:
-    import threading as threading
+    import threading
 except ImportError:
     import dummy_threading as threading
 

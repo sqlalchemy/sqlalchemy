@@ -130,7 +130,8 @@ class InstanceState(object):
                 'load_path':interfaces.serialize_path(self.load_path),
                 'instance': self.obj(),
                 'expired_attributes':self.expired_attributes,
-                'callables': self.callables}
+                'callables': self.callables,
+                'mutable_dict':self.mutable_dict}
 
     def __setstate__(self, state):
         self.committed_state = state['committed_state']
@@ -148,6 +149,7 @@ class InstanceState(object):
         self.runid = None
         self.expired = state['expired']
         self.expired_attributes = state['expired_attributes']
+        self.mutable_dict = state['mutable_dict']
 
     def initialize(self, key):
         self.manager.get_impl(key).initialize(self, self.dict)

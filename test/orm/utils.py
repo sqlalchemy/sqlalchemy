@@ -1,13 +1,15 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy.orm import interfaces, util
-from testlib import *
-from testlib import fixtures
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Table
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import mapper, create_session
+
+
+from testlib import TestBase, testing
+
 from orm import _fixtures
 from testlib.testing import eq_
 

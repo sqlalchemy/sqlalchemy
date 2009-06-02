@@ -1,11 +1,14 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
+
+from orm import _base
+from testlib import testing
 
 
-class PolymorphicCircularTest(ORMTest):
-    keep_mappers = True
+class PolymorphicCircularTest(_base.MappedTest):
+    run_setup_mappers = 'once'
+
     def define_tables(self, metadata):
         global Table1, Table1B, Table2, Table3,  Data
         table1 = Table('table1', metadata,

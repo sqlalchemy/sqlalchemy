@@ -174,7 +174,7 @@ class DependencySortTest(TestBase):
         question, issue, providerservice, answer, provider = "Question", "Issue", "ProviderService", "Answer", "Provider"
 
         tuples = [(question, issue), (providerservice, issue), (provider, question), (question, provider), (providerservice, question), (provider, providerservice), (question, answer), (issue, question)]
-        
+
         head = topological.sort_as_tree(tuples, [], with_cycles=True)
         self.assert_sort(tuples, head)
 

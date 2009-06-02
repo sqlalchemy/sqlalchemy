@@ -6,6 +6,8 @@ from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, ForeignKeyConstraint, asc, Index
 from testlib.sa.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
 from testlib.testing import eq_
+
+
 from orm._base import ComparableEntity, MappedTest
 
 class DeclarativeTestBase(testing.TestBase, testing.AssertsExecutionResults):
@@ -1269,7 +1271,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         
         
 def produce_test(inline, stringbased):
-    class ExplicitJoinTest(testing.ORMTest):
+    class ExplicitJoinTest(MappedTest):
     
         def define_tables(self, metadata):
             global User, Address

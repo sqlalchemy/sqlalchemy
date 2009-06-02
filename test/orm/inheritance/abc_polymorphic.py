@@ -2,10 +2,11 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import util
 from sqlalchemy.orm import *
-from testlib import *
-from testlib import fixtures
 
-class ABCTest(ORMTest):
+from testlib import _function_named
+from orm import _base, _fixtures
+
+class ABCTest(_base.MappedTest):
     def define_tables(self, metadata):
         global a, b, c
         a = Table('a', metadata,
@@ -22,7 +23,7 @@ class ABCTest(ORMTest):
 
     def make_test(fetchtype):
         def test_roundtrip(self):
-            class A(fixtures.Base):pass
+            class A(_fixtures.Base):pass
             class B(A):pass
             class C(B):pass
 

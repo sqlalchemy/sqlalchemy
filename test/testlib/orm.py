@@ -4,7 +4,6 @@ from testlib import config, testing
 sa = None
 orm = None
 
-
 __all__ = 'mapper',
 
 

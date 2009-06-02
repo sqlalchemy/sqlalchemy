@@ -3,11 +3,13 @@ from sqlalchemy import *
 from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
-from testlib import *
-from testlib import fixtures
+
+#from testlib import *
+#from testlib import fixtures
+from testlib import _function_named, testing, engines
 from orm import _base, _fixtures
 
-class O2MTest(ORMTest):
+class O2MTest(_base.MappedTest):
     """deals with inheritance and one-to-many relationships"""
     def define_tables(self, metadata):
         global foo, bar, blub
@@ -66,7 +68,7 @@ class O2MTest(ORMTest):
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
-class FalseDiscriminatorTest(ORMTest):
+class FalseDiscriminatorTest(_base.MappedTest):
     def define_tables(self, metadata):
         global t1
         t1 = Table('t1', metadata, Column('id', Integer, primary_key=True), Column('type', Integer, nullable=False))
@@ -84,7 +86,7 @@ class FalseDiscriminatorTest(ORMTest):
         sess.expunge_all()
         assert isinstance(sess.query(Foo).one(), Bar)
         
-class PolymorphicSynonymTest(ORMTest):
+class PolymorphicSynonymTest(_base.MappedTest):
     def define_tables(self, metadata):
         global t1, t2
         t1 = Table('t1', metadata,
@@ -96,7 +98,7 @@ class PolymorphicSynonymTest(ORMTest):
                    Column('data', String(10), nullable=False))
     
     def test_polymorphic_synonym(self):
-        class T1(fixtures.Base):
+        class T1(_fixtures.Base):
             def info(self):
                 return "THE INFO IS:" + self._info
             def _set_info(self, x):
@@ -120,7 +122,7 @@ class PolymorphicSynonymTest(ORMTest):
         self.assertEquals(at2.info, "THE INFO IS:at2")
         
     
-class CascadeTest(ORMTest):
+class CascadeTest(_base.MappedTest):
     """that cascades on polymorphic relations continue
     cascading along the path of the instance's mapper, not
     the base mapper."""
@@ -148,13 +150,13 @@ class CascadeTest(ORMTest):
             Column('data', String(30)))
 
     def test_cascade(self):
-        class T1(fixtures.Base):
+        class T1(_fixtures.Base):
             pass
-        class T2(fixtures.Base):
+        class T2(_fixtures.Base):
             pass
         class T3(T2):
             pass
-        class T4(fixtures.Base):
+        class T4(_fixtures.Base):
             pass
 
         mapper(T1, t1, properties={
@@ -188,7 +190,7 @@ class CascadeTest(ORMTest):
         assert t4_1 in sess.deleted
         sess.flush()
 
-class GetTest(ORMTest):
+class GetTest(_base.MappedTest):
     def define_tables(self, metadata):
         global foo, bar, blub
         foo = Table('foo', metadata,
@@ -275,7 +277,7 @@ class GetTest(ORMTest):
     test_get_polymorphic = create_test(True, 'test_get_polymorphic')
     test_get_nonpolymorphic = create_test(False, 'test_get_nonpolymorphic')
 
-class EagerLazyTest(ORMTest):
+class EagerLazyTest(_base.MappedTest):
     """tests eager load/lazy load of child items off inheritance mappers, tests that
     LazyLoader constructs the right query condition."""
     def define_tables(self, metadata):
@@ -321,7 +323,7 @@ class EagerLazyTest(ORMTest):
         self.assert_(len(q.first().eager) == 1)
 
 
-class FlushTest(ORMTest):
+class FlushTest(_base.MappedTest):
     """test dependency sorting among inheriting mappers"""
     def define_tables(self, metadata):
         global users, roles, user_roles, admins
@@ -410,7 +412,7 @@ class FlushTest(ORMTest):
         sess.flush()
         assert user_roles.count().scalar() == 1
 
-class VersioningTest(ORMTest):
+class VersioningTest(_base.MappedTest):
     def define_tables(self, metadata):
         global base, subtable, stuff
         base = Table('base', metadata,
@@ -431,7 +433,7 @@ class VersioningTest(ORMTest):
     @testing.fails_on('mssql', 'FIXME: the flush still happens with the concurrency issue.')
     @engines.close_open_connections
     def test_save_update(self):
-        class Base(fixtures.Base):
+        class Base(_fixtures.Base):
             pass
         class Sub(Base):
             pass
@@ -479,7 +481,7 @@ class VersioningTest(ORMTest):
 
     @testing.fails_on('mssql', 'FIXME: the flush still happens with the concurrency issue.')
     def test_delete(self):
-        class Base(fixtures.Base):
+        class Base(_fixtures.Base):
             pass
         class Sub(Base):
             pass
@@ -513,10 +515,12 @@ class VersioningTest(ORMTest):
         except orm_exc.ConcurrentModificationError, e:
             assert True
 
-class DistinctPKTest(ORMTest):
+class DistinctPKTest(_base.MappedTest):
     """test the construction of mapper.primary_key when an inheriting relationship
     joins on a column other than primary key column."""
-    keep_data = True
+    
+    run_inserts = 'once'
+    run_deletes = None
 
     def define_tables(self, metadata):
         global person_table, employee_table, Person, Employee
@@ -587,7 +591,7 @@ class DistinctPKTest(ORMTest):
             assert alice1.name == alice2.name == 'alice'
             assert bob.name == 'bob'
 
-class SyncCompileTest(ORMTest):
+class SyncCompileTest(_base.MappedTest):
     """test that syncrules compile properly on custom inherit conds"""
     def define_tables(self, metadata):
         global _a_table, _b_table, _c_table
@@ -653,7 +657,7 @@ class SyncCompileTest(ORMTest):
         assert len(session.query(B).all()) == 2
         assert len(session.query(C).all()) == 1
 
-class OverrideColKeyTest(ORMTest):
+class OverrideColKeyTest(_base.MappedTest):
     """test overriding of column attributes."""
     
     def define_tables(self, metadata):
@@ -883,7 +887,7 @@ class OverrideColKeyTest(ORMTest):
         assert sess.query(Base).get(b1.base_id).data == "this is base"
         assert sess.query(Sub).get(s1.base_id).data == "this is base"
 
-class OptimizedLoadTest(ORMTest):
+class OptimizedLoadTest(_base.MappedTest):
     """test that the 'optimized load' routine doesn't crash when 
     a column in the join condition is not available.
     
@@ -969,7 +973,7 @@ class PKDiscriminatorTest(_base.MappedTest):
         assert a.type == 2
         
         
-class DeleteOrphanTest(ORMTest):
+class DeleteOrphanTest(_base.MappedTest):
     def define_tables(self, metadata):
         global single, parent
         single = Table('single', metadata,
@@ -985,13 +989,13 @@ class DeleteOrphanTest(ORMTest):
             )
     
     def test_orphan_message(self):
-        class Base(fixtures.Base):
+        class Base(_fixtures.Base):
             pass
         
         class SubClass(Base):
             pass
         
-        class Parent(fixtures.Base):
+        class Parent(_fixtures.Base):
             pass
         
         mapper(Base, single, polymorphic_on=single.c.type, polymorphic_identity='base')

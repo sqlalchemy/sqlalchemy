@@ -58,15 +58,16 @@ class ComparableEntity(BasicEntity):
                 self_key = sa.orm.attributes.instance_state(self).key
             except sa.orm.exc.NO_STATE:
                 self_key = None
-            try:
-                other_key = sa.orm.attributes.instance_state(other).key
-            except sa.orm.exc.NO_STATE:
-                other_key = None
-
-            if other_key is None and self_key is not None:
-                a, b = other, self
+                
+            if other is None:
+                a = self
+                b = other
+            elif self_key is not None:
+                a = other
+                b = self
             else:
-                a, b = self, other
+                a = self
+                b = other
 
             for attr in a.__dict__.keys():
                 if attr.startswith('_'):
@@ -101,19 +102,19 @@ class ORMTest(testing.TestBase, testing.AssertsExecutionResults):
         # TODO: ensure instrumentation registry is empty
 
 class MappedTest(ORMTest):
-    # 'once', 'foreach', None
+    # 'once', 'each', None
     run_define_tables = 'once'
 
-    # 'once', 'foreach', None
+    # 'once', 'each', None
     run_setup_classes = 'once'
 
-    # 'once', 'foreach', None
+    # 'once', 'each', None
     run_setup_mappers = 'each'
 
-    # 'once', 'foreach', None
+    # 'once', 'each', None
     run_inserts = 'each'
 
-    # 'foreach', None
+    # 'each', None
     run_deletes = 'each'
 
     metadata = None
@@ -197,7 +198,10 @@ class MappedTest(ORMTest):
     def tearDown(self):
         sa.orm.session.Session.close_all()
 
-        if self.run_setup_mappers == 'each':
+        # some tests create mappers in the test bodies
+        # and will define setup_mappers as None - 
+        # clear mappers in any case
+        if self.run_setup_mappers != 'once':
             sa.orm.clear_mappers()
 
         # no need to run deletes if tables are recreated on setup
