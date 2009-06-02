@@ -11,7 +11,6 @@ from testlib.testing import \
      AssertsCompiledSQL, \
      AssertsExecutionResults, \
      ComparesTables, \
-     ORMTest, \
      TestBase, \
      rowset
 from testlib.orm import mapper
@@ -25,7 +24,7 @@ __all__ = ('testing',
            'mapper',
            'Table', 'Column',
            'rowset',
-           'TestBase', 'AssertsExecutionResults', 'ORMTest',
+           'TestBase', 'AssertsExecutionResults',
            'AssertsCompiledSQL', 'ComparesTables',
            'profiling', 'engines',
            '_function_named')

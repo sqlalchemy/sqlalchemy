@@ -1,23 +1,18 @@
-"""tests the Query object's ability to work with polymorphic selectables
-and inheriting mappers."""
-
-# TODO: under construction !
-
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy import exc as sa_exc
-from testlib import *
-from testlib import fixtures
-from orm import _base
-from testlib.testing import eq_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine import default
 
-class Company(fixtures.Base):
+from testlib import AssertsCompiledSQL, testing
+from orm import _base, _fixtures
+from testlib.testing import eq_
+
+class Company(_fixtures.Base):
     pass
 
-class Person(fixtures.Base):
+class Person(_fixtures.Base):
     pass
 class Engineer(Person):
     pass
@@ -26,17 +21,18 @@ class Manager(Person):
 class Boss(Manager):
     pass
 
-class Machine(fixtures.Base):
+class Machine(_fixtures.Base):
     pass
     
-class Paperwork(fixtures.Base):
+class Paperwork(_fixtures.Base):
     pass
 
 def make_test(select_type):
-    class PolymorphicQueryTest(ORMTest, AssertsCompiledSQL):
-        keep_data = True
-        keep_mappers = True
-
+    class PolymorphicQueryTest(_base.MappedTest, AssertsCompiledSQL):
+        run_inserts = 'once'
+        run_setup_mappers = 'once'
+        run_deletes = None
+        
         def define_tables(self, metadata):
             global companies, people, engineers, managers, boss, paperwork, machines
 
@@ -718,8 +714,8 @@ for select_type in ('', 'Polymorphic', 'Unions', 'AliasedJoins', 'Joins'):
     
 del testclass
 
-class SelfReferentialTestJoinedToBase(ORMTest):
-    keep_mappers = True
+class SelfReferentialTestJoinedToBase(_base.MappedTest):
+    run_setup_mappers = 'once'
     
     def define_tables(self, metadata):
         global people, engineers
@@ -734,6 +730,7 @@ class SelfReferentialTestJoinedToBase(ORMTest):
            Column('reports_to_id', Integer, ForeignKey('people.person_id'))
           )
 
+    def setup_mappers(self):
         mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         mapper(Engineer, engineers, inherits=Person, 
           inherit_condition=engineers.c.person_id==people.c.person_id,
@@ -775,11 +772,11 @@ class SelfReferentialTestJoinedToBase(ORMTest):
             sess.query(Engineer).join('reports_to', aliased=True).filter(Person.name=='dogbert').first(), 
             Engineer(name='dilbert'))
 
-class SelfReferentialJ2JTest(ORMTest):
-    keep_mappers = True
+class SelfReferentialJ2JTest(_base.MappedTest):
+    run_setup_mappers = 'once'
 
     def define_tables(self, metadata):
-        global people, engineers
+        global people, engineers, managers
         people = Table('people', metadata,
            Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
            Column('name', String(50)),
@@ -795,6 +792,7 @@ class SelfReferentialJ2JTest(ORMTest):
             Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
         )
 
+    def setup_mappers(self):
         mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         mapper(Manager, managers, inherits=Person, polymorphic_identity='manager')
         
@@ -885,12 +883,13 @@ class SelfReferentialJ2JTest(ORMTest):
 
         
 
-class M2MFilterTest(ORMTest):
-    keep_mappers = True
-    keep_data = True
+class M2MFilterTest(_base.MappedTest):
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
     
     def define_tables(self, metadata):
-        global people, engineers, Organization
+        global people, engineers, organizations, engineers_to_org
         
         organizations = Table('organizations', metadata,
             Column('id', Integer, Sequence('org_id_seq', optional=True), primary_key=True),
@@ -910,8 +909,10 @@ class M2MFilterTest(ORMTest):
            Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
            Column('primary_language', String(50)),
           )
-        
-        class Organization(fixtures.Base):
+
+    def setup_mappers(self):
+        global Organization
+        class Organization(_fixtures.Base):
             pass
             
         mapper(Organization, organizations, properties={
@@ -950,17 +951,18 @@ class M2MFilterTest(ORMTest):
         self.assertEquals(sess.query(Organization).filter(Organization.engineers.of_type(Engineer).any(Engineer.name=='e1')).all(), [Organization(name='org1')])
         self.assertEquals(sess.query(Organization).filter(Organization.engineers.any(Engineer.name=='e1')).all(), [Organization(name='org1')])
 
-class SelfReferentialM2MTest(ORMTest, AssertsCompiledSQL):
-    keep_mappers = True
+class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
+    run_setup_mappers = 'once'
     
     def define_tables(self, metadata):
+        global Parent, Child1, Child2
+
         Base = declarative_base(metadata=metadata)
 
         secondary_table = Table('secondary', Base.metadata,
            Column('left_id', Integer, ForeignKey('parent.id'), nullable=False),
            Column('right_id', Integer, ForeignKey('parent.id'), nullable=False))
-          
-        global Parent, Child1, Child2
+
         class Parent(Base):
            __tablename__ = 'parent'
            id = Column(Integer, primary_key=True)

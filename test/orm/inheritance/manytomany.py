@@ -1,10 +1,12 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
+
+from testlib import testing
+from orm import _base
 
 
-class InheritTest(ORMTest):
+class InheritTest(_base.MappedTest):
     """deals with inheritance and many-to-many relationships"""
     def define_tables(self, metadata):
         global principals
@@ -63,7 +65,7 @@ class InheritTest(ORMTest):
         sess.flush()
         # TODO: put an assertion
 
-class InheritTest2(ORMTest):
+class InheritTest2(_base.MappedTest):
     """deals with inheritance and many-to-many relationships"""
     def define_tables(self, metadata):
         global foo, bar, foo_bar
@@ -136,7 +138,7 @@ class InheritTest2(ORMTest):
             {'id':b.id, 'data':'barfoo', 'foos':(Foo, [{'id':f1.id,'data':'subfoo1'}, {'id':f2.id,'data':'subfoo2'}])},
             )
 
-class InheritTest3(ORMTest):
+class InheritTest3(_base.MappedTest):
     """deals with inheritance and many-to-many relationships"""
     def define_tables(self, metadata):
         global foo, bar, blub, bar_foo, blub_bar, blub_foo

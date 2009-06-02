@@ -1,8 +1,9 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
 
+from testlib import testing, _function_named
+from orm import _base
 
 class BaseObject(object):
     def __init__(self, *args, **kwargs):
@@ -68,7 +69,7 @@ class ClassifiedPage(MagazinePage):
     pass
 
 
-class MagazineTest(ORMTest):
+class MagazineTest(_base.MappedTest):
     def define_tables(self, metadata):
         global publication_table, issue_table, location_table, location_name_table, magazine_table, \
         page_table, magazine_page_table, classified_page_table, page_size_table

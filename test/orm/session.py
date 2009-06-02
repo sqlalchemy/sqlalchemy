@@ -1176,9 +1176,10 @@ class SessionTest(_fixtures.FixtureTest):
         assert b in sess
         assert len(list(sess)) == 1
 
-class DisposedStates(testing.ORMTest):
-    keep_mappers = True
-    keep_tables = True
+class DisposedStates(_base.MappedTest):
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
     
     def define_tables(self, metadata):
         global t1

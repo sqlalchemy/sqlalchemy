@@ -2,14 +2,16 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
-from testlib import *
+
+from testlib import testing
+from orm import _base
 
 
 def produce_test(parent, child, direction):
     """produce a testcase for A->B->C inheritance with a self-referential
     relationship between two of the classes, using either one-to-many or
     many-to-one."""
-    class ABCTest(ORMTest):
+    class ABCTest(_base.MappedTest):
         def define_tables(self, meta):
             global ta, tb, tc
             ta = ["a", meta]

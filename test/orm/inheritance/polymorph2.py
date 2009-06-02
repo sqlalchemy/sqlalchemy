@@ -6,9 +6,9 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy import util
 from sqlalchemy.orm import *
-from testlib import *
-from testlib import fixtures
-from orm import _base
+
+from testlib import _function_named, TestBase, AssertsExecutionResults, testing
+from orm import _base, _fixtures
 from testlib.testing import eq_
 
 class AttrSettable(object):
@@ -18,7 +18,7 @@ class AttrSettable(object):
         return self.__class__.__name__ + "(%s)" % (hex(id(self)))
 
 
-class RelationTest1(ORMTest):
+class RelationTest1(_base.MappedTest):
     """test self-referential relationships on polymorphic mappers"""
     def define_tables(self, metadata):
         global people, managers
@@ -97,7 +97,7 @@ class RelationTest1(ORMTest):
         print p, m, m.employee
         assert m.employee is p
 
-class RelationTest2(ORMTest):
+class RelationTest2(_base.MappedTest):
     """test self-referential relationships on polymorphic mappers"""
     def define_tables(self, metadata):
         global people, managers, data
@@ -192,7 +192,7 @@ class RelationTest2(ORMTest):
         if usedata:
             assert m.data.data == 'ms data'
 
-class RelationTest3(ORMTest):
+class RelationTest3(_base.MappedTest):
     """test self-referential relationships on polymorphic mappers"""
     def define_tables(self, metadata):
         global people, managers, data
@@ -298,7 +298,7 @@ for jointype in ["join1", "join2", "join3", "join4"]:
         setattr(RelationTest3, func.__name__, func)
 
 
-class RelationTest4(ORMTest):
+class RelationTest4(_base.MappedTest):
     def define_tables(self, metadata):
         global people, engineers, managers, cars
         people = Table('people', metadata,
@@ -410,7 +410,7 @@ class RelationTest4(ORMTest):
         c = s.join("employee").filter(Person.name=="E4")[0]
         assert c.car_id==car1.car_id
 
-class RelationTest5(ORMTest):
+class RelationTest5(_base.MappedTest):
     def define_tables(self, metadata):
         global people, engineers, managers, cars
         people = Table('people', metadata,
@@ -470,7 +470,7 @@ class RelationTest5(ORMTest):
         assert carlist[0].manager is None
         assert carlist[1].manager.person_id == car2.manager.person_id
 
-class RelationTest6(ORMTest):
+class RelationTest6(_base.MappedTest):
     """test self-referential relationships on a single joined-table inheritance mapper"""
     def define_tables(self, metadata):
         global people, managers, data
@@ -513,7 +513,7 @@ class RelationTest6(ORMTest):
         m2 = sess.query(Manager).get(m2.person_id)
         assert m.colleague is m2
 
-class RelationTest7(ORMTest):
+class RelationTest7(_base.MappedTest):
     def define_tables(self, metadata):
         global people, engineers, managers, cars, offroad_cars
         cars = Table('cars', metadata,
@@ -612,7 +612,7 @@ class RelationTest7(ORMTest):
         for p in r:
             assert p.car_id == p.car.car_id
 
-class RelationTest8(ORMTest):
+class RelationTest8(_base.MappedTest):
     def define_tables(self, metadata):
         global taggable, users
         taggable = Table('taggable', metadata,
@@ -783,7 +783,7 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         r = session.query(Person).filter(exists([1], Car.owner==Person.person_id))
         assert str(list(r)) == "[Engineer E4, field X, status Status dead]"
 
-class MultiLevelTest(ORMTest):
+class MultiLevelTest(_base.MappedTest):
     def define_tables(self, metadata):
         global table_Employee, table_Engineer, table_Manager
         table_Employee = Table( 'Employee', metadata,
@@ -860,7 +860,7 @@ class MultiLevelTest(ORMTest):
         assert set(session.query( Engineer).all()) == set([b,c])
         assert session.query( Manager).all() == [c]
 
-class ManyToManyPolyTest(ORMTest):
+class ManyToManyPolyTest(_base.MappedTest):
     def define_tables(self, metadata):
         global base_item_table, item_table, base_item_collection_table, collection_table
         base_item_table = Table(
@@ -910,7 +910,7 @@ class ManyToManyPolyTest(ORMTest):
 
         class_mapper(BaseItem)
 
-class CustomPKTest(ORMTest):
+class CustomPKTest(_base.MappedTest):
     def define_tables(self, metadata):
         global t1, t2
         t1 = Table('t1', metadata,
@@ -993,7 +993,7 @@ class CustomPKTest(ORMTest):
         ot1.data = 'hi'
         sess.flush()
 
-class InheritingEagerTest(ORMTest):
+class InheritingEagerTest(_base.MappedTest):
     def define_tables(self, metadata):
         global people, employees, tags, peopleTags
 
@@ -1020,14 +1020,14 @@ class InheritingEagerTest(ORMTest):
     def test_basic(self):
         """test that Query uses the full set of mapper._eager_loaders when generating SQL"""
 
-        class Person(fixtures.Base):
+        class Person(_fixtures.Base):
             pass
 
         class Employee(Person):
            def __init__(self, name='bob'):
                self.name = name
 
-        class Tag(fixtures.Base):
+        class Tag(_fixtures.Base):
            def __init__(self, label):
                self.label = label
 
@@ -1054,7 +1054,7 @@ class InheritingEagerTest(ORMTest):
         instance = session.query(Employee).filter_by(id=1).limit(1).first()
         assert len(instance.tags) == 2
 
-class MissingPolymorphicOnTest(ORMTest):
+class MissingPolymorphicOnTest(_base.MappedTest):
     def define_tables(self, metadata):
         global tablea, tableb, tablec, tabled
         tablea = Table('tablea', metadata, 
@@ -1076,9 +1076,9 @@ class MissingPolymorphicOnTest(ORMTest):
             )
             
     def test_polyon_col_setsup(self):
-        class A(fixtures.Base):
+        class A(_fixtures.Base):
             pass
-        class B(fixtures.Base):
+        class B(_fixtures.Base):
             pass
         class C(A):
             pass

@@ -1,8 +1,9 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
-from testlib.fixtures import Base
+
+from testlib import testing
+from orm import _fixtures
 from orm._base import MappedTest, ComparableEntity
 
 
@@ -330,7 +331,7 @@ class RelationToSingleTest(MappedTest):
             )
         go()
         
-class SingleOnJoinedTest(ORMTest):
+class SingleOnJoinedTest(MappedTest):
     def define_tables(self, metadata):
         global persons_table, employees_table
         
@@ -347,7 +348,7 @@ class SingleOnJoinedTest(ORMTest):
         )
     
     def test_single_on_joined(self):
-        class Person(Base):
+        class Person(_fixtures.Base):
             pass
         class Employee(Person):
             pass

@@ -1,9 +1,10 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
-from testlib import fixtures
 import gc
+
+from testlib import TestBase, AssertsExecutionResults, profiling, testing
+from orm import _fixtures
 
 # in this test we are specifically looking for time spent in the attributes.InstanceState.__cleanup() method.
 
@@ -35,9 +36,9 @@ class SessionTest(TestBase, AssertsExecutionResults):
                 l.append({'c2':'this is t2 #%d' % y, 't1id':x})
             t2.insert().execute(*l)
         
-        class T1(fixtures.Base):
+        class T1(_fixtures.Base):
             pass
-        class T2(fixtures.Base):
+        class T2(_fixtures.Base):
             pass
 
         mapper(T1, t1, properties={

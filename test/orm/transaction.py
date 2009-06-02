@@ -1,15 +1,19 @@
 import testenv; testenv.configure_for_tests()
-import operator
+
 from sqlalchemy import *
 from sqlalchemy.orm import attributes
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
-from testlib import *
-from testlib.fixtures import *
+
+from testlib import testing
+from orm import _base
+from orm._fixtures import FixtureTest, User, Address, users, addresses
+
 import gc
 
 class TransactionTest(FixtureTest):
-    keep_mappers = True
+    run_setup_mappers = 'once'
+    run_inserts = None
     session = sessionmaker()
 
     def setup_mappers(self):
@@ -21,8 +25,8 @@ class TransactionTest(FixtureTest):
 
 
 class FixtureDataTest(TransactionTest):
-    refresh_data = True
-
+    run_inserts = 'each'
+    
     def test_attrs_on_rollback(self):
         sess = self.session()
         u1 = sess.query(User).get(7)
@@ -53,7 +57,6 @@ class FixtureDataTest(TransactionTest):
         assert u1.name == 'will'
 
 class AutoExpireTest(TransactionTest):
-    tables_only = True
 
     def test_expunge_pending_on_rollback(self):
         sess = self.session()
@@ -182,7 +185,6 @@ class AutoExpireTest(TransactionTest):
         assert u1.name == 'will'
 
 class TwoPhaseTest(TransactionTest):
-    only_tables = True
 
     @testing.requires.two_phase_transactions
     def test_rollback_on_prepare(self):
@@ -196,7 +198,6 @@ class TwoPhaseTest(TransactionTest):
         assert u not in s
         
 class RollbackRecoverTest(TransactionTest):
-    only_tables = True
 
     def test_pk_violation(self):
         s = self.session()
@@ -256,8 +257,6 @@ class RollbackRecoverTest(TransactionTest):
 
 
 class SavepointTest(TransactionTest):
-
-    only_tables = True
 
     @testing.requires.savepoints
     def test_savepoint_rollback(self):
@@ -410,7 +409,6 @@ class SavepointTest(TransactionTest):
 
 
 class AccountingFlagsTest(TransactionTest):
-    
     def test_no_expire_on_commit(self):
         sess = sessionmaker(expire_on_commit=False)()
         u1 = User(name='ed')
@@ -475,7 +473,7 @@ class AccountingFlagsTest(TransactionTest):
         assert testing.db.execute(select([users.c.name])).fetchall() == [('ed',)]
         
     
-class AutocommitTest(TransactionTest):
+class AutoCommitTest(TransactionTest):
     def test_begin_nested_requires_trans(self):
         sess = create_session(autocommit=True)
         self.assertRaises(sa_exc.InvalidRequestError, sess.begin_nested)

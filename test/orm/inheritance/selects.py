@@ -1,11 +1,13 @@
 import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
-from testlib.fixtures import Base
+
+from testlib import testing
+from orm._fixtures import Base
+from orm._base import MappedTest
 
 
-class InheritingSelectablesTest(ORMTest):
+class InheritingSelectablesTest(MappedTest):
     def define_tables(self, metadata):
         global foo, bar, baz
         foo = Table('foo', metadata,

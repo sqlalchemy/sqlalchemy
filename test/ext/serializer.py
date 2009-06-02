@@ -6,6 +6,7 @@ from testlib import sa, testing
 from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey, select, desc, func, util
 from testlib.sa.orm import relation, sessionmaker, scoped_session, class_mapper, mapper, eagerload, compile_mappers, aliased
 from testlib.testing import eq_
+
 from orm._base import ComparableEntity, MappedTest
 
 
@@ -15,9 +16,10 @@ class User(ComparableEntity):
 class Address(ComparableEntity):
     pass
 
-class SerializeTest(testing.ORMTest):
-    keep_mappers = True
-    keep_data = True
+class SerializeTest(MappedTest):
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
     
     def define_tables(self, metadata):
         global users, addresses

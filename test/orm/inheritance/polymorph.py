@@ -4,10 +4,10 @@ import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
-from testlib import *
-from testlib import fixtures
+from testlib import _function_named, Column, testing
+from orm import _fixtures, _base
 
-class Person(fixtures.Base):
+class Person(_fixtures.Base):
     pass
 class Engineer(Person):
     pass
@@ -15,10 +15,10 @@ class Manager(Person):
     pass
 class Boss(Manager):
     pass
-class Company(fixtures.Base):
+class Company(_fixtures.Base):
     pass
 
-class PolymorphTest(ORMTest):
+class PolymorphTest(_base.MappedTest):
     def define_tables(self, metadata):
         global companies, people, engineers, managers, boss
 

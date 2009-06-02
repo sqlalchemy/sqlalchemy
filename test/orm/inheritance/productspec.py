@@ -2,10 +2,13 @@ import testenv; testenv.configure_for_tests()
 from datetime import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
 
 
-class InheritTest(ORMTest):
+from testlib import testing
+from orm import _base
+
+
+class InheritTest(_base.MappedTest):
     """tests some various inheritance round trips involving a particular set of polymorphic inheritance relationships"""
     def define_tables(self, metadata):
         global products_table, specification_table, documents_table

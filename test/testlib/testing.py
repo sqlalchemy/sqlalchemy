@@ -782,67 +782,6 @@ class AssertsExecutionResults(object):
         self.assert_sql_execution(db, callable_, assertsql.CountStatements(count))
 
 
-_otest_metadata = None
-class ORMTest(TestBase, AssertsExecutionResults):
-    keep_mappers = False
-    keep_data = False
-    metadata = None
-
-    def setUpAll(self):
-        global MetaData, _otest_metadata
-
-        if MetaData is None:
-            from sqlalchemy import MetaData
-
-        if self.metadata is None:
-            _otest_metadata = MetaData(config.db)
-        else:
-            _otest_metadata = self.metadata
-            if self.metadata.bind is None:
-                _otest_metadata.bind = config.db
-        self.define_tables(_otest_metadata)
-        _otest_metadata.create_all()
-        self.setup_mappers()
-        self.insert_data()
-
-    def define_tables(self, _otest_metadata):
-        raise NotImplementedError()
-
-    def setup_mappers(self):
-        pass
-
-    def insert_data(self):
-        pass
-
-    def get_metadata(self):
-        return _otest_metadata
-
-    def tearDownAll(self):
-        global clear_mappers
-        if clear_mappers is None:
-            from sqlalchemy.orm import clear_mappers
-
-        clear_mappers()
-        _otest_metadata.drop_all()
-
-    def tearDown(self):
-        global Session
-        if Session is None:
-            from sqlalchemy.orm.session import Session
-        Session.close_all()
-        global clear_mappers
-        if clear_mappers is None:
-            from sqlalchemy.orm import clear_mappers
-
-        if not self.keep_mappers:
-            clear_mappers()
-        if not self.keep_data:
-            for t in reversed(_otest_metadata.sorted_tables):
-                try:
-                    t.delete().execute().close()
-                except Exception, e:
-                    print "EXCEPTION DELETING...", e
-
 
 class TTestSuite(unittest.TestSuite):
     """A TestSuite with once per TestCase setUpAll() and tearDownAll()"""
