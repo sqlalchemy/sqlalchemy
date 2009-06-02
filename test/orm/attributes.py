@@ -5,7 +5,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from testlib import *
-from testlib.compat import gc_collect
+from testlib.compat import gc_collect, cmp
 from testlib.testing import eq_
 from orm import _base
 
