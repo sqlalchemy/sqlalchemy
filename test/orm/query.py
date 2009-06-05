@@ -1397,6 +1397,16 @@ class JoinTest(QueryTest):
             ]
         )
 
+    def test_plain_table(self):
+        
+        sess = create_session()
+        
+        self.assertEquals(
+            sess.query(User.name).join((addresses, User.id==addresses.c.user_id)).order_by(User.id).all(),
+            [(u'jack',), (u'ed',), (u'ed',), (u'ed',), (u'fred',)]
+        )
+        
+        
 class MultiplePathTest(_base.MappedTest):
     def define_tables(self, metadata):
         global t1, t2, t1t2_1, t1t2_2

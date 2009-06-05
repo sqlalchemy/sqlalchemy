@@ -14,6 +14,15 @@ CHANGES
       wouldn't be deserialized correctly when the whole object
       was serialized.  [ticket:1426]
 
+    - Fixed Query being able to join() from individual columns of
+      a joined-table subclass entity, i.e.
+      query(SubClass.foo, SubcClass.bar).join(<anything>).
+      In most cases, an error "Could not find a FROM clause to join 
+      from" would be raised. In a few others, the result would be 
+      returned in terms of the base class rather than the subclass - 
+      so applications which relied on this erroneous result need to be 
+      adjusted. [ticket:1431]
+      
 - sql
     - Removed an obscure feature of execute() (including connection,
       engine, Session) whereby a bindparam() construct can be sent as 

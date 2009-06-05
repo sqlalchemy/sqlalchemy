@@ -325,7 +325,55 @@ def make_test(select_type):
                 c2
                 )
                 
-        
+        def test_join_from_columns_or_subclass(self):
+            sess = create_session()
+
+            self.assertEquals(
+                sess.query(Manager.name).order_by(Manager.name).all(),
+                [(u'dogbert',), (u'pointy haired boss',)]
+            )
+            
+            self.assertEquals(
+                sess.query(Manager.name).join((Paperwork, Manager.paperwork)).order_by(Manager.name).all(),
+                [(u'dogbert',), (u'dogbert',), (u'pointy haired boss',)]
+            )
+
+            self.assertEquals(
+                sess.query(Person.name).join((Paperwork, Person.paperwork)).order_by(Person.name).all(),
+                [(u'dilbert',), (u'dilbert',), (u'dogbert',), (u'dogbert',), (u'pointy haired boss',), (u'vlad',), (u'wally',), (u'wally',)]
+            )
+            
+            self.assertEquals(
+                sess.query(Person.name).join((paperwork, Manager.person_id==paperwork.c.person_id)).order_by(Person.name).all(),
+                [(u'dilbert',), (u'dilbert',), (u'dogbert',), (u'dogbert',), (u'pointy haired boss',), (u'vlad',), (u'wally',), (u'wally',)]
+            )
+            
+            self.assertEquals(
+                sess.query(Manager).join((Paperwork, Manager.paperwork)).order_by(Manager.name).all(),
+                [m1, b1]
+            )
+
+            self.assertEquals(
+                sess.query(Manager.name).join((paperwork, Manager.person_id==paperwork.c.person_id)).order_by(Manager.name).all(),
+                [(u'dogbert',), (u'dogbert',), (u'pointy haired boss',)]
+            )
+
+            self.assertEquals(
+                sess.query(Manager.person_id).join((paperwork, Manager.person_id==paperwork.c.person_id)).order_by(Manager.name).all(),
+                [(4,), (4,), (3,)]
+            )
+            
+            self.assertEquals(
+                sess.query(Manager.name, Paperwork.description).join((Paperwork, Manager.person_id==Paperwork.person_id)).all(),
+                [(u'pointy haired boss', u'review #1'), (u'dogbert', u'review #2'), (u'dogbert', u'review #3')]
+            )
+            
+            malias = aliased(Manager)
+            self.assertEquals(
+                sess.query(malias.name).join((paperwork, malias.person_id==paperwork.c.person_id)).all(),
+                [(u'pointy haired boss',), (u'dogbert',), (u'dogbert',)]
+            )
+            
         def test_expire(self):
             """test that individual column refresh doesn't get tripped up by the select_table mapper"""
             
