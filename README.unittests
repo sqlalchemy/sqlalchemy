@@ -2,65 +2,63 @@
 SQLALCHEMY UNIT TESTS
 =====================
 
+SQLAlchemy unit tests by default run using Python's built-in sqlite3 
+module.  If running on Python 2.4, pysqlite must be installed.
+
+As of 0.5.5, unit tests are run using nose.  Documentation and
+downloads for nose are available at:
+
+http://somethingaboutorange.com/mrl/projects/nose/0.11.1/index.html
+
+
+SQLAlchemy implements a nose plugin that must be present when tests are run.
+This plugin is available when SQLAlchemy is installed via setuptools.
+
 SETUP
 -----
-SQLite support is required.  These instructions assume standard Python 2.4 or
-higher. 
 
-The 'test' directory must be on the PYTHONPATH.
+All that's required is for SQLAlchemy to be installed via setuptools.
+For example, to create a local install in a source distribution directory:
 
-cd into the SQLAlchemy distribution directory
+    $ export PYTHONPATH=.
+    $ python setup.py develop -d .
 
-In bash:
-
-    $ export PYTHONPATH=./test/
-
-On windows:
-
-    C:\sa\> set PYTHONPATH=test\
-
-    Adjust any other use Unix-style paths in this README as needed.
-
-The unittest framework will automatically prepend the lib/ directory to
-sys.path.  This forces the local version of SQLAlchemy to be used, bypassing
-any setuptools-installed installations (setuptools places .egg files ahead of
-plain directories, even if on PYTHONPATH, unfortunately).
-
+The above will create a setuptools "development" distribution in the local
+path, which allows the Nose plugin to be available when nosetests is run.
+The plugin is enabled using the "with-sqlalchemy=True" configuration
+in setup.cfg.
 
 RUNNING ALL TESTS
 -----------------
 To run all tests:
 
-    $ python test/alltests.py
+    $ nosetests
 
+Assuming all tests pass, this is a very unexciting output.  To make it more 
+intersesting:
+
+    $ nosetests -v
 
 RUNNING INDIVIDUAL TESTS
 -------------------------
-Any unittest module can be run directly from the module file:
+Any test module can be run directly by specifying its module name:
 
-    python test/orm/mapper.py
+    $ nosetests test.orm.test_mapper
 
-To run a specific test within the module, specify it as ClassName.methodname:
+To run a specific test within the module, specify it as module:ClassName.methodname:
 
-    python test/orm/mapper.py MapperTest.testget
+    $ nosetests test.orm.test_mapper:MapperTest.test_utils
 
 
 COMMAND LINE OPTIONS
 --------------------
-Help is available via --help
+Help is available via --help:
 
-    $ python test/alltests.py --help
+    $ nosetests --help
 
-    usage: alltests.py [options] [tests...]
-
-    Options:
-      -h, --help            show this help message and exit
-      --verbose             enable stdout echoing/printing
-      --quiet               suppress output
-    [...]
-
-Command line options can applied to alltests.py or any individual test module.
-Many are available.  The most commonly used are '--db' and '--dburi'.
+The --help screen is a combination of common nose options and options which 
+the SQLAlchemy nose plugin adds.  The most commonly SQLAlchemy-specific 
+options used are '--db' and '--dburi'.
 
 
 DATABASE TARGETS
@@ -78,7 +76,7 @@ preexisting tables will interfere with the tests
 If you'll be running the tests frequently, database aliases can save a lot of
 typing.  The --dbs option lists the built-in aliases and their matching URLs:
 
-    $ python test/alltests.py --dbs
+    $ nosetests --dbs
     Available --db options (use --dburi to override)
                mysql    mysql://scott:tiger@127.0.0.1:3306/test
               oracle    oracle://scott:tiger@127.0.0.1:1521
@@ -87,7 +85,7 @@ typing.  The --dbs option lists the built-in aliases and their matching URLs:
 
 To run tests against an aliased database:
 
-    $ python test/alltests.py --db=postgres
+    $ nosetests --db=postgres
 
 To customize the URLs with your own users or hostnames, make a simple .ini
 file called `test.cfg` at the top level of the SQLAlchemy source distribution
@@ -106,7 +104,7 @@ SQLAlchemy logs its activity and debugging through Python's logging package.
 Any log target can be directed to the console with command line options, such
 as:
 
-    $ python test/orm/unitofwork.py --log-info=sqlalchemy.orm.mapper \
+    $ nosetests test.orm.unitofwork --log-info=sqlalchemy.orm.mapper \
       --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine
 
 This would log mapper configuration, connection pool checkouts, and SQL
@@ -115,21 +113,10 @@ statement execution.
 
 BUILT-IN COVERAGE REPORTING
 ------------------------------
-Coverage is tracked with coverage.py module, included in the './test/'
-directory.  Running the test suite with the --coverage switch will generate a
-local file ".coverage" containing coverage details, and a report will be
-printed to standard output with an overview of the coverage gathered from the
-last unittest run (the file is deleted between runs).
+Coverage is tracked using Nose's coverage plugin.   See the nose 
+documentation for details.  Basic usage is:
 
-After the suite has been run with --coverage, an annotated version of any
-source file can be generated, marking statements that are executed with > and
-statements that are missed with !, by running the coverage.py utility with the
-"-a" (annotate) option, such as:
-
-    $ python ./test/testlib/coverage.py -a ./lib/sqlalchemy/sql.py
-
-This will create a new annotated file ./lib/sqlalchemy/sql.py,cover. Pretty
-cool!
+    $ nosetests test.sql.test_query --with-coverage
 
 BIG COVERAGE TIP !!!  There is an issue where existing .pyc files may
 store the incorrect filepaths, which will break the coverage system.  If

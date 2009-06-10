@@ -2,9 +2,10 @@ import gc
 import inspect
 import sys
 import types
-from testlib import config, sa, testing
-from testlib.testing import resolve_artifact_names, adict
-from testlib.compat import _function_named
+import sqlalchemy as sa
+from sqlalchemy.test import config, testing
+from sqlalchemy.test.testing import resolve_artifact_names, adict
+from sqlalchemy.util import function_named
 
 
 _repr_stack = set()
@@ -95,7 +96,8 @@ class ComparableEntity(BasicEntity):
 class ORMTest(testing.TestBase, testing.AssertsExecutionResults):
     __requires__ = ('subqueries',)
 
-    def tearDownAll(self):
+    @classmethod
+    def teardown_class(cls):
         sa.orm.session.Session.close_all()
         sa.orm.clear_mappers()
         # TODO: ensure mapper registry is empty
@@ -124,18 +126,18 @@ class MappedTest(ORMTest):
     classes = None
     other_artifacts = None
 
-    def setUpAll(self):
-        if self.run_setup_classes == 'each':
-            assert self.run_setup_mappers != 'once'
+    @classmethod
+    def setup_class(cls):
+        if cls.run_setup_classes == 'each':
+            assert cls.run_setup_mappers != 'once'
 
-        assert self.run_deletes in (None, 'each')
-        if self.run_inserts == 'once':
-            assert self.run_deletes is None
+        assert cls.run_deletes in (None, 'each')
+        if cls.run_inserts == 'once':
+            assert cls.run_deletes is None
 
-        assert not hasattr(self, 'keep_mappers')
-        assert not hasattr(self, 'keep_data')
+        assert not hasattr(cls, 'keep_mappers')
+        assert not hasattr(cls, 'keep_data')
 
-        cls = self.__class__
         if cls.tables is None:
             cls.tables = adict()
         if cls.classes is None:
@@ -143,35 +145,32 @@ class MappedTest(ORMTest):
         if cls.other_artifacts is None:
             cls.other_artifacts = adict()
 
-        if self.metadata is None:
-            setattr(type(self), 'metadata', sa.MetaData())
+        if cls.metadata is None:
+            setattr(cls, 'metadata', sa.MetaData())
 
-        if self.metadata.bind is None:
-            self.metadata.bind = getattr(self, 'engine', config.db)
+        if cls.metadata.bind is None:
+            cls.metadata.bind = getattr(cls, 'engine', config.db)
 
-        if self.run_define_tables:
-            self.define_tables(self.metadata)
-            self.metadata.create_all()
-            self.tables.update(self.metadata.tables)
+        if cls.run_define_tables == 'once':
+            cls.define_tables(cls.metadata)
+            cls.metadata.create_all()
+            cls.tables.update(cls.metadata.tables)
 
-        if self.run_setup_classes:
+        if cls.run_setup_classes == 'once':
             baseline = subclasses(BasicEntity)
-            self.setup_classes()
-            self._register_new_class_artifacts(baseline)
+            cls.setup_classes()
+            cls._register_new_class_artifacts(baseline)
 
-        if self.run_setup_mappers:
+        if cls.run_setup_mappers == 'once':
             baseline = subclasses(BasicEntity)
-            self.setup_mappers()
-            self._register_new_class_artifacts(baseline)
+            cls.setup_mappers()
+            cls._register_new_class_artifacts(baseline)
 
-        if self.run_inserts:
-            self._load_fixtures()
-            self.insert_data()
+        if cls.run_inserts == 'once':
+            cls._load_fixtures()
+            cls.insert_data()
 
-    def setUp(self):
-        if self._sa_first_test:
-            return
-
+    def setup(self):
         if self.run_define_tables == 'each':
             self.tables.clear()
             self.metadata.drop_all()
@@ -195,7 +194,7 @@ class MappedTest(ORMTest):
             self._load_fixtures()
             self.insert_data()
 
-    def tearDown(self):
+    def teardown(self):
         sa.orm.session.Session.close_all()
 
         # some tests create mappers in the test bodies
@@ -213,26 +212,32 @@ class MappedTest(ORMTest):
                     print >> sys.stderr, "Error emptying table %s: %r" % (
                         table, ex)
 
-    def tearDownAll(self):
-        for cls in self.classes.values():
-            self.unregister_class(cls)
-        ORMTest.tearDownAll(self)
-        self.metadata.drop_all()
-        self.metadata.bind = None
+    @classmethod
+    def teardown_class(cls):
+        for cl in cls.classes.values():
+            cls.unregister_class(cl)
+        ORMTest.teardown_class()
+        cls.metadata.drop_all()
+        cls.metadata.bind = None
 
-    def define_tables(self, metadata):
+    @classmethod
+    def define_tables(cls, metadata):
         raise NotImplementedError()
 
-    def setup_classes(self):
+    @classmethod
+    def setup_classes(cls):
         pass
 
-    def setup_mappers(self):
+    @classmethod
+    def setup_mappers(cls):
         pass
 
-    def fixtures(self):
+    @classmethod
+    def fixtures(cls):
         return {}
 
-    def insert_data(self):
+    @classmethod
+    def insert_data(cls):
         pass
 
     def sql_count_(self, count, fn):
@@ -260,15 +265,16 @@ class MappedTest(ORMTest):
         if name[0].isupper:
             delattr(cls, name)
         del cls.classes[name]
-
-    def _load_fixtures(self):
+    
+    @classmethod
+    def _load_fixtures(cls):
         headers, rows = {}, {}
-        for table, data in self.fixtures().iteritems():
+        for table, data in cls.fixtures().iteritems():
             if isinstance(table, basestring):
-                table = self.tables[table]
+                table = cls.tables[table]
             headers[table] = data[0]
             rows[table] = data[1:]
-        for table in self.metadata.sorted_tables:
+        for table in cls.metadata.sorted_tables:
             if table not in headers:
                 continue
             table.bind.execute(
