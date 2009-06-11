@@ -1,11 +1,10 @@
-import testenv; testenv.configure_for_tests()
 import time
 from datetime import datetime
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
-from testlib.profiling import profiled
+from sqlalchemy.test import *
+from sqlalchemy.test.profiling import profiled
 
 class Item(object):
     def __repr__(self):

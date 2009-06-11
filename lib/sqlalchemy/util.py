@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import inspect, itertools, operator, sys, warnings, weakref
+import inspect, itertools, operator, sys, warnings, weakref, gc
 # Py2K
 import __builtin__
 # end Py2K
@@ -18,6 +18,7 @@ except ImportError:
     import dummy_threading as threading
 
 py3k = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
+jython = sys.platform.startswith('java')
 
 if py3k:
     set_types = set
@@ -90,12 +91,13 @@ else:
 if py3k:
     def callable(fn):
         return hasattr(fn, '__call__')
-else:
-    callable = __builtin__.callable
+    def cmp(a, b):
+        return (a > b) - (a < b)
 
-if py3k:
     from functools import reduce
 else:
+    callable = __builtin__.callable
+    cmp = __builtin__.cmp
     reduce = __builtin__.reduce
 
 try:

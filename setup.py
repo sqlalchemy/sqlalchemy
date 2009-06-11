@@ -31,6 +31,13 @@ setup(name = "SQLAlchemy",
       packages = find_packages('lib'),
       package_dir = {'':'lib'},
       license = "MIT License",
+
+      entry_points = {
+          'nose.plugins.0.10': [
+              'sqlalchemy = sqlalchemy.test.noseplugin:NoseSQLAlchemy',
+              ]
+          },
+      
       long_description = """\
 SQLAlchemy is:
 

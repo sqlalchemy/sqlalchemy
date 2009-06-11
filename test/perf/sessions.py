@@ -1,17 +1,17 @@
-import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from testlib.compat import gc_collect
-from testlib import TestBase, AssertsExecutionResults, profiling, testing
-from orm import _fixtures
+from sqlalchemy.test.compat import gc_collect
+from sqlalchemy.test import TestBase, AssertsExecutionResults, profiling, testing
+from test.orm import _fixtures
 
 # in this test we are specifically looking for time spent in the attributes.InstanceState.__cleanup() method.
 
 ITERATIONS = 100
 
 class SessionTest(TestBase, AssertsExecutionResults):
-    def setUpAll(self):
+    @classmethod
+    def setup_class(cls):
         global t1, t2, metadata,T1, T2
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
@@ -46,7 +46,8 @@ class SessionTest(TestBase, AssertsExecutionResults):
         })
         mapper(T2, t2)
     
-    def tearDownAll(self):
+    @classmethod
+    def teardown_class(cls):
         metadata.drop_all()
         clear_mappers()
         
@@ -92,5 +93,3 @@ class SessionTest(TestBase, AssertsExecutionResults):
             gc_collect()
 
 
-if __name__ == '__main__':
-    testenv.main()

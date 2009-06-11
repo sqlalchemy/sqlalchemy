@@ -1,11 +1,10 @@
 #!/usr/bin/python
 """Uses ``wsgiref``, standard in Python 2.5 and also in the cheeseshop."""
 
-import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import thread
-from testlib import *
+from sqlalchemy.test import *
 
 port = 8000
 

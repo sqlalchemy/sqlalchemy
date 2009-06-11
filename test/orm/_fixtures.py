@@ -1,7 +1,9 @@
-from testlib.sa import MetaData, Table, Column, Integer, String, ForeignKey
-from testlib.sa.orm import attributes
-from testlib.testing import fixture
-from orm import _base
+from sqlalchemy import MetaData, Integer, String, ForeignKey
+from sqlalchemy.test.schema import Table
+from sqlalchemy.test.schema import Column
+from sqlalchemy.orm import attributes
+from sqlalchemy.test.testing import fixture
+from test.orm import _base
 
 __all__ = ()
 
@@ -227,34 +229,21 @@ class FixtureTest(_base.MappedTest):
                            Address=Address,
                            Dingaling=Dingaling)
 
-    def setUpAll(self):
-        assert not hasattr(self, 'refresh_data')
-        assert not hasattr(self, 'only_tables')
-        #refresh_data = False
-        #only_tables = False
-
-        #if type(self) is not FixtureTest:
-        #    setattr(type(self), 'classes', _base.adict(self.classes))
-
-        #if self.run_setup_classes:
-        #    for cls in self.classes.values():
-        #        self.register_class(cls)
-        super(FixtureTest, self).setUpAll()
-
-        #if not self.only_tables and self.keep_data:
-        #    _registry.load()
-
-    def define_tables(self, metadata):
+    @classmethod
+    def define_tables(cls, metadata):
         pass
 
-    def setup_classes(self):
-        for cls in self.fixture_classes.values():
-            self.register_class(cls)
+    @classmethod
+    def setup_classes(cls):
+        for cl in cls.fixture_classes.values():
+            cls.register_class(cl)
 
-    def setup_mappers(self):
+    @classmethod
+    def setup_mappers(cls):
         pass
 
-    def insert_data(self):
+    @classmethod
+    def insert_data(cls):
         _load_fixtures()
 
 

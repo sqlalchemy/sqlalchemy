@@ -2065,10 +2065,7 @@ class _ColumnEntity(_QueryEntity):
         if _is_aliased_class(entity):
             return entity is self.entity_zero
         else:
-            # TODO: this will fail with inheritance, entity_zero
-            # is not a base mapper.  MapperEntity has path_entity
-            # which serves this purpose (when saying: query(FooBar.somecol).join(SomeClass, FooBar.id==SomeClass.foo_id))
-            return entity.base_mapper is self.entity_zero
+            return not _is_aliased_class(self.entity_zero) and entity.base_mapper.common_parent(self.entity_zero)
 
     def _resolve_expr_against_query_aliases(self, query, expr, context):
         return query._adapt_clause(expr, False, True)

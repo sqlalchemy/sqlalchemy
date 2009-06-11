@@ -1,9 +1,8 @@
 # load test of connection pool
-import testenv; testenv.configure_for_tests()
 import thread, time
 from sqlalchemy import *
 import sqlalchemy.pool as pool
-from testlib import testing
+from sqlalchemy.test import testing
 
 db = create_engine(testing.db.url, pool_timeout=30, echo_pool=True)
 metadata = MetaData(db)

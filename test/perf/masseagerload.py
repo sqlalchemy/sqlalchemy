@@ -1,7 +1,6 @@
-import testenv; testenv.configure_for_tests()
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
+from sqlalchemy.test import *
 
 NUM = 500
 DIVISOR = 50
