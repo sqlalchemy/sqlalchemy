@@ -432,7 +432,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         eq_(str(table.columns.answer.server_default.arg), '42', "Reflected default value didn't equal expected value")
-        self.assertFalse(table.columns.answer.nullable, "Expected reflected column to not be nullable.")
+        assert not table.columns.answer.nullable, "Expected reflected column to not be nullable."
 
     def test_table_is_reflected_test_schema(self):
         metadata = MetaData(testing.db)
@@ -444,13 +444,13 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True, schema='test_schema')
         eq_(str(table.columns.answer.server_default.arg), '0', "Reflected default value didn't equal expected value")
-        self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
+        assert table.columns.answer.nullable, "Expected reflected column to be nullable."
 
     def test_crosschema_domain_is_reflected(self):
         metadata = MetaData(testing.db)
         table = Table('crosschema', metadata, autoload=True)
         eq_(str(table.columns.answer.server_default.arg), '0', "Reflected default value didn't equal expected value")
-        self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
+        assert table.columns.answer.nullable, "Expected reflected column to be nullable."
 
     def test_unknown_types(self):
         from sqlalchemy.databases import postgres
@@ -800,10 +800,10 @@ class ArrayTest(TestBase, AssertsExecutionResults):
     def test_reflect_array_column(self):
         metadata2 = MetaData(testing.db)
         tbl = Table('arrtable', metadata2, autoload=True)
-        self.assertTrue(isinstance(tbl.c.intarr.type, postgres.PGArray))
-        self.assertTrue(isinstance(tbl.c.strarr.type, postgres.PGArray))
-        self.assertTrue(isinstance(tbl.c.intarr.type.item_type, Integer))
-        self.assertTrue(isinstance(tbl.c.strarr.type.item_type, String))
+        assert isinstance(tbl.c.intarr.type, postgres.PGArray)
+        assert isinstance(tbl.c.strarr.type, postgres.PGArray)
+        assert isinstance(tbl.c.intarr.type.item_type, Integer)
+        assert isinstance(tbl.c.strarr.type.item_type, String)
 
     def test_insert_array(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])

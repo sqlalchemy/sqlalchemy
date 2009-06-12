@@ -30,9 +30,6 @@ class NoseSQLAlchemy(Plugin):
     def options(self, parser, env=os.environ):
         Plugin.options(self, parser, env)
         opt = parser.add_option
-        #opt("--verbose", action="store_true", dest="verbose",
-            #help="enable stdout echoing/printing")
-        #opt("--quiet", action="store_true", dest="quiet", help="suppress output")
         opt("--log-info", action="callback", type="string", callback=_log,
             help="turn on info logging for <LOG> (multiple OK)")
         opt("--log-debug", action="callback", type="string", callback=_log,
