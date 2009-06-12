@@ -261,7 +261,7 @@ class IdentitySetTest(TestBase):
         except TypeError:
             assert True
 
-        assert_raises(TypeError, cmp, ids)
+        assert_raises(TypeError, util.cmp, ids)
         assert_raises(TypeError, hash, ids)
 
     def test_difference(self):
@@ -326,11 +326,13 @@ class DictlikeIteritemsTest(TestBase):
         d = subdict(a=1,b=2,c=3)
         self._ok(d)
 
+    # Py2K
     def test_UserDict(self):
         import UserDict
         d = UserDict.UserDict(a=1,b=2,c=3)
         self._ok(d)
-
+    # end Py2K
+    
     def test_object(self):
         self._notok(object())
 
@@ -340,12 +342,15 @@ class DictlikeIteritemsTest(TestBase):
                 return iter(self.baseline)
         self._ok(duck1())
 
+    # Py2K
     def test_duck_2(self):
         class duck2(object):
             def items(duck):
                 return list(self.baseline)
         self._ok(duck2())
+    # end Py2K
 
+    # Py2K
     def test_duck_3(self):
         class duck3(object):
             def iterkeys(duck):
@@ -353,6 +358,7 @@ class DictlikeIteritemsTest(TestBase):
             def __getitem__(duck, key):
                 return dict(a=1,b=2,c=3).get(key)
         self._ok(duck3())
+    # end Py2K
 
     def test_duck_4(self):
         class duck4(object):

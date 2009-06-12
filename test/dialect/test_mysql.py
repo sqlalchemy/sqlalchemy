@@ -1,5 +1,9 @@
 from sqlalchemy.test.testing import eq_
+
+# Py2K
 import sets
+# end Py2K
+
 from sqlalchemy import *
 from sqlalchemy import sql, exc
 from sqlalchemy.dialects.mysql import base as mysql

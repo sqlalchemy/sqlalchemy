@@ -75,7 +75,6 @@ class NoseSQLAlchemy(Plugin):
     def configure(self, options, conf):
         Plugin.configure(self, options, conf)
 
-        import testing, requires
         testing.db = db
         testing.requires = requires
 

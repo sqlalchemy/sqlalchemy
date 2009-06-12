@@ -348,7 +348,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         u = Unicode(assert_unicode=True)
         uni = u.dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
         # Py3K
-        #self.assertRaises(exc.InvalidRequestError, uni, b'x')
+        #assert_raises(exc.InvalidRequestError, uni, b'x')
         # Py2K
         assert_raises(exc.InvalidRequestError, uni, 'x')
         # end Py2K
@@ -356,7 +356,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         u = Unicode()
         uni = u.dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
         # Py3K
-        #self.assertRaises(exc.SAWarning, uni, b'x')
+        #assert_raises(exc.SAWarning, uni, b'x')
         # Py2K
         assert_raises(exc.SAWarning, uni, 'x')
         # end Py2K
@@ -367,7 +367,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         s = String()
         uni = s.dialect_impl(unicode_engine.dialect).bind_processor(unicode_engine.dialect)
         # Py3K
-        #self.assertRaises(exc.InvalidRequestError, uni, b'x')
+        #assert_raises(exc.InvalidRequestError, uni, b'x')
         #assert isinstance(uni(unicodedata), bytes)
         # Py2K
         assert_raises(exc.InvalidRequestError, uni, 'x')

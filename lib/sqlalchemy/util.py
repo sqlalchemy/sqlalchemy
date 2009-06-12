@@ -949,7 +949,7 @@ class IdentitySet(object):
 
         if len(self) > len(other):
             return False
-        for m in itertools.ifilterfalse(other._members.has_key,
+        for m in itertools.ifilterfalse(other._members.__contains__,
                                         self._members.iterkeys()):
             return False
         return True
