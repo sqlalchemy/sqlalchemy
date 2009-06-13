@@ -5,7 +5,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, MetaData, and_
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, backref, create_session, compile_mappers, clear_mappers
+from sqlalchemy.orm import mapper, relation, backref, create_session, compile_mappers, clear_mappers, sessionmaker
 from sqlalchemy.test.testing import eq_, startswith_
 from test.orm import _base, _fixtures
 
@@ -102,13 +102,33 @@ class RelationTest(_base.MappedTest):
 
 
 class RelationTest2(_base.MappedTest):
-    """Tests a relationship on a column included in multiple foreign keys.
-
-    This test tests a relationship on a column that is included in multiple
-    foreign keys, as well as a self-referential relationship on a composite
-    key where one column in the foreign key is 'joined to itself'.
-
+    """The ultimate relation() test:
+    
+    company         employee
+    ----------      ----------
+    company_id <--- company_id ------+
+    name                ^            |
+                        +------------+
+                      
+                    emp_id <---------+
+                    name             |
+                    reports_to_id ---+
+    
+    employee joins to its sub-employees
+    both on reports_to_id, *and on company_id to itself*.
+    
+    As of 0.5.5 we are making a slight behavioral change,
+    such that the custom foreign_keys setting
+    on the o2m side has to be explicitly 
+    unset on the backref m2o side - this to suit
+    the vast majority of use cases where the backref()
+    is to receive the same foreign_keys argument 
+    as the forwards reference.   But we also
+    have smartened the remote_side logic such that 
+    you don't even need the custom fks setting.
+    
     """
+
     @classmethod
     def define_tables(cls, metadata):
         Table('company_t', metadata,
@@ -127,10 +147,8 @@ class RelationTest2(_base.MappedTest):
                   ['company_id', 'reports_to_id'],
                   ['employee_t.company_id', 'employee_t.emp_id']))
 
-    @testing.resolve_artifact_names
-    def test_explicit(self):
-        """test with mappers that have fairly explicit join conditions"""
-
+    @classmethod
+    def setup_classes(cls):
         class Company(_base.Entity):
             pass
 
@@ -140,7 +158,9 @@ class RelationTest2(_base.MappedTest):
                 self.company = company
                 self.emp_id = emp_id
                 self.reports_to = reports_to
-
+        
+    @testing.resolve_artifact_names
+    def test_explicit(self):
         mapper(Company, company_t)
         mapper(Employee, employee_t, properties= {
             'company':relation(Company, primaryjoin=employee_t.c.company_id==company_t.c.company_id, backref='employees'),
@@ -151,55 +171,57 @@ class RelationTest2(_base.MappedTest):
                 ),
                 remote_side=[employee_t.c.emp_id, employee_t.c.company_id],
                 foreign_keys=[employee_t.c.reports_to_id],
-                backref='employees')
+                backref=backref('employees', foreign_keys=None))
         })
 
-        sess = create_session()
-        c1 = Company()
-        c2 = Company()
-
-        e1 = Employee(u'emp1', c1, 1)
-        e2 = Employee(u'emp2', c1, 2, e1)
-        e3 = Employee(u'emp3', c1, 3, e1)
-        e4 = Employee(u'emp4', c1, 4, e3)
-        e5 = Employee(u'emp5', c2, 1)
-        e6 = Employee(u'emp6', c2, 2, e5)
-        e7 = Employee(u'emp7', c2, 3, e5)
-
-        sess.add_all((c1, c2))
-        sess.flush()
-        sess.expunge_all()
-
-        test_c1 = sess.query(Company).get(c1.company_id)
-        test_e1 = sess.query(Employee).get([c1.company_id, e1.emp_id])
-        assert test_e1.name == 'emp1', test_e1.name
-        test_e5 = sess.query(Employee).get([c2.company_id, e5.emp_id])
-        assert test_e5.name == 'emp5', test_e5.name
-        assert [x.name for x in test_e1.employees] == ['emp2', 'emp3']
-        eq_(sess.query(Employee).get([c1.company_id, 3]).reports_to.name, 'emp1')
-        eq_(sess.query(Employee).get([c2.company_id, 3]).reports_to.name, 'emp5')
+        self._test()
 
     @testing.resolve_artifact_names
     def test_implicit(self):
-        """test with mappers that have the most minimal arguments"""
-        class Company(_base.Entity):
-            pass
-        class Employee(_base.Entity):
-            def __init__(self, name, company, emp_id, reports_to=None):
-                self.name = name
-                self.company = company
-                self.emp_id = emp_id
-                self.reports_to = reports_to
-
         mapper(Company, company_t)
         mapper(Employee, employee_t, properties= {
             'company':relation(Company, backref='employees'),
             'reports_to':relation(Employee,
                 remote_side=[employee_t.c.emp_id, employee_t.c.company_id],
                 foreign_keys=[employee_t.c.reports_to_id],
-                backref='employees')
+                backref=backref('employees', foreign_keys=None)
+                )
         })
 
+        self._test()
+
+    @testing.resolve_artifact_names
+    def test_very_implicit(self):
+        mapper(Company, company_t)
+        mapper(Employee, employee_t, properties= {
+            'company':relation(Company, backref='employees'),
+            'reports_to':relation(Employee,
+                remote_side=[employee_t.c.emp_id, employee_t.c.company_id],
+                backref='employees'
+                )
+        })
+
+        self._test()
+    
+    @testing.resolve_artifact_names
+    def test_very_explicit(self):
+        mapper(Company, company_t)
+        mapper(Employee, employee_t, properties= {
+            'company':relation(Company, backref='employees'),
+            'reports_to':relation(Employee,
+                _local_remote_pairs = [
+                        (employee_t.c.reports_to_id, employee_t.c.emp_id),
+                        (employee_t.c.company_id, employee_t.c.company_id)
+                ],
+                foreign_keys=[employee_t.c.reports_to_id],
+                backref=backref('employees', foreign_keys=None)
+                )
+        })
+
+        self._test()
+        
+    @testing.resolve_artifact_names
+    def _test(self):
         sess = create_session()
         c1 = Company()
         c2 = Company()
@@ -664,6 +686,46 @@ class RelationTest6(_base.MappedTest):
             [TagInstance(data='iplc_case'), TagInstance(data='not_iplc_case')]
         )
 
+class BackrefPropagatesForwardsArgs(_base.MappedTest):
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50))
+        )
+        Table('addresses', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('user_id', Integer),
+            Column('email', String(50))
+        )
+    
+    @classmethod
+    def setup_classes(cls):
+        class User(_base.ComparableEntity):
+            pass
+        class Address(_base.ComparableEntity):
+            pass
+    
+    @testing.resolve_artifact_names
+    def test_backref(self):
+        
+        mapper(User, users, properties={
+            'addresses':relation(Address, 
+                        primaryjoin=addresses.c.user_id==users.c.id, 
+                        foreign_keys=addresses.c.user_id,
+                        backref='user')
+        })
+        mapper(Address, addresses)
+        
+        sess = sessionmaker()()
+        u1 = User(name='u1', addresses=[Address(email='a1')])
+        sess.add(u1)
+        sess.commit()
+        eq_(sess.query(Address).all(), [
+            Address(email='a1', user=User(name='u1'))
+        ])
+    
 class AmbiguousJoinInterpretedAsSelfRef(_base.MappedTest):
     """test ambiguous joins due to FKs on both sides treated as self-referential.
     

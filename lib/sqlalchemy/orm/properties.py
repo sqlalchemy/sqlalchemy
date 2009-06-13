@@ -825,8 +825,17 @@ class RelationProperty(StrategizedProperty):
                 elif l in self._foreign_keys:
                     self.synchronize_pairs.append((r, l))
         else:
-            eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=self.viewonly)
-            eq_pairs = [(l, r) for l, r in eq_pairs if (self._col_is_part_of_mappings(l) and self._col_is_part_of_mappings(r)) or self.viewonly and r in self._foreign_keys]
+            eq_pairs = criterion_as_pairs(
+                            self.primaryjoin, 
+                            consider_as_foreign_keys=self._foreign_keys, 
+                            any_operator=self.viewonly
+                        )
+            eq_pairs = [
+                            (l, r) for l, r in eq_pairs if 
+                            (self._col_is_part_of_mappings(l) and 
+                                self._col_is_part_of_mappings(r)) 
+                                or self.viewonly and r in self._foreign_keys
+                        ]
 
             if not eq_pairs:
                 if not self.viewonly and criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True):
@@ -880,6 +889,7 @@ class RelationProperty(StrategizedProperty):
         elif self._refers_to_parent_table():
             # self referential defaults to ONETOMANY unless the "remote" side is present
             # and does not reference any foreign key columns
+
             if self.local_remote_pairs:
                 remote = [r for l, r in self.local_remote_pairs]
             elif self.remote_side:
@@ -887,7 +897,9 @@ class RelationProperty(StrategizedProperty):
             else:
                 remote = None
 
-            if not remote or self._foreign_keys.intersection(remote):
+            if not remote or self._foreign_keys.\
+                                    difference(l for l, r in self.synchronize_pairs).\
+                                    intersection(remote):
                 self.direction = ONETOMANY
             else:
                 self.direction = MANYTOONE
@@ -1160,12 +1172,14 @@ class BackRef(object):
                     raise sa_exc.InvalidRequestError(
                         "Can't assign 'secondaryjoin' on a backref against "
                         "a non-secondary relation.")
-
+            
+            foreign_keys = self.kwargs.pop('foreign_keys', prop._foreign_keys)
+            
             parent = prop.parent.primary_mapper()
             self.kwargs.setdefault('viewonly', prop.viewonly)
             self.kwargs.setdefault('post_update', prop.post_update)
 
-            relation = RelationProperty(parent, prop.secondary, pj, sj,
+            relation = RelationProperty(parent, prop.secondary, pj, sj, foreign_keys=foreign_keys,
                                       backref=BackRef(prop.key, _prop=prop),
                                       **self.kwargs)
 
