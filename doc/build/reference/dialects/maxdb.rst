@@ -1,4 +1,4 @@
 MaxDB
 =====
 
-.. automodule:: sqlalchemy.databases.maxdb
+.. automodule:: sqlalchemy.dialects.maxdb.base

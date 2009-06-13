@@ -80,120 +80,128 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
-class _TableSingleton(visitors.VisitableType):
-    """A metaclass used by the ``Table`` object to provide singleton behavior."""
+class Table(SchemaItem, expression.TableClause):
+    """Represent a table in a database.
+    
+    e.g.::
+    
+        mytable = Table("mytable", metadata, 
+                        Column('mytable_id', Integer, primary_key=True),
+                        Column('value', String(50))
+                   )
 
-    def __call__(self, name, metadata, *args, **kwargs):
-        schema = kwargs.get('schema', None)
-        useexisting = kwargs.pop('useexisting', False)
-        mustexist = kwargs.pop('mustexist', False)
+    The Table object constructs a unique instance of itself based on its
+    name within the given MetaData object.   Constructor
+    arguments are as follows:
+    
+    :param name: The name of this table as represented in the database. 
+
+        This property, along with the *schema*, indicates the *singleton
+        identity* of this table in relation to its parent :class:`MetaData`.
+        Additional calls to :class:`Table` with the same name, metadata,
+        and schema name will return the same :class:`Table` object.
+
+        Names which contain no upper case characters
+        will be treated as case insensitive names, and will not be quoted
+        unless they are a reserved word.  Names with any number of upper
+        case characters will be quoted and sent exactly.  Note that this
+        behavior applies even for databases which standardize upper 
+        case names as case insensitive such as Oracle.
+
+    :param metadata: a :class:`MetaData` object which will contain this 
+        table.  The metadata is used as a point of association of this table
+        with other tables which are referenced via foreign key.  It also
+        may be used to associate this table with a particular 
+        :class:`~sqlalchemy.engine.base.Connectable`.
+
+    :param \*args: Additional positional arguments are used primarily
+        to add the list of :class:`Column` objects contained within this table.
+        Similar to the style of a CREATE TABLE statement, other :class:`SchemaItem`
+        constructs may be added here, including :class:`PrimaryKeyConstraint`,
+        and :class:`ForeignKeyConstraint`.
+        
+    :param autoload: Defaults to False: the Columns for this table should be reflected
+        from the database.  Usually there will be no Column objects in the
+        constructor if this property is set.
+
+    :param autoload_with: If autoload==True, this is an optional Engine or Connection
+        instance to be used for the table reflection.  If ``None``, the
+        underlying MetaData's bound connectable will be used.
+
+    :param include_columns: A list of strings indicating a subset of columns to be loaded via
+        the ``autoload`` operation; table columns who aren't present in
+        this list will not be represented on the resulting ``Table``
+        object.  Defaults to ``None`` which indicates all columns should
+        be reflected.
+
+    :param info: A dictionary which defaults to ``{}``.  A space to store application 
+        specific data. This must be a dictionary.
+
+    :param mustexist: When ``True``, indicates that this Table must already 
+        be present in the given :class:`MetaData`` collection.
+
+    :param prefixes:
+        A list of strings to insert after CREATE in the CREATE TABLE
+        statement.  They will be separated by spaces.
+
+    :param quote: Force quoting of this table's name on or off, corresponding
+        to ``True`` or ``False``.  When left at its default of ``None``,
+        the column identifier will be quoted according to whether the name is
+        case sensitive (identifiers with at least one upper case character are 
+        treated as case sensitive), or if it's a reserved word.  This flag 
+        is only needed to force quoting of a reserved word which is not known
+        by the SQLAlchemy dialect.
+
+    :param quote_schema: same as 'quote' but applies to the schema identifier.
+
+    :param schema: The *schema name* for this table, which is required if the table
+        resides in a schema other than the default selected schema for the
+        engine's database connection.  Defaults to ``None``.
+
+    :param useexisting: When ``True``, indicates that if this Table is already
+        present in the given :class:`MetaData`, apply further arguments within
+        the constructor to the existing :class:`Table`.  If this flag is not 
+        set, an error is raised when the parameters of an existing :class:`Table`
+        are overwritten.
+
+    """
+    
+    __visit_name__ = 'table'
+
+    ddl_events = ('before-create', 'after-create', 'before-drop', 'after-drop')
+
+    def __new__(cls, name, metadata, *args, **kw):
+        schema = kw.get('schema', None)
+        useexisting = kw.pop('useexisting', False)
+        mustexist = kw.pop('mustexist', False)
         key = _get_table_key(name, schema)
-        try:
-            table = metadata.tables[key]
+        if key in metadata.tables:
             if not useexisting and bool(args):
                 raise exc.InvalidRequestError(
                     "Table '%s' is already defined for this MetaData instance.  "
                     "Specify 'useexisting=True' to redefine options and "
                     "columns on an existing Table object." % key)
-            else:
-                table._init_existing(*args, **kwargs)
+            table = metadata.tables[key]
+            table._init_existing(*args, **kw)
             return table
-        except KeyError:
+        else:
             if mustexist:
                 raise exc.InvalidRequestError(
                     "Table '%s' not defined" % (key))
+            metadata.tables[key] = table = object.__new__(cls)
             try:
-                return type.__call__(self, name, metadata, *args, **kwargs)
+                table._init(name, metadata, *args, **kw)
+                return table
             except:
-                if key in metadata.tables:
-                    del metadata.tables[key]
+                metadata.tables.pop(key)
                 raise
-
-
-class Table(SchemaItem, expression.TableClause):
-    """Represent a table in a database."""
-
-    __metaclass__ = _TableSingleton
-
-    __visit_name__ = 'table'
-
-    ddl_events = ('before-create', 'after-create', 'before-drop', 'after-drop')
-
-    def __init__(self, name, metadata, *args, **kwargs):
-        """
-        Construct a Table.
-
-        :param name: The name of this table as represented in the database. 
-
-            This property, along with the *schema*, indicates the *singleton
-            identity* of this table in relation to its parent :class:`MetaData`.
-            Additional calls to :class:`Table` with the same name, metadata,
-            and schema name will return the same :class:`Table` object.
-
-            Names which contain no upper case characters
-            will be treated as case insensitive names, and will not be quoted
-            unless they are a reserved word.  Names with any number of upper
-            case characters will be quoted and sent exactly.  Note that this
-            behavior applies even for databases which standardize upper 
-            case names as case insensitive such as Oracle.
-
-        :param metadata: a :class:`MetaData` object which will contain this 
-            table.  The metadata is used as a point of association of this table
-            with other tables which are referenced via foreign key.  It also
-            may be used to associate this table with a particular 
-            :class:`~sqlalchemy.engine.base.Connectable`.
-
-        :param \*args: Additional positional arguments are used primarily
-            to add the list of :class:`Column` objects contained within this table.
-            Similar to the style of a CREATE TABLE statement, other :class:`SchemaItem`
-            constructs may be added here, including :class:`PrimaryKeyConstraint`,
-            and :class:`ForeignKeyConstraint`.
-            
-        :param autoload: Defaults to False: the Columns for this table should be reflected
-            from the database.  Usually there will be no Column objects in the
-            constructor if this property is set.
-
-        :param autoload_with: If autoload==True, this is an optional Engine or Connection
-            instance to be used for the table reflection.  If ``None``, the
-            underlying MetaData's bound connectable will be used.
-
-        :param include_columns: A list of strings indicating a subset of columns to be loaded via
-            the ``autoload`` operation; table columns who aren't present in
-            this list will not be represented on the resulting ``Table``
-            object.  Defaults to ``None`` which indicates all columns should
-            be reflected.
-
-        :param info: A dictionary which defaults to ``{}``.  A space to store application 
-            specific data. This must be a dictionary.
-
-        :param mustexist: When ``True``, indicates that this Table must already 
-            be present in the given :class:`MetaData`` collection.
-
-        :param prefixes:
-            A list of strings to insert after CREATE in the CREATE TABLE
-            statement.  They will be separated by spaces.
-
-        :param quote: Force quoting of this table's name on or off, corresponding
-            to ``True`` or ``False``.  When left at its default of ``None``,
-            the column identifier will be quoted according to whether the name is
-            case sensitive (identifiers with at least one upper case character are 
-            treated as case sensitive), or if it's a reserved word.  This flag 
-            is only needed to force quoting of a reserved word which is not known
-            by the SQLAlchemy dialect.
-
-        :param quote_schema: same as 'quote' but applies to the schema identifier.
-
-        :param schema: The *schema name* for this table, which is required if the table
-            resides in a schema other than the default selected schema for the
-            engine's database connection.  Defaults to ``None``.
-
-        :param useexisting: When ``True``, indicates that if this Table is already
-            present in the given :class:`MetaData`, apply further arguments within
-            the constructor to the existing :class:`Table`.  If this flag is not 
-            set, an error is raised when the parameters of an existing :class:`Table`
-            are overwritten.
-
-        """
+                
+    def __init__(self, *args, **kw):
+        # __init__ is overridden to prevent __new__ from 
+        # calling the superclass constructor.
+        pass
+        
+    def _init(self, name, metadata, *args, **kwargs):
         super(Table, self).__init__(name)
         self.metadata = metadata
         self.schema = kwargs.pop('schema', None)
@@ -212,8 +220,6 @@ class Table(SchemaItem, expression.TableClause):
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
         include_columns = kwargs.pop('include_columns', None)
-
-        self._set_parent(metadata)
 
         self.quote = kwargs.pop('quote', None)
         self.quote_schema = kwargs.pop('quote_schema', None)
@@ -267,7 +273,7 @@ class Table(SchemaItem, expression.TableClause):
         if len([k for k in kwargs
                 if not re.match(r'^(?:%s)_' % '|'.join(dialects.__all__), k)]):
             raise TypeError(
-                "Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
+                "Invalid argument(s) for Table: %r" % kwargs.keys())
         self.kwargs.update(kwargs)
 
     def _set_primary_key(self, pk):
@@ -296,8 +302,7 @@ class Table(SchemaItem, expression.TableClause):
     def bind(self):
         """Return the connectable associated with this Table."""
 
-        m = self.metadata
-        return m and m.bind or None
+        return self.metadata and self.metadata.bind or None
 
     def append_column(self, column):
         """Append a ``Column`` to this ``Table``."""
@@ -350,7 +355,7 @@ class Table(SchemaItem, expression.TableClause):
                 self, column_collections=column_collections, **kwargs)
         else:
             if column_collections:
-                return [c for c in self.columns]
+                return list(self.columns)
             else:
                 return []
 
@@ -645,8 +650,11 @@ class Column(SchemaItem, expression.ColumnClause):
             raise exc.ArgumentError("this Column already has a table!")
 
         if self.key in table._columns:
-            # note the column being replaced, if any
-            self._pre_existing_column = table._columns.get(self.key)
+            col = table._columns.get(self.key)
+            for fk in col.foreign_keys:
+                col.foreign_keys.remove(fk)
+                table.foreign_keys.remove(fk)
+                table.constraints.remove(fk.constraint)
             
         table._columns.replace(self)
 
@@ -737,7 +745,8 @@ class Column(SchemaItem, expression.ColumnClause):
         selectable.columns.add(c)
         if self.primary_key:
             selectable.primary_key.add(c)
-        [c._init_items(f) for f in fk]
+        for f in fk:
+            c._init_items(f)
         return c
 
     def get_children(self, schema_visitor=False, **kwargs):
@@ -946,13 +955,6 @@ class ForeignKey(SchemaItem):
             raise exc.InvalidRequestError("This ForeignKey already has a parent !")
         self.parent = column
 
-        if hasattr(self.parent, '_pre_existing_column'):
-            # remove existing FK which matches us
-            for fk in self.parent._pre_existing_column.foreign_keys:
-                if fk.target_fullname == self.target_fullname:
-                    self.parent.table.foreign_keys.remove(fk)
-                    self.parent.table.constraints.remove(fk.constraint)
-
         if self.constraint is None and isinstance(self.parent.table, Table):
             self.constraint = ForeignKeyConstraint(
                 [], [], use_alter=self.use_alter, name=self.name,
@@ -1053,7 +1055,7 @@ class ColumnDefault(DefaultGenerator):
     __visit_name__ = property(_visit_name)
 
     def __repr__(self):
-        return "ColumnDefault(%s)" % repr(self.arg)
+        return "ColumnDefault(%r)" % self.arg
 
 class Sequence(DefaultGenerator):
     """Represents a named database sequence."""
@@ -1448,10 +1450,7 @@ class Index(SchemaItem):
         self.unique = kwargs.pop('unique', False)
         self.kwargs = kwargs
 
-        self._init_items(*columns)
-
-    def _init_items(self, *args):
-        for column in args:
+        for column in columns:
             column = _to_schema_column(column)
             if self.table is None:
                 self._set_parent(column.table)

@@ -1,4 +1,4 @@
 Sybase
 ======
 
-.. automodule:: sqlalchemy.databases.sybase
+.. automodule:: sqlalchemy.dialects.sybase.base

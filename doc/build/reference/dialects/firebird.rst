@@ -1,4 +1,4 @@
 Firebird
 ========
 
-.. automodule:: sqlalchemy.databases.firebird
+.. automodule:: sqlalchemy.dialects.firebird.base

@@ -1,7 +1,7 @@
 MySQL
 =====
 
-.. automodule:: sqlalchemy.databases.mysql
+.. automodule:: sqlalchemy.dialects.mysql.base
 
 MySQL Column Types
 ------------------
@@ -138,3 +138,7 @@ MySQL Column Types
    :members: __init__
    :show-inheritance:
 
+MySQLdb Notes
+--------------
+
+.. automodule:: sqlalchemy.dialects.mysql.mysqldb
