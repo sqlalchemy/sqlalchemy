@@ -10,9 +10,18 @@ downloads for nose are available at:
 
 http://somethingaboutorange.com/mrl/projects/nose/0.11.1/index.html
 
-
 SQLAlchemy implements a nose plugin that must be present when tests are run.
 This plugin is available when SQLAlchemy is installed via setuptools.
+
+INSTANT TEST RUNNER
+-------------------
+
+A plain vanilla run of all tests using sqlite can be run via setup.py:
+
+    $ python setup.py test
+    
+Setuptools will take care of the rest !   To run nose directly and have
+its full set of options available, read on...
 
 SETUP
 -----
