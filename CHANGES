@@ -10,6 +10,7 @@ CHANGES
     - unit tests have been migrated from unittest to nose.
       See README.unittests for information on how to run
       the tests.  [ticket:970]
+      
 - orm
     - Fixed bug introduced in 0.5.4 whereby Composite types
       fail when default-holding columns are flushed.
@@ -26,7 +27,22 @@ CHANGES
       returned in terms of the base class rather than the subclass - 
       so applications which relied on this erroneous result need to be 
       adjusted. [ticket:1431]
+
+    - The "foreign_keys" argument of relation() will now propagate
+      automatically to the backref in the same way that
+      primaryjoin and secondaryjoin do.   For the extremely 
+      rare use case where the backref of a relation() has 
+      intentionally different "foreign_keys" configured, both sides
+      now need to be configured explicity (if they do in fact require
+      this setting, see the next note...).  
       
+    - ...the only known (and really, really rare) use case where a 
+      different foreign_keys setting was used on the forwards/backwards 
+      side, a composite foreign key that partially points to its own 
+      columns, has been enhanced such that the fk->itself aspect of the 
+      relation won't be used to determine relation direction.
+     
+    
 - sql
     - Removed an obscure feature of execute() (including connection,
       engine, Session) whereby a bindparam() construct can be sent as 
