@@ -903,7 +903,7 @@ class Query(object):
         # after the method completes,
         # the query's joinpoint will be set to this.
         right_entity = None
-
+        
         for arg1 in util.to_list(keys):
             aliased_entity = False
             alias_criterion = False
@@ -973,6 +973,10 @@ class Query(object):
                         clause = ent.selectable
                         break
 
+            # TODO:
+            # this provides one kind of "backwards join"
+            # tested in test/orm/query.py.
+            # remove this in 0.6
             if not clause:
                 if isinstance(onclause, interfaces.PropComparator):
                     clause = onclause.__clause_element__()
