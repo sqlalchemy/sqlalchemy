@@ -559,10 +559,6 @@ class Column(SchemaItem, expression.ColumnClause):
         if args:
             coltype = args[0]
             
-            # adjust for partials
-            if util.callable(coltype):
-                coltype = args[0]()
-
             if (isinstance(coltype, types.AbstractType) or
                 (isinstance(coltype, type) and
                  issubclass(coltype, types.AbstractType))):

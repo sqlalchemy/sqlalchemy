@@ -501,7 +501,7 @@ class SQLiteDialect(default.DefaultDialect):
             indexes.append(dict(name=row[1], column_names=[], unique=row[2]))
         # loop thru unique indexes to get the column names.
         for idx in indexes:
-            c = connection.execute("%sindex_info(%s)" % (pragma, idx['name']))
+            c = connection.execute("%sindex_info(%s)" % (pragma, quote(idx['name'])))
             cols = idx['column_names']
             while True:
                 row = c.fetchone()

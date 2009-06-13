@@ -571,7 +571,7 @@ class ReflectionTest(TestBase, ComparesTables):
             m9.reflect()
             self.assert_(not m9.tables)
 
-    @testing.fails_on_everything_except('postgres', 'mysql')
+    @testing.fails_on_everything_except('postgres', 'mysql', 'sqlite')
     def test_index_reflection(self):
         m1 = MetaData(testing.db)
         t1 = Table('party', m1,
@@ -878,7 +878,7 @@ def dropViews(con, schema=None):
         con.execute(sa.sql.text(query))
 
 
-class ReflectionTest(TestBase):
+class ComponentReflectionTest(TestBase):
 
     @testing.fails_on('sqlite', 'no schemas')
     def test_get_schema_names(self):
