@@ -28,6 +28,9 @@ CHANGES
       so applications which relied on this erroneous result need to be 
       adjusted. [ticket:1431]
 
+    - Fixed bug whereby list-based attributes, like pickletype
+      and PGArray, failed to be merged() properly.
+      
     - The "foreign_keys" argument of relation() will now propagate
       automatically to the backref in the same way that
       primaryjoin and secondaryjoin do.   For the extremely 

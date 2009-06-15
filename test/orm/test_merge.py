@@ -1,14 +1,16 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
+from sqlalchemy import Table, Column, Integer, PickleType
+import operator
 from sqlalchemy.test import testing
 from sqlalchemy.util import OrderedSet
-from sqlalchemy.orm import mapper, relation, create_session, PropComparator, synonym, comparable_property
+from sqlalchemy.orm import mapper, relation, create_session, PropComparator, synonym, comparable_property, sessionmaker
 from sqlalchemy.test.testing import eq_, ne_
 from test.orm import _base, _fixtures
 
 
 class MergeTest(_fixtures.FixtureTest):
-    """Session..merge() functionality"""
+    """Session.merge() functionality"""
 
     run_inserts = None
 
@@ -731,5 +733,33 @@ class MergeTest(_fixtures.FixtureTest):
         sess.commit()
 
 
-
+class MutableMergeTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("data", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', PickleType(comparator=operator.eq))
+        )
+    
+    @classmethod
+    def setup_classes(cls):
+        class Data(_base.ComparableEntity):
+            pass
+    
+    @testing.resolve_artifact_names
+    def test_list(self):
+        mapper(Data, data)
+        sess = sessionmaker()()
+        d = Data(data=["this", "is", "a", "list"])
+        
+        sess.add(d)
+        sess.commit()
+        
+        d2 = Data(id=d.id, data=["this", "is", "another", "list"])
+        d3 = sess.merge(d2)
+        eq_(d3.data, ["this", "is", "another", "list"])
+        
+        
+        
+        
 

@@ -111,8 +111,6 @@ class InstanceState(object):
             return None
         elif hasattr(impl, 'get_collection'):
             return impl.get_collection(self, dict_, x, passive=passive)
-        elif isinstance(x, list):
-            return x
         else:
             return [x]
 
