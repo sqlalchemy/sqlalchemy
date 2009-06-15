@@ -615,7 +615,7 @@ class FilterTest(QueryTest):
         
     def test_one_filter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
-
+    
     def test_contains(self):
         """test comparing a collection to an object instance."""
 
@@ -735,6 +735,16 @@ class FilterTest(QueryTest):
         # o2m
         eq_([User(id=10)], sess.query(User).filter(User.addresses==None).all())
         eq_([User(id=7),User(id=8),User(id=9)], sess.query(User).filter(User.addresses!=None).order_by(User.id).all())
+
+    def test_blank_filter_by(self):
+        eq_(
+            [(7,), (8,), (9,), (10,)],
+            create_session().query(User.id).filter_by().order_by(User.id).all()
+        )
+        eq_(
+            [(7,), (8,), (9,), (10,)],
+            create_session().query(User.id).filter_by(**{}).order_by(User.id).all()
+        )
 
 
 class FromSelfTest(QueryTest, AssertsCompiledSQL):
