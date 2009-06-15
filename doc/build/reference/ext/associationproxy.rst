@@ -177,10 +177,12 @@ relation.
     user = User('log')
     kw1  = Keyword('new_from_blammo')
 
-    # Adding a Keyword requires creating a UserKeyword association object
-    user.user_keywords.append(UserKeyword(user, kw1))
+    # Creating a UserKeyword association object will add a Keyword.
+    # the "user" reference assignment in the UserKeyword() constructor
+    # populates "user_keywords" via backref.
+    UserKeyword(user, kw1)
 
-    # And accessing Keywords requires traversing UserKeywords
+    # Accessing Keywords requires traversing UserKeywords
     print user.user_keywords[0]
     # <__main__.UserKeyword object at 0xb79bbbec>
 
