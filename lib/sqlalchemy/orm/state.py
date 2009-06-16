@@ -118,36 +118,46 @@ class InstanceState(object):
         self.manager.events.run('on_load', instance)
 
     def __getstate__(self):
-        return {'key': self.key,
-                'committed_state': self.committed_state,
-                'pending': self.pending,
-                'parents': self.parents,
-                'modified': self.modified,
-                'expired':self.expired,
-                'load_options':self.load_options,
-                'load_path':interfaces.serialize_path(self.load_path),
-                'instance': self.obj(),
-                'expired_attributes':self.expired_attributes,
-                'callables': self.callables,
-                'mutable_dict':self.mutable_dict}
+        d = {
+            'instance':self.obj(),
+        }
 
+        d.update(
+            (k, self.__dict__[k]) for k in (
+                'committed_state', 'pending', 'parents', 'modified', 'expired', 
+                'callables'
+            ) if self.__dict__[k]
+        )
+        
+        d.update(
+            (k, self.__dict__[k]) for k in (
+                'key', 'load_options', 'expired_attributes', 'mutable_dict'
+            ) if k in self.__dict__ 
+        )
+        if self.load_path:
+            d['load_path'] = interfaces.serialize_path(self.load_path)
+        return d
+        
     def __setstate__(self, state):
-        self.committed_state = state['committed_state']
-        self.parents = state['parents']
-        self.key = state['key']
-        self.session_id = None
-        self.pending = state['pending']
-        self.modified = state['modified']
         self.obj = weakref.ref(state['instance'])
-        self.load_options = state['load_options'] or EMPTY_SET
-        self.load_path = interfaces.deserialize_path(state['load_path'])
-        self.class_ = self.obj().__class__
+        self.class_ = state['instance'].__class__
         self.manager = manager_of_class(self.class_)
-        self.callables = state['callables']
-        self.runid = None
-        self.expired = state['expired']
-        self.expired_attributes = state['expired_attributes']
-        self.mutable_dict = state['mutable_dict']
+
+        self.committed_state = state.get('committed_state', {})
+        self.pending = state.get('pending', {})
+        self.parents = state.get('parents', {})
+        self.modified = state.get('modified', False)
+        self.expired = state.get('expired', False)
+        self.callables = state.get('callables', {})
+        
+        self.__dict__.update(
+            (k, state[k]) for k in (
+                'key', 'load_options', 'expired_attributes', 'mutable_dict'
+            ) if k in state 
+        )
+
+        if 'load_path' in state:
+            self.load_path = interfaces.deserialize_path(state['load_path'])
 
     def initialize(self, key):
         self.manager.get_impl(key).initialize(self, self.dict)
