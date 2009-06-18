@@ -512,6 +512,32 @@ class AttributesTest(_base.ORMTest):
         except sa_exc.ArgumentError, e:
             assert False
 
+class UtilTest(_base.ORMTest):
+    def test_helpers(self):
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+        
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        attributes.register_attribute(Foo, "coll", uselist=True, useobject=True)
+    
+        f1 = Foo()
+        b1 = Bar()
+        b2 = Bar()
+        coll = attributes.init_collection(f1, "coll")
+        assert coll.data is f1.coll
+        assert attributes.get_attribute(f1, "coll") is f1.coll
+        attributes.set_attribute(f1, "coll", [b1])
+        assert f1.coll == [b1]
+        eq_(attributes.get_history(f1, "coll"), ([b1], [], []))
+        attributes.set_committed_value(f1, "coll", [b2])
+        eq_(attributes.get_history(f1, "coll"), ((), [b2], ()))
+        
+        attributes.del_attribute(f1, "coll")
+        assert "coll" not in f1.__dict__
 
 class BackrefTest(_base.ORMTest):
 

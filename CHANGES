@@ -45,6 +45,8 @@ CHANGES
       columns, has been enhanced such that the fk->itself aspect of the 
       relation won't be used to determine relation direction.
      
+    - repaired non-working attributes.set_committed_value function.
+
     - Trimmed the pickle format for InstanceState which should further
       reduce the memory footprint of pickled instances.  The format
       should be backwards compatible with that of 0.5.4 and previous.

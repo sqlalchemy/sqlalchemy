@@ -1418,7 +1418,7 @@ def set_committed_value(instance, key, value):
     
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
-    state.get_impl(key).set_committed_value(state, dict_, key, value)
+    state.get_impl(key).set_committed_value(state, dict_, value)
     
 def set_attribute(instance, key, value):
     """Set the value of an attribute, firing history events.
