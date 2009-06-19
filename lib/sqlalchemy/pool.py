@@ -276,8 +276,11 @@ class _ConnectionRecord(object):
 
 
 def _finalize_fairy(connection, connection_record, pool, ref=None):
-    if ref is not None and (connection_record.backref is not ref or isinstance(pool, AssertionPool)):
+    _refs.discard(connection_record)
+        
+    if ref is not None and (connection_record.fairy is not ref or isinstance(pool, AssertionPool)):
         return
+
     if connection is not None:
         try:
             if pool._reset_on_return:
@@ -291,13 +294,15 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
     if connection_record is not None:
-        connection_record.backref = None
+        connection_record.fairy = None
         if pool._should_log_info:
             pool.log("Connection %r being returned to pool" % connection)
         if pool._on_checkin:
             for l in pool._on_checkin:
                 l.checkin(connection, connection_record)
         pool.return_conn(connection_record)
+
+_refs = set()
 
 class _ConnectionFairy(object):
     """Proxies a DB-API connection and provides return-on-dereference support."""
@@ -310,7 +315,8 @@ class _ConnectionFairy(object):
         try:
             rec = self._connection_record = pool.get()
             conn = self.connection = self._connection_record.get_connection()
-            self._connection_record.backref = weakref.ref(self, lambda ref:_finalize_fairy(conn, rec, pool, ref))
+            rec.fairy = weakref.ref(self, lambda ref:_finalize_fairy(conn, rec, pool, ref))
+            _refs.add(rec)
         except:
             self.connection = None # helps with endless __getattr__ loops later on
             self._connection_record = None
@@ -409,8 +415,9 @@ class _ConnectionFairy(object):
         """
 
         if self._connection_record is not None:
+            _refs.remove(self._connection_record)
+            self._connection_record.fairy = None
             self._connection_record.connection = None
-            self._connection_record.backref = None
             self._pool.do_return_conn(self._connection_record)
             self._detached_info = \
               self._connection_record.info.copy()
@@ -508,10 +515,8 @@ class SingletonThreadPool(Pool):
             del self._conn.current
 
     def cleanup(self):
-        for conn in list(self._all_conns):
-            self._all_conns.discard(conn)
-            if len(self._all_conns) <= self.size:
-                return
+        while len(self._all_conns) > self.size:
+            self._all_conns.pop()
 
     def status(self):
         return "SingletonThreadPool id:%d size: %d" % (id(self), len(self._all_conns))

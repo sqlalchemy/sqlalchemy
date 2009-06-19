@@ -8,11 +8,11 @@ import types
 import warnings
 from cStringIO import StringIO
 
-from sqlalchemy.test import config, assertsql
+from sqlalchemy.test import config, assertsql, util as testutil
 from sqlalchemy.util import function_named
 from engines import drop_all_tables
 
-from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema
+from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, pool
 
 _ops = { '<': operator.lt,
          '>': operator.gt,
@@ -413,6 +413,19 @@ def resetwarnings():
     if sys.version_info < (2, 4):
         warnings.filterwarnings('ignore', category=FutureWarning)
 
+def global_cleanup_assertions():
+    """Check things that have to be finalized at the end of a test suite.
+    
+    Hardcoded at the moment, a modular system can be built here
+    to support things like PG prepared transactions, tables all
+    dropped, etc.
+    
+    """
+
+    testutil.lazy_gc()
+    assert not pool._refs
+    
+    
 
 def against(*queries):
     """Boolean predicate, compares to testing database configuration.
