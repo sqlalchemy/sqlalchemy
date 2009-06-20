@@ -187,7 +187,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return "CURRENT_TIMESTAMP"
     
     def visit_char_length_func(self, fn, **kw):
-        return "length%s" % self.funtion_argspec(fn)
+        return "length%s" % self.function_argspec(fn)
         
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:

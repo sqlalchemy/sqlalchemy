@@ -267,9 +267,12 @@ class SQLCompiler(engine.Compiled):
                     self._truncated_identifier("colident", label.name) or label.name
 
             if result_map is not None:
-                result_map[labelname.lower()] = (label.name, (label, label.element, labelname), label.element.type)
+                result_map[labelname.lower()] = \
+                        (label.name, (label, label.element, labelname), label.element.type)
 
-            return self.process(label.element) + OPERATORS[operators.as_] + self.preparer.format_label(label, labelname)
+            return self.process(label.element) + \
+                        OPERATORS[operators.as_] + \
+                        self.preparer.format_label(label, labelname)
         else:
             return self.process(label.element)
             
@@ -290,14 +293,17 @@ class SQLCompiler(engine.Compiled):
             return name
         else:
             if column.table.schema:
-                schema_prefix = self.preparer.quote_schema(column.table.schema, column.table.quote_schema) + '.'
+                schema_prefix = self.preparer.quote_schema(
+                                    column.table.schema, 
+                                    column.table.quote_schema) + '.'
             else:
                 schema_prefix = ''
             tablename = column.table.name
             tablename = isinstance(tablename, sql._generated_label) and \
                             self._truncated_identifier("alias", tablename) or tablename
             
-            return schema_prefix + self.preparer.quote(tablename, column.table.quote) + "." + name
+            return schema_prefix + \
+                    self.preparer.quote(tablename, column.table.quote) + "." + name
 
     def escape_literal_column(self, text):
         """provide escaping for the literal_column() construct."""
@@ -358,7 +364,8 @@ class SQLCompiler(engine.Compiled):
         return x
 
     def visit_cast(self, cast, **kwargs):
-        return "CAST(%s AS %s)" % (self.process(cast.clause), self.process(cast.typeclause))
+        return "CAST(%s AS %s)" % \
+                    (self.process(cast.clause), self.process(cast.typeclause))
 
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)
@@ -373,7 +380,8 @@ class SQLCompiler(engine.Compiled):
             return disp(func, **kwargs)
         else:
             name = FUNCTIONS.get(func.__class__, func.name + "%(expr)s")
-            return ".".join(func.packagenames + [name]) % {'expr':self.function_argspec(func, **kwargs)}
+            return ".".join(func.packagenames + [name]) % \
+                            {'expr':self.function_argspec(func, **kwargs)}
 
     def function_argspec(self, func, **kwargs):
         return self.process(func.clause_expr, **kwargs)
@@ -382,8 +390,11 @@ class SQLCompiler(engine.Compiled):
         entry = self.stack and self.stack[-1] or {}
         self.stack.append({'from':entry.get('from', None), 'iswrapper':True})
 
-        text = (" " + cs.keyword + " ").join((self.process(c, asfrom=asfrom, parens=False, compound_index=i)
-                            for i, c in enumerate(cs.selects)))
+        text = (" " + cs.keyword + " ").join(
+                            (self.process(c, asfrom=asfrom, parens=False, compound_index=i)
+                            for i, c in enumerate(cs.selects))
+                        )
+                        
         group_by = self.process(cs._group_by_clause, asfrom=asfrom)
         if group_by:
             text += " GROUP BY " + group_by
@@ -448,7 +459,9 @@ class SQLCompiler(engine.Compiled):
         if name in self.binds:
             existing = self.binds[name]
             if existing is not bindparam and (existing.unique or bindparam.unique):
-                raise exc.CompileError("Bind parameter '%s' conflicts with unique bind parameter of the same name" % bindparam.key)
+                raise exc.CompileError(
+                        "Bind parameter '%s' conflicts with unique bind parameter of the same name" % bindparam.key
+                    )
         self.binds[bindparam.key] = self.binds[name] = bindparam
         return self.bindparam_string(name)
 
@@ -521,13 +534,15 @@ class SQLCompiler(engine.Compiled):
             column.table is not None and \
             not isinstance(column.table, sql.Select):
             return _CompileLabel(column, sql._generated_label(column.name))
-        elif not isinstance(column, (sql._UnaryExpression, sql._TextClause, sql._BindParamClause)) \
+        elif not isinstance(column, 
+                    (sql._UnaryExpression, sql._TextClause, sql._BindParamClause)) \
                 and (not hasattr(column, 'name') or isinstance(column, sql.Function)):
             return _CompileLabel(column, column.anon_label)
         else:
             return column
 
-    def visit_select(self, select, asfrom=False, parens=True, iswrapper=False, compound_index=1, **kwargs):
+    def visit_select(self, select, asfrom=False, parens=True, 
+                            iswrapper=False, compound_index=1, **kwargs):
 
         entry = self.stack and self.stack[-1] or {}
         
@@ -603,8 +618,10 @@ class SQLCompiler(engine.Compiled):
             return text
 
     def get_select_precolumns(self, select):
-        """Called when building a ``SELECT`` statement, position is just before column list."""
-
+        """Called when building a ``SELECT`` statement, position is just before 
+        column list.
+        
+        """
         return select._distinct and "DISTINCT " or ""
 
     def order_by_clause(self, select):
@@ -633,14 +650,16 @@ class SQLCompiler(engine.Compiled):
     def visit_table(self, table, asfrom=False, **kwargs):
         if asfrom:
             if getattr(table, "schema", None):
-                return self.preparer.quote_schema(table.schema, table.quote_schema) + "." + self.preparer.quote(table.name, table.quote)
+                return self.preparer.quote_schema(table.schema, table.quote_schema) + \
+                                "." + self.preparer.quote(table.name, table.quote)
             else:
                 return self.preparer.quote(table.name, table.quote)
         else:
             return ""
 
     def visit_join(self, join, asfrom=False, **kwargs):
-        return (self.process(join.left, asfrom=True) + (join.isouter and " LEFT OUTER JOIN " or " JOIN ") + \
+        return (self.process(join.left, asfrom=True) + \
+                (join.isouter and " LEFT OUTER JOIN " or " JOIN ") + \
             self.process(join.right, asfrom=True) + " ON " + self.process(join.onclause))
 
     def visit_sequence(self, seq):
@@ -654,7 +673,9 @@ class SQLCompiler(engine.Compiled):
         insert = ' '.join(["INSERT"] +
                           [self.process(x) for x in insert_stmt._prefixes])
 
-        if not colparams and not self.dialect.supports_default_values and not self.dialect.supports_empty_insert:
+        if not colparams and \
+                not self.dialect.supports_default_values and \
+                not self.dialect.supports_empty_insert:
             raise exc.CompileError(
                 "The version of %s you are using does not support empty inserts." % self.dialect.name)
         elif not colparams and self.dialect.supports_default_values:
@@ -852,7 +873,8 @@ class DDLCompiler(engine.Compiled):
             text += ", \n\t" + self.process(table.primary_key)
         
         const = ", \n\t".join(
-                        self.process(constraint) for constraint in table.constraints if constraint is not table.primary_key
+                        self.process(constraint) for constraint in table.constraints 
+                        if constraint is not table.primary_key
                         and constraint.inline_ddl
                         and (not self.dialect.supports_alter or not getattr(constraint, 'use_alter', False))
                 )
@@ -880,7 +902,8 @@ class DDLCompiler(engine.Compiled):
 
     def visit_drop_index(self, drop):
         index = drop.element
-        return "\nDROP INDEX " + self.preparer.quote(self._validate_identifier(index.name, False), index.quote)
+        return "\nDROP INDEX " + \
+                    self.preparer.quote(self._validate_identifier(index.name, False), index.quote)
 
     def visit_add_constraint(self, create):
         preparer = self.preparer
@@ -897,7 +920,8 @@ class DDLCompiler(engine.Compiled):
         )
         
     def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column) + " " + self.dialect.type_compiler.process(column.type)
+        colspec = self.preparer.format_column(column) + " " + \
+                        self.dialect.type_compiler.process(column.type)
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -911,6 +935,7 @@ class DDLCompiler(engine.Compiled):
 
     def _compile(self, tocompile, parameters):
         """compile the given string/parameters using this SchemaGenerator's dialect."""
+        
         compiler = self.dialect.statement_compiler(self.dialect, tocompile, parameters)
         compiler.compile()
         return compiler
