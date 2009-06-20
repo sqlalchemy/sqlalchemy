@@ -12,7 +12,8 @@
     - transaction isolation level may be specified with
       create_engine(... isolation_level="..."); available on
       postgresql and sqlite. [ticket:443]
-
+    - added first() method to ResultProxy, returns first row and closes
+      result set immediately.
 
 - schema
     - deprecated metadata.connect() and threadlocalmetadata.connect() have been 

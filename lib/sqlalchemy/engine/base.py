@@ -1801,7 +1801,12 @@ class ResultProxy(object):
             raise
 
     def fetchmany(self, size=None):
-        """Fetch many rows, just like DB-API ``cursor.fetchmany(size=cursor.arraysize)``."""
+        """Fetch many rows, just like DB-API ``cursor.fetchmany(size=cursor.arraysize)``.
+        
+        If rows are present, the cursor remains open after this is called.
+        Else the cursor is automatically closed and an empty list is returned.
+        
+        """
 
         try:
             process_row = self._process_row
@@ -1814,7 +1819,12 @@ class ResultProxy(object):
             raise
 
     def fetchone(self):
-        """Fetch one row, just like DB-API ``cursor.fetchone()``."""
+        """Fetch one row, just like DB-API ``cursor.fetchone()``.
+        
+        If a row is present, the cursor remains open after this is called.
+        Else the cursor is automatically closed and None is returned.
+        
+        """
 
         try:
             row = self._fetchone_impl()
@@ -1827,9 +1837,12 @@ class ResultProxy(object):
             self.connection._handle_dbapi_exception(e, None, None, self.cursor, self.context)
             raise
 
-    def scalar(self):
-        """Fetch the first column of the first row, and close the result set."""
-
+    def first(self):
+        """Fetch the first row and then close the result set unconditionally.
+        
+        Returns None if no row is present.
+        
+        """
         try:
             row = self._fetchone_impl()
         except Exception, e:
@@ -1838,12 +1851,24 @@ class ResultProxy(object):
 
         try:
             if row is not None:
-                return self._process_row(self, row)[0]
+                return self._process_row(self, row)
             else:
                 return None
         finally:
             self.close()
-
+        
+        
+    def scalar(self):
+        """Fetch the first column of the first row, and close the result set.
+        
+        Returns None if no row is present.
+        
+        """
+        row = self.first()
+        if row is not None:
+            return row[0]
+        else:
+            return None
 
 class BufferedRowResultProxy(ResultProxy):
     """A ResultProxy with row buffering behavior.
@@ -1913,6 +1938,7 @@ class BufferedColumnResultProxy(ResultProxy):
     of scope unless explicitly fetched.  Currently this includes just
     cx_Oracle LOB objects, but this behavior is known to exist in
     other DB-APIs as well (Pygresql, currently unsupported).
+    
     """
 
     _process_row = BufferedColumnRow
