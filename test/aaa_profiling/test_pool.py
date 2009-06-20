@@ -5,6 +5,9 @@ from sqlalchemy.pool import QueuePool
 
 class QueuePoolTest(TestBase, AssertsExecutionResults):
     class Connection(object):
+        def rollback(self):
+            pass
+            
         def close(self):
             pass
 
@@ -23,7 +26,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
         conn = pool.connect()
         conn.close()
 
-        @profiling.function_call_count(31, {'2.4': 21})
+        @profiling.function_call_count(29, {'2.4': 21})
         def go():
             conn2 = pool.connect()
             return conn2

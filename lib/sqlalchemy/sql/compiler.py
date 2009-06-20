@@ -58,42 +58,43 @@ BIND_TEMPLATES = {
 
 
 OPERATORS =  {
-    operators.and_ : 'AND',
-    operators.or_ : 'OR',
-    operators.inv : 'NOT',
-    operators.add : '+',
-    operators.mul : '*',
-    operators.sub : '-',
+    # binary
+    operators.and_ : ' AND ',
+    operators.or_ : ' OR ',
+    operators.add : ' + ',
+    operators.mul : ' * ',
+    operators.sub : ' - ',
     # Py2K
-    operators.div : '/',
+    operators.div : ' / ',
     # end Py2K
-    operators.mod : '%',
-    operators.truediv : '/',
-    operators.lt : '<',
-    operators.le : '<=',
-    operators.ne : '!=',
-    operators.gt : '>',
-    operators.ge : '>=',
-    operators.eq : '=',
-    operators.distinct_op : 'DISTINCT',
-    operators.concat_op : '||',
-    operators.like_op : lambda x, y, escape=None: '%s LIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
-    operators.notlike_op : lambda x, y, escape=None: '%s NOT LIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
-    operators.ilike_op : lambda x, y, escape=None: "lower(%s) LIKE lower(%s)" % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
-    operators.notilike_op : lambda x, y, escape=None: "lower(%s) NOT LIKE lower(%s)" % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
-    operators.between_op : 'BETWEEN',
-    operators.match_op : 'MATCH',
-    operators.in_op : 'IN',
-    operators.notin_op : 'NOT IN',
+    operators.mod : ' % ',
+    operators.truediv : ' / ',
+    operators.lt : ' < ',
+    operators.le : ' <= ',
+    operators.ne : ' != ',
+    operators.gt : ' > ',
+    operators.ge : ' >= ',
+    operators.eq : ' = ',
+    operators.concat_op : ' || ',
+    operators.between_op : ' BETWEEN ',
+    operators.match_op : ' MATCH ',
+    operators.in_op : ' IN ',
+    operators.notin_op : ' NOT IN ',
     operators.comma_op : ', ',
-    operators.desc_op : 'DESC',
-    operators.asc_op : 'ASC',
-    operators.from_ : 'FROM',
-    operators.as_ : 'AS',
-    operators.exists : 'EXISTS',
-    operators.is_ : 'IS',
-    operators.isnot : 'IS NOT',
-    operators.collate : 'COLLATE',
+    operators.from_ : ' FROM ',
+    operators.as_ : ' AS ',
+    operators.is_ : ' IS ',
+    operators.isnot : ' IS NOT ',
+    operators.collate : ' COLLATE ',
+
+    # unary
+    operators.exists : 'EXISTS ',
+    operators.distinct_op : 'DISTINCT ',
+    operators.inv : 'NOT ',
+
+    # modifiers
+    operators.desc_op : ' DESC',
+    operators.asc_op : ' ASC',
 }
 
 FUNCTIONS = {
@@ -150,8 +151,6 @@ class SQLCompiler(engine.Compiled):
 
     """
 
-    operators = OPERATORS
-    functions = FUNCTIONS
     extract_map = EXTRACT_MAP
 
     # class-level defaults which can be set at the instance
@@ -270,9 +269,7 @@ class SQLCompiler(engine.Compiled):
             if result_map is not None:
                 result_map[labelname.lower()] = (label.name, (label, label.element, labelname), label.element.type)
 
-            return self.process(label.element) + " " + \
-                        self.operator_string(operators.as_) + " " + \
-                        self.preparer.format_label(label, labelname)
+            return self.process(label.element) + OPERATORS[operators.as_] + self.preparer.format_label(label, labelname)
         else:
             return self.process(label.element)
             
@@ -344,10 +341,8 @@ class SQLCompiler(engine.Compiled):
         sep = clauselist.operator
         if sep is None:
             sep = " "
-        elif sep is operators.comma_op:
-            sep = ', '
         else:
-            sep = " " + self.operator_string(clauselist.operator) + " "
+            sep = OPERATORS[clauselist.operator]
         return sep.join(s for s in (self.process(c) for c in clauselist.clauses)
                         if s is not None)
 
@@ -373,18 +368,15 @@ class SQLCompiler(engine.Compiled):
         if result_map is not None:
             result_map[func.name.lower()] = (func.name, None, func.type)
 
-        name = self.function_string(func)
-
-        if util.callable(name):
-            return name(*[self.process(x) for x in func.clauses])
+        disp = getattr(self, "visit_%s_func" % func.name.lower(), None)
+        if disp:
+            return disp(func, **kwargs)
         else:
-            return ".".join(func.packagenames + [name]) % {'expr':self.function_argspec(func)}
+            name = FUNCTIONS.get(func.__class__, func.name + "%(expr)s")
+            return ".".join(func.packagenames + [name]) % {'expr':self.function_argspec(func, **kwargs)}
 
     def function_argspec(self, func, **kwargs):
         return self.process(func.clause_expr, **kwargs)
-
-    def function_string(self, func):
-        return self.functions.get(func.__class__, self.functions.get(func.name, func.name + "%(expr)s"))
 
     def visit_compound_select(self, cs, asfrom=False, parens=True, **kwargs):
         entry = self.stack and self.stack[-1] or {}
@@ -408,21 +400,49 @@ class SQLCompiler(engine.Compiled):
     def visit_unary(self, unary, **kwargs):
         s = self.process(unary.element)
         if unary.operator:
-            s = self.operator_string(unary.operator) + " " + s
+            s = OPERATORS[unary.operator] + s
         if unary.modifier:
-            s = s + " " + self.operator_string(unary.modifier)
+            s = s + OPERATORS[unary.modifier]
         return s
 
     def visit_binary(self, binary, **kwargs):
-        op = self.operator_string(binary.operator)
-        if util.callable(op):
-            return op(self.process(binary.left), self.process(binary.right), **binary.modifiers)
+        
+        return self._operator_dispatch(binary.operator,
+                    binary,
+                    lambda opstr: self.process(binary.left) + opstr + self.process(binary.right),
+                    **kwargs
+        )
+
+    def visit_like_op(self, binary, **kw):
+        escape = binary.modifiers.get("escape", None)
+        return '%s LIKE %s' % (self.process(binary.left), self.process(binary.right)) \
+            + (escape and ' ESCAPE \'%s\'' % escape or '')
+
+    def visit_notlike_op(self, binary, **kw):
+        escape = binary.modifiers.get("escape", None)
+        return '%s NOT LIKE %s' % (self.process(binary.left), self.process(binary.right)) \
+            + (escape and ' ESCAPE \'%s\'' % escape or '')
+        
+    def visit_ilike_op(self, binary, **kw):
+        escape = binary.modifiers.get("escape", None)
+        return 'lower(%s) LIKE lower(%s)' % (self.process(binary.left), self.process(binary.right)) \
+            + (escape and ' ESCAPE \'%s\'' % escape or '')
+    
+    def visit_notilike_op(self, binary, **kw):
+        escape = binary.modifiers.get("escape", None)
+        return 'lower(%s) NOT LIKE lower(%s)' % (self.process(binary.left), self.process(binary.right)) \
+            + (escape and ' ESCAPE \'%s\'' % escape or '')
+        
+    def _operator_dispatch(self, operator, element, fn, **kw):
+        if util.callable(operator):
+            disp = getattr(self, "visit_%s" % operator.__name__, None)
+            if disp:
+                return disp(element, **kw)
+            else:
+                return fn(OPERATORS[operator])
         else:
-            return self.process(binary.left) + " " + op + " " + self.process(binary.right)
-
-    def operator_string(self, operator):
-        return self.operators.get(operator, str(operator))
-
+            return fn(" " + operator + " ")
+        
     def visit_bindparam(self, bindparam, **kwargs):
         name = self._truncate_bindparam(bindparam)
         if name in self.binds:

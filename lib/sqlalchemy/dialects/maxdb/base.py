@@ -453,8 +453,6 @@ class MaxDBResultProxy(engine_base.ResultProxy):
     _process_row = MaxDBCachedColumnRow
 
 class MaxDBCompiler(compiler.SQLCompiler):
-    operators = compiler.SQLCompiler.operators.copy()
-    operators[sql_operators.mod] = lambda x, y: 'mod(%s, %s)' % (x, y)
 
     function_conversion = {
         'CURRENT_DATE': 'DATE',
@@ -469,6 +467,9 @@ class MaxDBCompiler(compiler.SQLCompiler):
         'TIMEZONE', 'TRANSACTION', 'TRUE', 'USER', 'UID', 'USERGROUP',
         'UTCDATE', 'UTCDIFF'])
 
+    def visit_mod(self, binary, **kw):
+        return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+        
     def default_from(self):
         return ' FROM DUAL'
 
@@ -491,11 +492,13 @@ class MaxDBCompiler(compiler.SQLCompiler):
         else:
             return " WITH LOCK EXCLUSIVE"
 
-    def apply_function_parens(self, func):
-        if func.name.upper() in self.bare_functions:
-            return len(func.clauses) > 0
+    def function_argspec(self, fn, **kw):
+        if fn.name.upper() in self.bare_functions:
+            return ""
+        elif len(fn.clauses) > 0:
+            return compiler.SQLCompiler.function_argspec(self, fn, **kw)
         else:
-            return True
+            return ""
 
     def visit_function(self, fn, **kw):
         transform = self.function_conversion.get(fn.name.upper(), None)

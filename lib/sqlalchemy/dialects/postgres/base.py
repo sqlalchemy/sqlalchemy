@@ -192,16 +192,18 @@ ischema_names = {
 
 class PGCompiler(compiler.SQLCompiler):
     
-    operators = util.update_copy(
-        compiler.SQLCompiler.operators,
-        {
-            sql_operators.mod : '%%',
-        
-            sql_operators.ilike_op: lambda x, y, escape=None: '%s ILIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
-            sql_operators.notilike_op: lambda x, y, escape=None: '%s NOT ILIKE %s' % (x, y) + (escape and ' ESCAPE \'%s\'' % escape or ''),
-            sql_operators.match_op: lambda x, y: '%s @@ to_tsquery(%s)' % (x, y),
-        }
-    )
+    def visit_match_op(self, binary, **kw):
+        return "%s @@ to_tsquery(%s)" % (self.process(binary.left), self.process(binary.right))
+
+    def visit_ilike_op(self, binary, **kw):
+        escape = binary.modifiers.get("escape", None)
+        return '%s ILIKE %s' % (self.process(binary.left), self.process(binary.right)) \
+            + (escape and ' ESCAPE \'%s\'' % escape or '')
+
+    def visit_notilike_op(self, binary, **kw):
+        escape = binary.modifiers.get("escape", None)
+        return '%s NOT ILIKE %s' % (self.process(binary.left), self.process(binary.right)) \
+            + (escape and ' ESCAPE \'%s\'' % escape or '')
 
     def post_process_text(self, text):
         if '%%' in text:

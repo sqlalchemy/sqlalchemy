@@ -621,25 +621,14 @@ class FBDialect(default.DefaultDialect):
         connection.commit(True)
 
 
-def _substring(s, start, length=None):
-    "Helper function to handle Firebird 2 SUBSTRING builtin"
-
-    if length is None:
-        return "SUBSTRING(%s FROM %s)" % (s, start)
-    else:
-        return "SUBSTRING(%s FROM %s FOR %s)" % (s, start, length)
-
-
 class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosincrasies"""
 
-    # Firebird lacks a builtin modulo operator, but there is
-    # an equivalent function in the ib_udf library.
-    operators = sql.compiler.SQLCompiler.operators.copy()
-    operators.update({
-        sql.operators.mod : lambda x, y:"mod(%s, %s)" % (x, y)
-        })
-
+    def visit_mod(self, binary, **kw):
+        # Firebird lacks a builtin modulo operator, but there is
+        # an equivalent function in the ib_udf library.
+        return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+        
     def visit_alias(self, alias, asfrom=False, **kwargs):
         # Override to not use the AS keyword which FB 1.5 does not like
         if asfrom:
@@ -647,9 +636,24 @@ class FBCompiler(sql.compiler.SQLCompiler):
         else:
             return self.process(alias.original, **kwargs)
 
-    functions = sql.compiler.SQLCompiler.functions.copy()
-    functions['substring'] = _substring
+    def visit_substring_func(self, func, **kw):
+        s = self.process(func.clauses.clauses[0])
+        start = self.process(func.clauses.clauses[1])
+        if len(func.clauses.clauses) > 2:
+            length = self.process(func.clauses.clauses[2])
+            return "SUBSTRING(%s FROM %s FOR %s)" % (s, start, length)
+        else:
+            return "SUBSTRING(%s FROM %s)" % (s, start)
 
+    # TODO: auto-detect this or something
+    LENGTH_FUNCTION_NAME = 'char_length'
+        
+    def visit_length_func(self, function, **kw):
+        return self.LENGTH_FUNCTION_NAME + self.function_argspec(function)
+
+    def visit_char_length_func(self, function, **kw):
+        return self.LENGTH_FUNCTION_NAME + self.function_argspec(function)
+        
     def function_argspec(self, func):
         if func.clauses:
             return self.process(func.clause_expr)
@@ -682,17 +686,6 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
         return ""
 
-    LENGTH_FUNCTION_NAME = 'char_length'
-    def function_string(self, func):
-        """Substitute the ``length`` function.
-
-        On newer FB there is a ``char_length`` function, while older
-        ones need the ``strlen`` UDF.
-        """
-
-        if func.name == 'length':
-            return self.LENGTH_FUNCTION_NAME + '%(expr)s'
-        return super(FBCompiler, self).function_string(func)
 
     def _append_returning(self, text, stmt):
         returning_cols = stmt.kwargs[RETURNING_KW_NAME]

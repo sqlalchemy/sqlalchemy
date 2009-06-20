@@ -872,21 +872,6 @@ ischema_names = {
 }
 
 class MSSQLCompiler(compiler.SQLCompiler):
-    operators = compiler.OPERATORS.copy()
-    operators.update({
-        sql_operators.concat_op: '+',
-        sql_operators.match_op: lambda x, y: "CONTAINS (%s, %s)" % (x, y)
-    })
-
-    functions = compiler.SQLCompiler.functions.copy()
-    functions.update (
-        {
-            sql_functions.now: 'CURRENT_TIMESTAMP',
-            sql_functions.current_date: 'GETDATE()',
-            'length': lambda x: "LEN(%s)" % x,
-            sql_functions.char_length: lambda x: "LEN(%s)" % x
-        }
-    )
 
     extract_map = compiler.SQLCompiler.extract_map.copy()
     extract_map.update ({
@@ -900,6 +885,24 @@ class MSSQLCompiler(compiler.SQLCompiler):
         super(MSSQLCompiler, self).__init__(*args, **kwargs)
         self.tablealiases = {}
 
+    def visit_now_func(self, fn, **kw):
+        return "CURRENT_TIMESTAMP"
+        
+    def visit_current_date_func(self, fn, **kw):
+        return "GETDATE()"
+        
+    def visit_length_func(self, fn, **kw):
+        return "LEN%s" % self.function_argspec(fn, **kw)
+        
+    def visit_char_length_func(self, fn, **kw):
+        return "LEN%s" % self.function_argspec(fn, **kw)
+        
+    def visit_concat_op(self, binary):
+        return "%s + %s" % (self.process(binary.left), self.process(binary.right))
+        
+    def visit_match_op(self, binary):
+        return "CONTAINS (%s, %s)" % (self.process(binary.left), self.process(binary.right))
+        
     def get_select_precolumns(self, select):
         """ MS-SQL puts TOP, it's version of LIMIT here """
         if select._distinct or select._limit:

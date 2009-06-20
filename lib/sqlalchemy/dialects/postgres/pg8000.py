@@ -22,7 +22,7 @@ from sqlalchemy.engine import default
 import decimal
 from sqlalchemy import util
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgres.base import PGDialect
+from sqlalchemy.dialects.postgres.base import PGDialect, PGCompiler
 
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -42,6 +42,11 @@ class PGNumeric(sqltypes.Numeric):
 class Postgres_pg8000ExecutionContext(default.DefaultExecutionContext):
     pass
 
+class Postgres_pg8000Compiler(PGCompiler):
+    def visit_mod(self, binary, **kw):
+        return self.process(binary.left) + " %% " + self.process(binary.right)
+    
+    
 class Postgres_pg8000(PGDialect):
     driver = 'pg8000'
 
@@ -52,6 +57,8 @@ class Postgres_pg8000(PGDialect):
     default_paramstyle = 'format'
     supports_sane_multi_rowcount = False
     execution_ctx_cls = Postgres_pg8000ExecutionContext
+    statement_compiler = Postgres_pg8000Compiler
+    
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {

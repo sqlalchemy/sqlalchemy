@@ -1285,26 +1285,24 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
         return AUTOCOMMIT_RE.match(statement)
 
 class MySQLCompiler(compiler.SQLCompiler):
-    operators = util.update_copy(
-        compiler.SQLCompiler.operators,
-        {
-            sql_operators.concat_op: lambda x, y: "concat(%s, %s)" % (x, y),
-            sql_operators.match_op: lambda x, y: "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (x, y)
-        }
-    )
-
-    functions = util.update_copy(
-        compiler.SQLCompiler.functions,
-        {
-            sql_functions.random: 'rand%(expr)s',
-            "utc_timestamp":"UTC_TIMESTAMP"
-        })
 
     extract_map = compiler.SQLCompiler.extract_map.copy()
     extract_map.update ({
         'milliseconds': 'millisecond',
     })
-
+    
+    def visit_random_func(self, fn, **kw):
+        return "rand%s" % self.function_argspec(fn)
+    
+    def visit_utc_timestamp_func(self, fn, **kw):
+        return "UTC_TIMESTAMP"
+        
+    def visit_concat_op(self, binary, **kw):
+        return "concat(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+        
+    def visit_match_op(self, binary, **kw):
+        return "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (self.process(binary.left), self.process(binary.right))
+        
     def visit_typeclause(self, typeclause):
         type_ = typeclause.type.dialect_impl(self.dialect)
         if isinstance(type_, MSInteger):

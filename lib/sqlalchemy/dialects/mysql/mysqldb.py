@@ -40,12 +40,8 @@ class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
         
         
 class MySQL_mysqldbCompiler(MySQLCompiler):
-    operators = util.update_copy(
-        MySQLCompiler.operators,
-        {
-            sql_operators.mod: '%%',
-        }
-    )
+    def visit_mod(self, binary, **kw):
+        return self.process(binary.left) + " %% " + self.process(binary.right)
     
     def post_process_text(self, text):
         return text.replace('%', '%%')

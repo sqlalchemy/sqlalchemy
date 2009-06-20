@@ -149,6 +149,8 @@ class NoseSQLAlchemy(Plugin):
 
     def afterTest(self, test):
         testing.resetwarnings()
+        
+    def afterContext(self):
         testing.global_cleanup_assertions()
         
     #def handleError(self, test, err):

@@ -24,7 +24,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
             self.assert_compile(func.current_timestamp(), "CURRENT_TIMESTAMP", dialect=dialect)
             self.assert_compile(func.localtime(), "LOCALTIME", dialect=dialect)
-            if isinstance(dialect, firebird.dialect):
+            if isinstance(dialect, (firebird.dialect, maxdb.dialect, oracle.dialect)):
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction", dialect=dialect)
             else:
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction()", dialect=dialect)
@@ -64,7 +64,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             ('random()', sqlite.dialect()),
             ('random()', postgres.dialect()),
             ('rand()', mysql.dialect()),
-            ('random()', oracle.dialect())
+            ('random', oracle.dialect())
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
 

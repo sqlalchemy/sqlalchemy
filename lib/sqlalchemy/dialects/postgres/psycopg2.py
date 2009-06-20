@@ -94,12 +94,8 @@ class Postgres_psycopg2ExecutionContext(default.DefaultExecutionContext):
             return base.ResultProxy(self)
 
 class Postgres_psycopg2Compiler(PGCompiler):
-    operators = util.update_copy(
-        PGCompiler.operators, 
-        {
-            sql_operators.mod : '%%',
-        }
-    )
+    def visit_mod(self, binary, **kw):
+        return self.process(binary.left) + " %% " + self.process(binary.right)
     
     def post_process_text(self, text):
         return text.replace('%', '%%')

@@ -248,26 +248,26 @@ class OracleCompiler(compiler.SQLCompiler):
     the use_ansi flag is False.
     """
 
-    operators = util.update_copy(
-        compiler.SQLCompiler.operators,
-        {
-            sql_operators.mod : lambda x, y:"mod(%s, %s)" % (x, y),
-            sql_operators.match_op: lambda x, y: "CONTAINS (%s, %s)" % (x, y)
-        }
-    )
-
-    functions = util.update_copy(
-        compiler.SQLCompiler.functions,
-        {
-            sql_functions.now : 'CURRENT_TIMESTAMP'
-        }
-    )
-
     def __init__(self, *args, **kwargs):
         super(OracleCompiler, self).__init__(*args, **kwargs)
         self.__wheres = {}
         self._quoted_bind_names = {}
 
+    def visit_mod(self, binary, **kw):
+        return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+    
+    def visit_now_func(self, fn, **kw):
+        return "CURRENT_TIMESTAMP"
+        
+    def visit_match_op(self, binary, **kw):
+        return "CONTAINS (%s, %s)" % (self.process(binary.left), self.process(binary.right))
+    
+    def function_argspec(self, fn, **kw):
+        if len(fn.clauses) > 0:
+            return compiler.SQLCompiler.function_argspec(self, fn, **kw)
+        else:
+            return ""
+        
     def bindparam_string(self, name):
         if self.preparer._bindparam_requires_quotes(name):
             quoted_name = '"%s"' % name
@@ -283,9 +283,6 @@ class OracleCompiler(compiler.SQLCompiler):
         """
 
         return " FROM DUAL"
-
-    def apply_function_parens(self, func):
-        return len(func.clauses) > 0
 
     def visit_join(self, join, **kwargs):
         if self.dialect.use_ansi:

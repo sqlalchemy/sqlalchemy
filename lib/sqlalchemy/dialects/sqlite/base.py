@@ -169,14 +169,6 @@ ischema_names = {
 
 
 class SQLiteCompiler(compiler.SQLCompiler):
-    functions = compiler.SQLCompiler.functions.copy()
-    functions.update (
-        {
-            sql_functions.now: 'CURRENT_TIMESTAMP',
-            sql_functions.char_length: 'length%(expr)s'
-        }
-    )
-
     extract_map = compiler.SQLCompiler.extract_map.copy()
     extract_map.update({
         'month': '%m',
@@ -191,6 +183,12 @@ class SQLiteCompiler(compiler.SQLCompiler):
         'week': '%W'
     })
 
+    def visit_now_func(self, fn, **kw):
+        return "CURRENT_TIMESTAMP"
+    
+    def visit_char_length_func(self, fn, **kw):
+        return "length%s" % self.funtion_argspec(fn)
+        
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
             return super(SQLiteCompiler, self).visit_cast(cast)

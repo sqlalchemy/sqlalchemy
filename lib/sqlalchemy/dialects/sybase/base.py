@@ -212,10 +212,6 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
 
 
 class SybaseSQLCompiler(compiler.SQLCompiler):
-    operators = compiler.SQLCompiler.operators.copy()
-    operators.update({
-        sql_operators.mod: lambda x, y: "MOD(%s, %s)" % (x, y),
-    })
 
     extract_map = compiler.SQLCompiler.extract_map.copy()
     extract_map.update ({
@@ -223,6 +219,9 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         'dow': 'weekday',
         'milliseconds': 'millisecond'
     })
+
+    def visit_mod(self, binary, **kw):
+        return "MOD(%s, %s)" % (self.process(binary.left), self.process(binary.right))
 
     def bindparam_string(self, name):
         res = super(SybaseSQLCompiler, self).bindparam_string(name)
