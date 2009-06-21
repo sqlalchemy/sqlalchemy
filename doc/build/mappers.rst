@@ -1205,8 +1205,24 @@ Eager loading of relations occurs using joins or outerjoins from parent to child
 Specifying Alternate Join Conditions to relation() 
 ---------------------------------------------------
 
+The ``relation()`` function uses the foreign key relationship between the parent and child tables to formulate the **primary join condition** between parent and child; in the case of a many-to-many relationship it also formulates the **secondary join condition**::
 
-The ``relation()`` function uses the foreign key relationship between the parent and child tables to formulate the **primary join condition** between parent and child; in the case of a many-to-many relationship it also formulates the **secondary join condition**.  If you are working with a ``Table`` which has no ``ForeignKey`` objects on it (which can be the case when using reflected tables with MySQL), or if the join condition cannot be expressed by a simple foreign key relationship, use the ``primaryjoin`` and possibly ``secondaryjoin`` conditions to create the appropriate relationship.
+      one to many/many to one:
+      ------------------------
+      
+      parent_table -->  parent_table.c.id == child_table.c.parent_id -->  child_table
+                                     primaryjoin
+      
+      many to many:
+      -------------
+                                
+      parent_table -->  parent_table.c.id == secondary_table.c.parent_id -->  
+                                     primaryjoin
+                                 
+                        secondary_table.c.child_id == child_table.c.id --> child_table
+                                    secondaryjoin
+
+If you are working with a ``Table`` which has no ``ForeignKey`` objects on it (which can be the case when using reflected tables with MySQL), or if the join condition cannot be expressed by a simple foreign key relationship, use the ``primaryjoin`` and possibly ``secondaryjoin`` conditions to create the appropriate relationship.
 
 In this example we create a relation ``boston_addresses`` which will only load the user addresses with a city of "Boston":
 
@@ -1287,9 +1303,44 @@ Theres no restriction on how many times you can relate from parent to child.  SQ
 
 .. _alternate_collection_implementations:
 
+Rows that point to themselves / Mutually Dependent Rows
+-------------------------------------------------------
+
+This is a very specific case where relation() must perform an INSERT and a second UPDATE in order to properly populate a row (and vice versa an UPDATE and DELETE in order to delete without violating foreign key constraints).   The two use cases are:
+
+ * A table contains a foreign key to itself, and a single row will have a foreign key value pointing to its own primary key.
+ * Two tables each contain a foreign key referencing the other table, with a row in each table referencing the other.
+
+For example::
+
+              user
+    ---------------------------------
+    user_id    name   related_user_id
+       1       'ed'          1
+
+Or::
+
+                 widget                                                  entry
+    -------------------------------------------             ---------------------------------
+    widget_id     name        favorite_entry_id             entry_id      name      widget_id
+       1       'somewidget'          5                         5       'someentry'     1
+
+In the first case, a row points to itself.  Technically, a database that uses sequences such as Postgres or Oracle can INSERT the row at once using a previously generated value, but databases which rely upon autoincrement-style primary key identifiers cannot.  The ``relation()`` always assumes a "parent/child" model of row population during flush, so unless you are populating the primary key/foreign key columns directly, ``relation()`` needs to use two statements.
+
+In the second case, the "widget" row must be inserted before any referring "entry" rows, but then the "favorite_entry_id" column of that "widget" row cannot be set until the "entry" rows have been generated.  In this case, it's typically impossible to insert the "widget" and "entry" rows using just two INSERT statements; an UPDATE must be performed in order to keep foreign key constraints fulfilled.   The exception is if the foreign keys are configured as "deferred until commit" (a feature some databases support) and if the identifiers were populated manually (again essentially bypassing ``relation()``).
+
+To enable the UPDATE after INSERT / UPDATE before DELETE behavior on ``relation()``, use the ``post_update`` flag on *one* of the relations, preferably the many-to-one side::
+
+    mapper(Widget, widget, properties={
+        'entries':relation(Entry, primaryjoin=widget.c.widget_id==entry.c.widget_id),
+        'favorite_entry':relation(Entry, primaryjoin=widget.c.favorite_entry_id==entry.c.entry_id, post_update=True)
+    })
+
+When a structure using the above mapping is flushed, the "widget" row will be INSERTed minus the "favorite_entry_id" value, then all the "entry" rows will be INSERTed referencing the parent "widget" row, and then an UPDATE statement will populate the "favorite_entry_id" column of the "widget" table (it's one row at a time for the time being).
+
+
 Alternate Collection Implementations 
 -------------------------------------
-
 
 Mapping a one-to-many or many-to-many relationship results in a collection of values accessible through an attribute on the parent instance.  By default, this collection is a ``list``:
 
