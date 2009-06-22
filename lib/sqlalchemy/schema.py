@@ -286,6 +286,10 @@ class Table(SchemaItem, expression.TableClause):
             c.primary_key = True
 
     @property
+    def key(self):
+        return _get_table_key(self.name, self.schema)
+
+    @property
     def primary_key(self):
         return self._primary_key
 

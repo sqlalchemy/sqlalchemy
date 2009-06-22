@@ -918,7 +918,7 @@ class DDLCompiler(engine.Compiled):
             self.preparer.format_table(drop.element.table),
             self.preparer.format_constraint(drop.element)
         )
-        
+    
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + \
                         self.dialect.type_compiler.process(column.type)
