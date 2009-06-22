@@ -408,6 +408,8 @@ class SQLiteDialect(default.DefaultDialect):
                 break
             (name, type_, nullable, default, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4], row[4] is not None, row[5])
             name = re.sub(r'^\"|\"$', '', name)
+            if default:
+                default = re.sub(r"^\'|\'$", '', default)
             match = re.match(r'(\w+)(\(.*?\))?', type_)
             if match:
                 coltype = match.group(1)
@@ -424,6 +426,7 @@ class SQLiteDialect(default.DefaultDialect):
             if args is not None:
                 args = re.findall(r'(\d+)', args)
                 coltype = coltype(*[int(a) for a in args])
+
             columns.append({
                 'name' : name,
                 'type' : coltype,

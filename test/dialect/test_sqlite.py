@@ -158,7 +158,7 @@ class TestDefaults(TestBase, AssertsExecutionResults):
         db = testing.db
         m = MetaData(db)
 
-        expected = ["'my_default'", '0']
+        expected = ["my_default", '0']
         table = """CREATE TABLE r_defaults (
             data VARCHAR(40) DEFAULT 'my_default',
             val INTEGER NOT NULL DEFAULT 0
