@@ -28,7 +28,7 @@ class ExecuteTest(TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except('firebird', 'maxdb', 'sqlite', 'mysql+pyodbc')
+    @testing.fails_on_everything_except('firebird', 'maxdb', 'sqlite', 'mysql+pyodbc', '+zxjdbc')
     def test_raw_qmark(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (?, ?)", (1,"jack"))
@@ -41,6 +41,7 @@ class ExecuteTest(TestBase):
             conn.execute("delete from users")
 
     @testing.fails_on_everything_except('mysql+mysqldb', 'postgres')
+    @testing.fails_on('+zxjdbc', 'sprintf not supported')
     # some psycopg2 versions bomb this.
     def test_raw_sprintf(self):
         for conn in (testing.db, testing.db.connect()):
