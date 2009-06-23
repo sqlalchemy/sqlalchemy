@@ -253,7 +253,7 @@ ischema_names = {
        'DATE': lambda r: FBDate(),
        'TIME': lambda r: FBTime(),
        'TEXT': lambda r: FBString(r['flen']),
-      'INT64': lambda r: FBNumeric(precision=r['fprec'], length=r['fscale'] * -1), # This generically handles NUMERIC()
+      'INT64': lambda r: FBNumeric(precision=r['fprec'], scale=r['fscale'] * -1), # This generically handles NUMERIC()
      'DOUBLE': lambda r: FBFloat(),
   'TIMESTAMP': lambda r: FBDateTime(),
     'VARYING': lambda r: FBString(r['flen']),
