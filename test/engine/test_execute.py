@@ -41,7 +41,7 @@ class ExecuteTest(TestBase):
             conn.execute("delete from users")
 
     @testing.fails_on_everything_except('mysql+mysqldb', 'postgres')
-    @testing.fails_on('+zxjdbc', 'sprintf not supported')
+    @testing.fails_on('postgres+zxjdbc', 'sprintf not supported')
     # some psycopg2 versions bomb this.
     def test_raw_sprintf(self):
         for conn in (testing.db, testing.db.connect()):
