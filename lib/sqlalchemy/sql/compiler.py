@@ -1284,24 +1284,24 @@ class IdentifierPreparer(object):
         else:
             return (self.format_table(table, use_schema=False), )
 
+    @util.memoized_property
+    def _r_identifiers(self):
+        initial, final, escaped_final = \
+                 [re.escape(s) for s in
+                  (self.initial_quote, self.final_quote,
+                   self._escape_identifier(self.final_quote))]
+        r = re.compile(
+            r'(?:'
+            r'(?:%(initial)s((?:%(escaped)s|[^%(final)s])+)%(final)s'
+            r'|([^\.]+))(?=\.|$))+' %
+            { 'initial': initial,
+              'final': final,
+              'escaped': escaped_final })
+        return r
+        
     def unformat_identifiers(self, identifiers):
         """Unpack 'schema.table.column'-like strings into components."""
 
-        try:
-            r = self._r_identifiers
-        except AttributeError:
-            initial, final, escaped_final = \
-                     [re.escape(s) for s in
-                      (self.initial_quote, self.final_quote,
-                       self._escape_identifier(self.final_quote))]
-            r = re.compile(
-                r'(?:'
-                r'(?:%(initial)s((?:%(escaped)s|[^%(final)s])+)%(final)s'
-                r'|([^\.]+))(?=\.|$))+' %
-                { 'initial': initial,
-                  'final': final,
-                  'escaped': escaped_final })
-            self._r_identifiers = r
-
+        r = self._r_identifiers
         return [self._unescape_identifier(i)
                 for i in [a or b for a, b in r.findall(identifiers)]]
