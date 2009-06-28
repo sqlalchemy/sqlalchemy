@@ -326,6 +326,11 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
             "ALTER TABLE tbl DROP CONSTRAINT my_test_constraint"
         )
 
+        self.assert_compile(
+            schema.DropConstraint(constraint, cascade=True),
+            "ALTER TABLE tbl DROP CONSTRAINT my_test_constraint CASCADE"
+        )
+
         constraint = ForeignKeyConstraint(["b"], ["t2.a"])
         t.append_constraint(constraint)
         self.assert_compile(

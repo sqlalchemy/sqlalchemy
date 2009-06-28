@@ -1380,7 +1380,15 @@ class ForeignKeyConstraint(Constraint):
 
         if table:
             self._set_parent(table)
-
+    
+    @property
+    def columns(self):
+        return self._elements.keys()
+        
+    @property
+    def elements(self):
+        return self._elements.values()
+        
     def _set_parent(self, table):
         super(ForeignKeyConstraint, self)._set_parent(table)
         for col, fk in self._elements.iteritems():
@@ -2140,6 +2148,10 @@ class DropConstraint(_CreateDropBase):
     """Represent an ALTER TABLE DROP CONSTRAINT statement."""
 
     __visit_name__ = "drop_constraint"
+    
+    def __init__(self, element, cascade=False, **kw):
+        self.cascade = cascade
+        super(DropConstraint, self).__init__(element, **kw)
 
 def _bind_or_error(schemaitem):
     bind = schemaitem.bind

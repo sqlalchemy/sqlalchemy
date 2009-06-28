@@ -914,9 +914,10 @@ class DDLCompiler(engine.Compiled):
         
     def visit_drop_constraint(self, drop):
         preparer = self.preparer
-        return "ALTER TABLE %s DROP CONSTRAINT %s" % (
+        return "ALTER TABLE %s DROP CONSTRAINT %s%s" % (
             self.preparer.format_table(drop.element.table),
-            self.preparer.format_constraint(drop.element)
+            self.preparer.format_constraint(drop.element),
+            " CASCADE" if drop.cascade else ""
         )
     
     def get_column_specification(self, column, **kwargs):
