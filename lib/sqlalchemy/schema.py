@@ -407,7 +407,7 @@ class Column(SchemaItem, expression.ColumnClause):
     """Represents a column in a database table."""
 
     __visit_name__ = 'column'
-
+    
     def __init__(self, *args, **kwargs):
         """
         Construct a new ``Column`` object.
@@ -577,7 +577,6 @@ class Column(SchemaItem, expression.ColumnClause):
                 type_ = args.pop(0)
 
         super(Column, self).__init__(name, None, type_)
-        self._pending_args = args
         self.key = kwargs.pop('key', name)
         self.primary_key = kwargs.pop('primary_key', False)
         self.nullable = kwargs.pop('nullable', not self.primary_key)
@@ -591,6 +590,28 @@ class Column(SchemaItem, expression.ColumnClause):
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = set()
         self.foreign_keys = util.OrderedSet()
+        self._table_events = set()
+        
+        if self.default is not None:
+            if isinstance(self.default, ColumnDefault):
+                args.append(self.default)
+            else:
+                args.append(ColumnDefault(self.default))
+        if self.server_default is not None:
+            if isinstance(self.server_default, FetchedValue):
+                args.append(self.server_default)
+            else:
+                args.append(DefaultClause(self.server_default))
+        if self.onupdate is not None:
+            args.append(ColumnDefault(self.onupdate, for_update=True))
+        if self.server_onupdate is not None:
+            if isinstance(self.server_onupdate, FetchedValue):
+                args.append(self.server_default)
+            else:
+                args.append(DefaultClause(self.server_onupdate,
+                                            for_update=True))
+        self._init_items(*args)
+
         util.set_creation_order(self)
 
         if kwargs.get('info'):
@@ -688,28 +709,16 @@ class Column(SchemaItem, expression.ColumnClause):
                     "external to the Table.")
             table.append_constraint(UniqueConstraint(self.key))
 
-        toinit = list(self._pending_args)
-        if self.default is not None:
-            if isinstance(self.default, ColumnDefault):
-                toinit.append(self.default)
-            else:
-                toinit.append(ColumnDefault(self.default))
-        if self.server_default is not None:
-            if isinstance(self.server_default, FetchedValue):
-                toinit.append(self.server_default)
-            else:
-                toinit.append(DefaultClause(self.server_default))
-        if self.onupdate is not None:
-            toinit.append(ColumnDefault(self.onupdate, for_update=True))
-        if self.server_onupdate is not None:
-            if isinstance(self.server_onupdate, FetchedValue):
-                toinit.append(self.server_default)
-            else:
-                toinit.append(DefaultClause(self.server_onupdate,
-                                            for_update=True))
-        self._init_items(*toinit)
-        del self._pending_args
-
+        for fn in self._table_events:
+            fn(table)
+        del self._table_events
+    
+    def _on_table_attach(self, fn):
+        if self.table:
+            fn(self.table)
+        else:
+            self._table_events.add(fn)
+            
     def copy(self, **kw):
         """Create a copy of this ``Column``, unitialized.
 
@@ -732,14 +741,15 @@ class Column(SchemaItem, expression.ColumnClause):
         """Create a *proxy* for this column.
 
         This is a copy of this ``Column`` referenced by a different parent
-        (such as an alias or select statement).
-
+        (such as an alias or select statement).  The column should
+        be used only in select scenarios, as its full DDL/default
+        information is not transferred.
+        
         """
         fk = [ForeignKey(f.column) for f in self.foreign_keys]
         c = Column(
             name or self.name, 
             self.type, 
-            self.default, 
             key = name or self.key, 
             primary_key = self.primary_key, 
             nullable = self.nullable, 
@@ -749,8 +759,9 @@ class Column(SchemaItem, expression.ColumnClause):
         selectable.columns.add(c)
         if self.primary_key:
             selectable.primary_key.add(c)
-        for f in fk:
-            c._init_items(f)
+        for fn in c._table_events:
+            fn(selectable)
+        del c._table_events
         return c
 
     def get_children(self, schema_visitor=False, **kwargs):
@@ -959,18 +970,20 @@ class ForeignKey(SchemaItem):
             raise exc.InvalidRequestError("This ForeignKey already has a parent !")
         self.parent = column
 
-        if self.constraint is None and isinstance(self.parent.table, Table):
+        self.parent.foreign_keys.add(self)
+        self.parent._on_table_attach(self._set_table)
+    
+    def _set_table(self, table):
+        if self.constraint is None and isinstance(table, Table):
             self.constraint = ForeignKeyConstraint(
                 [], [], use_alter=self.use_alter, name=self.name,
                 onupdate=self.onupdate, ondelete=self.ondelete,
                 deferrable=self.deferrable, initially=self.initially,
                 )
-            self.constraint._elements[column] = self
-            self.constraint._set_parent(self.parent.table)
-
-        self.parent.foreign_keys.add(self)
-        self.parent.table.foreign_keys.add(self)
-
+            self.constraint._elements[self.parent] = self
+            self.constraint._set_parent(table)
+        table.foreign_keys.add(self)
+        
 class DefaultGenerator(SchemaItem):
     """Base class for column *default* values."""
 
@@ -1086,7 +1099,11 @@ class Sequence(DefaultGenerator):
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
         column.sequence = self
-        self.metadata = column.table.metadata
+        
+        column._on_table_attach(self._set_table)
+    
+    def _set_table(self, table):
+        self.metadata = table.metadata
         
     @property
     def bind(self):

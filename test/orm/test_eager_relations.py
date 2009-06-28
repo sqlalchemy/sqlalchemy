@@ -659,6 +659,7 @@ class EagerTest(_fixtures.FixtureTest):
                'orders':relation(Order, backref='user', lazy=False),
                'max_order':relation(mapper(Order, max_orders, non_primary=True), lazy=False, uselist=False)
                })
+
         q = create_session().query(User)
 
         def go():

@@ -37,10 +37,8 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_double_fk_usage_raises(self):
         f = ForeignKey('b.id')
         
-        assert_raises(exc.InvalidRequestError, Table, "a", metadata,
-            Column('x', Integer, f),
-            Column('y', Integer, f)
-        )
+        Column('x', Integer, f)
+        assert_raises(exc.InvalidRequestError, Column, "y", Integer, f)
         
     def test_circular_constraint(self):
         a = Table("a", metadata,
