@@ -1466,11 +1466,21 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
     def visit_drop_constraint(self, drop):
         constraint = drop.element
-        is_fk = isinstance(constraint, sa_schema.ForeignKeyConstraint)
+        if isinstance(constraint, sa_schema.ForeignKeyConstraint):
+            qual = "FOREIGN KEY "
+            const = self.preparer.format_constraint(constraint)
+        elif isinstance(constraint, sa_schema.PrimaryKeyConstraint):
+            qual = "PRIMARY KEY "
+            const = ""
+        elif isinstance(constraint, sa_schema.UniqueConstraint):
+            qual = "INDEX "
+            const = self.preparer.format_constraint(constraint)
+        else:
+            qual = ""
+            const = self.preparer.format_constraint(constraint)
         return "ALTER TABLE %s DROP %s%s" % \
                     (self.preparer.format_table(constraint.table),
-                    is_fk and "FOREIGN KEY " or "",
-                     self.preparer.format_constraint(constraint))
+                    qual, const)
 
 class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def _extend_numeric(self, type_, spec):
