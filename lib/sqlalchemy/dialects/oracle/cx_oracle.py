@@ -63,17 +63,101 @@ working successfully but this should be regarded as an experimental feature.
 
 """
 
-from sqlalchemy.dialects.oracle.base import OracleDialect, OracleText, OracleBinary, OracleRaw, RESERVED_WORDS
+from sqlalchemy.dialects.oracle.base import OracleDialect, OracleRaw, OracleBoolean, RESERVED_WORDS
 from sqlalchemy.engine.default import DefaultExecutionContext
 from sqlalchemy.engine import base
 from sqlalchemy import types as sqltypes, util
+import datetime
 
-class OracleNVarchar(sqltypes.NVARCHAR):
-    """The SQL NVARCHAR type."""
+class OracleDate(sqltypes.Date):
+    def bind_processor(self, dialect):
+        return None
 
-    def __init__(self, **kw):
-        kw['convert_unicode'] = False  # cx_oracle does this for us, for NVARCHAR2
-        sqltypes.NVARCHAR.__init__(self, **kw)
+    def result_processor(self, dialect):
+        def process(value):
+            if not isinstance(value, datetime.datetime):
+                return value
+            else:
+                return value.date()
+        return process
+
+class OracleDateTime(sqltypes.DateTime):
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None or isinstance(value, datetime.datetime):
+                return value
+            else:
+                # convert cx_oracle datetime object returned pre-python 2.4
+                return datetime.datetime(value.year, value.month,
+                    value.day,value.hour, value.minute, value.second)
+        return process
+
+# Note:
+# Oracle DATE == DATETIME
+# Oracle does not allow milliseconds in DATE
+# Oracle does not support TIME columns
+
+# only if cx_oracle contains TIMESTAMP
+class OracleTimestamp(sqltypes.TIMESTAMP):
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None or isinstance(value, datetime.datetime):
+                return value
+            else:
+                # convert cx_oracle datetime object returned pre-python 2.4
+                return datetime.datetime(value.year, value.month,
+                    value.day,value.hour, value.minute, value.second)
+        return process
+
+class LOBMixin(object):
+    def result_processor(self, dialect):
+        super_process = super(LOBMixin, self).result_processor(dialect)
+        if not dialect.auto_convert_lobs:
+            return super_process
+        lob = dialect.dbapi.LOB
+        def process(value):
+            if isinstance(value, lob):
+                if super_process:
+                    return super_process(value.read())
+                else:
+                    return value.read()
+            else:
+                if super_process:
+                    return super_process(value)
+                else:
+                    return value
+        return process
+    
+class OracleText(LOBMixin, sqltypes.Text):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.CLOB
+
+class OracleUnicodeText(LOBMixin, sqltypes.UnicodeText):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.NCLOB
+
+
+class OracleBinary(LOBMixin, sqltypes.Binary):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.BLOB
+
+    def bind_processor(self, dialect):
+        return None
+
+
+class cxOracleRaw(LOBMixin, OracleRaw):
+    pass
+
+
+colspecs = {
+    sqltypes.DateTime : OracleDateTime,
+    sqltypes.Date : OracleDate,
+    sqltypes.Binary : OracleBinary,
+    sqltypes.Boolean : OracleBoolean,
+    sqltypes.Text : OracleText,
+    sqltypes.UnicodeText : OracleUnicodeText,
+    sqltypes.TIMESTAMP : OracleTimestamp,
+}
 
 class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):
     def pre_exec(self):
@@ -134,13 +218,7 @@ class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):
 class Oracle_cx_oracle(OracleDialect):
     execution_ctx_cls = Oracle_cx_oracleExecutionContext
     driver = "cx_oracle"
-    
-    colspecs = util.update_copy(
-        OracleDialect.colspecs,
-        {
-            sqltypes.NVARCHAR:OracleNVarchar
-        }
-    )
+    colspecs = colspecs
     
     def __init__(self, 
                 auto_setinputsizes=True, 
@@ -155,6 +233,14 @@ class Oracle_cx_oracle(OracleDialect):
         self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
+        
+        def vers(num):
+            return tuple([int(x) for x in num.split('.')])
+
+        if hasattr(self.dbapi, 'version'):
+            cx_oracle_ver = vers(self.dbapi.version)
+            self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
+            
         if self.dbapi is None or not self.auto_convert_lobs or not 'CLOB' in self.dbapi.__dict__:
             self.dbapi_type_map = {}
             self.ORACLE_BINARY_TYPES = []
@@ -164,6 +250,7 @@ class Oracle_cx_oracle(OracleDialect):
             # expect encoded strings or unicodes, etc.
             self.dbapi_type_map = {
                 self.dbapi.CLOB: OracleText(),
+                self.dbapi.NCLOB:OracleUnicodeText(),
                 self.dbapi.BLOB: OracleBinary(),
                 self.dbapi.BINARY: OracleRaw(),
             }

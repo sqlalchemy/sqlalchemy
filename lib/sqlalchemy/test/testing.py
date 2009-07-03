@@ -614,7 +614,7 @@ class ComparesTables(object):
                 set(type(reflected_c.type).__mro__).difference(base_mro).intersection(
                 set(type(c.type).__mro__).difference(base_mro)
                 )
-            ) > 0, "Type '%s' doesn't correspond to type '%s'" % (reflected_c.type, c.type)
+            ) > 0, "On column %r, type '%s' doesn't correspond to type '%s'" % (reflected_c.name, reflected_c.type, c.type)
 
             if isinstance(c.type, sqltypes.String):
                 eq_(c.type.length, reflected_c.type.length)
@@ -627,7 +627,7 @@ class ComparesTables(object):
                 # ignore reflection of bogus db-generated DefaultClause()
                 pass
             elif not c.primary_key or not against('postgres'):
-                print repr(c)
+                #print repr(c)
                 assert reflected_c.default is None, reflected_c.default
 
         assert len(table.primary_key) == len(reflected_table.primary_key)

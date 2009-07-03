@@ -14,6 +14,8 @@ from sqlalchemy.test import *
 
 class AdaptTest(TestBase):
     def testmsnvarchar(self):
+        # TODO: migrate these tests to dialect modules
+
         dialect = mssql.dialect()
         # run the test twice to ensure the caching step works too
         for x in range(0, 1):
@@ -22,16 +24,9 @@ class AdaptTest(TestBase):
             assert isinstance(dialect_type, mssql.MSNVarchar)
             eq_(dialect.type_compiler.process(dialect_type), 'NVARCHAR(10)')
 
-    def testoracletimestamp(self):
-        dialect = oracle.OracleDialect()
-        t1 = oracle.OracleTimestamp
-        t2 = oracle.OracleTimestamp()
-        t3 = types.TIMESTAMP
-        assert isinstance(dialect.type_descriptor(t1), oracle.OracleTimestamp)
-        assert isinstance(dialect.type_descriptor(t2), oracle.OracleTimestamp)
-        assert isinstance(dialect.type_descriptor(t3), oracle.OracleTimestamp)
-
     def testmysqlbinary(self):
+        # TODO: migrate these tests to dialect modules
+
         dialect = mysql.MySQLDialect()
         t1 = mysql.MSVarBinary
         t2 = mysql.MSVarBinary()
@@ -40,20 +35,14 @@ class AdaptTest(TestBase):
 
     def teststringadapt(self):
         """test that String with no size becomes TEXT, *all* others stay as varchar/String"""
-
-        oracle_dialect = oracle.OracleDialect()
+        
+        # TODO: migrate these tests to dialect modules
+        
         mysql_dialect = mysql.MySQLDialect()
         postgres_dialect = postgres.PGDialect()
         firebird_dialect = firebird.FBDialect()
 
         for dialect, start, test in [
-            (oracle_dialect, String(), String),
-            (oracle_dialect, VARCHAR(), VARCHAR),
-            (oracle_dialect, String(50), String),
-            (oracle_dialect, Unicode(), Unicode),
-            (oracle_dialect, UnicodeText(), oracle.OracleText),
-            (oracle_dialect, NCHAR(), NCHAR),
-            (oracle_dialect, oracle.OracleRaw(50), oracle.OracleRaw),
             (mysql_dialect, String(), mysql.MSString),
             (mysql_dialect, VARCHAR(), mysql.MSString),
             (mysql_dialect, String(50), mysql.MSString),

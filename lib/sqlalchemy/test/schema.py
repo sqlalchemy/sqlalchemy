@@ -57,7 +57,7 @@ def Table(*args, **kw):
                        and col.primary_key
                        and getattr(col, '_needs_autoincrement', False))]
         for c in pk_seqs:
-            c.args.append(schema.Sequence(args[0] + '_' + c.name + '_seq', optional=True))
+            c._init_items(schema.Sequence(args[0] + '_' + c.name + '_seq', optional=True))
     return schema.Table(*args, **kw)
 
 

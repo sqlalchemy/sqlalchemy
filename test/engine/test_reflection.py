@@ -27,7 +27,7 @@ class ReflectionTest(TestBase, ComparesTables):
             Column('test1', sa.CHAR(5), nullable=False),
             Column('test2', sa.Float(5), nullable=False),
             Column('test3', sa.Text),
-            Column('test4', sa.Numeric, nullable = False),
+            Column('test4', sa.Numeric(10, 2), nullable = False),
             Column('test5', sa.Date),
             Column('parent_user_id', sa.Integer,
                    sa.ForeignKey('engine_users.user_id')),
@@ -36,7 +36,7 @@ class ReflectionTest(TestBase, ComparesTables):
             Column('test8', sa.Binary),
             Column('test_passivedefault2', sa.Integer, server_default='5'),
             Column('test9', sa.Binary(100)),
-            Column('test_numeric', sa.Numeric()),
+            Column('test10', sa.Numeric(10, 2)),
             test_needs_fk=True,
         )
 
@@ -571,7 +571,7 @@ class ReflectionTest(TestBase, ComparesTables):
             m9.reflect()
             self.assert_(not m9.tables)
 
-    @testing.fails_on_everything_except('postgres', 'mysql', 'sqlite')
+    @testing.fails_on_everything_except('postgres', 'mysql', 'sqlite', 'oracle')
     def test_index_reflection(self):
         m1 = MetaData(testing.db)
         t1 = Table('party', m1,
@@ -828,7 +828,7 @@ def createTables(meta, schema=None):
         Column('test1', sa.CHAR(5), nullable=False),
         Column('test2', sa.Float(5), nullable=False),
         Column('test3', sa.Text),
-        Column('test4', sa.Numeric, nullable = False),
+        Column('test4', sa.Numeric(10, 2), nullable = False),
         Column('test5', sa.DateTime),
         Column('test5-1', sa.TIMESTAMP),
         parent_user_id,
@@ -837,7 +837,7 @@ def createTables(meta, schema=None):
         Column('test8', sa.Binary),
         Column('test_passivedefault2', sa.Integer, server_default='5'),
         Column('test9', sa.Binary(100)),
-        Column('test_numeric', sa.Numeric()),
+        Column('test10', sa.Numeric(10, 2)),
         schema=schema,
         test_needs_fk=True,
     )
@@ -939,8 +939,6 @@ class ComponentReflectionTest(TestBase):
             insp = Inspector(meta.bind)
             for (table_name, table) in zip(table_names, (users, addresses)):
                 schema_name = schema
-                if schema and testing.against('oracle'):
-                    schema_name = schema.upper()
                 cols = insp.get_columns(table_name, schema=schema_name)
                 self.assert_(len(cols) > 0, len(cols))
                 # should be in order
@@ -1056,16 +1054,10 @@ class ComponentReflectionTest(TestBase):
             insp = Inspector(meta.bind)
             indexes = insp.get_indexes('users', schema=schema)
             indexes.sort()
-            if testing.against('oracle'):
-                expected_indexes = [
-                    {'unique': False,
-                     'column_names': ['TEST1', 'TEST2'],
-                     'name': 'USERS_T_IDX'}]
-            else:
-                expected_indexes = [
-                    {'unique': False,
-                     'column_names': ['test1', 'test2'],
-                     'name': 'users_t_idx'}]
+            expected_indexes = [
+                {'unique': False,
+                 'column_names': ['test1', 'test2'],
+                 'name': 'users_t_idx'}]
             index_names = [d['name'] for d in indexes]
             for e_index in expected_indexes:
                 assert e_index['name'] in index_names

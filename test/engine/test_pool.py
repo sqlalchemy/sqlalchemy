@@ -1,5 +1,5 @@
 import threading, time
-from sqlalchemy import pool, interfaces, create_engine
+from sqlalchemy import pool, interfaces, create_engine, select
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing
 from sqlalchemy.test.util import gc_collect, lazy_gc
@@ -391,7 +391,7 @@ class PoolTest(PoolTestBase):
         listener.connect = listener
         engine = create_engine(testing.db.url)
         engine.pool.add_listener(listener)
-        engine.execute('select 1')
+        engine.execute(select([1]))
         assert called, "Listener not called on connect"
 
 

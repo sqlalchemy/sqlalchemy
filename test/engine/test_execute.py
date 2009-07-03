@@ -15,7 +15,7 @@ class ExecuteTest(TestBase):
         global users, metadata
         metadata = MetaData(testing.db)
         users = Table('users', metadata,
-            Column('user_id', INT, primary_key = True),
+            Column('user_id', INT, primary_key = True, test_needs_autoincrement=True),
             Column('user_name', VARCHAR(20)),
         )
         metadata.create_all()

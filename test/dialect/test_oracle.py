@@ -8,6 +8,7 @@ from sqlalchemy.databases import oracle
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.engines import testing_engine
+from sqlalchemy.dialect.oracle import cx_oracle
 import os
 
 
@@ -291,6 +292,30 @@ class TypesTest(TestBase, AssertsCompiledSQL):
 
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
+
+    def test_timestamp_adapt(self):
+        dialect = oracle.OracleDialect()
+        t1 = types.DateTime
+        t3 = types.TIMESTAMP
+        
+        
+        assert isinstance(dialect.type_descriptor(t1), cx_oracle.OracleTimestamp)
+        assert isinstance(dialect.type_descriptor(t3), cx_oracle.OracleTimestamp)
+
+    def test_string_adapt(self):
+        oracle_dialect = oracle.OracleDialect()
+
+        for dialect, start, test in [
+            (oracle_dialect, String(), String),
+            (oracle_dialect, VARCHAR(), VARCHAR),
+            (oracle_dialect, String(50), String),
+            (oracle_dialect, Unicode(), Unicode),
+            (oracle_dialect, UnicodeText(), cx_oracle.OracleUnicodeText),
+            (oracle_dialect, NCHAR(), NCHAR),
+            (oracle_dialect, oracle.OracleRaw(50), oracle.OracleRaw),
+        ]:
+            assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
+
 
     def test_reflect_raw(self):
         types_table = Table(

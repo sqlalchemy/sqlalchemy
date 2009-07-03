@@ -1080,6 +1080,9 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_CLOB(self, type_):
         return "CLOB"
 
+    def visit_NCLOB(self, type_):
+        return "NCLOB"
+
     def visit_VARCHAR(self, type_):
         return "VARCHAR" + (type_.length and "(%d)" % type_.length or "")
 
@@ -1119,7 +1122,7 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_integer(self, type_): 
         return self.visit_INTEGER(type_)
         
-    def visit_float(self, type_): 
+    def visit_float(self, type_):
         return self.visit_FLOAT(type_)
         
     def visit_numeric(self, type_): 
@@ -1128,7 +1131,13 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_string(self, type_): 
         return self.visit_VARCHAR(type_)
         
+    def visit_unicode(self, type_): 
+        return self.visit_VARCHAR(type_)
+
     def visit_text(self, type_): 
+        return self.visit_TEXT(type_)
+
+    def visit_unicode_text(self, type_): 
         return self.visit_TEXT(type_)
     
     def visit_null(self, type_):

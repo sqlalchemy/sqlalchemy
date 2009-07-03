@@ -560,6 +560,8 @@ class Unicode(String):
 
     """
 
+    __visit_name__ = 'unicode'
+    
     def __init__(self, length=None, **kwargs):
         """
         Create a Unicode-converting String type.
@@ -578,6 +580,8 @@ class Unicode(String):
 
 class UnicodeText(Text):
     """A synonym for Text(convert_unicode=True, assert_unicode='warn')."""
+
+    __visit_name__ = 'unicode_text'
 
     def __init__(self, length=None, **kwargs):
         """
@@ -964,6 +968,11 @@ class CLOB(Text):
     """The SQL CLOB type."""
 
     __visit_name__ = 'CLOB'
+
+class NCLOB(Text):
+    """The SQL NCLOB type."""
+
+    __visit_name__ = 'NCLOB'
 
 
 class VARCHAR(String):

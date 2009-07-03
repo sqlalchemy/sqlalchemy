@@ -83,6 +83,11 @@
 - mysql
     - all the _detect_XXX() functions now run once underneath dialect.initialize()
     
+- oracle
+    - support for cx_Oracle's "native unicode" mode which does not require NLS_LANG
+      to be set.  Use the latest 5.0.2 or later of cx_oracle.  
+    - an NCLOB type is added to the base types.
+    
 - new dialects
     - pg8000
     - pyodbc+mysql

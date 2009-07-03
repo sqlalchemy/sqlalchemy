@@ -44,6 +44,32 @@ This step is also required when using table reflection, i.e. autoload=True::
         autoload=True
   ) 
 
+Identifier Casing
+-----------------
+
+In Oracle, the data dictionary represents all case insensitive identifier names 
+using UPPERCASE text.   SQLAlchemy on the other hand considers an all-lower case identifier
+name to be case insensitive.   The Oracle dialect converts all case insensitive identifiers
+to and from those two formats during schema level communication, such as reflection of
+tables and indexes.   Using an UPPERCASE name on the SQLAlchemy side indicates a 
+case sensitive identifier, and SQLAlchemy will quote the name - this will cause mismatches
+against data dictionary data received from Oracle, so unless identifier names have been
+truly created as case sensitive (i.e. using quoted names), all lowercase names should be
+used on the SQLAlchemy side.
+
+Unicode
+-------
+
+SQLAlchemy 0.6 uses the "native unicode" mode provided as of cx_oracle 5.  cx_oracle 5.0.2
+or greater is recommended for support of NCLOB.   If not using cx_oracle 5, the NLS_LANG
+environment variable needs to be set in order for the oracle client library to use 
+proper encoding, such as "AMERICAN_AMERICA.UTF8".
+
+Also note that Oracle supports unicode data through the NVARCHAR and NCLOB data types.
+When using the SQLAlchemy Unicode and UnicodeText types, these DDL types will be used
+within CREATE TABLE statements.   Usage of VARCHAR2 and CLOB with unicode text still 
+requires NLS_LANG to be set.
+
 LIMIT/OFFSET Support
 --------------------
 
@@ -72,7 +98,7 @@ is not in use this flag should be left off.
 
 """
 
-import datetime, random, re
+import random, re
 
 from sqlalchemy import schema as sa_schema
 from sqlalchemy import util, sql, log
@@ -83,90 +109,8 @@ from sqlalchemy import types as sqltypes
 
 RESERVED_WORDS = set('''SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN DEFAULT ALTER IS INTO MINUS INTEGER NUMBER GRANT IDENTIFIED ALL TO ORDER ON FLOAT DATE HAVING CLUSTER NOWAIT RESOURCE ANY TABLE INDEX FOR UPDATE WHERE CHECK SMALLINT WITH DELETE BY ASC REVOKE LIKE SIZE RENAME NOCOMPRESS NULL GROUP VALUES AS IN VIEW EXCLUSIVE COMPRESS SYNONYM SELECT INSERT EXISTS NOT TRIGGER ELSE CREATE INTERSECT PCTFREE DISTINCT CONNECT SET MODE OF UNIQUE VARCHAR2 VARCHAR LOCK OR CHAR DECIMAL UNION PUBLIC AND START'''.split()) 
 
-class OracleDate(sqltypes.Date):
-    def bind_processor(self, dialect):
-        return None
-
-    def result_processor(self, dialect):
-        def process(value):
-            if not isinstance(value, datetime.datetime):
-                return value
-            else:
-                return value.date()
-        return process
-
-class OracleDateTime(sqltypes.DateTime):
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None or isinstance(value, datetime.datetime):
-                return value
-            else:
-                # convert cx_oracle datetime object returned pre-python 2.4
-                return datetime.datetime(value.year, value.month,
-                    value.day,value.hour, value.minute, value.second)
-        return process
-
-# Note:
-# Oracle DATE == DATETIME
-# Oracle does not allow milliseconds in DATE
-# Oracle does not support TIME columns
-
-# only if cx_oracle contains TIMESTAMP
-class OracleTimestamp(sqltypes.TIMESTAMP):
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None or isinstance(value, datetime.datetime):
-                return value
-            else:
-                # convert cx_oracle datetime object returned pre-python 2.4
-                return datetime.datetime(value.year, value.month,
-                    value.day,value.hour, value.minute, value.second)
-        return process
-
-class OracleText(sqltypes.Text):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.CLOB
-
-    def result_processor(self, dialect):
-        super_process = super(OracleText, self).result_processor(dialect)
-        if not dialect.auto_convert_lobs:
-            return super_process
-        lob = dialect.dbapi.LOB
-        def process(value):
-            if isinstance(value, lob):
-                if super_process:
-                    return super_process(value.read())
-                else:
-                    return value.read()
-            else:
-                if super_process:
-                    return super_process(value)
-                else:
-                    return value
-        return process
-
-
-class OracleBinary(sqltypes.Binary):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.BLOB
-
-    def bind_processor(self, dialect):
-        return None
-
-    def result_processor(self, dialect):
-        if not dialect.auto_convert_lobs:
-            return None
-        lob = dialect.dbapi.LOB
-        def process(value):
-            if isinstance(value, lob):
-                return value.read()
-            else:
-                return value
-        return process
-
-class OracleRaw(OracleBinary):
-    def get_col_spec(self):
-        return "RAW(%(length)s)" % {'length' : self.length}
+class OracleRaw(sqltypes.Binary):
+    pass
 
 class OracleBoolean(sqltypes.Boolean):
     def result_processor(self, dialect):
@@ -189,12 +133,7 @@ class OracleBoolean(sqltypes.Boolean):
         return process
 
 colspecs = {
-    sqltypes.DateTime : OracleDateTime,
-    sqltypes.Date : OracleDate,
-    sqltypes.Binary : OracleBinary,
     sqltypes.Boolean : OracleBoolean,
-    sqltypes.Text : OracleText,
-    sqltypes.TIMESTAMP : OracleTimestamp,
 }
 
 ischema_names = {
@@ -223,6 +162,12 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     
     def visit_datetime(self, type_):
         return self.visit_DATE(type_)
+    
+    def visit_float(self, type_):
+        return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : 2}
+    
+    def visit_unicode(self, type_):
+        return self.visit_NVARCHAR(type_)
         
     def visit_VARCHAR(self, type_):
         return "VARCHAR(%(length)s)" % {'length' : type_.length}
@@ -232,6 +177,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     
     def visit_text(self, type_):
         return self.visit_CLOB(type_)
+
+    def visit_unicode_text(self, type_):
+        return self.visit_NCLOB(type_)
 
     def visit_binary(self, type_):
         return self.visit_BLOB(type_)
@@ -319,7 +267,10 @@ class OracleCompiler(compiler.SQLCompiler):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
 
         if asfrom:
-            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + self.preparer.format_alias(alias, self._anonymize(alias.name))
+            alias_name = isinstance(alias.name, expression._generated_label) and \
+                            self._truncated_identifier("alias", alias.name) or alias.name
+            
+            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + self.preparer.format_alias(alias, alias_name)
         else:
             return self.process(alias.original, **kwargs)
 
@@ -627,7 +578,7 @@ class OracleDialect(default.DefaultDialect):
             if coltype == 'NUMBER' :
                 if precision is None and scale is None:
                     coltype = sqltypes.NUMERIC
-                elif precision is None and scale == 0  :
+                elif precision is None and scale == 0:
                     coltype = sqltypes.INTEGER
                 else :
                     coltype = sqltypes.NUMERIC(precision, scale)
@@ -687,10 +638,10 @@ class OracleDialect(default.DefaultDialect):
             if rset.column_name in [s.upper() for s in pkeys]:
                 continue
             if rset.index_name != last_index_name:
-                index = dict(name=rset.index_name, column_names=[])
+                index = dict(name=self._normalize_name(rset.index_name), column_names=[])
                 indexes.append(index)
             index['unique'] = uniqueness.get(rset.uniqueness, False)
-            index['column_names'].append(rset.column_name)
+            index['column_names'].append(self._normalize_name(rset.column_name))
             last_index_name = rset.index_name
         return indexes
 
