@@ -12,6 +12,13 @@ CHANGES
       the tests.  [ticket:970]
       
 - orm
+    - Session.mapper is now *deprecated*.   
+      Call session.add() if you'd like a free-standing object to be 
+      part of your session.  Otherwise, a DIY version of
+      Session.mapper is now documented at 
+      http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
+      The method will remain deprecated throughout 0.6.
+    
     - Fixed bug introduced in 0.5.4 whereby Composite types
       fail when default-holding columns are flushed.
       
