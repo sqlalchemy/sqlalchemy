@@ -157,6 +157,7 @@ colspecs = {
     sqltypes.Text : OracleText,
     sqltypes.UnicodeText : OracleUnicodeText,
     sqltypes.TIMESTAMP : OracleTimestamp,
+    OracleRaw: cxOracleRaw,
 }
 
 class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):

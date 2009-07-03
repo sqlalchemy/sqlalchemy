@@ -29,12 +29,12 @@ to stay the same in future releases.
 import itertools, re
 from operator import attrgetter
 
-from sqlalchemy import util, exc
+from sqlalchemy import util, exc, types as sqltypes
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import Visitable, cloned_traverse
 import operator
 
-functions, schema, sql_util, sqltypes = None, None, None, None
+functions, schema, sql_util = None, None, None
 DefaultDialect, ClauseAdapter, Annotated = None, None, None
 
 __all__ = [

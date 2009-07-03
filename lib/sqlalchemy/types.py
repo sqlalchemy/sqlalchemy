@@ -28,9 +28,6 @@ from decimal import Decimal as _python_Decimal
 from sqlalchemy import exc
 from sqlalchemy.util import pickle
 from sqlalchemy.sql.visitors import Visitable
-from sqlalchemy.sql import expression
-import sys
-expression.sqltypes = sys.modules[__name__]
 import sqlalchemy.util as util
 NoneType = type(None)
     
@@ -89,14 +86,6 @@ class AbstractType(Visitable):
         """
         return op
 
-    def get_search_list(self):
-        """return a list of classes to test for a match
-        when adapting this type to a dialect-specific type.
-
-        """
-
-        return self.__class__.__mro__[0:-1]
-
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
@@ -106,18 +95,19 @@ class AbstractType(Visitable):
 class TypeEngine(AbstractType):
     """Base for built-in types."""
 
+    @util.memoized_property
+    def _impl_dict(self):
+        return {}
+        
     def dialect_impl(self, dialect, **kwargs):
         try:
             return self._impl_dict[dialect.__class__]
-        except AttributeError:
-            self._impl_dict = {}
-            return self._impl_dict.setdefault(dialect.__class__, dialect.__class__.type_descriptor(self))
         except KeyError:
             return self._impl_dict.setdefault(dialect.__class__, dialect.__class__.type_descriptor(self))
 
     def __getstate__(self):
         d = self.__dict__.copy()
-        d['_impl_dict'] = {}
+        d.pop('_impl_dict', None)
         return d
 
     def bind_processor(self, dialect):
@@ -227,7 +217,8 @@ class TypeDecorator(AbstractType):
     
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
-            raise AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
+            raise AssertionError("TypeDecorator implementations require a class-level "
+                        "variable 'impl' which refers to the class of type being decorated")
         self.impl = self.__class__.impl(*args, **kwargs)
 
     def dialect_impl(self, dialect):
@@ -365,7 +356,7 @@ def to_instance(typeobj):
 def adapt_type(typeobj, colspecs):
     if isinstance(typeobj, type):
         typeobj = typeobj()
-    for t in typeobj.get_search_list():
+    for t in typeobj.__class__.__mro__[0:-1]:
         try:
             impltype = colspecs[t]
             break
