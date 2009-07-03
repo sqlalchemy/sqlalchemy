@@ -96,6 +96,7 @@ class ScopedMapperTest(_ScopedTest):
             pass
 
     @classmethod
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         Session = scoped_session(sa.orm.create_session)
@@ -122,6 +123,7 @@ class ScopedMapperTest(_ScopedTest):
         sso = SomeOtherObject.query().first()
         assert SomeObject.query.filter_by(id=1).one().options[0].id == sso.id
 
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_query_compiles(self):
         class Foo(object):
@@ -141,6 +143,7 @@ class ScopedMapperTest(_ScopedTest):
         Session.mapper(Baz, table2, extension=ext)
         assert hasattr(Baz, 'query')
 
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_default_constructor_state_not_shared(self):
         scope = scoped_session(sa.orm.sessionmaker())
@@ -171,6 +174,7 @@ class ScopedMapperTest(_ScopedTest):
         assert_raises(TypeError, C, foo='bar')
         D(foo='bar')
 
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_validating_constructor(self):
         s2 = SomeObject(someid=12)
@@ -183,6 +187,7 @@ class ScopedMapperTest(_ScopedTest):
         assert_raises(sa.exc.ArgumentError, ValidatedOtherObject,
                           someid=12, bogus=345)
 
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_dont_clobber_methods(self):
         class MyClass(object):
@@ -215,6 +220,7 @@ class ScopedMapperTest2(_ScopedTest):
             pass
 
     @classmethod
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         Session = scoped_session(sa.orm.sessionmaker())

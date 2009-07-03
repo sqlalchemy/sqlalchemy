@@ -398,6 +398,7 @@ class DeclarativeTest(DeclarativeTestBase):
             Address(email='two'),
         ])])
         
+    @testing.uses_deprecated()
     def test_custom_mapper(self):
         class MyExt(sa.orm.MapperExtension):
             def create_instance(self):
