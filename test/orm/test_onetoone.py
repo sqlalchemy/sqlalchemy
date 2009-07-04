@@ -1,8 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session
 from test.orm import _base
 
@@ -11,13 +10,13 @@ class O2OTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('jack', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('number', String(50)),
               Column('status', String(20)),
               Column('subroom', String(5)))
 
         Table('port', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(30)),
               Column('description', String(100)),
               Column('jack_id', Integer, ForeignKey("jack.id")))

@@ -471,10 +471,16 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         self.assert_compile(sess.query(users).select_from(users.select()).with_labels().statement, 
-            "SELECT users.id AS users_id, users.name AS users_name FROM users, (SELECT users.id AS id, users.name AS name FROM users) AS anon_1")
+            "SELECT users.id AS users_id, users.name AS users_name FROM users, "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+            dialect=default.DefaultDialect()
+            )
 
         self.assert_compile(sess.query(users, exists([1], from_obj=addresses)).with_labels().statement, 
-            "SELECT users.id AS users_id, users.name AS users_name, EXISTS (SELECT 1 FROM addresses) AS anon_1 FROM users")
+            "SELECT users.id AS users_id, users.name AS users_name, EXISTS "
+            "(SELECT 1 FROM addresses) AS anon_1 FROM users",
+            dialect=default.DefaultDialect()
+            )
 
         # a little tedious here, adding labels to work around Query's auto-labelling.
         # also correlate needed explicitly.  hmmm.....
@@ -793,7 +799,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         
         s = create_session()
         
-        oracle_as = "AS " if not testing.against('oracle') else ""
+        oracle_as = not testing.against('oracle') and "AS " or ""
         
         self.assert_compile(
             s.query(User).options(eagerload(User.addresses)).from_self().statement,
@@ -2510,12 +2516,14 @@ class SelfReferentialTest(_base.MappedTest):
         sess = create_session()
         eq_(sess.query(Node).filter(Node.children.any(Node.data=='n1')).all(), [])
         eq_(sess.query(Node).filter(Node.children.any(Node.data=='n12')).all(), [Node(data='n1')])
-        eq_(sess.query(Node).filter(~Node.children.any()).all(), [Node(data='n11'), Node(data='n13'),Node(data='n121'),Node(data='n122'),Node(data='n123'),])
+        eq_(sess.query(Node).filter(~Node.children.any()).order_by(Node.id).all(), 
+                [Node(data='n11'), Node(data='n13'),Node(data='n121'),Node(data='n122'),Node(data='n123'),])
 
     def test_has(self):
         sess = create_session()
     
-        eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n12')).all(), [Node(data='n121'),Node(data='n122'),Node(data='n123')])
+        eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n12')).order_by(Node.id).all(), 
+            [Node(data='n121'),Node(data='n122'),Node(data='n123')])
         eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n122')).all(), [])
         eq_(sess.query(Node).filter(~Node.parent.has()).all(), [Node(data='n1')])
 

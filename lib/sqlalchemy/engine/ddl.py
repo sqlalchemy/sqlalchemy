@@ -87,7 +87,7 @@ class SchemaDropper(DDLBase):
         else:
             tables = metadata.tables.values()
         collection = [t for t in reversed(sql_util.sort_tables(tables)) if self._can_drop(t)]
-
+        
         for listener in metadata.ddl_listeners['before-drop']:
             listener('before-drop', metadata, self.connection, tables=collection)
         

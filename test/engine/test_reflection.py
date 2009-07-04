@@ -58,7 +58,31 @@ class ReflectionTest(TestBase, ComparesTables):
             self.assert_tables_equal(addresses, reflected_addresses)
         finally:
             meta.drop_all()
-
+    
+    def test_two_foreign_keys(self):
+        meta = MetaData(testing.db)
+        t1 = Table('t1', meta, 
+                Column('id', sa.Integer, primary_key=True),
+                Column('t2id', sa.Integer, sa.ForeignKey('t2.id')),
+                Column('t3id', sa.Integer, sa.ForeignKey('t3.id'))
+        )
+        t2 = Table('t2', meta, 
+                Column('id', sa.Integer, primary_key=True)
+        )
+        t3 = Table('t3', meta, 
+                Column('id', sa.Integer, primary_key=True)
+        )
+        meta.create_all()
+        try:
+            meta2 = MetaData()
+            t1r, t2r, t3r = [Table(x, meta2, autoload=True, autoload_with=testing.db) for x in ('t1', 't2', 't3')]
+            
+            assert t1r.c.t2id.references(t2r.c.id)
+            assert t1r.c.t3id.references(t3r.c.id)
+            
+        finally:
+            meta.drop_all()
+            
     def test_include_columns(self):
         meta = MetaData(testing.db)
         foo = Table('foo', meta, *[Column(n, sa.String(30))

@@ -564,14 +564,16 @@ class OracleDialect(default.DefaultDialect):
                                           resolve_synonyms, dblink,
                                           info_cache=info_cache)
         columns = []
-        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':table_name, 'owner':schema})
+        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, "
+                                "DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s "
+                                "where TABLE_NAME = :table_name and OWNER = :owner" % 
+                                {'dblink':dblink}, {'table_name':table_name, 'owner':schema}
+                                )
 
-        while True:
-            row = c.fetchone()
-            if row is None:
-                break
+        for row in c:
 
-            (colname, coltype, length, precision, scale, nullable, default) = (self._normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
+            (colname, coltype, length, precision, scale, nullable, default) = \
+                (self._normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
             # INTEGER if the scale is 0 and precision is null
             # NUMBER if the scale and precision are both null
@@ -658,7 +660,9 @@ class OracleDialect(default.DefaultDialect):
              loc.column_name AS local_column,
              rem.table_name AS remote_table,
              rem.column_name AS remote_column,
-             rem.owner AS remote_owner
+             rem.owner AS remote_owner,
+             loc.position as loc_pos,
+             rem.position as rem_pos
            FROM all_constraints%(dblink)s ac,
              all_cons_columns%(dblink)s loc,
              all_cons_columns%(dblink)s rem
@@ -669,8 +673,9 @@ class OracleDialect(default.DefaultDialect):
            AND ac.constraint_name = loc.constraint_name
            AND ac.r_owner = rem.owner(+)
            AND ac.r_constraint_name = rem.constraint_name(+)
-           -- order multiple primary keys correctly
-           ORDER BY ac.constraint_name, loc.position, rem.position"""
+           AND (rem.position IS NULL or loc.position=rem.position)
+           ORDER BY ac.constraint_name, loc.position"""
+           
          % {'dblink':dblink}, {'table_name' : table_name, 'owner' : schema})
         constraint_data = rp.fetchall()
         return constraint_data
@@ -699,9 +704,11 @@ class OracleDialect(default.DefaultDialect):
         constraint_data = self._get_constraint_data(connection, table_name,
                                         schema, dblink,
                                         info_cache=kw.get('info_cache'))
+                                        
         for row in constraint_data:
             #print "ROW:" , row
-            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = row[0:2] + tuple([self._normalize_name(x) for x in row[2:]])
+            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = \
+                row[0:2] + tuple([self._normalize_name(x) for x in row[2:6]])
             if cons_type == 'P':
                 pkeys.append(local_column)
         return pkeys
@@ -731,16 +738,23 @@ class OracleDialect(default.DefaultDialect):
         constraint_data = self._get_constraint_data(connection, table_name,
                                                 schema, dblink,
                                                 info_cache=kw.get('info_cache'))
-        fkeys = []
-        fks = {}
+
+        def fkey_rec():
+            return {
+                'name' : None,
+                'constrained_columns' : [],
+                'referred_schema' : None,
+                'referred_table' : None,
+                'referred_columns' : []
+            }
+
+        fkeys = util.defaultdict(fkey_rec)
+        
         for row in constraint_data:
-            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = row[0:2] + tuple([self._normalize_name(x) for x in row[2:]])
+            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = \
+                    row[0:2] + tuple([self._normalize_name(x) for x in row[2:6]])
+
             if cons_type == 'R':
-                try:
-                    fk = fks[cons_name]
-                except KeyError:
-                    fk = ([], [])
-                    fks[cons_name] = fk
                 if remote_table is None:
                     # ticket 363
                     util.warn(
@@ -749,30 +763,31 @@ class OracleDialect(default.DefaultDialect):
                          "proper rights to the table?") % {'dblink':dblink})
                     continue
 
-                if resolve_synonyms:
-                    ref_remote_name, ref_remote_owner, ref_dblink, ref_synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(remote_owner), desired_table=self._denormalize_name(remote_table))
-                    if ref_synonym:
-                        remote_table = self._normalize_name(ref_synonym)
-                        remote_owner = self._normalize_name(ref_remote_owner)
-                if local_column not in fk[0]:
-                    fk[0].append(local_column)
-                if remote_column not in fk[1]:
-                    fk[1].append(remote_column)
-        for (name, value) in fks.items():
-            if remote_table and value[1]:
-                if requested_schema is None and remote_owner is not None:
-                    default_schema = self.get_default_schema_name(connection) 
-                    if remote_owner.lower() == default_schema.lower():
-                        remote_owner = None
-                fkey_d = {
-                    'name' : name,
-                    'constrained_columns' : value[0],
-                    'referred_schema' : remote_owner,
-                    'referred_table' : remote_table,
-                    'referred_columns' : value[1]
-                }
-                fkeys.append(fkey_d)
-        return fkeys
+                rec = fkeys[cons_name]
+                rec['name'] = cons_name
+                local_cols, remote_cols = rec['constrained_columns'], rec['referred_columns']
+
+                if not rec['referred_table']:
+                    if resolve_synonyms:
+                        ref_remote_name, ref_remote_owner, ref_dblink, ref_synonym = \
+                                self._resolve_synonym(
+                                    connection, 
+                                    desired_owner=self._denormalize_name(remote_owner), 
+                                    desired_table=self._denormalize_name(remote_table)
+                                )
+                        if ref_synonym:
+                            remote_table = self._normalize_name(ref_synonym)
+                            remote_owner = self._normalize_name(ref_remote_owner)
+                    
+                    rec['referred_table'] = remote_table
+                    
+                    if requested_schema is not None or self._denormalize_name(remote_owner) != schema:
+                        rec['referred_schema'] = remote_owner
+                
+                local_cols.append(local_column)
+                remote_cols.append(remote_column)
+
+        return fkeys.values()
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None,
@@ -787,11 +802,12 @@ class OracleDialect(default.DefaultDialect):
         WHERE owner = :schema
         AND view_name = :view_name
         """
-        rp = connection.execute(sql.text(s),
-                                view_name=view_name, schema=schema)
+        rp = connection.execute(s,
+                                view_name=view_name, schema=schema).scalar()
         if rp:
-            view_def = rp.scalar().decode(self.encoding)
-            return view_def
+            return rp.decode(self.encoding)
+        else:
+            return None
 
     def reflecttable(self, connection, table, include_columns):
         insp = reflection.Inspector.from_engine(connection)

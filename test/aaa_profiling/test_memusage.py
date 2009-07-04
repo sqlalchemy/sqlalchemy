@@ -5,8 +5,7 @@ from sqlalchemy.orm.session import _sessions
 import operator
 from sqlalchemy.test import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, PickleType
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
 from sqlalchemy.test.util import gc_collect
@@ -77,11 +76,11 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)),
             Column('col3', Integer, ForeignKey("mytable.col1")))
 
@@ -130,11 +129,11 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)),
             Column('col3', Integer, ForeignKey("mytable.col1")))
 
@@ -185,13 +184,13 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30))
             )
 
         table2 = Table("mytable2", metadata,
             Column('col1', Integer, ForeignKey('mytable.col1'),
-                   primary_key=True),
+                   primary_key=True, test_needs_autoincrement=True),
             Column('col3', String(30)),
             )
 
@@ -245,12 +244,12 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30))
             )
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)),
             )
 
@@ -309,12 +308,12 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("table1", metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30))
             )
 
         table2 = Table("table2", metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('t1id', Integer, ForeignKey('table1.id'))
             )
@@ -348,7 +347,7 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', PickleType(comparator=operator.eq))
             )
         
