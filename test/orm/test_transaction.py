@@ -18,7 +18,7 @@ class TransactionTest(FixtureTest):
     def setup_mappers(cls):
         mapper(User, users, properties={
             'addresses':relation(Address, backref='user',
-                                 cascade="all, delete-orphan"),
+                                 cascade="all, delete-orphan", order_by=addresses.c.id),
             })
         mapper(Address, addresses)
 

@@ -340,7 +340,7 @@ class DefaultExecutionContext(base.ExecutionContext):
     def lastrow_has_defaults(self):
         return hasattr(self, 'postfetch_cols') and len(self.postfetch_cols)
 
-    def set_input_sizes(self, translate=None):
+    def set_input_sizes(self, translate=None, exclude_types=None):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
@@ -358,7 +358,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             for key in self.compiled.positiontup:
                 typeengine = types[key]
                 dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
-                if dbtype is not None:
+                if dbtype is not None and (not exclude_types or dbtype not in exclude_types):
                     inputsizes.append(dbtype)
             try:
                 self.cursor.setinputsizes(*inputsizes)
@@ -370,7 +370,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             for key in self.compiled.bind_names.values():
                 typeengine = types[key]
                 dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
-                if dbtype is not None:
+                if dbtype is not None and (not exclude_types or dbtype not in exclude_types):
                     if translate:
                         key = translate.get(key, key)
                     inputsizes[key.encode(self.dialect.encoding)] = dbtype

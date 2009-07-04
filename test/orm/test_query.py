@@ -130,7 +130,7 @@ class GetTest(QueryTest):
 
         metadata = MetaData(engines.utf8_engine())
         table = Table('unicode_data', metadata,
-            Column('id', Unicode(40), primary_key=True),
+            Column('id', Unicode(40), primary_key=True, test_needs_autoincrement=True),
             Column('data', Unicode(40)))
         try:
             metadata.create_all()
@@ -669,15 +669,19 @@ class FilterTest(QueryTest):
         sess = create_session()
         assert [Address(id=5)] == sess.query(Address).filter(Address.user.has(name='fred')).all()
 
-        assert [Address(id=2), Address(id=3), Address(id=4), Address(id=5)] == sess.query(Address).filter(Address.user.has(User.name.like('%ed%'))).all()
+        assert [Address(id=2), Address(id=3), Address(id=4), Address(id=5)] == \
+                sess.query(Address).filter(Address.user.has(User.name.like('%ed%'))).order_by(Address.id).all()
 
-        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).filter(Address.user.has(User.name.like('%ed%'), id=8)).all()
+        assert [Address(id=2), Address(id=3), Address(id=4)] == \
+            sess.query(Address).filter(Address.user.has(User.name.like('%ed%'), id=8)).order_by(Address.id).all()
 
         # test has() doesn't overcorrelate
-        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).join("user").filter(Address.user.has(User.name.like('%ed%'), id=8)).all()
+        assert [Address(id=2), Address(id=3), Address(id=4)] == \
+            sess.query(Address).join("user").filter(Address.user.has(User.name.like('%ed%'), id=8)).order_by(Address.id).all()
 
         # test has() doesnt' get subquery contents adapted by aliased join
-        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).join("user", aliased=True).filter(Address.user.has(User.name.like('%ed%'), id=8)).all()
+        assert [Address(id=2), Address(id=3), Address(id=4)] == \
+            sess.query(Address).join("user", aliased=True).filter(Address.user.has(User.name.like('%ed%'), id=8)).order_by(Address.id).all()
         
         dingaling = sess.query(Dingaling).get(2)
         assert [User(id=9)] == sess.query(User).filter(User.addresses.any(Address.dingaling==dingaling)).all()
@@ -712,8 +716,8 @@ class FilterTest(QueryTest):
         assert [Address(id=5)] == sess.query(Address).filter(Address.dingaling==dingaling).all()
 
         # m2m
-        eq_(sess.query(Item).filter(Item.keywords==None).all(), [Item(id=4), Item(id=5)])
-        eq_(sess.query(Item).filter(Item.keywords!=None).all(), [Item(id=1),Item(id=2), Item(id=3)])
+        eq_(sess.query(Item).filter(Item.keywords==None).order_by(Item.id).all(), [Item(id=4), Item(id=5)])
+        eq_(sess.query(Item).filter(Item.keywords!=None).order_by(Item.id).all(), [Item(id=1),Item(id=2), Item(id=3)])
     
     def test_filter_by(self):
         sess = create_session()
@@ -730,8 +734,9 @@ class FilterTest(QueryTest):
         sess = create_session()
         
         # o2o
-        eq_([Address(id=1), Address(id=3), Address(id=4)], sess.query(Address).filter(Address.dingaling==None).all())
-        eq_([Address(id=2), Address(id=5)], sess.query(Address).filter(Address.dingaling != None).all())
+        eq_([Address(id=1), Address(id=3), Address(id=4)], 
+            sess.query(Address).filter(Address.dingaling==None).order_by(Address.id).all())
+        eq_([Address(id=2), Address(id=5)], sess.query(Address).filter(Address.dingaling != None).order_by(Address.id).all())
         
         # m2o
         eq_([Order(id=5)], sess.query(Order).filter(Order.address==None).all())
@@ -788,11 +793,15 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         
         s = create_session()
         
+        oracle_as = "AS " if not testing.against('oracle') else ""
+        
         self.assert_compile(
             s.query(User).options(eagerload(User.addresses)).from_self().statement,
             "SELECT anon_1.users_id, anon_1.users_name, addresses_1.id, addresses_1.user_id, "\
-            "addresses_1.email_address FROM (SELECT users.id AS users_id, users.name AS users_name FROM users) AS anon_1 "\
-            "LEFT OUTER JOIN addresses AS addresses_1 ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id"
+            "addresses_1.email_address FROM (SELECT users.id AS users_id, users.name AS users_name FROM users) %(oracle_as)sanon_1 "\
+            "LEFT OUTER JOIN addresses %(oracle_as)saddresses_1 ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id" % {
+                'oracle_as':oracle_as
+            }
         )
             
     def test_aliases(self):
@@ -1428,11 +1437,11 @@ class MultiplePathTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1, t2, t1t2_1, t1t2_2
         t1 = Table('t1', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30))
             )
         t2 = Table('t2', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30))
             )
 
@@ -1696,7 +1705,7 @@ class MixedEntitiesTest(QueryTest):
         eq_(list(q2), [(u'jack',), (u'ed',)])
     
         q = sess.query(User)
-        q2 = q.order_by(User.id).values(User.name, User.name + " " + cast(User.id, String))
+        q2 = q.order_by(User.id).values(User.name, User.name + " " + cast(User.id, String(50)))
         eq_(list(q2), [(u'jack', u'jack 7'), (u'ed', u'ed 8'), (u'fred', u'fred 9'), (u'chuck', u'chuck 10')])
     
         q2 = q.join('addresses').filter(User.name.like('%e%')).order_by(User.id, Address.id).values(User.name, Address.email_address)
@@ -1736,6 +1745,7 @@ class MixedEntitiesTest(QueryTest):
         eq_(list(q2), [(u'jack', u'jack', u'jack'), (u'jack', u'jack', u'ed'), (u'jack', u'jack', u'fred'), (u'jack', u'jack', u'chuck'), (u'ed', u'ed', u'jack'), (u'ed', u'ed', u'ed'), (u'ed', u'ed', u'fred'), (u'ed', u'ed', u'chuck')])
 
     @testing.fails_on('mssql', 'FIXME: unknown')
+    @testing.fails_on('oracle', "Oracle doesn't support boolean expressions as columns")
     @testing.fails_on('postgres+pg8000', "pg8000 parses the SQL itself before passing on to PG, doesn't parse this")
     def test_values_with_boolean_selects(self):
         """Tests a values clause that works with select boolean evaluations"""
@@ -2646,7 +2656,7 @@ class ExternalColumnsTest(QueryTest):
         for x in range(2):
             sess.expunge_all()
             def go():
-               eq_(sess.query(Address).options(eagerload('user')).all(), address_result)
+               eq_(sess.query(Address).options(eagerload('user')).order_by(Address.id).all(), address_result)
             self.assert_sql_count(testing.db, go, 1)
     
         ualias = aliased(User)
@@ -2677,7 +2687,9 @@ class ExternalColumnsTest(QueryTest):
         )
 
         ua = aliased(User)
-        eq_(sess.query(Address, ua.concat, ua.count).select_from(join(Address, ua, 'user')).options(eagerload(Address.user)).all(),
+        eq_(sess.query(Address, ua.concat, ua.count).
+                    select_from(join(Address, ua, 'user')).
+                    options(eagerload(Address.user)).order_by(Address.id).all(),
             [
                 (Address(id=1, user=User(id=7, concat=14, count=1)), 14, 1),
                 (Address(id=2, user=User(id=8, concat=16, count=3)), 16, 3),
@@ -2728,7 +2740,7 @@ class TestOverlyEagerEquivalentCols(_base.MappedTest):
     def define_tables(cls, metadata):
         global base, sub1, sub2
         base = Table('base', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50))
         )
 
@@ -2786,12 +2798,12 @@ class UpdateDeleteTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(32)),
               Column('age', Integer))
 
         Table('documents', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('title', String(32)))
 

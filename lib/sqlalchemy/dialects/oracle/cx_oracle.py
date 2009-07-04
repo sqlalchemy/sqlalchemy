@@ -171,7 +171,7 @@ class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):
                     del param[fromname]
 
         if self.dialect.auto_setinputsizes:
-            self.set_input_sizes(quoted_bind_names)
+            self.set_input_sizes(quoted_bind_names, exclude_types=(self.dialect.dbapi.STRING,))
             
         if len(self.compiled_parameters) == 1:
             for key in self.compiled.binds:
@@ -241,7 +241,7 @@ class Oracle_cx_oracle(OracleDialect):
         if hasattr(self.dbapi, 'version'):
             cx_oracle_ver = vers(self.dbapi.version)
             self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
-            
+        
         if self.dbapi is None or not self.auto_convert_lobs or not 'CLOB' in self.dbapi.__dict__:
             self.dbapi_type_map = {}
             self.ORACLE_BINARY_TYPES = []

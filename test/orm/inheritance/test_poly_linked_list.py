@@ -3,6 +3,7 @@ from sqlalchemy.orm import *
 
 from test.orm import _base
 from sqlalchemy.test import testing
+from sqlalchemy.test.schema import Table, Column
 
 
 class PolymorphicCircularTest(_base.MappedTest):
@@ -12,7 +13,7 @@ class PolymorphicCircularTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global Table1, Table1B, Table2, Table3,  Data
         table1 = Table('table1', metadata,
-                       Column('id', Integer, primary_key=True),
+                       Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                        Column('related_id', Integer, ForeignKey('table1.id'), nullable=True),
                        Column('type', String(30)),
                        Column('name', String(30))
@@ -27,7 +28,7 @@ class PolymorphicCircularTest(_base.MappedTest):
                       )
 
         data = Table('data', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('node_id', Integer, ForeignKey('table1.id')),
             Column('data', String(30))
             )

@@ -3,6 +3,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
 
 from sqlalchemy.test import testing
+from sqlalchemy.test.schema import Table, Column
 from test.orm import _base
 
 
@@ -15,7 +16,7 @@ def produce_test(parent, child, direction):
         def define_tables(cls, metadata):
             global ta, tb, tc
             ta = ["a", metadata]
-            ta.append(Column('id', Integer, primary_key=True)),
+            ta.append(Column('id', Integer, primary_key=True, test_needs_autoincrement=True)),
             ta.append(Column('a_data', String(30)))
             if "a"== parent and direction == MANYTOONE:
                 ta.append(Column('child_id', Integer, ForeignKey("%s.id" % child, use_alter=True, name="foo")))

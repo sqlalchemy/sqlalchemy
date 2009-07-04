@@ -217,6 +217,8 @@ class OracleCompiler(compiler.SQLCompiler):
             return ""
         
     def bindparam_string(self, name):
+        # TODO: its not clear how much of bind parameter quoting is "Oracle"
+        # and how much is "cx_Oracle".
         if self.preparer._bindparam_requires_quotes(name):
             quoted_name = '"%s"' % name
             self._quoted_bind_names[name] = quoted_name
@@ -373,6 +375,7 @@ class OracleDefaultRunner(base.DefaultRunner):
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
     
     reserved_words = set([x.lower() for x in RESERVED_WORDS])
+    illegal_initial_characters = re.compile(r'[0-9_$]')
 
     def _bindparam_requires_quotes(self, value):
         """Return True if the given identifier requires quoting."""

@@ -4,11 +4,10 @@ from sqlalchemy.test.testing import eq_
 from sqlalchemy import *
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import table, column
-from sqlalchemy.databases import oracle
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.engines import testing_engine
-from sqlalchemy.dialect.oracle import cx_oracle
+from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 import os
 
 
@@ -293,26 +292,21 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
 
-    def test_timestamp_adapt(self):
-        dialect = oracle.OracleDialect()
-        t1 = types.DateTime
-        t3 = types.TIMESTAMP
-        
-        
-        assert isinstance(dialect.type_descriptor(t1), cx_oracle.OracleTimestamp)
-        assert isinstance(dialect.type_descriptor(t3), cx_oracle.OracleTimestamp)
+    def test_type_adapt(self):
+        dialect = cx_oracle.dialect()
 
-    def test_string_adapt(self):
-        oracle_dialect = oracle.OracleDialect()
-
-        for dialect, start, test in [
-            (oracle_dialect, String(), String),
-            (oracle_dialect, VARCHAR(), VARCHAR),
-            (oracle_dialect, String(50), String),
-            (oracle_dialect, Unicode(), Unicode),
-            (oracle_dialect, UnicodeText(), cx_oracle.OracleUnicodeText),
-            (oracle_dialect, NCHAR(), NCHAR),
-            (oracle_dialect, oracle.OracleRaw(50), oracle.OracleRaw),
+        for start, test in [
+            (DateTime(), cx_oracle.OracleDateTime),
+            (TIMESTAMP(), cx_oracle.OracleTimestamp),
+            (oracle.OracleRaw(), cx_oracle.cxOracleRaw),
+            (String(), String),
+            (VARCHAR(), VARCHAR),
+            (String(50), String),
+            (Unicode(), Unicode),
+            (Text(), cx_oracle.OracleText),
+            (UnicodeText(), cx_oracle.OracleUnicodeText),
+            (NCHAR(), NCHAR),
+            (oracle.OracleRaw(50), oracle.OracleRaw),
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 
@@ -383,7 +377,7 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
            Column('data', Binary)
         )
         meta.create_all()
-        stream = os.path.join(os.path.dirname(testenv.__file__), 'binary_data_one.dat')
+        stream = os.path.join(os.path.dirname(__file__), "..", 'binary_data_one.dat')
         stream = file(stream).read(12000)
 
         for i in range(1, 11):

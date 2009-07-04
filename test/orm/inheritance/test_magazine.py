@@ -4,6 +4,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.test import testing
 from sqlalchemy.util import function_named
 from test.orm import _base
+from sqlalchemy.test.schema import Table, Column
 
 class BaseObject(object):
     def __init__(self, *args, **kwargs):
@@ -75,49 +76,48 @@ class MagazineTest(_base.MappedTest):
         global publication_table, issue_table, location_table, location_name_table, magazine_table, \
         page_table, magazine_page_table, classified_page_table, page_size_table
 
-        zerodefault = {} #{'default':0}
         publication_table = Table('publication', metadata,
-            Column('id', Integer, primary_key=True, default=None),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(45), default=''),
         )
         issue_table = Table('issue', metadata,
-            Column('id', Integer, primary_key=True, default=None),
-            Column('publication_id', Integer, ForeignKey('publication.id'), **zerodefault),
-            Column('issue', Integer, **zerodefault),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('publication_id', Integer, ForeignKey('publication.id')),
+            Column('issue', Integer),
         )
         location_table = Table('location', metadata,
-            Column('id', Integer, primary_key=True, default=None),
-            Column('issue_id', Integer, ForeignKey('issue.id'), **zerodefault),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('issue_id', Integer, ForeignKey('issue.id')),
             Column('ref', CHAR(3), default=''),
-            Column('location_name_id', Integer, ForeignKey('location_name.id'), **zerodefault),
+            Column('location_name_id', Integer, ForeignKey('location_name.id')),
         )
         location_name_table = Table('location_name', metadata,
-            Column('id', Integer, primary_key=True, default=None),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(45), default=''),
         )
         magazine_table = Table('magazine', metadata,
-            Column('id', Integer, primary_key=True, default=None),
-            Column('location_id', Integer, ForeignKey('location.id'), **zerodefault),
-            Column('page_size_id', Integer, ForeignKey('page_size.id'), **zerodefault),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('location_id', Integer, ForeignKey('location.id')),
+            Column('page_size_id', Integer, ForeignKey('page_size.id')),
         )
         page_table = Table('page', metadata,
-            Column('id', Integer, primary_key=True, default=None),
-            Column('page_no', Integer, **zerodefault),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('page_no', Integer),
             Column('type', CHAR(1), default='p'),
         )
         magazine_page_table = Table('magazine_page', metadata,
-            Column('page_id', Integer, ForeignKey('page.id'), primary_key=True, **zerodefault),
-            Column('magazine_id', Integer, ForeignKey('magazine.id'), **zerodefault),
-            Column('orders', TEXT, default=''),
+            Column('page_id', Integer, ForeignKey('page.id'), primary_key=True),
+            Column('magazine_id', Integer, ForeignKey('magazine.id')),
+            Column('orders', Text, default=''),
         )
         classified_page_table = Table('classified_page', metadata,
-            Column('magazine_page_id', Integer, ForeignKey('magazine_page.page_id'), primary_key=True, **zerodefault),
+            Column('magazine_page_id', Integer, ForeignKey('magazine_page.page_id'), primary_key=True),
             Column('titles', String(45), default=''),
         )
         page_size_table = Table('page_size', metadata,
-            Column('id', Integer, primary_key=True, default=None),
-            Column('width', Integer, **zerodefault),
-            Column('height', Integer, **zerodefault),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('width', Integer),
+            Column('height', Integer),
             Column('name', String(45), default=''),
         )
 
@@ -176,10 +176,11 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
                 'magazine': relation(Magazine, backref=backref('pages', order_by=page_table.c.page_no))
             })
 
-        classified_page_mapper = mapper(ClassifiedPage, classified_page_table, inherits=magazine_page_mapper, polymorphic_identity='c', primary_key=[page_table.c.id])
-        #compile_mappers()
-        #print [str(s) for s in classified_page_mapper.primary_key]
-        #print classified_page_mapper.columntoproperty[page_table.c.id]
+        classified_page_mapper = mapper(ClassifiedPage, 
+                                    classified_page_table, 
+                                    inherits=magazine_page_mapper, 
+                                    polymorphic_identity='c', 
+                                    primary_key=[page_table.c.id])
 
 
         session = create_session()

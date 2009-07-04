@@ -314,6 +314,21 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
 
+    def test_round_trip_executemany(self):
+        # cx_oracle was producing different behavior for cursor.executemany()
+        # vs. cursor.execute()
+        
+        unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand une drôle de petit voix m’a réveillé. Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
+
+        unicode_table.insert().execute(
+                dict(unicode_varchar=unicodedata,unicode_text=unicodedata),
+                dict(unicode_varchar=unicodedata,unicode_text=unicodedata)
+        )
+
+        x = unicode_table.select().execute().fetchone()
+        self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
+        self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
+
     def test_union(self):
         """ensure compiler processing works for UNIONs"""
 

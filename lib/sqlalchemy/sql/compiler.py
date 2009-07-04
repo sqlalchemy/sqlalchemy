@@ -885,7 +885,10 @@ class DDLCompiler(engine.Compiled):
         return text
         
     def visit_drop_table(self, drop):
-        return "\nDROP TABLE " + self.preparer.format_table(drop.element)
+        ret = "\nDROP TABLE " + self.preparer.format_table(drop.element)
+        if drop.cascade:
+            ret += " CASCADE CONSTRAINTS"
+        return ret
         
     def visit_create_index(self, create):
         index = create.element
