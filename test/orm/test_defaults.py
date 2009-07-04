@@ -2,8 +2,7 @@
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session
 from test.orm import _base
 from sqlalchemy.test.testing import eq_
@@ -15,7 +14,7 @@ class TriggerDefaultsTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         dt = Table('dt', metadata,
-                   Column('id', Integer, primary_key=True),
+                   Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                    Column('col1', String(20)),
                    Column('col2', String(20),
                           server_default=sa.schema.FetchedValue()),
@@ -115,7 +114,7 @@ class ExcludedDefaultsTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         dt = Table('dt', metadata,
-                   Column('id', Integer, primary_key=True),
+                   Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                    Column('col1', String(20), default="hello"),
         )
         

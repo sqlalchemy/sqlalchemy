@@ -8,8 +8,7 @@ import datetime
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, backref, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
@@ -37,27 +36,24 @@ class EagerTest(_base.MappedTest):
         cls.other_artifacts['false'] = false
 
         Table('owners', metadata ,
-              Column('id', Integer, primary_key=True, nullable=False),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(30)))
 
         Table('categories', metadata,
-              Column('id', Integer, primary_key=True, nullable=False),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(20)))
 
         Table('tests', metadata ,
-              Column('id', Integer, primary_key=True, nullable=False ),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('owner_id', Integer, ForeignKey('owners.id'),
                      nullable=False),
               Column('category_id', Integer, ForeignKey('categories.id'),
                      nullable=False))
 
         Table('options', metadata ,
-              Column('test_id', Integer, ForeignKey('tests.id'),
-                     primary_key=True, nullable=False),
-              Column('owner_id', Integer, ForeignKey('owners.id'),
-                     primary_key=True, nullable=False),
-              Column('someoption', sa.Boolean, server_default=false,
-                     nullable=False))
+              Column('test_id', Integer, ForeignKey('tests.id'), primary_key=True),
+              Column('owner_id', Integer, ForeignKey('owners.id'), primary_key=True),
+              Column('someoption', sa.Boolean, server_default=false, nullable=False))
 
     @classmethod
     def setup_classes(cls):
@@ -219,7 +215,7 @@ class EagerTest2(_base.MappedTest):
             Column('data', String(50), primary_key=True))
 
         Table('middle', metadata,
-            Column('id', Integer, primary_key = True),
+            Column('id', Integer, primary_key = True, test_needs_autoincrement=True),
             Column('data', String(50)))
 
         Table('right', metadata,
@@ -280,17 +276,15 @@ class EagerTest3(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('datas', metadata,
-              Column('id', Integer, primary_key=True, nullable=False),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('a', Integer, nullable=False))
 
         Table('foo', metadata,
-              Column('data_id', Integer,
-                     ForeignKey('datas.id'),
-                     nullable=False, primary_key=True),
+              Column('data_id', Integer, ForeignKey('datas.id'),primary_key=True),
               Column('bar', Integer))
 
         Table('stats', metadata,
-              Column('id', Integer, primary_key=True, nullable=False ),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data_id', Integer, ForeignKey('datas.id')),
               Column('somedata', Integer, nullable=False ))
 
@@ -364,11 +358,11 @@ class EagerTest4(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('departments', metadata,
-              Column('department_id', Integer, primary_key=True),
+              Column('department_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(50)))
 
         Table('employees', metadata,
-              Column('person_id', Integer, primary_key=True),
+              Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(50)),
               Column('department_id', Integer,
                      ForeignKey('departments.department_id')))
@@ -422,17 +416,15 @@ class EagerTest5(_base.MappedTest):
               Column('x', String(30)))
 
         Table('derived', metadata,
-              Column('uid', String(30), ForeignKey('base.uid'),
-                     primary_key=True),
+              Column('uid', String(30), ForeignKey('base.uid'), primary_key=True),
               Column('y', String(30)))
 
         Table('derivedII', metadata,
-              Column('uid', String(30), ForeignKey('base.uid'),
-                     primary_key=True),
+              Column('uid', String(30), ForeignKey('base.uid'), primary_key=True),
               Column('z', String(30)))
 
         Table('comments', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('uid', String(30), ForeignKey('base.uid')),
               Column('comment', String(30)))
 
@@ -505,21 +497,21 @@ class EagerTest6(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('design_types', metadata,
-            Column('design_type_id', Integer, primary_key=True))
+            Column('design_type_id', Integer, primary_key=True, test_needs_autoincrement=True))
 
         Table('design', metadata,
-              Column('design_id', Integer, primary_key=True),
+              Column('design_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('design_type_id', Integer,
                      ForeignKey('design_types.design_type_id')))
 
         Table('parts', metadata,
-              Column('part_id', Integer, primary_key=True),
+              Column('part_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('design_id', Integer, ForeignKey('design.design_id')),
               Column('design_type_id', Integer,
                      ForeignKey('design_types.design_type_id')))
 
         Table('inherited_part', metadata,
-              Column('ip_id', Integer, primary_key=True),
+              Column('ip_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('part_id', Integer, ForeignKey('parts.part_id')),
               Column('design_id', Integer, ForeignKey('design.design_id')))
 
@@ -573,32 +565,27 @@ class EagerTest7(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('companies', metadata,
-              Column('company_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('company_name', String(40)))
 
         Table('addresses', metadata,
-              Column('address_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('address_id', Integer, primary_key=True,test_needs_autoincrement=True),
               Column('company_id', Integer, ForeignKey("companies.company_id")),
               Column('address', String(40)))
 
         Table('phone_numbers', metadata,
-              Column('phone_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('phone_id', Integer, primary_key=True,test_needs_autoincrement=True),
               Column('address_id', Integer, ForeignKey('addresses.address_id')),
               Column('type', String(20)),
               Column('number', String(10)))
 
         Table('invoices', metadata,
-              Column('invoice_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('invoice_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('company_id', Integer, ForeignKey("companies.company_id")),
               Column('date', sa.DateTime))
 
         Table('items', metadata,
-              Column('item_id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('item_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('invoice_id', Integer, ForeignKey('invoices.invoice_id')),
               Column('code', String(20)),
               Column('qty', Integer))
@@ -722,12 +709,12 @@ class EagerTest8(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('prj', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('created', sa.DateTime ),
               Column('title', sa.Unicode(100)))
 
         Table('task', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('status_id', Integer,
                      ForeignKey('task_status.id'), nullable=False),
               Column('title', sa.Unicode(100)),
@@ -736,19 +723,19 @@ class EagerTest8(_base.MappedTest):
               Column('prj_id', Integer , ForeignKey('prj.id'), nullable=False))
 
         Table('task_status', metadata,
-              Column('id', Integer, primary_key=True))
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True))
 
         Table('task_type', metadata,
-              Column('id', Integer, primary_key=True))
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True))
 
         Table('msg', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('posted', sa.DateTime, index=True,),
               Column('type_id', Integer, ForeignKey('msg_type.id')),
               Column('task_id', Integer, ForeignKey('task.id')))
 
         Table('msg_type', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', sa.Unicode(20)),
               Column('display_name', sa.Unicode(20)))
 
@@ -814,15 +801,15 @@ class EagerTest9(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('accounts', metadata,
-            Column('account_id', Integer, primary_key=True),
+            Column('account_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(40)))
 
         Table('transactions', metadata,
-            Column('transaction_id', Integer, primary_key=True),
+            Column('transaction_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(40)))
 
         Table('entries', metadata,
-            Column('entry_id', Integer, primary_key=True),
+            Column('entry_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(40)),
             Column('account_id', Integer,
                    ForeignKey('accounts.account_id')),

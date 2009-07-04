@@ -8,8 +8,7 @@ from sqlalchemy.orm.collections import collection
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import util, exc as sa_exc
 from sqlalchemy.orm import create_session, mapper, relation, attributes
 from test.orm import _base
@@ -1413,10 +1412,10 @@ class DictHelpersTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parents', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('label', String(128)))
         Table('children', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('parent_id', Integer, ForeignKey('parents.id'),
                      nullable=False),
               Column('a', String(128)),
@@ -1551,12 +1550,12 @@ class DictHelpersTest(_base.MappedTest):
 
         class Foo(BaseObject):
             __tablename__ = "foo"
-            id = Column(Integer(), primary_key=True)
+            id = Column(Integer(), primary_key=True, test_needs_autoincrement=True)
             bar_id = Column(Integer, ForeignKey('bar.id'))
             
         class Bar(BaseObject):
             __tablename__ = "bar"
-            id = Column(Integer(), primary_key=True)
+            id = Column(Integer(), primary_key=True, test_needs_autoincrement=True)
             foos = relation(Foo, collection_class=collections.column_mapped_collection(Foo.id))
             foos2 = relation(Foo, collection_class=collections.column_mapped_collection((Foo.id, Foo.bar_id)))
             
@@ -1597,10 +1596,10 @@ class CustomCollectionsTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('sometable', metadata,
-              Column('col1',Integer, primary_key=True),
+              Column('col1',Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(30)))
         Table('someothertable', metadata,
-              Column('col1', Integer, primary_key=True),
+              Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('scol1', Integer,
                      ForeignKey('sometable.col1')),
               Column('data', String(20)))

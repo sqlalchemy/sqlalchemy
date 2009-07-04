@@ -65,6 +65,15 @@ def Column(*args, **kw):
         kw.get('primary_key', False) and \
         testing.against('firebird', 'oracle'):
         def add_seq(tbl):
-            col._init_items(schema.Sequence(tbl.name + '_' + col.name + '_seq', optional=True))
+            col._init_items(
+                schema.Sequence(_truncate_name(testing.db.dialect, tbl.name + '_' + col.name + '_seq'), optional=True)
+            )
         col._on_table_attach(add_seq)
     return col
+
+def _truncate_name(dialect, name):
+    if len(name) > dialect.max_identifier_length:
+        return name[0:max(dialect.max_identifier_length - 6, 0)] + "_" + hex(hash(name) % 64)[2:]
+    else:
+        return name
+    

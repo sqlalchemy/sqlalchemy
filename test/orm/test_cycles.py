@@ -7,8 +7,7 @@ T1/T2.
 """
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, backref, create_session
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.assertsql import RegexSQL, ExactSQL, CompiledSQL, AllOf
@@ -138,7 +137,7 @@ class SelfReferentialNoPKTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('item', metadata,
-           Column('id', Integer, primary_key=True),
+           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('uuid', String(32), unique=True, nullable=False),
            Column('parent_uuid', String(32), ForeignKey('item.uuid'),
                   nullable=True))
@@ -190,18 +189,16 @@ class InheritTestOne(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("parent", metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("parent_data", String(50)),
             Column("type", String(10)))
 
         Table("child1", metadata,
-              Column("id", Integer, ForeignKey("parent.id"),
-                     primary_key=True),
+              Column("id", Integer, ForeignKey("parent.id"), primary_key=True),
               Column("child1_data", String(50)))
 
         Table("child2", metadata,
-            Column("id", Integer, ForeignKey("parent.id"),
-                   primary_key=True),
+            Column("id", Integer, ForeignKey("parent.id"), primary_key=True),
             Column("child1_id", Integer, ForeignKey("child1.id"),
                    nullable=False),
             Column("child2_data", String(50)))
@@ -262,7 +259,7 @@ class InheritTestTwo(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('cid', Integer, ForeignKey('c.id')))
 
@@ -271,7 +268,7 @@ class InheritTestTwo(_base.MappedTest):
             Column('data', String(30)))
 
         Table('c', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('aid', Integer,
                    ForeignKey('a.id', use_alter=True, name="foo")))
@@ -311,16 +308,16 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('t2id', Integer, ForeignKey('t2.id')))
         Table('t2', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('t1id', Integer,
                    ForeignKey('t1.id', use_alter=True, name="foo_fk")))
         Table('t3', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('t1id', Integer, ForeignKey('t1.id'), nullable=False),
             Column('t2id', Integer, ForeignKey('t2.id'), nullable=False))
@@ -402,13 +399,11 @@ class BiDirectionalOneToManyTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-              Column('c1', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('c2', Integer, ForeignKey('t2.c1')))
 
         Table('t2', metadata,
-              Column('c1', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('c2', Integer,
                      ForeignKey('t1.c1', use_alter=True, name='t1c1_fk')))
 
@@ -453,18 +448,18 @@ class BiDirectionalOneToManyTest2(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-              Column('c1', Integer, primary_key=True),
+              Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('c2', Integer, ForeignKey('t2.c1')),
               test_needs_autoincrement=True)
 
         Table('t2', metadata,
-              Column('c1', Integer, primary_key=True),
+              Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('c2', Integer,
                      ForeignKey('t1.c1', use_alter=True, name='t1c1_fq')),
               test_needs_autoincrement=True)
 
         Table('t1_data', metadata,
-              Column('c1', Integer, primary_key=True),
+              Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('t1id', Integer, ForeignKey('t1.c1')),
               Column('data', String(20)),
               test_needs_autoincrement=True)
@@ -530,15 +525,13 @@ class OneToManyManyToOneTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('ball', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('person_id', Integer,
                      ForeignKey('person.id', use_alter=True, name='fk_person_id')),
               Column('data', String(30)))
 
         Table('person', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('favorite_ball_id', Integer, ForeignKey('ball.id')),
               Column('data', String(30)))
 
@@ -841,7 +834,7 @@ class SelfReferentialPostUpdateTest2(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("a_table", metadata,
-              Column("id", Integer(), primary_key=True),
+              Column("id", Integer(), primary_key=True, test_needs_autoincrement=True),
               Column("fui", String(128)),
               Column("b", Integer(), ForeignKey("a_table.id")))
 
