@@ -11,9 +11,9 @@ types.
 For more information see the SQLAlchemy documentation on types.
 
 """
-__all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
+__all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text', 'FLOAT',
-            'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
+            'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'NCLOB', 'BLOB',
             'BOOLEAN', 'SMALLINT', 'INTEGER','DATE', 'TIME',
             'String', 'Integer', 'SmallInteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
@@ -547,8 +547,6 @@ class Unicode(String):
     :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which defaults
     to `utf-8`.
 
-    A synonym for String(length, convert_unicode=True, assert_unicode='warn').
-
     """
 
     __visit_name__ = 'unicode'
@@ -570,7 +568,12 @@ class Unicode(String):
         super(Unicode, self).__init__(length=length, **kwargs)
 
 class UnicodeText(Text):
-    """A synonym for Text(convert_unicode=True, assert_unicode='warn')."""
+    """An unbounded-length Unicode string.
+    
+    See :class:`Unicode` for details on the unicode
+    behavior of this object.
+    
+    """
 
     __visit_name__ = 'unicode_text'
 
@@ -956,12 +959,18 @@ class TEXT(Text):
     __visit_name__ = 'TEXT'
 
 class CLOB(Text):
-    """The SQL CLOB type."""
+    """The CLOB type.
+    
+    This type is found in Oracle and Informix.
+    """
 
     __visit_name__ = 'CLOB'
 
 class NCLOB(Text):
-    """The SQL NCLOB type."""
+    """The NCLOB type.
+    
+    TODO: is this only Oracle ?
+    """
 
     __visit_name__ = 'NCLOB'
 

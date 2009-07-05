@@ -6,9 +6,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Sybase database backend.
+Sybase iAnywhere backend.  This is not a full backend for Sybase ASE.
 
---- THIS BACKEND NOT YET TESTED ON SQLALCHEMY 0.6 ---
+
 
 Known issues / TODO:
 
