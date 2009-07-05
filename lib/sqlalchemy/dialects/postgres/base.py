@@ -73,26 +73,44 @@ from sqlalchemy.sql import compiler, expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 
+from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, VARCHAR, \
+        CHAR, TEXT, FLOAT, NUMERIC, \
+        TIMESTAMP, TIME, DATE, BOOLEAN
 
-class PGInet(sqltypes.TypeEngine):
+class REAL(sqltypes.Float):
+    __visit_name__ = "REAL"
+
+class BYTEA(sqltypes.Binary):
+    __visit_name__ = 'BYTEA'
+
+class DOUBLE_PRECISION(sqltypes.Float):
+    __visit_name__ = 'DOUBLE_PRECISION'
+    
+class INET(sqltypes.TypeEngine):
     __visit_name__ = "INET"
+PGInet = INET
 
-class PGCidr(sqltypes.TypeEngine):
+class CIDR(sqltypes.TypeEngine):
     __visit_name__ = "CIDR"
+PGCidr = CIDR
 
-class PGMacAddr(sqltypes.TypeEngine):
+class MACADDR(sqltypes.TypeEngine):
     __visit_name__ = "MACADDR"
+PGMacAddr = MACADDR
 
-class PGInterval(sqltypes.TypeEngine):
+class INTERVAL(sqltypes.TypeEngine):
     __visit_name__ = 'INTERVAL'
+PGInterval = INTERVAL
 
-class PGBit(sqltypes.TypeEngine):
+class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
+PGBit = BIT
 
-class PGUuid(sqltypes.TypeEngine):
+class UUID(sqltypes.TypeEngine):
     __visit_name__ = 'UUID'
+PGUuid = UUID
 
-class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
+class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     __visit_name__ = 'ARRAY'
     
     def __init__(self, item_type, mutable=True):
@@ -152,40 +170,40 @@ class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
                         return item
             return [convert_item(item) for item in value]
         return process
-
+PGArray = ARRAY
 
 colspecs = {
-    sqltypes.Interval:PGInterval
+    sqltypes.Interval:INTERVAL
 }
 
 ischema_names = {
-    'integer' : sqltypes.INTEGER,
-    'bigint' : sqltypes.BigInteger,
-    'smallint' : sqltypes.SMALLINT,
-    'character varying' : sqltypes.VARCHAR,
-    'character' : sqltypes.CHAR,
+    'integer' : INTEGER,
+    'bigint' : BIGINT,
+    'smallint' : SMALLINT,
+    'character varying' : VARCHAR,
+    'character' : CHAR,
     '"char"' : sqltypes.String,
     'name' : sqltypes.String,
-    'text' : sqltypes.TEXT,
-    'numeric' : sqltypes.NUMERIC,
-    'float' : sqltypes.FLOAT,
-    'real' : sqltypes.Float,
-    'inet': PGInet,
-    'cidr': PGCidr,
-    'uuid': PGUuid,
-    'bit':PGBit,
-    'macaddr': PGMacAddr,
-    'double precision' : sqltypes.Float,
-    'timestamp' : sqltypes.TIMESTAMP,
-    'timestamp with time zone' : sqltypes.TIMESTAMP,
-    'timestamp without time zone' : sqltypes.TIMESTAMP,
-    'time with time zone' : sqltypes.TIME,
-    'time without time zone' : sqltypes.TIME,
-    'date' : sqltypes.DATE,
-    'time': sqltypes.TIME,
-    'bytea' : sqltypes.Binary,
-    'boolean' : sqltypes.BOOLEAN,
-    'interval':PGInterval,
+    'text' : TEXT,
+    'numeric' : NUMERIC,
+    'float' : FLOAT,
+    'real' : REAL,
+    'inet': INET,
+    'cidr': CIDR,
+    'uuid': UUID,
+    'bit':BIT,
+    'macaddr': MACADDR,
+    'double precision' : DOUBLE_PRECISION,
+    'timestamp' : TIMESTAMP,
+    'timestamp with time zone' : TIMESTAMP,
+    'timestamp without time zone' : TIMESTAMP,
+    'time with time zone' : TIME,
+    'time without time zone' : TIME,
+    'date' : DATE,
+    'time': TIME,
+    'bytea' : BYTEA,
+    'boolean' : BOOLEAN,
+    'interval':INTERVAL,
 }
 
 
@@ -339,7 +357,8 @@ class PGDefaultRunner(base.DefaultRunner):
             if (isinstance(column.server_default, schema.DefaultClause) and
                 column.server_default.arg is not None):
                 return self.execute_string("select %s" % column.server_default.arg)
-            elif (isinstance(column.type, sqltypes.Integer) and column.autoincrement) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
+            elif (isinstance(column.type, sqltypes.Integer) and column.autoincrement) \
+                    and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
                 sch = column.table.schema
                 # TODO: this has to build into the Sequence object so we can get the quoting
                 # logic from it
@@ -376,7 +395,10 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             return "FLOAT"
         else:
             return "FLOAT(%(precision)s)" % {'precision': type_.precision}
-
+    
+    def visit_DOUBLE_PRECISION(self, type_):
+        return "DOUBLE PRECISION"
+        
     def visit_BIGINT(self, type_):
         return "BIGINT"
 
@@ -403,6 +425,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         
     def visit_BYTEA(self, type_):
         return "BYTEA"
+
+    def visit_REAL(self, type_):
+        return "REAL"
 
     def visit_ARRAY(self, type_):
         return self.process(type_.item_type) + '[]'
@@ -505,13 +530,15 @@ class PGDialect(default.DefaultDialect):
         # seems like case gets folded in pg_class...
         if schema is None:
             cursor = connection.execute(
-                sql.text("""select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname=current_schema() and lower(relname)=:name""",
+                sql.text("select relname from pg_class c join pg_namespace n on "
+                    "n.oid=c.relnamespace where n.nspname=current_schema() and lower(relname)=:name",
                     bindparams=[sql.bindparam('name', unicode(table_name.lower()), type_=sqltypes.Unicode)]
                 )
             )
         else:
             cursor = connection.execute(
-                sql.text("""select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname=:schema and lower(relname)=:name""",
+                sql.text("select relname from pg_class c join pg_namespace n on "
+                        "n.oid=c.relnamespace where n.nspname=:schema and lower(relname)=:name",
                     bindparams=[sql.bindparam('name', unicode(table_name.lower()), type_=sqltypes.Unicode),
                         sql.bindparam('schema', unicode(schema), type_=sqltypes.Unicode)] 
                 )

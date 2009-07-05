@@ -100,6 +100,10 @@
       and if on an older version of SQL Server, the operation fails.  The behavior is exactly
       the same except the error is raised by SQL server instead of the dialect, and no
       flag setting is required to enable it.
+    - the "auto_identity_insert" flag is removed.  This feature always takes effect
+      when an INSERT statement overrides a column that is known to have a sequence on it.
+      As with "has_window_funcs", if the underlying driver doesn't support this, then you 
+      can't do this operation in any case, so there's no point in having a flag.
     - using new dialect.initialize() feature to set up version-dependent behavior.
     
 - types

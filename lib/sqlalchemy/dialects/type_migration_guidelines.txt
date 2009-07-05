@@ -23,13 +23,35 @@ Rules for Migrating TypeEngine classes to 0.6
 3. the "ischema_names" and "colspecs" dictionaries are now required members on
 the Dialect class.
 
-4. "colspecs" now is a dictionary of generic or uppercased types from sqlalchemy.types
+4. The names of types within dialects are now important.   If a dialect-specific type
+is a subclass of an existing generic type and is only provided for bind/result behavior, 
+the current mixed case naming can remain, i.e. PGNumeric for Numeric - in this case, 
+end users would never need to use PGNumeric directly.   However, if a dialect-specific 
+type is specifying a type *or* arguments that are not present generically, it should
+match the real name of the type on that backend, in uppercase.  E.g. postgres.INET,
+mysql.ENUM, postgres.ARRAY.  
+
+Ideally one should be able to specify a schema using names imported completely from a 
+dialect, all matching the real name on that backend:
+
+   from sqlalchemy.dialects.postgres import base as pg
+   
+   t = Table('mytable', metadata,
+              Column('id', pg.INTEGER, primary_key=True),
+              Column('name', pg.VARCHAR(300)),
+              Column('inetaddr', pg.INET)
+   )
+
+where above, the INTEGER and VARCHAR types are ultimately from sqlalchemy.types, 
+but the PG dialect makes them available in its own namespace.
+
+5. "colspecs" now is a dictionary of generic or uppercased types from sqlalchemy.types
 linked to types specified in the dialect.   Again, if a type in the dialect does not
 specify any special behavior for bind_processor() or result_processor() and does not
 indicate a special type only available in this database, it must be *removed* from the 
 module and from this dictionary.
 
-5. "ischema_names" indicates string descriptions of types as returned from the database
+6. "ischema_names" indicates string descriptions of types as returned from the database
 linked to TypeEngine classes.   
 
     a. The string name should be matched to the most specific type possible within
@@ -41,7 +63,7 @@ linked to TypeEngine classes.
     
     b. If the dialect contains a matching dialect-specific type that takes extra arguments 
     which the generic one does not, then point to the dialect-specific type.  E.g.
-    mssql MSString takes a "collation" parameter which should be preserved.
+    mssql.VARCHAR takes a "collation" parameter which should be preserved.
     
     c. For an exact or almost exact match, point to the uppercase type.  i.e. "float" 
     should point to "FLOAT", "varchar" should point to "VARCHAR"

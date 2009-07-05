@@ -453,6 +453,8 @@ class PKIncrementTest(_base.TablesTest):
         self.assert_(last not in ids)
         ids.add(last)
 
+        eq_(ids, set([1,2,3,4]))
+        
         eq_(list(bind.execute(aitable.select().order_by(aitable.c.id))),
             [(1, 1, None), (2, None, 'row 2'), (3, 3, 'row 3'), (4, 4, None)])
 
@@ -511,7 +513,7 @@ class AutoIncrementTest(_base.TablesTest):
 
         r = single.insert().execute()
         id_ = r.last_inserted_ids()[0]
-        assert id_ is not None
+        eq_(id_, 1)
         eq_(1, sa.select([func.count(sa.text('*'))], from_obj=single).scalar())
 
     def test_autoincrement_fk(self):

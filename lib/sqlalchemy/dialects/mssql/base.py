@@ -103,18 +103,12 @@ Additional arguments which may be specified either as query string
 arguments on the URL, or as keyword argument to
 :func:`~sqlalchemy.create_engine()` are:
 
-* *auto_identity_insert* - enables support for IDENTITY inserts by
-  automatically turning IDENTITY INSERT ON and OFF as required.
-  Defaults to ``True``.
-
 * *query_timeout* - allows you to override the default query timeout.
   Defaults to ``None``. This is only supported on pymssql.
 
 * *use_scope_identity* - allows you to specify that SCOPE_IDENTITY
   should be used in place of the non-scoped version @@IDENTITY.
-  Defaults to ``False``. On pymssql this defaults to ``True``, and on
-  pyodbc this defaults to ``True`` if the version of pyodbc being
-  used supports it.
+  Defaults to True.
 
 * *max_identifier_length* - allows you to se the maximum length of
   identfiers supported by the database. Defaults to 128. For pymssql
@@ -783,46 +777,51 @@ def _table_sequence_column(tbl):
     return tbl._ms_has_sequence
 
 class MSExecutionContext(default.DefaultExecutionContext):
-    IINSERT = False
-    HASIDENT = False
-
+    _enable_identity_insert = False
+    _select_lastrowid = False
+    
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""
 
         if self.isinsert:
             tbl = self.compiled.statement.table
             seq_column = _table_sequence_column(tbl)
-            self.HASIDENT = bool(seq_column)
-            if self.dialect.auto_identity_insert and self.HASIDENT:
-                self.IINSERT = tbl._ms_has_sequence.key in self.compiled_parameters[0]
+            insert_has_sequence = bool(seq_column)
+            
+            if insert_has_sequence:
+                self._enable_identity_insert = tbl._ms_has_sequence.key in self.compiled_parameters[0]
             else:
-                self.IINSERT = False
-
-            if self.IINSERT:
+                self._enable_identity_insert = False
+            
+            self._select_lastrowid = insert_has_sequence and \
+                                        not self._enable_identity_insert and \
+                                        not self.executemany
+            
+            if self._enable_identity_insert:
                 self.cursor.execute("SET IDENTITY_INSERT %s ON" % 
-                    self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
+                    self.dialect.identifier_preparer.format_table(tbl))
+
+    def post_exec(self):
+        """Disable IDENTITY_INSERT if enabled."""
+        
+        if self._select_lastrowid:
+            if self.dialect.use_scope_identity:
+                self.cursor.execute("SELECT scope_identity() AS lastrowid")
+            else:
+                self.cursor.execute("SELECT @@identity AS lastrowid")
+            row = self.cursor.fetchall()[0]   # fetchall() ensures the cursor is consumed without closing it
+            self._last_inserted_ids = [int(row[0])] + self._last_inserted_ids[1:]
+            
+        if self._enable_identity_insert:
+            self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
 
     def handle_dbapi_exception(self, e):
-        if self.IINSERT:
+        if self._enable_identity_insert:
             try:
                 self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
             except:
                 pass
 
-    def post_exec(self):
-        """Disable IDENTITY_INSERT if enabled."""
-
-        if self.isinsert and not self.executemany and self.HASIDENT and not self.IINSERT:
-            if not self._last_inserted_ids or self._last_inserted_ids[0] is None:
-                if self.dialect.use_scope_identity:
-                    self.cursor.execute("SELECT scope_identity() AS lastrowid")
-                else:
-                    self.cursor.execute("SELECT @@identity AS lastrowid")
-                row = self.cursor.fetchone()
-                self._last_inserted_ids = [int(row[0])] + self._last_inserted_ids[1:]
-
-        if self.IINSERT:
-            self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
 
 colspecs = {
     sqltypes.Unicode : MSNVarchar,
@@ -1109,10 +1108,9 @@ class MSDialect(default.DefaultDialect):
     name = 'mssql'
     supports_default_values = True
     supports_empty_insert = False
-    auto_identity_insert = True
     execution_ctx_cls = MSExecutionContext
     text_as_varchar = False
-    use_scope_identity = False
+    use_scope_identity = True
     max_identifier_length = 128
     schema_name = "dbo"
     colspecs = colspecs
@@ -1128,15 +1126,14 @@ class MSDialect(default.DefaultDialect):
     preparer = MSIdentifierPreparer
 
     def __init__(self,
-                 auto_identity_insert=True, query_timeout=None,
-                 use_scope_identity=False,
+                 query_timeout=None,
+                 use_scope_identity=True,
                  max_identifier_length=None,
                  schema_name="dbo", **opts):
-        self.auto_identity_insert = bool(auto_identity_insert)
         self.query_timeout = int(query_timeout or 0)
         self.schema_name = schema_name
 
-        self.use_scope_identity = bool(use_scope_identity)
+        self.use_scope_identity = use_scope_identity
         self.max_identifier_length = int(max_identifier_length or 0) or \
                 self.max_identifier_length
         super(MSDialect, self).__init__(**opts)
@@ -1150,19 +1147,17 @@ class MSDialect(default.DefaultDialect):
         pass
 
     def get_default_schema_name(self, connection):
-        query = "SELECT user_name() as user_name;"
-        user_name = connection.scalar(sql.text(query))
+        user_name = connection.scalar("SELECT user_name() as user_name;")
         if user_name is not None:
             # now, get the default schema
             query = """
             SELECT default_schema_name FROM
             sys.database_principals
-            WHERE name = :user_name
+            WHERE name = ?
             AND type = 'S'
             """
             try:
-                default_schema_name = connection.scalar(sql.text(query),
-                                                    user_name=user_name)
+                default_schema_name = connection.scalar(query, [user_name])
                 if default_schema_name is not None:
                     return default_schema_name
             except:

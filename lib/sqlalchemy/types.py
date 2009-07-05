@@ -1013,9 +1013,9 @@ NULLTYPE = NullType()
 # using VARCHAR/NCHAR so that we dont get the genericized "String"
 # type which usually resolves to TEXT/CLOB
 type_map = {
-    str : VARCHAR,
+    str: String,
     # Py2K
-    unicode : NCHAR,
+    unicode : String,
     # end Py2K
     int : Integer,
     float : Numeric,
