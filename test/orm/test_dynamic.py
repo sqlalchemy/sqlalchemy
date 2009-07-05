@@ -343,7 +343,8 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         sess.commit()
         u1.addresses.append(Address(email_address='foo@bar.com'))
-        eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
+        eq_(u1.addresses.order_by(Address.id).all(), 
+                 [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
         sess.rollback()
         eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
 
