@@ -445,7 +445,7 @@ class M2OCascadeTest(_base.MappedTest):
         jack.pref = newpref
         jack.pref = newpref
         sess.flush()
-        eq_(sess.query(Pref).all(),
+        eq_(sess.query(Pref).order_by(Pref.id).all(),
             [Pref(data="pref 1"), Pref(data="pref 3"), Pref(data="newpref")])
 
 class M2OCascadeDeleteTest(_base.MappedTest):

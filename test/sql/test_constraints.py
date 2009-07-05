@@ -286,6 +286,7 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
         
         t2 = Table('t2', m,
                 Column('a', Integer, ForeignKey('t.a', use_alter=True, name='fk_ta')),
+                Column('b', Integer, ForeignKey('t.a', name='fk_tb')), # to ensure create ordering ...
         )
 
         e = engines.mock_engine(dialect_name='postgres')
@@ -293,12 +294,12 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
         m.drop_all(e)
 
         e.assert_sql([
-            "CREATE TABLE t (a INTEGER)",
-            "CREATE TABLE t2 (a INTEGER)",
-            "ALTER TABLE t2 ADD CONSTRAINT fk_ta FOREIGN KEY(a) REFERENCES t (a)",
-            "ALTER TABLE t2 DROP CONSTRAINT fk_ta",
-            "DROP TABLE t2",
-            "DROP TABLE t",
+            'CREATE TABLE t (a INTEGER)', 
+            'CREATE TABLE t2 (a INTEGER, b INTEGER, CONSTRAINT fk_tb FOREIGN KEY(b) REFERENCES t (a))', 
+            'ALTER TABLE t2 ADD CONSTRAINT fk_ta FOREIGN KEY(a) REFERENCES t (a)', 
+            'ALTER TABLE t2 DROP CONSTRAINT fk_ta', 
+            'DROP TABLE t2', 
+            'DROP TABLE t'
         ])
         
         

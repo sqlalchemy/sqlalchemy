@@ -1005,7 +1005,7 @@ class DefaultTest(_base.MappedTest):
         """A server-side default can be used as the target of a foreign key"""
 
         mapper(Hoho, default_t, properties={
-            'secondaries':relation(Secondary)})
+            'secondaries':relation(Secondary, order_by=secondary_table.c.id)})
         mapper(Secondary, secondary_table)
 
         h1 = Hoho()
