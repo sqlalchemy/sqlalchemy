@@ -674,18 +674,12 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_SMALLDATETIME(self, type_):
         return "SMALLDATETIME"
 
-    def visit_string(self, type_):
-        if type_.convert_unicode:
-            return self._extend("NVARCHAR", type_)
-        else:
-            return self._extend("VARCHAR", type_)
-
-    def visit_text(self, type_):
-        if type_.convert_unicode:
-            return self._extend("NTEXT", type_)
-        else:
-            return self._extend("TEXT", type_)
-
+    def visit_unicode(self, type_):
+        return self.visit_NVARCHAR(type_)
+        
+    def visit_unicode_text(self, type_):
+        return self.visit_NTEXT(type_)
+        
     def visit_NTEXT(self, type_):
         return self._extend("NTEXT", type_)
 
@@ -824,18 +818,11 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
 
 colspecs = {
-    sqltypes.Unicode : MSNVarchar,
     sqltypes.Numeric : MSNumeric,
     sqltypes.DateTime : MSDateTime,
     sqltypes.Date : MSDate,
     sqltypes.Time : MSTime,
-    sqltypes.String : MSString,
     sqltypes.Boolean : MSBoolean,
-    sqltypes.Text : MSText,
-    sqltypes.UnicodeText : MSNText,
-    sqltypes.CHAR: MSChar,
-    sqltypes.NCHAR: MSNChar,
-    MSSmallDateTime: MSSmallDateTime,
 }
 
 ischema_names = {
