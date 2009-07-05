@@ -3,8 +3,7 @@ from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import String, Integer, select
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
@@ -16,7 +15,7 @@ class SelectableNoFromsTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('common', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', Integer),
               Column('extra', String(45)))
 

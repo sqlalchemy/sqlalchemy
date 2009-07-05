@@ -3,11 +3,11 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy.orm import scoped_session
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, query
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
+
 
 
 class _ScopedTest(_base.MappedTest):
@@ -34,10 +34,10 @@ class ScopedSessionTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('table1', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(30)))
         Table('table2', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('someid', None, ForeignKey('table1.id')))
 
     @testing.resolve_artifact_names
@@ -82,10 +82,10 @@ class ScopedMapperTest(_ScopedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('table1', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)))
         Table('table2', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('someid', None, ForeignKey('table1.id')))
 
     @classmethod
@@ -204,11 +204,11 @@ class ScopedMapperTest2(_ScopedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('table1', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('type', String(30)))
         Table('table2', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('someid', None, ForeignKey('table1.id')),
             Column('somedata', String(30)))
 

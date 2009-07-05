@@ -884,7 +884,7 @@ class DefaultTest(_base.MappedTest):
             Column('foober', String(30), default="im foober", onupdate="im the update"))
 
         st = Table('secondary_table', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)))
 
         if testing.against('postgres', 'oracle'):
@@ -1037,7 +1037,7 @@ class ColumnPropertyTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('data', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('a', String(50)),
             Column('b', String(50))
             )
@@ -2170,8 +2170,14 @@ class RowSwitchTest(_base.MappedTest):
         sess.add(o5)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some t5')]
-        assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some t6', 1), (2, 'some other t6', 1)]
+        eq_(
+            list(sess.execute(t5.select(), mapper=T5)),
+            [(1, 'some t5')]
+        )
+        eq_(
+            list(sess.execute(t6.select().order_by(t6.c.id), mapper=T5)),
+            [(1, 'some t6', 1), (2, 'some other t6', 1)]
+        )
 
         o6 = T5(data='some other t5', id=o5.id, t6s=[
             T6(data='third t6', id=3),
@@ -2181,8 +2187,14 @@ class RowSwitchTest(_base.MappedTest):
         sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some other t5')]
-        assert list(sess.execute(t6.select(), mapper=T5)) == [(3, 'third t6', 1), (4, 'fourth t6', 1)]
+        eq_(
+            list(sess.execute(t5.select(), mapper=T5)),
+            [(1, 'some other t5')]
+        )
+        eq_(
+            list(sess.execute(t6.select().order_by(t6.c.id), mapper=T5)),
+            [(3, 'third t6', 1), (4, 'fourth t6', 1)]
+        )
 
     @testing.resolve_artifact_names
     def test_manytomany(self):

@@ -984,8 +984,14 @@ class CountTest(QueryTest):
         
 class DistinctTest(QueryTest):
     def test_basic(self):
-        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).distinct().all()
-        assert [User(id=7), User(id=9), User(id=8),User(id=10)] == create_session().query(User).distinct().order_by(desc(User.name)).all()
+        eq_(
+            [User(id=7), User(id=8), User(id=9),User(id=10)],
+            create_session().query(User).order_by(User.id).distinct().all()
+        )
+        eq_(
+            [User(id=7), User(id=9), User(id=8),User(id=10)], 
+            create_session().query(User).distinct().order_by(desc(User.name)).all()
+        ) 
 
     def test_joined(self):
         """test that orderbys from a joined table get placed into the columns clause when DISTINCT is used"""

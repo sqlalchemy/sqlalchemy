@@ -6,8 +6,7 @@ from sqlalchemy.orm import create_session, sessionmaker, attributes
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, backref, eagerload
 from sqlalchemy.test.testing import eq_
 from test.engine import _base as engine_base
@@ -381,18 +380,18 @@ class SessionTest(_fixtures.FixtureTest):
         session = create_session(bind=testing.db)
 
         session.begin()
-        session.connection().execute("insert into users (name) values ('user1')")
+        session.connection().execute(users.insert().values(name='user1'))
 
         session.begin(subtransactions=True)
 
         session.begin_nested()
 
-        session.connection().execute("insert into users (name) values ('user2')")
+        session.connection().execute(users.insert().values(name='user2'))
         assert session.connection().execute("select count(1) from users").scalar() == 2
 
         session.rollback()
         assert session.connection().execute("select count(1) from users").scalar() == 1
-        session.connection().execute("insert into users (name) values ('user3')")
+        session.connection().execute(users.insert().values(name='user3'))
 
         session.commit()
         assert session.connection().execute("select count(1) from users").scalar() == 2
@@ -1186,7 +1185,7 @@ class DisposedStates(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1
         t1 = Table('t1', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50))
             )
 
@@ -1285,7 +1284,7 @@ class SessionInterface(testing.TestBase):
 
     def _map_it(self, cls):
         return mapper(cls, Table('t', sa.MetaData(),
-                                 Column('id', Integer, primary_key=True)))
+                                 Column('id', Integer, primary_key=True, test_needs_autoincrement=True)))
 
     @testing.uses_deprecated()
     def _test_instance_guards(self, user_arg):
@@ -1405,7 +1404,7 @@ class TLTransactionTest(engine_base.AltEngineTest, _base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(20)),
               test_needs_acid=True)
 

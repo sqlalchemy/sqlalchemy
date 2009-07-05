@@ -87,7 +87,10 @@
     - support for cx_Oracle's "native unicode" mode which does not require NLS_LANG
       to be set.  Use the latest 5.0.2 or later of cx_oracle.  
     - an NCLOB type is added to the base types.
-    
+    - func.char_length is a generic function for LENGTH
+    - ForeignKey() which includes onupdate=<value> will emit a warning, not 
+      emit ON UPDATE CASCADE which is unsupported by oracle
+      
 - new dialects
     - pg8000
     - pyodbc+mysql

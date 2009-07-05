@@ -61,9 +61,19 @@ def row_triggers(fn):
         # no access to same table
         no_support('mysql', 'requires SUPER priv'),
         exclude('mysql', '<', (5, 0, 10), 'not supported by database'),
-        no_support('postgres', 'not supported by database: no statements'),
+        
+        # huh?  TODO: implement triggers for PG tests, remove this
+        no_support('postgres', 'PG triggers need to be implemented for tests'),  
         )
 
+def correlated_outer_joins(fn):
+    """Target must support an outer join to a subquery which correlates to the parent."""
+    
+    return _chain_decorators_on(
+        fn,
+        no_support('oracle', 'Raises "ORA-01799: a column may not be outer-joined to a subquery"')
+    )
+    
 def savepoints(fn):
     """Target database must support savepoints."""
     return _chain_decorators_on(

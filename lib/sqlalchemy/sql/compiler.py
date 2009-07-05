@@ -1005,10 +1005,7 @@ class DDLCompiler(engine.Compiled):
             ', '.join(preparer.quote(f.column.name, f.column.quote)
                       for f in constraint._elements.values())
         )
-        if constraint.ondelete is not None:
-            text += " ON DELETE %s" % constraint.ondelete
-        if constraint.onupdate is not None:
-            text += " ON UPDATE %s" % constraint.onupdate
+        text += self.define_constraint_cascades(constraint)
         text += self.define_constraint_deferrability(constraint)
         return text
 
@@ -1020,6 +1017,14 @@ class DDLCompiler(engine.Compiled):
         text += self.define_constraint_deferrability(constraint)
         return text
 
+    def define_constraint_cascades(self, constraint):
+        text = ""
+        if constraint.ondelete is not None:
+            text += " ON DELETE %s" % constraint.ondelete
+        if constraint.onupdate is not None:
+            text += " ON UPDATE %s" % constraint.onupdate
+        return text
+        
     def define_constraint_deferrability(self, constraint):
         text = ""
         if constraint.deferrable is not None:

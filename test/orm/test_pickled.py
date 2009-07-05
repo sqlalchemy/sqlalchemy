@@ -3,8 +3,7 @@ import pickle
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session, attributes
 from test.orm import _base, _fixtures
 
@@ -136,7 +135,7 @@ class PolymorphicDeferredTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(30)),
             Column('type', String(30)))
         Table('email_users', metadata,

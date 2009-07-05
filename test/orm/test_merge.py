@@ -1,13 +1,13 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
-from sqlalchemy import Table, Column, Integer, PickleType
+from sqlalchemy import Integer, PickleType
 import operator
 from sqlalchemy.test import testing
 from sqlalchemy.util import OrderedSet
 from sqlalchemy.orm import mapper, relation, create_session, PropComparator, synonym, comparable_property, sessionmaker
 from sqlalchemy.test.testing import eq_, ne_
 from test.orm import _base, _fixtures
-
+from sqlalchemy.test.schema import Table, Column
 
 class MergeTest(_fixtures.FixtureTest):
     """Session.merge() functionality"""
@@ -103,6 +103,7 @@ class MergeTest(_fixtures.FixtureTest):
             'addresses':relation(Address,
                         backref='user',
                         collection_class=OrderedSet,
+                                order_by=addresses.c.id,
                                  cascade="all, delete-orphan")
         })
         mapper(Address, addresses)
@@ -154,6 +155,7 @@ class MergeTest(_fixtures.FixtureTest):
         mapper(User, users, properties={
             'addresses':relation(Address,
                                  backref='user',
+                                 order_by=addresses.c.id,
                                  collection_class=OrderedSet)})
         mapper(Address, addresses)
         on_load = self.on_load_tracker(User)
@@ -737,7 +739,7 @@ class MutableMergeTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("data", metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', PickleType(comparator=operator.eq))
         )
     

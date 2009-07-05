@@ -4,8 +4,7 @@ from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy.test import testing, pickleable
 from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.engine import default
 from sqlalchemy.orm import mapper, relation, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
 from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relation, dynamic_loader, comparable_property
@@ -389,7 +388,7 @@ class MapperTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_self_ref_synonym(self):
         t = Table('nodes', MetaData(),
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')))
 
         class Node(object):
@@ -431,7 +430,7 @@ class MapperTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_prop_filters(self):
         t = Table('person', MetaData(),
-                  Column('id', Integer, primary_key=True),
+                  Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                   Column('type', String(128)),
                   Column('name', String(128)),
                   Column('employee_number', Integer),
@@ -1638,11 +1637,11 @@ class DeferredPopulationTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("thing", metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("name", String(20)))
 
         Table("human", metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("thing_id", Integer, ForeignKey("thing.id")),
             Column("name", String(20)))
 
@@ -1726,13 +1725,12 @@ class CompositeTypesTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('graphs', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('version_id', Integer, primary_key=True, nullable=True),
             Column('name', String(30)))
 
         Table('edges', metadata,
-            Column('id', Integer, primary_key=True,
-                   test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('graph_id', Integer, nullable=False),
             Column('graph_version_id', Integer, nullable=False),
             Column('x1', Integer),
@@ -1744,7 +1742,7 @@ class CompositeTypesTest(_base.MappedTest):
             ['graphs.id', 'graphs.version_id']))
 
         Table('foobars', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('x1', Integer, default=2),
             Column('x2', Integer),
             Column('x3', Integer, default=15),
@@ -2259,31 +2257,23 @@ class RequirementsTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('ht1', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('value', String(10)))
         Table('ht2', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('ht1_id', Integer, ForeignKey('ht1.id')),
               Column('value', String(10)))
         Table('ht3', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('value', String(10)))
         Table('ht4', metadata,
-              Column('ht1_id', Integer, ForeignKey('ht1.id'),
-                     primary_key=True),
-              Column('ht3_id', Integer, ForeignKey('ht3.id'),
-                     primary_key=True))
+              Column('ht1_id', Integer, ForeignKey('ht1.id'), primary_key=True),
+              Column('ht3_id', Integer, ForeignKey('ht3.id'), primary_key=True))
         Table('ht5', metadata,
-              Column('ht1_id', Integer, ForeignKey('ht1.id'),
-                     primary_key=True))
+              Column('ht1_id', Integer, ForeignKey('ht1.id'), primary_key=True))
         Table('ht6', metadata,
-              Column('ht1a_id', Integer, ForeignKey('ht1.id'),
-                     primary_key=True),
-              Column('ht1b_id', Integer, ForeignKey('ht1.id'),
-                     primary_key=True),
+              Column('ht1a_id', Integer, ForeignKey('ht1.id'), primary_key=True),
+              Column('ht1b_id', Integer, ForeignKey('ht1.id'), primary_key=True),
               Column('value', String(10)))
 
     # Py2K
@@ -2404,12 +2394,12 @@ class MagicNamesTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('cartographers', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(50)),
               Column('alias', String(50)),
               Column('quip', String(100)))
         Table('maps', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('cart_id', Integer,
                      ForeignKey('cartographers.id')),
               Column('state', String(2)),
@@ -2451,7 +2441,7 @@ class MagicNamesTest(_base.MappedTest):
         for reserved in (sa.orm.attributes.ClassManager.STATE_ATTR,
                          sa.orm.attributes.ClassManager.MANAGER_ATTR):
             t = Table('t', sa.MetaData(),
-                      Column('id', Integer, primary_key=True),
+                      Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                       Column(reserved, Integer))
             class T(object):
                 pass

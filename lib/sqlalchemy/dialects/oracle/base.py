@@ -81,6 +81,17 @@ http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html .  Note tha
 this was stepping into the bounds of optimization that is better left on the DBA side, but this
 prefix can be added by enabling the optimize_limits=True flag on create_engine().
 
+ON UPDATE CASCADE
+-----------------
+
+Oracle doesn't have native ON UPDATE CASCADE functionality.  A trigger based solution 
+is available at http://asktom.oracle.com/tkyte/update_cascade/index.html .
+
+When using the SQLAlchemy ORM, the ORM has limited ability to manually issue
+cascading updates - specify ForeignKey objects using the 
+"deferrable=True, initially='deferred'" keyword arguments,
+and specify "passive_updates=False" on each relation().
+
 Oracle 8 Compatibility
 ----------------------
 
@@ -164,8 +175,10 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_DATE(type_)
     
     def visit_float(self, type_):
-        #return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : 2}
-        return self.visit_NUMERIC(type_)
+        if type_.precision is None:
+            return "NUMERIC"
+        else:
+            return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : 2}
         
     def visit_unicode(self, type_):
         return self.visit_NVARCHAR(type_)
@@ -207,6 +220,9 @@ class OracleCompiler(compiler.SQLCompiler):
     
     def visit_now_func(self, fn, **kw):
         return "CURRENT_TIMESTAMP"
+    
+    def visit_char_length_func(self, fn, **kw):
+        return "LENGTH" + self.function_argspec(fn, **kw)
         
     def visit_match_op(self, binary, **kw):
         return "CONTAINS (%s, %s)" % (self.process(binary.left), self.process(binary.right))
@@ -368,6 +384,21 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
     def visit_drop_sequence(self, drop):
         return "DROP SEQUENCE %s" % self.preparer.format_sequence(drop.element)
+
+    def define_constraint_cascades(self, constraint):
+        text = ""
+        if constraint.ondelete is not None:
+            text += " ON DELETE %s" % constraint.ondelete
+            
+        # oracle has no ON UPDATE CASCADE - 
+        # its only available via triggers http://asktom.oracle.com/tkyte/update_cascade/index.html
+        if constraint.onupdate is not None:
+            util.warn(
+                "Oracle does not contain native UPDATE CASCADE "
+                 "functionality - onupdates will not be rendered for foreign keys."
+                 "Consider using deferrable=True, initially='deferred' or triggers.")
+        
+        return text
 
 class OracleDefaultRunner(base.DefaultRunner):
     def visit_sequence(self, seq):

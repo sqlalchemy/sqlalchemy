@@ -1955,9 +1955,9 @@ class DDLElement(expression.ClauseElement):
 
     def _check_ddl_on(self, on):
         if (on is not None and
-            (not isinstance(on, basestring) and not util.callable(on))):
+            (not isinstance(on, (basestring, tuple, list, set)) and not util.callable(on))):
             raise exc.ArgumentError(
-                "Expected the name of a database dialect or a callable for "
+                "Expected the name of a database dialect, a tuple of names, or a callable for "
                 "'on' criteria, got type '%s'." % type(on).__name__)
 
     def _should_execute(self, event, schema_item, bind, **kw):
@@ -1965,6 +1965,8 @@ class DDLElement(expression.ClauseElement):
             return True
         elif isinstance(self.on, basestring):
             return self.on == bind.engine.name
+        elif isinstance(self.on, (tuple, list, set)):
+            return bind.engine.name in self.on
         else:
             return self.on(event, schema_item, bind, **kw)
 
@@ -2021,12 +2023,16 @@ class DDL(DDLElement):
           SQL bind parameters are not available in DDL statements.
 
         on
-          Optional filtering criteria.  May be a string or a callable
+          Optional filtering criteria.  May be a string, tuple or a callable
           predicate.  If a string, it will be compared to the name of the
           executing database dialect::
 
             DDL('something', on='postgres')
-
+        
+          If a tuple, specifies multiple dialect names:
+          
+            DDL('something', on=('postgres', 'mysql'))
+            
           If a callable, it will be invoked with three positional arguments
           as well as optional keyword arguments:
 
