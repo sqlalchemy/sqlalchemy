@@ -62,8 +62,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         self.use_scope_identity = self.dbapi and hasattr(self.dbapi.Cursor, 'nextset')
         
     def initialize(self, connection):
+        super(MSDialect_pyodbc, self).initialize(connection)
         pyodbc = self.dbapi
-        self.server_version_info = self._get_server_version_info(connection)
         
         dbapi_con = connection.connection
         

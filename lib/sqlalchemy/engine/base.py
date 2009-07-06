@@ -311,7 +311,11 @@ class Dialect(object):
         raise NotImplementedError()
 
     def get_default_schema_name(self, connection):
-        """Return the string name of the currently selected schema given a :class:`~sqlalchemy.engine.Connection`."""
+        """Return the string name of the currently selected schema given a :class:`~sqlalchemy.engine.Connection`.
+        
+        DEPRECATED.  moving this towards dialect.default_schema_name (not complete).
+        
+        """
 
         raise NotImplementedError()
 

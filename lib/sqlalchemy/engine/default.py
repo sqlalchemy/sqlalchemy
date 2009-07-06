@@ -89,7 +89,9 @@ class DefaultDialect(base.Dialect):
     def initialize(self, connection):
         if hasattr(self, '_get_server_version_info'):
             self.server_version_info = self._get_server_version_info(connection)
-
+        if hasattr(self, '_get_default_schema_name'):
+            self.default_schema_name = self._get_default_schema_name(connection)
+        
     @classmethod
     def type_descriptor(cls, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given

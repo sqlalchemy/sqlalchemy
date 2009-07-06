@@ -595,7 +595,7 @@ class ReflectionTest(TestBase, ComparesTables):
             m9.reflect()
             self.assert_(not m9.tables)
 
-    @testing.fails_on_everything_except('postgres', 'mysql', 'sqlite', 'oracle')
+    @testing.fails_on_everything_except('postgres', 'mysql', 'sqlite', 'oracle', 'mssql')
     def test_index_reflection(self):
         m1 = MetaData(testing.db)
         t1 = Table('party', m1,

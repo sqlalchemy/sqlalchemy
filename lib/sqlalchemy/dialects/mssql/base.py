@@ -1134,6 +1134,9 @@ class MSDialect(default.DefaultDialect):
         pass
 
     def get_default_schema_name(self, connection):
+        return self.default_schema_name
+        
+    def _get_default_schema_name(self, connection):
         user_name = connection.scalar("SELECT user_name() as user_name;")
         if user_name is not None:
             # now, get the default schema
@@ -1157,7 +1160,7 @@ class MSDialect(default.DefaultDialect):
 
 
     def has_table(self, connection, tablename, schema=None):
-        current_schema = schema or self.get_default_schema_name(connection)
+        current_schema = schema or self.default_schema_name
         columns = ischema.columns
         s = sql.select([columns],
                    current_schema
@@ -1179,7 +1182,7 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
-        current_schema = schema or self.get_default_schema_name(connection)
+        current_schema = schema or self.default_schema_name
         tables = ischema.tables
         s = sql.select([tables.c.table_name],
             sql.and_(
@@ -1193,7 +1196,7 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
-        current_schema = schema or self.get_default_schema_name(connection)
+        current_schema = schema or self.default_schema_name
         tables = ischema.tables
         s = sql.select([tables.c.table_name],
             sql.and_(
@@ -1208,7 +1211,7 @@ class MSDialect(default.DefaultDialect):
     # The cursor reports it is closed after executing the sp.
     @reflection.cache
     def get_indexes(self, connection, tablename, schema=None, **kw):
-        current_schema = schema or self.get_default_schema_name(connection)
+        current_schema = schema or self.default_schema_name
         full_tname = "%s.%s" % (current_schema, tablename)
         indexes = []
         s = sql.text("exec sp_helpindex '%s'" % full_tname)
@@ -1227,7 +1230,7 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_view_definition(self, connection, viewname, schema=None, **kw):
-        current_schema = schema or self.get_default_schema_name(connection)
+        current_schema = schema or self.default_schema_name
         views = ischema.views
         s = sql.select([views.c.view_definition],
             sql.and_(
@@ -1243,7 +1246,7 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     def get_columns(self, connection, tablename, schema=None, **kw):
         # Get base columns
-        current_schema = schema or self.get_default_schema_name(connection)
+        current_schema = schema or self.default_schema_name
         columns = ischema.columns
         s = sql.select([columns],
                    current_schema
@@ -1330,7 +1333,7 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_primary_keys(self, connection, tablename, schema=None, **kw):
-        current_schema = schema or self.get_default_schema_name(connection)
+        current_schema = schema or self.default_schema_name
         pkeys = []
         # Add constraints
         RR = ischema.ref_constraints    #information_schema.referential_constraints
@@ -1352,7 +1355,7 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_foreign_keys(self, connection, tablename, schema=None, **kw):
-        current_schema = schema or self.get_default_schema_name(connection)
+        current_schema = schema or self.default_schema_name
         # Add constraints
         RR = ischema.ref_constraints    #information_schema.referential_constraints
         TC = ischema.constraints        #information_schema.table_constraints
@@ -1370,40 +1373,40 @@ class MSDialect(default.DefaultDialect):
                                 C.c.ordinal_position == R.c.ordinal_position
                                 ),
                        order_by = [RR.c.constraint_name, R.c.ordinal_position])
-        rows = connection.execute(s).fetchall()
+        
 
         # group rows by constraint ID, to handle multi-column FKs
         fkeys = []
         fknm, scols, rcols = (None, [], [])
-        for r in rows:
+        
+        def fkey_rec():
+            return {
+                'name' : None,
+                'constrained_columns' : [],
+                'referred_schema' : None,
+                'referred_table' : None,
+                'referred_columns' : []
+            }
+
+        fkeys = util.defaultdict(fkey_rec)
+        
+        for r in connection.execute(s).fetchall():
             scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
-            if rfknm != fknm:
-                if fknm:
-                    fkeys.append({
-                        'name' : fknm,
-                        'constrained_columns' : scols,
-                        'referred_schema' : rschema,
-                        'referred_table' : rtbl,
-                        'referred_columns' : rcols
-                    })
-                fknm, scols, rcols = (rfknm, [], [])
-            if not scol in scols:
-                scols.append(scol)
-            if not rcol in rcols:
-                rcols.append(rcol)
-        if fknm and scols:
-            # don't return the remote schema if no schema was specified and it
-            # is the default
-            if schema is None and current_schema == rschema:
-                rschema = None
-            fkeys.append({
-                'name' : fknm,
-                'constrained_columns' : scols,
-                'referred_schema' : rschema,
-                'referred_table' : rtbl,
-                'referred_columns' : rcols
-            })
-        return fkeys
+
+            rec = fkeys[rfknm]
+            rec['name'] = rfknm
+            if not rec['referred_table']:
+                rec['referred_table'] = rtbl
+
+                if schema is not None or current_schema != rschema:
+                    rec['referred_schema'] = rschema
+            
+            local_cols, remote_cols = rec['constrained_columns'], rec['referred_columns']
+            
+            local_cols.append(scol)
+            remote_cols.append(rcol)
+
+        return fkeys.values()
 
     def reflecttable(self, connection, table, include_columns):
 

@@ -626,7 +626,7 @@ class ComparesTables(object):
             elif against(('mysql', '<', (5, 0))):
                 # ignore reflection of bogus db-generated DefaultClause()
                 pass
-            elif not c.primary_key or not against('postgres'):
+            elif not c.primary_key or not against('postgres', 'mssql'):
                 #print repr(c)
                 assert reflected_c.default is None, reflected_c.default
 
