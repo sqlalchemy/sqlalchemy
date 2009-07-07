@@ -682,13 +682,14 @@ class PropertyOption(MapperOption):
             searchfor = mapper
         else:
             searchfor = _class_to_mapper(mapper).base_mapper
-
+        
         for ent in query._mapper_entities:
             if ent.path_entity is searchfor:
                 return ent
         else:
             if raiseerr:
-                raise sa_exc.ArgumentError("Can't find entity %s in Query.  Current list: %r" % (searchfor, [str(m.path_entity) for m in query._entities]))
+                raise sa_exc.ArgumentError("Can't find entity %s in Query.  Current list: %r" 
+                    % (searchfor, [str(m.path_entity) for m in query._entities]))
             else:
                 return None
 
@@ -718,8 +719,10 @@ class PropertyOption(MapperOption):
         entity = None
         l = []
 
+        # _current_path implies we're in a secondary load
+        # with an existing path
         current_path = list(query._current_path)
-
+            
         if self.mapper:
             entity = self.__find_entity(query, self.mapper, raiseerr)
             mapper = entity.mapper
@@ -752,7 +755,7 @@ class PropertyOption(MapperOption):
                 if current_path and key == current_path[1]:
                     current_path = current_path[2:]
                     continue
-
+                    
                 if prop is None:
                     return []
 
@@ -764,7 +767,12 @@ class PropertyOption(MapperOption):
                     path_element = mapper = getattr(prop, 'mapper', None)
                 if path_element:
                     path_element = path_element.base_mapper
-
+        
+        # if current_path tokens remain, then
+        # we didn't have an exact path match.
+        if current_path:
+            return []
+            
         return l
 
 class AttributeExtension(object):

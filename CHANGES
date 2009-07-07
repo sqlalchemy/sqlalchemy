@@ -21,7 +21,12 @@ CHANGES
     
     - Fixed bug introduced in 0.5.4 whereby Composite types
       fail when default-holding columns are flushed.
-      
+    
+    - Fixed a bug involving contains_eager(), which would apply itself
+      to a secondary (i.e. lazy) load in a particular rare case,
+      producing cartesian products.   improved the targeting
+      of query.options() on secondary loads overall [ticket:1461].
+        
     - Fixed another 0.5.4 bug whereby mutable attributes (i.e. PickleType)
       wouldn't be deserialized correctly when the whole object
       was serialized.  [ticket:1426]

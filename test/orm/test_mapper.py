@@ -11,6 +11,7 @@ from sqlalchemy.orm import mapper, relation, backref, create_session, class_mapp
 from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relation, dynamic_loader, comparable_property
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
+from sqlalchemy.test.assertsql import AllOf, CompiledSQL
 
 
 class MapperTest(_fixtures.FixtureTest):
@@ -1630,6 +1631,166 @@ class DeferredTest(_fixtures.FixtureTest):
             eq_(item.description, 'item 4')
         self.sql_count_(0, go)
         eq_(item.description, 'item 4')
+
+
+class SecondaryOptionsTest(_base.MappedTest):
+    """test that the contains_eager() option doesn't bleed into a secondary load."""
+
+    run_inserts = 'once'
+
+    run_deletes = None
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("base", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('type', String(50), nullable=False)
+        )
+        Table("child1", metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('child2id', Integer, ForeignKey('child2.id'), nullable=False)
+        )
+        Table("child2", metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+        )
+        Table('related', metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+        )
+        
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        class Base(_base.ComparableEntity):
+            pass
+        class Child1(Base):
+            pass
+        class Child2(Base):
+            pass
+        class Related(_base.ComparableEntity):
+            pass
+        mapper(Base, base, polymorphic_on=base.c.type, properties={
+            'related':relation(Related, uselist=False)
+        })
+        mapper(Child1, child1, inherits=Base, polymorphic_identity='child1', properties={
+            'child2':relation(Child2, primaryjoin=child1.c.child2id==base.c.id, foreign_keys=child1.c.child2id)
+        })
+        mapper(Child2, child2, inherits=Base, polymorphic_identity='child2')
+        mapper(Related, related)
+        
+    @classmethod
+    @testing.resolve_artifact_names
+    def insert_data(cls):
+        base.insert().execute([
+            {'id':1, 'type':'child1'},
+            {'id':2, 'type':'child1'},
+            {'id':3, 'type':'child1'},
+            {'id':4, 'type':'child2'},
+            {'id':5, 'type':'child2'},
+            {'id':6, 'type':'child2'},
+        ])
+        child2.insert().execute([
+            {'id':4},
+            {'id':5},
+            {'id':6},
+        ])
+        child1.insert().execute([
+            {'id':1, 'child2id':4},
+            {'id':2, 'child2id':5},
+            {'id':3, 'child2id':6},
+        ])
+        related.insert().execute([
+            {'id':1},
+            {'id':2},
+            {'id':3},
+            {'id':4},
+            {'id':5},
+            {'id':6},
+        ])
+        
+    @testing.resolve_artifact_names
+    def test_contains_eager(self):
+        sess = create_session()
+        
+        
+        child1s = sess.query(Child1).join(Child1.related).options(sa.orm.contains_eager(Child1.related)).order_by(Child1.id)
+
+        def go():
+            eq_(
+                child1s.all(),
+                [Child1(id=1, related=Related(id=1)), Child1(id=2, related=Related(id=2)), Child1(id=3, related=Related(id=3))]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+        
+        c1 = child1s[0]
+ 
+        self.assert_sql_execution(
+            testing.db, 
+            lambda: c1.child2, 
+            CompiledSQL(
+                "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type "
+                "FROM base JOIN child2 ON base.id = child2.id "
+                "WHERE base.id = :param_1",
+                {'param_1':4}
+            )
+        )
+
+    @testing.resolve_artifact_names
+    def test_eagerload_on_other(self):
+        sess = create_session()
+
+        child1s = sess.query(Child1).join(Child1.related).options(sa.orm.eagerload(Child1.related)).order_by(Child1.id)
+
+        def go():
+            eq_(
+                child1s.all(),
+                [Child1(id=1, related=Related(id=1)), Child1(id=2, related=Related(id=2)), Child1(id=3, related=Related(id=3))]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+        
+        c1 = child1s[0]
+
+        self.assert_sql_execution(
+            testing.db, 
+            lambda: c1.child2, 
+            CompiledSQL(
+            "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type "
+            "FROM base JOIN child2 ON base.id = child2.id WHERE base.id = :param_1",
+
+#   eagerload- this shouldn't happen
+#            "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type, "
+#            "related_1.id AS related_1_id FROM base JOIN child2 ON base.id = child2.id "
+#            "LEFT OUTER JOIN related AS related_1 ON base.id = related_1.id WHERE base.id = :param_1",
+                {'param_1':4}
+            )
+        )
+
+    @testing.resolve_artifact_names
+    def test_eagerload_on_same(self):
+        sess = create_session()
+
+        child1s = sess.query(Child1).join(Child1.related).options(sa.orm.eagerload(Child1.child2, Child2.related)).order_by(Child1.id)
+
+        def go():
+            eq_(
+                child1s.all(),
+                [Child1(id=1, related=Related(id=1)), Child1(id=2, related=Related(id=2)), Child1(id=3, related=Related(id=3))]
+            )
+        self.assert_sql_count(testing.db, go, 4)
+        
+        c1 = child1s[0]
+
+        # this *does* eagerload
+        self.assert_sql_execution(
+            testing.db, 
+            lambda: c1.child2, 
+            CompiledSQL(
+                "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type, "
+                "related_1.id AS related_1_id FROM base JOIN child2 ON base.id = child2.id "
+                "LEFT OUTER JOIN related AS related_1 ON base.id = related_1.id WHERE base.id = :param_1",
+                {'param_1':4}
+            )
+        )
+        
 
 class DeferredPopulationTest(_base.MappedTest):
     @classmethod
