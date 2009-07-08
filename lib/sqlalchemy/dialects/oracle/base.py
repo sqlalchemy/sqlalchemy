@@ -117,12 +117,33 @@ from sqlalchemy.engine import default, base, reflection
 from sqlalchemy.sql import compiler, visitors, expression
 from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
 from sqlalchemy import types as sqltypes
-
+from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, DATE, DATETIME, \
+                BLOB, CLOB, TIMESTAMP, FLOAT
+                
 RESERVED_WORDS = set('''SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN DEFAULT ALTER IS INTO MINUS INTEGER NUMBER GRANT IDENTIFIED ALL TO ORDER ON FLOAT DATE HAVING CLUSTER NOWAIT RESOURCE ANY TABLE INDEX FOR UPDATE WHERE CHECK SMALLINT WITH DELETE BY ASC REVOKE LIKE SIZE RENAME NOCOMPRESS NULL GROUP VALUES AS IN VIEW EXCLUSIVE COMPRESS SYNONYM SELECT INSERT EXISTS NOT TRIGGER ELSE CREATE INTERSECT PCTFREE DISTINCT CONNECT SET MODE OF UNIQUE VARCHAR2 VARCHAR LOCK OR CHAR DECIMAL UNION PUBLIC AND START UID COMMENT'''.split()) 
 
-class OracleRaw(sqltypes.Binary):
+class RAW(sqltypes.Binary):
     pass
+OracleRaw = RAW
 
+class NCLOB(sqltypes.Text):
+    __visit_name__ = 'NCLOB'
+
+VARCHAR2 = VARCHAR
+NVARCHAR2 = NVARCHAR
+
+class NUMBER(sqltypes.Numeric):
+    __visit_name__ = 'NUMBER'
+    
+class BFILE(sqltypes.Binary):
+    __visit_name__ = 'BFILE'
+
+class DOUBLE_PRECISION(sqltypes.Numeric):
+    __visit_name__ = 'DOUBLE_PRECISION'
+
+class LONG(sqltypes.Text):
+    __visit_name__ = 'LONG'
+    
 class OracleBoolean(sqltypes.Boolean):
     def result_processor(self, dialect):
         def process(value):
@@ -148,20 +169,20 @@ colspecs = {
 }
 
 ischema_names = {
-    'VARCHAR2' : sqltypes.VARCHAR,
-    'NVARCHAR2' : sqltypes.NVARCHAR,
-    'CHAR' : sqltypes.CHAR,
-    'DATE' : sqltypes.DATE,
-    'DATETIME' : sqltypes.DATETIME,
-    'NUMBER' : sqltypes.Numeric,
-    'BLOB' : sqltypes.BLOB,
-    'BFILE' : sqltypes.Binary,
-    'CLOB' : sqltypes.CLOB,
-    'TIMESTAMP' : sqltypes.TIMESTAMP,
-    'RAW' : OracleRaw,
-    'FLOAT' : sqltypes.Float,
-    'DOUBLE PRECISION' : sqltypes.Numeric,
-    'LONG' : sqltypes.Text,
+    'VARCHAR2' : VARCHAR,
+    'NVARCHAR2' : NVARCHAR,
+    'CHAR' : CHAR,
+    'DATE' : DATE,
+    'DATETIME' : DATETIME,
+    'NUMBER' : NUMBER,
+    'BLOB' : BLOB,
+    'BFILE' : BFILE,
+    'CLOB' : CLOB,
+    'TIMESTAMP' : TIMESTAMP,
+    'RAW' : RAW,
+    'FLOAT' : FLOAT,
+    'DOUBLE PRECISION' : DOUBLE_PRECISION,
+    'LONG' : LONG,
 }
 
 

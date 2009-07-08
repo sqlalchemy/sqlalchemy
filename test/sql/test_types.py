@@ -38,17 +38,10 @@ class AdaptTest(TestBase):
         
         # TODO: migrate these tests to dialect modules
         
-        mysql_dialect = mysql.MySQLDialect()
         postgres_dialect = postgres.PGDialect()
         firebird_dialect = firebird.FBDialect()
 
         for dialect, start, test in [
-            (mysql_dialect, String(), mysql.MSString),
-            (mysql_dialect, VARCHAR(), mysql.MSString),
-            (mysql_dialect, String(50), mysql.MSString),
-            (mysql_dialect, Unicode(), mysql.MSString),
-            (mysql_dialect, UnicodeText(), mysql.MSText),
-            (mysql_dialect, NCHAR(), mysql.MSNChar),
             (postgres_dialect, String(), String),
             (postgres_dialect, VARCHAR(), String),
             (postgres_dialect, String(50), String),

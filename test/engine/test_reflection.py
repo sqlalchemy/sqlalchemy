@@ -64,13 +64,16 @@ class ReflectionTest(TestBase, ComparesTables):
         t1 = Table('t1', meta, 
                 Column('id', sa.Integer, primary_key=True),
                 Column('t2id', sa.Integer, sa.ForeignKey('t2.id')),
-                Column('t3id', sa.Integer, sa.ForeignKey('t3.id'))
+                Column('t3id', sa.Integer, sa.ForeignKey('t3.id')),
+                test_needs_fk=True
         )
         t2 = Table('t2', meta, 
-                Column('id', sa.Integer, primary_key=True)
+                Column('id', sa.Integer, primary_key=True),
+                test_needs_fk=True
         )
         t3 = Table('t3', meta, 
-                Column('id', sa.Integer, primary_key=True)
+                Column('id', sa.Integer, primary_key=True),
+                test_needs_fk=True
         )
         meta.create_all()
         try:

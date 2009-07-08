@@ -67,13 +67,6 @@ from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import types as sqltypes
 
 
-__all__ = [
-    'MaxString', 'MaxUnicode', 'MaxChar', 'MaxText', 'MaxInteger',
-    'MaxSmallInteger', 'MaxNumeric', 'MaxFloat', 'MaxTimestamp',
-    'MaxDate', 'MaxTime', 'MaxBoolean', 'MaxBlob',
-    ]
-
-
 class _StringType(sqltypes.String):
     _type = None
 

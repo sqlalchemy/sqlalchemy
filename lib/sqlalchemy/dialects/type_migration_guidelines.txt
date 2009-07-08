@@ -31,6 +31,44 @@ type is specifying a type *or* arguments that are not present generically, it sh
 match the real name of the type on that backend, in uppercase.  E.g. postgres.INET,
 mysql.ENUM, postgres.ARRAY.  
 
+Or follow this handy flowchart:
+
+     is the type in types.py as an UPPERCASE type ?
+        |     |
+        |    yes    --->   does your type need special behavior or arguments ?   no ---->  don't make a
+        |                   ^                     yes                                      type, make sure the dialect's
+        |                   no                     |                                       base.py imports the types.py
+        |                   |                      |                                       UPPERCASE name into its namespace
+        v                is it                     v
+        no  --------  a native  yes -----> build new type
+                       DB type?                    |
+                                                   v
+                                        is this type native to the database ?
+                                (i.e. BIT is native to MySQL, "Boolean" is *not* native to Oracle)
+                                         yes                               no
+                                          |                                 |
+                                          v                                 v
+                                name the type THE SAME                  name the type using
+                                as that of the DB,                      MixedCase, i.e.
+                                using UPPERCASE                         OracleBoolean
+                                (i.e. BIT, NCHAR, INTERVAL)                 |
+                                          |                                 |
+                                          +----------------+----------------+
+                                                           |
+                                                           v
+    the type should                         is the name of this type
+    subclass the                <----- yes  identical to an UPPERCASE name 
+    UPPERCASE                                         in types.py?
+    type in types.py                                      no
+    (i.e. class BLOB(types.BLOB))                         |
+                                                          v
+                                                  subclass the closest
+                                                  MixedCase type types.py,
+                                                  i.e. 
+                                                  class DATETIME2(types.DateTime),
+                                                  class BIT(types.TypeEngine)                                                          
+
+
 Ideally one should be able to specify a schema using names imported completely from a 
 dialect, all matching the real name on that backend:
 

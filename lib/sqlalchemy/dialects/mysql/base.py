@@ -23,8 +23,8 @@ then you will need to import them from this module::
 
   Table('mytable', metadata,
         Column('id', Integer, primary_key=True),
-        Column('ittybittyblob', mysql.MSTinyBlob),
-        Column('biggy', mysql.MSBigInteger(unsigned=True)))
+        Column('ittybittyblob', mysql.TINYBLOB),
+        Column('biggy', mysql.BIGINT(unsigned=True)))
 
 All standard MySQL column types are supported.  The OpenGIS types are
 available for use via table reflection but have no special support or mapping
@@ -190,16 +190,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import types as sqltypes
 
-
-__all__ = (
-    'MSBigInteger', 'MSMediumInteger', 'MSBinary', 'MSBit', 'MSBlob', 'MSBoolean',
-    'MSChar', 'MSDate', 'MSDateTime', 'MSDecimal', 'MSDouble',
-    'MSEnum', 'MSFloat', 'MSInteger', 'MSLongBlob', 'MSLongText',
-    'MSMediumBlob', 'MSMediumText', 'MSNChar', 'MSNVarChar',
-    'MSNumeric', 'MSSet', 'MSSmallInteger', 'MSString', 'MSText',
-    'MSTime', 'MSTimeStamp', 'MSTinyBlob', 'MSTinyInteger',
-    'MSTinyText', 'MSVarBinary', 'MSYear' )
-
+from sqlalchemy.types import DATE, DATETIME
 
 RESERVED_WORDS = set(
     ['accessible', 'add', 'all', 'alter', 'analyze','and', 'as', 'asc',
@@ -254,25 +245,62 @@ SET_RE = re.compile(
 class _NumericType(object):
     """Base for MySQL numeric types."""
 
-    def __init__(self, kw):
+    def __init__(self, **kw):
         self.unsigned = kw.pop('unsigned', False)
         self.zerofill = kw.pop('zerofill', False)
+        super(_NumericType, self).__init__(**kw)
+        
+class _FloatType(_NumericType, sqltypes.Float):
+    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+        if isinstance(self, (REAL, DOUBLE)) and \
+            (
+                (precision is None and scale is not None) or
+                (precision is not None and scale is None)
+            ):
+           raise exc.ArgumentError(
+               "You must specify both precision and scale or omit "
+               "both altogether.")
 
+        super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
+        self.scale = scale
 
-class _StringType(object):
+class _DecimalType(_NumericType):
+    def bind_processor(self, dialect):
+        return None
+
+    def result_processor(self, dialect):
+        # TODO: this behavior might by MySQLdb specific,
+        # i.e. that Decimals are returned by the DBAPI
+        if not self.asdecimal:
+            def process(value):
+                if isinstance(value, decimal.Decimal):
+                    return float(value)
+                else:
+                    return value
+            return process
+        else:
+            return None
+
+class _IntegerType(_NumericType, sqltypes.Integer):
+    def __init__(self, display_width=None, **kw):
+        self.display_width = display_width
+        super(_IntegerType, self).__init__(**kw)
+
+class _StringType(sqltypes.String):
     """Base for MySQL string types."""
 
     def __init__(self, charset=None, collation=None,
                  ascii=False, unicode=False, binary=False,
-                 national=False, **kwargs):
+                 national=False, **kw):
         self.charset = charset
         # allow collate= or collation=
-        self.collation = kwargs.get('collate', collation)
+        self.collation = kw.pop('collate', collation)
         self.ascii = ascii
         self.unicode = unicode
         self.binary = binary
         self.national = national
-
+        super(_StringType, self).__init__(**kw)
+        
     def __repr__(self):
         attributes = inspect.getargspec(self.__init__)[0][1:]
         attributes.extend(inspect.getargspec(_StringType.__init__)[0][1:])
@@ -287,7 +315,18 @@ class _StringType(object):
                            ', '.join(['%s=%r' % (k, params[k]) for k in params]))
 
 
-class MSNumeric(sqltypes.Numeric, _NumericType):
+class _BinaryType(sqltypes.Binary):
+    """Base for MySQL binary types."""
+
+    def result_processor(self, dialect):
+        def process(value):
+            if value is None:
+                return None
+            else:
+                return util.buffer(value)
+        return process
+
+class NUMERIC(_DecimalType, sqltypes.NUMERIC):
     """MySQL NUMERIC type."""
     
     __visit_name__ = 'NUMERIC'
@@ -308,25 +347,10 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
           numeric.
 
         """
-        _NumericType.__init__(self, kw)
-        sqltypes.Numeric.__init__(self, precision, scale, asdecimal=asdecimal, **kw)
-
-    def bind_processor(self, dialect):
-        return None
-
-    def result_processor(self, dialect):
-        if not self.asdecimal:
-            def process(value):
-                if isinstance(value, decimal.Decimal):
-                    return float(value)
-                else:
-                    return value
-            return process
-        else:
-            return None
+        super(NUMERIC, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
 
 
-class MSDecimal(MSNumeric):
+class DECIMAL(_DecimalType, sqltypes.DECIMAL):
     """MySQL DECIMAL type."""
     
     __visit_name__ = 'DECIMAL'
@@ -347,10 +371,10 @@ class MSDecimal(MSNumeric):
           numeric.
 
         """
-        super(MSDecimal, self).__init__(precision, scale, asdecimal=asdecimal, **kw)
+        super(DECIMAL, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
 
-
-class MSDouble(sqltypes.Float, _NumericType):
+    
+class DOUBLE(_FloatType):
     """MySQL DOUBLE type."""
 
     __visit_name__ = 'DOUBLE'
@@ -371,19 +395,9 @@ class MSDouble(sqltypes.Float, _NumericType):
           numeric.
 
         """
-        if ((precision is None and scale is not None) or
-            (precision is not None and scale is None)):
-            raise exc.ArgumentError(
-                "You must specify both precision and scale or omit "
-                "both altogether.")
+        super(DOUBLE, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
 
-        _NumericType.__init__(self, kw)
-        sqltypes.Float.__init__(self, asdecimal=asdecimal, **kw)
-        self.scale = scale
-        self.precision = precision
-
-
-class MSReal(MSDouble):
+class REAL(_FloatType):
     """MySQL REAL type."""
 
     __visit_name__ = 'REAL'
@@ -404,10 +418,9 @@ class MSReal(MSDouble):
           numeric.
 
         """
-        MSDouble.__init__(self, precision, scale, asdecimal, **kw)
+        super(REAL, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
 
-
-class MSFloat(sqltypes.Float, _NumericType):
+class FLOAT(_FloatType, sqltypes.FLOAT):
     """MySQL FLOAT type."""
 
     __visit_name__ = 'FLOAT'
@@ -428,16 +441,12 @@ class MSFloat(sqltypes.Float, _NumericType):
           numeric.
 
         """
-        _NumericType.__init__(self, kw)
-        sqltypes.Float.__init__(self, asdecimal=asdecimal, **kw)
-        self.scale = scale
-        self.precision = precision
+        super(FLOAT, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
 
     def bind_processor(self, dialect):
         return None
 
-
-class MSInteger(sqltypes.Integer, _NumericType):
+class INTEGER(_IntegerType, sqltypes.INTEGER):
     """MySQL INTEGER type."""
 
     __visit_name__ = 'INTEGER'
@@ -455,16 +464,9 @@ class MSInteger(sqltypes.Integer, _NumericType):
           numeric.
 
         """
-        if 'length' in kw:
-            util.warn_deprecated("'length' is deprecated for MSInteger and subclasses.  Use 'display_width'.")
-            self.display_width = kw.pop('length')
-        else:
-            self.display_width = display_width
-        _NumericType.__init__(self, kw)
-        sqltypes.Integer.__init__(self, **kw)
+        super(INTEGER, self).__init__(display_width=display_width, **kw)
 
-
-class MSBigInteger(MSInteger):
+class BIGINT(_IntegerType, sqltypes.BIGINT):
     """MySQL BIGINTEGER type."""
 
     __visit_name__ = 'BIGINT'
@@ -482,10 +484,9 @@ class MSBigInteger(MSInteger):
           numeric.
 
         """
-        super(MSBigInteger, self).__init__(display_width, **kw)
+        super(BIGINT, self).__init__(display_width=display_width, **kw)
 
-
-class MSMediumInteger(MSInteger):
+class MEDIUMINT(_IntegerType):
     """MySQL MEDIUMINTEGER type."""
 
     __visit_name__ = 'MEDIUMINT'
@@ -503,10 +504,9 @@ class MSMediumInteger(MSInteger):
           numeric.
 
         """
-        super(MSMediumInteger, self).__init__(display_width, **kw)
+        super(MEDIUMINT, self).__init__(display_width=display_width, **kw)
 
-
-class MSTinyInteger(MSInteger):
+class TINYINT(_IntegerType):
     """MySQL TINYINT type."""
 
     __visit_name__ = 'TINYINT'
@@ -528,10 +528,9 @@ class MSTinyInteger(MSInteger):
           numeric.
 
         """
-        super(MSTinyInteger, self).__init__(display_width, **kw)
+        super(TINYINT, self).__init__(display_width=display_width, **kw)
 
-
-class MSSmallInteger(sqltypes.SmallInteger, MSInteger):
+class SMALLINT(_IntegerType, sqltypes.SMALLINT):
     """MySQL SMALLINTEGER type."""
 
     __visit_name__ = 'SMALLINT'
@@ -549,12 +548,9 @@ class MSSmallInteger(sqltypes.SmallInteger, MSInteger):
           numeric.
 
         """
-        self.display_width = display_width
-        _NumericType.__init__(self, kw)
-        sqltypes.SmallInteger.__init__(self, **kw)
+        super(SMALLINT, self).__init__(display_width=display_width, **kw)
 
-
-class MSBit(sqltypes.TypeEngine):
+class BIT(sqltypes.TypeEngine):
     """MySQL BIT type.
 
     This type is for MySQL 5.0.3 or greater for MyISAM, and 5.0.5 or greater for
@@ -584,21 +580,7 @@ class MSBit(sqltypes.TypeEngine):
             return value
         return process
 
-# TODO: probably don't need datetime/date types since no behavior changes
-
-class MSDateTime(sqltypes.DateTime):
-    """MySQL DATETIME type."""
-    
-    __visit_name__ = 'DATETIME'
-
-
-class MSDate(sqltypes.Date):
-    """MySQL DATE type."""
-    __visit_name__ = 'DATE'
-
-
-
-class MSTime(sqltypes.Time):
+class TIME(sqltypes.TIME):
     """MySQL TIME type."""
 
     __visit_name__ = 'TIME'
@@ -612,28 +594,11 @@ class MSTime(sqltypes.Time):
                 return None
         return process
 
-class MSTimeStamp(sqltypes.TIMESTAMP):
-    """MySQL TIMESTAMP type.
-
-    To signal the orm to automatically re-select modified rows to retrieve the
-    updated timestamp, add a ``server_default`` to your
-    :class:`~sqlalchemy.Column` specification::
-
-        from sqlalchemy.databases import mysql
-        Column('updated', mysql.MSTimeStamp,
-               server_default=sql.text('CURRENT_TIMESTAMP')
-              )
-
-    The full range of MySQL 4.1+ TIMESTAMP defaults can be specified in
-    the the default::
-
-        server_default=sql.text('CURRENT TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
-
-    """
+class TIMESTAMP(sqltypes.TIMESTAMP):
+    """MySQL TIMESTAMP type."""
     __visit_name__ = 'TIMESTAMP'
 
-
-class MSYear(sqltypes.TypeEngine):
+class YEAR(sqltypes.TypeEngine):
     """MySQL YEAR type, for single byte storage of years 1901-2155."""
 
     __visit_name__ = 'YEAR'
@@ -641,13 +606,12 @@ class MSYear(sqltypes.TypeEngine):
     def __init__(self, display_width=None):
         self.display_width = display_width
 
-
-class MSText(_StringType, sqltypes.Text):
+class TEXT(_StringType, sqltypes.TEXT):
     """MySQL TEXT type, for text up to 2^16 characters."""
 
     __visit_name__ = 'TEXT'
 
-    def __init__(self, length=None, **kwargs):
+    def __init__(self, length=None, **kw):
         """Construct a TEXT.
 
         :param length: Optional, if provided the server may optimize storage
@@ -675,12 +639,9 @@ class MSText(_StringType, sqltypes.Text):
           only the collation of character data.
 
         """
-        _StringType.__init__(self, **kwargs)
-        sqltypes.Text.__init__(self, length,
-                               kwargs.get('convert_unicode', False), kwargs.get('assert_unicode', None))
+        super(TEXT, self).__init__(length=length, **kw)
 
-
-class MSTinyText(MSText):
+class TINYTEXT(_StringType):
     """MySQL TINYTEXT type, for text up to 2^8 characters."""
 
     __visit_name__ = 'TINYTEXT'
@@ -709,11 +670,9 @@ class MSTinyText(MSText):
           only the collation of character data.
 
         """
+        super(TINYTEXT, self).__init__(**kwargs)
 
-        super(MSTinyText, self).__init__(**kwargs)
-
-
-class MSMediumText(MSText):
+class MEDIUMTEXT(_StringType):
     """MySQL MEDIUMTEXT type, for text up to 2^24 characters."""
 
     __visit_name__ = 'MEDIUMTEXT'
@@ -742,9 +701,9 @@ class MSMediumText(MSText):
           only the collation of character data.
 
         """
-        super(MSMediumText, self).__init__(**kwargs)
+        super(MEDIUMTEXT, self).__init__(**kwargs)
 
-class MSLongText(MSText):
+class LONGTEXT(_StringType):
     """MySQL LONGTEXT type, for text up to 2^32 characters."""
 
     __visit_name__ = 'LONGTEXT'
@@ -773,11 +732,10 @@ class MSLongText(MSText):
           only the collation of character data.
 
         """
-        super(MSLongText, self).__init__(**kwargs)
+        super(LONGTEXT, self).__init__(**kwargs)
 
-
-
-class MSString(_StringType, sqltypes.String):
+    
+class VARCHAR(_StringType, sqltypes.VARCHAR):
     """MySQL VARCHAR type, for variable-length character data."""
 
     __visit_name__ = 'VARCHAR'
@@ -806,12 +764,9 @@ class MSString(_StringType, sqltypes.String):
           only the collation of character data.
 
         """
-        _StringType.__init__(self, **kwargs)
-        sqltypes.String.__init__(self, length,
-                                 kwargs.get('convert_unicode', False), kwargs.get('assert_unicode', None))
+        super(VARCHAR, self).__init__(length=length, **kwargs)
 
-
-class MSChar(_StringType, sqltypes.CHAR):
+class CHAR(_StringType, sqltypes.CHAR):
     """MySQL CHAR type, for fixed-length character data."""
 
     __visit_name__ = 'CHAR'
@@ -829,13 +784,9 @@ class MSChar(_StringType, sqltypes.CHAR):
           compatible with the national character set.
 
         """
-        _StringType.__init__(self, **kwargs)
-        sqltypes.CHAR.__init__(self, length,
-                               kwargs.get('convert_unicode', False))
+        super(CHAR, self).__init__(length=length, **kwargs)
 
-
-
-class MSNVarChar(_StringType, sqltypes.String):
+class NVARCHAR(_StringType, sqltypes.NVARCHAR):
     """MySQL NVARCHAR type.
 
     For variable-length character data in the server's configured national
@@ -858,13 +809,10 @@ class MSNVarChar(_StringType, sqltypes.String):
 
         """
         kwargs['national'] = True
-        _StringType.__init__(self, **kwargs)
-        sqltypes.String.__init__(self, length,
-                                 kwargs.get('convert_unicode', False))
+        super(NVARCHAR, self).__init__(length=length, **kwargs)
 
 
-
-class MSNChar(_StringType, sqltypes.CHAR):
+class NCHAR(_StringType, sqltypes.NCHAR):
     """MySQL NCHAR type.
 
     For fixed-length character data in the server's configured national
@@ -887,23 +835,11 @@ class MSNChar(_StringType, sqltypes.CHAR):
 
         """
         kwargs['national'] = True
-        _StringType.__init__(self, **kwargs)
-        sqltypes.CHAR.__init__(self, length,
-                               kwargs.get('convert_unicode', False))
+        super(NCHAR, self).__init__(length=length, **kwargs)
 
 
-class _BinaryType(sqltypes.Binary):
-    """Base for MySQL binary types."""
 
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            else:
-                return util.buffer(value)
-        return process
-
-class MSVarBinary(_BinaryType):
+class VARBINARY(_BinaryType):
     """MySQL VARBINARY type, for variable length binary data."""
 
     __visit_name__ = 'VARBINARY'
@@ -914,10 +850,9 @@ class MSVarBinary(_BinaryType):
         :param length: Maximum data length, in characters.
 
         """
-        super(MSVarBinary, self).__init__(length, **kw)
+        super(VARBINARY, self).__init__(length=length, **kw)
 
-
-class MSBinary(_BinaryType):
+class BINARY(_BinaryType):
     """MySQL BINARY type, for fixed length binary data"""
 
     __visit_name__ = 'BINARY'
@@ -932,17 +867,9 @@ class MSBinary(_BinaryType):
           specified, this will generate a BLOB.  This usage is deprecated.
 
         """
-        super(MSBinary, self).__init__(length, **kw)
+        super(BINARY, self).__init__(length=length, **kw)
 
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            else:
-                return util.buffer(value)
-        return process
-
-class MSBlob(_BinaryType):
+class BLOB(_BinaryType, sqltypes.BLOB):
     """MySQL BLOB type, for binary data up to 2^16 bytes"""
 
     __visit_name__ = 'BLOB'
@@ -955,39 +882,25 @@ class MSBlob(_BinaryType):
           ``length`` characters.
 
         """
-        super(MSBlob, self).__init__(length, **kw)
-
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            else:
-                return util.buffer(value)
-        return process
-
-    def __repr__(self):
-        return "%s()" % self.__class__.__name__
+        super(BLOB, self).__init__(length=length, **kw)
 
 
-class MSTinyBlob(MSBlob):
+class TINYBLOB(_BinaryType):
     """MySQL TINYBLOB type, for binary data up to 2^8 bytes."""
     
     __visit_name__ = 'TINYBLOB'
 
-
-class MSMediumBlob(MSBlob):
+class MEDIUMBLOB(_BinaryType):
     """MySQL MEDIUMBLOB type, for binary data up to 2^24 bytes."""
 
     __visit_name__ = 'MEDIUMBLOB'
 
-
-class MSLongBlob(MSBlob):
+class LONGBLOB(_BinaryType):
     """MySQL LONGBLOB type, for binary data up to 2^32 bytes."""
 
     __visit_name__ = 'LONGBLOB'
 
-
-class MSEnum(MSString):
+class ENUM(_StringType):
     """MySQL ENUM type."""
 
     __visit_name__ = 'ENUM'
@@ -1078,10 +991,10 @@ class MSEnum(MSString):
 
         self.strict = kw.pop('strict', False)
         length = max([len(v) for v in self.enums] + [0])
-        super(MSEnum, self).__init__(length, **kw)
+        super(ENUM, self).__init__(length=length, **kw)
 
     def bind_processor(self, dialect):
-        super_convert = super(MSEnum, self).bind_processor(dialect)
+        super_convert = super(ENUM, self).bind_processor(dialect)
         def process(value):
             if self.strict and value is not None and value not in self.enums:
                 raise exc.InvalidRequestError('"%s" not a valid value for '
@@ -1092,7 +1005,7 @@ class MSEnum(MSString):
                 return value
         return process
 
-class MSSet(MSString):
+class SET(_StringType):
     """MySQL SET type."""
 
     __visit_name__ = 'SET'
@@ -1141,7 +1054,7 @@ class MSSet(MSString):
 
         self.values = strip_values
         length = max([len(v) for v in strip_values] + [0])
-        super(MSSet, self).__init__(length, **kw)
+        super(SET, self).__init__(length=length, **kw)
 
     def result_processor(self, dialect):
         def process(value):
@@ -1165,7 +1078,7 @@ class MSSet(MSString):
         return process
 
     def bind_processor(self, dialect):
-        super_convert = super(MSSet, self).bind_processor(dialect)
+        super_convert = super(SET, self).bind_processor(dialect)
         def process(value):
             if value is None or isinstance(value, (int, long, basestring)):
                 pass
@@ -1181,8 +1094,7 @@ class MSSet(MSString):
                 return value
         return process
 
-
-class MSBoolean(sqltypes.Boolean):
+class BOOLEAN(sqltypes.Boolean):
     """MySQL BOOLEAN type."""
 
     __visit_name__ = 'BOOLEAN'
@@ -1206,63 +1118,83 @@ class MSBoolean(sqltypes.Boolean):
                 return value and True or False
         return process
 
+# old names
+MSBoolean = BOOLEAN
+MSSet = SET
+MSEnum = ENUM
+MSLongBlob = LONGBLOB
+MSMediumBlob = MEDIUMBLOB
+MSTinyBlob = TINYBLOB
+MSBlob = BLOB
+MSBinary = BINARY
+MSVarBinary = VARBINARY
+MSNChar = NCHAR
+MSNVarChar = NVARCHAR
+MSChar = CHAR
+MSString = VARCHAR
+MSLongText = LONGTEXT
+MSMediumText = MEDIUMTEXT
+MSTinyText = TINYTEXT
+MSText = TEXT
+MSYear = YEAR
+MSTimeStamp = TIMESTAMP
+MSTime = TIME
+MSBit = BIT
+MSSmallInteger = SMALLINT
+MSTinyInteger = TINYINT
+MSMediumInteger = MEDIUMINT
+MSBigInteger = BIGINT
+MSNumeric = NUMERIC
+MSDecimal = DECIMAL
+MSDouble = DOUBLE
+MSReal = REAL
+MSFloat = FLOAT
+MSInteger = INTEGER
+
 colspecs = {
-    sqltypes.Integer: MSInteger,
-    sqltypes.SmallInteger: MSSmallInteger,
-    sqltypes.Numeric: MSNumeric,
-    sqltypes.Float: MSFloat,
-    sqltypes.DateTime: MSDateTime,
-    sqltypes.Date: MSDate,
-    sqltypes.Time: MSTime,
-    sqltypes.String: MSString,
-    sqltypes.Binary: MSBlob,
-    sqltypes.Boolean: MSBoolean,
-    sqltypes.Text: MSText,
-    sqltypes.CHAR: MSChar,
-    sqltypes.NCHAR: MSNChar,
-    sqltypes.TIMESTAMP: MSTimeStamp,
-    sqltypes.BLOB: MSBlob,
-    MSDouble: MSDouble,
-    MSReal: MSReal,
-    _BinaryType: _BinaryType,
+    sqltypes.Numeric: NUMERIC,
+    sqltypes.Float: FLOAT,
+    sqltypes.Binary: _BinaryType,
+    sqltypes.Boolean: BOOLEAN,
+    sqltypes.Time: TIME,
 }
 
 # Everything 3.23 through 5.1 excepting OpenGIS types.
 ischema_names = {
-    'bigint': MSBigInteger,
-    'binary': MSBinary,
-    'bit': MSBit,
-    'blob': MSBlob,
-    'boolean':MSBoolean,
-    'char': MSChar,
-    'date': MSDate,
-    'datetime': MSDateTime,
-    'decimal': MSDecimal,
-    'double': MSDouble,
-    'enum': MSEnum,
-    'fixed': MSDecimal,
-    'float': MSFloat,
-    'int': MSInteger,
-    'integer': MSInteger,
-    'longblob': MSLongBlob,
-    'longtext': MSLongText,
-    'mediumblob': MSMediumBlob,
-    'mediumint': MSMediumInteger,
-    'mediumtext': MSMediumText,
-    'nchar': MSNChar,
-    'nvarchar': MSNVarChar,
-    'numeric': MSNumeric,
-    'set': MSSet,
-    'smallint': MSSmallInteger,
-    'text': MSText,
-    'time': MSTime,
-    'timestamp': MSTimeStamp,
-    'tinyblob': MSTinyBlob,
-    'tinyint': MSTinyInteger,
-    'tinytext': MSTinyText,
-    'varbinary': MSVarBinary,
-    'varchar': MSString,
-    'year': MSYear,
+    'bigint': BIGINT,
+    'binary': BINARY,
+    'bit': BIT,
+    'blob': BLOB,
+    'boolean':BOOLEAN,
+    'char': CHAR,
+    'date': DATE,
+    'datetime': DATETIME,
+    'decimal': DECIMAL,
+    'double': DOUBLE,
+    'enum': ENUM,
+    'fixed': DECIMAL,
+    'float': FLOAT,
+    'int': INTEGER,
+    'integer': INTEGER,
+    'longblob': LONGBLOB,
+    'longtext': LONGTEXT,
+    'mediumblob': MEDIUMBLOB,
+    'mediumint': MEDIUMINT,
+    'mediumtext': MEDIUMTEXT,
+    'nchar': NCHAR,
+    'nvarchar': NVARCHAR,
+    'numeric': NUMERIC,
+    'set': SET,
+    'smallint': SMALLINT,
+    'text': TEXT,
+    'time': TIME,
+    'timestamp': TIMESTAMP,
+    'tinyblob': TINYBLOB,
+    'tinyint': TINYINT,
+    'tinytext': TINYTEXT,
+    'varbinary': VARBINARY,
+    'varchar': VARCHAR,
+    'year': YEAR,
 }
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
@@ -1305,29 +1237,27 @@ class MySQLCompiler(compiler.SQLCompiler):
         
     def visit_typeclause(self, typeclause):
         type_ = typeclause.type.dialect_impl(self.dialect)
-        if isinstance(type_, MSInteger):
+        if isinstance(type_, sqltypes.Integer):
             if getattr(type_, 'unsigned', False):
                 return 'UNSIGNED INTEGER'
             else:
                 return 'SIGNED INTEGER'
-        elif isinstance(type_, (MSDecimal, MSDateTime, MSDate, MSTime)):
+        elif isinstance(type_, sqltypes.TIMESTAMP):
+            return 'DATETIME'
+        elif isinstance(type_, (sqltypes.DECIMAL, sqltypes.DateTime, sqltypes.Date, sqltypes.Time)):
             return self.dialect.type_compiler.process(type_)
-        elif isinstance(type_, MSText):
+        elif isinstance(type_, sqltypes.Text):
             return 'CHAR'
-        elif (isinstance(type_, _StringType) and not
-              isinstance(type_, (MSEnum, MSSet))):
+        elif (isinstance(type_, sqltypes.String) and not
+              isinstance(type_, (ENUM, SET))):
             if getattr(type_, 'length'):
                 return 'CHAR(%s)' % type_.length
             else:
                 return 'CHAR'
-        elif isinstance(type_, _BinaryType):
+        elif isinstance(type_, sqltypes.Binary):
             return 'BINARY'
-        elif isinstance(type_, MSNumeric):
+        elif isinstance(type_, NUMERIC):
             return self.dialect.type_compiler.process(type_).replace('NUMERIC', 'DECIMAL')
-        elif isinstance(type_, MSTimeStamp):
-            return 'DATETIME'
-        elif isinstance(type_, (MSDateTime, MSDate, MSTime)):
-            return self.dialect.type_compiler.process(type_)
         else:
             return None
 
@@ -1890,13 +1820,11 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
-
         parsed_state = self._parsed_state_or_create(connection, table_name, schema, **kw)
         return parsed_state.columns
 
     @reflection.cache
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
-
         parsed_state = self._parsed_state_or_create(connection, table_name, schema, **kw)
         for key in parsed_state.keys:
             if key['type'] == 'PRIMARY':
@@ -1910,7 +1838,7 @@ class MySQLDialect(default.DefaultDialect):
 
         parsed_state = self._parsed_state_or_create(connection, table_name, schema, **kw)
         default_schema = None
-
+        
         fkeys = []
 
         for spec in parsed_state.constraints:
@@ -1982,13 +1910,15 @@ class MySQLDialect(default.DefaultDialect):
         return sql
 
     def _parsed_state_or_create(self, connection, table_name, schema=None, **kw):
-        if 'parsed_state' in kw:
-            return kw['parsed_state']
-        else:
-            return self._setup_parser(connection, table_name, schema)
+        return self._setup_parser(
+                        connection, 
+                        table_name, 
+                        schema, 
+                        info_cache=kw.get('info_cache', None)
+                    )
         
-    def _setup_parser(self, connection, table_name, schema=None):
-
+    @reflection.cache
+    def _setup_parser(self, connection, table_name, schema=None, **kw):
         charset = self._connection_charset
         try:
             parser = self.parser

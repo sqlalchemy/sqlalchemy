@@ -27,10 +27,14 @@ from sqlalchemy import schema as sa_schema
 
 @util.decorator
 def cache(fn, self, con, *args, **kw):
-    info_cache = kw.pop('info_cache', None)
+    info_cache = kw.get('info_cache', None)
     if info_cache is None:
         return fn(self, con, *args, **kw)
-    key = (fn.__name__, args, str(kw))
+    key = (
+            fn.__name__, 
+            tuple(a for a in args if isinstance(a, basestring)), 
+            tuple((k, v) for k, v in kw.iteritems() if isinstance(v, basestring))
+        )
     ret = info_cache.get(key)
     if ret is None:
         ret = fn(self, con, *args, **kw)

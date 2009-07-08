@@ -966,15 +966,6 @@ class CLOB(Text):
 
     __visit_name__ = 'CLOB'
 
-class NCLOB(Text):
-    """The NCLOB type.
-    
-    TODO: is this only Oracle ?
-    """
-
-    __visit_name__ = 'NCLOB'
-
-
 class VARCHAR(String):
     """The SQL VARCHAR type."""
 
