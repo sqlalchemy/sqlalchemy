@@ -19,7 +19,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
         meta = MetaData(testing.db)
         t = Table('bool_table', meta,
                   Column('id', Integer, primary_key=True),
-                  Column('boo', sqlite.SLBoolean))
+                  Column('boo', Boolean))
 
         try:
             meta.create_all()
@@ -39,7 +39,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
     def test_time_microseconds(self):
         dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)  # 125 usec
         eq_(str(dt), '2008-06-27 12:00:00.000125')
-        sldt = sqlite.SLDateTime()
+        sldt = sqlite._SLDateTime()
         bp = sldt.bind_processor(None)
         eq_(bp(dt), '2008-06-27 12:00:00.000125')
         

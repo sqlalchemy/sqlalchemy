@@ -229,7 +229,7 @@ from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
-                                FLOAT, TIMESTAMP
+                                FLOAT, TIMESTAMP, DATETIME, DATE
             
 
 from sqlalchemy.dialects.mssql import information_schema as ischema
@@ -270,7 +270,7 @@ RESERVED_WORDS = set(
     ])
 
 
-class MSNumeric(sqltypes.Numeric):
+class _MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect):
         if self.asdecimal:
             def process(value):
@@ -324,19 +324,17 @@ class REAL(sqltypes.Float):
 
     def __init__(self):
         super(REAL, self).__init__(precision=24)
-MSReal = REAL
 
 class TINYINT(sqltypes.Integer):
     __visit_name__ = 'TINYINT'
-MSTinyInteger = TINYINT
 
 
 # MSSQL DATE/TIME types have varied behavior, sometimes returning
-# strings.  MSDate/MSTime check for everything, and always
+# strings.  MSDate/TIME check for everything, and always
 # filter bind parameters into datetime objects (required by pyodbc,
 # not sure about other dialects).
 
-class DATE(sqltypes.DATE):
+class _MSDate(sqltypes.Date):
     def bind_processor(self, dialect):
         def process(value):
             if type(value) == datetime.date:
@@ -355,7 +353,6 @@ class DATE(sqltypes.DATE):
             else:
                 return value
         return process
-MSDate = DATE
 
 class TIME(sqltypes.TIME):
     def __init__(self, precision=None, **kwargs):
@@ -384,7 +381,6 @@ class TIME(sqltypes.TIME):
                 return value
         return process
 
-MSTime = TIME
 
 class _DateTimeBase(object):
     def bind_processor(self, dialect):
@@ -396,20 +392,17 @@ class _DateTimeBase(object):
                 return value
         return process
 
-class DATETIME(_DateTimeBase, sqltypes.DATETIME):
+class _MSDateTime(_DateTimeBase, sqltypes.DateTime):
     pass
-MSDateTime = DATETIME
 
 class SMALLDATETIME(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = 'SMALLDATETIME'
-MSSmallDateTime = SMALLDATETIME
 
 class DATETIME2(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = 'DATETIME2'
     
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
-MSDateTime2 = DATETIME2
 
 
 # TODO: is this not an Interval ?
@@ -418,7 +411,6 @@ class DATETIMEOFFSET(sqltypes.TypeEngine):
     
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
-MSDateTimeOffset = DATETIMEOFFSET
 
 
 class _StringType(object):
@@ -454,7 +446,6 @@ class TEXT(_StringType, sqltypes.TEXT):
         collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
         sqltypes.Text.__init__(self, *args, **kw)
-MSText = TEXT
 
 class NTEXT(_StringType, sqltypes.UnicodeText):
     """MSSQL NTEXT type, for variable-length unicode text up to 2^30
@@ -473,7 +464,6 @@ class NTEXT(_StringType, sqltypes.UnicodeText):
         _StringType.__init__(self, collation)
         length = kwargs.pop('length', None)
         sqltypes.UnicodeText.__init__(self, length, **kwargs)
-MSNText = NTEXT
 
 
 class VARCHAR(_StringType, sqltypes.VARCHAR):
@@ -514,7 +504,6 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
         collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
         sqltypes.VARCHAR.__init__(self, *args, **kw)
-MSString = VARCHAR
 
 class NVARCHAR(_StringType, sqltypes.NVARCHAR):
     """MSSQL NVARCHAR type.
@@ -533,7 +522,6 @@ class NVARCHAR(_StringType, sqltypes.NVARCHAR):
         collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
         sqltypes.NVARCHAR.__init__(self, *args, **kw)
-MSNVarchar = NVARCHAR
 
 class CHAR(_StringType, sqltypes.CHAR):
     """MSSQL CHAR type, for fixed-length non-Unicode data with a maximum
@@ -573,7 +561,6 @@ class CHAR(_StringType, sqltypes.CHAR):
         collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
         sqltypes.CHAR.__init__(self, *args, **kw)
-MSChar = CHAR
 
 class NCHAR(_StringType, sqltypes.NCHAR):
     """MSSQL NCHAR type.
@@ -592,25 +579,20 @@ class NCHAR(_StringType, sqltypes.NCHAR):
         collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
         sqltypes.NCHAR.__init__(self, *args, **kw)
-MSNChar = NCHAR
 
 class BINARY(sqltypes.Binary):
     __visit_name__ = 'BINARY'
-MSBinary = BINARY
 
 class VARBINARY(sqltypes.Binary):
     __visit_name__ = 'VARBINARY'
-MSVarBinary = VARBINARY
         
 class IMAGE(sqltypes.Binary):
     __visit_name__ = 'IMAGE'
-MSImage = IMAGE
 
 class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
-MSBit = BIT
     
-class MSBoolean(sqltypes.Boolean):
+class _MSBoolean(sqltypes.Boolean):
     def result_processor(self, dialect):
         def process(value):
             if value is None:
@@ -632,19 +614,82 @@ class MSBoolean(sqltypes.Boolean):
 
 class MONEY(sqltypes.TypeEngine):
     __visit_name__ = 'MONEY'
-MSMoney = MONEY
 
-class SMALLMONEY(MSMoney):
+class SMALLMONEY(sqltypes.TypeEngine):
     __visit_name__ = 'SMALLMONEY'
-MSSmallMoney = SMALLMONEY
 
 class UNIQUEIDENTIFIER(sqltypes.TypeEngine):
     __visit_name__ = "UNIQUEIDENTIFIER"
-MSUniqueIdentifier = UNIQUEIDENTIFIER
 
 class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = 'SQL_VARIANT'
+
+# old names.
+MSNumeric = _MSNumeric
+MSDateTime = _MSDateTime
+MSDate = _MSDate
+MSBoolean = _MSBoolean
+MSReal = REAL
+MSTinyInteger = TINYINT
+MSTime = TIME
+MSSmallDateTime = SMALLDATETIME
+MSDateTime2 = DATETIME2
+MSDateTimeOffset = DATETIMEOFFSET
+MSText = TEXT
+MSNText = NTEXT
+MSString = VARCHAR
+MSNVarchar = NVARCHAR
+MSChar = CHAR
+MSNChar = NCHAR
+MSBinary = BINARY
+MSVarBinary = VARBINARY
+MSImage = IMAGE
+MSBit = BIT
+MSMoney = MONEY
+MSSmallMoney = SMALLMONEY
+MSUniqueIdentifier = UNIQUEIDENTIFIER
 MSVariant = SQL_VARIANT
+
+colspecs = {
+    sqltypes.Numeric : _MSNumeric,
+    sqltypes.DateTime : _MSDateTime,
+    sqltypes.Date : _MSDate,
+    sqltypes.Time : TIME,
+    sqltypes.Boolean : _MSBoolean,
+}
+
+ischema_names = {
+    'int' : INTEGER,
+    'bigint': BIGINT,
+    'smallint' : SMALLINT,
+    'tinyint' : TINYINT,
+    'varchar' : VARCHAR,
+    'nvarchar' : NVARCHAR,
+    'char' : CHAR,
+    'nchar' : NCHAR,
+    'text' : TEXT,
+    'ntext' : NTEXT,
+    'decimal' : DECIMAL,
+    'numeric' : NUMERIC,
+    'float' : FLOAT,
+    'datetime' : DATETIME,
+    'datetime2' : DATETIME2,
+    'datetimeoffset' : DATETIMEOFFSET,
+    'date': DATE,
+    'time': TIME,
+    'smalldatetime' : SMALLDATETIME,
+    'binary' : BINARY,
+    'varbinary' : VARBINARY,
+    'bit': BIT,
+    'real' : REAL,
+    'image' : IMAGE,
+    'timestamp': TIMESTAMP,
+    'money': MONEY,
+    'smallmoney': SMALLMONEY,
+    'uniqueidentifier': UNIQUEIDENTIFIER,
+    'sql_variant': SQL_VARIANT,
+}
+
 
 class MSTypeCompiler(compiler.GenericTypeCompiler):
     def _extend(self, spec, type_):
@@ -842,46 +887,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
             except:
                 pass
 
-
-colspecs = {
-    sqltypes.Numeric : MSNumeric,
-    sqltypes.DateTime : DATETIME,
-    sqltypes.Date : DATE,
-    sqltypes.Time : TIME,
-    sqltypes.Boolean : MSBoolean,
-}
-
-ischema_names = {
-    'int' : INTEGER,
-    'bigint': BIGINT,
-    'smallint' : SMALLINT,
-    'tinyint' : TINYINT,
-    'varchar' : VARCHAR,
-    'nvarchar' : NVARCHAR,
-    'char' : CHAR,
-    'nchar' : NCHAR,
-    'text' : TEXT,
-    'ntext' : NTEXT,
-    'decimal' : DECIMAL,
-    'numeric' : NUMERIC,
-    'float' : FLOAT,
-    'datetime' : DATETIME,
-    'datetime2' : DATETIME2,
-    'datetimeoffset' : DATETIMEOFFSET,
-    'date': DATE,
-    'time': TIME,
-    'smalldatetime' : SMALLDATETIME,
-    'binary' : BINARY,
-    'varbinary' : VARBINARY,
-    'bit': BIT,
-    'real' : REAL,
-    'image' : IMAGE,
-    'timestamp': TIMESTAMP,
-    'money': MONEY,
-    'smallmoney': SMALLMONEY,
-    'uniqueidentifier': UNIQUEIDENTIFIER,
-    'sql_variant': SQL_VARIANT,
-}
 
 class MSSQLCompiler(compiler.SQLCompiler):
 

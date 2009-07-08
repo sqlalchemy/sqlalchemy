@@ -13,50 +13,6 @@ from sqlalchemy.test import *
 
 
 class AdaptTest(TestBase):
-    def testmsnvarchar(self):
-        # TODO: migrate these tests to dialect modules
-
-        dialect = mssql.dialect()
-        # run the test twice to ensure the caching step works too
-        for x in range(0, 1):
-            col = Column('', Unicode(length=10))
-            dialect_type = col.type.dialect_impl(dialect)
-            assert isinstance(dialect_type, mssql.MSNVarchar)
-            eq_(dialect.type_compiler.process(dialect_type), 'NVARCHAR(10)')
-
-    def testmysqlbinary(self):
-        # TODO: migrate these tests to dialect modules
-
-        dialect = mysql.MySQLDialect()
-        t1 = mysql.MSVarBinary
-        t2 = mysql.MSVarBinary()
-        assert isinstance(dialect.type_descriptor(t1), mysql.MSVarBinary)
-        assert isinstance(dialect.type_descriptor(t2), mysql.MSVarBinary)
-
-    def teststringadapt(self):
-        """test that String with no size becomes TEXT, *all* others stay as varchar/String"""
-        
-        # TODO: migrate these tests to dialect modules
-        
-        postgres_dialect = postgres.PGDialect()
-        firebird_dialect = firebird.FBDialect()
-
-        for dialect, start, test in [
-            (postgres_dialect, String(), String),
-            (postgres_dialect, VARCHAR(), String),
-            (postgres_dialect, String(50), String),
-            (postgres_dialect, Unicode(), String),
-            (postgres_dialect, UnicodeText(), Text),
-            (postgres_dialect, NCHAR(), String),
-#            (firebird_dialect, String(), firebird.FBString),
-#            (firebird_dialect, VARCHAR(), firebird.FBString),
-#            (firebird_dialect, String(50), firebird.FBString),
-#            (firebird_dialect, Unicode(), firebird.FBString),
-#            (firebird_dialect, UnicodeText(), firebird.FBText),
-#            (firebird_dialect, NCHAR(), firebird.FBString),
-        ]:
-            assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
-
     def test_uppercase_rendering(self):
         """Test that uppercase types from types.py always render as their type.
         

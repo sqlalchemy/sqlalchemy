@@ -144,7 +144,7 @@ class DOUBLE_PRECISION(sqltypes.Numeric):
 class LONG(sqltypes.Text):
     __visit_name__ = 'LONG'
     
-class OracleBoolean(sqltypes.Boolean):
+class _OracleBoolean(sqltypes.Boolean):
     def result_processor(self, dialect):
         def process(value):
             if value is None:
@@ -165,7 +165,7 @@ class OracleBoolean(sqltypes.Boolean):
         return process
 
 colspecs = {
-    sqltypes.Boolean : OracleBoolean,
+    sqltypes.Boolean : _OracleBoolean,
 }
 
 ischema_names = {

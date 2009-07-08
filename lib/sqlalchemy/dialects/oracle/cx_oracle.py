@@ -63,13 +63,13 @@ working successfully but this should be regarded as an experimental feature.
 
 """
 
-from sqlalchemy.dialects.oracle.base import OracleDialect, OracleRaw, OracleBoolean, RESERVED_WORDS
+from sqlalchemy.dialects.oracle.base import OracleDialect, RAW, _OracleBoolean, RESERVED_WORDS
 from sqlalchemy.engine.default import DefaultExecutionContext
 from sqlalchemy.engine import base
 from sqlalchemy import types as sqltypes, util
 import datetime
 
-class OracleDate(sqltypes.Date):
+class _OracleDate(sqltypes.Date):
     def bind_processor(self, dialect):
         return None
 
@@ -81,7 +81,7 @@ class OracleDate(sqltypes.Date):
                 return value.date()
         return process
 
-class OracleDateTime(sqltypes.DateTime):
+class _OracleDateTime(sqltypes.DateTime):
     def result_processor(self, dialect):
         def process(value):
             if value is None or isinstance(value, datetime.datetime):
@@ -98,7 +98,7 @@ class OracleDateTime(sqltypes.DateTime):
 # Oracle does not support TIME columns
 
 # only if cx_oracle contains TIMESTAMP
-class OracleTimestamp(sqltypes.TIMESTAMP):
+class _OracleTimestamp(sqltypes.TIMESTAMP):
     def result_processor(self, dialect):
         def process(value):
             if value is None or isinstance(value, datetime.datetime):
@@ -109,9 +109,9 @@ class OracleTimestamp(sqltypes.TIMESTAMP):
                     value.day,value.hour, value.minute, value.second)
         return process
 
-class LOBMixin(object):
+class _LOBMixin(object):
     def result_processor(self, dialect):
-        super_process = super(LOBMixin, self).result_processor(dialect)
+        super_process = super(_LOBMixin, self).result_processor(dialect)
         if not dialect.auto_convert_lobs:
             return super_process
         lob = dialect.dbapi.LOB
@@ -128,16 +128,16 @@ class LOBMixin(object):
                     return value
         return process
     
-class OracleText(LOBMixin, sqltypes.Text):
+class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
 
-class OracleUnicodeText(LOBMixin, sqltypes.UnicodeText):
+class _OracleUnicodeText(_LOBMixin, sqltypes.UnicodeText):
     def get_dbapi_type(self, dbapi):
         return dbapi.NCLOB
 
 
-class OracleBinary(LOBMixin, sqltypes.Binary):
+class _OracleBinary(_LOBMixin, sqltypes.Binary):
     def get_dbapi_type(self, dbapi):
         return dbapi.BLOB
 
@@ -145,19 +145,19 @@ class OracleBinary(LOBMixin, sqltypes.Binary):
         return None
 
 
-class cxOracleRaw(LOBMixin, OracleRaw):
+class _OracleRaw(_LOBMixin, RAW):
     pass
 
 
 colspecs = {
-    sqltypes.DateTime : OracleDateTime,
-    sqltypes.Date : OracleDate,
-    sqltypes.Binary : OracleBinary,
-    sqltypes.Boolean : OracleBoolean,
-    sqltypes.Text : OracleText,
-    sqltypes.UnicodeText : OracleUnicodeText,
-    sqltypes.TIMESTAMP : OracleTimestamp,
-    OracleRaw: cxOracleRaw,
+    sqltypes.DateTime : _OracleDateTime,
+    sqltypes.Date : _OracleDate,
+    sqltypes.Binary : _OracleBinary,
+    sqltypes.Boolean : _OracleBoolean,
+    sqltypes.Text : _OracleText,
+    sqltypes.UnicodeText : _OracleUnicodeText,
+    sqltypes.TIMESTAMP : _OracleTimestamp,
+    RAW: _OracleRaw,
 }
 
 class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):

@@ -15,7 +15,7 @@ SQLite does not have built-in DATE, TIME, or DATETIME types, and pysqlite does n
 out of the box functionality for translating values between Python `datetime` objects
 and a SQLite-supported format.  SQLAlchemy's own :class:`~sqlalchemy.types.DateTime`
 and related types provide date formatting and parsing functionality when SQlite is used.
-The implementation classes are :class:`SLDateTime`, :class:`SLDate` and :class:`SLTime`.
+The implementation classes are :class:`_SLDateTime`, :class:`_SLDate` and :class:`_SLTime`.
 These types represent dates and times as ISO formatted strings, which also nicely
 support ordering.   There's no reliance on typical "libc" internals for these functions
 so historical dates are fully supported.
@@ -34,7 +34,12 @@ from sqlalchemy import util
 from sqlalchemy.sql import compiler, functions as sql_functions
 from sqlalchemy.util import NoneType
 
-class NumericMixin(object):
+from sqlalchemy.types import BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL,\
+                            FLOAT, INTEGER, NUMERIC, SMALLINT, TEXT, TIME,\
+                            TIMESTAMP, VARCHAR
+                            
+
+class _NumericMixin(object):
     def bind_processor(self, dialect):
         type_ = self.asdecimal and str or float
         def process(value):
@@ -44,16 +49,16 @@ class NumericMixin(object):
                 return value
         return process
 
-class SLNumeric(NumericMixin, sqltypes.Numeric):
+class _SLNumeric(_NumericMixin, sqltypes.Numeric):
     pass
 
-class SLFloat(NumericMixin, sqltypes.Float):
+class _SLFloat(_NumericMixin, sqltypes.Float):
     pass
 
 # since SQLite has no date types, we're assuming that SQLite via ODBC
 # or JDBC would similarly have no built in date support, so the "string" based logic
 # would apply to all implementing dialects.
-class DateTimeMixin(object):
+class _DateTimeMixin(object):
     def _bind_processor(self, format, elements):
         def process(value):
             if not isinstance(value, (NoneType, datetime.date, datetime.datetime, datetime.time)):
@@ -72,7 +77,7 @@ class DateTimeMixin(object):
                 return None
         return process
 
-class SLDateTime(DateTimeMixin, sqltypes.DateTime):
+class _SLDateTime(_DateTimeMixin, sqltypes.DateTime):
     __legacy_microseconds__ = False
 
     def bind_processor(self, dialect):
@@ -91,7 +96,7 @@ class SLDateTime(DateTimeMixin, sqltypes.DateTime):
     def result_processor(self, dialect):
         return self._result_processor(datetime.datetime, self._reg)
 
-class SLDate(DateTimeMixin, sqltypes.Date):
+class _SLDate(_DateTimeMixin, sqltypes.Date):
     def bind_processor(self, dialect):
         return self._bind_processor(
                         "%4.4d-%2.2d-%2.2d", 
@@ -102,7 +107,7 @@ class SLDate(DateTimeMixin, sqltypes.Date):
     def result_processor(self, dialect):
         return self._result_processor(datetime.date, self._reg)
 
-class SLTime(DateTimeMixin, sqltypes.Time):
+class _SLTime(_DateTimeMixin, sqltypes.Time):
     __legacy_microseconds__ = False
 
     def bind_processor(self, dialect):
@@ -122,7 +127,7 @@ class SLTime(DateTimeMixin, sqltypes.Time):
         return self._result_processor(datetime.time, self._reg)
 
 
-class SLBoolean(sqltypes.Boolean):
+class _SLBoolean(sqltypes.Boolean):
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -138,12 +143,12 @@ class SLBoolean(sqltypes.Boolean):
         return process
 
 colspecs = {
-    sqltypes.Boolean: SLBoolean,
-    sqltypes.Date: SLDate,
-    sqltypes.DateTime: SLDateTime,
-    sqltypes.Float: SLFloat,
-    sqltypes.Numeric: SLNumeric,
-    sqltypes.Time: SLTime,
+    sqltypes.Boolean: _SLBoolean,
+    sqltypes.Date: _SLDate,
+    sqltypes.DateTime: _SLDateTime,
+    sqltypes.Float: _SLFloat,
+    sqltypes.Numeric: _SLNumeric,
+    sqltypes.Time: _SLTime,
 }
 
 ischema_names = {

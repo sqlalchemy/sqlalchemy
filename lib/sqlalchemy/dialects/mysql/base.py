@@ -190,7 +190,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import types as sqltypes
 
-from sqlalchemy.types import DATE, DATETIME
+from sqlalchemy.types import DATE, DATETIME, BOOLEAN, TIME
 
 RESERVED_WORDS = set(
     ['accessible', 'add', 'all', 'alter', 'analyze','and', 'as', 'asc',
@@ -580,7 +580,7 @@ class BIT(sqltypes.TypeEngine):
             return value
         return process
 
-class TIME(sqltypes.TIME):
+class _MSTime(sqltypes.Time):
     """MySQL TIME type."""
 
     __visit_name__ = 'TIME'
@@ -1094,7 +1094,7 @@ class SET(_StringType):
                 return value
         return process
 
-class BOOLEAN(sqltypes.Boolean):
+class _MSBoolean(sqltypes.Boolean):
     """MySQL BOOLEAN type."""
 
     __visit_name__ = 'BOOLEAN'
@@ -1119,7 +1119,8 @@ class BOOLEAN(sqltypes.Boolean):
         return process
 
 # old names
-MSBoolean = BOOLEAN
+MSBoolean = _MSBoolean
+MSTime = _MSTime
 MSSet = SET
 MSEnum = ENUM
 MSLongBlob = LONGBLOB
@@ -1138,7 +1139,6 @@ MSTinyText = TINYTEXT
 MSText = TEXT
 MSYear = YEAR
 MSTimeStamp = TIMESTAMP
-MSTime = TIME
 MSBit = BIT
 MSSmallInteger = SMALLINT
 MSTinyInteger = TINYINT
@@ -1155,8 +1155,8 @@ colspecs = {
     sqltypes.Numeric: NUMERIC,
     sqltypes.Float: FLOAT,
     sqltypes.Binary: _BinaryType,
-    sqltypes.Boolean: BOOLEAN,
-    sqltypes.Time: TIME,
+    sqltypes.Boolean: _MSBoolean,
+    sqltypes.Time: _MSTime,
 }
 
 # Everything 3.23 through 5.1 excepting OpenGIS types.

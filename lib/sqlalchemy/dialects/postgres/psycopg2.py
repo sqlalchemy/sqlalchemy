@@ -44,7 +44,7 @@ from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgres.base import PGDialect, PGCompiler
 
-class PGNumeric(sqltypes.Numeric):
+class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
         return None
 
@@ -111,8 +111,8 @@ class Postgres_psycopg2(PGDialect):
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
-            sqltypes.Numeric : PGNumeric,
-            sqltypes.Float: sqltypes.Float,  # prevents PGNumeric from being used
+            sqltypes.Numeric : _PGNumeric,
+            sqltypes.Float: sqltypes.Float,  # prevents _PGNumeric from being used
         }
     )
 
