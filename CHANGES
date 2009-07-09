@@ -31,6 +31,9 @@ CHANGES
       wouldn't be deserialized correctly when the whole object
       was serialized.  [ticket:1426]
 
+    - Fixed bug whereby session.is_modified() would raise an exception
+      if any synonyms were in use.
+      
     - Fixed Query being able to join() from individual columns of
       a joined-table subclass entity, i.e.
       query(SubClass.foo, SubcClass.bar).join(<anything>).

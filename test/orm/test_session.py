@@ -747,6 +747,16 @@ class SessionTest(_fixtures.FixtureTest):
         assert s.is_modified(user)
         assert not s.is_modified(user, include_collections=False)
 
+    @testing.resolve_artifact_names
+    def test_is_modified_syn(self):
+        s = sessionmaker()()
+
+        mapper(User, users, properties={'uname':sa.orm.synonym('name')})
+        u = User(uname='fred')
+        assert s.is_modified(u)
+        s.add(u)
+        s.commit()
+        assert not s.is_modified(u)
 
     @testing.resolve_artifact_names
     def test_weak_ref(self):
