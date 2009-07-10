@@ -84,7 +84,11 @@ CHANGES
       incompatible change for any application that may have been
       using this feature, however the feature has never been
       documented.
-    
+
+- engine/pool
+   - Implemented recreate() for StaticPool.
+
+
 0.5.4p2
 =======
 

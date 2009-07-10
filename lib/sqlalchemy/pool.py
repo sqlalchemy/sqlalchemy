@@ -706,15 +706,16 @@ class NullPool(Pool):
 
     def dispose(self):
         pass
-        
+
+
 class StaticPool(Pool):
     """A Pool of exactly one connection, used for all requests.
-    
+
     Reconnect-related functions such as ``recycle`` and connection
     invalidation (which is also used to support auto-reconnect) are not
     currently supported by this Pool implementation but may be implemented
     in a future release.
-    
+
     """
 
     def __init__(self, creator, **params):
@@ -753,6 +754,15 @@ class StaticPool(Pool):
     def dispose(self):
         self._conn.close()
         self._conn = None
+
+    def recreate(self):
+        self.log("Pool recreating")
+        return self.__class__(creator=self._creator,
+                              recycle=self._recycle,
+                              use_threadlocal=self._use_threadlocal,
+                              reset_on_return=self._reset_on_return,
+                              echo=self.echo,
+                              listeners=self.listeners)
 
     def create_connection(self):
         return self._conn

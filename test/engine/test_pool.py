@@ -659,6 +659,12 @@ class NullPoolTest(PoolTestBase):
 
         c1 = p.connect()
         assert c1.connection.id != c_id
-    
-        
-    
+
+
+class StaticPoolTest(PoolTestBase):
+    def test_recreate(self):
+        dbapi = MockDBAPI()
+        creator = lambda: dbapi.connect('foo.db')
+        p = pool.StaticPool(creator)
+        p2 = p.recreate()
+        assert p._creator is p2._creator
