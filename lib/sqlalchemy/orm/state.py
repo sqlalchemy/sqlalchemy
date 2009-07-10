@@ -16,6 +16,7 @@ class InstanceState(object):
     load_path = ()
     insert_order = None
     mutable_dict = None
+    _strong_obj = None
     
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
@@ -139,7 +140,7 @@ class InstanceState(object):
         return d
         
     def __setstate__(self, state):
-        self.obj = weakref.ref(state['instance'])
+        self.obj = weakref.ref(state['instance'], self._cleanup)
         self.class_ = state['instance'].__class__
         self.manager = manager_of_class(self.class_)
 
@@ -150,6 +151,9 @@ class InstanceState(object):
         self.expired = state.get('expired', False)
         self.callables = state.get('callables', {})
         
+        if self.modified:
+            self._strong_obj = state['instance']
+            
         self.__dict__.update(
             (k, state[k]) for k in (
                 'key', 'load_options', 'expired_attributes', 'mutable_dict'
@@ -272,7 +276,8 @@ class InstanceState(object):
                 instance_dict._modified.add(self)
 
         self.modified = True
-        self._strong_obj = self.obj()
+        if not self._strong_obj:
+            self._strong_obj = self.obj()
 
     def commit(self, dict_, keys):
         """Commit attributes.

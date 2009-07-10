@@ -33,6 +33,10 @@ CHANGES
 
     - Fixed bug whereby session.is_modified() would raise an exception
       if any synonyms were in use.
+    
+    - Fixed potential memory leak whereby previously pickled objects
+      placed back in a session would not be fully garbage collected
+      unless the Session were explicitly closed out.
       
     - Fixed Query being able to join() from individual columns of
       a joined-table subclass entity, i.e.

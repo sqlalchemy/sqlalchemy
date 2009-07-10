@@ -789,6 +789,36 @@ class SessionTest(_fixtures.FixtureTest):
         user = s.query(User).one()
         assert user.name == 'fred'
         assert s.identity_map
+
+    @testing.resolve_artifact_names
+    def test_weak_ref_pickled(self):
+        s = create_session()
+        mapper(User, users)
+
+        s.add(User(name='ed'))
+        s.flush()
+        assert not s.dirty
+
+        user = s.query(User).one()
+        user.name = 'fred'
+        s.expunge(user)
+
+        u2 = pickle.loads(pickle.dumps(user))
+
+        del user
+        s.add(u2)
+        
+        del u2
+        gc.collect()
+        
+        assert len(s.identity_map) == 1
+        assert len(s.dirty) == 1
+        assert None not in s.dirty
+        s.flush()
+        gc.collect()
+        assert not s.dirty
+        
+        assert not s.identity_map
     
     @testing.resolve_artifact_names
     def test_weakref_with_cycles_o2m(self):
