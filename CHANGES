@@ -7,86 +7,89 @@ CHANGES
 0.5.5
 =======
 - general
-    - unit tests have been migrated from unittest to nose.
-      See README.unittests for information on how to run
-      the tests.  [ticket:970]
-      
+    - unit tests have been migrated from unittest to nose.  See
+      README.unittests for information on how to run the tests.
+      [ticket:970]
+
 - orm
-    - Session.mapper is now *deprecated*.   
-      Call session.add() if you'd like a free-standing object to be 
+    - Session.mapper is now *deprecated*.
+
+      Call session.add() if you'd like a free-standing object to be
       part of your session.  Otherwise, a DIY version of
-      Session.mapper is now documented at 
+      Session.mapper is now documented at
       http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
       The method will remain deprecated throughout 0.6.
-    
-    - Fixed bug introduced in 0.5.4 whereby Composite types
-      fail when default-holding columns are flushed.
-    
-    - Fixed a bug involving contains_eager(), which would apply itself
-      to a secondary (i.e. lazy) load in a particular rare case,
-      producing cartesian products.   improved the targeting
-      of query.options() on secondary loads overall [ticket:1461].
-        
-    - Fixed another 0.5.4 bug whereby mutable attributes (i.e. PickleType)
-      wouldn't be deserialized correctly when the whole object
-      was serialized.  [ticket:1426]
 
-    - Fixed bug whereby session.is_modified() would raise an exception
-      if any synonyms were in use.
-    
+    - Fixed bug introduced in 0.5.4 whereby Composite types fail
+      when default-holding columns are flushed.
+
+    - Fixed a bug involving contains_eager(), which would apply
+      itself to a secondary (i.e. lazy) load in a particular rare
+      case, producing cartesian products.  improved the targeting of
+      query.options() on secondary loads overall [ticket:1461].
+
+    - Fixed another 0.5.4 bug whereby mutable attributes
+      (i.e. PickleType) wouldn't be deserialized correctly when the
+      whole object was serialized.  [ticket:1426]
+
+    - Fixed bug whereby session.is_modified() would raise an
+      exception if any synonyms were in use.
+
     - Fixed potential memory leak whereby previously pickled objects
       placed back in a session would not be fully garbage collected
       unless the Session were explicitly closed out.
-      
-    - Fixed Query being able to join() from individual columns of
-      a joined-table subclass entity, i.e.
-      query(SubClass.foo, SubcClass.bar).join(<anything>).
-      In most cases, an error "Could not find a FROM clause to join 
-      from" would be raised. In a few others, the result would be 
-      returned in terms of the base class rather than the subclass - 
-      so applications which relied on this erroneous result need to be 
+
+    - Fixed Query being able to join() from individual columns of a
+      joined-table subclass entity, i.e.  query(SubClass.foo,
+      SubcClass.bar).join(<anything>).  In most cases, an error
+      "Could not find a FROM clause to join from" would be
+      raised. In a few others, the result would be returned in terms
+      of the base class rather than the subclass - so applications
+      which relied on this erroneous result need to be
       adjusted. [ticket:1431]
 
-    - Fixed bug whereby list-based attributes, like pickletype
-      and PGArray, failed to be merged() properly.
-      
-    - The "foreign_keys" argument of relation() will now propagate
-      automatically to the backref in the same way that
-      primaryjoin and secondaryjoin do.   For the extremely 
-      rare use case where the backref of a relation() has 
-      intentionally different "foreign_keys" configured, both sides
-      now need to be configured explicity (if they do in fact require
-      this setting, see the next note...).  
-      
-    - ...the only known (and really, really rare) use case where a 
-      different foreign_keys setting was used on the forwards/backwards 
-      side, a composite foreign key that partially points to its own 
-      columns, has been enhanced such that the fk->itself aspect of the 
-      relation won't be used to determine relation direction.
-     
-    - repaired non-working attributes.set_committed_value function.
+    - Fixed bug whereby list-based attributes, like pickletype and
+      PGArray, failed to be merged() properly.
 
-    - Trimmed the pickle format for InstanceState which should further
-      reduce the memory footprint of pickled instances.  The format
-      should be backwards compatible with that of 0.5.4 and previous.
-      
+    - The "foreign_keys" argument of relation() will now propagate
+      automatically to the backref in the same way that primaryjoin
+      and secondaryjoin do.  For the extremely rare use case where
+      the backref of a relation() has intentionally different
+      "foreign_keys" configured, both sides now need to be
+      configured explicity (if they do in fact require this setting,
+      see the next note...).
+
+    - ...the only known (and really, really rare) use case where a
+      different foreign_keys setting was used on the
+      forwards/backwards side, a composite foreign key that
+      partially points to its own columns, has been enhanced such
+      that the fk->itself aspect of the relation won't be used to
+      determine relation direction.
+
+    - Repaired non-working attributes.set_committed_value function.
+
+    - Trimmed the pickle format for InstanceState which should
+      further reduce the memory footprint of pickled instances.  The
+      format should be backwards compatible with that of 0.5.4 and
+      previous.
+
 - sql
     - Removed an obscure feature of execute() (including connection,
-      engine, Session) whereby a bindparam() construct can be sent as 
-      a key to the params dictionary.  This usage is undocumented
+      engine, Session) whereby a bindparam() construct can be sent
+      as a key to the params dictionary.  This usage is undocumented
       and is at the core of an issue whereby the bindparam() object
-      created implicitly by a text() construct may have the same 
-      hash value as a string placed in the params dictionary and
-      may result in an inappropriate match when computing the final
-      bind parameters.   Internal checks for this condition would
-      add significant latency to the critical task of parameter 
+      created implicitly by a text() construct may have the same
+      hash value as a string placed in the params dictionary and may
+      result in an inappropriate match when computing the final bind
+      parameters.  Internal checks for this condition would add
+      significant latency to the critical task of parameter
       rendering, so the behavior is removed.  This is a backwards
       incompatible change for any application that may have been
       using this feature, however the feature has never been
       documented.
 
 - engine/pool
-   - Implemented recreate() for StaticPool.
+    - Implemented recreate() for StaticPool.
 
 
 0.5.4p2
