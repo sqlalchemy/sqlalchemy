@@ -784,7 +784,12 @@ SQL functions are created using the ``func`` keyword, which generates functions 
     >>> print func.concat('x', 'y')
     concat(:param_1, :param_2)
     
-Certain functions are marked as "ANSI" functions, which mean they don't get the parenthesis added after them, such as CURRENT_TIMESTAMP:
+By "generates", we mean that **any** SQL function is created based on the word you choose::
+
+    >>> print func.xyz_my_goofy_function()
+    xyz_my_goofy_function()    
+    
+Certain function names are known by SQLAlchemy, allowing special behavioral rules to be applied.   Some for example are "ANSI" functions, which mean they don't get the parenthesis added after them, such as CURRENT_TIMESTAMP:
 
 .. sourcecode:: pycon+sql
 

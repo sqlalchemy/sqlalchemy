@@ -883,6 +883,7 @@ Multiple extensions will be chained together and processed in order; they are sp
 
 Relation Configuration 
 =======================
+
 Basic Relational Patterns 
 --------------------------
 
@@ -1339,6 +1340,8 @@ To enable the UPDATE after INSERT / UPDATE before DELETE behavior on ``relation(
 When a structure using the above mapping is flushed, the "widget" row will be INSERTed minus the "favorite_entry_id" value, then all the "entry" rows will be INSERTed referencing the parent "widget" row, and then an UPDATE statement will populate the "favorite_entry_id" column of the "widget" table (it's one row at a time for the time being).
 
 
+.. _advdatamapping_entitycollections:
+
 Alternate Collection Implementations 
 -------------------------------------
 
@@ -1354,7 +1357,7 @@ Mapping a one-to-many or many-to-many relationship results in a collection of va
     parent.children.append(Child())
     print parent.children[0]
 
-Collections are not limited to lists.  Sets, mutable sequences and almost any other Python object that can act as a container can be used in place of the default list.
+Collections are not limited to lists.  Sets, mutable sequences and almost any other Python object that can act as a container can be used in place of the default list, by specifying the ``collection_class`` option on ``relation()``.
 
 .. sourcecode:: python+sql
 
@@ -1368,7 +1371,6 @@ Collections are not limited to lists.  Sets, mutable sequences and almost any ot
     parent.children.add(child)
     assert child in parent.children
 
-.. _advdatamapping_entitycollections:
 
 Custom Collection Implementations 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1524,8 +1526,7 @@ The collections package provides additional decorators and support for authoring
 Configuring Loader Strategies: Lazy Loading, Eager Loading 
 -----------------------------------------------------------
 
-
-In the `datamapping`, we introduced the concept of **Eager Loading**.  We used an ``option`` in conjunction with the ``Query`` object in order to indicate that a relation should be loaded at the same time as the parent, within a single SQL query:
+In the :ref:`ormtutorial_toplevel`, we introduced the concept of **Eager Loading**.  We used an ``option`` in conjunction with the ``Query`` object in order to indicate that a relation should be loaded at the same time as the parent, within a single SQL query:
 
 .. sourcecode:: python+sql
 
@@ -1537,7 +1538,7 @@ In the `datamapping`, we introduced the concept of **Eager Loading**.  We used a
     WHERE users.name = ?
     ['jack']
 
-By default, all relations are **lazy loading**.  The scalar or collection attribute associated with a ``relation()`` contains a trigger which fires the first time the attribute is accessed, which issues a SQL call at that point:
+By default, all inter-object relationships are **lazy loading**.  The scalar or collection attribute associated with a ``relation()`` contains a trigger which fires the first time the attribute is accessed, which issues a SQL call at that point:
 
 .. sourcecode:: python+sql
 
