@@ -2276,14 +2276,11 @@ class MySQLTableDefinitionParser(object):
 
         # DEFAULT
         default = spec.get('default', None)
-        if default is not None and default != 'NULL':
-            # Defaults should be in the native charset for the moment
-            default = default.encode(charset)
-            if type_ != 'timestamp':
-                default = default[1:-1]
-        elif default == 'NULL':
+
+        if default == 'NULL':
             # eliminates the need to deal with this later.
             default = None
+            
         col_d = dict(name=name, type=type_instance, default=default)
         col_d.update(col_kw)
         state.columns.append(col_d)

@@ -287,7 +287,9 @@ class Inspector(object):
             
             colargs = []
             if col_d.get('default') is not None:
-                colargs.append(sa_schema.DefaultClause(col_d['default']))
+                # the "default" value is assumed to be a literal SQL expression,
+                # so is wrapped in text() so that no quoting occurs on re-issuance.
+                colargs.append(sa_schema.DefaultClause(sql.text(col_d['default'])))
                 
             if 'sequence' in col_d:
                 # TODO: whos using this ?

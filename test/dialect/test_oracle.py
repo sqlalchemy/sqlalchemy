@@ -296,17 +296,17 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         dialect = cx_oracle.dialect()
 
         for start, test in [
-            (DateTime(), cx_oracle.OracleDateTime),
-            (TIMESTAMP(), cx_oracle.OracleTimestamp),
-            (oracle.OracleRaw(), cx_oracle.cxOracleRaw),
+            (DateTime(), cx_oracle._OracleDateTime),
+            (TIMESTAMP(), cx_oracle._OracleTimestamp),
+            (oracle.OracleRaw(), cx_oracle._OracleRaw),
             (String(), String),
             (VARCHAR(), VARCHAR),
             (String(50), String),
             (Unicode(), Unicode),
-            (Text(), cx_oracle.OracleText),
-            (UnicodeText(), cx_oracle.OracleUnicodeText),
+            (Text(), cx_oracle._OracleText),
+            (UnicodeText(), cx_oracle._OracleUnicodeText),
             (NCHAR(), NCHAR),
-            (oracle.OracleRaw(50), oracle.OracleRaw),
+            (oracle.RAW(50), cx_oracle._OracleRaw),
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 

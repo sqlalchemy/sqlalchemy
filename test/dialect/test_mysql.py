@@ -186,7 +186,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
         for col in numeric_table.c:
             index = int(col.name[1:])
-            self.assert_eq(gen.get_column_specification(col),
+            eq_(gen.get_column_specification(col),
                            "%s %s" % (col.name, columns[index][3]))
             self.assert_(repr(col))
 
@@ -270,7 +270,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
         for col in charset_table.c:
             index = int(col.name[1:])
-            self.assert_eq(gen.get_column_specification(col),
+            eq_(gen.get_column_specification(col),
                            "%s %s" % (col.name, columns[index][3]))
             self.assert_(repr(col))
 
@@ -296,14 +296,14 @@ class TypesTest(TestBase, AssertsExecutionResults):
                           Column('b7', mysql.MSBit(63)),
                           Column('b8', mysql.MSBit(64)))
 
-        self.assert_eq(colspec(bit_table.c.b1), 'b1 BIT')
-        self.assert_eq(colspec(bit_table.c.b2), 'b2 BIT')
-        self.assert_eq(colspec(bit_table.c.b3), 'b3 BIT NOT NULL')
-        self.assert_eq(colspec(bit_table.c.b4), 'b4 BIT(1)')
-        self.assert_eq(colspec(bit_table.c.b5), 'b5 BIT(8)')
-        self.assert_eq(colspec(bit_table.c.b6), 'b6 BIT(32)')
-        self.assert_eq(colspec(bit_table.c.b7), 'b7 BIT(63)')
-        self.assert_eq(colspec(bit_table.c.b8), 'b8 BIT(64)')
+        eq_(colspec(bit_table.c.b1), 'b1 BIT')
+        eq_(colspec(bit_table.c.b2), 'b2 BIT')
+        eq_(colspec(bit_table.c.b3), 'b3 BIT NOT NULL')
+        eq_(colspec(bit_table.c.b4), 'b4 BIT(1)')
+        eq_(colspec(bit_table.c.b5), 'b5 BIT(8)')
+        eq_(colspec(bit_table.c.b6), 'b6 BIT(32)')
+        eq_(colspec(bit_table.c.b7), 'b7 BIT(63)')
+        eq_(colspec(bit_table.c.b8), 'b8 BIT(64)')
 
         for col in bit_table.c:
             self.assert_(repr(col))
@@ -354,10 +354,10 @@ class TypesTest(TestBase, AssertsExecutionResults):
                            Column('b3', mysql.MSTinyInteger(1)),
                            Column('b4', mysql.MSTinyInteger))
 
-        self.assert_eq(colspec(bool_table.c.b1), 'b1 BOOL')
-        self.assert_eq(colspec(bool_table.c.b2), 'b2 BOOL')
-        self.assert_eq(colspec(bool_table.c.b3), 'b3 TINYINT(1)')
-        self.assert_eq(colspec(bool_table.c.b4), 'b4 TINYINT')
+        eq_(colspec(bool_table.c.b1), 'b1 BOOL')
+        eq_(colspec(bool_table.c.b2), 'b2 BOOL')
+        eq_(colspec(bool_table.c.b3), 'b3 TINYINT(1)')
+        eq_(colspec(bool_table.c.b4), 'b4 TINYINT')
 
         for col in bool_table.c:
             self.assert_(repr(col))
@@ -391,7 +391,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             meta2 = MetaData(testing.db)
             # replace with reflected
             table = Table('mysql_bool', meta2, autoload=True)
-            self.assert_eq(colspec(table.c.b3), 'b3 BOOL')
+            eq_(colspec(table.c.b3), 'b3 BOOL')
 
             roundtrip([None, None, None, None])
             roundtrip([True, True, 1, 1], [True, True, True, 1])
@@ -434,7 +434,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                 t = Table('mysql_ts%s' % idx, meta,
                           Column('id', Integer, primary_key=True),
                           Column('t', *spec))
-                self.assert_eq(colspec(t.c.t), "t %s" % expected)
+                eq_(colspec(t.c.t), "t %s" % expected)
                 self.assert_(repr(t.c.t))
                 t.create()
                 r = Table('mysql_ts%s' % idx, MetaData(testing.db),
@@ -465,11 +465,11 @@ class TypesTest(TestBase, AssertsExecutionResults):
             for table in year_table, reflected:
                 table.insert(['1950', '50', None, 50, 1950]).execute()
                 row = list(table.select().execute())[0]
-                self.assert_eq(list(row), [1950, 2050, None, 50, 1950])
+                eq_(list(row), [1950, 2050, None, 50, 1950])
                 table.delete().execute()
                 self.assert_(colspec(table.c.y1).startswith('y1 YEAR'))
-                self.assert_eq(colspec(table.c.y4), 'y4 YEAR(2)')
-                self.assert_eq(colspec(table.c.y5), 'y5 YEAR(4)')
+                eq_(colspec(table.c.y4), 'y4 YEAR(2)')
+                eq_(colspec(table.c.y5), 'y5 YEAR(4)')
         finally:
             meta.drop_all()
 
@@ -483,9 +483,9 @@ class TypesTest(TestBase, AssertsExecutionResults):
                           Column('s2', mysql.MSSet("'a'")),
                           Column('s3', mysql.MSSet("'5'", "'7'", "'9'")))
 
-        self.assert_eq(colspec(set_table.c.s1), "s1 SET('dq','sq')")
-        self.assert_eq(colspec(set_table.c.s2), "s2 SET('a')")
-        self.assert_eq(colspec(set_table.c.s3), "s3 SET('5','7','9')")
+        eq_(colspec(set_table.c.s1), "s1 SET('dq','sq')")
+        eq_(colspec(set_table.c.s2), "s2 SET('a')")
+        eq_(colspec(set_table.c.s3), "s3 SET('5','7','9')")
 
         for col in set_table.c:
             self.assert_(repr(col))
@@ -546,17 +546,17 @@ class TypesTest(TestBase, AssertsExecutionResults):
             Column('e6', mysql.MSEnum("'a'", "b")),
             )
 
-        self.assert_eq(colspec(enum_table.c.e1),
+        eq_(colspec(enum_table.c.e1),
                        "e1 ENUM('a','b')")
-        self.assert_eq(colspec(enum_table.c.e2),
+        eq_(colspec(enum_table.c.e2),
                        "e2 ENUM('a','b') NOT NULL")
-        self.assert_eq(colspec(enum_table.c.e3),
+        eq_(colspec(enum_table.c.e3),
                        "e3 ENUM('a','b')")
-        self.assert_eq(colspec(enum_table.c.e4),
+        eq_(colspec(enum_table.c.e4),
                        "e4 ENUM('a','b') NOT NULL")
-        self.assert_eq(colspec(enum_table.c.e5),
+        eq_(colspec(enum_table.c.e5),
                        "e5 ENUM('a','b')")
-        self.assert_eq(colspec(enum_table.c.e6),
+        eq_(colspec(enum_table.c.e6),
                        "e6 ENUM('''a''','b')")
         enum_table.drop(checkfirst=True)
         enum_table.create()
@@ -606,7 +606,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                 e.append(tuple([convert(c) for c in row]))
             expected = e
 
-        self.assert_eq(res, expected)
+        eq_(res, expected)
         enum_table.drop()
 
     @testing.exclude('mysql', '<', (4,), "3.23 can't handle an ENUM of ''")
@@ -641,25 +641,52 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             enum_table.drop()
 
+
+
+class ReflectionTest(TestBase, AssertsExecutionResults):
+
+    __only_on__ = 'mysql'
+
     def test_default_reflection(self):
         """Test reflection of column defaults."""
 
         def_table = Table('mysql_def', MetaData(testing.db),
             Column('c1', String(10), DefaultClause('')),
             Column('c2', String(10), DefaultClause('0')),
-            Column('c3', String(10), DefaultClause('abc')))
+            Column('c3', String(10), DefaultClause('abc')),
+            Column('c4', TIMESTAMP, DefaultClause('2009-04-05 12:00:00')),
+            Column('c5', TIMESTAMP, ),
+            
+        )
 
+        def_table.create()
         try:
-            def_table.create()
             reflected = Table('mysql_def', MetaData(testing.db),
-                              autoload=True)
-            for t in def_table, reflected:
-                assert t.c.c1.server_default.arg == ''
-                assert t.c.c2.server_default.arg == '0'
-                assert t.c.c3.server_default.arg == 'abc'
+                          autoload=True)
         finally:
             def_table.drop()
+ 
+        assert def_table.c.c1.server_default.arg == ''
+        assert def_table.c.c2.server_default.arg == '0'
+        assert def_table.c.c3.server_default.arg == 'abc'
+        assert def_table.c.c4.server_default.arg == '2009-04-05 12:00:00'
 
+        assert str(reflected.c.c1.server_default.arg) == "''"
+        assert str(reflected.c.c2.server_default.arg) == "'0'"
+        assert str(reflected.c.c3.server_default.arg) == "'abc'"
+        assert str(reflected.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
+            
+        reflected.create()
+        try:
+            reflected2 = Table('mysql_def', MetaData(testing.db), autoload=True)
+        finally:
+            reflected.drop()
+
+        assert str(reflected2.c.c1.server_default.arg) == "''"
+        assert str(reflected2.c.c2.server_default.arg) == "'0'"
+        assert str(reflected2.c.c3.server_default.arg) == "'abc'"
+        assert str(reflected2.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
+            
     def test_reflection_on_include_columns(self):
         """Test reflection of include_columns to be sure they respect case."""
 
@@ -813,11 +840,6 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
-    def assert_eq(self, got, wanted):
-        if got != wanted:
-            print "Expected %s" % wanted
-            print "Found %s" % got
-        eq_(got, wanted)
 
 
 class SQLTest(TestBase, AssertsCompiledSQL):

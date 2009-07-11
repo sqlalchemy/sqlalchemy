@@ -63,7 +63,8 @@ working successfully but this should be regarded as an experimental feature.
 
 """
 
-from sqlalchemy.dialects.oracle.base import OracleDialect, RAW, _OracleBoolean, RESERVED_WORDS
+from sqlalchemy.dialects.oracle.base import OracleDialect, RESERVED_WORDS
+from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.engine.default import DefaultExecutionContext
 from sqlalchemy.engine import base
 from sqlalchemy import types as sqltypes, util
@@ -145,7 +146,7 @@ class _OracleBinary(_LOBMixin, sqltypes.Binary):
         return None
 
 
-class _OracleRaw(_LOBMixin, RAW):
+class _OracleRaw(_LOBMixin, oracle.RAW):
     pass
 
 
@@ -153,11 +154,11 @@ colspecs = {
     sqltypes.DateTime : _OracleDateTime,
     sqltypes.Date : _OracleDate,
     sqltypes.Binary : _OracleBinary,
-    sqltypes.Boolean : _OracleBoolean,
+    sqltypes.Boolean : oracle._OracleBoolean,
     sqltypes.Text : _OracleText,
     sqltypes.UnicodeText : _OracleUnicodeText,
     sqltypes.TIMESTAMP : _OracleTimestamp,
-    RAW: _OracleRaw,
+    oracle.RAW: _OracleRaw,
 }
 
 class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):
@@ -250,10 +251,10 @@ class Oracle_cx_oracle(OracleDialect):
             # etc. leads to a little too much magic, reflection doesn't know if it should
             # expect encoded strings or unicodes, etc.
             self.dbapi_type_map = {
-                self.dbapi.CLOB: OracleText(),
-                self.dbapi.NCLOB:OracleUnicodeText(),
-                self.dbapi.BLOB: OracleBinary(),
-                self.dbapi.BINARY: OracleRaw(),
+                self.dbapi.CLOB: oracle.CLOB(),
+                self.dbapi.NCLOB:oracle.NCLOB(),
+                self.dbapi.BLOB: oracle.BLOB(),
+                self.dbapi.BINARY: oracle.RAW(),
             }
             self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB"] if hasattr(self.dbapi, k)]
     

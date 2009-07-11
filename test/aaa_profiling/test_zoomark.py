@@ -319,7 +319,7 @@ class ZooMarkTest(TestBase):
         engine = create_engine('postgres:///', creator=player)
         metadata = MetaData(engine)
 
-    @profiling.function_call_count(3230, {'2.4': 1796})
+    @profiling.function_call_count(2991, {'2.4': 1796})
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
