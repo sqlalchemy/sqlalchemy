@@ -638,7 +638,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             select([table1.alias('foo')])
             ,"SELECT foo.myid, foo.name, foo.description FROM mytable AS foo")
 
-        for dialect in (firebird.dialect(), oracle.dialect()):
+        for dialect in (oracle.dialect(),):
             self.assert_compile(
                 select([table1.alias('foo')])
                 ,"SELECT foo.myid, foo.name, foo.description FROM mytable foo"
