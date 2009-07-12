@@ -1473,10 +1473,18 @@ class Session(object):
             state = attributes.instance_state(instance)
         except exc.NO_STATE:
             raise exc.UnmappedInstanceError(instance)
+        dict_ = state.dict
         for attr in state.manager.attributes:
-            if not include_collections and hasattr(attr.impl, 'get_collection'):
+            if \
+                (
+                    not include_collections and 
+                    hasattr(attr.impl, 'get_collection')
+                ) or not hasattr(attr.impl, 'get_history'):
                 continue
-            (added, unchanged, deleted) = attr.get_history(instance, passive=passive)
+                
+            (added, unchanged, deleted) = \
+                    attr.impl.get_history(state, dict_, passive=passive)
+                                            
             if added or deleted:
                 return True
         return False

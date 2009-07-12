@@ -134,7 +134,7 @@ The ``close()`` method will return the connection to the pool, and the
 ``cursor()`` method will return a proxied cursor object.  Both the
 connection proxy and the cursor proxy will also return the underlying
 connection to the pool after they have both been garbage collected,
-which is detected via the ``__del__()`` method.
+which is detected via weakref callbacks  (``__del__`` is not used).
 
 Additionally, when connections are returned to the pool, a
 ``rollback()`` is issued on the connection unconditionally.  This is

@@ -776,11 +776,16 @@ class EagerLoader(AbstractRelationLoader):
 log.class_logger(EagerLoader)
 
 class EagerLazyOption(StrategizedOption):
-    def __init__(self, key, lazy=True, chained=False, mapper=None):
+    def __init__(self, key, lazy=True, chained=False, mapper=None, _only_on_lead=False):
         super(EagerLazyOption, self).__init__(key, mapper)
         self.lazy = lazy
         self.chained = chained
+        self._only_on_lead = _only_on_lead
         
+    def process_query_conditionally(self, query):
+        if not self._only_on_lead:
+            StrategizedOption.process_query_conditionally(self, query)
+            
     def is_chained(self):
         return not self.lazy and self.chained
         
@@ -800,6 +805,10 @@ class LoadEagerFromAliasOption(PropertyOption):
                 m, alias, is_aliased_class = mapperutil._entity_info(alias)
         self.alias = alias
 
+    def process_query_conditionally(self, query):
+        # dont run this option on a secondary load
+        pass
+        
     def process_query_property(self, query, paths):
         if self.alias:
             if isinstance(self.alias, basestring):
