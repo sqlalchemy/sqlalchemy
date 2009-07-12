@@ -16,7 +16,8 @@ from test.orm import _fixtures
 from test.orm._fixtures import keywords, addresses, Base, Keyword, FixtureTest, \
            Dingaling, item_keywords, dingalings, User, items,\
            orders, Address, users, nodes, \
-            order_items, Item, Order, Node
+            order_items, Item, Order, Node, \
+            composite_pk_table, CompositePk
 
 from test.orm import _base
 
@@ -53,6 +54,8 @@ class QueryTest(_fixtures.FixtureTest):
             )
         })
 
+        mapper(CompositePk, composite_pk_table)
+
         compile_mappers()
 
 class RowTupleTest(QueryTest):
@@ -77,6 +80,17 @@ class GetTest(QueryTest):
         s.expunge_all()
         u2 = s.query(User).get(7)
         assert u is not u2
+
+    def test_get_composite_pk(self):
+        s = create_session()
+        assert s.query(CompositePk).get((100,100)) is None
+        one_two = s.query(CompositePk).get((1,2))
+        assert one_two.i == 1
+        assert one_two.j == 2
+        assert one_two.k == 3
+        q = s.query(CompositePk)
+        assert_raises(sa_exc.InvalidRequestError, q.get, 7)        
+        
 
     def test_no_criterion(self):
         """test that get()/load() does not use preexisting filter/etc. criterion"""

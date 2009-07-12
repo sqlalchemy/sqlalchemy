@@ -165,6 +165,18 @@ nodes = fixture_table(
     ('id', 'parent_id', 'data')
 )
 
+composite_pk_table = fixture_table(
+    Table('composite_pk_table', fixture_metadata,
+        Column('i', Integer, primary_key=True),
+        Column('j', Integer, primary_key=True),
+        Column('k', Integer, nullable=False),                    
+    ),
+    ('i', 'j', 'k'),
+    (1, 2, 3),
+    (2, 1, 4),
+    (1, 1, 5),
+    (2, 2,6))
+
 
 def _load_fixtures():
     for table in fixture_metadata.sorted_tables:
@@ -202,6 +214,9 @@ class Dingaling(Base):
 
 
 class Node(Base):
+    pass
+
+class CompositePk(Base):
     pass
     
 class FixtureTest(_base.MappedTest):

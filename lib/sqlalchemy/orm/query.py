@@ -972,7 +972,8 @@ class Query(object):
             # TODO:
             # this provides one kind of "backwards join"
             # tested in test/orm/query.py.
-            # remove this in 0.6
+            # removal of this has been considered, but maybe not
+            # see [ticket:1445]
             if not clause:
                 if isinstance(onclause, interfaces.PropComparator):
                     clause = onclause.__clause_element__()
@@ -1414,7 +1415,7 @@ class Query(object):
                     params[_get_params[primary_key].key] = ident[i]
                 except IndexError:
                     raise sa_exc.InvalidRequestError("Could not find enough values to formulate primary key for "
-                        "query.get(); primary key columns are %s" % ', '.join("'%s'" % c for c in q.mapper.primary_key))
+                        "query.get(); primary key columns are %s" % ', '.join("'%s'" % c for c in mapper.primary_key))
             q._params = params
 
         if lockmode is not None:

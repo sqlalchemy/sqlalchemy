@@ -12,45 +12,6 @@ CHANGES
       [ticket:970]
 
 - orm
-    - Session.mapper is now *deprecated*.
-
-      Call session.add() if you'd like a free-standing object to be
-      part of your session.  Otherwise, a DIY version of
-      Session.mapper is now documented at
-      http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
-      The method will remain deprecated throughout 0.6.
-
-    - Fixed bug introduced in 0.5.4 whereby Composite types fail
-      when default-holding columns are flushed.
-
-    - Fixed a bug involving contains_eager(), which would apply
-      itself to a secondary (i.e. lazy) load in a particular rare
-      case, producing cartesian products.  improved the targeting of
-      query.options() on secondary loads overall [ticket:1461].
-
-    - Fixed another 0.5.4 bug whereby mutable attributes
-      (i.e. PickleType) wouldn't be deserialized correctly when the
-      whole object was serialized.  [ticket:1426]
-
-    - Fixed bug whereby session.is_modified() would raise an
-      exception if any synonyms were in use.
-
-    - Fixed potential memory leak whereby previously pickled objects
-      placed back in a session would not be fully garbage collected
-      unless the Session were explicitly closed out.
-
-    - Fixed Query being able to join() from individual columns of a
-      joined-table subclass entity, i.e.  query(SubClass.foo,
-      SubcClass.bar).join(<anything>).  In most cases, an error
-      "Could not find a FROM clause to join from" would be
-      raised. In a few others, the result would be returned in terms
-      of the base class rather than the subclass - so applications
-      which relied on this erroneous result need to be
-      adjusted. [ticket:1431]
-
-    - Fixed bug whereby list-based attributes, like pickletype and
-      PGArray, failed to be merged() properly.
-
     - The "foreign_keys" argument of relation() will now propagate
       automatically to the backref in the same way that primaryjoin
       and secondaryjoin do.  For the extremely rare use case where
@@ -66,12 +27,58 @@ CHANGES
       that the fk->itself aspect of the relation won't be used to
       determine relation direction.
 
+    - Session.mapper is now *deprecated*.
+
+      Call session.add() if you'd like a free-standing object to be
+      part of your session.  Otherwise, a DIY version of
+      Session.mapper is now documented at
+      http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
+      The method will remain deprecated throughout 0.6.
+
+    - Fixed Query being able to join() from individual columns of a
+      joined-table subclass entity, i.e.  query(SubClass.foo,
+      SubcClass.bar).join(<anything>).  In most cases, an error
+      "Could not find a FROM clause to join from" would be
+      raised. In a few others, the result would be returned in terms
+      of the base class rather than the subclass - so applications
+      which relied on this erroneous result need to be
+      adjusted. [ticket:1431]
+
+    - Fixed a bug involving contains_eager(), which would apply
+      itself to a secondary (i.e. lazy) load in a particular rare
+      case, producing cartesian products.  improved the targeting of
+      query.options() on secondary loads overall [ticket:1461].
+
+    - Fixed bug introduced in 0.5.4 whereby Composite types fail
+      when default-holding columns are flushed.
+
+    - Fixed another 0.5.4 bug whereby mutable attributes
+      (i.e. PickleType) wouldn't be deserialized correctly when the
+      whole object was serialized.  [ticket:1426]
+
+    - Fixed bug whereby session.is_modified() would raise an
+      exception if any synonyms were in use.
+
+    - Fixed potential memory leak whereby previously pickled objects
+      placed back in a session would not be fully garbage collected
+      unless the Session were explicitly closed out.
+
+    - Fixed bug whereby list-based attributes, like pickletype and
+      PGArray, failed to be merged() properly.
+
     - Repaired non-working attributes.set_committed_value function.
 
     - Trimmed the pickle format for InstanceState which should
       further reduce the memory footprint of pickled instances.  The
       format should be backwards compatible with that of 0.5.4 and
       previous.
+
+    - sqlalchemy.orm.join and sqlalchemy.orm.outerjoin are now
+      added to __all__ in sqlalchemy.orm.*. [ticket:1463]
+
+    - Fixed bug where Query exception raise would fail when
+      a too-short composite primary key value were passed to
+      get().  [ticket:1458]
 
 - sql
     - Removed an obscure feature of execute() (including connection,
