@@ -252,21 +252,24 @@ The solution is to use proper cascading::
 Flushing
 --------
 
-When the ``Session`` is used with its default configuration, the flush step is nearly always done transparently.  Specifically, the flush occurs before any individual ``Query`` is issued, as well as within the ``commit()`` call before the transaction is committed.  It also occurs before a SAVEPOINT is issued when ``begin_nested()`` is used.  The "flush-on-Query" aspect of the behavior can be disabled by constructing ``sessionmaker()`` with the flag ``autoflush=False``.
+When the ``Session`` is used with its default configuration, the flush step is nearly always done transparently.  Specifically, the flush occurs before any individual ``Query`` is issued, as well as within the ``commit()`` call before the transaction is committed.  It also occurs before a SAVEPOINT is issued when ``begin_nested()`` is used.  
 
 Regardless of the autoflush setting, a flush can always be forced by issuing ``flush()``::
 
     session.flush()
     
-``flush()`` also supports the ability to flush a subset of objects which are present in the session, by passing a list of objects::
+The "flush-on-Query" aspect of the behavior can be disabled by constructing ``sessionmaker()`` with the flag ``autoflush=False``::
 
-    # saves only user1 and address2.  all other modified
-    # objects remain present in the session.
-    session.flush([user1, address2])
+    Session = sessionmaker(autoflush=False)
     
-This second form of flush should be used carefully as it currently does not cascade, meaning that it will not necessarily affect other objects directly associated with the objects given.
+Additionally, autoflush can be temporarily disabled by setting the ``autoflush`` flag at any time::
 
-The flush process *always* occurs within a transaction, even if the ``Session`` has been configured with ``autocommit=True``, a setting that disables the session's persistent transactional state.  If no transaction is present, ``flush()`` creates its own transaction and commits it.  Any failures during flush will always result in a rollback of whatever transaction is present.
+    mysession = Session()
+    mysession.autoflush = False
+
+Some autoflush-disable recipes are available at `DisableAutoFlush <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DisableAutoflush>`_.
+
+The flush process *always* occurs within a transaction, even if the ``Session`` has been configured with ``autocommit=True``, a setting that disables the session's persistent transactional state.  If no transaction is present, ``flush()`` creates its own transaction and commits it.  Any failures during flush will always result in a rollback of whatever transaction is present.  If the Session is not in ``autocommit=True`` mode, an explicit call to ``rollback()`` is required after a flush fails, even though the underlying transaction will have been rolled back already - this is so that the overall nesting pattern of so-called "subtransactions" is consistently maintained.
 
 Committing
 ----------
