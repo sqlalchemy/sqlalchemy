@@ -76,7 +76,13 @@ class CompileTest(TestBase, AssertsCompiledSQL):
     def test_alias(self):
         t = table('sometable', column('col1'), column('col2'))
         s = select([t.alias()])
-        self.assert_compile(s, "SELECT sometable_1.col1, sometable_1.col2 FROM sometable sometable_1")
+        self.assert_compile(s, "SELECT sometable_1.col1, sometable_1.col2 FROM sometable AS sometable_1")
+
+        dialect = firebird.FBDialect()
+        dialect._version_two = False
+        self.assert_compile(s, "SELECT sometable_1.col1, sometable_1.col2 FROM sometable sometable_1",
+            dialect = dialect
+        )
 
     def test_function(self):
         self.assert_compile(func.foo(1, 2), "foo(:foo_1, :foo_2)")
