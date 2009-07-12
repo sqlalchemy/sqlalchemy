@@ -90,11 +90,26 @@
     - func.char_length is a generic function for LENGTH
     - ForeignKey() which includes onupdate=<value> will emit a warning, not 
       emit ON UPDATE CASCADE which is unsupported by oracle
+    - the keys() method of RowProxy() now returns the result column names *normalized*
+      to be SQLAlchemy case insensitive names.  This means they will be lower case 
+      for case insensitive names, whereas the DBAPI would normally return them 
+      as UPPERCASE names.  This allows row keys() to be compatible with further
+      SQLAlchemy operations.
+
+- firebird
+    - the keys() method of RowProxy() now returns the result column names *normalized*
+      to be SQLAlchemy case insensitive names. This means they will be lower case 
+      for case insensitive names, whereas the DBAPI would normally return them 
+      as UPPERCASE names.  This allows row keys() to be compatible with further
+      SQLAlchemy operations.
       
 - new dialects
-    - pg8000
-    - pyodbc+mysql
-    
+    - postgres+pg8000
+    - postgres+pypostgresql (partial)
+    - postgres+zxjdbc
+    - mysql+pyodbc
+    - mysql+zxjdbc
+
 - mssql
     - the "has_window_funcs" flag is removed.  LIMIT/OFFSET usage will use ROW NUMBER as always,
       and if on an older version of SQL Server, the operation fails.  The behavior is exactly

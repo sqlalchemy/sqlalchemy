@@ -516,35 +516,6 @@ class SQLiteDialect(default.DefaultDialect):
                 cols.append(row[2])
         return indexes
 
-    def get_unique_indexes(self, connection, table_name, schema=None, **kw):
-        quote = self.identifier_preparer.quote_identifier
-        if schema is not None:
-            pragma = "PRAGMA %s." % quote(schema)
-        else:
-            pragma = "PRAGMA "
-        qtable = quote(table_name)
-        c = _pragma_cursor(connection.execute("%sindex_list(%s)" % (pragma, qtable)))
-        unique_indexes = []
-        while True:
-            row = c.fetchone()
-            if row is None:
-                break
-            if (row[2] == 1):
-                unique_indexes.append(row[1])
-        # loop thru unique indexes for one that includes the primary key
-        for idx in unique_indexes:
-            c = _pragma_cursor(connection.execute("%sindex_info(%s)" % (pragma, idx)))
-            cols = []
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                cols.append(row[2])
-        return unique_indexes
-
-    def reflecttable(self, connection, table, include_columns):
-        insp = reflection.Inspector.from_engine(connection)
-        return insp.reflecttable(table, include_columns)
 
 def _pragma_cursor(cursor):
     """work around SQLite issue whereby cursor.description is blank when PRAGMA returns no rows."""

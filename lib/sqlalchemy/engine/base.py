@@ -289,6 +289,23 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def normalize_name(self, name):
+        """convert the given name to lowercase if it is detected as case insensitive.
+    
+        this method is only used if the dialect defines requires_name_normalize=True.
+
+        """
+        raise NotImplementedError()
+
+    def denormalize_name(self, name):
+        """convert the given name to a case insensitive identifier for the backend 
+        if it is an all-lowercase name.
+        
+        this method is only used if the dialect defines requires_name_normalize=True.
+
+        """
+        raise NotImplementedError()
+        
     def has_table(self, connection, table_name, schema=None):
         """Check the existence of a particular table in the database.
 
@@ -1636,7 +1653,10 @@ class ResultProxy(object):
             if origname:
                 if self._props.setdefault(origname.lower(), rec) is not rec:
                     self._props[origname.lower()] = (type_, self.__ambiguous_processor(origname), 0)
-
+            
+            if self.dialect.requires_name_normalize:
+                colname = self.dialect.normalize_name(colname)
+                
             self.keys.append(colname)
             self._props[i] = rec
             if obj:

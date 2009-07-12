@@ -923,7 +923,7 @@ class SMALLINT(SmallInteger):
     __visit_name__ = 'SMALLINT'
 
 
-class BIGINT(SmallInteger):
+class BIGINT(BigInteger):
     """The SQL BIGINT type."""
 
     __visit_name__ = 'BIGINT'

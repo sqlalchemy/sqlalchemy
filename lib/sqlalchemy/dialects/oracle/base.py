@@ -458,6 +458,7 @@ class OracleDialect(default.DefaultDialect):
     default_paramstyle = 'named'
     colspecs = colspecs
     ischema_names = ischema_names
+    requires_name_normalize = True
     
     supports_default_values = False
     supports_empty_insert = False
@@ -482,16 +483,16 @@ class OracleDialect(default.DefaultDialect):
     def has_table(self, connection, table_name, schema=None):
         if not schema:
             schema = self.get_default_schema_name(connection)
-        cursor = connection.execute("""select table_name from all_tables where table_name=:name and owner=:schema_name""", {'name':self._denormalize_name(table_name), 'schema_name':self._denormalize_name(schema)})
+        cursor = connection.execute("""select table_name from all_tables where table_name=:name and owner=:schema_name""", {'name':self.denormalize_name(table_name), 'schema_name':self.denormalize_name(schema)})
         return cursor.fetchone() is not None
 
     def has_sequence(self, connection, sequence_name, schema=None):
         if not schema:
             schema = self.get_default_schema_name(connection)
-        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name and sequence_owner=:schema_name""", {'name':self._denormalize_name(sequence_name), 'schema_name':self._denormalize_name(schema)})
+        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name and sequence_owner=:schema_name""", {'name':self.denormalize_name(sequence_name), 'schema_name':self.denormalize_name(schema)})
         return cursor.fetchone() is not None
 
-    def _normalize_name(self, name):
+    def normalize_name(self, name):
         if name is None:
             return None
         elif name.upper() == name and not self.identifier_preparer._requires_quotes(name.lower().decode(self.encoding)):
@@ -499,7 +500,7 @@ class OracleDialect(default.DefaultDialect):
         else:
             return name.decode(self.encoding)
 
-    def _denormalize_name(self, name):
+    def denormalize_name(self, name):
         if name is None:
             return None
         elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
@@ -508,7 +509,7 @@ class OracleDialect(default.DefaultDialect):
             return name.encode(self.encoding)
 
     def get_default_schema_name(self, connection):
-        return self._normalize_name(connection.execute('SELECT USER FROM DUAL').scalar())
+        return self.normalize_name(connection.execute('SELECT USER FROM DUAL').scalar())
 
     def table_names(self, connection, schema):
         # note that table_names() isnt loading DBLINKed or synonym'ed tables
@@ -517,8 +518,8 @@ class OracleDialect(default.DefaultDialect):
             cursor = connection.execute(s)
         else:
             s = "select table_name from all_tables where nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM','SYSAUX') AND OWNER = :owner"
-            cursor = connection.execute(s, {'owner': self._denormalize_name(schema)})
-        return [self._normalize_name(row[0]) for row in cursor]
+            cursor = connection.execute(s, {'owner': self.denormalize_name(schema)})
+        return [self.normalize_name(row[0]) for row in cursor]
 
     def _resolve_synonym(self, connection, desired_owner=None, desired_synonym=None, desired_table=None):
         """search for a local synonym matching the given desired owner/name.
@@ -567,35 +568,35 @@ class OracleDialect(default.DefaultDialect):
                                  resolve_synonyms=False, dblink='', **kw):
 
         if resolve_synonyms:
-            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self._denormalize_name(schema), desired_synonym=self._denormalize_name(table_name))
+            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self.denormalize_name(schema), desired_synonym=self.denormalize_name(table_name))
         else:
             actual_name, owner, dblink, synonym = None, None, None, None
         if not actual_name:
-            actual_name = self._denormalize_name(table_name)
+            actual_name = self.denormalize_name(table_name)
         if not dblink:
             dblink = ''
         if not owner:
-            owner = self._denormalize_name(schema or self.get_default_schema_name(connection))
+            owner = self.denormalize_name(schema or self.get_default_schema_name(connection))
         return (actual_name, owner, dblink, synonym)
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):
         s = "SELECT username FROM all_users ORDER BY username"
         cursor = connection.execute(s,)
-        return [self._normalize_name(row[0]) for row in cursor]
+        return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
-        schema = self._denormalize_name(schema or self.get_default_schema_name(connection))
+        schema = self.denormalize_name(schema or self.get_default_schema_name(connection))
         return self.table_names(connection, schema)
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
-        schema = self._denormalize_name(schema or self.get_default_schema_name(connection))
+        schema = self.denormalize_name(schema or self.get_default_schema_name(connection))
         s = "select view_name from all_views where OWNER = :owner"
         cursor = connection.execute(s,
-                {'owner':self._denormalize_name(schema)})
-        return [self._normalize_name(row[0]) for row in cursor]
+                {'owner':self.denormalize_name(schema)})
+        return [self.normalize_name(row[0]) for row in cursor]
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
@@ -627,7 +628,7 @@ class OracleDialect(default.DefaultDialect):
         for row in c:
 
             (colname, coltype, length, precision, scale, nullable, default) = \
-                (self._normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
+                (self.normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
             # INTEGER if the scale is 0 and precision is null
             # NUMBER if the scale and precision are both null
@@ -684,8 +685,8 @@ class OracleDialect(default.DefaultDialect):
         ORDER BY a.INDEX_NAME, a.COLUMN_POSITION
         """ % dict(dblink=dblink)
         rp = connection.execute(q,
-            dict(table_name=self._denormalize_name(table_name),
-                 schema=self._denormalize_name(schema)))
+            dict(table_name=self.denormalize_name(table_name),
+                 schema=self.denormalize_name(schema)))
         indexes = []
         last_index_name = None
         pkeys = self.get_primary_keys(connection, table_name, schema,
@@ -698,10 +699,10 @@ class OracleDialect(default.DefaultDialect):
             if rset.column_name in [s.upper() for s in pkeys]:
                 continue
             if rset.index_name != last_index_name:
-                index = dict(name=self._normalize_name(rset.index_name), column_names=[])
+                index = dict(name=self.normalize_name(rset.index_name), column_names=[])
                 indexes.append(index)
             index['unique'] = uniqueness.get(rset.uniqueness, False)
-            index['column_names'].append(self._normalize_name(rset.column_name))
+            index['column_names'].append(self.normalize_name(rset.column_name))
             last_index_name = rset.index_name
         return indexes
 
@@ -763,7 +764,7 @@ class OracleDialect(default.DefaultDialect):
         for row in constraint_data:
             #print "ROW:" , row
             (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = \
-                row[0:2] + tuple([self._normalize_name(x) for x in row[2:6]])
+                row[0:2] + tuple([self.normalize_name(x) for x in row[2:6]])
             if cons_type == 'P':
                 pkeys.append(local_column)
         return pkeys
@@ -807,7 +808,7 @@ class OracleDialect(default.DefaultDialect):
         
         for row in constraint_data:
             (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = \
-                    row[0:2] + tuple([self._normalize_name(x) for x in row[2:6]])
+                    row[0:2] + tuple([self.normalize_name(x) for x in row[2:6]])
 
             if cons_type == 'R':
                 if remote_table is None:
@@ -827,16 +828,16 @@ class OracleDialect(default.DefaultDialect):
                         ref_remote_name, ref_remote_owner, ref_dblink, ref_synonym = \
                                 self._resolve_synonym(
                                     connection, 
-                                    desired_owner=self._denormalize_name(remote_owner), 
-                                    desired_table=self._denormalize_name(remote_table)
+                                    desired_owner=self.denormalize_name(remote_owner), 
+                                    desired_table=self.denormalize_name(remote_table)
                                 )
                         if ref_synonym:
-                            remote_table = self._normalize_name(ref_synonym)
-                            remote_owner = self._normalize_name(ref_remote_owner)
+                            remote_table = self.normalize_name(ref_synonym)
+                            remote_owner = self.normalize_name(ref_remote_owner)
                     
                     rec['referred_table'] = remote_table
                     
-                    if requested_schema is not None or self._denormalize_name(remote_owner) != schema:
+                    if requested_schema is not None or self.denormalize_name(remote_owner) != schema:
                         rec['referred_schema'] = remote_owner
                 
                 local_cols.append(local_column)
@@ -864,9 +865,6 @@ class OracleDialect(default.DefaultDialect):
         else:
             return None
 
-    def reflecttable(self, connection, table, include_columns):
-        insp = reflection.Inspector.from_engine(connection)
-        return insp.reflecttable(table, include_columns)
 
 
 class _OuterJoinColumn(sql.ClauseElement):

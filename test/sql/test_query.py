@@ -149,7 +149,7 @@ class QueryTest(TestBase):
             l.append(row)
         self.assert_(len(l) == 3)
 
-    @testing.fails_on('firebird', 'Data type unknown')
+    @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
     @testing.requires.subqueries
     def test_anonymous_rows(self):
         users.insert().execute(
@@ -163,6 +163,7 @@ class QueryTest(TestBase):
             assert row['anon_1'] == 8
             assert row['anon_2'] == 10
 
+    @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
     def test_order_by_label(self):
         """test that a label within an ORDER BY works on each backend.
         
@@ -177,6 +178,11 @@ class QueryTest(TestBase):
         )
         
         concat = ("test: " + users.c.user_name).label('thedata')
+        eq_(
+            select([concat]).order_by(concat).execute().fetchall(),
+            [("test: ed",), ("test: fred",), ("test: jack",)]
+        )
+        
         eq_(
             select([concat]).order_by(concat).execute().fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)]
@@ -209,8 +215,7 @@ class QueryTest(TestBase):
         self.assert_(not (rp != equal))
         self.assert_(not (equal != equal))
 
-    @testing.fails_on('mssql', 'No support for boolean logic in column select.')
-    @testing.fails_on('oracle', 'FIXME: unknown')
+    @testing.requires.boolean_col_expressions
     def test_or_and_as_columns(self):
         true, false = literal(True), literal(False)
         
@@ -255,6 +260,7 @@ class QueryTest(TestBase):
             eq_(expr.execute().fetchall(), result)
     
 
+    @testing.fails_on("firebird", "see dialect.test_firebird:MiscTest.test_percents_in_text")
     @testing.fails_on("oracle", "neither % nor %% are accepted")
     @testing.fails_on("+pg8000", "can't interpret result column from '%%'")
     @testing.emits_warning('.*now automatically escapes.*')
@@ -475,15 +481,25 @@ class QueryTest(TestBase):
         self.assert_(r['query_users.user_id']) == 1
         self.assert_(r['query_users.user_name']) == "john"
 
-    @testing.fails_on('oracle', 'oracle result keys() are all uppercase, not getting into this.')
+    def test_result_case_sensitivity(self):
+        """test name normalization for result sets."""
+        
+        row = testing.db.execute(
+            select([
+                literal_column("1").label("case_insensitive"),
+                literal_column("2").label("CaseSensitive")
+            ])
+        ).first()
+        
+        assert row.keys() == ["case_insensitive", "CaseSensitive"]
+
     def test_row_as_args(self):
         users.insert().execute(user_id=1, user_name='john')
         r = users.select(users.c.user_id==1).execute().first()
         users.delete().execute()
         users.insert().execute(r)
         eq_(users.select().execute().fetchall(), [(1, 'john')])
-    
-    @testing.fails_on('oracle', 'oracle result keys() are all uppercase, not getting into this.')
+
     def test_result_as_args(self):
         users.insert().execute([dict(user_id=1, user_name='john'), dict(user_id=2, user_name='ed')])
         r = users.select().execute()
@@ -620,13 +636,13 @@ class QueryTest(TestBase):
         # Null values are not outside any set
         assert len(r) == 0
 
-        u = bindparam('search_key')
+    @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
+    def test_bind_in(self):
+        users.insert().execute(user_id = 7, user_name = 'jack')
+        users.insert().execute(user_id = 8, user_name = 'fred')
+        users.insert().execute(user_id = 9, user_name = None)
 
-        s = users.select(u.in_([]))
-        r = s.execute(search_key='john').fetchall()
-        assert len(r) == 0
-        r = s.execute(search_key=None).fetchall()
-        assert len(r) == 0
+        u = bindparam('search_key')
 
         s = users.select(not_(u.in_([])))
         r = s.execute(search_key='john').fetchall()
@@ -881,6 +897,7 @@ class CompoundTest(TestBase):
         found2 = self._fetchall_sorted(u.alias('bar').select().execute())
         eq_(found2, wanted)
 
+    @testing.fails_on('firebird', "doesn't like ORDER BY with UNIONs")
     def test_union_ordered(self):
         (s1, s2) = (
             select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
@@ -894,6 +911,7 @@ class CompoundTest(TestBase):
                   ('ccc', 'aaa')]
         eq_(u.execute().fetchall(), wanted)
 
+    @testing.fails_on('firebird', "doesn't like ORDER BY with UNIONs")
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.requires.subqueries
     def test_union_ordered_alias(self):
@@ -910,6 +928,7 @@ class CompoundTest(TestBase):
         eq_(u.alias('bar').select().execute().fetchall(), wanted)
 
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('firebird', "has trouble extracting anonymous column from union subquery")
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.fails_on('sqlite', 'FIXME: unknown')
     def test_union_all(self):
@@ -919,6 +938,29 @@ class CompoundTest(TestBase):
                 select([t1.c.col3]),
                 select([t1.c.col3]),
             )
+        )
+
+        wanted = [('aaa',),('aaa',),('bbb',), ('bbb',), ('ccc',),('ccc',)]
+        found1 = self._fetchall_sorted(e.execute())
+        eq_(found1, wanted)
+
+        found2 = self._fetchall_sorted(e.alias('foo').select().execute())
+        eq_(found2, wanted)
+
+    def test_union_all_lightweight(self):
+        """like test_union_all, but breaks the sub-union into 
+        a subquery with an explicit column reference on the outside,
+        more palatable to a wider variety of engines.
+        
+        """
+        u = union(
+            select([t1.c.col3]),
+            select([t1.c.col3]),
+        ).alias()
+        
+        e = union_all(
+            select([t1.c.col3]),
+            select([u.c.col3])
         )
 
         wanted = [('aaa',),('aaa',),('bbb',), ('bbb',), ('ccc',),('ccc',)]

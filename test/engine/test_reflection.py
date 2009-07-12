@@ -598,7 +598,6 @@ class ReflectionTest(TestBase, ComparesTables):
             m9.reflect()
             self.assert_(not m9.tables)
 
-    @testing.fails_on_everything_except('postgres', 'mysql', 'sqlite', 'oracle', 'mssql')
     def test_index_reflection(self):
         m1 = MetaData(testing.db)
         t1 = Table('party', m1,
@@ -907,7 +906,7 @@ def dropViews(con, schema=None):
 
 class ComponentReflectionTest(TestBase):
 
-    @testing.fails_on('sqlite', 'no schemas')
+    @testing.requires.schemas
     def test_get_schema_names(self):
         meta = MetaData(testing.db)
         insp = Inspector(meta.bind)
@@ -971,23 +970,27 @@ class ComponentReflectionTest(TestBase):
                 # should be in order
                 for (i, col) in enumerate(table.columns):
                     eq_(col.name, cols[i]['name'])
-                    # coltype is tricky
-                    # It may not inherit from col.type while they share
-                    # the same base.
                     ctype = cols[i]['type'].__class__
                     ctype_def = col.type
                     if isinstance(ctype_def, sa.types.TypeEngine):
                         ctype_def = ctype_def.__class__
+                        
                     # Oracle returns Date for DateTime.
                     if testing.against('oracle') \
                         and ctype_def in (sql_types.Date, sql_types.DateTime):
                             ctype_def = sql_types.Date
+                    
+                    # assert that the desired type and return type
+                    # share a base within one of the generic types.
                     self.assert_(
-                        issubclass(ctype, ctype_def) or \
                         len(
                             set(
-                                ctype.__bases__
-                            ).intersection(ctype_def.__bases__)) > 0
+                                ctype.__mro__
+                            ).intersection(ctype_def.__mro__)
+                            .intersection([sql_types.Integer, sql_types.Numeric, 
+                                            sql_types.DateTime, sql_types.Date, sql_types.Time, 
+                                            sql_types.String, sql_types.Binary])
+                            ) > 0
                     ,("%s(%s), %s(%s)" % (col.name, col.type, cols[i]['name'],
                                           ctype)))
         finally:

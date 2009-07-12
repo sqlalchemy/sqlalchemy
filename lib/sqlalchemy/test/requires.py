@@ -28,6 +28,25 @@ def foreign_keys(fn):
         no_support('sqlite', 'not supported by database'),
         )
 
+
+def unbounded_varchar(fn):
+    """Target database must support VARCHAR with no length"""
+    return _chain_decorators_on(
+        fn,
+        no_support('firebird', 'not supported by database'),
+        no_support('oracle', 'not supported by database'),
+        no_support('mysql', 'not supported by database'),
+    )
+
+def boolean_col_expressions(fn):
+    """Target database must support boolean expressions as columns"""
+    return _chain_decorators_on(
+        fn,
+        no_support('firebird', 'not supported by database'),
+        no_support('oracle', 'not supported by database'),
+        no_support('mssql', 'not supported by database'),
+    )
+    
 def identity(fn):
     """Target database must support GENERATED AS IDENTITY or a facsimile.
 
@@ -90,7 +109,8 @@ def schemas(fn):
     
     return _chain_decorators_on(
         fn,
-        no_support('sqlite', 'no schema support')
+        no_support('sqlite', 'no schema support'),
+        no_support('firebird', 'no schema support')
     )
     
 def sequences(fn):

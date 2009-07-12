@@ -859,10 +859,6 @@ class PGDialect(default.DefaultDialect):
             index_d['unique'] = unique
         return indexes
 
-    def reflecttable(self, connection, table, include_columns):
-        insp = reflection.Inspector.from_engine(connection)
-        return insp.reflecttable(table, include_columns)
-
     def _load_domains(self, connection):
         ## Load data types for domains:
         SQL_DOMAINS = """

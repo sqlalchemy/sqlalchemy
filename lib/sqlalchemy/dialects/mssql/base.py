@@ -1439,10 +1439,6 @@ class MSDialect(default.DefaultDialect):
 
         return fkeys.values()
 
-    def reflecttable(self, connection, table, include_columns):
-
-        insp = reflection.Inspector.from_engine(connection)
-        return insp.reflecttable(table, include_columns)
 
 # fixme.  I added this for the tests to run. -Randall
 MSSQLDialect = MSDialect

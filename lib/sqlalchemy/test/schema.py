@@ -33,7 +33,7 @@ def Table(*args, **kw):
         # expand to ForeignKeyConstraint too.
         fks = [fk
                for col in args if isinstance(col, schema.Column)
-               for fk in col.args if isinstance(fk, schema.ForeignKey)]
+               for fk in col.foreign_keys]
 
         for fk in fks:
             # root around in raw spec

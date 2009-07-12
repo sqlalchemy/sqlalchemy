@@ -13,7 +13,7 @@ as the base class for their own corresponding classes.
 """
 
 import re, random
-from sqlalchemy.engine import base
+from sqlalchemy.engine import base, reflection
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy import exc, types as sqltypes
 
@@ -51,6 +51,14 @@ class DefaultDialect(base.Dialect):
     default_paramstyle = 'named'
     supports_default_values = False
     supports_empty_insert = True
+    
+    # indicates symbol names are 
+    # UPPERCASEd if they are case insensitive
+    # within the database.
+    # if this is True, the methods normalize_name()
+    # and denormalize_name() must be provided.
+    requires_name_normalize = False
+    
     reflection_options = ()
 
     def __init__(self, convert_unicode=False, assert_unicode=False,
@@ -104,9 +112,16 @@ class DefaultDialect(base.Dialect):
         """
         return sqltypes.adapt_type(typeobj, cls.colspecs)
 
+    def reflecttable(self, connection, table, include_columns):
+        insp = reflection.Inspector.from_engine(connection)
+        return insp.reflecttable(table, include_columns)
+
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
-            raise exc.IdentifierError("Identifier '%s' exceeds maximum length of %d characters" % (ident, self.max_identifier_length))
+            raise exc.IdentifierError(
+                "Identifier '%s' exceeds maximum length of %d characters" % 
+                (ident, self.max_identifier_length)
+            )
 
     def connect(self, *cargs, **cparams):
         return self.dbapi.connect(*cargs, **cparams)

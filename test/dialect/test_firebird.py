@@ -198,7 +198,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
             table.drop()
 
 
-class MiscFBTests(TestBase):
+class MiscTest(TestBase):
     __only_on__ = 'firebird'
 
     def test_strlen(self):
@@ -225,4 +225,12 @@ class MiscFBTests(TestBase):
         version = testing.db.dialect.server_version_info(testing.db.connect())
         assert len(version) == 3, "Got strange version info: %s" % repr(version)
 
+    def test_percents_in_text(self):
+        for expr, result in (
+            (text("select '%' from rdb$database"), '%'),
+            (text("select '%%' from rdb$database"), '%%'),
+            (text("select '%%%' from rdb$database"), '%%%'),
+            (text("select 'hello % world' from rdb$database"), "hello % world")
+        ):
+            eq_(testing.db.scalar(expr), result)
 

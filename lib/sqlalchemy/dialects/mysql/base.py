@@ -1940,12 +1940,6 @@ class MySQLDialect(default.DefaultDialect):
             sql = parser._describe_to_create(table_name, columns)
         return parser.parse(sql, charset)
   
-    def reflecttable(self, connection, table, include_columns):
-        """Load column definitions from the server."""
-
-        insp = reflection.Inspector.from_engine(connection)
-        return insp.reflecttable(table, include_columns)
-
     def _adjust_casing(self, table, charset=None):
         """Adjust Table name to the server case sensitivity, if needed."""
 

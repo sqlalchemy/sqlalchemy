@@ -623,8 +623,8 @@ class DateTest(TestBase, AssertsExecutionResults):
             t.drop(checkfirst=True)
 
 class StringTest(TestBase, AssertsExecutionResults):
-    @testing.fails_on('mysql', 'FIXME: unknown')
-    @testing.fails_on('oracle', 'FIXME: unknown')
+
+    @testing.requires.unbounded_varchar
     def test_nolength_string(self):
         metadata = MetaData(testing.db)
         foo = Table('foo', metadata, Column('one', String))
