@@ -24,30 +24,29 @@ dialect 1
 
 dialect 3
   This is the newer and supported syntax, introduced in Interbase 6.0.
-  
-The SQLAlchemy Firebird dialect detects these versions and 
-adjusts its representation of SQL accordingly.  However, 
-support for dialect 1 is not well tested and probably has 
+
+The SQLAlchemy Firebird dialect detects these versions and
+adjusts its representation of SQL accordingly.  However,
+support for dialect 1 is not well tested and probably has
 incompatibilities.
 
 Firebird Locking Behavior
 -------------------------
 
-Firebird locks tables aggressively.  For this reason, a DROP TABLE
-may hang until other transactions are released.  SQLAlchemy
-does its best to release transactions as quickly as possible.  The
-most common cause of hanging transactions is a non-fully consumed
-result set, i.e.::
+Firebird locks tables aggressively.  For this reason, a DROP TABLE may
+hang until other transactions are released.  SQLAlchemy does its best
+to release transactions as quickly as possible.  The most common cause
+of hanging transactions is a non-fully consumed result set, i.e.::
 
     result = engine.execute("select * from table")
     row = result.fetchone()
     return
-    
+
 Where above, the ``ResultProxy`` has not been fully consumed.  The
 connection will be returned to the pool and the transactional state
-rolled back once the Python garbage collector reclaims the 
-objects which hold onto the connection, which often occurs asynchronously.
-The above use case can be alleviated by calling ``first()`` on the 
+rolled back once the Python garbage collector reclaims the objects
+which hold onto the connection, which often occurs asynchronously.
+The above use case can be alleviated by calling ``first()`` on the
 ``ResultProxy`` which will fetch the first row and immediately close
 all remaining cursor/connection resources.
 
@@ -84,6 +83,7 @@ from sqlalchemy.sql import compiler
 from sqlalchemy.types import (BIGINT, BLOB, BOOLEAN, CHAR, DATE,
                                FLOAT, INTEGER, NUMERIC, SMALLINT,
                                TEXT, TIME, TIMESTAMP, VARCHAR)
+
 
 RESERVED_WORDS = set(
    ["action", "active", "add", "admin", "after", "all", "alter", "and", "any",
@@ -148,16 +148,16 @@ ischema_names = {
 # TODO: Boolean type, date conversion types (should be implemented as _FBDateTime, _FBDate, etc.
 # as bind/result functionality is required)
 
-
 class FBTypeCompiler(compiler.GenericTypeCompiler):
     def visit_datetime(self, type_):
         return self.visit_TIMESTAMP(type_)
-        
+
     def visit_TEXT(self, type_):
         return "BLOB SUB_TYPE 1"
-        
+
     def visit_BLOB(self, type_):
         return "BLOB SUB_TYPE 0"
+
 
 class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosincrasies"""
@@ -175,7 +175,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
             if asfrom:
                 alias_name = isinstance(alias.name, expression._generated_label) and \
                                 self._truncated_identifier("alias", alias.name) or alias.name
-            
+
                 return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + \
                             self.preparer.format_alias(alias, alias_name)
             else:
@@ -229,7 +229,6 @@ class FBCompiler(sql.compiler.SQLCompiler):
         """Already taken care of in the `get_select_precolumns` method."""
 
         return ""
-
 
     def _append_returning(self, text, stmt):
         returning_cols = stmt.kwargs["firebird_returning"]
@@ -296,6 +295,7 @@ class FBDefaultRunner(base.DefaultRunner):
         return self.execute_string("SELECT gen_id(%s, 1) FROM rdb$database" % \
             self.dialect.identifier_preparer.format_sequence(seq))
 
+
 class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
     """Install Firebird specific reserved words."""
 
@@ -303,6 +303,7 @@ class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
 
     def __init__(self, dialect):
         super(FBIdentifierPreparer, self).__init__(dialect, omit_schema=True)
+
 
 class FBDialect(default.DefaultDialect):
     """Firebird dialect"""
@@ -326,12 +327,12 @@ class FBDialect(default.DefaultDialect):
 
     colspecs = colspecs
     ischema_names = ischema_names
-    
+
     # defaults to dialect ver. 3,
-    # will be autodetected off upon 
+    # will be autodetected off upon
     # first connect
     _version_two = True
-    
+
     def initialize(self, connection):
         super(FBDialect, self).initialize(connection)
         self._version_two = self.server_version_info > (2, )
@@ -340,9 +341,9 @@ class FBDialect(default.DefaultDialect):
             self.ischema_names = ischema_names.copy()
             self.ischema_names['TIMESTAMP'] = sqltypes.DATE
             self.colspecs = {
-                sqltypes.DateTime :sqltypes.DATE
+                sqltypes.DateTime: sqltypes.DATE
             }
-        
+
     def normalize_name(self, name):
         # Remove trailing spaces: FB uses a CHAR() type,
         # that is padded with spaces
@@ -391,8 +392,8 @@ class FBDialect(default.DefaultDialect):
     def table_names(self, connection, schema):
         s = """
         SELECT DISTINCT rdb$relation_name
-        FROM rdb$relation_fields WHERE
-        rdb$system_flag=0 AND rdb$view_context IS NULL
+        FROM rdb$relation_fields
+        WHERE rdb$system_flag=0 AND rdb$view_context IS NULL
         """
         return [self.normalize_name(row[0]) for row in connection.execute(s)]
 
@@ -411,9 +412,9 @@ class FBDialect(default.DefaultDialect):
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
         qry = """
-            SELECT rdb$view_source AS view_source
-            FROM rdb$relations 
-            WHERE rdb$relation_name=?;
+        SELECT rdb$view_source AS view_source
+        FROM rdb$relations
+        WHERE rdb$relation_name=?
         """
         rp = connection.execute(qry, [self.denormalize_name(view_name)])
         row = rp.first()
@@ -421,7 +422,7 @@ class FBDialect(default.DefaultDialect):
             return row['view_source']
         else:
             return None
-    
+
     @reflection.cache
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
         # Query to extract the PK/FK constrained fields of the given table
@@ -446,10 +447,11 @@ class FBDialect(default.DefaultDialect):
         genqry = """
         SELECT trigdep.rdb$depended_on_name AS fgenerator
         FROM rdb$dependencies tabdep
-             JOIN rdb$dependencies trigdep ON (tabdep.rdb$dependent_name=trigdep.rdb$dependent_name
-                                               AND trigdep.rdb$depended_on_type=14
-                                               AND trigdep.rdb$dependent_type=2)
-             JOIN rdb$triggers trig ON (trig.rdb$trigger_name=tabdep.rdb$dependent_name)
+             JOIN rdb$dependencies trigdep
+                  ON tabdep.rdb$dependent_name=trigdep.rdb$dependent_name
+                     AND trigdep.rdb$depended_on_type=14
+                     AND trigdep.rdb$dependent_type=2
+             JOIN rdb$triggers trig ON trig.rdb$trigger_name=tabdep.rdb$dependent_name
         WHERE tabdep.rdb$depended_on_name=?
           AND tabdep.rdb$depended_on_type=0
           AND trig.rdb$trigger_type=1
@@ -477,7 +479,8 @@ class FBDialect(default.DefaultDialect):
                         COALESCE(r.rdb$default_source, f.rdb$default_source) AS fdefault
         FROM rdb$relation_fields r
              JOIN rdb$fields f ON r.rdb$field_source=f.rdb$field_name
-             JOIN rdb$types t ON t.rdb$type=f.rdb$field_type AND t.rdb$field_name='RDB$FIELD_TYPE'
+             JOIN rdb$types t
+                  ON t.rdb$type=f.rdb$field_type AND t.rdb$field_name='RDB$FIELD_TYPE'
         WHERE f.rdb$system_flag=0 AND r.rdb$relation_name=?
         ORDER BY r.rdb$field_position
         """
@@ -491,7 +494,7 @@ class FBDialect(default.DefaultDialect):
                 break
             name = self.normalize_name(row['fname'])
             # get the data type
-            
+
             colspec = row['ftype'].rstrip()
             coltype = self.ischema_names.get(colspec)
             if coltype is None:
@@ -511,7 +514,7 @@ class FBDialect(default.DefaultDialect):
                     coltype = BLOB()
             else:
                 coltype = coltype(row)
-            
+
             # does it have a default value?
             defvalue = None
             if row['fdefault'] is not None:
@@ -539,8 +542,9 @@ class FBDialect(default.DefaultDialect):
              JOIN rdb$indices ix1 ON ix1.rdb$index_name=rc.rdb$index_name
              JOIN rdb$indices ix2 ON ix2.rdb$index_name=ix1.rdb$foreign_key
              JOIN rdb$index_segments cse ON cse.rdb$index_name=ix1.rdb$index_name
-             JOIN rdb$index_segments se ON se.rdb$index_name=ix2.rdb$index_name AND 
-             se.rdb$field_position=cse.rdb$field_position
+             JOIN rdb$index_segments se
+                  ON se.rdb$index_name=ix2.rdb$index_name
+                     AND se.rdb$field_position=cse.rdb$field_position
         WHERE rc.rdb$constraint_type=? AND rc.rdb$relation_name=?
         ORDER BY se.rdb$index_name, se.rdb$field_position
         """
@@ -554,7 +558,7 @@ class FBDialect(default.DefaultDialect):
             'referred_table' : None,
             'referred_columns' : []
         })
-        
+
         for row in c:
             cname = self.normalize_name(row['cname'])
             fk = fks[cname]
@@ -569,23 +573,20 @@ class FBDialect(default.DefaultDialect):
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):
         qry = """
-            SELECT 
-                ix.rdb$index_name AS index_name,
-                ix.rdb$unique_flag AS unique_flag,
-                ic.rdb$field_name AS field_name
-                
-            FROM rdb$indices ix JOIN rdb$index_segments ic
-            ON ix.rdb$index_name=ic.rdb$index_name
-            
-            LEFT OUTER JOIN RDB$RELATION_CONSTRAINTS 
-            ON RDB$RELATION_CONSTRAINTS.RDB$INDEX_NAME = ic.RDB$INDEX_NAME
-            
-            WHERE ix.rdb$relation_name=? AND ix.rdb$foreign_key IS NULL
-            AND RDB$RELATION_CONSTRAINTS.RDB$CONSTRAINT_TYPE IS NULL
-            ORDER BY index_name, field_name
+        SELECT ix.rdb$index_name AS index_name,
+               ix.rdb$unique_flag AS unique_flag,
+               ic.rdb$field_name AS field_name
+        FROM rdb$indices ix
+             JOIN rdb$index_segments ic
+                  ON ix.rdb$index_name=ic.rdb$index_name
+             LEFT OUTER JOIN rdb$relation_constraints
+                  ON rdb$relation_constraints.rdb$index_name = ic.rdb$index_name
+        WHERE ix.rdb$relation_name=? AND ix.rdb$foreign_key IS NULL
+          AND rdb$relation_constraints.rdb$constraint_type IS NULL
+        ORDER BY index_name, field_name
         """
         c = connection.execute(qry, [self.denormalize_name(table_name)])
-        
+
         indexes = util.defaultdict(dict)
         for row in c:
             indexrec = indexes[row['index_name']]
@@ -593,11 +594,11 @@ class FBDialect(default.DefaultDialect):
                 indexrec['name'] = self.normalize_name(row['index_name'])
                 indexrec['column_names'] = []
                 indexrec['unique'] = bool(row['unique_flag'])
-            
+
             indexrec['column_names'].append(self.normalize_name(row['field_name']))
 
         return indexes.values()
-        
+
     def do_execute(self, cursor, statement, parameters, **kwargs):
         # kinterbase does not accept a None, but wants an empty list
         # when there are no arguments.
@@ -610,5 +611,3 @@ class FBDialect(default.DefaultDialect):
     def do_commit(self, connection):
         # Use the retaining feature, that keeps the transaction going
         connection.commit(True)
-
-

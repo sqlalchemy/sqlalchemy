@@ -7,13 +7,13 @@ class Firebird_kinterbasdb(FBDialect):
     driver = 'kinterbasdb'
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
-    
+
     def __init__(self, type_conv=200, concurrency_level=1, **kwargs):
         super(Firebird_kinterbasdb, self).__init__(**kwargs)
 
         self.type_conv = type_conv
         self.concurrency_level = concurrency_level
-    
+
     @classmethod
     def dbapi(cls):
         k = __import__('kinterbasdb')
@@ -34,7 +34,6 @@ class Firebird_kinterbasdb(FBDialect):
             self.dbapi.init(type_conv=type_conv, concurrency_level=concurrency_level)
         return ([], opts)
 
-    
     def _get_server_version_info(self, connection):
         """Get the version of the Firebird server used by a connection.
 
@@ -57,7 +56,6 @@ class Firebird_kinterbasdb(FBDialect):
         if not m:
             raise AssertionError("Could not determine version from string '%s'" % version)
         return tuple([int(x) for x in m.group(5, 6, 4)])
-
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):
