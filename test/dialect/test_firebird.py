@@ -50,6 +50,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con.execute('DROP GENERATOR gen_testtable_id')
 
     def test_table_is_reflected(self):
+        from sqlalchemy.types import Integer, Text, Binary, String, Date, Time, DateTime
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         eq_(set(table.columns.keys()),
@@ -57,17 +58,17 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
                           "Columns of reflected table didn't equal expected columns")
         eq_(table.c.question.primary_key, True)
         eq_(table.c.question.sequence.name, 'gen_testtable_id')
-        eq_(table.c.question.type.__class__, firebird.FBInteger)
+        assert isinstance(table.c.question.type, Integer)
         eq_(table.c.question.server_default.arg.text, "42")
-        eq_(table.c.answer.type.__class__, firebird.FBString)
+        assert isinstance(table.c.answer.type, String)
         eq_(table.c.answer.server_default.arg.text, "'no answer'")
-        eq_(table.c.remark.type.__class__, firebird.FBText)
+        assert isinstance(table.c.remark.type, Text)
         eq_(table.c.remark.server_default.arg.text, "''")
-        eq_(table.c.photo.type.__class__, firebird.FBBinary)
+        assert isinstance(table.c.photo.type, Binary)
         # The following assume a Dialect 3 database
-        eq_(table.c.d.type.__class__, firebird.FBDate)
-        eq_(table.c.t.type.__class__, firebird.FBTime)
-        eq_(table.c.dt.type.__class__, firebird.FBDateTime)
+        assert isinstance(table.c.d.type, Date)
+        assert isinstance(table.c.t.type, Time)
+        assert isinstance(table.c.dt.type, DateTime)
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
@@ -176,10 +177,10 @@ class ReturningTest(TestBase, AssertsExecutionResults):
             eq_(result2.fetchall(), [(3,3,True)])
 
             result3 = table.insert(firebird_returning=[table.c.id]).execute({'persons': 4, 'full': False})
-            eq_([dict(row) for row in result3], [{'ID':4}])
+            eq_([dict(row) for row in result3], [{'id': 4}])
 
             result4 = testing.db.execute('insert into tables (id, persons, "full") values (5, 10, 1) returning persons')
-            eq_([dict(row) for row in result4], [{'PERSONS': 10}])
+            eq_([dict(row) for row in result4], [{'persons': 10}])
         finally:
             table.drop()
 
@@ -228,7 +229,7 @@ class MiscTest(TestBase):
             meta.drop_all()
 
     def test_server_version_info(self):
-        version = testing.db.dialect.server_version_info(testing.db.connect())
+        version = testing.db.dialect.server_version_info
         assert len(version) == 3, "Got strange version info: %s" % repr(version)
 
     def test_percents_in_text(self):
