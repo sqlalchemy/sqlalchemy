@@ -1302,7 +1302,7 @@ UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
             else:
                 eq_(str(sel), "SELECT casttest.id, casttest.v1, casttest.v2, casttest.ts, CAST(casttest.v1 AS NUMERIC(10, 2)) AS anon_1 \nFROM casttest")
 
-        # first test with Postgres engine
+        # first test with PostgreSQL engine
         check_results(postgres.dialect(), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%(param_1)s')
 
         # then the Oracle engine

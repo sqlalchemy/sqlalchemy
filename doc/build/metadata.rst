@@ -390,7 +390,7 @@ The above SQL functions are usually executed "inline" with the INSERT or UPDATE 
 
 * the column is a primary key column
 
-* the database dialect does not support a usable ``cursor.lastrowid`` accessor (or equivalent); this currently includes Postgres, Oracle, and Firebird.
+* the database dialect does not support a usable ``cursor.lastrowid`` accessor (or equivalent); this currently includes PostgreSQL, Oracle, and Firebird.
 
 * the statement is a single execution, i.e. only supplies one set of parameters and doesn't use "executemany" behavior
 
@@ -450,7 +450,7 @@ The ``Sequence`` object works a lot like the ``default`` keyword on ``Column``, 
 
 When the ``Sequence`` is associated with a table, CREATE and DROP statements issued for that table will also issue CREATE/DROP for the sequence object as well, thus "bundling" the sequence object with its parent table.
 
-The flag ``optional=True`` on ``Sequence`` will produce a sequence that is only used on databases which have no "autoincrementing" capability.  For example, Postgres supports primary key generation using the SERIAL keyword, whereas Oracle has no such capability.  Therefore, a ``Sequence`` placed on a primary key column with ``optional=True`` will only be used with an Oracle backend but not Postgres.
+The flag ``optional=True`` on ``Sequence`` will produce a sequence that is only used on databases which have no "autoincrementing" capability.  For example, PostgreSQL supports primary key generation using the SERIAL keyword, whereas Oracle has no such capability.  Therefore, a ``Sequence`` placed on a primary key column with ``optional=True`` will only be used with an Oracle backend but not PostgreSQL.
 
 A sequence can also be executed standalone, using an ``Engine`` or ``Connection``, returning its next value in a database-independent fashion:
 

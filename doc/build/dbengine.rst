@@ -52,11 +52,11 @@ The ``Engine`` and ``Connection`` can do a lot more than what we illustrated abo
 
 Supported Databases 
 ====================
-Recall that the ``Dialect`` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for SQLite, Postgres, MySQL, MS-SQL, Firebird, Informix, and Oracle; these can each be seen as a Python module present in the :mod:``~sqlalchemy.databases`` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
+Recall that the ``Dialect`` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for SQLite, PostgreSQL, MySQL, MS-SQL, Firebird, Informix, and Oracle; these can each be seen as a Python module present in the :mod:``~sqlalchemy.databases`` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
 
 Downloads for each DBAPI at the time of this writing are as follows:
 
-* Postgres:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_
+* PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_
 * SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
 * MySQL:   `MySQLDB <http://sourceforge.net/projects/mysql-python>`_
 * Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_

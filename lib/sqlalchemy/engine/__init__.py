@@ -173,7 +173,7 @@ def create_engine(*args, **kwargs):
     :param module=None: used by database implementations which
         support multiple DBAPI modules, this is a reference to a DBAPI2
         module to be used instead of the engine's default module. For
-        Postgres, the default is psycopg2. For Oracle, it's cx_Oracle.
+        PostgreSQL, the default is psycopg2. For Oracle, it's cx_Oracle.
 
     :param pool=None: an already-constructed instance of
         :class:`~sqlalchemy.pool.Pool`, such as a

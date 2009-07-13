@@ -472,7 +472,7 @@ class Column(SchemaItem, expression.ColumnClause):
             or :meth:`create_all()`.  The flag has no relevance at any
             other time.
           * The database supports autoincrementing behavior, such as 
-            Postgres or MySQL, and this behavior can be disabled (which does
+            PostgreSQL or MySQL, and this behavior can be disabled (which does
             not include SQLite).
 
         :param default: A scalar, Python callable, or :class:`~sqlalchemy.sql.expression.ClauseElement`

@@ -20,7 +20,7 @@ Connecting
 
 URLs are of the form `postgres://user:password@host:port/dbname[?key=value&key=value...]`.
 
-Postgres-specific keyword arguments which are accepted by :func:`~sqlalchemy.create_engine()` are:
+PostgreSQL-specific keyword arguments which are accepted by :func:`~sqlalchemy.create_engine()` are:
 
 * *server_side_cursors* - Enable the usage of "server side cursors" for SQL statements which support
   this feature.  What this essentially means from a psycopg2 point of view is that the cursor is 
@@ -33,7 +33,7 @@ Postgres-specific keyword arguments which are accepted by :func:`~sqlalchemy.cre
 Sequences/SERIAL
 ----------------
 
-Postgres supports sequences, and SQLAlchemy uses these as the default means of creating
+PostgreSQL supports sequences, and SQLAlchemy uses these as the default means of creating
 new primary key values for integer-based primary key columns.   When creating tables, 
 SQLAlchemy will issue the ``SERIAL`` datatype for integer-based primary key columns, 
 which generates a sequence corresponding to the column and associated with it based on
@@ -53,7 +53,7 @@ that when an :func:`~sqlalchemy.sql.expression.insert()` construct is executed u
 "executemany" semantics, the sequence is not pre-executed and normal PG SERIAL behavior
 is used.
 
-Postgres 8.3 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy supports 
+PostgreSQL 8.3 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy supports 
 as well.  A future release of SQLA will use this feature by default in lieu of 
 sequence pre-execution in order to retrieve new primary key values, when available.
 
@@ -84,7 +84,7 @@ option to the Index constructor::
 Transactions
 ------------
 
-The Postgres dialect fully supports SAVEPOINT and two-phase commit operations.
+The PostgreSQL dialect fully supports SAVEPOINT and two-phase commit operations.
 
 
 """
@@ -411,7 +411,7 @@ class PGDialect(default.DefaultDialect):
 
     def last_inserted_ids(self):
         if self.context.last_inserted_ids is None:
-            raise exc.InvalidRequestError("no INSERT executed, or can't use cursor.lastrowid without Postgres OIDs enabled")
+            raise exc.InvalidRequestError("no INSERT executed, or can't use cursor.lastrowid without PostgreSQL OIDs enabled")
         else:
             return self.context.last_inserted_ids
 

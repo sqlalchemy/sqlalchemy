@@ -356,7 +356,7 @@ class AutoRollbackTest(TestBase):
         conn1.close()
 
         # without auto-rollback in the connection pool's return() logic, this
-        # deadlocks in Postgres, because conn1 is returned to the pool but
+        # deadlocks in PostgreSQL, because conn1 is returned to the pool but
         # still has a lock on "deadlock_users".
         # comment out the rollback in pool/ConnectionFairy._close() to see !
         users.drop(conn2)
@@ -366,7 +366,7 @@ foo = None
 class ExplicitAutoCommitTest(TestBase):
     """test the 'autocommit' flag on select() and text() objects.
 
-    Requires Postgres so that we may define a custom function which modifies the database.
+    Requires PostgreSQL so that we may define a custom function which modifies the database.
     """
 
     __only_on__ = 'postgres'

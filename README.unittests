@@ -159,10 +159,10 @@ IRC!
 
 TIPS
 ----
-Postgres: The tests require an 'alt_schema' and 'alt_schema_2' to be present in
+PostgreSQL: The tests require an 'alt_schema' and 'alt_schema_2' to be present in
 the testing database.
 
-Postgres: When running the tests on postgres, postgres can get slower and
+PostgreSQL: When running the tests on postgres, postgres can get slower and
 slower each time you run the tests.  This seems to be related to the constant
 creation/dropping of tables.  Running a "VACUUM FULL" on the database will
 speed it up again.

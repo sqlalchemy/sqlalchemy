@@ -109,7 +109,7 @@ CHANGES
 - postgres
     - Deprecated the hardcoded TIMESTAMP function, which when
       used as func.TIMESTAMP(value) would render "TIMESTAMP value".
-      This breaks on some platforms as Postgres doesn't allow
+      This breaks on some platforms as PostgreSQL doesn't allow
       bind parameters to be used in this context.  The hard-coded
       uppercase is also inappropriate and there's lots of other
       PG casts that we'd need to support.  So instead, use
@@ -602,7 +602,7 @@ CHANGES
 - sql
     - Improved the methodology to handling percent signs in column
       names from [ticket:1256].  Added more tests.  MySQL and
-      Postgres dialects still do not issue correct CREATE TABLE
+      PostgreSQL dialects still do not issue correct CREATE TABLE
       statements for identifiers with percent signs in them.
       
 - schema
@@ -985,7 +985,7 @@ CHANGES
     - Calling alias.execute() in conjunction with
       server_side_cursors won't raise AttributeError.
 
-    - Added Index reflection support to Postgres, using a great
+    - Added Index reflection support to PostgreSQL, using a great
       patch we long neglected, submitted by Ken
       Kuhlman. [ticket:714]
 
@@ -1606,7 +1606,7 @@ CHANGES
     - simple label names in ORDER BY expressions render as
       themselves, and not as a re-statement of their corresponding
       expression.  This feature is currently enabled only for
-      SQLite, MySQL, and Postgres.  It can be enabled on other
+      SQLite, MySQL, and PostgreSQL.  It can be enabled on other
       dialects as each is shown to support this
       behavior. [ticket:1068]
 
