@@ -52,20 +52,35 @@ The ``Engine`` and ``Connection`` can do a lot more than what we illustrated abo
 
 Supported Databases 
 ====================
-Recall that the ``Dialect`` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for SQLite, PostgreSQL, MySQL, MS-SQL, Firebird, Informix, and Oracle; these can each be seen as a Python module present in the :mod:``~sqlalchemy.databases`` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
+Recall that the ``Dialect`` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for many different backends; these can be seen as a Python package within the :mod:`~sqlalchemy.databases` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
+
+Dialects included with SQLAlchemy fall under one of three categories: supported, experimental, and third party.  Supported drivers are those which work against the most common databases available in the open source world, including SQLite, PostgreSQL, MySQL, and Firebird.   Very popular commercial databases which provide easy access to test platforms are also supported, these currently include MSSQL and Oracle.   These dialects are tested frequently and the level of support should be close to 100% for each.
+
+The experimental category is for drivers against less common database platforms, or commercial platforms for which no freely available and easily usable test platform is provided.   These include Access, MaxDB, Informix, and Sybase at the time of this writing.  These are partially-functioning dialects for which the SQLAlchemy project is not able to provide regular test support.  If you're interested in supporting one of these backends, contact the mailing list.
+
+There are also third-party dialects available - currently IBM offers a DB2/Informix IDS dialect for SQLAlchemy.
 
 Downloads for each DBAPI at the time of this writing are as follows:
 
-* PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_
-* SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
-* MySQL:   `MySQLDB <http://sourceforge.net/projects/mysql-python>`_
-* Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
-* MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) `adodbapi <http://adodbapi.sourceforge.net/>`_  `pymssql <http://pymssql.sourceforge.net/>`_
-* Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
-* Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
-* DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_
-* Sybase:   TODO
-* MAXDB:    TODO
+* Supported Dialects
+
+ - PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_ 
+ - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
+ - MySQL:   `MySQLDB (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_
+ - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
+ - Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
+ - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) `adodbapi <http://adodbapi.sourceforge.net/>`_  `pymssql <http://pymssql.sourceforge.net/>`_
+
+* Experimental Dialects
+
+ - MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_
+ - Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
+ - Sybase:   TODO
+ - MAXDB:    TODO
+
+* Third Party Dialects
+
+ - DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_
 
 The SQLAlchemy Wiki contains a page of database notes, describing whatever quirks and behaviors have been observed.  Its a good place to check for issues with specific databases.  `Database Notes <http://www.sqlalchemy.org/trac/wiki/DatabaseNotes>`_
 
@@ -76,38 +91,41 @@ SQLAlchemy indicates the source of an Engine strictly via `RFC-1738 <http://rfc.
 
     driver://username:password@host:port/database
 
-Available drivernames are ``sqlite``, ``mysql``, ``postgres``, ``oracle``, ``mssql``, and ``firebird``.  For sqlite, the database name is the filename to connect to, or the special name ":memory:" which indicates an in-memory database.  The URL is typically sent as a string to the ``create_engine()`` function:
+Dialect names include the identifying name of the SQLAlchemy dialect which include ``sqlite``, ``mysql``, ``postgres``, ``oracle``, ``mssql``, and ``firebird``.  In SQLAlchemy 0.5 and earlier, the DBAPI implementation is automatically selected if more than one are available - currently this includes only MSSQL (pyodbc is the default, then adodbapi, then pymssql) and SQLite (sqlite3 is the default, or pysqlite if sqlite3 is not availble).   When using MSSQL, ``create_engine()`` accepts a ``module`` argument which specifies the name of the desired DBAPI to be used, overriding the default behavior.   
 
-.. sourcecode:: python+sql
+  .. sourcecode:: python+sql
+  
+    # postgresql
+    pg_db = create_engine('postgres://scott:tiger@localhost/mydatabase')
 
-    # postgres
-    pg_db = create_engine('postgres://scott:tiger@localhost:5432/mydatabase')
-    
-    # sqlite (note the four slashes for an absolute path)
-    sqlite_db = create_engine('sqlite:////absolute/path/to/database.txt')
-    sqlite_db = create_engine('sqlite:///relative/path/to/database.txt')
-    sqlite_db = create_engine('sqlite://')  # in-memory database
-    sqlite_db = create_engine('sqlite://:memory:')  # the same
-    
     # mysql
-    mysql_db = create_engine('mysql://localhost/foo')
-
+    mysql_db = create_engine('mysql://scott:tiger@localhost/mydatabase')
+  
     # oracle
-    oracle_db = create_engine('oracle://scott:tiger@host:port/dbname?key1=value1&key2=value2')
-
+    oracle_db = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
+  
     # oracle via TNS name
     oracle_db = create_engine('oracle://scott:tiger@tnsname')
-    oracle_db = create_engine('oracle://scott:tiger@tnsname/?key1=value1&key2=value2')
-
-    # oracle will feed host/port/SID into cx_oracle.makedsn
-    oracle_db = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
-
-    # mssql
-    mssql_db = create_engine('mssql://username:password@localhost/database')
-
-    # mssql via a DSN connection
+  
+    # mssql using ODBC datasource names.  PyODBC is the default driver.
     mssql_db = create_engine('mssql://mydsn')
-    mssql_db = create_engine('mssql://username:password@mydsn')
+    mssql_db = create_engine('mssql://scott:tiger@mydsn')
+    
+    # firebird
+    firebird_db = create_engine('firebird://scott:tiger@localhost/sometest.gdm')
+  
+SQLite connects to file based databases.   The same URL format is used, omitting the hostname, and using the "file" portion as the filename of the database.   This has the effect of four slashes being present for an absolute file path::
+
+    # sqlite://<nohostname>/<path>
+    # where <path> is relative:
+    sqlite_db = create_engine('sqlite:///foo.db')
+
+    # or absolute, starting with a slash:
+    sqlite_db = create_engine('sqlite:////absolute/path/to/foo.db')
+    
+To use a SQLite ``:memory:`` database, specify an empty URL::
+
+    sqlite_memory_db = create_engine('sqlite://')
 
 The :class:`~sqlalchemy.engine.base.Engine` will ask the connection pool for a connection when the ``connect()`` or ``execute()`` methods are called.  The default connection pool, :class:`~sqlalchemy.pool.QueuePool`, as well as the default connection pool used with SQLite, :class:`~sqlalchemy.pool.SingletonThreadPool`, will open connections to the database on an as-needed basis.  As concurrent statements are executed, :class:`~sqlalchemy.pool.QueuePool` will grow its pool of connections to a default size of five, and will allow a default "overflow" of ten.   Since the ``Engine`` is essentially "home base" for the connection pool, it follows that you should keep a single :class:`~sqlalchemy.engine.base.Engine` per database established within an application, rather than creating a new one for each connection.
 
