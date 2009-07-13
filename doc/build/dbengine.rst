@@ -52,20 +52,34 @@ The ``Engine`` and ``Connection`` can do a lot more than what we illustrated abo
 
 Supported Databases 
 ====================
-Recall that the ``Dialect`` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for SQLite, PostgreSQL, MySQL, MS-SQL, Firebird, Informix, and Oracle; these can each be seen as a Python module present in the :mod:``~sqlalchemy.databases`` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
+Recall that the ``Dialect`` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for many different backends; these can be seen as a Python package within the :mod:`~sqlalchemy.dialect` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
+
+Dialects included with SQLAlchemy fall under one of three categories: supported, experimental, and third party.  Supported drivers are those which work against the most common databases available in the open source world, including SQLite, PostgreSQL, MySQL, and Firebird.   Very popular commercial databases which provide easy access to test platforms are also supported, these currently include MSSQL and Oracle.   These dialects are tested frequently and the level of support should be close to 100% for each.
+
+The experimental category is for drivers against less common database platforms, or commercial platforms for which no freely available and easily usable test platform is provided.   These include Access, MaxDB, Informix, and Sybase at the time of this writing.  These are partially-functioning dialects for which the SQLAlchemy project is not able to provide regular test support.  If you're interested in supporting one of these backends, contact the mailing list.
+
+There are also third-party dialects available - currently IBM offers a DB2/Informix IDS dialect for SQLAlchemy.
 
 Downloads for each DBAPI at the time of this writing are as follows:
 
-* PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_
-* SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
-* MySQL:   `MySQLDB <http://sourceforge.net/projects/mysql-python>`_
-* Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
-* MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) `adodbapi <http://adodbapi.sourceforge.net/>`_  `pymssql <http://pymssql.sourceforge.net/>`_
-* Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
-* Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
-* DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_
-* Sybase:   TODO
-* MAXDB:    TODO
+* Supported Dialects
+ - PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_ `pg8000 <http://pybrary.net/pg8000/>`_
+ - PostgreSQL on Jython: `PostgreSQL JDBC Driver <http://jdbc.postgresql.org/>`_
+ - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
+ - MySQL:   `MySQLDB (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_
+ - MySQL on Jython: `JDBC Driver for MySQL <http://www.mysql.com/products/connector/>`_
+ - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
+ - Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
+ - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) `adodbapi <http://adodbapi.sourceforge.net/>`_  `pymssql <http://pymssql.sourceforge.net/>`_
+
+* Experimental Dialects
+ - MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_
+ - Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
+ - Sybase:   TODO
+ - MAXDB:    TODO
+
+* Third Party Dialects
+ - DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_
 
 The SQLAlchemy Wiki contains a page of database notes, describing whatever quirks and behaviors have been observed.  Its a good place to check for issues with specific databases.  `Database Notes <http://www.sqlalchemy.org/trac/wiki/DatabaseNotes>`_
 
@@ -74,46 +88,59 @@ create_engine() URL Arguments
 
 SQLAlchemy indicates the source of an Engine strictly via `RFC-1738 <http://rfc.net/rfc1738.html>`_ style URLs, combined with optional keyword arguments to specify options for the Engine.  The form of the URL is:
 
-    driver://username:password@host:port/database
+    dialect+driver://username:password@host:port/database
 
-Available drivernames are ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, ``mssql``, and ``firebird``.  For sqlite, the database name is the filename to connect to, or the special name ":memory:" which indicates an in-memory database.  The URL is typically sent as a string to the ``create_engine()`` function:
+Dialect names include the identifying name of the SQLAlchemy dialect which include ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, ``mssql``, and ``firebird``.  The drivername is the name of the DBAPI to be used to connect to the database using all lowercase letters.   If not specified, a "default" DBAPI will be imported if available - this default is typically the most widely known driver available for that backend (i.e. cx_oracle, pysqlite/sqlite3, psycopg2, mysqldb).   For Jython connections, the driver is always `zxjdbc`, which is the JDBC-DBAPI bridge included with Jython.
 
 .. sourcecode:: python+sql
 
-    # postgresql
-    pg_db = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
+    # postgresql - psycopg2 is the default driver.
+    pg_db = create_engine('postgresql://scott:tiger@localhost/mydatabase')
+    pg_db = create_engine('postgresql+psycopg2://scott:tiger@localhost/mydatabase')
+    pg_db = create_engine('postgresql+pg8000://scott:tiger@localhost/mydatabase')
+
+    # postgresql on Jython
+    pg_db = create_engine('postgresql+zxjdbc://scott:tiger@localhost/mydatabase')
     
-    # sqlite (note the four slashes for an absolute path)
-    sqlite_db = create_engine('sqlite:////absolute/path/to/database.txt')
-    sqlite_db = create_engine('sqlite:///relative/path/to/database.txt')
-    sqlite_db = create_engine('sqlite://')  # in-memory database
-    sqlite_db = create_engine('sqlite://:memory:')  # the same
-    
-    # mysql
-    mysql_db = create_engine('mysql://localhost/foo')
+    # mysql - MySQLdb (mysql-python) is the default driver
+    mysql_db = create_engine('mysql://scott:tiger@localhost/foo')
+    mysql_db = create_engine('mysql+mysqldb://scott:tiger@localhost/foo')
 
-    # oracle
-    oracle_db = create_engine('oracle://scott:tiger@host:port/dbname?key1=value1&key2=value2')
+    # mysql on Jython
+    mysql_db = create_engine('mysql+zxjdbc://localhost/foo')
 
-    # oracle via TNS name
-    oracle_db = create_engine('oracle://scott:tiger@tnsname')
-    oracle_db = create_engine('oracle://scott:tiger@tnsname/?key1=value1&key2=value2')
+    # mysql with pyodbc (buggy)
+    mysql_db = create_engine('mysql+pyodbc://scott:tiger@some_dsn')
 
-    # oracle will feed host/port/SID into cx_oracle.makedsn
+    # oracle - cx_oracle is the default driver
     oracle_db = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
 
-    # mssql
-    mssql_db = create_engine('mssql://username:password@localhost/database')
+    # oracle via TNS name
+    oracle_db = create_engine('oracle+cx_oracle://scott:tiger@tnsname')
 
-    # mssql via a DSN connection
+    # mssql using ODBC datasource names.  PyODBC is the default driver.
     mssql_db = create_engine('mssql://mydsn')
-    mssql_db = create_engine('mssql://username:password@mydsn')
+    mssql_db = create_engine('mssql+pyodbc://mydsn')
+    mssql_db = create_engine('mssql+adodbapi://mydsn')
+    mssql_db = create_engine('mssql+pyodbc://username:password@mydsn')
+
+SQLite connects to file based databases.   The same URL format is used, omitting the hostname, and using the "file" portion as the filename of the database.   This has the effect of four slashes being present for an absolute file path::
+
+    # sqlite://<nohostname>/<path>
+    # where <path> is relative:
+    sqlite_db = create_engine('sqlite:///foo.db')
+
+    # or absolute, starting with a slash:
+    sqlite_db = create_engine('sqlite:////absolute/path/to/foo.db')
+    
+To use a SQLite ``:memory:`` database, specify an empty URL::
+
+    sqlite_memory_db = create_engine('sqlite://')
 
 The :class:`~sqlalchemy.engine.base.Engine` will ask the connection pool for a connection when the ``connect()`` or ``execute()`` methods are called.  The default connection pool, :class:`~sqlalchemy.pool.QueuePool`, as well as the default connection pool used with SQLite, :class:`~sqlalchemy.pool.SingletonThreadPool`, will open connections to the database on an as-needed basis.  As concurrent statements are executed, :class:`~sqlalchemy.pool.QueuePool` will grow its pool of connections to a default size of five, and will allow a default "overflow" of ten.   Since the ``Engine`` is essentially "home base" for the connection pool, it follows that you should keep a single :class:`~sqlalchemy.engine.base.Engine` per database established within an application, rather than creating a new one for each connection.
 
 Custom DBAPI connect() arguments
 --------------------------------
-
 
 Custom arguments used when issuing the ``connect()`` call to the underlying DBAPI may be issued in three distinct ways.  String-based arguments can be passed directly from the URL string as query arguments:
 
