@@ -3,12 +3,12 @@
 Connecting
 ----------
 
-URLs are of the form `postgres+pg8000://user@password@host:port/dbname[?key=value&key=value...]`.
+URLs are of the form `postgresql+pg8000://user@password@host:port/dbname[?key=value&key=value...]`.
 
 Unicode
 -------
 
-pg8000 requires that the postgres client encoding be configured in the postgresql.conf file
+pg8000 requires that the postgresql client encoding be configured in the postgresql.conf file
 in order to use encodings other than ascii.  Set this value to the same value as 
 the "encoding" parameter on create_engine(), usually "utf-8".
 
@@ -22,7 +22,7 @@ from sqlalchemy.engine import default
 import decimal
 from sqlalchemy import util
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgres.base import PGDialect, PGCompiler
+from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler
 
 class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -39,15 +39,15 @@ class _PGNumeric(sqltypes.Numeric):
                     return value
             return process
 
-class Postgres_pg8000ExecutionContext(default.DefaultExecutionContext):
+class PostgreSQL_pg8000ExecutionContext(default.DefaultExecutionContext):
     pass
 
-class Postgres_pg8000Compiler(PGCompiler):
+class PostgreSQL_pg8000Compiler(PGCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
     
     
-class Postgres_pg8000(PGDialect):
+class PostgreSQL_pg8000(PGDialect):
     driver = 'pg8000'
 
     supports_unicode_statements = True
@@ -56,8 +56,8 @@ class Postgres_pg8000(PGDialect):
     
     default_paramstyle = 'format'
     supports_sane_multi_rowcount = False
-    execution_ctx_cls = Postgres_pg8000ExecutionContext
-    statement_compiler = Postgres_pg8000Compiler
+    execution_ctx_cls = PostgreSQL_pg8000ExecutionContext
+    statement_compiler = PostgreSQL_pg8000Compiler
     
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -81,4 +81,4 @@ class Postgres_pg8000(PGDialect):
     def is_disconnect(self, e):
         return "connection is closed" in str(e)
 
-dialect = Postgres_pg8000
+dialect = PostgreSQL_pg8000

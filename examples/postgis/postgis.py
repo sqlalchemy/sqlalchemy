@@ -231,7 +231,7 @@ if __name__ == '__main__':
     from sqlalchemy.orm import sessionmaker, column_property
     from sqlalchemy.ext.declarative import declarative_base
 
-    engine = create_engine('postgres://scott:tiger@localhost/gistest', echo=True)
+    engine = create_engine('postgresql://scott:tiger@localhost/gistest', echo=True)
     metadata = MetaData(engine)
     Base = declarative_base(metadata=metadata)
 

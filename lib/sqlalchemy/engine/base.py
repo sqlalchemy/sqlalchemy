@@ -477,7 +477,7 @@ class ExecutionContext(object):
         """Return a new cursor generated from this ExecutionContext's connection.
 
         Some dialects may wish to change the behavior of
-        connection.cursor(), such as postgres which may return a PG
+        connection.cursor(), such as postgresql which may return a PG
         "server side" cursor.
         """
 

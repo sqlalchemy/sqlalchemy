@@ -37,7 +37,7 @@ class DefaultTest(testing.TestBase):
                 # since its a "branched" connection
                 conn.close()
 
-        use_function_defaults = testing.against('postgres', 'mssql', 'maxdb')
+        use_function_defaults = testing.against('postgresql', 'mssql', 'maxdb')
         is_oracle = testing.against('oracle')
 
         # select "count(1)" returns different results on different DBs also
@@ -356,18 +356,18 @@ class DefaultTest(testing.TestBase):
         l = l.fetchone()
         eq_(55, l['col3'])
 
-    @testing.fails_on_everything_except('postgres')
+    @testing.fails_on_everything_except('postgresql')
     def test_passive_override(self):
         """
-        Primarily for postgres, tests that when we get a primary key column
+        Primarily for postgresql, tests that when we get a primary key column
         back from reflecting a table which has a default value on it, we
         pre-execute that DefaultClause upon insert, even though DefaultClause
-        says "let the database execute this", because in postgres we must have
+        says "let the database execute this", because in postgresql we must have
         all the primary key values in memory before insert; otherwise we can't
         locate the just inserted row.
 
         """
-        # TODO: move this to dialect/postgres
+        # TODO: move this to dialect/postgresql
         try:
             meta = MetaData(testing.db)
             testing.db.execute("""
@@ -537,7 +537,7 @@ class AutoIncrementTest(_base.TablesTest):
 
 
         try:
-            # postgres + mysql strict will fail on first row,
+            # postgresql + mysql strict will fail on first row,
             # mysql in legacy mode fails on second row
             nonai.insert().execute(data='row 1')
             nonai.insert().execute(data='row 2')

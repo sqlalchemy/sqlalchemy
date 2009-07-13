@@ -109,9 +109,9 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       like::
 
         sess = Session(binds={
-            SomeMappedClass: create_engine('postgres://engine1'),
-            somemapper: create_engine('postgres://engine2'),
-            some_table: create_engine('postgres://engine3'),
+            SomeMappedClass: create_engine('postgresql://engine1'),
+            somemapper: create_engine('postgresql://engine2'),
+            some_table: create_engine('postgresql://engine3'),
             })
 
       Also see the ``bind_mapper()`` and ``bind_table()`` methods.

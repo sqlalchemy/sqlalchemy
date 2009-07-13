@@ -45,11 +45,11 @@ for the dialect in use::
     def visit_alter_column(element, compiler, **kw):
         return "ALTER COLUMN %s ..." % element.column.name
 
-    @compiles(AlterColumn, 'postgres')
+    @compiles(AlterColumn, 'postgresql')
     def visit_alter_column(element, compiler, **kw):
         return "ALTER TABLE %s ALTER COLUMN %s ..." % (element.table.name, element.column.name)
 
-The second ``visit_alter_table`` will be invoked when any ``postgres`` dialect is used.
+The second ``visit_alter_table`` will be invoked when any ``postgresql`` dialect is used.
 
 The ``compiler`` argument is the :class:`~sqlalchemy.engine.base.Compiled` object
 in use.  This object can be inspected for any information about the in-progress 

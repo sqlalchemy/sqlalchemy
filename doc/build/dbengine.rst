@@ -19,9 +19,9 @@ Where above, a :class:`~sqlalchemy.engine.Engine` references both a  :class:`~sq
 
 Creating an engine is just a matter of issuing a single call, :func:`create_engine()`::
 
-    engine = create_engine('postgres://scott:tiger@localhost:5432/mydatabase')
+    engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
     
-The above engine invokes the ``postgres`` dialect and a connection pool which references ``localhost:5432``.
+The above engine invokes the ``postgresql`` dialect and a connection pool which references ``localhost:5432``.
 
 The engine can be used directly to issue SQL to the database.  The most generic way is to use connections, which you get via the ``connect()`` method::
 
@@ -52,11 +52,11 @@ The ``Engine`` and ``Connection`` can do a lot more than what we illustrated abo
 
 Supported Databases 
 ====================
-Recall that the ``Dialect`` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for SQLite, Postgres, MySQL, MS-SQL, Firebird, Informix, and Oracle; these can each be seen as a Python module present in the :mod:``~sqlalchemy.databases`` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
+Recall that the ``Dialect`` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for SQLite, PostgreSQL, MySQL, MS-SQL, Firebird, Informix, and Oracle; these can each be seen as a Python module present in the :mod:``~sqlalchemy.databases`` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
 
 Downloads for each DBAPI at the time of this writing are as follows:
 
-* Postgres:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_
+* PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_
 * SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
 * MySQL:   `MySQLDB <http://sourceforge.net/projects/mysql-python>`_
 * Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
@@ -76,12 +76,12 @@ SQLAlchemy indicates the source of an Engine strictly via `RFC-1738 <http://rfc.
 
     driver://username:password@host:port/database
 
-Available drivernames are ``sqlite``, ``mysql``, ``postgres``, ``oracle``, ``mssql``, and ``firebird``.  For sqlite, the database name is the filename to connect to, or the special name ":memory:" which indicates an in-memory database.  The URL is typically sent as a string to the ``create_engine()`` function:
+Available drivernames are ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, ``mssql``, and ``firebird``.  For sqlite, the database name is the filename to connect to, or the special name ":memory:" which indicates an in-memory database.  The URL is typically sent as a string to the ``create_engine()`` function:
 
 .. sourcecode:: python+sql
 
-    # postgres
-    pg_db = create_engine('postgres://scott:tiger@localhost:5432/mydatabase')
+    # postgresql
+    pg_db = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
     
     # sqlite (note the four slashes for an absolute path)
     sqlite_db = create_engine('sqlite:////absolute/path/to/database.txt')
@@ -119,7 +119,7 @@ Custom arguments used when issuing the ``connect()`` call to the underlying DBAP
 
 .. sourcecode:: python+sql
 
-    db = create_engine('postgres://scott:tiger@localhost/test?argument1=foo&argument2=bar')
+    db = create_engine('postgresql://scott:tiger@localhost/test?argument1=foo&argument2=bar')
 
 If SQLAlchemy's database connector is aware of a particular query argument, it may convert its type from string to its proper type.
     
@@ -127,7 +127,7 @@ If SQLAlchemy's database connector is aware of a particular query argument, it m
 
 .. sourcecode:: python+sql
 
-    db = create_engine('postgres://scott:tiger@localhost/test', connect_args = {'argument1':17, 'argument2':'bar'})
+    db = create_engine('postgresql://scott:tiger@localhost/test', connect_args = {'argument1':17, 'argument2':'bar'})
 
 The most customizable connection method of all is to pass a ``creator`` argument, which specifies a callable that returns a DBAPI connection:
 
@@ -136,7 +136,7 @@ The most customizable connection method of all is to pass a ``creator`` argument
     def connect():
         return psycopg.connect(user='scott', host='localhost')
 
-    db = create_engine('postgres://', creator=connect)
+    db = create_engine('postgresql://', creator=connect)
 
 .. _create_engine_args:
 
@@ -147,7 +147,7 @@ Keyword options can also be specified to ``create_engine()``, following the stri
 
 .. sourcecode:: python+sql
 
-    db = create_engine('postgres://...', encoding='latin1', echo=True)
+    db = create_engine('postgresql://...', encoding='latin1', echo=True)
 
 Options common to all database dialects are described at :func:`~sqlalchemy.create_engine`.
 

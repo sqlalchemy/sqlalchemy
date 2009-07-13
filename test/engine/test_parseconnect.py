@@ -42,7 +42,7 @@ class CreateEngineTest(TestBase):
         dbapi = MockDBAPI(foober='12', lala='18', fooz='somevalue')
 
         e = create_engine(
-                'postgres://scott:tiger@somehost/test?foober=12&lala=18&fooz=somevalue', 
+                'postgresql://scott:tiger@somehost/test?foober=12&lala=18&fooz=somevalue', 
                 module=dbapi,
                 _initialize=False
                 )
@@ -52,7 +52,7 @@ class CreateEngineTest(TestBase):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
 
         e = create_engine(
-                'postgres://scott:tiger@somehost/test?fooz=somevalue', 
+                'postgresql://scott:tiger@somehost/test?fooz=somevalue', 
                 connect_args={'foober':12, 'lala':18, 'hoho':{'this':'dict'}}, 
                 module=dbapi,
                 _initialize=False
@@ -62,7 +62,7 @@ class CreateEngineTest(TestBase):
     def test_coerce_config(self):
         raw = r"""
 [prefixed]
-sqlalchemy.url=postgres://scott:tiger@somehost/test?fooz=somevalue
+sqlalchemy.url=postgresql://scott:tiger@somehost/test?fooz=somevalue
 sqlalchemy.convert_unicode=0
 sqlalchemy.echo=false
 sqlalchemy.echo_pool=1
@@ -72,7 +72,7 @@ sqlalchemy.pool_size=2
 sqlalchemy.pool_threadlocal=1
 sqlalchemy.pool_timeout=10
 [plain]
-url=postgres://scott:tiger@somehost/test?fooz=somevalue
+url=postgresql://scott:tiger@somehost/test?fooz=somevalue
 convert_unicode=0
 echo=0
 echo_pool=1
@@ -86,7 +86,7 @@ pool_timeout=10
         ini.readfp(StringIO.StringIO(raw))
 
         expected = {
-            'url': 'postgres://scott:tiger@somehost/test?fooz=somevalue',
+            'url': 'postgresql://scott:tiger@somehost/test?fooz=somevalue',
             'convert_unicode': 0,
             'echo': False,
             'echo_pool': True,
@@ -107,14 +107,14 @@ pool_timeout=10
         dbapi = MockDBAPI()
 
         config = {
-            'sqlalchemy.url':'postgres://scott:tiger@somehost/test?fooz=somevalue',
+            'sqlalchemy.url':'postgresql://scott:tiger@somehost/test?fooz=somevalue',
             'sqlalchemy.pool_recycle':'50',
             'sqlalchemy.echo':'true'
         }
 
         e = engine_from_config(config, module=dbapi)
         assert e.pool._recycle == 50
-        assert e.url == url.make_url('postgres://scott:tiger@somehost/test?fooz=somevalue')
+        assert e.url == url.make_url('postgresql://scott:tiger@somehost/test?fooz=somevalue')
         assert e.echo is True
 
     def test_custom(self):
@@ -123,25 +123,25 @@ pool_timeout=10
         def connect():
             return dbapi.connect(foober=12, lala=18, fooz='somevalue', hoho={'this':'dict'})
 
-        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
-        e = create_engine('postgres://', creator=connect, module=dbapi, _initialize=False)
+        # start the postgresql dialect, but put our mock DBAPI as the module instead of psycopg
+        e = create_engine('postgresql://', creator=connect, module=dbapi, _initialize=False)
         c = e.connect()
 
     def test_recycle(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
-        e = create_engine('postgres://', pool_recycle=472, module=dbapi, _initialize=False)
+        e = create_engine('postgresql://', pool_recycle=472, module=dbapi, _initialize=False)
         assert e.pool._recycle == 472
 
     def test_badargs(self):
         assert_raises(ImportError, create_engine, "foobar://", module=MockDBAPI())
 
         # bad arg
-        assert_raises(TypeError, create_engine, 'postgres://', use_ansi=True, module=MockDBAPI())
+        assert_raises(TypeError, create_engine, 'postgresql://', use_ansi=True, module=MockDBAPI())
 
         # bad arg
         assert_raises(TypeError, create_engine, 'oracle://', lala=5, use_ansi=True, module=MockDBAPI())
 
-        assert_raises(TypeError, create_engine, 'postgres://', lala=5, module=MockDBAPI())
+        assert_raises(TypeError, create_engine, 'postgresql://', lala=5, module=MockDBAPI())
 
         assert_raises(TypeError, create_engine,'sqlite://', lala=5)
 
@@ -166,11 +166,11 @@ pool_timeout=10
 
     def test_poolargs(self):
         """test that connection pool args make it thru"""
-        e = create_engine('postgres://', creator=None, pool_recycle=50, echo_pool=None, module=MockDBAPI(), _initialize=False)
+        e = create_engine('postgresql://', creator=None, pool_recycle=50, echo_pool=None, module=MockDBAPI(), _initialize=False)
         assert e.pool._recycle == 50
 
         # these args work for QueuePool
-        e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=MockDBAPI())
+        e = create_engine('postgresql://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=MockDBAPI())
 
         # but not SingletonThreadPool
         assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.SingletonThreadPool)

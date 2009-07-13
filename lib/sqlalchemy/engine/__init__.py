@@ -110,7 +110,7 @@ def create_engine(*args, **kwargs):
 
     The URL is a string in the form
     ``dialect://user:password@host/dbname[?key=value..]``, where
-    ``dialect`` is a name such as ``mysql``, ``oracle``, ``postgres``,
+    ``dialect`` is a name such as ``mysql``, ``oracle``, ``postgresql``,
     etc.  Alternatively, the URL can be an instance of
     :class:`~sqlalchemy.engine.url.URL`.
 
@@ -175,7 +175,7 @@ def create_engine(*args, **kwargs):
     :param module=None: used by database implementations which
         support multiple DBAPI modules, this is a reference to a DBAPI2
         module to be used instead of the engine's default module. For
-        Postgres, the default is psycopg2. For Oracle, it's cx_Oracle.
+        PostgreSQL, the default is psycopg2. For Oracle, it's cx_Oracle.
 
     :param pool=None: an already-constructed instance of
         :class:`~sqlalchemy.pool.Pool`, such as a

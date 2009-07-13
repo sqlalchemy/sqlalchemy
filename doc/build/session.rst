@@ -54,7 +54,7 @@ In our previous example regarding ``sessionmaker()``, we specified a ``bind`` fo
     Session = sessionmaker()
 
     # later, we create the engine
-    engine = create_engine('postgres://...')
+    engine = create_engine('postgresql://...')
     
     # associate it with our custom Session class
     Session.configure(bind=engine)
@@ -74,7 +74,7 @@ The ``Session`` can also be explicitly bound to an individual database ``Connect
     # global application scope.  create Session class, engine
     Session = sessionmaker()
 
-    engine = create_engine('postgres://...')
+    engine = create_engine('postgresql://...')
     
     ...
     
@@ -459,8 +459,8 @@ Enabling Two-Phase Commit
 
 Finally, for MySQL, PostgreSQL, and soon Oracle as well, the session can be instructed to use two-phase commit semantics. This will coordinate the committing of transactions across databases so that the transaction is either committed or rolled back in all databases. You can also ``prepare()`` the session for interacting with transactions not managed by SQLAlchemy. To use two phase transactions set the flag ``twophase=True`` on the session::
 
-    engine1 = create_engine('postgres://db1')
-    engine2 = create_engine('postgres://db2')
+    engine1 = create_engine('postgresql://db1')
+    engine2 = create_engine('postgresql://db2')
     
     Session = sessionmaker(twophase=True)
 
@@ -549,7 +549,7 @@ Note that above, we issue a ``commit()`` both on the ``Session`` as well as the 
 
 When using the ``threadlocal`` engine context, the process above is simplified; the ``Session`` uses the same connection/transaction as everyone else in the current thread, whether or not you explicitly bind it::
 
-    engine = create_engine('postgres://mydb', strategy="threadlocal")
+    engine = create_engine('postgresql://mydb', strategy="threadlocal")
     engine.begin()
     
     session = Session()  # session takes place in the transaction like everyone else
@@ -652,8 +652,8 @@ Vertical Partitioning
 
 Vertical partitioning places different kinds of objects, or different tables, across multiple databases::
 
-    engine1 = create_engine('postgres://db1')
-    engine2 = create_engine('postgres://db2')
+    engine1 = create_engine('postgresql://db1')
+    engine2 = create_engine('postgresql://db2')
 
     Session = sessionmaker(twophase=True)
 

@@ -1,4 +1,4 @@
-# postgres.py
+# postgresql.py
 # Copyright (C) 2005, 2006, 2007, 2008, 2009 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,7 +12,7 @@ regarding that driver.
 Sequences/SERIAL
 ----------------
 
-Postgres supports sequences, and SQLAlchemy uses these as the default means of creating
+PostgreSQL supports sequences, and SQLAlchemy uses these as the default means of creating
 new primary key values for integer-based primary key columns.   When creating tables, 
 SQLAlchemy will issue the ``SERIAL`` datatype for integer-based primary key columns, 
 which generates a sequence corresponding to the column and associated with it based on
@@ -32,7 +32,7 @@ that when an :func:`~sqlalchemy.sql.expression.insert()` construct is executed u
 "executemany" semantics, the sequence is not pre-executed and normal PG SERIAL behavior
 is used.
 
-Postgres 8.3 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy supports 
+PostgreSQL 8.3 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy supports 
 as well.  A future release of SQLA will use this feature by default in lieu of 
 sequence pre-execution in order to retrieve new primary key values, when available.
 
@@ -43,22 +43,22 @@ The dialect supports PG 8.3's ``INSERT..RETURNING`` and ``UPDATE..RETURNING`` sy
 but must be explicitly enabled on a per-statement basis::
 
     # INSERT..RETURNING
-    result = table.insert(postgres_returning=[table.c.col1, table.c.col2]).\\
+    result = table.insert(postgresql_returning=[table.c.col1, table.c.col2]).\\
         values(name='foo')
     print result.fetchall()
     
     # UPDATE..RETURNING
-    result = table.update(postgres_returning=[table.c.col1, table.c.col2]).\\
+    result = table.update(postgresql_returning=[table.c.col1, table.c.col2]).\\
         where(table.c.name=='foo').values(name='bar')
     print result.fetchall()
 
 Indexes
 -------
 
-PostgreSQL supports partial indexes. To create them pass a postgres_where
+PostgreSQL supports partial indexes. To create them pass a postgresql_where
 option to the Index constructor::
 
-  Index('my_index', my_table.c.id, postgres_where=tbl.c.value > 10)
+  Index('my_index', my_table.c.id, postgresql_where=tbl.c.value > 10)
 
 
 
@@ -225,7 +225,7 @@ class PGCompiler(compiler.SQLCompiler):
 
     def post_process_text(self, text):
         if '%%' in text:
-            util.warn("The SQLAlchemy postgres dialect now automatically escapes '%' in text() expressions to '%%'.")
+            util.warn("The SQLAlchemy postgresql dialect now automatically escapes '%' in text() expressions to '%%'.")
         return text.replace('%', '%%')
 
     def visit_sequence(self, seq):
@@ -264,7 +264,12 @@ class PGCompiler(compiler.SQLCompiler):
             return super(PGCompiler, self).for_update_clause(select)
 
     def _append_returning(self, text, stmt):
-        returning_cols = stmt.kwargs['postgres_returning']
+        try:
+            returning_cols = stmt.kwargs['postgresql_returning']
+        except KeyError:
+            returning_cols = stmt.kwargs['postgres_returning']
+            util.warn_deprecated("The 'postgres_returning' argument has been renamed 'postgresql_returning'")
+            
         def flatten_columnlist(collist):
             for c in collist:
                 if isinstance(c, expression.Selectable):
@@ -278,14 +283,14 @@ class PGCompiler(compiler.SQLCompiler):
 
     def visit_update(self, update_stmt):
         text = super(PGCompiler, self).visit_update(update_stmt)
-        if 'postgres_returning' in update_stmt.kwargs:
+        if 'postgresql_returning' in update_stmt.kwargs or 'postgres_returning' in update_stmt.kwargs:
             return self._append_returning(text, update_stmt)
         else:
             return text
 
     def visit_insert(self, insert_stmt):
         text = super(PGCompiler, self).visit_insert(insert_stmt)
-        if 'postgres_returning' in insert_stmt.kwargs:
+        if 'postgresql_returning' in insert_stmt.kwargs or 'postgres_returning' in insert_stmt.kwargs:
             return self._append_returning(text, insert_stmt)
         else:
             return text
@@ -334,8 +339,15 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     % (preparer.quote(self._validate_identifier(index.name, True), index.quote),
                        preparer.format_table(index.table),
                        ', '.join([preparer.format_column(c) for c in index.columns]))
-                       
-        whereclause = index.kwargs.get('postgres_where', None)
+        
+        if "postgres_where" in index.kwargs:
+            whereclause = index.kwargs['postgres_where']
+            util.warn_deprecated("The 'postgres_where' argument has been renamed to 'postgresql_where'.")
+        elif 'postgresql_where' in index.kwargs:
+            whereclause = index.kwargs['postgresql_where']
+        else:
+            whereclause = None
+            
         if whereclause is not None:
             compiler = self._compile(whereclause, None)
             # this might belong to the compiler class
@@ -451,7 +463,7 @@ class PGInspector(reflection.Inspector):
     
 
 class PGDialect(default.DefaultDialect):
-    name = 'postgres'
+    name = 'postgresql'
     supports_alter = True
     max_identifier_length = 63
     supports_sane_rowcount = True

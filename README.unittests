@@ -76,7 +76,7 @@ DATABASE TARGETS
 Tests will target an in-memory SQLite database by default.  To test against
 another database, use the --dburi option with any standard SQLAlchemy URL:
 
-    --dburi=postgres://user:password@localhost/test
+    --dburi=postgresql://user:password@localhost/test
 
 Use an empty database and a database user with general DBA privileges.  The
 test suite will be creating and dropping many tables and other DDL, and
@@ -89,19 +89,19 @@ typing.  The --dbs option lists the built-in aliases and their matching URLs:
     Available --db options (use --dburi to override)
                mysql    mysql://scott:tiger@127.0.0.1:3306/test
               oracle    oracle://scott:tiger@127.0.0.1:1521
-            postgres    postgres://scott:tiger@127.0.0.1:5432/test
+            postgresql    postgresql://scott:tiger@127.0.0.1:5432/test
     [...]
 
 To run tests against an aliased database:
 
-    $ nosetests --db=postgres
+    $ nosetests --db=postgresql
 
 To customize the URLs with your own users or hostnames, make a simple .ini
 file called `test.cfg` at the top level of the SQLAlchemy source distribution
 or a `.satest.cfg` in your home directory:
 
     [db]
-    postgres=postgres://myuser:mypass@localhost/mydb
+    postgresql=postgresql://myuser:mypass@localhost/mydb
 
 Your custom entries will override the defaults and you'll see them reflected
 in the output of --dbs.
@@ -168,10 +168,10 @@ IRC!
 
 TIPS
 ----
-Postgres: The tests require an 'alt_schema' and 'alt_schema_2' to be present in
+PostgreSQL: The tests require an 'alt_schema' and 'alt_schema_2' to be present in
 the testing database.
 
-Postgres: When running the tests on postgres, postgres can get slower and
+PostgreSQL: When running the tests on postgresql, postgresql can get slower and
 slower each time you run the tests.  This seems to be related to the constant
 creation/dropping of tables.  Running a "VACUUM FULL" on the database will
 speed it up again.

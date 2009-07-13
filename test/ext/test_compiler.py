@@ -36,12 +36,12 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         def visit_type(type, compiler, **kw):
             return "SQLITE_FOO"
 
-        @compiles(MyType, 'postgres')
+        @compiles(MyType, 'postgresql')
         def visit_type(type, compiler, **kw):
             return "POSTGRES_FOO"
 
         from sqlalchemy.dialects.sqlite import base as sqlite
-        from sqlalchemy.dialects.postgres import base as postgres
+        from sqlalchemy.dialects.postgresql import base as postgresql
 
         self.assert_compile(
             MyType(),
@@ -52,7 +52,7 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(
             MyType(),
             "POSTGRES_FOO",
-            dialect=postgres.dialect()
+            dialect=postgresql.dialect()
         )
         
         

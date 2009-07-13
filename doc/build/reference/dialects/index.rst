@@ -13,7 +13,7 @@ sqlalchemy.databases
     mssql
     mysql
     oracle
-    postgres
+    postgresql
     sqlite
     sybase
 

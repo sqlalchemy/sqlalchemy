@@ -862,7 +862,7 @@ class DefaultTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        use_string_defaults = testing.against('postgres', 'oracle', 'sqlite', 'mssql')
+        use_string_defaults = testing.against('postgresql', 'oracle', 'sqlite', 'mssql')
 
         if use_string_defaults:
             hohotype = String(30)
@@ -887,7 +887,7 @@ class DefaultTest(_base.MappedTest):
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)))
 
-        if testing.against('postgres', 'oracle'):
+        if testing.against('postgresql', 'oracle'):
             dt.append_column(
                 Column('secondary_id', Integer, sa.Sequence('sec_id_seq'),
                        unique=True))
@@ -2350,6 +2350,6 @@ class TransactionTest(_base.MappedTest):
         # todo: on 8.3 at least, the failed commit seems to close the cursor?
         # needs investigation.  leaving in the DDL above now to help verify
         # that the new deferrable support on FK isn't involved in this issue.
-        if testing.against('postgres'):
+        if testing.against('postgresql'):
             t1.bind.engine.dispose()
 

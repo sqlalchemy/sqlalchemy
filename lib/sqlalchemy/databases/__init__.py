@@ -5,7 +5,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.dialects.sqlite import base as sqlite
-from sqlalchemy.dialects.postgres import base as postgres
+from sqlalchemy.dialects.postgresql import base as postgresql
+postgres = postgresql
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.firebird import base as firebird
@@ -25,7 +26,7 @@ __all__ = (
     'maxdb',
     'mssql',
     'mysql',
-    'postgres',
+    'postgresql',
     'sqlite',
     'oracle',
     'sybase',

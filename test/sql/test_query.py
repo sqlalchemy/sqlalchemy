@@ -287,7 +287,7 @@ class QueryTest(TestBase):
 
         eq_(select([users.c.user_id]).where(users.c.user_name.ilike('TWO')).execute().fetchall(), [(2, )])
 
-        if testing.against('postgres'):
+        if testing.against('postgresql'):
             eq_(select([users.c.user_id]).where(users.c.user_name.like('one')).execute().fetchall(), [(1, )])
             eq_(select([users.c.user_id]).where(users.c.user_name.like('TWO')).execute().fetchall(), [])
 
@@ -674,7 +674,7 @@ class QueryTest(TestBase):
 class PercentSchemaNamesTest(TestBase):
     """tests using percent signs, spaces in table and column names.
     
-    Doesn't pass for mysql, postgres, but this is really a 
+    Doesn't pass for mysql, postgresql, but this is really a 
     SQLAlchemy bug - we should be escaping out %% signs for this
     operation the same way we do for text() and column labels.
     
@@ -682,7 +682,7 @@ class PercentSchemaNamesTest(TestBase):
 
     @classmethod
     @testing.crashes('mysql', 'mysqldb calls name % (params)')
-    @testing.crashes('postgres', 'postgres calls name % (params)')
+    @testing.crashes('postgresql', 'postgresql calls name % (params)')
     def setup_class(cls):
         global percent_table, metadata
         metadata = MetaData(testing.db)
@@ -695,12 +695,12 @@ class PercentSchemaNamesTest(TestBase):
 
     @classmethod
     @testing.crashes('mysql', 'mysqldb calls name % (params)')
-    @testing.crashes('postgres', 'postgres calls name % (params)')
+    @testing.crashes('postgresql', 'postgresql calls name % (params)')
     def teardown_class(cls):
         metadata.drop_all()
     
     @testing.crashes('mysql', 'mysqldb calls name % (params)')
-    @testing.crashes('postgres', 'postgres calls name % (params)')
+    @testing.crashes('postgresql', 'postgresql calls name % (params)')
     def test_roundtrip(self):
         percent_table.insert().execute(
             {'percent%':5, '%(oneofthese)s':7, 'spaces % more spaces':12},

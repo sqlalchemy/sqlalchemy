@@ -717,7 +717,7 @@ class UnicodeReflectionTest(TestBase):
     def test_basic(self):
         try:
             # the 'convert_unicode' should not get in the way of the reflection
-            # process.  reflecttable for oracle, postgres (others?) expect non-unicode
+            # process.  reflecttable for oracle, postgresql (others?) expect non-unicode
             # strings in result sets/bind params
             bind = engines.utf8_engine(options={'convert_unicode':True})
             metadata = MetaData(bind)
@@ -780,7 +780,7 @@ class SchemaTest(TestBase):
 
         if testing.against('mysql+mysqldb'):
             schema = testing.db.url.database
-        elif testing.against('postgres'):
+        elif testing.against('postgresql'):
             schema = 'public'
         elif testing.against('sqlite'):
             # Works for CREATE TABLE main.foo, SELECT FROM main.foo, etc.,
@@ -1132,7 +1132,7 @@ class ComponentReflectionTest(TestBase):
         self._test_get_view_definition(schema=get_schema())
 
     def _test_get_table_oid(self, table_name, schema=None):
-        if testing.against('postgres'):
+        if testing.against('postgresql'):
             meta = MetaData(testing.db)
             (users, addresses) = createTables(meta, schema)
             meta.create_all()

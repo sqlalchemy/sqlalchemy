@@ -28,8 +28,8 @@ is a subclass of an existing generic type and is only provided for bind/result b
 the current mixed case naming can remain, i.e. _PGNumeric for Numeric - in this case, 
 end users would never need to use _PGNumeric directly.   However, if a dialect-specific 
 type is specifying a type *or* arguments that are not present generically, it should
-match the real name of the type on that backend, in uppercase.  E.g. postgres.INET,
-mysql.ENUM, postgres.ARRAY.  
+match the real name of the type on that backend, in uppercase.  E.g. postgresql.INET,
+mysql.ENUM, postgresql.ARRAY.  
 
 Or follow this handy flowchart:
 
@@ -92,7 +92,7 @@ Postgresql dialect therefore imports types.DATETIME into its base.py.
 Ideally one should be able to specify a schema using names imported completely from a 
 dialect, all matching the real name on that backend:
 
-   from sqlalchemy.dialects.postgres import base as pg
+   from sqlalchemy.dialects.postgresql import base as pg
    
    t = Table('mytable', metadata,
               Column('id', pg.INTEGER, primary_key=True),

@@ -455,7 +455,7 @@ class RelationTest4(_base.MappedTest):
     @testing.fails_on_everything_except('sqlite', 'mysql')
     @testing.resolve_artifact_names
     def test_nullPKsOK_BtoA(self):
-        # postgres cant handle a nullable PK column...?
+        # postgresql cant handle a nullable PK column...?
         tableC = Table('tablec', tableA.metadata,
             Column('id', Integer, primary_key=True),
             Column('a_id', Integer, ForeignKey('tableA.id'),

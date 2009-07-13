@@ -467,7 +467,7 @@ class Column(SchemaItem, expression.ColumnClause):
             or :meth:`create_all()`.  The flag has no relevance at any
             other time.
           * The database supports autoincrementing behavior, such as 
-            Postgres or MySQL, and this behavior can be disabled (which does
+            PostgreSQL or MySQL, and this behavior can be disabled (which does
             not include SQLite).
 
         :param default: A scalar, Python callable, or :class:`~sqlalchemy.sql.expression.ClauseElement`
@@ -1469,7 +1469,7 @@ class Index(SchemaItem):
           unique
             Defaults to False: create a unique index.
 
-          postgres_where
+          postgresql_where
             Defaults to None: create a partial index when using PostgreSQL
         """
 
@@ -2027,11 +2027,11 @@ class DDL(DDLElement):
           predicate.  If a string, it will be compared to the name of the
           executing database dialect::
 
-            DDL('something', on='postgres')
+            DDL('something', on='postgresql')
         
           If a tuple, specifies multiple dialect names:
           
-            DDL('something', on=('postgres', 'mysql'))
+            DDL('something', on=('postgresql', 'mysql'))
             
           If a callable, it will be invoked with three positional arguments
           as well as optional keyword arguments:

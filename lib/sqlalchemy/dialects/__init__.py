@@ -6,7 +6,7 @@ __all__ = (
 #    'mssql',
     'mysql',
     'oracle',
-    'postgres',
+    'postgresql',
     'sqlite',
 #    'sybase',
     )

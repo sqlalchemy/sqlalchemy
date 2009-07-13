@@ -2042,7 +2042,7 @@ class CompositeTypesTest(_base.MappedTest):
 
         # test pk with one column NULL
         # TODO: can't seem to get NULL in for a PK value
-        # in either mysql or postgres, autoincrement=False etc.
+        # in either mysql or postgresql, autoincrement=False etc.
         # notwithstanding
         @testing.fails_on_everything_except("sqlite")
         def go():

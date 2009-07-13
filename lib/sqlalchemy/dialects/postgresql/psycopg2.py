@@ -12,7 +12,7 @@ Note that psycopg1 is **not** supported.
 Connecting
 ----------
 
-URLs are of the form `postgres+psycopg2://user@password@host:port/dbname[?key=value&key=value...]`.
+URLs are of the form `postgresql+psycopg2://user@password@host:port/dbname[?key=value&key=value...]`.
 
 psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.create_engine()` are:
 
@@ -42,7 +42,7 @@ from sqlalchemy.engine import base, default
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgres.base import PGDialect, PGCompiler
+from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler
 
 class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -65,7 +65,7 @@ SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
     re.I | re.UNICODE)
 
-class Postgres_psycopg2ExecutionContext(default.DefaultExecutionContext):
+class PostgreSQL_psycopg2ExecutionContext(default.DefaultExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
         is_server_side = \
@@ -93,20 +93,20 @@ class Postgres_psycopg2ExecutionContext(default.DefaultExecutionContext):
         else:
             return base.ResultProxy(self)
 
-class Postgres_psycopg2Compiler(PGCompiler):
+class PostgreSQL_psycopg2Compiler(PGCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
     
     def post_process_text(self, text):
         return text.replace('%', '%%')
 
-class Postgres_psycopg2(PGDialect):
+class PostgreSQL_psycopg2(PGDialect):
     driver = 'psycopg2'
     supports_unicode_statements = False
     default_paramstyle = 'pyformat'
     supports_sane_multi_rowcount = False
-    execution_ctx_cls = Postgres_psycopg2ExecutionContext
-    statement_compiler = Postgres_psycopg2Compiler
+    execution_ctx_cls = PostgreSQL_psycopg2ExecutionContext
+    statement_compiler = PostgreSQL_psycopg2Compiler
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -143,5 +143,5 @@ class Postgres_psycopg2(PGDialect):
         else:
             return False
 
-dialect = Postgres_psycopg2
+dialect = PostgreSQL_psycopg2
     

@@ -59,7 +59,7 @@ def identity(fn):
         fn,
         no_support('firebird', 'not supported by database'),
         no_support('oracle', 'not supported by database'),
-        no_support('postgres', 'not supported by database'),
+        no_support('postgresql', 'not supported by database'),
         no_support('sybase', 'not supported by database'),
         )
 
@@ -82,7 +82,7 @@ def row_triggers(fn):
         exclude('mysql', '<', (5, 0, 10), 'not supported by database'),
         
         # huh?  TODO: implement triggers for PG tests, remove this
-        no_support('postgres', 'PG triggers need to be implemented for tests'),  
+        no_support('postgresql', 'PG triggers need to be implemented for tests'),  
         )
 
 def correlated_outer_joins(fn):

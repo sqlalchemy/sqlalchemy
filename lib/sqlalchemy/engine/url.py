@@ -96,7 +96,7 @@ class URL(object):
             else:
                 dialect, driver = self.drivername, 'base'
 
-            module = __import__('sqlalchemy.dialects.%s.%s' % (dialect, driver)).dialects
+            module = __import__('sqlalchemy.dialects.%s' % (dialect, )).dialects
             module = getattr(module, dialect)
             module = getattr(module, driver)
 

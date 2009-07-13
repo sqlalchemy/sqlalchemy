@@ -55,7 +55,7 @@ def teststring(s, name, globs=None, verbose=None, report=True,
     return runner.failures, runner.tries
 
 def replace_file(s, newfile):
-    engine = r"'(sqlite|postgres|mysql):///.*'"
+    engine = r"'(sqlite|postgresql|mysql):///.*'"
     engine = re.compile(engine, re.MULTILINE)
     s, n = re.subn(engine, "'sqlite:///" + newfile + "'", s)
     if not n:

@@ -338,7 +338,7 @@ def relation(argument, secondary=None, **kwargs):
       the foreign key in the database, and that the database will
       handle propagation of an UPDATE from a source column to
       dependent rows.  Note that with databases which enforce
-      referential integrity (i.e. Postgres, MySQL with InnoDB tables),
+      referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
       ON UPDATE CASCADE is required for this operation.  The
       relation() will update the value of the attribute on related
       items which are locally present in the session during a flush.

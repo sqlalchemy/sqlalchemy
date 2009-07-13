@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy import exc, schema
-from sqlalchemy.dialects.postgres import base as postgres
+from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.engine.strategies import MockEngineStrategy
 from sqlalchemy.test import *
 from sqlalchemy.sql import table, column
@@ -12,7 +12,7 @@ from sqlalchemy.test.testing import eq_
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
         seq = Sequence("my_seq_no_schema")
-        dialect = postgres.PGDialect()
+        dialect = postgresql.PGDialect()
         assert dialect.identifier_preparer.format_sequence(seq) == "my_seq_no_schema"
 
         seq = Sequence("my_seq", schema="some_schema")
@@ -22,10 +22,48 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
 
 class CompileTest(TestBase, AssertsCompiledSQL):
-    __dialect__ = postgres.dialect()
+    __dialect__ = postgresql.dialect()
 
     def test_update_returning(self):
-        dialect = postgres.dialect()
+        dialect = postgresql.dialect()
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)),
+        )
+
+        u = update(table1, values=dict(name='foo'), postgresql_returning=[table1.c.myid, table1.c.name])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
+
+        u = update(table1, values=dict(name='foo'), postgresql_returning=[table1])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s "\
+            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+
+        u = update(table1, values=dict(name='foo'), postgresql_returning=[func.length(table1.c.name)])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name)", dialect=dialect)
+
+        
+    def test_insert_returning(self):
+        dialect = postgresql.dialect()
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)),
+        )
+
+        i = insert(table1, values=dict(name='foo'), postgresql_returning=[table1.c.myid, table1.c.name])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING mytable.myid, mytable.name", dialect=dialect)
+
+        i = insert(table1, values=dict(name='foo'), postgresql_returning=[table1])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) "\
+            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+
+        i = insert(table1, values=dict(name='foo'), postgresql_returning=[func.length(table1.c.name)])
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
+    
+    @testing.uses_deprecated(r".*'postgres_returning' argument has been renamed.*")
+    def test_old_returning_names(self):
+        dialect = postgresql.dialect()
         table1 = table('mytable',
             column('myid', Integer),
             column('name', String(128)),
@@ -35,37 +73,23 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         u = update(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
         self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
 
-        u = update(table1, values=dict(name='foo'), postgres_returning=[table1])
-        self.assert_compile(u, "UPDATE mytable SET name=%(name)s "\
-            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
-
-        u = update(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
-        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name)", dialect=dialect)
-
-    def test_insert_returning(self):
-        dialect = postgres.dialect()
-        table1 = table('mytable',
-            column('myid', Integer),
-            column('name', String(128)),
-            column('description', String(128)),
-        )
-
         i = insert(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING mytable.myid, mytable.name", dialect=dialect)
-
-        i = insert(table1, values=dict(name='foo'), postgres_returning=[table1])
-        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) "\
-            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
-
-        i = insert(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
-        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
-
+        
     def test_create_partial_index(self):
+        tbl = Table('testtbl', MetaData(), Column('data',Integer))
+        idx = Index('test_idx1', tbl.c.data, postgresql_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+
+        self.assert_compile(schema.CreateIndex(idx), 
+            "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgresql.dialect())
+
+    @testing.uses_deprecated(r".*'postgres_where' argument has been renamed.*")
+    def test_old_create_partial_index(self):
         tbl = Table('testtbl', MetaData(), Column('data',Integer))
         idx = Index('test_idx1', tbl.c.data, postgres_where=and_(tbl.c.data > 5, tbl.c.data < 10))
 
         self.assert_compile(schema.CreateIndex(idx), 
-            "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgres.dialect())
+            "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgresql.dialect())
 
     def test_extract(self):
         t = table('t', column('col1'))
@@ -77,9 +101,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 "FROM t" % field)
 
 class ReturningTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
-    @testing.exclude('postgres', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
     def test_update_returning(self):
         meta = MetaData(testing.db)
         table = Table('tables', meta,
@@ -91,7 +115,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         try:
             table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
 
-            result = table.update(table.c.persons > 4, dict(full=True), postgres_returning=[table.c.id]).execute()
+            result = table.update(table.c.persons > 4, dict(full=True), postgresql_returning=[table.c.id]).execute()
             eq_(result.fetchall(), [(1,)])
 
             result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
@@ -99,7 +123,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         finally:
             table.drop()
 
-    @testing.exclude('postgres', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
     def test_insert_returning(self):
         meta = MetaData(testing.db)
         table = Table('tables', meta,
@@ -109,20 +133,20 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         )
         table.create()
         try:
-            result = table.insert(postgres_returning=[table.c.id]).execute({'persons': 1, 'full': False})
+            result = table.insert(postgresql_returning=[table.c.id]).execute({'persons': 1, 'full': False})
 
             eq_(result.fetchall(), [(1,)])
 
-            @testing.fails_on('postgres', 'Known limitation of psycopg2')
+            @testing.fails_on('postgresql', 'Known limitation of psycopg2')
             def test_executemany():
                 # return value is documented as failing with psycopg2/executemany
-                result2 = table.insert(postgres_returning=[table]).execute(
+                result2 = table.insert(postgresql_returning=[table]).execute(
                      [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
                 eq_(result2.fetchall(), [(2, 2, False), (3,3,True)])
             
             test_executemany()
             
-            result3 = table.insert(postgres_returning=[(table.c.id*2).label('double_id')]).execute({'persons': 4, 'full': False})
+            result3 = table.insert(postgresql_returning=[(table.c.id*2).label('double_id')]).execute({'persons': 4, 'full': False})
             eq_([dict(row) for row in result3], [{'double_id':8}])
 
             result4 = testing.db.execute('insert into tables (id, persons, "full") values (5, 10, true) returning persons')
@@ -132,7 +156,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
 
 class InsertTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
@@ -397,7 +421,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
 class DomainReflectionTest(TestBase, AssertsExecutionResults):
     "Test PostgreSQL domains"
 
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
@@ -453,10 +477,10 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         assert table.columns.answer.nullable, "Expected reflected column to be nullable."
 
     def test_unknown_types(self):
-        from sqlalchemy.databases import postgres
+        from sqlalchemy.databases import postgresql
 
-        ischema_names = postgres.PGDialect.ischema_names
-        postgres.PGDialect.ischema_names = {}
+        ischema_names = postgresql.PGDialect.ischema_names
+        postgresql.PGDialect.ischema_names = {}
         try:
             m2 = MetaData(testing.db)
             assert_raises(exc.SAWarning, Table, "testtable", m2, autoload=True)
@@ -468,11 +492,11 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
                 assert t3.c.answer.type.__class__ == sa.types.NullType
 
         finally:
-            postgres.PGDialect.ischema_names = ischema_names
+            postgresql.PGDialect.ischema_names = ischema_names
 
 
 class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     def test_date_reflection(self):
         m1 = MetaData(testing.db)
@@ -732,20 +756,20 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 class TimezoneTest(TestBase, AssertsExecutionResults):
     """Test timezone-aware datetimes.
 
-    psycopg will return a datetime with a tzinfo attached to it, if postgres
+    psycopg will return a datetime with a tzinfo attached to it, if postgresql
     returns it.  python then will not let you compare a datetime with a tzinfo
     to a datetime that doesnt have one.  this test illustrates two ways to
     have datetime types with and without timezone info.
     """
 
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
         global tztable, notztable, metadata
         metadata = MetaData(testing.db)
 
-        # current_timestamp() in postgres is assumed to return TIMESTAMP WITH TIMEZONE
+        # current_timestamp() in postgresql is assumed to return TIMESTAMP WITH TIMEZONE
         tztable = Table('tztable', metadata,
             Column("id", Integer, primary_key=True),
             Column("date", DateTime(timezone=True), onupdate=func.current_timestamp()),
@@ -776,7 +800,7 @@ class TimezoneTest(TestBase, AssertsExecutionResults):
         print notztable.select(tztable.c.id==1).execute().fetchone()
 
 class ArrayTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
@@ -785,8 +809,8 @@ class ArrayTest(TestBase, AssertsExecutionResults):
 
         arrtable = Table('arrtable', metadata,
             Column('id', Integer, primary_key=True),
-            Column('intarr', postgres.PGArray(Integer)),
-            Column('strarr', postgres.PGArray(String(convert_unicode=True)), nullable=False)
+            Column('intarr', postgresql.PGArray(Integer)),
+            Column('strarr', postgresql.PGArray(String(convert_unicode=True)), nullable=False)
         )
         metadata.create_all()
         
@@ -800,8 +824,8 @@ class ArrayTest(TestBase, AssertsExecutionResults):
     def test_reflect_array_column(self):
         metadata2 = MetaData(testing.db)
         tbl = Table('arrtable', metadata2, autoload=True)
-        assert isinstance(tbl.c.intarr.type, postgres.PGArray)
-        assert isinstance(tbl.c.strarr.type, postgres.PGArray)
+        assert isinstance(tbl.c.intarr.type, postgresql.PGArray)
+        assert isinstance(tbl.c.strarr.type, postgresql.PGArray)
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
 
@@ -812,7 +836,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(results[0]['intarr'], [1,2,3])
         eq_(results[0]['strarr'], ['abc','def'])
 
-    @testing.fails_on('postgres+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
     def test_array_where(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         arrtable.insert().execute(intarr=[4,5,6], strarr='ABC')
@@ -820,14 +844,14 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1,2,3])
 
-    @testing.fails_on('postgres+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
     def test_array_concat(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         results = select([arrtable.c.intarr + [4,5,6]]).execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0][0], [1,2,3,4,5,6])
 
-    @testing.fails_on('postgres+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
     def test_array_subtype_resultprocessor(self):
         arrtable.insert().execute(intarr=[4,5,6], strarr=[[u'm\xe4\xe4'], [u'm\xf6\xf6']])
         arrtable.insert().execute(intarr=[1,2,3], strarr=[u'm\xe4\xe4', u'm\xf6\xf6'])
@@ -836,12 +860,12 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(results[0]['strarr'], [u'm\xe4\xe4', u'm\xf6\xf6'])
         eq_(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
 
-    @testing.fails_on('postgres+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
     def test_array_mutability(self):
         class Foo(object): pass
         footable = Table('foo', metadata,
             Column('id', Integer, primary_key=True),
-            Column('intarr', postgres.PGArray(Integer), nullable=True)
+            Column('intarr', postgresql.PGArray(Integer), nullable=True)
         )
         mapper(Foo, footable)
         metadata.create_all()
@@ -879,7 +903,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         sess.flush()
 
 class TimestampTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     def test_timestamp(self):
         engine = testing.db
@@ -890,7 +914,7 @@ class TimestampTest(TestBase, AssertsExecutionResults):
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 
 class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres+psycopg2'
+    __only_on__ = 'postgresql+psycopg2'
 
     @classmethod
     def setup_class(cls):
@@ -935,8 +959,8 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
 class SpecialTypesTest(TestBase, ComparesTables):
     """test DDL and reflection of PG-specific types """
     
-    __only_on__ = 'postgres'
-    __excluded_on__ = (('postgres', '<', (8, 3, 0)),)
+    __only_on__ = 'postgresql'
+    __excluded_on__ = (('postgresql', '<', (8, 3, 0)),)
     
     @classmethod
     def setup_class(cls):
@@ -944,11 +968,11 @@ class SpecialTypesTest(TestBase, ComparesTables):
         metadata = MetaData(testing.db)
         
         table = Table('sometable', metadata,
-            Column('id', postgres.PGUuid, primary_key=True),
-            Column('flag', postgres.PGBit),
-            Column('addr', postgres.PGInet),
-            Column('addr2', postgres.PGMacAddr),
-            Column('addr3', postgres.PGCidr)
+            Column('id', postgresql.PGUuid, primary_key=True),
+            Column('flag', postgresql.PGBit),
+            Column('addr', postgresql.PGInet),
+            Column('addr2', postgresql.PGMacAddr),
+            Column('addr3', postgresql.PGCidr)
         )
         
         metadata.create_all()
@@ -965,8 +989,8 @@ class SpecialTypesTest(TestBase, ComparesTables):
         
 
 class MatchTest(TestBase, AssertsCompiledSQL):
-    __only_on__ = 'postgres'
-    __excluded_on__ = (('postgres', '<', (8, 3, 0)),)
+    __only_on__ = 'postgresql'
+    __excluded_on__ = (('postgresql', '<', (8, 3, 0)),)
 
     @classmethod
     def setup_class(cls):
@@ -1000,11 +1024,11 @@ class MatchTest(TestBase, AssertsCompiledSQL):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on('postgres+pg8000', 'uses positional')
+    @testing.fails_on('postgresql+pg8000', 'uses positional')
     def test_expression_pyformat(self):
         self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%(title_1)s)")
 
-    @testing.fails_on('postgres+psycopg2', 'uses pyformat')
+    @testing.fails_on('postgresql+psycopg2', 'uses pyformat')
     def test_expression_positional(self):
         self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%s)")
 

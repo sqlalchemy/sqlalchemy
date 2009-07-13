@@ -140,7 +140,7 @@ class GetTest(QueryTest):
     @testing.requires.unicode_connections
     def test_unicode(self):
         """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail
-        on postgres, mysql and oracle unless it is converted to an encoded string"""
+        on postgresql, mysql and oracle unless it is converted to an encoded string"""
 
         metadata = MetaData(engines.utf8_engine())
         table = Table('unicode_data', metadata,
@@ -1772,7 +1772,7 @@ class MixedEntitiesTest(QueryTest):
 
     @testing.fails_on('mssql', 'FIXME: unknown')
     @testing.fails_on('oracle', "Oracle doesn't support boolean expressions as columns")
-    @testing.fails_on('postgres+pg8000', "pg8000 parses the SQL itself before passing on to PG, doesn't parse this")
+    @testing.fails_on('postgresql+pg8000', "pg8000 parses the SQL itself before passing on to PG, doesn't parse this")
     def test_values_with_boolean_selects(self):
         """Tests a values clause that works with select boolean evaluations"""
         sess = create_session()

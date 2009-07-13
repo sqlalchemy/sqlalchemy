@@ -6,7 +6,7 @@ from sqlalchemy.test import config, engines
 from sqlalchemy.engine import ddl
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
-from sqlalchemy.dialects.postgres import base as postgres
+from sqlalchemy.dialects.postgresql import base as postgresql
 
 class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
@@ -289,7 +289,7 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
                 Column('b', Integer, ForeignKey('t.a', name='fk_tb')), # to ensure create ordering ...
         )
 
-        e = engines.mock_engine(dialect_name='postgres')
+        e = engines.mock_engine(dialect_name='postgresql')
         m.create_all(e)
         m.drop_all(e)
 

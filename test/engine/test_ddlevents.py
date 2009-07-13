@@ -236,14 +236,14 @@ class DDLExecutionTest(TestBase):
     def test_conditional_constraint(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         nonpg_mock = engines.mock_engine(dialect_name='sqlite')
-        pg_mock = engines.mock_engine(dialect_name='postgres')
+        pg_mock = engines.mock_engine(dialect_name='postgresql')
         
         constraint = CheckConstraint('a < b',name="my_test_constraint", table=users)
 
         # by placing the constraint in an Add/Drop construct,
         # the 'inline_ddl' flag is set to False
-        AddConstraint(constraint, on='postgres').execute_at("after-create", users)
-        DropConstraint(constraint, on='postgres').execute_at("before-drop", users)
+        AddConstraint(constraint, on='postgresql').execute_at("after-create", users)
+        DropConstraint(constraint, on='postgresql').execute_at("before-drop", users)
         
         metadata.create_all(bind=nonpg_mock)
         strings = " ".join(str(x) for x in nonpg_mock.mock)

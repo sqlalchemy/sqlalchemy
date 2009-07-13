@@ -25,7 +25,7 @@ class AdaptTest(TestBase):
         for dialect in [
                 oracle.dialect(), 
                 mysql.dialect(), 
-                postgres.dialect(), 
+                postgresql.dialect(), 
                 sqlite.dialect(), 
                 sybase.dialect(), 
                 informix.dialect(), 
@@ -555,7 +555,7 @@ class DateTest(TestBase, AssertsExecutionResults):
                        Column('user_date', Date),
                        Column('user_time', Time)]
 
-        if testing.against('sqlite', 'postgres'):
+        if testing.against('sqlite', 'postgresql'):
             insert_data.append(
                 (11, 'historic',
                 datetime.datetime(1850, 11, 10, 11, 52, 35, datetime_micro),

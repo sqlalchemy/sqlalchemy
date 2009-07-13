@@ -436,7 +436,7 @@ def against(*queries):
     Also supports comparison to database version when provided with one or
     more 3-tuples of dialect name, operator, and version specification::
 
-      testing.against('mysql', 'postgres')
+      testing.against('mysql', 'postgresql')
       testing.against(('mysql', '>=', (5, 0, 0))
     """
 
@@ -626,7 +626,7 @@ class ComparesTables(object):
             elif against(('mysql', '<', (5, 0))):
                 # ignore reflection of bogus db-generated DefaultClause()
                 pass
-            elif not c.primary_key or not against('postgres', 'mssql'):
+            elif not c.primary_key or not against('postgresql', 'mssql'):
                 #print repr(c)
                 assert reflected_c.default is None, reflected_c.default
 
@@ -718,7 +718,7 @@ class AssertsExecutionResults(object):
             assertsql.asserter.clear_rules()
             
     def assert_sql(self, db, callable_, list_, with_sequences=None):
-        if with_sequences is not None and config.db.name in ('firebird', 'oracle', 'postgres'):
+        if with_sequences is not None and config.db.name in ('firebird', 'oracle', 'postgresql'):
             rules = with_sequences
         else:
             rules = list_

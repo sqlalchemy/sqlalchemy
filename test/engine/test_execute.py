@@ -40,8 +40,8 @@ class ExecuteTest(TestBase):
             assert res.fetchall() == [(1, "jack"), (2, "fred"), (3, "ed"), (4, "horse"), (5, "barney"), (6, "donkey"), (7, 'sally')]
             conn.execute("delete from users")
 
-    @testing.fails_on_everything_except('mysql+mysqldb', 'postgres')
-    @testing.fails_on('postgres+zxjdbc', 'sprintf not supported')
+    @testing.fails_on_everything_except('mysql+mysqldb', 'postgresql')
+    @testing.fails_on('postgresql+zxjdbc', 'sprintf not supported')
     # some psycopg2 versions bomb this.
     def test_raw_sprintf(self):
         for conn in (testing.db, testing.db.connect()):
@@ -56,7 +56,7 @@ class ExecuteTest(TestBase):
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
     @testing.skip_if(lambda: testing.against('mysql+mysqldb'), 'db-api flaky')
-    @testing.fails_on_everything_except('postgres+psycopg2')
+    @testing.fails_on_everything_except('postgresql+psycopg2')
     def test_raw_python(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':1, 'name':'jack'})

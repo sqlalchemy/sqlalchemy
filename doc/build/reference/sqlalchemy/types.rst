@@ -162,7 +162,7 @@ For example, MySQL has a ``BIGINTEGER`` type and PostgreSQL has an
 
 Or some PostgreSQL types::
 
-    from sqlalchemy.dialect.postgres import dialect as postgresql
+    from sqlalchemy.dialect.postgresql import dialect as postgresql
 
     table = Table('foo', meta,
         Column('ipaddress', postgresql.INET),

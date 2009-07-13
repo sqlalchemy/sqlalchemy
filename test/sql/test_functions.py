@@ -50,7 +50,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
         for ret, dialect in [
             ('CURRENT_TIMESTAMP', sqlite.dialect()),
-            ('now()', postgres.dialect()),
+            ('now()', postgresql.dialect()),
             ('now()', mysql.dialect()),
             ('CURRENT_TIMESTAMP', oracle.dialect())
         ]:
@@ -62,7 +62,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
         for ret, dialect in [
             ('random()', sqlite.dialect()),
-            ('random()', postgres.dialect()),
+            ('random()', postgresql.dialect()),
             ('rand()', mysql.dialect()),
             ('random', oracle.dialect())
         ]:
@@ -260,7 +260,7 @@ class ExecuteTest(TestBase):
         finally:
             meta.drop_all()
 
-    @testing.fails_on_everything_except('postgres')
+    @testing.fails_on_everything_except('postgresql')
     def test_as_from(self):
         # TODO: shouldnt this work on oracle too ?
         x = testing.db.func.current_date().execute().scalar()

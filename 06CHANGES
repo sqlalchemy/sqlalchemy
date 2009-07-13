@@ -79,7 +79,28 @@
       and "operators" dictionaries in compiler subclasses with straightforward
       visitor methods, and also allows compiler subclasses complete control over 
       rendering, as the full _Function or _BinaryExpression object is passed in.
+
+- postgresql
+    - the "postgres" dialect is now named "postgresql" !   Connection strings look
+      like:
+      
+           postgresql://scott:tiger@localhost/test
+           postgresql+pg8000://scott:tiger@localhost/test
     
+       The "postgres" name remains for backwards compatiblity in the following ways:
+       
+           - There is a "postgres.py" dummy dialect which allows old URLs to work,
+           i.e.  postgres://scott:tiger@localhost/test
+           
+           - The "postgres" name can be imported from the old "databases" module,
+           i.e. "from sqlalchemy.databases import postgres" as well as "dialects",
+           "from sqlalchemy.dialects.postgres import base as pg", will send 
+           a deprecation warning.
+           
+           - Special expression arguments are now named "postgresql_returning"
+           and "postgresql_where", but the older "postgres_returning" and
+           "postgres_where" names still work with a deprecation warning.
+       
 - mysql
     - all the _detect_XXX() functions now run once underneath dialect.initialize()
     
@@ -104,9 +125,9 @@
       SQLAlchemy operations.
       
 - new dialects
-    - postgres+pg8000
-    - postgres+pypostgresql (partial)
-    - postgres+zxjdbc
+    - postgresql+pg8000
+    - postgresql+pypostgresql (partial)
+    - postgresql+zxjdbc
     - mysql+pyodbc
     - mysql+zxjdbc
 

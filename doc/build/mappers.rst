@@ -1326,7 +1326,7 @@ Or::
     widget_id     name        favorite_entry_id             entry_id      name      widget_id
        1       'somewidget'          5                         5       'someentry'     1
 
-In the first case, a row points to itself.  Technically, a database that uses sequences such as Postgres or Oracle can INSERT the row at once using a previously generated value, but databases which rely upon autoincrement-style primary key identifiers cannot.  The ``relation()`` always assumes a "parent/child" model of row population during flush, so unless you are populating the primary key/foreign key columns directly, ``relation()`` needs to use two statements.
+In the first case, a row points to itself.  Technically, a database that uses sequences such as PostgreSQL or Oracle can INSERT the row at once using a previously generated value, but databases which rely upon autoincrement-style primary key identifiers cannot.  The ``relation()`` always assumes a "parent/child" model of row population during flush, so unless you are populating the primary key/foreign key columns directly, ``relation()`` needs to use two statements.
 
 In the second case, the "widget" row must be inserted before any referring "entry" rows, but then the "favorite_entry_id" column of that "widget" row cannot be set until the "entry" rows have been generated.  In this case, it's typically impossible to insert the "widget" and "entry" rows using just two INSERT statements; an UPDATE must be performed in order to keep foreign key constraints fulfilled.   The exception is if the foreign keys are configured as "deferred until commit" (a feature some databases support) and if the identifiers were populated manually (again essentially bypassing ``relation()``).
 
