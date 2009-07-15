@@ -909,7 +909,7 @@ class TimestampTest(TestBase, AssertsExecutionResults):
         engine = testing.db
         connection = engine.connect()
         
-        s = select(["timestamp '12/25/07'"])
+        s = select(["timestamp '2007-12-25'"])
         result = connection.execute(s).fetchone()
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 
