@@ -142,7 +142,7 @@ def two_phase_transactions(fn):
         no_support('oracle', 'no SA implementation'),
         no_support('sqlite', 'not supported by database'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
-        no_support('postgresql+zxjdbc', "FIXME: JDBC driver confuses the transaction state, may "
+        no_support('postgresql+zxjdbc', 'FIXME: JDBC driver confuses the transaction state, may '
                    'need separate XA implementation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
         )
