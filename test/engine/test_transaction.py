@@ -274,6 +274,8 @@ class TransactionTest(TestBase):
         connection.close()
 
     @testing.requires.two_phase_transactions
+    @testing.skip_if(lambda: testing.against('mysql+zxjdbc'),
+                     'Deadlocks, causing subsequent tests to fail')
     @testing.fails_on('mysql', 'FIXME: unknown')
     def test_two_phase_recover(self):
         # MySQL recovery doesn't currently seem to work correctly
@@ -726,7 +728,7 @@ class ForUpdateTest(TestBase):
         for i in xrange(count):
             trans = con.begin()
             try:
-                existing = con.execute(sel).fetchone()
+                existing = con.execute(sel).first()
                 incr = existing['counter_value'] + 1
 
                 time.sleep(delay)
@@ -734,7 +736,7 @@ class ForUpdateTest(TestBase):
                                             values={'counter_value':incr}))
                 time.sleep(delay)
 
-                readback = con.execute(sel).fetchone()
+                readback = con.execute(sel).first()
                 if (readback['counter_value'] != incr):
                     raise AssertionError("Got %s post-update, expected %s" %
                                          (readback['counter_value'], incr))
@@ -778,7 +780,7 @@ class ForUpdateTest(TestBase):
         self.assert_(len(errors) == 0)
 
         sel = counters.select(whereclause=counters.c.counter_id==1)
-        final = db.execute(sel).fetchone()
+        final = db.execute(sel).first()
         self.assert_(final['counter_value'] == iterations * thread_count)
 
     def overlap(self, ids, errors, update_style):
