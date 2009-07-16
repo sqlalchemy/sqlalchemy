@@ -199,7 +199,7 @@ class BindTest(testing.TestBase):
                     try:
                         e = elem(bind=bind)
                         assert e.bind is bind
-                        e.execute()
+                        e.execute().close()
                     finally:
                         if isinstance(bind, engine.Connection):
                             bind.close()

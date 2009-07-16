@@ -126,7 +126,7 @@ class EscapesDefaultsTest(testing.TestBase):
             # reset the identifier preparer, so that we can force it to cache
             # a unicode identifier
             engine.dialect.identifier_preparer = engine.dialect.preparer(engine.dialect)
-            select([column(u'special_col')]).select_from(t1).execute()
+            select([column(u'special_col')]).select_from(t1).execute().close()
             assert isinstance(engine.dialect.identifier_preparer.format_sequence(Sequence('special_col')), unicode)
             
             # now execute, run the sequence.  it should run in u"Special_col.nextid" or similar as 
