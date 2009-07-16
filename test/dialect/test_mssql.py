@@ -192,7 +192,7 @@ class IdentityInsertTest(TestBase, AssertsCompiledSQL):
         result = cattable.insert().values(description='PHP').execute()
         eq_([10], result.last_inserted_ids())
         lastcat = cattable.select().order_by(desc(cattable.c.id)).execute()
-        eq_((10, 'PHP'), lastcat.fetchone())
+        eq_((10, 'PHP'), lastcat.first())
 
     def test_executemany(self):
         cattable.insert().execute([
@@ -290,7 +290,7 @@ class QueryUnicodeTest(TestBase):
         con.execute(u"insert into unitest_table values ('bien mangé')".encode('UTF-8'))
 
         try:
-            r = t1.select().execute().fetchone()
+            r = t1.select().execute().first()
             assert isinstance(r[1], unicode), '%s is %s instead of unicode, working on %s' % (
                     r[1], type(r[1]), meta.bind)
 
@@ -1055,9 +1055,9 @@ class TypesTest(TestBase, AssertsExecutionResults):
             tbl.insert().execute()
             if 'int_y' in tbl.c:
                 assert select([tbl.c.int_y]).scalar() == 1
-                assert list(tbl.select().execute().fetchone()).count(1) == 1
+                assert list(tbl.select().execute().first()).count(1) == 1
             else:
-                assert 1 not in list(tbl.select().execute().fetchone())
+                assert 1 not in list(tbl.select().execute().first())
 
 
 class BinaryTest(TestBase, AssertsExecutionResults):

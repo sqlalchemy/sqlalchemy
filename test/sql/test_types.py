@@ -259,7 +259,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         
         unicode_table.insert().execute(unicode_varchar=unicodedata,unicode_text=unicodedata)
         
-        x = unicode_table.select().execute().fetchone()
+        x = unicode_table.select().execute().first()
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
 
@@ -274,7 +274,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                 dict(unicode_varchar=unicodedata,unicode_text=unicodedata)
         )
 
-        x = unicode_table.select().execute().fetchone()
+        x = unicode_table.select().execute().first()
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
         self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
 
@@ -285,7 +285,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
 
         unicode_table.insert().execute(unicode_varchar=unicodedata,unicode_text=unicodedata)
                                        
-        x = union(select([unicode_table.c.unicode_varchar]), select([unicode_table.c.unicode_varchar])).execute().fetchone()
+        x = union(select([unicode_table.c.unicode_varchar]), select([unicode_table.c.unicode_varchar])).execute().first()
         self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
 
     @testing.fails_on('oracle', 'oracle converts empty strings to a blank space')
@@ -717,11 +717,11 @@ class IntervalTest(TestBase, AssertsExecutionResults):
     def test_roundtrip(self):
         delta = datetime.datetime(2006, 10, 5) - datetime.datetime(2005, 8, 17)
         interval_table.insert().execute(interval=delta)
-        assert interval_table.select().execute().fetchone()['interval'] == delta
+        assert interval_table.select().execute().first()['interval'] == delta
 
     def test_null(self):
         interval_table.insert().execute(id=1, inverval=None)
-        assert interval_table.select().execute().fetchone()['interval'] is None
+        assert interval_table.select().execute().first()['interval'] is None
 
 class BooleanTest(TestBase, AssertsExecutionResults):
     @classmethod

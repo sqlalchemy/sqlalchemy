@@ -304,7 +304,7 @@ class DefaultTest(testing.TestBase):
     def test_insert_values(self):
         t.insert(values={'col3':50}).execute()
         l = t.select().execute()
-        eq_(50, l.fetchone()['col3'])
+        eq_(50, l.first()['col3'])
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_updatemany(self):
@@ -341,7 +341,7 @@ class DefaultTest(testing.TestBase):
         t.update(t.c.col1==pk).execute(col4=None, col5=None)
         ctexec = currenttime.scalar()
         l = t.select(t.c.col1==pk).execute()
-        l = l.fetchone()
+        l = l.first()
         eq_(l,
             (pk, 'im the update', f2, None, None, ctexec, True, False,
              13, datetime.date.today(), 'py'))
@@ -353,7 +353,7 @@ class DefaultTest(testing.TestBase):
         pk = r.last_inserted_ids()[0]
         t.update(t.c.col1==pk, values={'col3': 55}).execute()
         l = t.select(t.c.col1==pk).execute()
-        l = l.fetchone()
+        l = l.first()
         eq_(55, l['col3'])
 
     @testing.fails_on_everything_except('postgresql')

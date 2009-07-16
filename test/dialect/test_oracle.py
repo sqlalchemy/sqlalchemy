@@ -332,7 +332,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
             data = u'm’a réveillé.'
             t2.insert().execute(data=data)
-            eq_(t2.select().execute().fetchone()['data'], data)
+            eq_(t2.select().execute().first()['data'], data)
         finally:
             metadata.drop_all()
         
@@ -360,7 +360,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         t.create(engine)
         try:
             engine.execute(t.insert(), id=1, data='this is text', bindata='this is binary')
-            row = engine.execute(t.select()).fetchone()
+            row = engine.execute(t.select()).first()
             eq_(row['data'].read(), 'this is text')
             eq_(row['bindata'].read(), 'this is binary')
         finally:

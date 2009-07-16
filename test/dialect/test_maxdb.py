@@ -185,7 +185,7 @@ class DBAPITest(TestBase, AssertsExecutionResults):
             vals = []
             for i in xrange(3):
                 cr.execute('SELECT busto.NEXTVAL FROM DUAL')
-                vals.append(cr.fetchone()[0])
+                vals.append(cr.first()[0])
 
             # should be 1,2,3, but no...
             self.assert_(vals != [1,2,3])

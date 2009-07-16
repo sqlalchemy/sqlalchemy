@@ -224,7 +224,7 @@ class MiscTest(TestBase):
         try:
             t.insert(values=dict(name='dante')).execute()
             t.insert(values=dict(name='alighieri')).execute()
-            select([func.count(t.c.id)],func.length(t.c.name)==5).execute().fetchone()[0] == 1
+            select([func.count(t.c.id)],func.length(t.c.name)==5).execute().first()[0] == 1
         finally:
             meta.drop_all()
 

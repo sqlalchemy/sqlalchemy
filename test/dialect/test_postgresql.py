@@ -790,14 +790,14 @@ class TimezoneTest(TestBase, AssertsExecutionResults):
         somedate = testing.db.connect().scalar(func.current_timestamp().select())
         tztable.insert().execute(id=1, name='row1', date=somedate)
         c = tztable.update(tztable.c.id==1).execute(name='newname')
-        print tztable.select(tztable.c.id==1).execute().fetchone()
+        print tztable.select(tztable.c.id==1).execute().first()
 
     def test_without_timezone(self):
         # get a date without a tzinfo
         somedate = datetime.datetime(2005, 10,20, 11, 52, 00)
         notztable.insert().execute(id=1, name='row1', date=somedate)
         c = notztable.update(notztable.c.id==1).execute(name='newname')
-        print notztable.select(tztable.c.id==1).execute().fetchone()
+        print notztable.select(tztable.c.id==1).execute().first()
 
 class ArrayTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
@@ -910,7 +910,7 @@ class TimestampTest(TestBase, AssertsExecutionResults):
         connection = engine.connect()
         
         s = select(["timestamp '2007-12-25'"])
-        result = connection.execute(s).fetchone()
+        result = connection.execute(s).first()
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 
 class ServerSideCursorsTest(TestBase, AssertsExecutionResults):

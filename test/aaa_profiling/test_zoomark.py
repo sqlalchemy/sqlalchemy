@@ -142,7 +142,7 @@ class ZooMarkTest(TestBase):
 
         def fullobject(select):
             """Iterate over the full result row."""
-            return list(select.execute().fetchone())
+            return list(select.execute().first())
 
         for x in xrange(ITERATIONS):
             # Zoos
@@ -254,7 +254,7 @@ class ZooMarkTest(TestBase):
 
         for x in xrange(ITERATIONS):
             # Edit
-            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().first()
             Zoo.update(Zoo.c.ID==SDZ['ID']).execute(
                      Name=u'The San Diego Zoo',
                      Founded = datetime.date(1900, 1, 1),
@@ -262,7 +262,7 @@ class ZooMarkTest(TestBase):
                      Admission = "35.00")
 
             # Test edits
-            SDZ = Zoo.select(Zoo.c.Name==u'The San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'The San Diego Zoo').execute().first()
             assert SDZ['Founded'] == datetime.date(1900, 1, 1), SDZ['Founded']
 
             # Change it back
@@ -273,7 +273,7 @@ class ZooMarkTest(TestBase):
                      Admission = "0")
 
             # Test re-edits
-            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().first()
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
 
     def test_baseline_7_multiview(self):

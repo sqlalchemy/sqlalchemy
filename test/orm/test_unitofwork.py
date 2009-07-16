@@ -1650,7 +1650,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         l = sa.select([users, addresses],
                       sa.and_(users.c.id==addresses.c.user_id,
                               addresses.c.id==a.id)).execute()
-        eq_(l.fetchone().values(),
+        eq_(l.first().values(),
             [a.user.id, 'asdf8d', a.id, a.user_id, 'theater@foo.com'])
 
     @testing.resolve_artifact_names

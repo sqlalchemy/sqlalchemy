@@ -226,15 +226,15 @@ class ExecuteTest(TestBase):
         meta.create_all()
         try:
             t.insert(values=dict(value=func.length("one"))).execute()
-            assert t.select().execute().fetchone()['value'] == 3
+            assert t.select().execute().first()['value'] == 3
             t.update(values=dict(value=func.length("asfda"))).execute()
-            assert t.select().execute().fetchone()['value'] == 5
+            assert t.select().execute().first()['value'] == 5
 
             r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
             id = r.last_inserted_ids()[0]
-            assert t.select(t.c.id==id).execute().fetchone()['value'] == 9
+            assert t.select(t.c.id==id).execute().first()['value'] == 9
             t.update(values={t.c.value:func.length("asdf")}).execute()
-            assert t.select().execute().fetchone()['value'] == 4
+            assert t.select().execute().first()['value'] == 4
             print "--------------------------"
             t2.insert().execute()
             t2.insert(values=dict(value=func.length("one"))).execute()
@@ -249,14 +249,14 @@ class ExecuteTest(TestBase):
             t2.delete().execute()
 
             t2.insert(values=dict(value=func.length("one") + 8)).execute()
-            assert t2.select().execute().fetchone()['value'] == 11
+            assert t2.select().execute().first()['value'] == 11
 
             t2.update(values=dict(value=func.length("asfda"))).execute()
-            assert select([t2.c.value, t2.c.stuff]).execute().fetchone() == (5, "thisisstuff")
+            assert select([t2.c.value, t2.c.stuff]).execute().first() == (5, "thisisstuff")
 
             t2.update(values={t2.c.value:func.length("asfdaasdf"), t2.c.stuff:"foo"}).execute()
-            print "HI", select([t2.c.value, t2.c.stuff]).execute().fetchone()
-            assert select([t2.c.value, t2.c.stuff]).execute().fetchone() == (9, "foo")
+            print "HI", select([t2.c.value, t2.c.stuff]).execute().first()
+            assert select([t2.c.value, t2.c.stuff]).execute().first() == (9, "foo")
         finally:
             meta.drop_all()
 
@@ -270,7 +270,7 @@ class ExecuteTest(TestBase):
 
         # construct a column-based FROM object out of a function, like in [ticket:172]
         s = select([sql.column('date', type_=DateTime)], from_obj=[testing.db.func.current_date()])
-        q = s.execute().fetchone()[s.c.date]
+        q = s.execute().first()[s.c.date]
         r = s.alias('datequery').select().scalar()
 
         assert x == y == z == w == q == r
@@ -305,7 +305,7 @@ class ExecuteTest(TestBase):
                  'd': datetime.date(2010, 5, 1) })
             rs = select([extract('year', table.c.dt),
                          extract('month', table.c.d)]).execute()
-            row = rs.fetchone()
+            row = rs.first()
             assert row[0] == 2010
             assert row[1] == 5
             rs.close()
