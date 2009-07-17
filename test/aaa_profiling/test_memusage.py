@@ -2,6 +2,7 @@ from sqlalchemy.test.testing import eq_
 from sqlalchemy.orm import mapper, relation, create_session, clear_mappers, sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
+from sqlalchemy.util import jython
 import operator
 from sqlalchemy.test import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, PickleType
@@ -11,6 +12,10 @@ from sqlalchemy.sql import column
 from sqlalchemy.test.util import gc_collect
 import gc
 from test.orm import _base
+
+if jython:
+    from nose import SkipTest
+    raise SkipTest("Profiling not supported on this platform")
 
 
 class A(_base.ComparableEntity):
@@ -61,7 +66,7 @@ class EnsureZeroed(_base.ORMTest):
 class MemUsageTest(EnsureZeroed):
     
     # ensure a pure growing test trips the assertion
-    @testing.fails_if(lambda:True)
+    @testing.fails_if(lambda: True)
     def test_fixture(self):
         class Foo(object):
             pass
