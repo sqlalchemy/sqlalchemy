@@ -2326,11 +2326,10 @@ class _Extract(ColumnElement):
         self.expr = _literal_as_binds(expr, None)
 
     def _copy_internals(self, clone=_clone):
-        self.field = clone(self.field)
         self.expr = clone(self.expr)
 
     def get_children(self, **kwargs):
-        return self.field, self.expr
+        return self.expr,
 
     @property
     def _from_objects(self):
