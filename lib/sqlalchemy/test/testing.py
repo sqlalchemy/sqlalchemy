@@ -13,6 +13,7 @@ from sqlalchemy.util import function_named
 from engines import drop_all_tables
 
 from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, pool
+from nose import SkipTest
 
 _ops = { '<': operator.lt,
          '>': operator.gt,
@@ -293,8 +294,7 @@ def skip_if(predicate, reason=None):
             if predicate():
                 msg = "'%s' skipped on DB %s version '%s': %s" % (
                     fn_name, config.db.name, _server_version(), reason)
-                print msg
-                return True
+                raise SkipTest(msg)
             else:
                 return fn(*args, **kw)
         return function_named(maybe, fn_name)
