@@ -40,6 +40,7 @@ class TransactionTest(TestBase):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 3
         transaction.commit()
+        connection.close()
 
     def test_rollback(self):
         """test a basic rollback"""
@@ -499,6 +500,7 @@ class TLTransactionTest(TestBase):
         try:
             assert len(result.fetchall()) == 0
         finally:
+            c.close()
             external_connection.close()
 
     def test_rollback(self):
@@ -532,7 +534,9 @@ class TLTransactionTest(TestBase):
             external_connection.close()
 
     def test_commits(self):
-        assert tlengine.connect().execute("select count(1) from query_users").scalar() == 0
+        connection = tlengine.connect()
+        assert connection.execute("select count(1) from query_users").scalar() == 0
+        connection.close()
 
         connection = tlengine.contextual_connect()
         transaction = connection.begin()
@@ -549,6 +553,7 @@ class TLTransactionTest(TestBase):
         l = result.fetchall()
         assert len(l) == 3, "expected 3 got %d" % len(l)
         transaction.commit()
+        connection.close()
 
     def test_rollback_off_conn(self):
         # test that a TLTransaction opened off a TLConnection allows that
@@ -565,6 +570,7 @@ class TLTransactionTest(TestBase):
         try:
             assert len(result.fetchall()) == 0
         finally:
+            conn.close()
             external_connection.close()
 
     def test_morerollback_off_conn(self):
@@ -583,6 +589,8 @@ class TLTransactionTest(TestBase):
         try:
             assert len(result.fetchall()) == 0
         finally:
+            conn.close()
+            conn2.close()
             external_connection.close()
 
     def test_commit_off_connection(self):
@@ -598,6 +606,7 @@ class TLTransactionTest(TestBase):
         try:
             assert len(result.fetchall()) == 3
         finally:
+            conn.close()
             external_connection.close()
 
     def test_nesting(self):
