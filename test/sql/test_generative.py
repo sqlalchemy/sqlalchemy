@@ -310,7 +310,17 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         "table1.col3 AS col3 FROM table1 WHERE table1.col1 = :col1_1) AS anon_1, "\
         "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1 WHERE table1.col1 = :col1_2) AS anon_2 "\
         "WHERE anon_1.col2 = anon_2.col2")
-
+    
+    def test_extract(self):
+        s = select([extract('foo', t1.c.col1).label('col1')])
+        self.assert_compile(s, "SELECT EXTRACT(foo FROM table1.col1) AS col1 FROM table1")
+        
+        s2 = CloningVisitor().traverse(s).alias()
+        s3 = select([s2.c.col1])
+        self.assert_compile(s, "SELECT EXTRACT(foo FROM table1.col1) AS col1 FROM table1")
+        self.assert_compile(s3, "SELECT anon_1.col1 FROM (SELECT EXTRACT(foo FROM table1.col1) AS col1 FROM table1) AS anon_1")
+        
+        
     @testing.emits_warning('.*replaced by another column with the same key')
     def test_alias(self):
         subq = t2.select().alias('subq')

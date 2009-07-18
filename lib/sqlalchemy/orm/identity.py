@@ -43,17 +43,18 @@ class IdentityMap(dict):
         del state._instance_dict
         self._mutable_attrs.discard(state)
         self._modified.discard(state)
-    
+
     def _dirty_states(self):
-        return self._modified.union(s for s in self._mutable_attrs if s.modified)
-        
+        return self._modified.union(s for s in list(self._mutable_attrs)
+                                    if s.modified)
+
     def check_modified(self):
         """return True if any InstanceStates present have been marked as 'modified'."""
         
         if self._modified:
             return True
         else:
-            for state in self._mutable_attrs:
+            for state in list(self._mutable_attrs):
                 if state.modified:
                     return True
         return False

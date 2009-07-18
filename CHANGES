@@ -3,7 +3,14 @@
 =======
 CHANGES
 =======
-
+0.5.6
+=====
+- sql
+    - Fixed a bug in extract() introduced in 0.5.4 whereby
+      the string "field" argument was getting treated as a 
+      ClauseElement, causing various errors within more 
+      complex SQL transformations.
+      
 0.5.5
 =======
 - general
