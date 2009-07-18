@@ -378,14 +378,14 @@ class DefaultTest(testing.TestBase):
                  user_name        VARCHAR    NOT NULL,
                  user_password    VARCHAR    NOT NULL
              );
-            """, None)
+            """)
 
             t = Table("speedy_users", meta, autoload=True)
             t.insert().execute(user_name='user', user_password='lala')
             l = t.select().execute().fetchall()
             eq_(l, [(1, 'user', 'lala')])
         finally:
-            testing.db.execute("drop table speedy_users", None)
+            testing.db.execute("drop table speedy_users")
 
 
 class PKDefaultTest(_base.TablesTest):
