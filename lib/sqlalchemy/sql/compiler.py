@@ -6,16 +6,20 @@
 
 """Base SQL and DDL compiler implementations.
 
-Provides the :class:`~sqlalchemy.sql.compiler.DefaultCompiler` class, which is
-responsible for generating all SQL query strings, as well as
-:class:`~sqlalchemy.sql.compiler.SchemaGenerator` and :class:`~sqlalchemy.sql.compiler.SchemaDropper`
-which issue CREATE and DROP DDL for tables, sequences, and indexes.
+Classes provided include:
 
-The elements in this module are used by public-facing constructs like
-:class:`~sqlalchemy.sql.expression.ClauseElement` and :class:`~sqlalchemy.engine.Engine`.
-While dialect authors will want to be familiar with this module for the purpose of
-creating database-specific compilers and schema generators, the module
-is otherwise internal to SQLAlchemy.
+:class:`~sqlalchemy.sql.compiler.SQLCompiler` - renders SQL
+strings
+
+:class:`~sqlalchemy.sql.compiler.DDLCompiler` - renders DDL
+(data definition language) strings
+
+:class:`~sqlalchemy.sql.compiler.GenericTypeCompiler` - renders
+type specification strings.
+
+To generate user-defined SQL strings, see 
+:module:`~sqlalchemy.ext.compiler`.
+
 """
 
 import re
@@ -1037,14 +1041,6 @@ class DDLCompiler(engine.Compiled):
         return text
         
         
-# PLACEHOLDERS to get non-converted dialects to compile
-class SchemaGenerator(object):
-    pass
-    
-class SchemaDropper(object):
-    pass
-    
-    
 class GenericTypeCompiler(engine.TypeCompiler):
     def visit_CHAR(self, type_):
         return "CHAR" + (type_.length and "(%d)" % type_.length or "")

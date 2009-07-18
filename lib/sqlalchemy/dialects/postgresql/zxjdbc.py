@@ -1,3 +1,12 @@
+"""Support for the PostgreSQL database via the zxjdbc JDBC connector.
+
+JDBC Driver
+-----------
+
+The official Postgresql JDBC driver is at http://jdbc.postgresql.org/.
+
+
+"""
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy.engine import default

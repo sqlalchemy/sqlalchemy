@@ -5,6 +5,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""
+Support for the Access database via pyodbc.
+
+This dialect is *not* tested on SQLAlchemy 0.6.
+
+
+"""
 from sqlalchemy import sql, schema, types, exc, pool
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, base
@@ -393,7 +400,7 @@ class AccessCompiler(compiler.SQLCompiler):
         field = self.extract_map.get(extract.field, extract.field)
         return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
 
-class AccessSchemaGenerator(compiler.SchemaGenerator):
+class AccessDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
 
@@ -416,14 +423,9 @@ class AccessSchemaGenerator(compiler.SchemaGenerator):
 
         return colspec
 
-class AccessSchemaDropper(compiler.SchemaDropper):
-    def visit_index(self, index):
-        
+    def visit_drop_index(self, drop):
+        index = drop.element
         self.append("\nDROP INDEX [%s].[%s]" % (index.table.name, self._validate_identifier(index.name, False)))
-        self.execute()
-
-class AccessDefaultRunner(base.DefaultRunner):
-    pass
 
 class AccessIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = compiler.RESERVED_WORDS.copy()
@@ -435,8 +437,6 @@ class AccessIdentifierPreparer(compiler.IdentifierPreparer):
 dialect = AccessDialect
 dialect.poolclass = pool.SingletonThreadPool
 dialect.statement_compiler = AccessCompiler
-dialect.schemagenerator = AccessSchemaGenerator
-dialect.schemadropper = AccessSchemaDropper
+dialect.ddlcompiler = AccessDDLCompiler
 dialect.preparer = AccessIdentifierPreparer
-dialect.defaultrunner = AccessDefaultRunner
 dialect.execution_ctx_cls = AccessExecutionContext

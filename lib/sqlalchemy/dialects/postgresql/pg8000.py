@@ -1,4 +1,4 @@
-"""Support for the PostgreSQL database via the pg8000.
+"""Support for the PostgreSQL database via the pg8000 driver.
 
 Connecting
 ----------

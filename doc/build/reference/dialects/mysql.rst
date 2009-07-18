@@ -142,3 +142,8 @@ MySQLdb Notes
 --------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqldb
+
+zxjdbc Notes
+--------------
+
+.. automodule:: sqlalchemy.dialects.mysql.zxjdbc

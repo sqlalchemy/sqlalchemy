@@ -5,10 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Firebird backend
-================
-
-This module implements the Firebird backend.
+Support for the Firebird database.
 
 Connectivity is usually supplied via the kinterbasdb_
 DBAPI module.
@@ -16,8 +13,8 @@ DBAPI module.
 Firebird dialects
 -----------------
 
-Firebird offers two distinct dialects_ (not to be confused with the
-SA ``Dialect`` thing):
+Firebird offers two distinct dialects_ (not to be confused with a
+SQLAlchemy ``Dialect``):
 
 dialect 1
   This is the old syntax and behaviour, inherited from Interbase pre-6.0.
