@@ -3480,7 +3480,7 @@ class Select(_SelectBaseMixin, FromClause):
         self._reset_exported()
         from_cloned = dict((f, clone(f))
                            for f in self._froms.union(self._correlate))
-        self._froms = set(from_cloned[f] for f in self._froms)
+        self._froms = util.OrderedSet(from_cloned[f] for f in self._froms)
         self._correlate = set(from_cloned[f] for f in self._correlate)
         self._raw_columns = [clone(c) for c in self._raw_columns]
         for attr in ('_whereclause', '_having', '_order_by_clause', '_group_by_clause'):
