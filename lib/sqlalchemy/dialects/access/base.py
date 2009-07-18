@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
-Support for the Access database via pyodbc.
+Support for the Microsoft Access database.
 
 This dialect is *not* tested on SQLAlchemy 0.6.
 

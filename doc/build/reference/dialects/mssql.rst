@@ -1,5 +1,5 @@
-SQL Server
-==========
+Microsoft SQL Server
+====================
 
 .. automodule:: sqlalchemy.dialects.mssql.base
 

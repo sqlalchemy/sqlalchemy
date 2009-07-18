@@ -5,9 +5,7 @@
 
 """Support for the MaxDB database.
 
--- NOT TESTED ON 0.6 --
-
-TODO: More module docs!  MaxDB support is currently experimental.
+This dialect is *not* tested on SQLAlchemy 0.6.
 
 Overview
 --------

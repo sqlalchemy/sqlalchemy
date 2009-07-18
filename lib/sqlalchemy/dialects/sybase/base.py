@@ -5,9 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""
-Sybase iAnywhere backend.  This is not a full backend for Sybase ASE.
+"""Support for the Sybase iAnywhere database.  
 
+This is not a full backend for Sybase ASE.
+
+This dialect is *not* tested on SQLAlchemy 0.6.
 
 
 Known issues / TODO:

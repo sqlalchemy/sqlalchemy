@@ -5,9 +5,9 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-"""Informix support.
+"""Support for the Informix database.
 
---- THIS DIALECT IS NOT TESTED ON 0.6 ---
+This dialect is *not* tested on SQLAlchemy 0.6.
 
 """
 
