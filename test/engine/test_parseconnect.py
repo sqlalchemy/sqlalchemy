@@ -104,7 +104,7 @@ pool_timeout=10
         self.assert_(tsa.engine._coerce_config(plain, '') == expected)
 
     def test_engine_from_config(self):
-        dbapi = MockDBAPI()
+        dbapi = mock_dbapi
 
         config = {
             'sqlalchemy.url':'postgresql://scott:tiger@somehost/test?fooz=somevalue',
@@ -133,19 +133,19 @@ pool_timeout=10
         assert e.pool._recycle == 472
 
     def test_badargs(self):
-        assert_raises(ImportError, create_engine, "foobar://", module=MockDBAPI())
+        assert_raises(ImportError, create_engine, "foobar://", module=mock_dbapi)
 
         # bad arg
-        assert_raises(TypeError, create_engine, 'postgresql://', use_ansi=True, module=MockDBAPI())
+        assert_raises(TypeError, create_engine, 'postgresql://', use_ansi=True, module=mock_dbapi)
 
         # bad arg
-        assert_raises(TypeError, create_engine, 'oracle://', lala=5, use_ansi=True, module=MockDBAPI())
+        assert_raises(TypeError, create_engine, 'oracle://', lala=5, use_ansi=True, module=mock_dbapi)
 
-        assert_raises(TypeError, create_engine, 'postgresql://', lala=5, module=MockDBAPI())
+        assert_raises(TypeError, create_engine, 'postgresql://', lala=5, module=mock_dbapi)
 
         assert_raises(TypeError, create_engine,'sqlite://', lala=5, module=mock_sqlite_dbapi)
 
-        assert_raises(TypeError, create_engine, 'mysql+mysqldb://', use_unicode=True, module=MockDBAPI())
+        assert_raises(TypeError, create_engine, 'mysql+mysqldb://', use_unicode=True, module=mock_dbapi)
 
         # sqlite uses SingletonThreadPool which doesnt have max_overflow
         assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=5,
@@ -163,20 +163,20 @@ pool_timeout=10
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""
 
-        e = create_engine('mysql://scott:tiger@localhost/test', module=MockDBAPI(), _initialize=False)
+        e = create_engine('mysql://scott:tiger@localhost/test', module=mock_dbapi, _initialize=False)
         u = url.make_url('mysql://scott:tiger@localhost/test')
-        e2 = create_engine(u, module=MockDBAPI(), _initialize=False)
+        e2 = create_engine(u, module=mock_dbapi, _initialize=False)
         assert e.url.drivername == e2.url.drivername == 'mysql'
         assert e.url.username == e2.url.username == 'scott'
         assert e2.url is u
 
     def test_poolargs(self):
         """test that connection pool args make it thru"""
-        e = create_engine('postgresql://', creator=None, pool_recycle=50, echo_pool=None, module=MockDBAPI(), _initialize=False)
+        e = create_engine('postgresql://', creator=None, pool_recycle=50, echo_pool=None, module=mock_dbapi, _initialize=False)
         assert e.pool._recycle == 50
 
         # these args work for QueuePool
-        e = create_engine('postgresql://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=MockDBAPI())
+        e = create_engine('postgresql://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=mock_dbapi)
 
         # but not SingletonThreadPool
         assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=8, pool_timeout=60,
