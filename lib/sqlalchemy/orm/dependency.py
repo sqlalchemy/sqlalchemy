@@ -27,7 +27,7 @@ def create_dependency_processor(prop):
     return types[prop.direction](prop)
 
 class DependencyProcessor(object):
-    no_dependencies = False
+    has_dependencies = True
 
     def __init__(self, prop):
         self.prop = prop
@@ -291,7 +291,7 @@ class DetectKeySwitch(DependencyProcessor):
     """a special DP that works for many-to-one relations, fires off for
     child items who have changed their referenced key."""
 
-    no_dependencies = True
+    has_dependencies = False
 
     def register_dependencies(self, uowcommit):
         pass
