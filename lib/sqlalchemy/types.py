@@ -30,6 +30,8 @@ from sqlalchemy.util import pickle
 from sqlalchemy.sql.visitors import Visitable
 import sqlalchemy.util as util
 NoneType = type(None)
+if util.jython:
+    import array
     
 class AbstractType(Visitable):
 
@@ -842,7 +844,11 @@ class PickleType(MutableType, TypeDecorator):
         # Py3K
         #return loads(value)
         # Py2K
-        return loads(str(value))
+        if util.jython and isinstance(value, array.ArrayType):
+            value = value.tostring()
+        else:
+            value = str(value)
+        return loads(value)
         # end Py2K
 
     def copy_value(self, value):

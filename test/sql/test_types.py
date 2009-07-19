@@ -403,10 +403,19 @@ class BinaryTest(TestBase, AssertsExecutionResults):
             binary_table.select(order_by=binary_table.c.primary_id),
             text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType, 'mypickle':MyPickleType}, bind=testing.db)
         ):
+            eq_data = lambda x, y: eq_(list(x), list(y))
+            if util.jython:
+                _eq_data = eq_data
+                def eq_data(x, y):
+                    # Jython currently returns arrays
+                    from array import ArrayType
+                    if isinstance(y, ArrayType):
+                        return eq_(x, y.tostring())
+                    return _eq_data(x, y)
             l = stmt.execute().fetchall()
-            eq_(list(stream1), list(l[0]['data']))
-            eq_(list(stream1[0:100]), list(l[0]['data_slice']))
-            eq_(list(stream2), list(l[1]['data']))
+            eq_data(stream1, l[0]['data'])
+            eq_data(stream1[0:100], l[0]['data_slice'])
+            eq_data(stream2, l[1]['data'])
             eq_(testobj1, l[0]['pickled'])
             eq_(testobj2, l[1]['pickled'])
             eq_(testobj3.moredata, l[0]['mypickle'].moredata)
@@ -523,7 +532,7 @@ class DateTest(TestBase, AssertsExecutionResults):
             time_micro = 999
 
             # Missing or poor microsecond support:
-            if testing.against('mssql', 'mysql', 'firebird'):
+            if testing.against('mssql', 'mysql', 'firebird', '+zxjdbc'):
                 datetime_micro, time_micro = 0, 0
             # No microseconds for TIME
             elif testing.against('maxdb'):
