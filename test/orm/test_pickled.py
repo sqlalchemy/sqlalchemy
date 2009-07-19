@@ -59,7 +59,7 @@ class PickleTest(_fixtures.FixtureTest):
 
         u2 = pickle.loads(pickle.dumps(u1))
         sess2 = create_session()
-        u2 = sess2.merge(u2, dont_load=True)
+        u2 = sess2.merge(u2, load=False)
         eq_(u2.name, 'ed')
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
@@ -93,7 +93,7 @@ class PickleTest(_fixtures.FixtureTest):
 
         u2 = pickle.loads(pickle.dumps(u1))
         sess2 = create_session()
-        u2 = sess2.merge(u2, dont_load=True)
+        u2 = sess2.merge(u2, load=False)
         eq_(u2.name, 'ed')
         assert 'addresses' not in u2.__dict__
         ad = u2.addresses[0]

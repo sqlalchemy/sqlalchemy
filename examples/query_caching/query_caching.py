@@ -27,7 +27,7 @@ class CachingQuery(Query):
                     self.session.expunge(x)
                 _cache[self.cachekey] = ret
 
-            return iter(self.session.merge(x, dont_load=True) for x in ret)
+            return iter(self.session.merge(x, load=False) for x in ret)
 
         else:
             return Query.__iter__(self)

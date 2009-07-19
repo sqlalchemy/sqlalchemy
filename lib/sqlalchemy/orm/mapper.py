@@ -506,13 +506,13 @@ class Mapper(object):
         if self.polymorphic_on and self.polymorphic_on not in self._columntoproperty:
             col = self.mapped_table.corresponding_column(self.polymorphic_on)
             if not col:
-                dont_instrument = True
+                instrument = False
                 col = self.polymorphic_on
             else:
-                dont_instrument = False
+                instrument = True
             if self._should_exclude(col.key, col.key, local=False):
                 raise sa_exc.InvalidRequestError("Cannot exclude or override the discriminator column %r" % col.key)
-            self._configure_property(col.key, ColumnProperty(col, _no_instrument=dont_instrument), init=False, setparent=True)
+            self._configure_property(col.key, ColumnProperty(col, _instrument=instrument), init=False, setparent=True)
 
     def _adapt_inherited_property(self, key, prop, init):
         if not self.concrete:

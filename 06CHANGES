@@ -7,7 +7,9 @@
       There is no implicit fallback onto "fetch".   Failure of evaluation is based
       on the structure of criteria, so success/failure is deterministic based on 
       code structure.
-
+    - the "dont_load=True" flag on Session.merge() is deprecated and is now 
+      "load=False".
+      
 - sql
     - returning() support is native to insert(), update(), delete().  Implementations
       of varying levels of functionality exist for Postgresql, Firebird, MSSQL and

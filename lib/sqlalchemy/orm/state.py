@@ -230,7 +230,7 @@ class InstanceState(object):
         for key in attribute_names:
             impl = self.manager[key].impl
             if not filter_deferred or \
-                not impl.dont_expire_missing or \
+                impl.expire_missing or \
                 key in dict_:
                 self.expired_attributes.add(key)
                 if impl.accepts_scalar_loader:

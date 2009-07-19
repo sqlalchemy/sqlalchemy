@@ -159,7 +159,7 @@ class InstrumentedAttribute(QueryableAttribute):
 
 class _ProxyImpl(object):
     accepts_scalar_loader = False
-    dont_expire_missing = False
+    expire_missing = True
     
     def __init__(self, key):
         self.key = key
@@ -231,7 +231,7 @@ class AttributeImpl(object):
     def __init__(self, class_, key,
                     callable_, trackparent=False, extension=None,
                     compare_function=None, active_history=False, parent_token=None, 
-                    dont_expire_missing=False,
+                    expire_missing=True,
                     **kwargs):
         """Construct an AttributeImpl.
 
@@ -270,8 +270,8 @@ class AttributeImpl(object):
           Allows multiple AttributeImpls to all match a single 
           owner attribute.
           
-        dont_expire_missing
-          if True, don't add an "expiry" callable to this attribute
+        expire_missing
+          if False, don't add an "expiry" callable to this attribute
           during state.expire_attributes(None), if no value is present 
           for this key.
           
@@ -287,7 +287,7 @@ class AttributeImpl(object):
             self.is_equal = compare_function
         self.extensions = util.to_list(extension or [])
         self.active_history = active_history
-        self.dont_expire_missing = dont_expire_missing
+        self.expire_missing = expire_missing
         
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.

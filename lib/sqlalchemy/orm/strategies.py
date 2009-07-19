@@ -230,7 +230,7 @@ class DeferredColumnLoader(LoaderStrategy):
              copy_function=self.columns[0].type.copy_value,
              mutable_scalars=self.columns[0].type.is_mutable(),
              callable_=self._class_level_loader,
-             dont_expire_missing=True
+             expire_missing=False
         )
 
     def setup_query(self, context, entity, path, adapter, only_load_props=None, **kwargs):
