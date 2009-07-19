@@ -899,7 +899,7 @@ class SessionTest(_fixtures.FixtureTest):
         s.flush()
         eq_(users.select().execute().fetchall(), [(user.id, 'u2')])
         
-        
+    @testing.fails_on('+zxjdbc', 'http://www.sqlalchemy.org/trac/ticket/1473')
     @testing.resolve_artifact_names
     def test_prune(self):
         s = create_session(weak_identity_map=False)
