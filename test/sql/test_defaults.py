@@ -356,37 +356,6 @@ class DefaultTest(testing.TestBase):
         l = l.first()
         eq_(55, l['col3'])
 
-    @testing.fails_on_everything_except('postgresql')
-    def test_passive_override(self):
-        """
-        Primarily for postgresql, tests that when we get a primary key column
-        back from reflecting a table which has a default value on it, we
-        pre-execute that DefaultClause upon insert, even though DefaultClause
-        says "let the database execute this", because in postgresql we must have
-        all the primary key values in memory before insert; otherwise we can't
-        locate the just inserted row.
-
-        """
-        # TODO: move this to dialect/postgresql
-        try:
-            meta = MetaData(testing.db)
-            testing.db.execute("""
-             CREATE TABLE speedy_users
-             (
-                 speedy_user_id   SERIAL     PRIMARY KEY,
-
-                 user_name        VARCHAR    NOT NULL,
-                 user_password    VARCHAR    NOT NULL
-             );
-            """)
-
-            t = Table("speedy_users", meta, autoload=True)
-            t.insert().execute(user_name='user', user_password='lala')
-            l = t.select().execute().fetchall()
-            eq_(l, [(1, 'user', 'lala')])
-        finally:
-            testing.db.execute("drop table speedy_users")
-
 
 class PKDefaultTest(_base.TablesTest):
     __requires__ = ('subqueries',)
