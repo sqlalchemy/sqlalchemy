@@ -528,7 +528,7 @@ class SQLCompiler(engine.Compiled):
         if isinstance(column, sql._Label):
             return column
 
-        if select.use_labels and column._label:
+        if select and select.use_labels and column._label:
             return _CompileLabel(column, column._label)
 
         if \

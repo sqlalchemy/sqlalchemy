@@ -889,6 +889,13 @@ def _expand_cloned(elements):
     """
     return itertools.chain(*[x._cloned_set for x in elements])
 
+def _select_iterables(elements):
+    """expand tables into individual columns in the 
+    given list of column expressions.
+    
+    """
+    return itertools.chain(*[c._select_iterable for c in elements])
+    
 def _cloned_intersection(a, b):
     """return the intersection of sets a and b, counting
     any overlap between 'cloned' predecessors.
@@ -3465,7 +3472,7 @@ class Select(_SelectBaseMixin, FromClause):
         be rendered into the columns clause of the resulting SELECT statement.
 
         """
-        return itertools.chain(*[c._select_iterable for c in self._raw_columns])
+        return _select_iterables(self._raw_columns)
 
     def is_derived_from(self, fromclause):
         if self in fromclause._cloned_set:

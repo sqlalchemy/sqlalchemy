@@ -40,7 +40,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
 
         u = update(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
-        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name)", dialect=dialect)
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name) AS length_1", dialect=dialect)
 
         
     def test_insert_returning(self):
@@ -59,7 +59,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
 
         i = insert(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
-        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name) AS length_1", dialect=dialect)
     
     @testing.uses_deprecated(r".*argument is deprecated.  Please use statement.returning.*")
     def test_old_returning_names(self):

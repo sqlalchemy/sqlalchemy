@@ -177,7 +177,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             "inserted.name, inserted.description WHERE mytable.name = :name_1")
         
         u = update(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
-        self.assert_compile(u, "UPDATE mytable SET name=:name OUTPUT LEN(inserted.name)")
+        self.assert_compile(u, "UPDATE mytable SET name=:name OUTPUT LEN(inserted.name) AS length_1")
 
     def test_insert_returning(self):
         table1 = table('mytable',
@@ -194,7 +194,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                                 "inserted.name, inserted.description VALUES (:name)")
 
         i = insert(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
-        self.assert_compile(i, "INSERT INTO mytable (name) OUTPUT LEN(inserted.name) VALUES (:name)")
+        self.assert_compile(i, "INSERT INTO mytable (name) OUTPUT LEN(inserted.name) AS length_1 VALUES (:name)")
 
 
 

@@ -256,17 +256,13 @@ class FBCompiler(sql.compiler.SQLCompiler):
     def returning_clause(self, stmt):
         returning_cols = stmt._returning
 
-        def flatten_columnlist(collist):
-            for c in collist:
-                if isinstance(c, expression.Selectable):
-                    for co in c.columns:
-                        yield co
-                else:
-                    yield c
-
         columns = [
-                self.process(c, within_columns_clause=True, result_map=self.result_map) 
-                for c in flatten_columnlist(returning_cols)
+                self.process(
+                    self.label_select_column(None, c, asfrom=False), 
+                    within_columns_clause=True, 
+                    result_map=self.result_map
+                ) 
+                for c in expression._select_iterables(returning_cols)
             ]
         return 'RETURNING ' + ', '.join(columns)
 

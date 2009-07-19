@@ -222,6 +222,7 @@ Known Issues
 
 """
 import datetime, decimal, inspect, operator, sys, re
+import itertools
 
 from sqlalchemy import sql, schema as sa_schema, exc, util
 from sqlalchemy.sql import select, compiler, expression, \
@@ -1063,25 +1064,27 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def returning_clause(self, stmt):
         returning_cols = stmt._returning
 
-        def flatten_columnlist(collist):
-            for c in collist:
-                if isinstance(c, expression.Selectable):
-                    for co in c.columns:
-                        yield co
-                else:
-                    yield c
-                    
         if self.isinsert or self.isupdate:
             target = stmt.table.alias("inserted")
         else:
             target = stmt.table.alias("deleted")
         
         adapter = sql_util.ClauseAdapter(target)
+        def col_label(col):
+            adapted = adapter.traverse(c)
+            if isinstance(c, expression._Label):
+                return adapted.label(c.key)
+            else:
+                return self.label_select_column(None, adapted, asfrom=False)
+            
         columns = [
-            self.process(adapter.traverse(c), within_columns_clause=True, result_map=self.result_map) 
-            for c in flatten_columnlist(returning_cols)
+            self.process(
+                col_label(c), 
+                within_columns_clause=True, 
+                result_map=self.result_map
+            ) 
+            for c in expression._select_iterables(returning_cols)
         ]
-
         return 'OUTPUT ' + ', '.join(columns)
 
     def label_select_column(self, select, column, asfrom):

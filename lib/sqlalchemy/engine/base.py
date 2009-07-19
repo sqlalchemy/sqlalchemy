@@ -1630,7 +1630,7 @@ class ResultProxy(object):
             self.rowcount
             self.close() # autoclose
             return
-
+        
         self._props = util.populate_column_dict(None)
         self._props.creator = self.__key_fallback()
         self.keys = []

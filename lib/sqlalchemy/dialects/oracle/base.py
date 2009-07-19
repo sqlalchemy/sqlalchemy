@@ -321,23 +321,17 @@ class OracleCompiler(compiler.SQLCompiler):
     def returning_clause(self, stmt):
         returning_cols = stmt._returning
             
-        def flatten_columnlist(collist):
-            for c in collist:
-                if isinstance(c, expression.Selectable):
-                    for co in c.columns:
-                        yield co
-                else:
-                    yield c
-
         def create_out_param(col, i):
             bindparam = sql.outparam("ret_%d" % i, type_=col.type)
             self.binds[bindparam.key] = bindparam
             return self.bindparam_string(self._truncate_bindparam(bindparam))
         
-        # within_columns_clause =False so that labels (foo AS bar) don't render
-        columns = [self.process(c, within_columns_clause=False) for c in flatten_columnlist(returning_cols)]
+        columnlist = list(expression._select_iterables(returning_cols))
         
-        binds = [create_out_param(c, i) for i, c in enumerate(flatten_columnlist(returning_cols))]
+        # within_columns_clause =False so that labels (foo AS bar) don't render
+        columns = [self.process(c, within_columns_clause=False) for c in columnlist]
+        
+        binds = [create_out_param(c, i) for i, c in enumerate(columnlist)]
         
         return 'RETURNING ' + ', '.join(columns) +  " INTO " + ", ".join(binds)
 
