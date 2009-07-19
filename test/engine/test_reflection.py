@@ -1139,7 +1139,7 @@ class ComponentReflectionTest(TestBase):
             try:
                 insp = create_inspector(meta.bind)
                 oid = insp.get_table_oid(table_name, schema)
-                self.assert_(isinstance(oid, int))
+                self.assert_(isinstance(oid, (int, long)))
             finally:
                 addresses.drop()
                 users.drop()
