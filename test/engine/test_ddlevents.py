@@ -7,6 +7,7 @@ from sqlalchemy.test.schema import Column
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing, engines
 from sqlalchemy.test.testing import AssertsCompiledSQL
+from nose import SkipTest
 
 class DDLEventTest(TestBase):
     class Canary(object):
@@ -281,7 +282,10 @@ class DDLExecutionTest(TestBase):
         assert 'fnord' in strings
 
     def test_ddl_execute(self):
-        engine = create_engine('sqlite:///')
+        try:
+            engine = create_engine('sqlite:///')
+        except ImportError:
+            raise SkipTest('Requires sqlite')
         cx = engine.connect()
         table = self.users
         ddl = DDL('SELECT 1')
