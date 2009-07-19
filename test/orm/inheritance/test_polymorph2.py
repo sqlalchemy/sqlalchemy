@@ -787,7 +787,7 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         e = exists([Car.owner], Car.owner==employee_join.c.person_id)
         Query(Person)._adapt_clause(employee_join, False, False)
         
-        r = session.query(Person).filter(Person.name.like('%2')).join('status').filter_by(name="active")
+        r = session.query(Person).filter(Person.name.like('%2')).join('status').filter_by(name="active").order_by(Person.person_id)
         eq_(str(list(r)), "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]")
         r = session.query(Engineer).join('status').filter(Person.name.in_(['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & (status.c.name=="active")).order_by(Person.name)
         eq_(str(list(r)), "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]")

@@ -1773,6 +1773,7 @@ class MixedEntitiesTest(QueryTest):
     @testing.fails_on('mssql', 'FIXME: unknown')
     @testing.fails_on('oracle', "Oracle doesn't support boolean expressions as columns")
     @testing.fails_on('postgresql+pg8000', "pg8000 parses the SQL itself before passing on to PG, doesn't parse this")
+    @testing.fails_on('postgresql+zxjdbc', "zxjdbc parses the SQL itself before passing on to PG, doesn't parse this")
     def test_values_with_boolean_selects(self):
         """Tests a values clause that works with select boolean evaluations"""
         sess = create_session()
