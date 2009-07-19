@@ -72,9 +72,6 @@ class SessionTest(_fixtures.FixtureTest):
             sess = create_session(bind=testing.db)
             eq_(sess.execute(seq), 1)
         finally:
-            # FIXME: deadlocks Jython without gc_collect
-            # http://www.sqlalchemy.org/trac/ticket/1471
-            gc_collect()
             seq.drop(testing.db)
         
         

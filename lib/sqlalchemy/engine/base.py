@@ -1019,7 +1019,12 @@ class Connection(Connectable):
         return self._execute_clauseelement(func.select(), multiparams, params)
 
     def _execute_default(self, default, multiparams, params):
-        return self.engine.dialect.defaultrunner(self.__create_execution_context()).traverse_single(default)
+        ret = self.engine.dialect.\
+                    defaultrunner(self.__create_execution_context()).\
+                    traverse_single(default)
+        if self.__close_with_result:
+            self.close()
+        return ret
 
     def _execute_ddl(self, ddl, params, multiparams):
         context = self.__create_execution_context(
