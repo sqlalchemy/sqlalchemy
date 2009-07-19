@@ -1166,11 +1166,11 @@ UNION SELECT mytable.myid FROM mytable"
         params = dict(('in%d' % i, i) for i in range(total_params))
         sql = 'text clause %s' % ', '.join(in_clause)
         t = text(sql)
-        assert len(t.bindparams) == total_params
+        eq_(len(t.bindparams), total_params)
         c = t.compile()
         pp = c.construct_params(params)
-        assert len(set(pp)) == total_params
-        assert len(set(pp.values())) == total_params
+        eq_(len(set(pp)), total_params, '%s %s' % (len(set(pp)), len(pp)))
+        eq_(len(set(pp.values())), total_params)
         
 
     def test_bind_as_col(self):
