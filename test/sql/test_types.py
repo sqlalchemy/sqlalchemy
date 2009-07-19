@@ -714,6 +714,7 @@ class IntervalTest(TestBase, AssertsExecutionResults):
         metadata.drop_all()
 
     @testing.fails_on("+pg8000", "Not yet known how to pass values of the INTERVAL type")
+    @testing.fails_on("+zxjdbc", "Not yet known how to pass values of the INTERVAL type")
     def test_roundtrip(self):
         delta = datetime.datetime(2006, 10, 5) - datetime.datetime(2005, 8, 17)
         interval_table.insert().execute(interval=delta)
