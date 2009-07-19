@@ -671,7 +671,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                  user_name        VARCHAR    NOT NULL,
                  user_password    VARCHAR    NOT NULL
              );
-            """, None)
+            """)
 
             t = Table("speedy_users", meta, autoload=True)
             r = t.insert().execute(user_name='user', user_password='lala')
@@ -679,7 +679,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             l = t.select().execute().fetchall()
             assert l == [(1, 'user', 'lala')]
         finally:
-            testing.db.execute("drop table speedy_users", None)
+            testing.db.execute("drop table speedy_users")
 
     @testing.emits_warning()
     def test_index_reflection(self):
@@ -701,10 +701,10 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         
         testing.db.execute("""
           create index idx1 on party ((id || name))
-        """, None) 
+        """) 
         testing.db.execute("""
           create unique index idx2 on party (id) where name = 'test'
-        """, None)
+        """)
         
         testing.db.execute("""
             create index idx3 on party using btree
@@ -829,6 +829,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
 
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_insert_array(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         results = arrtable.select().execute().fetchall()
@@ -837,6 +838,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(results[0]['strarr'], ['abc','def'])
 
     @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_where(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         arrtable.insert().execute(intarr=[4,5,6], strarr='ABC')
@@ -845,6 +847,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(results[0]['intarr'], [1,2,3])
 
     @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_concat(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         results = select([arrtable.c.intarr + [4,5,6]]).execute().fetchall()
@@ -852,6 +855,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(results[0][0], [1,2,3,4,5,6])
 
     @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_subtype_resultprocessor(self):
         arrtable.insert().execute(intarr=[4,5,6], strarr=[[u'm\xe4\xe4'], [u'm\xf6\xf6']])
         arrtable.insert().execute(intarr=[1,2,3], strarr=[u'm\xe4\xe4', u'm\xf6\xf6'])
@@ -861,6 +865,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
 
     @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_mutability(self):
         class Foo(object): pass
         footable = Table('foo', metadata,
@@ -1025,10 +1030,12 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         metadata.drop_all()
 
     @testing.fails_on('postgresql+pg8000', 'uses positional')
+    @testing.fails_on('postgresql+zxjdbc', 'uses qmark')
     def test_expression_pyformat(self):
         self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%(title_1)s)")
 
     @testing.fails_on('postgresql+psycopg2', 'uses pyformat')
+    @testing.fails_on('postgresql+zxjdbc', 'uses qmark')
     def test_expression_positional(self):
         self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%s)")
 
