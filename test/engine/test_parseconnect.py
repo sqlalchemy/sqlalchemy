@@ -143,16 +143,22 @@ pool_timeout=10
 
         assert_raises(TypeError, create_engine, 'postgresql://', lala=5, module=MockDBAPI())
 
-        assert_raises(TypeError, create_engine,'sqlite://', lala=5)
+        assert_raises(TypeError, create_engine,'sqlite://', lala=5, module=mock_sqlite_dbapi)
 
         assert_raises(TypeError, create_engine, 'mysql+mysqldb://', use_unicode=True, module=MockDBAPI())
 
         # sqlite uses SingletonThreadPool which doesnt have max_overflow
-        assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=5)
+        assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=5,
+                      module=mock_sqlite_dbapi)
 
-        # raises DBAPIerror due to use_unicode not a sqlite arg
-        e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
-        assert_raises(tsa.exc.DBAPIError, e.connect)
+        try:
+            e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
+        except ImportError:
+            # no sqlite
+            pass
+        else:
+            # raises DBAPIerror due to use_unicode not a sqlite arg
+            assert_raises(tsa.exc.DBAPIError, e.connect)
 
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""
@@ -173,7 +179,8 @@ pool_timeout=10
         e = create_engine('postgresql://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=MockDBAPI())
 
         # but not SingletonThreadPool
-        assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.SingletonThreadPool)
+        assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=8, pool_timeout=60,
+                      poolclass=tsa.pool.SingletonThreadPool, module=mock_sqlite_dbapi)
 
 class MockDBAPI(object):
     def __init__(self, **kwargs):
@@ -195,4 +202,6 @@ class MockCursor(object):
     def close(self):
         pass
 mock_dbapi = MockDBAPI()
-
+mock_sqlite_dbapi = msd = MockDBAPI()
+msd.version_info = msd.sqlite_version_info = (99, 9, 9)
+msd.sqlite_version = '99.9.9'
