@@ -158,6 +158,45 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 select([extract(field, t.c.col1)]),
                 'SELECT DATEPART("%s", t.col1) AS anon_1 FROM t' % field)
 
+    def test_update_returning(self):
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)),
+        )
+
+        u = update(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
+        self.assert_compile(u, "UPDATE mytable SET name=:name OUTPUT inserted.myid, inserted.name")
+
+        u = update(table1, values=dict(name='foo')).returning(table1)
+        self.assert_compile(u, "UPDATE mytable SET name=:name OUTPUT inserted.myid, "
+                            "inserted.name, inserted.description")
+
+        u = update(table1, values=dict(name='foo')).returning(table1).where(table1.c.name=='bar')
+        self.assert_compile(u, "UPDATE mytable SET name=:name OUTPUT inserted.myid, "
+                            "inserted.name, inserted.description WHERE mytable.name = :name_1")
+        
+        u = update(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
+        self.assert_compile(u, "UPDATE mytable SET name=:name OUTPUT LEN(inserted.name)")
+
+    def test_insert_returning(self):
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)),
+        )
+
+        i = insert(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
+        self.assert_compile(i, "INSERT INTO mytable (name) OUTPUT inserted.myid, inserted.name VALUES (:name)")
+
+        i = insert(table1, values=dict(name='foo')).returning(table1)
+        self.assert_compile(i, "INSERT INTO mytable (name) OUTPUT inserted.myid, "
+                                "inserted.name, inserted.description VALUES (:name)")
+
+        i = insert(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
+        self.assert_compile(i, "INSERT INTO mytable (name) OUTPUT LEN(inserted.name) VALUES (:name)")
+
+
 
 class IdentityInsertTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'mssql'

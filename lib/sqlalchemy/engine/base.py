@@ -1064,6 +1064,7 @@ class Connection(Connectable):
             self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
         if context.compiled:
             context.post_exec()
+            
         if context.should_autocommit and not self.in_transaction():
             self._commit_impl()
         return context.get_result_proxy()
@@ -1586,7 +1587,7 @@ class ResultProxy(object):
     """
 
     _process_row = RowProxy
-
+    
     def __init__(self, context):
         self.context = context
         self.dialect = context.dialect
@@ -1607,14 +1608,22 @@ class ResultProxy(object):
     @property
     def out_parameters(self):
         return self.context.out_parameters
-
-    def _init_metadata(self):
+    
+    def _cursor_description(self):
         metadata = self.cursor.description
         if metadata is None:
-            # no results, get rowcount (which requires open cursor on some DB's such as firebird),
-            # then close
+            return
+        else:
+            return [(r[0], r[1]) for r in metadata]
+            
+    def _init_metadata(self):
+        
+        metadata = self._cursor_description()
+        if metadata is None:
+            # no results, get rowcount 
+            # (which requires open cursor on some DB's such as firebird),
             self.rowcount
-            self.close()
+            self.close() # autoclose
             return
 
         self._props = util.populate_column_dict(None)
@@ -1623,8 +1632,7 @@ class ResultProxy(object):
 
         typemap = self.dialect.dbapi_type_map
 
-        for i, item in enumerate(metadata):
-            colname = item[0]
+        for i, (colname, coltype) in enumerate(metadata):
 
             if self.dialect.description_encoding:
                 colname = colname.decode(self.dialect.description_encoding)
@@ -1640,9 +1648,9 @@ class ResultProxy(object):
                 try:
                     (name, obj, type_) = self.context.result_map[colname.lower()]
                 except KeyError:
-                    (name, obj, type_) = (colname, None, typemap.get(item[1], types.NULLTYPE))
+                    (name, obj, type_) = (colname, None, typemap.get(coltype, types.NULLTYPE))
             else:
-                (name, obj, type_) = (colname, None, typemap.get(item[1], types.NULLTYPE))
+                (name, obj, type_) = (colname, None, typemap.get(coltype, types.NULLTYPE))
 
             rec = (type_, type_.dialect_impl(self.dialect).result_processor(self.dialect), i)
 
@@ -1949,8 +1957,44 @@ class BufferedRowResultProxy(ResultProxy):
         return result
 
     def _fetchall_impl(self):
-        return self.__rowbuffer + list(self.cursor.fetchall())
+        ret = self.__rowbuffer + list(self.cursor.fetchall())
+        self.__rowbuffer[:] = []
+        return ret
 
+class FullyBufferedResultProxy(ResultProxy):
+    """A result proxy that buffers rows fully upon creation.
+    
+    Used for operations where a result is to be delivered
+    after the database conversation can not be continued,
+    such as MSSQL INSERT...OUTPUT after an autocommit.
+    
+    """
+    def _init_metadata(self):
+        self.__rowbuffer = self._buffer_rows()
+        super(FullyBufferedResultProxy, self)._init_metadata()
+        
+    def _buffer_rows(self):
+        return self.cursor.fetchall()
+        
+    def _fetchone_impl(self):
+        if self.__rowbuffer:
+            return self.__rowbuffer.pop(0)
+        else:
+            return None
+
+    def _fetchmany_impl(self, size=None):
+        result = []
+        for x in range(0, size):
+            row = self._fetchone_impl()
+            if row is None:
+                break
+            result.append(row)
+        return result
+
+    def _fetchall_impl(self):
+        ret = self.__rowbuffer
+        self.__rowbuffer = []
+        return ret
 
 class BufferedColumnResultProxy(ResultProxy):
     """A ResultProxy with column buffering behavior.

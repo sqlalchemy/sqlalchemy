@@ -3743,7 +3743,7 @@ class _UpdateBase(ClauseElement):
 
     supports_execution = True
     _autocommit = True
-
+    
     def _generate(self):
         s = self.__class__.__new__(self.__class__)
         s.__dict__ = self.__dict__.copy()
@@ -3771,6 +3771,51 @@ class _UpdateBase(ClauseElement):
         self._bind = bind
     bind = property(bind, _set_bind)
 
+    _returning_re = re.compile(r'(?:firebird|postgres(?:ql)?)_returning')
+    def _process_deprecated_kw(self, kwargs):
+        for k in list(kwargs):
+            m = self._returning_re.match(k)
+            if m:
+                self._returning = kwargs.pop(k)
+                util.warn_deprecated(
+                    "The %r argument is deprecated.  Please use statement.returning(col1, col2, ...)" % k
+                )
+        return kwargs
+    
+    @_generative
+    def returning(self, *cols):
+        """Add a RETURNING or equivalent clause to this statement.
+        
+        The given list of columns represent columns within the table
+        that is the target of the INSERT, UPDATE, or DELETE.  Each 
+        element can be any column expression.  ``Table`` objects
+        will be expanded into their individual columns.
+        
+        Upon compilation, a RETURNING clause, or database equivalent, 
+        will be rendered within the statement.   For INSERT and UPDATE, 
+        the values are the newly inserted/updated values.  For DELETE, 
+        the values are those of the rows which were deleted.
+        
+        Upon execution, the values of the columns to be returned
+        are made available via the result set and can be iterated
+        using ``fetchone()`` and similar.   For DBAPIs which do not
+        natively support returning values (i.e. cx_oracle), 
+        SQLAlchemy will approximate this behavior at the result level
+        so that a reasonable amount of behavioral neutrality is 
+        provided.
+        
+        Note that not all databases/DBAPIs
+        support RETURNING.   For those backends with no support,
+        an exception is raised upon compilation and/or execution.
+        For those who do support it, the functionality across backends
+        varies greatly, including restrictions on executemany()
+        and other statements which return multiple rows. Please 
+        read the documentation notes for the database in use in 
+        order to determine the availability of RETURNING.
+        
+        """
+        self._returning = cols
+        
 class _ValuesBase(_UpdateBase):
 
     __visit_name__ = 'values_base'
@@ -3819,16 +3864,19 @@ class Insert(_ValuesBase):
                 inline=False, 
                 bind=None, 
                 prefixes=None, 
+                returning=None,
                 **kwargs):
         _ValuesBase.__init__(self, table, values)
         self._bind = bind
         self.select = None
         self.inline = inline
+        self._returning = returning
         if prefixes:
             self._prefixes = [_literal_as_text(p) for p in prefixes]
         else:
             self._prefixes = []
-        self.kwargs = kwargs
+            
+        self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self.select is not None:
@@ -3865,15 +3913,18 @@ class Update(_ValuesBase):
                 values=None, 
                 inline=False, 
                 bind=None, 
+                returning=None,
                 **kwargs):
         _ValuesBase.__init__(self, table, values)
         self._bind = bind
+        self._returning = returning
         if whereclause:
             self._whereclause = _literal_as_text(whereclause)
         else:
             self._whereclause = None
         self.inline = inline
-        self.kwargs = kwargs
+
+        self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:
@@ -3907,15 +3958,22 @@ class Delete(_UpdateBase):
 
     __visit_name__ = 'delete'
 
-    def __init__(self, table, whereclause, bind=None, **kwargs):
+    def __init__(self, 
+            table, 
+            whereclause, 
+            bind=None, 
+            returning =None,
+            **kwargs):
         self._bind = bind
         self.table = table
+        self._returning = returning
+        
         if whereclause:
             self._whereclause = _literal_as_text(whereclause)
         else:
             self._whereclause = None
 
-        self.kwargs = kwargs
+        self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:

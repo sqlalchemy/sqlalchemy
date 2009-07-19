@@ -263,13 +263,9 @@ class PGCompiler(compiler.SQLCompiler):
         else:
             return super(PGCompiler, self).for_update_clause(select)
 
-    def _append_returning(self, text, stmt):
-        try:
-            returning_cols = stmt.kwargs['postgresql_returning']
-        except KeyError:
-            returning_cols = stmt.kwargs['postgres_returning']
-            util.warn_deprecated("The 'postgres_returning' argument has been renamed 'postgresql_returning'")
-            
+    def returning_clause(self, stmt):
+        returning_cols = stmt._returning
+        
         def flatten_columnlist(collist):
             for c in collist:
                 if isinstance(c, expression.Selectable):
@@ -277,23 +273,13 @@ class PGCompiler(compiler.SQLCompiler):
                         yield co
                 else:
                     yield c
-        columns = [self.process(c, within_columns_clause=True) for c in flatten_columnlist(returning_cols)]
-        text += ' RETURNING ' + ', '.join(columns)
-        return text
-
-    def visit_update(self, update_stmt):
-        text = super(PGCompiler, self).visit_update(update_stmt)
-        if 'postgresql_returning' in update_stmt.kwargs or 'postgres_returning' in update_stmt.kwargs:
-            return self._append_returning(text, update_stmt)
-        else:
-            return text
-
-    def visit_insert(self, insert_stmt):
-        text = super(PGCompiler, self).visit_insert(insert_stmt)
-        if 'postgresql_returning' in insert_stmt.kwargs or 'postgres_returning' in insert_stmt.kwargs:
-            return self._append_returning(text, insert_stmt)
-        else:
-            return text
+    
+        columns = [
+                self.process(c, within_columns_clause=True, result_map=self.result_map) 
+                for c in flatten_columnlist(returning_cols)
+            ]
+            
+        return 'RETURNING ' + ', '.join(columns)
 
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)

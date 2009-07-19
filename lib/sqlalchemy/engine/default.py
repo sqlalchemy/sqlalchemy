@@ -187,7 +187,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.statement = unicode(compiled).encode(self.dialect.encoding)
             else:
                 self.statement = unicode(compiled)
-            self.isinsert = self.isupdate = self.executemany = False
+            self.isinsert = self.isupdate = self.isdelete = self.executemany = False
             self.should_autocommit = True
             self.result_map = None
             self.cursor = self.create_cursor()
@@ -221,6 +221,7 @@ class DefaultExecutionContext(base.ExecutionContext):
 
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
+            self.isdelete = compiled.isdelete
             self.should_autocommit = compiled.statement._autocommit
             if isinstance(compiled.statement, expression._TextClause):
                 self.should_autocommit = self.should_autocommit or self.should_autocommit_text(self.statement)
@@ -246,13 +247,13 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.statement = statement.encode(self.dialect.encoding)
             else:
                 self.statement = statement
-            self.isinsert = self.isupdate = False
+            self.isinsert = self.isupdate = self.isdelete = False
             self.cursor = self.create_cursor()
             self.should_autocommit = self.should_autocommit_text(statement)
         else:
             # no statement. used for standalone ColumnDefault execution.
             self.statement = self.compiled = None
-            self.isinsert = self.isupdate = self.executemany = self.should_autocommit = False
+            self.isinsert = self.isupdate = self.isdelete = self.executemany = self.should_autocommit = False
             self.cursor = self.create_cursor()
 
     @property

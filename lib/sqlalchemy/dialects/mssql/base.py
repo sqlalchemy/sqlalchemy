@@ -224,7 +224,9 @@ Known Issues
 import datetime, decimal, inspect, operator, sys, re
 
 from sqlalchemy import sql, schema as sa_schema, exc, util
-from sqlalchemy.sql import select, compiler, expression, operators as sql_operators, functions as sql_functions
+from sqlalchemy.sql import select, compiler, expression, \
+                            operators as sql_operators, \
+                            functions as sql_functions, util as sql_util
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
@@ -844,6 +846,7 @@ def _table_sequence_column(tbl):
 class MSExecutionContext(default.DefaultExecutionContext):
     _enable_identity_insert = False
     _select_lastrowid = False
+    _result_proxy = None
     
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""
@@ -859,6 +862,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self._enable_identity_insert = False
             
             self._select_lastrowid = insert_has_sequence and \
+                                        not self.compiled.statement.returning and \
                                         not self._enable_identity_insert and \
                                         not self.executemany
             
@@ -880,6 +884,10 @@ class MSExecutionContext(default.DefaultExecutionContext):
         if self._enable_identity_insert:
             self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
 
+        if (self.isinsert or self.isupdate or self.isdelete) and \
+                self.compiled.statement._returning:
+            self._result_proxy = base.FullyBufferedResultProxy(self)
+        
     def handle_dbapi_exception(self, e):
         if self._enable_identity_insert:
             try:
@@ -887,6 +895,8 @@ class MSExecutionContext(default.DefaultExecutionContext):
             except:
                 pass
 
+    def get_result_proxy(self):
+        return self._result_proxy or base.ResultProxy(self)
 
 class MSSQLCompiler(compiler.SQLCompiler):
 
@@ -1023,7 +1033,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 return self.process(expression._BinaryExpression(binary.left, binary.right, op), **kwargs)
             return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
-    def visit_insert(self, insert_stmt):
+    def dont_visit_insert(self, insert_stmt):
         insert_select = False
         if insert_stmt.parameters:
             insert_select = [p for p in insert_stmt.parameters.values() if isinstance(p, sql.Select)]
@@ -1049,6 +1059,30 @@ class MSSQLCompiler(compiler.SQLCompiler):
                      ', '.join([c[1] for c in colparams])))
         else:
             return super(MSSQLCompiler, self).visit_insert(insert_stmt)
+
+    def returning_clause(self, stmt):
+        returning_cols = stmt._returning
+
+        def flatten_columnlist(collist):
+            for c in collist:
+                if isinstance(c, expression.Selectable):
+                    for co in c.columns:
+                        yield co
+                else:
+                    yield c
+                    
+        if self.isinsert or self.isupdate:
+            target = stmt.table.alias("inserted")
+        else:
+            target = stmt.table.alias("deleted")
+        
+        adapter = sql_util.ClauseAdapter(target)
+        columns = [
+            self.process(adapter.traverse(c), within_columns_clause=True, result_map=self.result_map) 
+            for c in flatten_columnlist(returning_cols)
+        ]
+
+        return 'OUTPUT ' + ', '.join(columns)
 
     def label_select_column(self, select, column, asfrom):
         if isinstance(column, expression.Function):

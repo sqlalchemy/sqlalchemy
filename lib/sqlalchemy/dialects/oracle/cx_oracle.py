@@ -213,9 +213,32 @@ class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):
                 type_code = column[1]
                 if type_code in self.dialect.ORACLE_BINARY_TYPES:
                     return base.BufferedColumnResultProxy(self)
+        
+        if hasattr(self, 'out_parameters') and \
+            (self.isinsert or self.isupdate or self.isdelete) and \
+                self.compiled.statement._returning:
+                
+            return ReturningResultProxy(self)
+        else:
+            return base.ResultProxy(self)
 
-        return base.ResultProxy(self)
-
+class ReturningResultProxy(base.FullyBufferedResultProxy):
+    """Result proxy which stuffs the _returning clause + outparams into the fetch."""
+    
+    def _cursor_description(self):
+        returning = self.context.compiled.statement._returning
+        
+        ret = []
+        for c in returning:
+            if hasattr(c, 'key'):
+                ret.append((c.key, c.type))
+            else:
+                ret.append((c.anon_label, c.type))
+        return ret
+    
+    def _buffer_rows(self):
+        returning = self.context.compiled.statement._returning
+        return [tuple(self.context.out_parameters["ret_%d" % i] for i, c in enumerate(returning))]
 
 class Oracle_cx_oracle(OracleDialect):
     execution_ctx_cls = Oracle_cx_oracleExecutionContext

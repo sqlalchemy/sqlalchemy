@@ -105,14 +105,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             column('description', String(128)),
         )
 
-        u = update(table1, values=dict(name='foo'), firebird_returning=[table1.c.myid, table1.c.name])
+        u = update(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
         self.assert_compile(u, "UPDATE mytable SET name=:name RETURNING mytable.myid, mytable.name")
 
-        u = update(table1, values=dict(name='foo'), firebird_returning=[table1])
+        u = update(table1, values=dict(name='foo')).returning(table1)
         self.assert_compile(u, "UPDATE mytable SET name=:name "\
             "RETURNING mytable.myid, mytable.name, mytable.description")
 
-        u = update(table1, values=dict(name='foo'), firebird_returning=[func.length(table1.c.name)])
+        u = update(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
         self.assert_compile(u, "UPDATE mytable SET name=:name RETURNING char_length(mytable.name)")
 
     def test_insert_returning(self):
@@ -122,87 +122,17 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             column('description', String(128)),
         )
 
-        i = insert(table1, values=dict(name='foo'), firebird_returning=[table1.c.myid, table1.c.name])
+        i = insert(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (:name) RETURNING mytable.myid, mytable.name")
 
-        i = insert(table1, values=dict(name='foo'), firebird_returning=[table1])
+        i = insert(table1, values=dict(name='foo')).returning(table1)
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (:name) "\
             "RETURNING mytable.myid, mytable.name, mytable.description")
 
-        i = insert(table1, values=dict(name='foo'), firebird_returning=[func.length(table1.c.name)])
+        i = insert(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (:name) RETURNING char_length(mytable.name)")
 
 
-class ReturningTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'firebird'
-
-    @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    def test_update_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, Sequence('gen_tables_id'), primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
-
-            result = table.update(table.c.persons > 4, dict(full=True), firebird_returning=[table.c.id]).execute()
-            eq_(result.fetchall(), [(1,)])
-
-            result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-            eq_(result2.fetchall(), [(1,True),(2,False)])
-        finally:
-            table.drop()
-
-    @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    def test_insert_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, Sequence('gen_tables_id'), primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            result = table.insert(firebird_returning=[table.c.id]).execute({'persons': 1, 'full': False})
-
-            eq_(result.fetchall(), [(1,)])
-
-            # Multiple inserts only return the last row
-            result2 = table.insert(firebird_returning=[table]).execute(
-                 [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
-
-            eq_(result2.fetchall(), [(3,3,True)])
-
-            result3 = table.insert(firebird_returning=[table.c.id]).execute({'persons': 4, 'full': False})
-            eq_([dict(row) for row in result3], [{'id': 4}])
-
-            result4 = testing.db.execute('insert into tables (id, persons, "full") values (5, 10, 1) returning persons')
-            eq_([dict(row) for row in result4], [{'persons': 10}])
-        finally:
-            table.drop()
-
-    @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    def test_delete_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, Sequence('gen_tables_id'), primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
-
-            result = table.delete(table.c.persons > 4, firebird_returning=[table.c.id]).execute()
-            eq_(result.fetchall(), [(1,)])
-
-            result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-            eq_(result2.fetchall(), [(2,False),])
-        finally:
-            table.drop()
 
 
 class MiscTest(TestBase):

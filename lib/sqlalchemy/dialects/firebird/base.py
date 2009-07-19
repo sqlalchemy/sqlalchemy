@@ -221,7 +221,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
     visit_char_length_func = visit_length_func
 
-    def function_argspec(self, func):
+    def function_argspec(self, func, **kw):
         if func.clauses:
             return self.process(func.clause_expr)
         else:
@@ -253,40 +253,22 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
         return ""
 
-    def _append_returning(self, text, stmt):
-        returning_cols = stmt.kwargs["firebird_returning"]
+    def returning_clause(self, stmt):
+        returning_cols = stmt._returning
+
         def flatten_columnlist(collist):
             for c in collist:
-                if isinstance(c, sql.expression.Selectable):
+                if isinstance(c, expression.Selectable):
                     for co in c.columns:
                         yield co
                 else:
                     yield c
-        columns = [self.process(c, within_columns_clause=True)
-                   for c in flatten_columnlist(returning_cols)]
-        text += ' RETURNING ' + ', '.join(columns)
-        return text
 
-    def visit_update(self, update_stmt):
-        text = super(FBCompiler, self).visit_update(update_stmt)
-        if "firebird_returning" in update_stmt.kwargs:
-            return self._append_returning(text, update_stmt)
-        else:
-            return text
-
-    def visit_insert(self, insert_stmt):
-        text = super(FBCompiler, self).visit_insert(insert_stmt)
-        if "firebird_returning" in insert_stmt.kwargs:
-            return self._append_returning(text, insert_stmt)
-        else:
-            return text
-
-    def visit_delete(self, delete_stmt):
-        text = super(FBCompiler, self).visit_delete(delete_stmt)
-        if "firebird_returning" in delete_stmt.kwargs:
-            return self._append_returning(text, delete_stmt)
-        else:
-            return text
+        columns = [
+                self.process(c, within_columns_clause=True, result_map=self.result_map) 
+                for c in flatten_columnlist(returning_cols)
+            ]
+        return 'RETURNING ' + ', '.join(columns)
 
 
 class FBDDLCompiler(sql.compiler.DDLCompiler):

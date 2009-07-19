@@ -8,6 +8,11 @@
       on the structure of criteria, so success/failure is deterministic based on 
       code structure.
 
+- sql
+    - returning() support is native to insert(), update(), delete().  Implementations
+      of varying levels of functionality exist for Postgresql, Firebird, MSSQL and
+      Oracle.
+      
 - engines
     - transaction isolation level may be specified with
       create_engine(... isolation_level="..."); available on

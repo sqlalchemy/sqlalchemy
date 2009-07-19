@@ -672,43 +672,73 @@ class SQLCompiler(engine.Compiled):
     def visit_insert(self, insert_stmt):
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt)
-        preparer = self.preparer
-
-        insert = ' '.join(["INSERT"] +
-                          [self.process(x) for x in insert_stmt._prefixes])
 
         if not colparams and \
                 not self.dialect.supports_default_values and \
                 not self.dialect.supports_empty_insert:
             raise exc.CompileError(
                 "The version of %s you are using does not support empty inserts." % self.dialect.name)
-        elif not colparams and self.dialect.supports_default_values:
-            return (insert + " INTO %s DEFAULT VALUES" % (
-                (preparer.format_table(insert_stmt.table),)))
-        else: 
-            return (insert + " INTO %s (%s) VALUES (%s)" %
-                (preparer.format_table(insert_stmt.table),
-                 ', '.join([preparer.format_column(c[0])
-                           for c in colparams]),
-                 ', '.join([c[1] for c in colparams])))
 
+        preparer = self.preparer
+        supports_default_values = self.dialect.supports_default_values
+        
+        text = "INSERT"
+        
+        prefixes = [self.process(x) for x in insert_stmt._prefixes]
+        if prefixes:
+            text += " " + " ".join(prefixes)
+        
+        text += " INTO " + preparer.format_table(insert_stmt.table)
+         
+        if not colparams and supports_default_values:
+            text += " DEFAULT VALUES"
+        else: 
+            text += " (%s)" % ', '.join([preparer.format_column(c[0])
+                       for c in colparams])
+
+        if insert_stmt._returning:
+            returning_clause = self.returning_clause(insert_stmt)
+
+            # cheating
+            if returning_clause.startswith("OUTPUT"):
+                text += " " + returning_clause
+                returning_clause = None
+                
+        if colparams or not supports_default_values:
+            text += " VALUES (%s)" % \
+                     ', '.join([c[1] for c in colparams])
+        
+        if insert_stmt._returning and returning_clause:
+            text += " " + returning_clause
+        
+        return text
+        
     def visit_update(self, update_stmt):
         self.stack.append({'from': set([update_stmt.table])})
 
         self.isupdate = True
         colparams = self._get_colparams(update_stmt)
 
-        text = ' '.join((
-            "UPDATE",
-            self.preparer.format_table(update_stmt.table),
-            'SET',
-            ', '.join(self.preparer.quote(c[0].name, c[0].quote) + '=' + c[1]
-                      for c in colparams)
-            ))
+        text = "UPDATE " + self.preparer.format_table(update_stmt.table)
+        
+        text += ' SET ' + \
+                ', '.join(
+                        self.preparer.quote(c[0].name, c[0].quote) + '=' + c[1]
+                      for c in colparams
+                )
 
+        if update_stmt._returning:
+            returning_clause = self.returning_clause(update_stmt)
+            if returning_clause.startswith("OUTPUT"):
+                text += " " + returning_clause
+                returning_clause = None
+                
         if update_stmt._whereclause:
             text += " WHERE " + self.process(update_stmt._whereclause)
 
+        if update_stmt._returning and returning_clause:
+            text += " " + returning_clause
+            
         self.stack.pop(-1)
 
         return text
@@ -804,9 +834,18 @@ class SQLCompiler(engine.Compiled):
 
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
 
+        if delete_stmt._returning:
+            returning_clause = self.returning_clause(delete_stmt)
+            if returning_clause.startswith("OUTPUT"):
+                text += " " + returning_clause
+                returning_clause = None
+                
         if delete_stmt._whereclause:
             text += " WHERE " + self.process(delete_stmt._whereclause)
 
+        if delete_stmt._returning and returning_clause:
+            text += " " + returning_clause
+            
         self.stack.pop(-1)
 
         return text

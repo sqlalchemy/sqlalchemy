@@ -32,14 +32,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             column('description', String(128)),
         )
 
-        u = update(table1, values=dict(name='foo'), postgresql_returning=[table1.c.myid, table1.c.name])
+        u = update(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
         self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
 
-        u = update(table1, values=dict(name='foo'), postgresql_returning=[table1])
+        u = update(table1, values=dict(name='foo')).returning(table1)
         self.assert_compile(u, "UPDATE mytable SET name=%(name)s "\
             "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
 
-        u = update(table1, values=dict(name='foo'), postgresql_returning=[func.length(table1.c.name)])
+        u = update(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
         self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name)", dialect=dialect)
 
         
@@ -51,17 +51,17 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             column('description', String(128)),
         )
 
-        i = insert(table1, values=dict(name='foo'), postgresql_returning=[table1.c.myid, table1.c.name])
+        i = insert(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING mytable.myid, mytable.name", dialect=dialect)
 
-        i = insert(table1, values=dict(name='foo'), postgresql_returning=[table1])
+        i = insert(table1, values=dict(name='foo')).returning(table1)
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) "\
             "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
 
-        i = insert(table1, values=dict(name='foo'), postgresql_returning=[func.length(table1.c.name)])
+        i = insert(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
     
-    @testing.uses_deprecated(r".*'postgres_returning' argument has been renamed.*")
+    @testing.uses_deprecated(r".*argument is deprecated.  Please use statement.returning.*")
     def test_old_returning_names(self):
         dialect = postgresql.dialect()
         table1 = table('mytable',
@@ -71,6 +71,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         )
 
         u = update(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
+
+        u = update(table1, values=dict(name='foo'), postgresql_returning=[table1.c.myid, table1.c.name])
         self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
 
         i = insert(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
@@ -99,60 +102,6 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 select([extract(field, t.c.col1)]),
                 "SELECT EXTRACT(%s FROM t.col1::timestamp) AS anon_1 "
                 "FROM t" % field)
-
-class ReturningTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgresql'
-
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
-    def test_update_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
-
-            result = table.update(table.c.persons > 4, dict(full=True), postgresql_returning=[table.c.id]).execute()
-            eq_(result.fetchall(), [(1,)])
-
-            result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-            eq_(result2.fetchall(), [(1,True),(2,False)])
-        finally:
-            table.drop()
-
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
-    def test_insert_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            result = table.insert(postgresql_returning=[table.c.id]).execute({'persons': 1, 'full': False})
-
-            eq_(result.fetchall(), [(1,)])
-
-            @testing.fails_on('postgresql', 'Known limitation of psycopg2')
-            def test_executemany():
-                # return value is documented as failing with psycopg2/executemany
-                result2 = table.insert(postgresql_returning=[table]).execute(
-                     [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
-                eq_(result2.fetchall(), [(2, 2, False), (3,3,True)])
-            
-            test_executemany()
-            
-            result3 = table.insert(postgresql_returning=[(table.c.id*2).label('double_id')]).execute({'persons': 4, 'full': False})
-            eq_([dict(row) for row in result3], [{'double_id':8}])
-
-            result4 = testing.db.execute('insert into tables (id, persons, "full") values (5, 10, true) returning persons')
-            eq_([dict(row) for row in result4], [{'persons': 10}])
-        finally:
-            table.drop()
 
 
 class InsertTest(TestBase, AssertsExecutionResults):

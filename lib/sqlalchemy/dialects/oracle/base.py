@@ -145,6 +145,9 @@ class LONG(sqltypes.Text):
     __visit_name__ = 'LONG'
     
 class _OracleBoolean(sqltypes.Boolean):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.NUMBER
+    
     def result_processor(self, dialect):
         def process(value):
             if value is None:
@@ -315,6 +318,29 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return self.process(alias.original, **kwargs)
 
+    def returning_clause(self, stmt):
+        returning_cols = stmt._returning
+            
+        def flatten_columnlist(collist):
+            for c in collist:
+                if isinstance(c, expression.Selectable):
+                    for co in c.columns:
+                        yield co
+                else:
+                    yield c
+
+        def create_out_param(col, i):
+            bindparam = sql.outparam("ret_%d" % i, type_=col.type)
+            self.binds[bindparam.key] = bindparam
+            return self.bindparam_string(self._truncate_bindparam(bindparam))
+        
+        # within_columns_clause =False so that labels (foo AS bar) don't render
+        columns = [self.process(c, within_columns_clause=False) for c in flatten_columnlist(returning_cols)]
+        
+        binds = [create_out_param(c, i) for i, c in enumerate(flatten_columnlist(returning_cols))]
+        
+        return 'RETURNING ' + ', '.join(columns) +  " INTO " + ", ".join(binds)
+
     def _TODO_visit_compound_select(self, select):
         """Need to determine how to get ``LIMIT``/``OFFSET`` into a ``UNION`` for Oracle."""
         pass
@@ -424,7 +450,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
 class OracleDefaultRunner(base.DefaultRunner):
     def visit_sequence(self, seq):
-        return self.execute_string("SELECT " + self.dialect.identifier_preparer.format_sequence(seq) + ".nextval FROM DUAL", {})
+        return self.execute_string("SELECT " + 
+                    self.dialect.identifier_preparer.format_sequence(seq) + 
+                    ".nextval FROM DUAL", {})
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
     
