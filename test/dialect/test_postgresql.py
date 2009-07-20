@@ -698,8 +698,12 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             eng.execute("show transaction isolation level").scalar(),
             'serializable')
         eng = create_engine(testing.db.url, isolation_level="FOO")
-        assert_raises(eng.dialect.dbapi.ProgrammingError, eng.execute,
-            "show transaction isolation level")
+
+        if testing.db.driver == 'zxjdbc':
+            exception_cls = eng.dialect.dbapi.Error
+        else:
+            exception_cls = eng.dialect.dbapi.ProgrammingError
+        assert_raises(exception_cls, eng.execute, "show transaction isolation level")
 
 
 class TimezoneTest(TestBase, AssertsExecutionResults):
