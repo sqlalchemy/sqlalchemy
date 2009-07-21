@@ -1171,6 +1171,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                 Person(name='ratbert')
             ]
         )
+        sess.expunge_all()
+
         person = sess.query(Person).filter(Person.name == 'ratbert').one()
         assert 'name' not in person.__dict__
 
