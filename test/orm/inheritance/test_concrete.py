@@ -464,7 +464,61 @@ class PropertyInheritanceTest(_base.MappedTest):
                 sess.query(C).options(eagerload(C.many_a)).order_by(C.id).all(),
             )
         self.assert_sql_count(testing.db, go, 1)
+
+class ManyToManyTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("base", metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
+        )
+        Table("sub", metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
+        )
+        Table("base_mtom", metadata,
+            Column('base_id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('related_id', Integer, ForeignKey('related.id'), primary_key=True)
+        )
+        Table("sub_mtom", metadata,
+            Column('base_id', Integer, ForeignKey('sub.id'), primary_key=True),
+            Column('related_id', Integer, ForeignKey('related.id'), primary_key=True)
+        )
+        Table("related", metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
+        )
         
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_classes(cls):
+        class Base(_base.ComparableEntity):
+            pass
+        class Sub(Base):
+            pass
+        class Related(_base.ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def test_selective_relations(self):
+        mapper(Base, base, properties={
+            'related':relation(Related, secondary=base_mtom, backref='bases', order_by=related.c.id)
+        })
+        mapper(Sub, sub, inherits=Base, concrete=True, properties={
+            'related':relation(Related, secondary=sub_mtom, backref='subs', order_by=related.c.id)
+        })
+        mapper(Related, related)
+        
+        sess = sessionmaker()()
+        
+        b1, s1, r1, r2, r3 = Base(), Sub(), Related(), Related(), Related()
+        
+        b1.related.append(r1)
+        b1.related.append(r2)
+        s1.related.append(r2)
+        s1.related.append(r3)
+        sess.add_all([b1, s1])
+        sess.commit()
+        
+        eq_(s1.related, [r2, r3])
+        eq_(b1.related, [r1, r2])
     
 class ColKeysTest(_base.MappedTest):
     @classmethod

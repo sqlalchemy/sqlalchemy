@@ -9,6 +9,13 @@ CHANGES
     - Fixed bug whereby inheritance discriminator part of a
       composite primary key would fail on updates.
       Continuation of [ticket:1300].
+    
+    - relations() now have greater ability to be "overridden",
+      meaning a subclass that explicitly specifies a relation()
+      overriding that of the parent class will be honored
+      during a flush.  This is currently to support 
+      many-to-many relations from concrete inheritance setups.
+      Outside of that use case, YMMV.  [ticket:1477]
       
 - sql
     - Fixed a bug in extract() introduced in 0.5.4 whereby
