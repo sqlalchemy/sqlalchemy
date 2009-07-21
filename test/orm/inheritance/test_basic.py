@@ -985,6 +985,14 @@ class PKDiscriminatorTest(_base.MappedTest):
         assert a.id
         assert a.type == 2
         
+        p.name='p1new'
+        a.name='a1new'
+        s.flush()
+        
+        s.expire_all()
+        assert a.name=='a1new'
+        assert p.name=='p1new'
+        
         
 class DeleteOrphanTest(_base.MappedTest):
     @classmethod

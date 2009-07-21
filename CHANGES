@@ -5,6 +5,11 @@ CHANGES
 =======
 0.5.6
 =====
+- orm
+    - Fixed bug whereby inheritance discriminator part of a
+      composite primary key would fail on updates.
+      Continuation of [ticket:1300].
+      
 - sql
     - Fixed a bug in extract() introduced in 0.5.4 whereby
       the string "field" argument was getting treated as a 
