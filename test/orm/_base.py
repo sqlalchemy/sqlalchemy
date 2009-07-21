@@ -2,6 +2,7 @@ import inspect
 import sys
 import types
 import sqlalchemy as sa
+import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.test import config, testing
 from sqlalchemy.test.testing import resolve_artifact_names, adict
 from sqlalchemy.test.engines import drop_all_tables
@@ -74,20 +75,19 @@ class ComparableEntity(BasicEntity):
                 if attr.startswith('_'):
                     continue
                 value = getattr(a, attr)
-                if (hasattr(value, '__iter__') and
-                    not isinstance(value, basestring)):
-                    try:
-                        # catch AttributeError so that lazy loaders trigger
-                        battr = getattr(b, attr)
-                    except AttributeError:
-                        return False
 
+                try:
+                    # handle lazy loader errors
+                    battr = getattr(b, attr)
+                except (AttributeError, sa_exc.UnboundExecutionError):
+                    return False
+
+                if hasattr(value, '__iter__'):
                     if list(value) != list(battr):
                         return False
                 else:
-                    if value is not None:
-                        if value != getattr(b, attr, None):
-                            return False
+                    if value is not None and value != battr:
+                        return False
             return True
         finally:
             _recursion_stack.remove(id(self))
