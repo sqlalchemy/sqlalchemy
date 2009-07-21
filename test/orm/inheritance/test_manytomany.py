@@ -194,11 +194,11 @@ class InheritTest3(_base.MappedTest):
         b.foos.append(Foo("foo #1"))
         b.foos.append(Foo("foo #2"))
         sess.flush()
-        compare = repr(b) + repr(sorted([repr(o) for o in b.foos]))
+        compare = [repr(b)] + sorted([repr(o) for o in b.foos])
         sess.expunge_all()
         l = sess.query(Bar).all()
         print repr(l[0]) + repr(l[0].foos)
-        found = repr(l[0]) + repr(sorted([repr(o) for o in l[0].foos]))
+        found = [repr(l[0])] + sorted([repr(o) for o in l[0].foos])
         eq_(found, compare)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
