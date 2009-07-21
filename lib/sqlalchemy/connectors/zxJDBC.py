@@ -1,11 +1,7 @@
 from sqlalchemy.connectors import Connector
 
-import sys
-import re
-import urllib
-
 class ZxJDBCConnector(Connector):
-    driver='zxjdbc'
+    driver = 'zxjdbc'
     
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
@@ -29,11 +25,15 @@ class ZxJDBCConnector(Connector):
     def create_connect_args(self, url):
         hostname = url.host
         dbname = url.database
-        d, u, p, v = "jdbc:%s://%s/%s" % (self.jdbc_db_name, hostname, dbname), url.username, url.password, self.jdbc_driver_name
+        d, u, p, v = ("jdbc:%s://%s/%s" % (self.jdbc_db_name, hostname, dbname),
+                      url.username, url.password, self.jdbc_driver_name)
         return [[d, u, p, v], self._driver_kwargs()]
         
     def is_disconnect(self, e):
-        return isinstance(e, self.dbapi.ProgrammingError) and 'connection is closed' in str(e)
+        if not isinstance(e, self.dbapi.ProgrammingError):
+            return False
+        e = str(e)
+        return 'connection is closed' in e or 'cursor is closed' in e
 
     def _get_server_version_info(self, connection):
         # use connection.connection.dbversion, and parse appropriately
