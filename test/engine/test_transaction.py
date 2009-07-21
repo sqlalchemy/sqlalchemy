@@ -20,7 +20,8 @@ class TransactionTest(TestBase):
         users.create(testing.db)
 
     def teardown(self):
-        testing.db.connect().execute(users.delete())
+        testing.db.connect().execute(users.delete()).close()
+
     @classmethod
     def teardown_class(cls):
         users.drop(testing.db)
@@ -383,7 +384,7 @@ class ExplicitAutoCommitTest(TestBase):
         testing.db.execute("create function insert_foo(varchar) returns integer as 'insert into foo(data) values ($1);select 1;' language sql")
 
     def teardown(self):
-        foo.delete().execute()
+        foo.delete().execute().close()
 
     @classmethod
     def teardown_class(cls):
@@ -456,8 +457,10 @@ class TLTransactionTest(TestBase):
             test_needs_acid=True,
         )
         users.create(tlengine)
+
     def teardown(self):
-        tlengine.execute(users.delete())
+        tlengine.execute(users.delete()).close()
+
     @classmethod
     def teardown_class(cls):
         users.drop(tlengine)
@@ -723,8 +726,10 @@ class ForUpdateTest(TestBase):
             test_needs_acid=True,
         )
         counters.create(testing.db)
+
     def teardown(self):
-        testing.db.connect().execute(counters.delete())
+        testing.db.connect().execute(counters.delete()).close()
+
     @classmethod
     def teardown_class(cls):
         counters.drop(testing.db)

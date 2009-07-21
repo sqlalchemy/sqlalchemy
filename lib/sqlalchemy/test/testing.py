@@ -281,9 +281,10 @@ def _server_version(bind=None):
         bind = config.db
     
     # force metadata to be retrieved
-    bind.connect()
-    
-    return getattr(bind.dialect, 'server_version_info', ())
+    conn = bind.connect()
+    version = getattr(bind.dialect, 'server_version_info', ())
+    conn.close()
+    return version
 
 def skip_if(predicate, reason=None):
     """Skip a test if predicate is true."""
