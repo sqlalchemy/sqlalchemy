@@ -2121,6 +2121,16 @@ class _BindParamClause(ColumnElement):
         d['value'] = v
         return d
 
+    def __hash__(self):
+        """Return a distinct hash code.
+
+        ColumnOperators have special equality comparisons which makes us
+        rely on _BindParamClauses having unique hash codes for use in
+        hash-based collections. Stock __hash__ doesn't guarantee unique
+        values, particularly on platforms with moving GCs.
+        """
+        return id(self)
+
     def __repr__(self):
         return "_BindParamClause(%r, %r, type_=%r)" % (
             self.key, self.value, self.type
