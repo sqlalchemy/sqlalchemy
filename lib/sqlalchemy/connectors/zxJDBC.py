@@ -1,3 +1,4 @@
+import sys
 from sqlalchemy.connectors import Connector
 
 class ZxJDBCConnector(Connector):
@@ -7,7 +8,7 @@ class ZxJDBCConnector(Connector):
     supports_sane_multi_rowcount = False
     
     supports_unicode_binds = True
-    supports_unicode_statements = False
+    supports_unicode_statements = sys.version > '2.5.0+'
     default_paramstyle = 'qmark'
     
     jdbc_db_name = None
