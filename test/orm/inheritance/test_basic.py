@@ -477,12 +477,13 @@ class VersioningTest(_base.MappedTest):
 
         try:
             sess2.flush()
-            assert False
+            assert not testing.db.dialect.supports_sane_rowcount
         except orm_exc.ConcurrentModificationError, e:
             assert True
 
         sess2.refresh(s2)
-        assert s2.subdata == 'sess1 subdata'
+        if testing.db.dialect.supports_sane_rowcount:
+            assert s2.subdata == 'sess1 subdata'
         s2.subdata = 'sess2 subdata'
         sess2.flush()
 
@@ -518,7 +519,7 @@ class VersioningTest(_base.MappedTest):
         try:
             s1.subdata = 'some new subdata'
             sess.flush()
-            assert False
+            assert not testing.db.dialect.supports_sane_rowcount
         except orm_exc.ConcurrentModificationError, e:
             assert True
 

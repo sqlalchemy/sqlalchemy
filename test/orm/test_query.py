@@ -3038,6 +3038,7 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
+    @testing.fails_if(lambda: not testing.db.dialect.supports_sane_rowcount)
     @testing.resolve_artifact_names
     def test_update_returns_rowcount(self):
         sess = create_session(bind=testing.db, autocommit=False)
@@ -3048,6 +3049,7 @@ class UpdateDeleteTest(_base.MappedTest):
         rowcount = sess.query(User).filter(User.age > 29).update({'age': User.age - 10})
         eq_(rowcount, 2)
 
+    @testing.fails_if(lambda: not testing.db.dialect.supports_sane_rowcount)
     @testing.resolve_artifact_names
     def test_delete_returns_rowcount(self):
         sess = create_session(bind=testing.db, autocommit=False)
