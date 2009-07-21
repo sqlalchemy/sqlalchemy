@@ -20,7 +20,7 @@ class TransactionTest(TestBase):
         users.create(testing.db)
 
     def teardown(self):
-        testing.db.connect().execute(users.delete()).close()
+        testing.db.execute(users.delete()).close()
 
     @classmethod
     def teardown_class(cls):
@@ -728,7 +728,7 @@ class ForUpdateTest(TestBase):
         counters.create(testing.db)
 
     def teardown(self):
-        testing.db.connect().execute(counters.delete()).close()
+        testing.db.execute(counters.delete()).close()
 
     @classmethod
     def teardown_class(cls):
