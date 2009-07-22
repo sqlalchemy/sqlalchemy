@@ -9,6 +9,7 @@ class ZxJDBCConnector(Connector):
     
     supports_unicode_binds = True
     supports_unicode_statements = sys.version > '2.5.0+'
+    description_encoding = None
     default_paramstyle = 'qmark'
     
     jdbc_db_name = None

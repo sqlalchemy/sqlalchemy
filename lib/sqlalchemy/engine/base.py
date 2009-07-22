@@ -1639,7 +1639,7 @@ class ResultProxy(object):
 
         for i, (colname, coltype) in enumerate(metadata):
 
-            if self.dialect.description_encoding and not isinstance(colname, unicode):
+            if self.dialect.description_encoding:
                 colname = colname.decode(self.dialect.description_encoding)
 
             if '.' in colname:
