@@ -74,14 +74,16 @@ class NoseSQLAlchemy(Plugin):
         
     def configure(self, options, conf):
         Plugin.configure(self, options, conf)
-
+        self.options = options
+        
+    def begin(self):
         testing.db = db
         testing.requires = requires
 
         # Lazy setup of other options (post coverage)
         for fn in post_configure:
-            fn(options, file_config)
-        
+            fn(self.options, file_config)
+
     def describeTest(self, test):
         return ""
         
@@ -140,9 +142,6 @@ class NoseSQLAlchemy(Plugin):
                     _server_version())
                 return True
         return False
-
-    #def begin(self):
-        #pass
 
     def beforeTest(self, test):
         testing.resetwarnings()
