@@ -1260,6 +1260,17 @@ class ClauseElement(Visitable):
     def __invert__(self):
         return self._negate()
 
+    if util.jython:
+        def __hash__(self):
+            """Return a distinct hash code.
+
+            ClauseElements may have special equality comparisons which
+            makes us rely on them having unique hash codes for use in
+            hash-based collections. Stock __hash__ doesn't guarantee
+            unique values on platforms with moving GCs.
+            """
+            return id(self)
+
     def _negate(self):
         if hasattr(self, 'negation_clause'):
             return self.negation_clause
@@ -2120,16 +2131,6 @@ class _BindParamClause(ColumnElement):
             v = v()
         d['value'] = v
         return d
-
-    def __hash__(self):
-        """Return a distinct hash code.
-
-        ColumnOperators have special equality comparisons which makes us
-        rely on _BindParamClauses having unique hash codes for use in
-        hash-based collections. Stock __hash__ doesn't guarantee unique
-        values, particularly on platforms with moving GCs.
-        """
-        return id(self)
 
     def __repr__(self):
         return "_BindParamClause(%r, %r, type_=%r)" % (
