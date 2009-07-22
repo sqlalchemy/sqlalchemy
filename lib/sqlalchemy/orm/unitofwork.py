@@ -125,11 +125,13 @@ class UOWTransaction(object):
         # if object is not in the overall session, do nothing
         if not self.session._contains_state(state):
             if self._should_log_debug:
-                self.logger.debug("object %s not part of session, not registering for flush" % (mapperutil.state_str(state)))
+                self.logger.debug("object %s not part of session, not registering for flush" % 
+                                        (mapperutil.state_str(state)))
             return
 
         if self._should_log_debug:
-            self.logger.debug("register object for flush: %s isdelete=%s listonly=%s postupdate=%s" % (mapperutil.state_str(state), isdelete, listonly, postupdate))
+            self.logger.debug("register object for flush: %s isdelete=%s listonly=%s postupdate=%s"
+                                    % (mapperutil.state_str(state), isdelete, listonly, postupdate))
 
         mapper = _state_mapper(state)
 
@@ -719,7 +721,7 @@ class UOWDependencyProcessor(object):
 
         elements = [e for e in 
                     self.targettask.filter_polymorphic_elements(self._mappers) 
-                    if e.isdelete==delete]
+                    if bool(e.isdelete)==delete]
 
         self.processor.process_dependencies(
             self.targettask, 
