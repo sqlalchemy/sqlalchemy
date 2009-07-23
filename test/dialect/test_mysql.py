@@ -317,8 +317,8 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
                 def roundtrip(store, expected=None):
                     expected = expected or store
-                    table.insert(store).execute()
-                    row = list(table.select().execute())[0]
+                    table.insert(store).execute().close()
+                    row = table.select().execute().first()
                     try:
                         self.assert_(list(row) == expected)
                     except:
@@ -326,7 +326,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                         print "Expected %s" % expected
                         print "Found %s" % list(row)
                         raise
-                    table.delete().execute()
+                    table.delete().execute().close()
 
                 roundtrip([0] * 8)
                 roundtrip([None, None, 0, None, None, None, None, None])
@@ -367,8 +367,8 @@ class TypesTest(TestBase, AssertsExecutionResults):
             table = bool_table
             def roundtrip(store, expected=None):
                 expected = expected or store
-                table.insert(store).execute()
-                row = list(table.select().execute())[0]
+                table.insert(store).execute().close()
+                row = table.select().execute().first()
                 try:
                     self.assert_(list(row) == expected)
                     for i, val in enumerate(expected):
@@ -379,7 +379,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                     print "Expected %s" % expected
                     print "Found %s" % list(row)
                     raise
-                table.delete().execute()
+                table.delete().execute().close()
 
 
             roundtrip([None, None, None, None])
@@ -589,8 +589,9 @@ class TypesTest(TestBase, AssertsExecutionResults):
         # This is known to fail with MySQLDB 1.2.2 beta versions
         # which return these as sets.Set(['a']), sets.Set(['b'])
         # (even on Pythons with __builtin__.set)
-        if testing.db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and \
-           testing.db.dialect.dbapi.version_info >= (1, 2, 2):
+        if (not testing.against('+zxjdbc') and
+            testing.db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and
+            testing.db.dialect.dbapi.version_info >= (1, 2, 2)):
             # these mysqldb seem to always uses 'sets', even on later pythons
             import sets
             def convert(value):
@@ -1049,10 +1050,11 @@ class ExecutionTest(TestBase):
 
         cx = engine.connect()
         meta = MetaData()
-        assert engine.dialect._detect_charset(cx) == 'latin1'
+        charset = engine.dialect._detect_charset(cx)
 
         meta.reflect(cx)
-        assert cx.dialect._connection_charset == 'latin1'
+        eq_(cx.dialect._connection_charset, charset)
+        cx.close()
 
 
 class MatchTest(TestBase, AssertsCompiledSQL):
@@ -1101,9 +1103,10 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         metadata.drop_all()
 
     def test_expression(self):
+        format = testing.db.dialect == 'format' and '%s' or '?'
         self.assert_compile(
             matchtable.c.title.match('somstr'),
-            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)")
+            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
 
     def test_simple_match(self):
         results = (matchtable.select().
