@@ -464,7 +464,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
             for table in year_table, reflected:
                 table.insert(['1950', '50', None, 50, 1950]).execute()
-                row = list(table.select().execute())[0]
+                row = table.select().execute().first()
                 eq_(list(row), [1950, 2050, None, 50, 1950])
                 table.delete().execute()
                 self.assert_(colspec(table.c.y1).startswith('y1 YEAR'))
@@ -498,7 +498,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                 def roundtrip(store, expected=None):
                     expected = expected or store
                     table.insert(store).execute()
-                    row = list(table.select().execute())[0]
+                    row = table.select().execute().first()
                     try:
                         self.assert_(list(row) == expected)
                     except:
@@ -522,12 +522,12 @@ class TypesTest(TestBase, AssertsExecutionResults):
                                        {'s3':set(['5', '7'])},
                                        {'s3':set(['5', '7', '9'])},
                                        {'s3':set(['7', '9'])})
-            rows = list(select(
+            rows = select(
                 [set_table.c.s3],
-                set_table.c.s3.in_([set(['5']), set(['5', '7'])])).execute())
+                set_table.c.s3.in_([set(['5']), set(['5', '7'])])
+                ).execute().fetchall()
             found = set([frozenset(row[0]) for row in rows])
-            eq_(found,
-                              set([frozenset(['5']), frozenset(['5', '7'])]))
+            eq_(found, set([frozenset(['5']), frozenset(['5', '7'])]))
         finally:
             meta.drop_all()
 
