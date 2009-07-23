@@ -317,7 +317,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
                 def roundtrip(store, expected=None):
                     expected = expected or store
-                    table.insert(store).execute().close()
+                    table.insert(store).execute()
                     row = table.select().execute().first()
                     try:
                         self.assert_(list(row) == expected)
@@ -367,7 +367,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             table = bool_table
             def roundtrip(store, expected=None):
                 expected = expected or store
-                table.insert(store).execute().close()
+                table.insert(store).execute()
                 row = table.select().execute().first()
                 try:
                     self.assert_(list(row) == expected)
