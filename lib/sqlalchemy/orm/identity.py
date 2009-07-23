@@ -45,7 +45,7 @@ class IdentityMap(dict):
         self._modified.discard(state)
 
     def _dirty_states(self):
-        return self._modified.union(s for s in list(self._mutable_attrs)
+        return self._modified.union(s for s in self._mutable_attrs.copy()
                                     if s.modified)
 
     def check_modified(self):
@@ -54,7 +54,7 @@ class IdentityMap(dict):
         if self._modified:
             return True
         else:
-            for state in list(self._mutable_attrs):
+            for state in self._mutable_attrs.copy():
                 if state.modified:
                     return True
         return False
