@@ -310,7 +310,8 @@ class NaturalPKTest(_base.MappedTest):
     def test_manytomany_passive(self):
         self._test_manytomany(True)
 
-    @testing.fails_on('mysql', 'the executemany() of the association table fails to report the correct row count')
+    # mysqldb executemany() of the association table fails to report the correct row count
+    @testing.fails_if(lambda: testing.against('mysql') and not testing.against('+zxjdbc'))
     def test_manytomany_nonpassive(self):
         self._test_manytomany(False)
 
