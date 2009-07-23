@@ -2028,7 +2028,7 @@ class MySQLDialect(default.DefaultDialect):
             try:
                 rp = connection.execute(st)
             except exc.SQLError, e:
-                if e.orig.args[0] == 1146:
+                if self._extract_error_code(e) == 1146:
                     raise exc.NoSuchTableError(full_name)
                 else:
                     raise
@@ -2055,7 +2055,7 @@ class MySQLDialect(default.DefaultDialect):
             try:
                 rp = connection.execute(st)
             except exc.SQLError, e:
-                if e.orig.args[0] == 1146:
+                if self._extract_error_code(e) == 1146:
                     raise exc.NoSuchTableError(full_name)
                 else:
                     raise
