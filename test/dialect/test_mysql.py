@@ -524,7 +524,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
                                        {'s3':set(['7', '9'])})
             rows = select(
                 [set_table.c.s3],
-                set_table.c.s3.in_([set(['5']), set(['5', '7'])])
+                set_table.c.s3.in_([set(['5']), set(['5', '7']), set(['7', '5'])])
                 ).execute().fetchall()
             found = set([frozenset(row[0]) for row in rows])
             eq_(found, set([frozenset(['5']), frozenset(['5', '7'])]))
