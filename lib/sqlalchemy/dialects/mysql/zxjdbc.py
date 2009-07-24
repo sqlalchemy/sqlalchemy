@@ -8,8 +8,11 @@ class MySQL_jdbcExecutionContext(MySQLExecutionContext):
         return cursor.lastrowid
 
     def _lastrowid(self, cursor):
+        cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
-        return cursor.fetchone()[0]
+        lastrowid = cursor.fetchone()[0]
+        cursor.close()
+        return lastrowid
 
 class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
     execution_ctx_cls = MySQL_jdbcExecutionContext

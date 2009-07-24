@@ -6,8 +6,11 @@ import re
 
 class MySQL_pyodbcExecutionContext(MySQLExecutionContext):
     def _lastrowid(self, cursor):
+        cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
-        return cursor.fetchone()[0]
+        lastrowid = cursor.fetchone()[0]
+        cursor.close()
+        return lastrowid
 
 class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
     supports_unicode_statements = False
