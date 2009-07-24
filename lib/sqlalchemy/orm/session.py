@@ -638,9 +638,9 @@ class Session(object):
         If no transaction is in progress, this method is a pass-through.
 
         This method rolls back the current transaction or nested transaction
-        regardless of subtransactions being in effect.  All subtrasactions up
+        regardless of subtransactions being in effect.  All subtransactions up
         to the first real transaction are closed.  Subtransactions occur when
-        begin() is called mulitple times.
+        begin() is called multiple times.
 
         """
         if self.transaction is None:
