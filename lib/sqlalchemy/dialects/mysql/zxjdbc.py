@@ -1,7 +1,8 @@
+import re
+
 from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext
 from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
-from sqlalchemy import util
-import re
+from sqlalchemy import types as sqltypes, util
 
 class MySQL_jdbcExecutionContext(MySQLExecutionContext):
     def _real_lastrowid(self, cursor):
@@ -14,15 +15,20 @@ class MySQL_jdbcExecutionContext(MySQLExecutionContext):
         cursor.close()
         return lastrowid
 
+jdbc_colspecs = MySQLDialect.colspecs.copy()
+# Time's conversion not applicable
+jdbc_colspecs.pop(sqltypes.Time)
+
 class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
     execution_ctx_cls = MySQL_jdbcExecutionContext
 
     jdbc_db_name = 'mysql'
     jdbc_driver_name = "org.gjt.mm.mysql.Driver"
+
+    colspecs = jdbc_colspecs
     
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
-
         # Prefer 'character_set_results' for the current connection over the
         # value in the driver.  SET NAMES or individual variable SETs will
         # change the charset without updating the driver's view of the world.
@@ -40,18 +46,15 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
 
     def _driver_kwargs(self):
         """return kw arg dict to be sent to connect()."""
-        
         return {'CHARSET':self.encoding}
     
     def _extract_error_code(self, exception):
-        # e.g.: DBAPIError: (Error) Table 'test.u2' doesn't exist [SQLCode: 1146], [SQLState: 42S02] 'DESCRIBE `u2`' ()
-        
+        # e.g.: DBAPIError: (Error) Table 'test.u2' doesn't exist
+        # [SQLCode: 1146], [SQLState: 42S02] 'DESCRIBE `u2`' ()
         m = re.compile(r"\[SQLCode\: (\d+)\]").search(str(exception.orig.args))
         c = m.group(1)
         if c:
             return int(c)
-        else:
-            return None
 
     def _get_server_version_info(self,connection):
         dbapi_con = connection.connection
