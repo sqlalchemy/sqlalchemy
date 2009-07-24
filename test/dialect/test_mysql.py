@@ -1,4 +1,3 @@
-import datetime
 from sqlalchemy.test.testing import eq_
 
 # Py2K
@@ -466,12 +465,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
             for table in year_table, reflected:
                 table.insert(['1950', '50', None, 50, 1950]).execute()
                 row = table.select().execute().first()
-                if testing.against('+zxjdbc'):
-                    expected = [datetime.date(1950, 1, 1), datetime.date(2050, 1, 1), None,
-                                datetime.date(2050, 1, 1), datetime.date(1950, 1, 1)]       
-                else:
-                    expected = [1950, 2050, None, 50, 1950]
-                    eq_(list(row), expected)
+                eq_(list(row), [1950, 2050, None, 50, 1950])
                 table.delete().execute()
                 self.assert_(colspec(table.c.y1).startswith('y1 YEAR'))
                 eq_(colspec(table.c.y4), 'y4 YEAR(2)')

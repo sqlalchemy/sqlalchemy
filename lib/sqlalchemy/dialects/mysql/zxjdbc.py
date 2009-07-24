@@ -46,7 +46,7 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
 
     def _driver_kwargs(self):
         """return kw arg dict to be sent to connect()."""
-        return {'CHARSET':self.encoding}
+        return dict(CHARSET=self.encoding, yearIsDateType='false')
     
     def _extract_error_code(self, exception):
         # e.g.: DBAPIError: (Error) Table 'test.u2' doesn't exist
