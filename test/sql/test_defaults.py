@@ -371,6 +371,7 @@ class PKDefaultTest(_base.TablesTest):
               Column('data', String(30)))
 
     @testing.fails_on('mssql', 'FIXME: unknown')
+    @testing.fails_on('mysql+zxjdbc', 'SELECT LAST_INSERT_ID() only returns the generated id')
     @testing.resolve_artifact_names
     def test_basic(self):
         t2.insert().execute(nextid=1)
