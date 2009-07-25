@@ -20,12 +20,14 @@ strings, also pass ``use_unicode=0`` in the connection arguments::
   create_engine('mysql:///mydb?charset=utf8&use_unicode=0')
 """
 
-from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext, MySQLCompiler
+import decimal
+import re
+
+from sqlalchemy.dialects.mysql.base import (DECIMAL, MySQLDialect, MySQLExecutionContext,
+                                            MySQLCompiler, NUMERIC, _NumericType)
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
-
-from sqlalchemy import exc, log, schema, sql, util
-import re
+from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
 
 class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
     def _lastrowid(self, cursor):
@@ -45,7 +47,28 @@ class MySQL_mysqldbCompiler(MySQLCompiler):
     
     def post_process_text(self, text):
         return text.replace('%', '%%')
-    
+
+
+class _DecimalType(_NumericType):
+    def result_processor(self, dialect):
+        if self.asdecimal:
+            return
+        def process(value):
+            if isinstance(value, decimal.Decimal):
+                return float(value)
+            else:
+                return value
+        return process
+
+
+class _MySQLdbNumeric(_DecimalType, NUMERIC):
+    pass
+
+
+class _MySQLdbDecimal(_DecimalType, DECIMAL):
+    pass
+
+
 class MySQL_mysqldb(MySQLDialect):
     driver = 'mysqldb'
     supports_unicode_statements = False
@@ -55,6 +78,14 @@ class MySQL_mysqldb(MySQLDialect):
     default_paramstyle = 'format'
     execution_ctx_cls = MySQL_mysqldbExecutionContext
     statement_compiler = MySQL_mysqldbCompiler
+
+    colspecs = util.update_copy(
+        MySQLDialect.colspecs,
+        {
+            sqltypes.Numeric: _MySQLdbNumeric,
+            DECIMAL: _MySQLdbDecimal
+        }
+    )
     
     @classmethod
     def dbapi(cls):

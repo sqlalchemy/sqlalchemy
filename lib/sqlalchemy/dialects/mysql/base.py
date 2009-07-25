@@ -177,7 +177,7 @@ timely information affecting MySQL in SQLAlchemy.
 
 """
 
-import datetime, decimal, inspect, re, sys
+import datetime, inspect, re, sys
 
 from sqlalchemy import schema as sa_schema
 from sqlalchemy import exc, log, sql, util
@@ -264,23 +264,6 @@ class _FloatType(_NumericType, sqltypes.Float):
         super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
 
-class _DecimalType(_NumericType):
-    def bind_processor(self, dialect):
-        return None
-
-    def result_processor(self, dialect):
-        # TODO: this behavior might by MySQLdb specific,
-        # i.e. that Decimals are returned by the DBAPI
-        if not self.asdecimal:
-            def process(value):
-                if isinstance(value, decimal.Decimal):
-                    return float(value)
-                else:
-                    return value
-            return process
-        else:
-            return None
-
 class _IntegerType(_NumericType, sqltypes.Integer):
     def __init__(self, display_width=None, **kw):
         self.display_width = display_width
@@ -326,7 +309,7 @@ class _BinaryType(sqltypes.Binary):
                 return util.buffer(value)
         return process
 
-class NUMERIC(_DecimalType, sqltypes.NUMERIC):
+class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """MySQL NUMERIC type."""
     
     __visit_name__ = 'NUMERIC'
@@ -350,7 +333,7 @@ class NUMERIC(_DecimalType, sqltypes.NUMERIC):
         super(NUMERIC, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
 
 
-class DECIMAL(_DecimalType, sqltypes.DECIMAL):
+class DECIMAL(_NumericType, sqltypes.DECIMAL):
     """MySQL DECIMAL type."""
     
     __visit_name__ = 'DECIMAL'

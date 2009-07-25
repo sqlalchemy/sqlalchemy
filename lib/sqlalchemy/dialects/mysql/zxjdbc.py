@@ -1,6 +1,16 @@
+"""Support for the MySQL database via Jython's zxjdbc JDBC connector.
+
+JDBC Driver
+-----------
+
+The official MySQL JDBC driver is at
+http://dev.mysql.com/downloads/connector/j/.
+
+"""
+import decimal
 import re
 
-from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext
+from sqlalchemy.dialects.mysql.base import BIT, MySQLDialect, MySQLExecutionContext
 from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy import types as sqltypes, util
 
@@ -15,17 +25,36 @@ class MySQL_jdbcExecutionContext(MySQLExecutionContext):
         cursor.close()
         return lastrowid
 
-jdbc_colspecs = MySQLDialect.colspecs.copy()
-# Time's conversion not applicable
-jdbc_colspecs.pop(sqltypes.Time)
+
+class _JDBCBit(BIT):
+    def result_processor(self, dialect):
+        """Converts boolean or byte arrays from MySQL Connector/J to longs."""
+        def process(value):
+            if value is None:
+                return value
+            if isinstance(value, bool):
+                return int(value)
+            v = 0L
+            for i in value:
+                v = v << 8 | (i & 0xff)
+            value = v
+            return value
+        return process
+
 
 class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
     execution_ctx_cls = MySQL_jdbcExecutionContext
 
     jdbc_db_name = 'mysql'
-    jdbc_driver_name = "org.gjt.mm.mysql.Driver"
+    jdbc_driver_name = "com.mysql.jdbc.Driver"
 
-    colspecs = jdbc_colspecs
+    colspecs = util.update_copy(
+        MySQLDialect.colspecs,
+        {
+            sqltypes.Time: sqltypes.Time,
+            BIT: _JDBCBit
+        }
+    )
     
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
