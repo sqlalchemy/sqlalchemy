@@ -140,25 +140,13 @@ class AssociationProxy(object):
         return (orm.class_mapper(self.owning_class).
                 get_property(self.target_collection))
 
+    @property
     def target_class(self):
         """The class the proxy is attached to."""
         return self._get_property().mapper.class_
-    target_class = property(target_class)
 
     def _target_is_scalar(self):
         return not self._get_property().uselist
-
-    def _lazy_collection(self, weakobjref):
-        target = self.target_collection
-        del self
-        def lazy_collection():
-            obj = weakobjref()
-            if obj is None:
-                raise exceptions.InvalidRequestError(
-                    "stale association proxy, parent object has gone out of "
-                    "scope")
-            return getattr(obj, target)
-        return lazy_collection
 
     def __get__(self, obj, class_):
         if self.owning_class is None:
@@ -181,10 +169,10 @@ class AssociationProxy(object):
                     return proxy
             except AttributeError:
                 pass
-            proxy = self._new(self._lazy_collection(weakref.ref(obj)))
+            proxy = self._new(_lazy_collection(obj, self.target_collection))
             setattr(obj, self.key, (id(obj), proxy))
             return proxy
-
+    
     def __set__(self, obj, values):
         if self.owning_class is None:
             self.owning_class = type(obj)
@@ -238,19 +226,31 @@ class AssociationProxy(object):
             getter, setter = self.getset_factory(self.collection_class, self)
         else:
             getter, setter = self._default_getset(self.collection_class)
-
+        
         if self.collection_class is list:
-            return _AssociationList(lazy_collection, creator, getter, setter)
+            return _AssociationList(lazy_collection, creator, getter, setter, self)
         elif self.collection_class is dict:
-            return _AssociationDict(lazy_collection, creator, getter, setter)
+            return _AssociationDict(lazy_collection, creator, getter, setter, self)
         elif self.collection_class is set:
-            return _AssociationSet(lazy_collection, creator, getter, setter)
+            return _AssociationSet(lazy_collection, creator, getter, setter, self)
         else:
             raise exceptions.ArgumentError(
                 'could not guess which interface to use for '
                 'collection_class "%s" backing "%s"; specify a '
                 'proxy_factory and proxy_bulk_set manually' %
                 (self.collection_class.__name__, self.target_collection))
+
+    def _inflate(self, proxy):
+        creator = self.creator and self.creator or self.target_class
+
+        if self.getset_factory:
+            getter, setter = self.getset_factory(self.collection_class, self)
+        else:
+            getter, setter = self._default_getset(self.collection_class)
+        
+        proxy.creator = creator
+        proxy.getter = getter
+        proxy.setter = setter
 
     def _set(self, proxy, values):
         if self.proxy_bulk_set:
@@ -266,12 +266,32 @@ class AssociationProxy(object):
                'no proxy_bulk_set supplied for custom '
                'collection_class implementation')
 
+class _lazy_collection(object):
+    def __init__(self, obj, target):
+        self.ref = weakref.ref(obj)
+        self.target = target
 
-class _AssociationList(object):
-    """Generic, converting, list-to-list proxy."""
+    def __call__(self):
+        obj = self.ref()
+        if obj is None:
+            raise exceptions.InvalidRequestError(
+               "stale association proxy, parent object has gone out of "
+               "scope")
+        return getattr(obj, self.target)
 
-    def __init__(self, lazy_collection, creator, getter, setter):
-        """Constructs an _AssociationList.
+    def __getstate__(self):
+        return {'obj':self.ref(), 'target':self.target}
+    
+    def __setstate__(self, state):
+        self.ref = weakref.ref(state['obj'])
+        self.target = state['target']
+
+class _AssociationCollection(object):
+    def __init__(self, lazy_collection, creator, getter, setter, parent):
+        """Constructs an _AssociationCollection.  
+        
+        This will always be a subclass of either _AssociationList,
+        _AssociationSet, or _AssociationDict.
 
         lazy_collection
           A callable returning a list-based collection of entities (usually an
@@ -296,8 +316,26 @@ class _AssociationList(object):
         self.creator = creator
         self.getter = getter
         self.setter = setter
+        self.parent = parent
 
     col = property(lambda self: self.lazy_collection())
+
+    def __len__(self):
+        return len(self.col)
+
+    def __nonzero__(self):
+        return bool(self.col)
+
+    def __getstate__(self):
+        return {'parent':self.parent, 'lazy_collection':self.lazy_collection}
+
+    def __setstate__(self, state):
+        self.parent = state['parent']
+        self.lazy_collection = state['lazy_collection']
+        self.parent._inflate(self)
+    
+class _AssociationList(_AssociationCollection):
+    """Generic, converting, list-to-list proxy."""
 
     def _create(self, value):
         return self.creator(value)
@@ -307,15 +345,6 @@ class _AssociationList(object):
 
     def _set(self, object, value):
         return self.setter(object, value)
-
-    def __len__(self):
-        return len(self.col)
-
-    def __nonzero__(self):
-        if self.col:
-            return True
-        else:
-            return False
 
     def __getitem__(self, index):
         return self._get(self.col[index])
@@ -494,38 +523,8 @@ class _AssociationList(object):
 
 
 _NotProvided = util.symbol('_NotProvided')
-class _AssociationDict(object):
+class _AssociationDict(_AssociationCollection):
     """Generic, converting, dict-to-dict proxy."""
-
-    def __init__(self, lazy_collection, creator, getter, setter):
-        """Constructs an _AssociationDict.
-
-        lazy_collection
-          A callable returning a dict-based collection of entities (usually an
-          object attribute managed by a SQLAlchemy relation())
-
-        creator
-          A function that creates new target entities.  Given two parameters:
-          key and value.  The assertion is assumed::
-
-            obj = creator(somekey, somevalue)
-            assert getter(somekey) == somevalue
-
-        getter
-          A function.  Given an associated object and a key, return the
-          'value'.
-
-        setter
-          A function.  Given an associated object, a key and a value, store
-          that value on the object.
-
-        """
-        self.lazy_collection = lazy_collection
-        self.creator = creator
-        self.getter = getter
-        self.setter = setter
-
-    col = property(lambda self: self.lazy_collection())
 
     def _create(self, key, value):
         return self.creator(key, value)
@@ -535,15 +534,6 @@ class _AssociationDict(object):
 
     def _set(self, object, key, value):
         return self.setter(object, key, value)
-
-    def __len__(self):
-        return len(self.col)
-
-    def __nonzero__(self):
-        if self.col:
-            return True
-        else:
-            return False
 
     def __getitem__(self, key):
         return self._get(self.col[key])
@@ -669,37 +659,8 @@ class _AssociationDict(object):
     del func_name, func
 
 
-class _AssociationSet(object):
+class _AssociationSet(_AssociationCollection):
     """Generic, converting, set-to-set proxy."""
-
-    def __init__(self, lazy_collection, creator, getter, setter):
-        """Constructs an _AssociationSet.
-
-        collection
-          A callable returning a set-based collection of entities (usually an
-          object attribute managed by a SQLAlchemy relation())
-
-        creator
-          A function that creates new target entities.  Given one parameter:
-          value.  The assertion is assumed::
-
-            obj = creator(somevalue)
-            assert getter(obj) == somevalue
-
-        getter
-          A function.  Given an associated object, return the 'value'.
-
-        setter
-          A function.  Given an associated object and a value, store that
-          value on the object.
-
-        """
-        self.lazy_collection = lazy_collection
-        self.creator = creator
-        self.getter = getter
-        self.setter = setter
-
-    col = property(lambda self: self.lazy_collection())
 
     def _create(self, value):
         return self.creator(value)

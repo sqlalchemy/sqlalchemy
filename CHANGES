@@ -22,6 +22,11 @@ CHANGES
       the string "field" argument was getting treated as a 
       ClauseElement, causing various errors within more 
       complex SQL transformations.
+- ext
+   - The collection proxies produced by associationproxy are now
+     pickleable.  A user-defined proxy_factory however
+     is still not pickleable unless it defines __getstate__
+     and __setstate__. [ticket:1446]
       
 0.5.5
 =======

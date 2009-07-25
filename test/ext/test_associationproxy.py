@@ -1,5 +1,8 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.test.testing import eq_, assert_raises
+import copy
 import gc
+import pickle
+
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import collection
@@ -15,11 +18,14 @@ class DictCollection(dict):
     def remove(self, obj):
         del self[obj.foo]
 
+
 class SetCollection(set):
     pass
 
+
 class ListCollection(list):
     pass
+
 
 class ObjectCollection(object):
     def __init__(self):
@@ -32,6 +38,21 @@ class ObjectCollection(object):
         self.values.remove(obj)
     def __iter__(self):
         return iter(self.values)
+
+
+class Parent(object):
+    kids = association_proxy('children', 'name')
+    def __init__(self, name):
+        self.name = name
+
+class Child(object):
+    def __init__(self, name):
+        self.name = name
+
+class KVChild(object):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 
 class _CollectionOperations(TestBase):
     def setup(self):
@@ -837,29 +858,23 @@ class ReconstitutionTest(TestBase):
         metadata.create_all()
         parents.insert().execute(name='p1')
 
-        class Parent(object):
-            kids = association_proxy('children', 'name')
-            def __init__(self, name):
-                self.name = name
-
-        class Child(object):
-            def __init__(self, name):
-                self.name = name
-
-        mapper(Parent, parents, properties=dict(children=relation(Child)))
-        mapper(Child, children)
 
         self.metadata = metadata
-        self.Parent = Parent
-
+        self.parents = parents
+        self.children = children
+        
     def teardown(self):
         self.metadata.drop_all()
+        clear_mappers()
 
     def test_weak_identity_map(self):
+        mapper(Parent, self.parents, properties=dict(children=relation(Child)))
+        mapper(Child, self.children)
+
         session = create_session(weak_identity_map=True)
 
         def add_child(parent_name, child_name):
-            parent = (session.query(self.Parent).
+            parent = (session.query(Parent).
                       filter_by(name=parent_name)).one()
             parent.kids.append(child_name)
 
@@ -869,12 +884,14 @@ class ReconstitutionTest(TestBase):
         add_child('p1', 'c2')
 
         session.flush()
-        p = session.query(self.Parent).filter_by(name='p1').one()
+        p = session.query(Parent).filter_by(name='p1').one()
         assert set(p.kids) == set(['c1', 'c2']), p.kids
 
     def test_copy(self):
-        import copy
-        p = self.Parent('p1')
+        mapper(Parent, self.parents, properties=dict(children=relation(Child)))
+        mapper(Child, self.children)
+
+        p = Parent('p1')
         p.kids.extend(['c1', 'c2'])
         p_copy = copy.copy(p)
         del p
@@ -882,4 +899,51 @@ class ReconstitutionTest(TestBase):
 
         assert set(p_copy.kids) == set(['c1', 'c2']), p.kids
 
+    def test_pickle_list(self):
+        mapper(Parent, self.parents, properties=dict(children=relation(Child)))
+        mapper(Child, self.children)
 
+        p = Parent('p1')
+        p.kids.extend(['c1', 'c2'])
+
+        r1 = pickle.loads(pickle.dumps(p))
+        assert r1.kids == ['c1', 'c2']
+
+        r2 = pickle.loads(pickle.dumps(p.kids))
+        assert r2 == ['c1', 'c2']
+
+    def test_pickle_set(self):
+        mapper(Parent, self.parents, properties=dict(children=relation(Child, collection_class=set)))
+        mapper(Child, self.children)
+
+        p = Parent('p1')
+        p.kids.update(['c1', 'c2'])
+
+        r1 = pickle.loads(pickle.dumps(p))
+        assert r1.kids == set(['c1', 'c2'])
+
+        r2 = pickle.loads(pickle.dumps(p.kids))
+        assert r2 == set(['c1', 'c2'])
+
+    def test_pickle_dict(self):
+        mapper(Parent, self.parents, properties=dict(
+                    children=relation(KVChild, collection_class=collections.mapped_collection(PickleKeyFunc('name')))
+                ))
+        mapper(KVChild, self.children)
+
+        p = Parent('p1')
+        p.kids.update({'c1':'v1', 'c2':'v2'})
+        assert p.kids == {'c1':'c1', 'c2':'c2'}
+        
+        r1 = pickle.loads(pickle.dumps(p))
+        assert r1.kids == {'c1':'c1', 'c2':'c2'}
+
+        r2 = pickle.loads(pickle.dumps(p.kids))
+        assert r2 == {'c1':'c1', 'c2':'c2'}
+
+class PickleKeyFunc(object):
+    def __init__(self, name):
+        self.name = name
+    
+    def __call__(self, obj):
+        return getattr(obj, self.name)
