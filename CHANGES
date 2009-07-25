@@ -23,6 +23,13 @@ CHANGES
     - Using False or 0 as a polymorphic discriminator now
       works on the base class as well as a subclass.
       [ticket:1440]
+
+    - Added enable_assertions(False) to Query which disables
+      the usual assertions for expected state - used
+      by Query subclasses to engineer custom state.
+      [ticket:1424].  See
+      http://www.sqlalchemy.org/trac/wiki/UsageRecipes/PreFilteredQuery
+      for an example.
       
 - sql
     - Fixed a bug in extract() introduced in 0.5.4 whereby

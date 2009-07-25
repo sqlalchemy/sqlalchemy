@@ -74,7 +74,7 @@ class FalseDiscriminatorTest(_base.MappedTest):
         global t1
         t1 = Table('t1', metadata, 
                     Column('id', Integer, primary_key=True), 
-                    Column('type', Integer, nullable=False)
+                    Column('type', Boolean, nullable=False)
                 )
         
     def test_false_on_sub(self):
