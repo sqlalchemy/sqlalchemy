@@ -450,6 +450,15 @@ class DeclarativeTest(DeclarativeTestBase):
             define)
         
     def test_table_args(self):
+        
+        def err():
+            class Foo(Base):
+                __tablename__ = 'foo'
+                __table_args__ = (ForeignKeyConstraint(['id'], ['foo.id']),)
+                id = Column('id', Integer, primary_key=True)
+                
+        assert_raises_message(sa.exc.ArgumentError, "Tuple form of __table_args__ is ", err)
+        
         class Foo(Base):
             __tablename__ = 'foo'
             __table_args__ = {'mysql_engine':'InnoDB'}

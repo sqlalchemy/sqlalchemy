@@ -46,7 +46,11 @@ CHANGES
      pickleable.  A user-defined proxy_factory however
      is still not pickleable unless it defines __getstate__
      and __setstate__. [ticket:1446]
-      
+
+   - Declarative will raise an informative exception if 
+     __table_args__ is passed as a tuple with no dict argument.
+     Improved documentation.  [ticket:1468]
+     
 0.5.5
 =======
 - general
