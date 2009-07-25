@@ -1022,6 +1022,6 @@ type_map = {
     dt.datetime : DateTime,
     dt.time : Time,
     dt.timedelta : Interval,
-    type(None): NullType
+    NoneType: NullType
 }
 
