@@ -45,6 +45,10 @@ CHANGES
     - Unary expressions such as DISTINCT propagate their 
       type handling to result sets, allowing conversions like
       unicode and such to take place.  [ticket:1420]
+    
+    - Fixed bug in Table and Column whereby passing empty
+      dict for "info" argument would raise an exception.
+      [ticket:1482]
       
 - ext
    - The collection proxies produced by associationproxy are now

@@ -72,14 +72,9 @@ class SchemaItem(visitors.Visitable):
         m = self.metadata
         return m and m.bind or None
 
-    @property
+    @util.memoized_property
     def info(self):
-        try:
-            return self._info
-        except AttributeError:
-            self._info = {}
-            return self._info
-
+        return {}
 
 def _get_table_key(name, schema):
     if schema is None:
@@ -224,8 +219,8 @@ class Table(SchemaItem, expression.TableClause):
 
         self.quote = kwargs.pop('quote', None)
         self.quote_schema = kwargs.pop('quote_schema', None)
-        if kwargs.get('info'):
-            self._info = kwargs.pop('info')
+        if 'info' in kwargs:
+            self.info = kwargs.pop('info')
 
         self._prefixes = kwargs.pop('prefixes', [])
 
@@ -264,7 +259,7 @@ class Table(SchemaItem, expression.TableClause):
                 setattr(self, key, kwargs.pop(key))
 
         if 'info' in kwargs:
-            self._info = kwargs.pop('info')
+            self.info = kwargs.pop('info')
 
         self.__extra_kwargs(**kwargs)
         self.__post_init(*args, **kwargs)
@@ -602,8 +597,9 @@ class Column(SchemaItem, expression.ColumnClause):
         self.foreign_keys = util.OrderedSet()
         util.set_creation_order(self)
 
-        if kwargs.get('info'):
-            self._info = kwargs.pop('info')
+        if 'info' in kwargs:
+            self.info = kwargs.pop('info')
+            
         if kwargs:
             raise exc.ArgumentError(
                 "Unknown arguments passed to Column: " + repr(kwargs.keys()))
