@@ -469,6 +469,13 @@ class QueryTest(TestBase):
         self.assert_(r['query_users.user_id']) == 1
         self.assert_(r['query_users.user_name']) == "john"
 
+        # unary experssions
+        r = select([users.c.user_name.distinct()]).order_by(users.c.user_name).execute().fetchone()
+        eq_(r[users.c.user_name], 'jack')
+        eq_(r.user_name, 'jack')
+        r.close()
+        
+        
     def test_row_as_args(self):
         users.insert().execute(user_id=1, user_name='john')
         r = users.select(users.c.user_id==1).execute().fetchone()

@@ -400,8 +400,8 @@ def not_(clause):
 
 def distinct(expr):
     """Return a ``DISTINCT`` clause."""
-
-    return _UnaryExpression(expr, operator=operators.distinct_op)
+    expr = _literal_as_binds(expr)
+    return _UnaryExpression(expr, operator=operators.distinct_op, type_=expr.type)
 
 def between(ctest, cleft, cright):
     """Return a ``BETWEEN`` predicate clause.
@@ -1476,8 +1476,7 @@ class _CompareMixin(ColumnOperators):
 
     def distinct(self):
         """Produce a DISTINCT clause, i.e. ``DISTINCT <columnname>``"""
-
-        return _UnaryExpression(self, operator=operators.distinct_op)
+        return _UnaryExpression(self, operator=operators.distinct_op, type_=self.type)
 
     def between(self, cleft, cright):
         """Produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND <cright>``"""

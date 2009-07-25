@@ -529,6 +529,16 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         # this one relies upon anonymous labeling to assemble result
         # processing rules on the column.
         assert testing.db.execute(select([expr])).scalar() == -15
+        
+    def test_distinct(self):
+        s = select([distinct(test_table.c.avalue)])
+        eq_(testing.db.execute(s).scalar(), 25)
+
+        s = select([test_table.c.avalue.distinct()])
+        eq_(testing.db.execute(s).scalar(), 25)
+
+        assert distinct(test_table.c.data).type == test_table.c.data.type
+        assert test_table.c.data.distinct().type == test_table.c.data.type
 
 class DateTest(TestBase, AssertsExecutionResults):
     @classmethod

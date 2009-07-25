@@ -25,6 +25,11 @@ CHANGES
       the string "field" argument was getting treated as a 
       ClauseElement, causing various errors within more 
       complex SQL transformations.
+      
+    - Unary expressions such as DISTINCT propagate their 
+      type handling to result sets, allowing conversions like
+      unicode and such to take place.  [ticket:1420]
+      
 - ext
    - The collection proxies produced by associationproxy are now
      pickleable.  A user-defined proxy_factory however
