@@ -72,20 +72,36 @@ class FalseDiscriminatorTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global t1
-        t1 = Table('t1', metadata, Column('id', Integer, primary_key=True), Column('type', Integer, nullable=False))
+        t1 = Table('t1', metadata, 
+                    Column('id', Integer, primary_key=True), 
+                    Column('type', Integer, nullable=False)
+                )
         
-    def test_false_discriminator(self):
+    def test_false_on_sub(self):
         class Foo(object):pass
         class Bar(Foo):pass
-        mapper(Foo, t1, polymorphic_on=t1.c.type, polymorphic_identity=1)
-        mapper(Bar, inherits=Foo, polymorphic_identity=0)
+        mapper(Foo, t1, polymorphic_on=t1.c.type, polymorphic_identity=True)
+        mapper(Bar, inherits=Foo, polymorphic_identity=False)
         sess = create_session()
-        f1 = Bar()
-        sess.add(f1)
+        b1 = Bar()
+        sess.add(b1)
         sess.flush()
-        assert f1.type == 0
+        assert b1.type is False
         sess.expunge_all()
         assert isinstance(sess.query(Foo).one(), Bar)
+
+    def test_false_on_base(self):
+        class Ding(object):pass
+        class Bat(Ding):pass
+        mapper(Ding, t1, polymorphic_on=t1.c.type, polymorphic_identity=False)
+        mapper(Bat, inherits=Ding, polymorphic_identity=True)
+        sess = create_session()
+        d1 = Ding()
+        sess.add(d1)
+        sess.flush()
+        assert d1.type is False
+        sess.expunge_all()
+        assert sess.query(Ding).one() is not None
         
 class PolymorphicSynonymTest(_base.MappedTest):
     @classmethod

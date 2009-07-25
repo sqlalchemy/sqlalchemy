@@ -244,7 +244,7 @@ class Mapper(object):
             else:
                 self.mapped_table = self.local_table
 
-            if self.polymorphic_identity and not self.concrete:
+            if self.polymorphic_identity is not None and not self.concrete:
                 self._identity_class = self.inherits._identity_class
             else:
                 self._identity_class = self.class_
@@ -278,7 +278,7 @@ class Mapper(object):
             self._all_tables = set()
             self.base_mapper = self
             self.mapped_table = self.local_table
-            if self.polymorphic_identity:
+            if self.polymorphic_identity is not None:
                 self.polymorphic_map[self.polymorphic_identity] = self
             self._identity_class = self.class_
 

@@ -19,6 +19,10 @@ CHANGES
 
     - Improved error message when query() is called with
       a non-SQL /entity expression. [ticket:1476]
+    
+    - Using False or 0 as a polymorphic discriminator now
+      works on the base class as well as a subclass.
+      [ticket:1440]
       
 - sql
     - Fixed a bug in extract() introduced in 0.5.4 whereby
