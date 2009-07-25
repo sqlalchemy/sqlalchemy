@@ -16,6 +16,9 @@ CHANGES
       during a flush.  This is currently to support 
       many-to-many relations from concrete inheritance setups.
       Outside of that use case, YMMV.  [ticket:1477]
+
+    - Improved error message when query() is called with
+      a non-SQL /entity expression. [ticket:1476]
       
 - sql
     - Fixed a bug in extract() introduced in 0.5.4 whereby

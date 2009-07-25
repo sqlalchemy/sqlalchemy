@@ -2025,7 +2025,9 @@ class _ColumnEntity(_QueryEntity):
                 return
 
         if not isinstance(column, sql.ColumnElement):
-            raise sa_exc.InvalidRequestError("Invalid column expression '%r'" % column)
+            raise sa_exc.InvalidRequestError(
+                "SQL expression, column, or mapped entity expected - got '%r'" % column
+            )
 
         # if the Column is unnamed, give it a
         # label() so that mutable column expressions
