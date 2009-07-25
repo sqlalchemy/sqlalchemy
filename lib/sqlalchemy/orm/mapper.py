@@ -1101,7 +1101,12 @@ class Mapper(object):
         
         """
         props = self._props
-        tables = set(props[key].parent.local_table for key in attribute_names)
+        
+        tables = set(chain(*
+                        (sqlutil.find_tables(props[key].columns[0], check_columns=True) 
+                        for key in attribute_names)
+                    ))
+        
         if self.base_mapper.local_table in tables:
             return None
 
@@ -1138,7 +1143,8 @@ class Mapper(object):
             return None
 
         cond = sql.and_(*allconds)
-        return sql.select(tables, cond, use_labels=True)
+
+        return sql.select([props[key].columns[0] for key in attribute_names], cond, use_labels=True)
 
     def cascade_iterator(self, type_, state, halt_on=None):
         """Iterate each element and its mapper in an object graph,

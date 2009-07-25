@@ -53,24 +53,21 @@ def find_tables(clause, check_columns=False, include_aliases=False, include_join
     tables = []
     _visitors = {}
     
-    def visit_something(elem):
-        tables.append(elem)
-        
     if include_selects:
-        _visitors['select'] = _visitors['compound_select'] = visit_something
+        _visitors['select'] = _visitors['compound_select'] = tables.append
     
     if include_joins:
-        _visitors['join'] = visit_something
+        _visitors['join'] = tables.append
         
     if include_aliases:
-        _visitors['alias']  = visit_something
+        _visitors['alias']  = tables.append
 
     if check_columns:
         def visit_column(column):
             tables.append(column.table)
         _visitors['column'] = visit_column
 
-    _visitors['table'] = visit_something
+    _visitors['table'] = tables.append
 
     visitors.traverse(clause, {'column_collections':False}, _visitors)
     return tables
