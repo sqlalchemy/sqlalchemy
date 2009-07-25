@@ -1103,7 +1103,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         metadata.drop_all()
 
     def test_expression(self):
-        format = testing.db.dialect == 'format' and '%s' or '?'
+        format = testing.db.dialect.paramstyle == 'format' and '%s' or '?'
         self.assert_compile(
             matchtable.c.title.match('somstr'),
             "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
