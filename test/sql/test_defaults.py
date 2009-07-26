@@ -276,7 +276,7 @@ class DefaultTest(testing.TestBase):
         assert r.lastrow_has_defaults()
         eq_(set(r.context.postfetch_cols),
             set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]))
-
+        
         eq_(t.select(t.c.col1==54).execute().fetchall(),
             [(54, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, None)])
@@ -370,8 +370,6 @@ class PKDefaultTest(_base.TablesTest):
                      default=sa.select([func.max(t2.c.nextid)]).as_scalar()),
               Column('data', String(30)))
 
-    @testing.fails_on('mssql', 'FIXME: unknown')
-    @testing.fails_on('mysql+zxjdbc', 'SELECT LAST_INSERT_ID() only returns the generated id')
     @testing.resolve_artifact_names
     def test_basic(self):
         t2.insert().execute(nextid=1)
