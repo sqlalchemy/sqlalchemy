@@ -1065,13 +1065,13 @@ class MSSQLDialect(default.DefaultDialect):
     def __new__(cls, *args, **kwargs):
         if cls is not MSSQLDialect:
             # this gets called with the dialect specific class
-            return super(MSSQLDialect, cls).__new__(cls, *args, **kwargs)
+            return super(MSSQLDialect, cls).__new__(cls)
         dbapi = kwargs.get('dbapi', None)
         if dbapi:
             dialect = dialect_mapping.get(dbapi.__name__)
             return dialect(**kwargs)
         else:
-            return object.__new__(cls, *args, **kwargs)
+            return object.__new__(cls)
 
     def __init__(self,
                  auto_identity_insert=True, query_timeout=None,
