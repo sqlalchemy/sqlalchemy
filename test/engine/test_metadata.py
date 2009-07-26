@@ -162,3 +162,29 @@ class TableOptionsTest(TestBase, AssertsCompiledSQL):
           "CREATE VIRTUAL TABLE temporary_table_2 (col1 INTEGER)"
         )
 
+    def test_table_info(self):
+        metadata = MetaData()
+        t1 = Table('foo', metadata, info={'x':'y'})
+        t2 = Table('bar', metadata, info={})
+        t3 = Table('bat', metadata)
+        assert t1.info == {'x':'y'}
+        assert t2.info == {}
+        assert t3.info == {}
+        for t in (t1, t2, t3):
+            t.info['bar'] = 'zip'
+            assert t.info['bar'] == 'zip'
+
+class ColumnOptionsTest(TestBase):
+    def test_column_info(self):
+        
+        c1 = Column('foo', info={'x':'y'})
+        c2 = Column('bar', info={})
+        c3 = Column('bat')
+        assert c1.info == {'x':'y'}
+        assert c2.info == {}
+        assert c3.info == {}
+        
+        for c in (c1, c2, c3):
+            c.info['bar'] = 'zip'
+            assert c.info['bar'] == 'zip'
+

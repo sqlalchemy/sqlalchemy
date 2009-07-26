@@ -1178,6 +1178,6 @@ class BinaryTest(TestBase, AssertsExecutionResults):
 
     def load_stream(self, name, len=3000):
         f = os.path.join(os.path.dirname(__file__), "..", name)
-        return file(f).read(len)
+        return file(f, 'rb').read(len)
 
 

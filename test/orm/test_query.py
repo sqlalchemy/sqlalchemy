@@ -225,6 +225,11 @@ class InvalidGenerationsTest(QueryTest):
 
             assert_raises(sa_exc.InvalidRequestError, q.having, 'foo')
     
+            q.enable_assertions(False).join("addresses")
+            q.enable_assertions(False).filter(User.name=='ed')
+            q.enable_assertions(False).order_by('foo')
+            q.enable_assertions(False).group_by('foo')
+            
     def test_no_from(self):
         s = create_session()
     
@@ -236,6 +241,10 @@ class InvalidGenerationsTest(QueryTest):
         
         q = s.query(User).order_by(User.id)
         assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
+
+        assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
+        
+        q.enable_assertions(False).select_from(users)
         
         # this is fine, however
         q.from_self()

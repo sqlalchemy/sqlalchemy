@@ -412,8 +412,8 @@ class SQLCompiler(engine.Compiled):
         else:
             return text
 
-    def visit_unary(self, unary, **kwargs):
-        s = self.process(unary.element)
+    def visit_unary(self, unary, **kw):
+        s = self.process(unary.element, **kw)
         if unary.operator:
             s = OPERATORS[unary.operator] + s
         if unary.modifier:

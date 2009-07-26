@@ -214,8 +214,32 @@ ORM function::
 Table Configuration
 ===================
 
-As an alternative to ``__tablename__``, a direct :class:`~sqlalchemy.schema.Table` construct may be
-used.  The :class:`~sqlalchemy.schema.Column` objects, which in this case require their names, will be
+Table arguments other than the name, metadata, and mapped Column arguments 
+are specified using the ``__table_args__`` class attribute.   This attribute
+accommodates both positional as well as keyword arguments that are normally 
+sent to the :class:`~sqlalchemy.schema.Table` constructor.   The attribute can be specified
+in one of two forms.  One is as a dictionary::
+
+    class MyClass(Base):
+        __tablename__ = 'sometable'
+        __table_args__ = {'mysql_engine':'InnoDB'}
+
+The other, a tuple of the form ``(arg1, arg2, ..., {kwarg1:value, ...})``, which 
+allows positional arguments to be specified as well (usually constraints)::
+
+    class MyClass(Base):
+        __tablename__ = 'sometable'
+        __table_args__ = (
+                ForeignKeyConstraint(['id'], ['remote_table.id']),
+                UniqueConstraint('foo'),
+                {'autoload':True}
+                )
+
+Note that the dictionary is required in the tuple form even if empty.
+
+As an alternative to ``__tablename__``, a direct :class:`~sqlalchemy.schema.Table` 
+construct may be used.  The :class:`~sqlalchemy.schema.Column` objects, which 
+in this case require their names, will be
 added to the mapping just like a regular mapping to a table::
 
     class MyClass(Base):
@@ -223,20 +247,6 @@ added to the mapping just like a regular mapping to a table::
             Column('id', Integer, primary_key=True),
             Column('name', String(50))
         )
-
-Other table-based attributes include ``__table_args__``, which is
-either a dictionary as in::
-
-    class MyClass(Base):
-        __tablename__ = 'sometable'
-        __table_args__ = {'mysql_engine':'InnoDB'}
-        
-or a dictionary-containing tuple in the form 
-``(arg1, arg2, ..., {kwarg1:value, ...})``, as in::
-
-    class MyClass(Base):
-        __tablename__ = 'sometable'
-        __table_args__ = (ForeignKeyConstraint(['id'], ['remote_table.id']), {'autoload':True})
 
 Mapper Configuration
 ====================
@@ -468,6 +478,11 @@ def _as_declarative(cls, classname, dict_):
             elif isinstance(table_args, tuple):
                 args = table_args[0:-1]
                 table_kw = table_args[-1]
+                if len(table_args) < 2 or not isinstance(table_kw, dict):
+                    raise exceptions.ArgumentError(
+                                "Tuple form of __table_args__ is "
+                                "(arg1, arg2, arg3, ..., {'kw1':val1, 'kw2':val2, ...})"
+                            )
             else:
                 args, table_kw = (), {}
 

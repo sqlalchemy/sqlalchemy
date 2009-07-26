@@ -16,6 +16,35 @@ CHANGES
       during a flush.  This is currently to support 
       many-to-many relations from concrete inheritance setups.
       Outside of that use case, YMMV.  [ticket:1477]
+    
+    - Squeezed a few more unnecessary "lazy loads" out of 
+      relation().  When a collection is mutated, many-to-one
+      backrefs on the other side will not fire off to load
+      the "old" value, unless "single_parent=True" is set.  
+      A direct assignment of a many-to-one still loads 
+      the "old" value in order to update backref collections 
+      on that value, which may be present in the session 
+      already, thus maintaining the 0.5 behavioral contract.
+      [ticket:1483]
+      
+    - Fixed bug whereby a load/refresh of joined table
+      inheritance attributes which were based on 
+      column_property() or similar would fail to evaluate.
+      [ticket:1480]
+      
+    - Improved error message when query() is called with
+      a non-SQL /entity expression. [ticket:1476]
+    
+    - Using False or 0 as a polymorphic discriminator now
+      works on the base class as well as a subclass.
+      [ticket:1440]
+
+    - Added enable_assertions(False) to Query which disables
+      the usual assertions for expected state - used
+      by Query subclasses to engineer custom state.
+      [ticket:1424].  See
+      http://www.sqlalchemy.org/trac/wiki/UsageRecipes/PreFilteredQuery
+      for an example.
       
 - sql
     - Fixed a bug in extract() introduced in 0.5.4 whereby
@@ -23,6 +52,24 @@ CHANGES
       ClauseElement, causing various errors within more 
       complex SQL transformations.
       
+    - Unary expressions such as DISTINCT propagate their 
+      type handling to result sets, allowing conversions like
+      unicode and such to take place.  [ticket:1420]
+    
+    - Fixed bug in Table and Column whereby passing empty
+      dict for "info" argument would raise an exception.
+      [ticket:1482]
+      
+- ext
+   - The collection proxies produced by associationproxy are now
+     pickleable.  A user-defined proxy_factory however
+     is still not pickleable unless it defines __getstate__
+     and __setstate__. [ticket:1446]
+
+   - Declarative will raise an informative exception if 
+     __table_args__ is passed as a tuple with no dict argument.
+     Improved documentation.  [ticket:1468]
+     
 0.5.5
 =======
 - general

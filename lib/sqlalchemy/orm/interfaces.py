@@ -783,6 +783,11 @@ class AttributeExtension(object):
 
     """
 
+    active_history = True
+    """indicates that the set() method would like to receive the 'old' value,
+    even if it means firing lazy callables.
+    """
+    
     def append(self, state, value, initiator):
         """Receive a collection append event.
 

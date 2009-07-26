@@ -33,7 +33,9 @@ class UOWEventHandler(interfaces.AttributeExtension):
     """An event handler added to all relation attributes which handles
     session cascade operations.
     """
-
+    
+    active_history = False
+    
     def __init__(self, key):
         self.key = key
 
