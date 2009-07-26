@@ -100,7 +100,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         dict_[self.key] = True
         return state.committed_state[self.key]
 
-    def set(self, state, dict_, value, initiator):
+    def set(self, state, dict_, value, initiator, passive=attributes.PASSIVE_OFF):
         if initiator is self:
             return
 

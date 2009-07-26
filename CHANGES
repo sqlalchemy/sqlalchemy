@@ -17,6 +17,16 @@ CHANGES
       many-to-many relations from concrete inheritance setups.
       Outside of that use case, YMMV.  [ticket:1477]
     
+    - Squeezed a few more unnecessary "lazy loads" out of 
+      relation().  When a collection is mutated, many-to-one
+      backrefs on the other side will not fire off to load
+      the "old" value, unless "single_parent=True" is set.  
+      A direct assignment of a many-to-one still loads 
+      the "old" value in order to update backref collections 
+      on that value, which may be present in the session 
+      already, thus maintaining the 0.5 behavioral contract.
+      [ticket:1483]
+      
     - Fixed bug whereby a load/refresh of joined table
       inheritance attributes which were based on 
       column_property() or similar would fail to evaluate.

@@ -262,7 +262,6 @@ class AttributeImpl(object):
         active_history
           indicates that get_history() should always return the "old" value,
           even if it means executing a lazy callable upon attribute change.
-          This flag is set to True if any extensions are present.
 
         parent_token
           Usually references the MapperProperty, used as a key for
@@ -286,6 +285,10 @@ class AttributeImpl(object):
         else:
             self.is_equal = compare_function
         self.extensions = util.to_list(extension or [])
+        for e in self.extensions:
+            if e.active_history:
+                active_history = True
+                break
         self.active_history = active_history
         self.dont_expire_missing = dont_expire_missing
         
@@ -383,12 +386,12 @@ class AttributeImpl(object):
             return self.initialize(state, dict_)
 
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        self.set(state, dict_, value, initiator)
+        self.set(state, dict_, value, initiator, passive=passive)
 
     def remove(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        self.set(state, dict_, None, initiator)
+        self.set(state, dict_, None, initiator, passive=passive)
 
-    def set(self, state, dict_, value, initiator):
+    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         raise NotImplementedError()
 
     def get_committed_value(self, state, dict_, passive=PASSIVE_OFF):
@@ -421,7 +424,7 @@ class ScalarAttributeImpl(AttributeImpl):
     def delete(self, state, dict_):
 
         # TODO: catch key errors, convert to attributeerror?
-        if self.active_history or self.extensions:
+        if self.active_history:
             old = self.get(state, dict_)
         else:
             old = dict_.get(self.key, NO_VALUE)
@@ -436,11 +439,11 @@ class ScalarAttributeImpl(AttributeImpl):
         return History.from_attribute(
             self, state, dict_.get(self.key, NO_VALUE))
 
-    def set(self, state, dict_, value, initiator):
+    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         if initiator is self:
             return
 
-        if self.active_history or self.extensions:
+        if self.active_history:
             old = self.get(state, dict_)
         else:
             old = dict_.get(self.key, NO_VALUE)
@@ -511,7 +514,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         ScalarAttributeImpl.delete(self, state, dict_)
         state.mutable_dict.pop(self.key)
 
-    def set(self, state, dict_, value, initiator):
+    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         if initiator is self:
             return
 
@@ -559,7 +562,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             else:
                 return History.from_attribute(self, state, current)
 
-    def set(self, state, dict_, value, initiator):
+    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         """Set a value on the given InstanceState.
 
         `initiator` is the ``InstrumentedAttribute`` that initiated the
@@ -569,9 +572,21 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         """
         if initiator is self:
             return
-
-        # may want to add options to allow the get() here to be passive
-        old = self.get(state, dict_)
+        
+        if self.active_history:
+            old = self.get(state, dict_)
+        else:
+            # this would be the "laziest" approach,
+            # however it breaks currently expected backref
+            # behavior
+            #old = dict_.get(self.key, None)
+            # instead, use the "passive" setting, which
+            # is only going to be PASSIVE_NOCALLABLES if it
+            # came from a backref
+            old = self.get(state, dict_, passive=passive)
+            if old is PASSIVE_NORESULT:
+                old = None
+             
         value = self.fire_replace_event(state, dict_, value, old, initiator)
         dict_[self.key] = value
 
@@ -707,7 +722,7 @@ class CollectionAttributeImpl(AttributeImpl):
         else:
             collection.remove_with_event(value, initiator)
 
-    def set(self, state, dict_, value, initiator):
+    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         """Set a value on the given object.
 
         `initiator` is the ``InstrumentedAttribute`` that initiated the
@@ -808,6 +823,9 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
     are two objects which contain scalar references to each other.
 
     """
+    
+    active_history = False
+    
     def __init__(self, key):
         self.key = key
 

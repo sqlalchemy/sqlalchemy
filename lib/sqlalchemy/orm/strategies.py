@@ -33,7 +33,7 @@ def _register_attribute(strategy, mapper, useobject,
 
     prop = strategy.parent_property
     attribute_ext = util.to_list(prop.extension) or []
-
+        
     if useobject and prop.single_parent:
         attribute_ext.append(_SingleParentValidator(prop))
 
@@ -370,13 +370,16 @@ class LazyLoader(AbstractRelationLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
         
-        
+        # MANYTOONE currently only needs the "old" value for delete-orphan
+        # cascades.  the required _SingleParentValidator will enable active_history
+        # in that case.  otherwise we don't need the "old" value during backref operations.
         _register_attribute(self, 
                 mapper,
                 useobject=True,
                 callable_=self._class_level_loader,
                 uselist = self.parent_property.uselist,
                 typecallable = self.parent_property.collection_class,
+                active_history = self.parent_property.direction is not interfaces.MANYTOONE, 
                 )
 
     def lazy_clause(self, state, reverse_direction=False, alias_secondary=False, adapt_source=None):
