@@ -178,6 +178,7 @@ class TransactionTest(TestBase):
         connection.close()
 
     @testing.requires.savepoints
+    @testing.crashes('oracle+zxjdbc', 'Errors out and causes subsequent tests to deadlock')
     def test_nested_subtransaction_commit(self):
         connection = testing.db.connect()
         transaction = connection.begin()
