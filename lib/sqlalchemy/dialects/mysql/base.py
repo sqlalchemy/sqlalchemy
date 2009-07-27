@@ -1182,20 +1182,15 @@ ischema_names = {
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
-        if self.isinsert and not self.executemany:
-            if (not len(self._last_inserted_ids) or
-                self._last_inserted_ids[0] is None):
-                self._last_inserted_ids = ([self._lastrowid(self.cursor)] +
-                                           self._last_inserted_ids[1:])
-        elif (not self.isupdate and not self.should_autocommit and
+        # TODO: i think this 'charset' in the info thing 
+        # is out
+        
+        if (not self.isupdate and not self.should_autocommit and
               self.statement and SET_RE.match(self.statement)):
             # This misses if a user forces autocommit on text('SET NAMES'),
             # which is probably a programming error anyhow.
             self.connection.info.pop(('mysql', 'charset'), None)
 
-    def _lastrowid(self, cursor):
-        raise NotImplementedError()
-    
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_RE.match(statement)
 

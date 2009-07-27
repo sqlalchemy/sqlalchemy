@@ -5,6 +5,7 @@ from sqlalchemy import exc, sql
 from sqlalchemy.engine import default
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_, assert_raises_message
+from sqlalchemy.test.schema import Table, Column
 
 class QueryTest(TestBase):
 
@@ -13,11 +14,11 @@ class QueryTest(TestBase):
         global users, users2, addresses, metadata
         metadata = MetaData(testing.db)
         users = Table('query_users', metadata,
-            Column('user_id', INT, Sequence('user_id_seq', optional=True), primary_key = True),
+            Column('user_id', INT, primary_key=True, test_needs_autoincrement=True),
             Column('user_name', VARCHAR(20)),
         )
         addresses = Table('query_addresses', metadata,
-            Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key=True),
+            Column('address_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('user_id', Integer, ForeignKey('query_users.user_id')),
             Column('address', String(30)))
             
@@ -59,14 +60,14 @@ class QueryTest(TestBase):
     def test_lastrow_accessor(self):
         """Tests the last_inserted_ids() and lastrow_has_id() functions."""
 
-        def insert_values(table, values):
+        def insert_values(engine, table, values):
             """
             Inserts a row into a table, returns the full list of values
             INSERTed including defaults that fired off on the DB side and
             detects rows that had defaults and post-fetches.
             """
 
-            result = table.insert().execute(**values)
+            result = engine.execute(table.insert(), **values)
             ret = values.copy()
             
             for col, id in zip(table.primary_key, result.last_inserted_ids()):
@@ -74,68 +75,78 @@ class QueryTest(TestBase):
 
             if result.lastrow_has_defaults():
                 criterion = and_(*[col==id for col, id in zip(table.primary_key, result.last_inserted_ids())])
-                row = table.select(criterion).execute().first()
+                row = engine.execute(table.select(criterion)).first()
                 for c in table.c:
                     ret[c.key] = row[c]
             return ret
 
-        for supported, table, values, assertvalues in [
-            (
-                {'unsupported':['sqlite']},
-                Table("t1", metadata,
-                    Column('id', Integer, Sequence('t1_id_seq', optional=True), primary_key=True),
-                    Column('foo', String(30), primary_key=True)),
-                {'foo':'hi'},
-                {'id':1, 'foo':'hi'}
-            ),
-            (
-                {'unsupported':['sqlite']},
-                Table("t2", metadata,
-                    Column('id', Integer, Sequence('t2_id_seq', optional=True), primary_key=True),
-                    Column('foo', String(30), primary_key=True),
-                    Column('bar', String(30), server_default='hi')
+        if testing.against('firebird', 'postgres', 'oracle', 'mssql'):
+            test_engines = [
+                engines.testing_engine(options={'implicit_returning':False}),
+                engines.testing_engine(options={'implicit_returning':True}),
+            ]
+        else:
+            test_engines = [testing.db]
+            
+        for engine in test_engines:
+            metadata = MetaData()
+            for supported, table, values, assertvalues in [
+                (
+                    {'unsupported':['sqlite']},
+                    Table("t1", metadata,
+                        Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                        Column('foo', String(30), primary_key=True)),
+                    {'foo':'hi'},
+                    {'id':1, 'foo':'hi'}
                 ),
-                {'foo':'hi'},
-                {'id':1, 'foo':'hi', 'bar':'hi'}
-            ),
-            (
-                {'unsupported':[]},
-                Table("t3", metadata,
-                    Column("id", String(40), primary_key=True),
-                    Column('foo', String(30), primary_key=True),
-                    Column("bar", String(30))
+                (
+                    {'unsupported':['sqlite']},
+                    Table("t2", metadata,
+                        Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                        Column('foo', String(30), primary_key=True),
+                        Column('bar', String(30), server_default='hi')
                     ),
-                    {'id':'hi', 'foo':'thisisfoo', 'bar':"thisisbar"},
-                    {'id':'hi', 'foo':'thisisfoo', 'bar':"thisisbar"}
-            ),
-            (
-                {'unsupported':[]},
-                Table("t4", metadata,
-                    Column('id', Integer, Sequence('t4_id_seq', optional=True), primary_key=True),
-                    Column('foo', String(30), primary_key=True),
-                    Column('bar', String(30), server_default='hi')
+                    {'foo':'hi'},
+                    {'id':1, 'foo':'hi', 'bar':'hi'}
                 ),
-                {'foo':'hi', 'id':1},
-                {'id':1, 'foo':'hi', 'bar':'hi'}
-            ),
-            (
-                {'unsupported':[]},
-                Table("t5", metadata,
-                    Column('id', String(10), primary_key=True),
-                    Column('bar', String(30), server_default='hi')
+                (
+                    {'unsupported':[]},
+                    Table("t3", metadata,
+                        Column("id", String(40), primary_key=True),
+                        Column('foo', String(30), primary_key=True),
+                        Column("bar", String(30))
+                        ),
+                        {'id':'hi', 'foo':'thisisfoo', 'bar':"thisisbar"},
+                        {'id':'hi', 'foo':'thisisfoo', 'bar':"thisisbar"}
                 ),
-                {'id':'id1'},
-                {'id':'id1', 'bar':'hi'},
-            ),
-        ]:
-            if testing.db.name in supported['unsupported']:
-                continue
-            try:
-                table.create()
-                i = insert_values(table, values)
-                assert i == assertvalues, repr(i) + " " + repr(assertvalues)
-            finally:
-                table.drop()
+                (
+                    {'unsupported':[]},
+                    Table("t4", metadata,
+                        Column('id', Integer, Sequence('t4_id_seq', optional=True), primary_key=True),
+                        Column('foo', String(30), primary_key=True),
+                        Column('bar', String(30), server_default='hi')
+                    ),
+                    {'foo':'hi', 'id':1},
+                    {'id':1, 'foo':'hi', 'bar':'hi'}
+                ),
+                (
+                    {'unsupported':[]},
+                    Table("t5", metadata,
+                        Column('id', String(10), primary_key=True),
+                        Column('bar', String(30), server_default='hi')
+                    ),
+                    {'id':'id1'},
+                    {'id':'id1', 'bar':'hi'},
+                ),
+            ]:
+                if testing.db.name in supported['unsupported']:
+                    continue
+                try:
+                    table.create(bind=engine, checkfirst=True)
+                    i = insert_values(engine, table, values)
+                    assert i == assertvalues, "tablename: %s %r %r" % (table.name, repr(i), repr(assertvalues))
+                finally:
+                    table.drop(bind=engine)
 
     def test_row_iteration(self):
         users.insert().execute(

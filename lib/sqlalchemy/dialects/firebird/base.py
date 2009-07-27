@@ -253,8 +253,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
         return ""
 
-    def returning_clause(self, stmt):
-        returning_cols = stmt._returning
+    def returning_clause(self, stmt, returning_cols):
 
         columns = [
                 self.process(
@@ -312,13 +311,15 @@ class FBDialect(default.DefaultDialect):
     name = 'firebird'
 
     max_identifier_length = 31
+    
     supports_sequences = True
     sequences_optional = False
     supports_default_values = True
-    supports_empty_insert = False
     preexecute_pk_sequences = True
-    supports_pk_autoincrement = False
+    postfetch_lastrowid = False
+    
     requires_name_normalize = True
+    supports_empty_insert = False
 
     statement_compiler = FBCompiler
     ddl_compiler = FBDDLCompiler
@@ -344,7 +345,9 @@ class FBDialect(default.DefaultDialect):
             self.colspecs = {
                 sqltypes.DateTime: sqltypes.DATE
             }
-
+        else:
+            self.implicit_returning = True
+            
     def normalize_name(self, name):
         # Remove trailing spaces: FB uses a CHAR() type,
         # that is padded with spaces

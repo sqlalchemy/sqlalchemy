@@ -43,7 +43,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
                     # so we need to just keep flipping
                     self.cursor.nextset()
                     
-            self._last_inserted_ids = [int(row[0])] + self._last_inserted_ids[1:]
+            self._lastrowid = int(row[0])
         else:
             super(MSExecutionContext_pyodbc, self).post_exec()
 

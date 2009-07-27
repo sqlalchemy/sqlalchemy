@@ -30,9 +30,7 @@ from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
 
 class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
-    def _lastrowid(self, cursor):
-        return cursor.lastrowid
-
+    
     @property
     def rowcount(self):
         if hasattr(self, '_rowcount'):

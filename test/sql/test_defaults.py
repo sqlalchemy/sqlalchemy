@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy import Sequence, Column, func
 from sqlalchemy.sql import select, text
 import sqlalchemy as sa
-from sqlalchemy.test import testing
+from sqlalchemy.test import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.testing import eq_
@@ -540,16 +540,17 @@ class SequenceTest(testing.TestBase):
     def testseqnonpk(self):
         """test sequences fire off as defaults on non-pk columns"""
 
-        result = sometable.insert().execute(name="somename")
+        engine = engines.testing_engine(options={'implicit_returning':False})
+        result = engine.execute(sometable.insert(), name="somename")
         assert 'id' in result.postfetch_cols()
 
-        result = sometable.insert().execute(name="someother")
+        result = engine.execute(sometable.insert(), name="someother")
         assert 'id' in result.postfetch_cols()
 
         sometable.insert().execute(
             {'name':'name3'},
             {'name':'name4'})
-        eq_(sometable.select().execute().fetchall(),
+        eq_(sometable.select().order_by(sometable.c.id).execute().fetchall(),
             [(1, "somename", 1),
              (2, "someother", 2),
              (3, "name3", 3),

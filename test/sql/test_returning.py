@@ -4,6 +4,7 @@ from sqlalchemy.test import *
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
 
+        
 class ReturningTest(TestBase, AssertsExecutionResults):
     __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
 
@@ -30,7 +31,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
             Column('full', Boolean),
             Column('goofy', GoofyType(50))
         )
-        table.create()
+        table.create(checkfirst=True)
     
     def teardown(self):
         table.drop()
@@ -134,3 +135,24 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
         result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
         eq_(result2.fetchall(), [(2,False),])
+
+class SequenceReturningTest(TestBase):
+    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'mssql')
+
+    def setup(self):
+        meta = MetaData(testing.db)
+        global table, seq
+        seq = Sequence('tid_seq')
+        table = Table('tables', meta,
+                    Column('id', Integer, seq, primary_key=True),
+                    Column('data', String(50))
+                )
+        table.create(checkfirst=True)
+
+    def teardown(self):
+        table.drop()
+
+    def test_insert(self):
+        r = table.insert().values(data='hi').returning(table.c.id).execute()
+        assert r.first() == (1, )
+        assert seq.execute() == 2

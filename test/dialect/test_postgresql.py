@@ -1,4 +1,5 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.test import  engines
 import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -110,11 +111,14 @@ class InsertTest(TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
         global metadata
+        cls.engine= testing.db
         metadata = MetaData(testing.db)
 
     def teardown(self):
         metadata.drop_all()
         metadata.tables.clear()
+        if self.engine is not testing.db:
+            self.engine.dispose()
 
     def test_compiled_insert(self):
         table = Table('testtable', metadata,
@@ -134,6 +138,13 @@ class InsertTest(TestBase, AssertsExecutionResults):
         metadata.create_all()
         self._assert_data_with_sequence(table, "my_seq")
 
+    def test_sequence_returning_insert(self):
+        table = Table('testtable', metadata,
+            Column('id', Integer, Sequence('my_seq'), primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_with_sequence_returning(table, "my_seq")
+
     def test_opt_sequence_insert(self):
         table = Table('testtable', metadata,
             Column('id', Integer, Sequence('my_seq', optional=True), primary_key=True),
@@ -141,12 +152,26 @@ class InsertTest(TestBase, AssertsExecutionResults):
         metadata.create_all()
         self._assert_data_autoincrement(table)
 
+    def test_opt_sequence_returning_insert(self):
+        table = Table('testtable', metadata,
+            Column('id', Integer, Sequence('my_seq', optional=True), primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_autoincrement_returning(table)
+
     def test_autoincrement_insert(self):
         table = Table('testtable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)))
         metadata.create_all()
         self._assert_data_autoincrement(table)
+
+    def test_autoincrement_returning_insert(self):
+        table = Table('testtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_autoincrement_returning(table)
 
     def test_noautoincrement_insert(self):
         table = Table('testtable', metadata,
@@ -156,6 +181,9 @@ class InsertTest(TestBase, AssertsExecutionResults):
         self._assert_data_noautoincrement(table)
 
     def _assert_data_autoincrement(self, table):
+        self.engine = engines.testing_engine(options={'implicit_returning':False})
+        metadata.bind = self.engine
+
         def go():
             # execute with explicit id
             r = table.insert().execute({'id':30, 'data':'d1'})
@@ -180,7 +208,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
         # note that the test framework doesnt capture the "preexecute" of a seqeuence
         # or default.  we just see it in the bind params.
 
-        self.assert_sql(testing.db, go, [], with_sequences=[
+        self.assert_sql(self.engine, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -221,7 +249,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
 
         # test the same series of events using a reflected
         # version of the table
-        m2 = MetaData(testing.db)
+        m2 = MetaData(self.engine)
         table = Table(table.name, m2, autoload=True)
 
         def go():
@@ -233,7 +261,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
             table.insert(inline=True).execute({'id':33, 'data':'d7'})
             table.insert(inline=True).execute({'data':'d8'})
 
-        self.assert_sql(testing.db, go, [], with_sequences=[
+        self.assert_sql(self.engine, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -272,7 +300,127 @@ class InsertTest(TestBase, AssertsExecutionResults):
         ]
         table.delete().execute()
 
+    def _assert_data_autoincrement_returning(self, table):
+        self.engine = engines.testing_engine(options={'implicit_returning':True})
+        metadata.bind = self.engine
+
+        def go():
+            # execute with explicit id
+            r = table.insert().execute({'id':30, 'data':'d1'})
+            assert r.last_inserted_ids() == [30]
+
+            # execute with prefetch id
+            r = table.insert().execute({'data':'d2'})
+            assert r.last_inserted_ids() == [1]
+
+            # executemany with explicit ids
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+
+            # executemany, uses SERIAL
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+
+            # single execute, explicit id, inline
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+
+            # single execute, inline, uses SERIAL
+            table.insert(inline=True).execute({'data':'d8'})
+        
+        self.assert_sql(self.engine, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data) RETURNING testtable.id",
+                {'data': 'd2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d8'}]
+            ),
+        ])
+
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (1, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (2, 'd5'),
+            (3, 'd6'),
+            (33, 'd7'),
+            (4, 'd8'),
+        ]
+        table.delete().execute()
+
+        # test the same series of events using a reflected
+        # version of the table
+        m2 = MetaData(self.engine)
+        table = Table(table.name, m2, autoload=True)
+
+        def go():
+            table.insert().execute({'id':30, 'data':'d1'})
+            r = table.insert().execute({'data':'d2'})
+            assert r.last_inserted_ids() == [5]
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+            table.insert(inline=True).execute({'data':'d8'})
+
+        self.assert_sql(self.engine, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data) RETURNING testtable.id",
+                {'data':'d2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d8'}]
+            ),
+        ])
+
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (5, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (6, 'd5'),
+            (7, 'd6'),
+            (33, 'd7'),
+            (8, 'd8'),
+        ]
+        table.delete().execute()
+
     def _assert_data_with_sequence(self, table, seqname):
+        self.engine = engines.testing_engine(options={'implicit_returning':False})
+        metadata.bind = self.engine
+
         def go():
             table.insert().execute({'id':30, 'data':'d1'})
             table.insert().execute({'data':'d2'})
@@ -281,7 +429,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
             table.insert(inline=True).execute({'id':33, 'data':'d7'})
             table.insert(inline=True).execute({'data':'d8'})
 
-        self.assert_sql(testing.db, go, [], with_sequences=[
+        self.assert_sql(self.engine, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -322,10 +470,66 @@ class InsertTest(TestBase, AssertsExecutionResults):
         # cant test reflection here since the Sequence must be
         # explicitly specified
 
+    def _assert_data_with_sequence_returning(self, table, seqname):
+        self.engine = engines.testing_engine(options={'implicit_returning':True})
+        metadata.bind = self.engine
+
+        def go():
+            table.insert().execute({'id':30, 'data':'d1'})
+            table.insert().execute({'data':'d2'})
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+            table.insert(inline=True).execute({'data':'d8'})
+
+        self.assert_sql(self.engine, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (nextval('my_seq'), :data) RETURNING testtable.id",
+                {'data':'d2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), :data)" % seqname,
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), :data)" % seqname,
+                [{'data':'d8'}]
+            ),
+        ])
+
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (1, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (2, 'd5'),
+            (3, 'd6'),
+            (33, 'd7'),
+            (4, 'd8'),
+        ]
+
+        # cant test reflection here since the Sequence must be
+        # explicitly specified
+
     def _assert_data_noautoincrement(self, table):
+        self.engine = engines.testing_engine(options={'implicit_returning':False})
+        metadata.bind = self.engine
+
         table.insert().execute({'id':30, 'data':'d1'})
         
-        if testing.db.driver == 'pg8000':
+        if self.engine.driver == 'pg8000':
             exception_cls = exc.ProgrammingError
         else:
             exception_cls = exc.IntegrityError
@@ -350,7 +554,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
 
         # test the same series of events using a reflected
         # version of the table
-        m2 = MetaData(testing.db)
+        m2 = MetaData(self.engine)
         table = Table(table.name, m2, autoload=True)
         table.insert().execute({'id':30, 'data':'d1'})
 

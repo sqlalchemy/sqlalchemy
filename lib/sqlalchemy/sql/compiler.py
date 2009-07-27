@@ -161,7 +161,8 @@ class SQLCompiler(engine.Compiled):
     # level to define if this Compiled instance represents
     # INSERT/UPDATE/DELETE
     isdelete = isinsert = isupdate = False
-
+    rendered_returning = False
+    
     def __init__(self, dialect, statement, column_keys=None, inline=False, **kwargs):
         """Construct a new ``DefaultCompiler`` object.
 
@@ -696,9 +697,10 @@ class SQLCompiler(engine.Compiled):
             text += " (%s)" % ', '.join([preparer.format_column(c[0])
                        for c in colparams])
 
-        if insert_stmt._returning:
-            returning_clause = self.returning_clause(insert_stmt)
-
+        if self.returning or insert_stmt._returning:
+            returning_clause = self.returning_clause(insert_stmt, self.returning or insert_stmt._returning)
+            self.rendered_returning = True
+            
             # cheating
             if returning_clause.startswith("OUTPUT"):
                 text += " " + returning_clause
@@ -708,7 +710,7 @@ class SQLCompiler(engine.Compiled):
             text += " VALUES (%s)" % \
                      ', '.join([c[1] for c in colparams])
         
-        if insert_stmt._returning and returning_clause:
+        if (self.returning or insert_stmt._returning) and returning_clause:
             text += " " + returning_clause
         
         return text
@@ -728,7 +730,8 @@ class SQLCompiler(engine.Compiled):
                 )
 
         if update_stmt._returning:
-            returning_clause = self.returning_clause(update_stmt)
+            returning_clause = self.returning_clause(update_stmt, update_stmt._returning)
+            self.rendered_returning = True
             if returning_clause.startswith("OUTPUT"):
                 text += " " + returning_clause
                 returning_clause = None
@@ -756,7 +759,8 @@ class SQLCompiler(engine.Compiled):
 
         self.postfetch = []
         self.prefetch = []
-
+        self.returning = []
+        
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
         if self.column_keys is None and stmt.parameters is None:
@@ -785,19 +789,43 @@ class SQLCompiler(engine.Compiled):
                     self.postfetch.append(c)
                     value = self.process(value.self_group())
                 values.append((c, value))
+
             elif isinstance(c, schema.Column):
                 if self.isinsert:
-                    if (c.primary_key and self.dialect.preexecute_pk_sequences and not self.inline):
-                        if (((isinstance(c.default, schema.Sequence) and
-                              not c.default.optional) or
-                             not self.dialect.supports_pk_autoincrement) or
-                            (c.default is not None and
-                             not isinstance(c.default, schema.Sequence))):
-                            values.append((c, create_bind_param(c, None)))
-                            self.prefetch.append(c)
+                    if c.primary_key and \
+                        (
+                            self.dialect.preexecute_pk_sequences or 
+                            self.dialect.implicit_returning
+                        ) and \
+                        not self.inline and \
+                        not self.statement._returning:
+
+                        if self.dialect.implicit_returning:
+                            if isinstance(c.default, schema.Sequence):
+                                proc = self.process(c.default)
+                                if proc is not None:
+                                    values.append((c, proc))
+                                self.returning.append(c)
+                            elif isinstance(c.default, schema.ColumnDefault) and \
+                                        isinstance(c.default.arg, sql.ClauseElement):
+                                values.append((c, self.process(c.default.arg.self_group())))
+                                self.returning.append(c)
+                            elif c.default is not None:
+                                values.append((c, create_bind_param(c, None)))
+                                self.prefetch.append(c)
+                            else:
+                                self.returning.append(c)
+                        else:
+                            if c.default is not None or \
+                                self.dialect.preexecute_autoincrement_sequences:
+
+                                values.append((c, create_bind_param(c, None)))
+                                self.prefetch.append(c)
+                                
                     elif isinstance(c.default, schema.ColumnDefault):
                         if isinstance(c.default.arg, sql.ClauseElement):
                             values.append((c, self.process(c.default.arg.self_group())))
+                            
                             if not c.primary_key:
                                 # dont add primary key column to postfetch
                                 self.postfetch.append(c)
@@ -835,7 +863,9 @@ class SQLCompiler(engine.Compiled):
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
 
         if delete_stmt._returning:
-            returning_clause = self.returning_clause(delete_stmt)
+            returning_clause = self.returning_clause(delete_stmt, delete_stmt._returning)
+            self.rendered_returning = True
+            self.returning = delete_stmt._returning
             if returning_clause.startswith("OUTPUT"):
                 text += " " + returning_clause
                 returning_clause = None

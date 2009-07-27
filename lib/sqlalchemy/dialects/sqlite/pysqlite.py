@@ -110,17 +110,9 @@ from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 
-class SQLite_pysqliteExecutionContext(default.DefaultExecutionContext):
-    def post_exec(self):
-        if self.isinsert and not self.executemany:
-            if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
-                self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
-
-
 class SQLite_pysqlite(SQLiteDialect):
     default_paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
-    execution_ctx_cls = SQLite_pysqliteExecutionContext
     
     # Py3K
     #description_encoding = None

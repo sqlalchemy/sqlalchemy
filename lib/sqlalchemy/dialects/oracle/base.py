@@ -318,8 +318,7 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return self.process(alias.original, **kwargs)
 
-    def returning_clause(self, stmt):
-        returning_cols = stmt._returning
+    def returning_clause(self, stmt, returning_cols):
             
         def create_out_param(col, i):
             bindparam = sql.outparam("ret_%d" % i, type_=col.type)
@@ -473,10 +472,12 @@ class OracleDialect(default.DefaultDialect):
     max_identifier_length = 30
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
+
     supports_sequences = True
     sequences_optional = False
     preexecute_pk_sequences = True
-    supports_pk_autoincrement = False
+    postfetch_lastrowid = False
+    
     default_paramstyle = 'named'
     colspecs = colspecs
     ischema_names = ischema_names
@@ -501,6 +502,12 @@ class OracleDialect(default.DefaultDialect):
         default.DefaultDialect.__init__(self, **kwargs)
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
+
+# TODO: implement server_version_info for oracle
+#    def initialize(self, connection):
+#        super(OracleDialect, self).initialize(connection)
+#        self.implicit_returning = self.server_version_info > (10, ) and \
+#                                        self.__dict__.get('implicit_returning', True)
 
     def has_table(self, connection, table_name, schema=None):
         if not schema:

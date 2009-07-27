@@ -422,7 +422,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
                 'm': page_table.join(magazine_page_table),
                 'c': page_table.join(magazine_page_table).join(classified_page_table),
             }, None, 'page_join')
-            
+        
         eq_(
             util.column_set(sql_util.reduce_columns([pjoin.c.id, pjoin.c.page_id, pjoin.c.magazine_page_id])),
             util.column_set([pjoin.c.id])

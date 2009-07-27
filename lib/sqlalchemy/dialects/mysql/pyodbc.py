@@ -5,7 +5,8 @@ from sqlalchemy import util
 import re
 
 class MySQL_pyodbcExecutionContext(MySQLExecutionContext):
-    def _lastrowid(self, cursor):
+
+    def get_lastrowid(self):
         cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
         lastrowid = cursor.fetchone()[0]

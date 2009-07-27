@@ -30,9 +30,14 @@ class DefaultDialect(base.Dialect):
     preparer = compiler.IdentifierPreparer
     defaultrunner = base.DefaultRunner
     supports_alter = True
+
     supports_sequences = False
     sequences_optional = False
-
+    preexecute_pk_sequences = False
+    preexecute_autoincrement_sequences = False
+    postfetch_lastrowid = True
+    implicit_returning = False
+    
     # Py3K
     #supports_unicode_statements = True
     #supports_unicode_binds = True
@@ -45,8 +50,6 @@ class DefaultDialect(base.Dialect):
     max_identifier_length = 9999
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
-    preexecute_pk_sequences = False
-    supports_pk_autoincrement = True
     dbapi_type_map = {}
     default_paramstyle = 'named'
     supports_default_values = False
@@ -63,6 +66,7 @@ class DefaultDialect(base.Dialect):
 
     def __init__(self, convert_unicode=False, assert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
+                 implicit_returning=None,
                  label_length=None, **kwargs):
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
@@ -76,6 +80,8 @@ class DefaultDialect(base.Dialect):
             self.paramstyle = self.dbapi.paramstyle
         else:
             self.paramstyle = self.default_paramstyle
+        if implicit_returning is not None:
+            self.implicit_returning = implicit_returning
         self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
         self.type_compiler = self.type_compiler(self)
@@ -176,6 +182,8 @@ class DefaultDialect(base.Dialect):
 
 
 class DefaultExecutionContext(base.ExecutionContext):
+    _lastrowid = None
+    
     def __init__(self, dialect, connection, compiled_sql=None, compiled_ddl=None, statement=None, parameters=None):
         self.dialect = dialect
         self._connection = self.root_connection = connection
@@ -329,6 +337,35 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def post_exec(self):
         pass
+    
+    def get_lastrowid(self):
+        """return self.cursor.lastrowid, or equivalent, after an INSERT.
+        
+        This may involve calling special cursor functions,
+        issuing a new SELECT on the cursor (or a new one),
+        or returning a stored value that was
+        calculated within post_exec().
+        
+        This function will only be called for dialects
+        which support "implicit" primary key generation,
+        keep preexecute_autoincrement_sequences set to False,
+        and when no explicit id value was bound to the
+        statement.
+        
+        The function is called once, directly after 
+        post_exec() and before the transaction is committed
+        or ResultProxy is generated.   If the post_exec()
+        method assigns a value to `self._lastrowid`, the
+        value is used in place of calling get_lastrowid().
+        
+        Note that this method is *not* equivalent to the
+        ``lastrowid`` method on ``ResultProxy``, which is a
+        direct proxy to the DBAPI ``lastrowid`` accessor
+        in all cases.
+        
+        """
+        
+        return self.cursor.lastrowid
 
     def handle_dbapi_exception(self, e):
         pass
@@ -345,9 +382,34 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def supports_sane_multi_rowcount(self):
         return self.dialect.supports_sane_multi_rowcount
+    
+    def post_insert(self):
+        if self.dialect.postfetch_lastrowid and \
+            self._lastrowid is None and \
+            (not len(self._last_inserted_ids) or \
+                        self._last_inserted_ids[0] is None):
+            
+            self._lastrowid = self.get_lastrowid()
+        
+    def last_inserted_ids(self, resultproxy):
+        if not self.isinsert:
+            raise exc.InvalidRequestError("Statement is not an insert() expression construct.")
+            
+        if self.dialect.implicit_returning and \
+                not self.compiled.statement._returning and \
+                not resultproxy.closed:
 
-    def last_inserted_ids(self):
-        return self._last_inserted_ids
+            row = resultproxy.first()
+
+            self._last_inserted_ids = [v is not None and v or row[c] 
+                for c, v in zip(self.compiled.statement.table.primary_key, self._last_inserted_ids)
+            ]
+            return self._last_inserted_ids
+            
+        elif self._lastrowid is not None:
+            return [self._lastrowid] + self._last_inserted_ids[1:]
+        else:
+            return self._last_inserted_ids
 
     def last_inserted_params(self):
         return self._last_inserted_params

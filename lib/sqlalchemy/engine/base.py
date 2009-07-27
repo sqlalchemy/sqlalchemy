@@ -105,14 +105,25 @@ class Dialect(object):
       executemany.
 
     preexecute_pk_sequences
-      Indicate if the dialect should pre-execute sequences on primary
-      key columns during an INSERT, if it's desired that the new row's
-      primary key be available after execution.
+      Indicate if the dialect should pre-execute sequences or default
+      generation functions on primary key columns during an INSERT, if 
+      it's desired that the new row's primary key be available after execution.
+      Pre-execution is disabled if the database supports "returning"
+      and "implicit_returning" is True.
 
-    supports_pk_autoincrement
-      Indicates if the dialect should allow the database to passively assign
-      a primary key column value.
-
+    preexecute_autoincrement_sequences
+      True if 'implicit' primary key functions must be executed separately
+      in order to get their value.   This is currently oriented towards
+      Postgresql.
+      
+    implicit_returning
+      use RETURNING or equivalent during INSERT execution in order to load 
+      newly generated primary keys and other column defaults in one execution,
+      which are then available via last_inserted_ids().
+      If an insert statement has returning() specified explicitly, 
+      the "implicit" functionality is not used and last_inserted_ids()
+      will not be available.
+      
     dbapi_type_map
       A mapping of DB-API type objects present in this Dialect's
       DB-API implementation mapped to TypeEngine implementations used
@@ -1069,11 +1080,14 @@ class Connection(Connectable):
             self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
         if context.compiled:
             context.post_exec()
+            if context.isinsert and not context.executemany:
+                context.post_insert()
             
         if context.should_autocommit and not self.in_transaction():
             self._commit_impl()
+            
         return context.get_result_proxy()
-
+        
     def _handle_dbapi_exception(self, e, statement, parameters, cursor, context):
         if getattr(self, '_reentrant_error', False):
             # Py3K
@@ -1608,6 +1622,18 @@ class ResultProxy(object):
 
     @property
     def lastrowid(self):
+        """return the 'lastrowid' accessor on the DBAPI cursor.
+        
+        This is a DBAPI specific method and is only functional
+        for those backends which support it, for statements
+        where it is appropriate.
+        
+        Usage of this method is normally unnecessary; the
+        last_inserted_ids() method provides a
+        tuple of primary key values for a newly inserted row,
+        regardless of database backend.
+        
+        """
         return self.cursor.lastrowid
 
     @property
@@ -1751,8 +1777,7 @@ class ResultProxy(object):
 
         See ExecutionContext for details.
         """
-
-        return self.context.last_inserted_ids()
+        return self.context.last_inserted_ids(self)
 
     def last_updated_params(self):
         """Return ``last_updated_params()`` from the underlying ExecutionContext.

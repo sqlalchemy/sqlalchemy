@@ -863,7 +863,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self._enable_identity_insert = False
             
             self._select_lastrowid = insert_has_sequence and \
-                                        not self.compiled.statement.returning and \
+                                        not self.compiled.rendered_returning and \
                                         not self._enable_identity_insert and \
                                         not self.executemany
             
@@ -880,14 +880,17 @@ class MSExecutionContext(default.DefaultExecutionContext):
             else:
                 self.cursor.execute("SELECT @@identity AS lastrowid")
             row = self.cursor.fetchall()[0]   # fetchall() ensures the cursor is consumed without closing it
-            self._last_inserted_ids = [int(row[0])] + self._last_inserted_ids[1:]
+            self._lastrowid = int(row[0])
             
         if self._enable_identity_insert:
             self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
 
         if (self.isinsert or self.isupdate or self.isdelete) and \
-                self.compiled.statement._returning:
+                self.compiled.rendered_returning:
             self._result_proxy = base.FullyBufferedResultProxy(self)
+    
+    def get_lastrowid(self):
+        return self._lastrowid
         
     def handle_dbapi_exception(self, e):
         if self._enable_identity_insert:
@@ -1034,8 +1037,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 return self.process(expression._BinaryExpression(binary.left, binary.right, op), **kwargs)
             return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
-    def returning_clause(self, stmt):
-        returning_cols = stmt._returning
+    def returning_clause(self, stmt, returning_cols):
 
         if self.isinsert or self.isupdate:
             target = stmt.table.alias("inserted")

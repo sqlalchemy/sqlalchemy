@@ -263,8 +263,7 @@ class PGCompiler(compiler.SQLCompiler):
         else:
             return super(PGCompiler, self).for_update_clause(select)
 
-    def returning_clause(self, stmt):
-        returning_cols = stmt._returning
+    def returning_clause(self, stmt, returning_cols):
         
         columns = [
                 self.process(
@@ -449,10 +448,13 @@ class PGDialect(default.DefaultDialect):
     supports_alter = True
     max_identifier_length = 63
     supports_sane_rowcount = True
+    
     supports_sequences = True
     sequences_optional = True
     preexecute_pk_sequences = True
-    supports_pk_autoincrement = False
+    preexecute_autoincrement_sequences = True
+    postfetch_lastrowid = False
+    
     supports_default_values = True
     supports_empty_insert = False
     default_paramstyle = 'pyformat'
@@ -471,6 +473,11 @@ class PGDialect(default.DefaultDialect):
         default.DefaultDialect.__init__(self, **kwargs)
         self.isolation_level = isolation_level
 
+    def initialize(self, connection):
+        super(PGDialect, self).initialize(connection)
+        self.implicit_returning = self.server_version_info > (8, 3) and \
+                                        self.__dict__.get('implicit_returning', True)
+        
     def visit_pool(self, pool):
         if self.isolation_level is not None:
             class SetIsolationLevel(object):

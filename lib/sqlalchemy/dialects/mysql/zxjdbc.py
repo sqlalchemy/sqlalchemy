@@ -15,10 +15,8 @@ from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy import types as sqltypes, util
 
 class MySQL_jdbcExecutionContext(MySQLExecutionContext):
-    def _real_lastrowid(self, cursor):
-        return cursor.lastrowid
-
-    def _lastrowid(self, cursor):
+    
+    def get_lastrowid(self):
         cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
         lastrowid = cursor.fetchone()[0]

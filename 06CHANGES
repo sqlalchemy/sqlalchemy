@@ -13,7 +13,14 @@
 - sql
     - returning() support is native to insert(), update(), delete().  Implementations
       of varying levels of functionality exist for Postgresql, Firebird, MSSQL and
-      Oracle.
+      Oracle.   returning() can be called explicitly with column expressions which
+      are then returned in the resultset, usually via fetchone() or first().
+      
+      insert() constructs will also use RETURNING implicitly to get newly
+      generated primary key values, if the database version in use supports it
+      (a version number check is performed).   This occurs if no end-user
+      returning() was specified.
+      
       
 - engines
     - transaction isolation level may be specified with
