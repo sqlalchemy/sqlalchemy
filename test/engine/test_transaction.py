@@ -276,8 +276,7 @@ class TransactionTest(TestBase):
         connection.close()
 
     @testing.requires.two_phase_transactions
-    @testing.skip_if(lambda: testing.against('mysql+zxjdbc'),
-                     'Deadlocks, causing subsequent tests to fail')
+    @testing.crashes('mysql+zxjdbc', 'Deadlocks, causing subsequent tests to fail')
     @testing.fails_on('mysql', 'FIXME: unknown')
     def test_two_phase_recover(self):
         # MySQL recovery doesn't currently seem to work correctly
