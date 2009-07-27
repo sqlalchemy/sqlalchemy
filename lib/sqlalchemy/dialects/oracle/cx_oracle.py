@@ -327,6 +327,9 @@ class Oracle_cx_oracle(OracleDialect):
 
         return ([], opts)
 
+    def _get_server_version_info(self, connection):
+        return tuple(int(x) for x in connection.connection.version.split('.'))
+
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.InterfaceError):
             return "not connected" in str(e)
