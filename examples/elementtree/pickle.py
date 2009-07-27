@@ -26,12 +26,17 @@ from xml.etree import ElementTree
 engine = create_engine('sqlite://')
 meta = MetaData(engine)
 
+# setup a comparator for the PickleType since it's a mutable
+# element.
+def are_elements_equal(x, y):
+    return x == y
+
 # stores a top level record of an XML document.  
 # the "element" column will store the ElementTree document as a BLOB.
 documents = Table('documents', meta,
     Column('document_id', Integer, primary_key=True),
     Column('filename', String(30), unique=True),
-    Column('element', PickleType)
+    Column('element', PickleType(comparator=are_elements_equal))
 )
 
 meta.create_all()

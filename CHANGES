@@ -69,6 +69,11 @@ CHANGES
    - Declarative will raise an informative exception if 
      __table_args__ is passed as a tuple with no dict argument.
      Improved documentation.  [ticket:1468]
+
+- test
+   - Added examples into the test suite so they get exercised
+     regularly and cleaned up a couple deprecation warnings.
+
      
 0.5.5
 =======
