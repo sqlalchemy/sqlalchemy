@@ -32,7 +32,7 @@ def filename_to_module_name(fn):
     return re.sub('\.py$', '', fn.replace(os.sep, '.'))
 
 def find_modules(*args):
-    for fn in find_py_files(args or ('../examples',)):
+    for fn in find_py_files(args or ('./examples',)):
         yield filename_to_module_name(fn)
 
 def check_import(module):
