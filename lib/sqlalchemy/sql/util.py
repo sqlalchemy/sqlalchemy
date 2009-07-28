@@ -298,7 +298,7 @@ def reduce_columns(columns, *clauses, **kw):
 
     omit = util.column_set()
     for col in columns:
-        for fk in col.foreign_keys:
+        for fk in chain(*[c.foreign_keys for c in col.proxy_set]):
             for c in columns:
                 if c is col:
                     continue
