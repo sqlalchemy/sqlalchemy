@@ -5,7 +5,7 @@ from sqlalchemy import *
 from sqlalchemy.test import *
 from sqlalchemy.sql import util as sql_util, visitors
 from sqlalchemy import exc
-from sqlalchemy.sql import table, column
+from sqlalchemy.sql import table, column, null
 from sqlalchemy import util
 
 metadata = MetaData()
@@ -416,19 +416,54 @@ class ReduceTest(TestBase, AssertsExecutionResults):
             Column('magazine_page_id', Integer, ForeignKey('magazine_page.page_id'), primary_key=True),
         )
         
-        from sqlalchemy.orm.util import polymorphic_union
-        pjoin = polymorphic_union(
-            {
-                'm': page_table.join(magazine_page_table),
-                'c': page_table.join(magazine_page_table).join(classified_page_table),
-            }, None, 'page_join')
+       # this is essentially the union formed by the ORM's polymorphic_union function.
+        # we define two versions with different ordering of selects.
+
+        # the first selectable has the "real" column classified_page.magazine_page_id
+        pjoin = union(
+            select([
+                page_table.c.id, 
+                magazine_page_table.c.page_id, 
+                classified_page_table.c.magazine_page_id
+            ]).select_from(page_table.join(magazine_page_table).join(classified_page_table)),
+
+            select([
+                page_table.c.id, 
+                magazine_page_table.c.page_id, 
+                cast(null(), Integer).label('magazine_page_id')
+            ]).select_from(page_table.join(magazine_page_table)),
             
+        ).alias('pjoin')
+
         eq_(
             util.column_set(sql_util.reduce_columns([pjoin.c.id, pjoin.c.page_id, pjoin.c.magazine_page_id])),
             util.column_set([pjoin.c.id])
         )    
-    
+
+        # the first selectable has a CAST, which is a placeholder for
+        # classified_page.magazine_page_id in the second selectable.  reduce_columns
+        # needs to take into account all foreign keys derived from pjoin.c.magazine_page_id.
+        # the UNION construct currently makes the external column look like that of the first
+        # selectable only.
+        pjoin = union(
+            select([
+                page_table.c.id, 
+                magazine_page_table.c.page_id, 
+                cast(null(), Integer).label('magazine_page_id')
+            ]).select_from(page_table.join(magazine_page_table)),
             
+            select([
+                page_table.c.id, 
+                magazine_page_table.c.page_id, 
+                classified_page_table.c.magazine_page_id
+            ]).select_from(page_table.join(magazine_page_table).join(classified_page_table))
+        ).alias('pjoin')
+
+        eq_(
+            util.column_set(sql_util.reduce_columns([pjoin.c.id, pjoin.c.page_id, pjoin.c.magazine_page_id])),
+            util.column_set([pjoin.c.id])
+        )    
+
 class DerivedTest(TestBase, AssertsExecutionResults):
     def test_table(self):
         meta = MetaData()

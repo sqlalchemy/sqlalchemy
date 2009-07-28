@@ -3170,10 +3170,19 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
     def _populate_column_collection(self):
         for cols in zip(*[s.c for s in self.selects]):
-            proxy = cols[0]._make_proxy(self, name=self.use_labels and cols[0]._label or None)
+            # this is a slightly hacky thing - the union exports a column that
+            # resembles just that of the *first* selectable.  to get at a "composite" column,
+            # particularly foreign keys, you have to dig through the proxies collection 
+            # which we generate below.  We may want to improve upon this,
+            # such as perhaps _make_proxy can accept a list of other columns that
+            # are "shared" - schema.column can then copy all the ForeignKeys in.
+            # this would allow the union() to have all those fks too.
+            proxy = cols[0]._make_proxy(
+                            self, name=self.use_labels and cols[0]._label or None)
             
-            # place a 'weight' annotation corresponding to how low in the list of select()s
-            # the column occurs, so that the corresponding_column() operation
+            # hand-construct the "proxies" collection to include all derived columns
+            # place a 'weight' annotation corresponding to how low in the list of
+            # select()s the column occurs, so that the corresponding_column() operation
             # can resolve conflicts
             proxy.proxies = [c._annotate({'weight':i + 1}) for i, c in enumerate(cols)]
             

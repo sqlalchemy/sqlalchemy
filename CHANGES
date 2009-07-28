@@ -45,6 +45,11 @@ CHANGES
       [ticket:1424].  See
       http://www.sqlalchemy.org/trac/wiki/UsageRecipes/PreFilteredQuery
       for an example.
+
+    - Fixed a somewhat hypothetical issue which would result
+      in the wrong primary key being calculated for a mapper
+      using the old polymorphic_union function - but this
+      is old stuff.  [ticket:1486]
       
 - sql
     - Fixed a bug in extract() introduced in 0.5.4 whereby
