@@ -7,7 +7,7 @@ from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
 from sqlalchemy.test.util import gc_collect
-from sqlalchemy.util import cmp
+from sqlalchemy.util import cmp, jython
 
 # global for pickling tests
 MyTest = None
@@ -81,7 +81,9 @@ class AttributesTest(_base.ORMTest):
             del o2.__dict__['mt2']
             o2.__dict__[o_mt2_str] = former
 
-            self.assert_(pk_o == pk_o2)
+            # Relies on dict ordering
+            if not jython:
+                self.assert_(pk_o == pk_o2)
 
         # the above is kind of distrurbing, so let's do it again a little
         # differently.  the string-id in serialization thing is just an
@@ -94,7 +96,9 @@ class AttributesTest(_base.ORMTest):
         o4 = pickle.loads(pk_o3)
         pk_o4 = pickle.dumps(o4)
 
-        self.assert_(pk_o3 == pk_o4)
+        # Relies on dict ordering
+        if not jython:
+            self.assert_(pk_o3 == pk_o4)
 
         # and lastly make sure we still have our data after all that.
         # identical serialzation is great, *if* it's complete :)
