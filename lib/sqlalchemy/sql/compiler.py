@@ -161,7 +161,7 @@ class SQLCompiler(engine.Compiled):
     # level to define if this Compiled instance represents
     # INSERT/UPDATE/DELETE
     isdelete = isinsert = isupdate = False
-    rendered_returning = False
+    returning = None
     
     def __init__(self, dialect, statement, column_keys=None, inline=False, **kwargs):
         """Construct a new ``DefaultCompiler`` object.
@@ -698,8 +698,8 @@ class SQLCompiler(engine.Compiled):
                        for c in colparams])
 
         if self.returning or insert_stmt._returning:
-            returning_clause = self.returning_clause(insert_stmt, self.returning or insert_stmt._returning)
-            self.rendered_returning = True
+            self.returning = self.returning or insert_stmt._returning
+            returning_clause = self.returning_clause(insert_stmt, self.returning)
             
             # cheating
             if returning_clause.startswith("OUTPUT"):
@@ -710,7 +710,7 @@ class SQLCompiler(engine.Compiled):
             text += " VALUES (%s)" % \
                      ', '.join([c[1] for c in colparams])
         
-        if (self.returning or insert_stmt._returning) and returning_clause:
+        if self.returning and returning_clause:
             text += " " + returning_clause
         
         return text
@@ -730,8 +730,8 @@ class SQLCompiler(engine.Compiled):
                 )
 
         if update_stmt._returning:
+            self.returning = update_stmt._returning
             returning_clause = self.returning_clause(update_stmt, update_stmt._returning)
-            self.rendered_returning = True
             if returning_clause.startswith("OUTPUT"):
                 text += " " + returning_clause
                 returning_clause = None
@@ -739,7 +739,7 @@ class SQLCompiler(engine.Compiled):
         if update_stmt._whereclause:
             text += " WHERE " + self.process(update_stmt._whereclause)
 
-        if update_stmt._returning and returning_clause:
+        if self.returning and returning_clause:
             text += " " + returning_clause
             
         self.stack.pop(-1)
@@ -863,9 +863,8 @@ class SQLCompiler(engine.Compiled):
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
 
         if delete_stmt._returning:
-            returning_clause = self.returning_clause(delete_stmt, delete_stmt._returning)
-            self.rendered_returning = True
             self.returning = delete_stmt._returning
+            returning_clause = self.returning_clause(delete_stmt, delete_stmt._returning)
             if returning_clause.startswith("OUTPUT"):
                 text += " " + returning_clause
                 returning_clause = None
@@ -873,7 +872,7 @@ class SQLCompiler(engine.Compiled):
         if delete_stmt._whereclause:
             text += " WHERE " + self.process(delete_stmt._whereclause)
 
-        if delete_stmt._returning and returning_clause:
+        if self.returning and returning_clause:
             text += " " + returning_clause
             
         self.stack.pop(-1)

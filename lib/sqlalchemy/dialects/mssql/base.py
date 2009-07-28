@@ -863,7 +863,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self._enable_identity_insert = False
             
             self._select_lastrowid = insert_has_sequence and \
-                                        not self.compiled.rendered_returning and \
+                                        not self.compiled.returning and \
                                         not self._enable_identity_insert and \
                                         not self.executemany
             
@@ -885,8 +885,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
         if self._enable_identity_insert:
             self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
 
-        if (self.isinsert or self.isupdate or self.isdelete) and \
-                self.compiled.rendered_returning:
+        if self.compiled.returning:
             self._result_proxy = base.FullyBufferedResultProxy(self)
     
     def get_lastrowid(self):

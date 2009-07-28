@@ -215,8 +215,7 @@ class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):
                     return base.BufferedColumnResultProxy(self)
         
         if hasattr(self, 'out_parameters') and \
-            (self.isinsert or self.isupdate or self.isdelete) and \
-                self.compiled.rendered_returning:
+            self.compiled.returning:
                 
             return ReturningResultProxy(self)
         else:
@@ -226,7 +225,7 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
     """Result proxy which stuffs the _returning clause + outparams into the fetch."""
     
     def _cursor_description(self):
-        returning = self.context.compiled.returning or self.context.compiled.statement._returning
+        returning = self.context.compiled.returning
         
         ret = []
         for c in returning:
@@ -237,7 +236,7 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
         return ret
     
     def _buffer_rows(self):
-        returning = self.context.compiled.returning or self.context.compiled.statement._returning
+        returning = self.context.compiled.returning
         return [tuple(self.context.out_parameters["ret_%d" % i] for i, c in enumerate(returning))]
 
 class Oracle_cx_oracle(OracleDialect):
