@@ -30,7 +30,7 @@ All that's required is for SQLAlchemy to be installed via setuptools.
 For example, to create a local install in a source distribution directory:
 
     $ export PYTHONPATH=.
-    $ python setup.py -d .
+    $ python setup.py develop -d .
 
 The above will create a setuptools "development" distribution in the local
 path, which allows the Nose plugin to be available when nosetests is run.
