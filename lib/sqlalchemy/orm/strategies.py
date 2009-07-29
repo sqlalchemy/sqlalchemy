@@ -121,7 +121,9 @@ class ColumnLoader(LoaderStrategy):
             if self._should_log_debug:
                 new_execute = self.debug_callable(new_execute, self.logger,
                     "%s returning active column fetcher" % self,
-                    lambda state, row, **flags: "%s populating %s" % (self, mapperutil.state_attribute_str(state, key))
+                    lambda state, dict_, row, **flags: "%s populating %s" % \
+                                                      (self,
+                                                       mapperutil.state_attribute_str(state, key))
                 )
             return (new_execute, None)
         else:
@@ -184,7 +186,8 @@ class CompositeColumnLoader(ColumnLoader):
             if self._should_log_debug:
                 new_execute = self.debug_callable(new_execute, self.logger,
                     "%s returning active composite column fetcher" % self,
-                    lambda state, row, **flags: "populating %s" % (mapperutil.state_attribute_str(state, key))
+                    lambda state, dict_, row, **flags: "populating %s" % \
+                                                      (mapperutil.state_attribute_str(state, key))
                 )
 
             return (new_execute, None)
@@ -212,7 +215,8 @@ class DeferredColumnLoader(LoaderStrategy):
 
         if self._should_log_debug:
             new_execute = self.debug_callable(new_execute, self.logger, None,
-                lambda state, row, **flags: "set deferred callable on %s" % mapperutil.state_attribute_str(state, self.key)
+                lambda state, dict_, row, **flags: "set deferred callable on %s" % \
+                                                  mapperutil.state_attribute_str(state, self.key)
             )
         return (new_execute, None)
 
@@ -345,7 +349,8 @@ class NoLoader(AbstractRelationLoader):
 
         if self._should_log_debug:
             new_execute = self.debug_callable(new_execute, self.logger, None,
-                lambda state, row, **flags: "initializing blank scalar/collection on %s" % mapperutil.state_attribute_str(state, self.key)
+                lambda state, dict_, row, **flags: "initializing blank scalar/collection on %s" % \
+                                                  mapperutil.state_attribute_str(state, self.key)
             )
         return (new_execute, None)
 
@@ -441,28 +446,34 @@ class LazyLoader(AbstractRelationLoader):
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         if not self.is_class_level:
             def new_execute(state, dict_, row, **flags):
-                # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
-                # which will override the class-level behavior.
-                # this currently only happens when using a "lazyload" option on a "no load" attribute -
-                # "eager" attributes always have a class-level lazyloader installed.
+                # we are not the primary manager for this attribute on this class - set up a
+                # per-instance lazyloader, which will override the class-level behavior.
+                # this currently only happens when using a "lazyload" option on a "no load"
+                # attribute - "eager" attributes always have a class-level lazyloader
+                # installed.
                 self._init_instance_attribute(state, callable_=LoadLazyAttribute(state, self.key))
 
             if self._should_log_debug:
                 new_execute = self.debug_callable(new_execute, self.logger, None,
-                    lambda state, row, **flags: "set instance-level lazy loader on %s" % mapperutil.state_attribute_str(state, self.key)
+                    lambda state, dict_, row, **flags: "set instance-level lazy loader on %s" % \
+                                                      mapperutil.state_attribute_str(state,
+                                                                                     self.key)
                 )
 
             return (new_execute, None)
         else:
             def new_execute(state, dict_, row, **flags):
-                # we are the primary manager for this attribute on this class - reset its per-instance attribute state, 
-                # so that the class-level lazy loader is executed when next referenced on this instance.
-                # this is needed in populate_existing() types of scenarios to reset any existing state.
+                # we are the primary manager for this attribute on this class - reset its
+                # per-instance attribute state, so that the class-level lazy loader is
+                # executed when next referenced on this instance.  this is needed in
+                # populate_existing() types of scenarios to reset any existing state.
                 state.reset(self.key, dict_)
 
             if self._should_log_debug:
                 new_execute = self.debug_callable(new_execute, self.logger, None,
-                    lambda state, row, **flags: "set class-level lazy loader on %s" % mapperutil.state_attribute_str(state, self.key)
+                    lambda state, dict_, row, **flags: "set class-level lazy loader on %s" % \
+                                                      mapperutil.state_attribute_str(state,
+                                                                                     self.key)
                 )
 
             return (new_execute, None)
@@ -767,7 +778,10 @@ class EagerLoader(AbstractRelationLoader):
             if self._should_log_debug:
                 execute = self.debug_callable(execute, self.logger, 
                     "%s returning eager instance loader" % self,
-                    lambda state, row, isnew, **flags: "%s eagerload %s" % (self, self.uselist and "scalar attribute" or "collection")
+                    lambda state, dict_, row, isnew, **flags: "%s eagerload %s" % \
+                                                  (self,
+                                                   self.uselist and "scalar attribute"
+                                                   or "collection")
                 )
 
             return (execute, execute)
