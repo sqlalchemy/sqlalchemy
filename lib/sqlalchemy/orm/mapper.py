@@ -1271,8 +1271,8 @@ class Mapper(object):
                             (state_str(state), instance_key, state_str(existing)))
                     if self._should_log_debug:
                         self._log_debug(
-                            "detected row switch for identity %s.  will update %s, remove %s from transaction", 
-                            instance_key, state_str(state), state_str(existing))
+                            "detected row switch for identity %s.  will update %s, remove %s from "
+                            "transaction" % (instance_key, state_str(state), state_str(existing)))
                             
                     # remove the "delete" flag from the existing element
                     uowtransaction.set_row_switch(existing)
@@ -1291,7 +1291,8 @@ class Mapper(object):
                 pks = mapper._pks_by_table[table]
                 
                 if self._should_log_debug:
-                    self._log_debug("_save_obj() table '%s' instance %s identity %s" % (table.name, state_str(state), str(instance_key)))
+                    self._log_debug("_save_obj() table '%s' instance %s identity %s" %
+                                    (table.name, state_str(state), str(instance_key)))
 
                 isinsert = not has_identity and not postupdate and state not in row_switches
                 
@@ -1305,7 +1306,9 @@ class Mapper(object):
                             params[col.key] = 1
                         elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
                             if self._should_log_debug:
-                                self._log_debug("Using polymorphic identity '%s' for insert column '%s'" % (mapper.polymorphic_identity, col.key))
+                                self._log_debug(
+                                    "Using polymorphic identity '%s' for insert column '%s'" %
+                                    (mapper.polymorphic_identity, col.key))
                             value = mapper.polymorphic_identity
                             if ((col.default is None and
                                  col.server_default is None) or
@@ -1623,8 +1626,8 @@ class Mapper(object):
                 dict_ = attributes.instance_dict(instance)
 
                 if self._should_log_debug:
-                    self._log_debug("_instance(): using existing instance %s identity %s",
-                                        instance_str(instance), identitykey)
+                    self._log_debug("_instance(): using existing instance %s identity %s" %
+                                    (instance_str(instance), identitykey))
 
                 isnew = state.runid != context.runid
                 currentload = not isnew
@@ -1647,7 +1650,7 @@ class Mapper(object):
                 loaded_instance = False
             else:
                 if self._should_log_debug:
-                    self._log_debug("_instance(): identity key %s not in session", identitykey)
+                    self._log_debug("_instance(): identity key %s not in session" % (identitykey,))
 
                 if self.allow_null_pks:
                     for x in identitykey[1]:
@@ -1675,8 +1678,8 @@ class Mapper(object):
                     instance = self.class_manager.new_instance()
 
                 if self._should_log_debug:
-                    self._log_debug("_instance(): created new instance %s identity %s",
-                                instance_str(instance), identitykey)
+                    self._log_debug("_instance(): created new instance %s identity %s" %
+                                    (instance_str(instance), identitykey))
 
                 dict_ = attributes.instance_dict(instance)
                 state = attributes.instance_state(instance)
