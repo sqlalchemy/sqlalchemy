@@ -792,6 +792,10 @@ class SQLCompiler(engine.Compiled):
 
             elif isinstance(c, schema.Column):
                 if self.isinsert:
+                    # TODO: need to mix this around some more until
+                    # conditionals are reduced.  might want to 
+                    # do primary key, then sequence/column default/none, 
+                    # then implicit_returning/supports sequence/doesnt
                     if c.primary_key and \
                         (
                             self.dialect.preexecute_pk_sequences or 
@@ -816,7 +820,13 @@ class SQLCompiler(engine.Compiled):
                             else:
                                 self.returning.append(c)
                         else:
-                            if c.default is not None or \
+                            if (
+                                c.default is not None and \
+                                    (
+                                        self.dialect.supports_sequences or 
+                                        not isinstance(c.default, schema.Sequence)
+                                    )
+                                ) or \
                                 self.dialect.preexecute_autoincrement_sequences:
 
                                 values.append((c, create_bind_param(c, None)))
