@@ -258,16 +258,6 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return ""
         
-    def bindparam_string(self, name):
-        # TODO: its not clear how much of bind parameter quoting is "Oracle"
-        # and how much is "cx_Oracle".
-        if self.preparer._bindparam_requires_quotes(name):
-            quoted_name = '"%s"' % name
-            self._quoted_bind_names[name] = quoted_name
-            return compiler.SQLCompiler.bindparam_string(self, quoted_name)
-        else:
-            return compiler.SQLCompiler.bindparam_string(self, name)
-
     def default_from(self):
         """Called when a ``SELECT`` statement has no froms, and no ``FROM`` clause is to be appended.
 
@@ -508,6 +498,10 @@ class OracleDialect(default.DefaultDialect):
 #        super(OracleDialect, self).initialize(connection)
 #        self.implicit_returning = self.server_version_info > (10, ) and \
 #                                        self.__dict__.get('implicit_returning', True)
+
+    def do_release_savepoint(self, connection, name):
+        # Oracle does not support RELEASE SAVEPOINT
+        pass
 
     def has_table(self, connection, table_name, schema=None):
         if not schema:

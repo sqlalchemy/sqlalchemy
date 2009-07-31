@@ -63,7 +63,7 @@ working successfully but this should be regarded as an experimental feature.
 
 """
 
-from sqlalchemy.dialects.oracle.base import OracleDialect, RESERVED_WORDS
+from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, RESERVED_WORDS
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.engine.default import DefaultExecutionContext
 from sqlalchemy.engine import base
@@ -161,9 +161,17 @@ colspecs = {
     oracle.RAW: _OracleRaw,
 }
 
+class Oracle_cx_oracleCompiler(OracleCompiler):
+    def bindparam_string(self, name):
+        if self.preparer._bindparam_requires_quotes(name):
+            quoted_name = '"%s"' % name
+            self._quoted_bind_names[name] = quoted_name
+            return OracleCompiler.bindparam_string(self, quoted_name)
+        else:
+            return OracleCompiler.bindparam_string(self, name)
+
 class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):
     def pre_exec(self):
-        
         quoted_bind_names = getattr(self.compiled, '_quoted_bind_names', {})
         if quoted_bind_names:
             for param in self.parameters:
@@ -241,6 +249,7 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
 
 class Oracle_cx_oracle(OracleDialect):
     execution_ctx_cls = Oracle_cx_oracleExecutionContext
+    statement_compiler = Oracle_cx_oracleCompiler
     driver = "cx_oracle"
     colspecs = colspecs
     
@@ -343,10 +352,6 @@ class Oracle_cx_oracle(OracleDialect):
 
         id = random.randint(0, 2 ** 128)
         return (0x1234, "%032x" % id, "%032x" % 9)
-
-    def do_release_savepoint(self, connection, name):
-        # Oracle does not support RELEASE SAVEPOINT
-        pass
 
     def do_begin_twophase(self, connection, xid):
         connection.connection.begin(*xid)
