@@ -7,6 +7,7 @@ from sqlalchemy.databases import oracle
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.engines import testing_engine
+from sqlalchemy.engine import default
 import os
 
 
@@ -87,7 +88,57 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM "
             "AS ora_rn FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable "
             "ORDER BY sometable.col2) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1")
+    
+    def test_long_labels(self):
+        dialect = default.DefaultDialect()
+        dialect.max_identifier_length = 30
+        
+        ora_dialect = oracle.dialect()
+        
+        m = MetaData()
+        a_table = Table(
+            'thirty_characters_table_xxxxxx',
+            m,
+            Column('id', Integer, primary_key=True)
+        )
 
+        other_table = Table(
+            'other_thirty_characters_table_',
+            m,
+            Column('id', Integer, primary_key=True),
+            Column('thirty_characters_table_id',
+                Integer,
+                ForeignKey('thirty_characters_table_xxxxxx.id'),
+                primary_key=True
+            )
+        )
+        
+        anon = a_table.alias()
+        self.assert_compile(
+        
+            select([other_table, anon]).select_from(
+                other_table.outerjoin(anon)
+            ).apply_labels(),
+            "SELECT other_thirty_characters_table_.id AS other_thirty_characters__1, "
+            "other_thirty_characters_table_.thirty_characters_table_id AS other_thirty_characters__2, "
+            "thirty_characters_table__1.id AS thirty_characters_table__3 FROM other_thirty_characters_table_ "
+            "LEFT OUTER JOIN thirty_characters_table_xxxxxx AS thirty_characters_table__1 ON "
+            "thirty_characters_table__1.id = other_thirty_characters_table_.thirty_characters_table_id",
+            dialect=dialect
+        )
+        self.assert_compile(
+        
+            select([other_table, anon]).select_from(
+                other_table.outerjoin(anon)
+            ).apply_labels(),
+            "SELECT other_thirty_characters_table_.id AS other_thirty_characters__1, "
+            "other_thirty_characters_table_.thirty_characters_table_id AS other_thirty_characters__2, "
+            "thirty_characters_table__1.id AS thirty_characters_table__3 FROM other_thirty_characters_table_ "
+            "LEFT OUTER JOIN thirty_characters_table_xxxxxx thirty_characters_table__1 ON "
+            "thirty_characters_table__1.id = other_thirty_characters_table_.thirty_characters_table_id",
+            dialect=ora_dialect
+        )
+        
     def test_outer_join(self):
         table1 = table('mytable',
             column('myid', Integer),
@@ -357,7 +408,8 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
            Column('data', Binary)
         )
         meta.create_all()
-        stream = os.path.join(os.path.dirname(testenv.__file__), 'binary_data_one.dat')
+        
+        stream = os.path.join(os.path.dirname(__file__), "..", 'binary_data_one.dat')
         stream = file(stream).read(12000)
 
         for i in range(1, 11):

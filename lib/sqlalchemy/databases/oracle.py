@@ -127,7 +127,7 @@ import datetime, random, re
 
 from sqlalchemy import util, sql, schema, log
 from sqlalchemy.engine import default, base
-from sqlalchemy.sql import compiler, visitors
+from sqlalchemy.sql import compiler, visitors, expression
 from sqlalchemy.sql import operators as sql_operators, functions as sql_functions
 from sqlalchemy import types as sqltypes
 
@@ -769,7 +769,11 @@ class OracleCompiler(compiler.DefaultCompiler):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
 
         if asfrom:
-            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + self.preparer.format_alias(alias, self._anonymize(alias.name))
+            alias_name = isinstance(alias.name, expression._generated_label) and \
+                            self._truncated_identifier("alias", alias.name) or alias.name
+            
+            return self.process(alias.original, asfrom=True, **kwargs) + " " +\
+                    self.preparer.format_alias(alias, alias_name)
         else:
             return self.process(alias.original, **kwargs)
 

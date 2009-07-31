@@ -64,6 +64,10 @@ CHANGES
     - Fixed bug in Table and Column whereby passing empty
       dict for "info" argument would raise an exception.
       [ticket:1482]
+
+- oracle
+    - Backported 0.6 fix for Oracle alias names not getting
+      truncated.  [ticket:1309]
       
 - ext
    - The collection proxies produced by associationproxy are now
