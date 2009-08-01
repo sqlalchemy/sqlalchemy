@@ -21,6 +21,10 @@
       (a version number check is performed).   This occurs if no end-user
       returning() was specified.
       
+    - Databases which rely upon postfetch of "last inserted id" to get at a 
+      generated sequence value (i.e. MySQL, MS-SQL) now work correctly
+      when there is a composite primary key where the "autoincrement" column
+      is not the first primary key column in the table.
       
 - engines
     - transaction isolation level may be specified with

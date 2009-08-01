@@ -280,6 +280,15 @@ class Table(SchemaItem, expression.TableClause):
         for c in pk.columns:
             c.primary_key = True
 
+    @util.memoized_property
+    def _autoincrement_column(self):
+        for col in self.primary_key:
+            if col.autoincrement and \
+                isinstance(col.type, types.Integer) and \
+                not col.foreign_keys:
+
+                return col
+
     @property
     def key(self):
         return _get_table_key(self.name, self.schema)

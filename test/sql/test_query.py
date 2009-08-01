@@ -80,7 +80,7 @@ class QueryTest(TestBase):
                     ret[c.key] = row[c]
             return ret
 
-        if testing.against('firebird', 'postgres', 'oracle', 'mssql'):
+        if testing.against('firebird', 'postgres', 'oracle'): #, 'mssql'):
             test_engines = [
                 engines.testing_engine(options={'implicit_returning':False}),
                 engines.testing_engine(options={'implicit_returning':True}),
@@ -147,6 +147,25 @@ class QueryTest(TestBase):
                     assert i == assertvalues, "tablename: %s %r %r" % (table.name, repr(i), repr(assertvalues))
                 finally:
                     table.drop(bind=engine)
+
+    @testing.fails_on('sqlite', "sqlite autoincremnt doesn't work with composite pks")
+    def test_misordered_lastrow(self):
+        related = Table('related', metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        t6 = Table("t6", metadata,
+            Column('manual_id', Integer, ForeignKey('related.id'), primary_key=True),
+            Column('auto_id', Integer, primary_key=True),
+        )
+
+        metadata.create_all()
+        r = related.insert().values(id=12).execute()
+        id = r.last_inserted_ids()[0]
+        assert id==12
+
+        r = t6.insert().values(manual_id=id).execute()
+        eq_(r.last_inserted_ids(), [12, 1])
+
 
     def test_row_iteration(self):
         users.insert().execute(

@@ -823,42 +823,22 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_SQL_VARIANT(self, type_):
         return 'SQL_VARIANT'
 
-def _has_implicit_sequence(column):
-    return column.primary_key and  \
-        column.autoincrement and \
-        isinstance(column.type, sqltypes.Integer) and \
-        not column.foreign_keys and \
-        (
-            column.default is None or 
-            (
-                isinstance(column.default, sa_schema.Sequence) and 
-                column.default.optional)
-            )
-
-def _table_sequence_column(tbl):
-    if not hasattr(tbl, '_ms_has_sequence'):
-        tbl._ms_has_sequence = None
-        for column in tbl.c:
-            if getattr(column, 'sequence', False) or _has_implicit_sequence(column):
-                tbl._ms_has_sequence = column
-                break
-    return tbl._ms_has_sequence
-
 class MSExecutionContext(default.DefaultExecutionContext):
     _enable_identity_insert = False
     _select_lastrowid = False
     _result_proxy = None
+    _lastrowid = None
     
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""
 
         if self.isinsert:
             tbl = self.compiled.statement.table
-            seq_column = _table_sequence_column(tbl)
-            insert_has_sequence = bool(seq_column)
+            seq_column = tbl._autoincrement_column
+            insert_has_sequence = seq_column is not None
             
             if insert_has_sequence:
-                self._enable_identity_insert = tbl._ms_has_sequence.key in self.compiled_parameters[0]
+                self._enable_identity_insert = seq_column.key in self.compiled_parameters[0]
             else:
                 self._enable_identity_insert = False
             
@@ -1094,7 +1074,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if not column.table:
             raise exc.InvalidRequestError("mssql requires Table-bound columns in order to generate DDL")
             
-        seq_col = _table_sequence_column(column.table)
+        seq_col = column.table._autoincrement_column
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if seq_col is column:
@@ -1147,7 +1127,8 @@ class MSDialect(default.DefaultDialect):
     preexecute_pk_sequences = True
     
     supports_unicode_binds = True
-
+    postfetch_lastrowid = True
+    
     server_version_info = ()
     
     statement_compiler = MSSQLCompiler

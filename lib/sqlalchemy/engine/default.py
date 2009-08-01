@@ -182,7 +182,6 @@ class DefaultDialect(base.Dialect):
 
 
 class DefaultExecutionContext(base.ExecutionContext):
-    _lastrowid = None
     
     def __init__(self, dialect, connection, compiled_sql=None, compiled_ddl=None, statement=None, parameters=None):
         self.dialect = dialect
@@ -385,12 +384,15 @@ class DefaultExecutionContext(base.ExecutionContext):
     
     def post_insert(self):
         if self.dialect.postfetch_lastrowid and \
-            self._lastrowid is None and \
             (not len(self._last_inserted_ids) or \
-                        self._last_inserted_ids[0] is None):
+                        None in self._last_inserted_ids):
+
+            table = self.compiled.statement.table
+            lastrowid = self.get_lastrowid()
+            self._last_inserted_ids = [c is table._autoincrement_column and lastrowid or v
+                for c, v in zip(table.primary_key, self._last_inserted_ids)
+            ]
             
-            self._lastrowid = self.get_lastrowid()
-        
     def last_inserted_ids(self, resultproxy):
         if not self.isinsert:
             raise exc.InvalidRequestError("Statement is not an insert() expression construct.")
@@ -398,16 +400,15 @@ class DefaultExecutionContext(base.ExecutionContext):
         if self.dialect.implicit_returning and \
                 not self.compiled.statement._returning and \
                 not resultproxy.closed:
-
+            
+            table = self.compiled.statement.table
             row = resultproxy.first()
 
             self._last_inserted_ids = [v is not None and v or row[c] 
-                for c, v in zip(self.compiled.statement.table.primary_key, self._last_inserted_ids)
+                for c, v in zip(table.primary_key, self._last_inserted_ids)
             ]
             return self._last_inserted_ids
             
-        elif self._lastrowid is not None:
-            return [self._lastrowid] + self._last_inserted_ids[1:]
         else:
             return self._last_inserted_ids
 
@@ -497,7 +498,8 @@ class DefaultExecutionContext(base.ExecutionContext):
                     compiled_parameters[c.key] = val
 
             if self.isinsert:
-                self._last_inserted_ids = [compiled_parameters.get(c.key, None) for c in self.compiled.statement.table.primary_key]
+                self._last_inserted_ids = [compiled_parameters.get(c.key, None) 
+                                            for c in self.compiled.statement.table.primary_key]
                 self._last_inserted_params = compiled_parameters
             else:
                 self._last_updated_params = compiled_parameters
