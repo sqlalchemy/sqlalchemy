@@ -7,22 +7,11 @@ The official MySQL JDBC driver is at
 http://dev.mysql.com/downloads/connector/j/.
 
 """
-import decimal
 import re
 
-from sqlalchemy.dialects.mysql.base import BIT, MySQLDialect, MySQLExecutionContext
-from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy import types as sqltypes, util
-
-class MySQL_jdbcExecutionContext(MySQLExecutionContext):
-    
-    def get_lastrowid(self):
-        cursor = self.create_cursor()
-        cursor.execute("SELECT LAST_INSERT_ID()")
-        lastrowid = cursor.fetchone()[0]
-        cursor.close()
-        return lastrowid
-
+from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
+from sqlalchemy.dialects.mysql.base import BIT, MySQLDialect, MySQLExecutionContext
 
 class _JDBCBit(BIT):
     def result_processor(self, dialect):
@@ -40,14 +29,23 @@ class _JDBCBit(BIT):
         return process
 
 
+class MySQL_jdbcExecutionContext(MySQLExecutionContext):
+    def get_lastrowid(self):
+        cursor = self.create_cursor()
+        cursor.execute("SELECT LAST_INSERT_ID()")
+        lastrowid = cursor.fetchone()[0]
+        cursor.close()
+        return lastrowid
+
+
 class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
     execution_ctx_cls = MySQL_jdbcExecutionContext
 
     jdbc_db_name = 'mysql'
-    jdbc_driver_name = "com.mysql.jdbc.Driver"
-    
+    jdbc_driver_name = 'com.mysql.jdbc.Driver'
+
     preexecute_pk_sequences = True
-    
+
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {
@@ -55,7 +53,7 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
             BIT: _JDBCBit
         }
     )
-    
+
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
         # Prefer 'character_set_results' for the current connection over the
@@ -65,7 +63,7 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
         # If it's decided that issuing that sort of SQL leaves you SOL, then
         # this can prefer the driver value.
         rs = connection.execute("SHOW VARIABLES LIKE 'character_set%%'")
-        opts = dict([(row[0], row[1]) for row in self._compat_fetchall(rs)])
+        opts = dict((row[0], row[1]) for row in self._compat_fetchall(rs))
         for key in ('character_set_connection', 'character_set'):
             if opts.get(key, None):
                 return opts[key]
@@ -76,7 +74,7 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
     def _driver_kwargs(self):
         """return kw arg dict to be sent to connect()."""
         return dict(CHARSET=self.encoding, yearIsDateType='false')
-    
+
     def _extract_error_code(self, exception):
         # e.g.: DBAPIError: (Error) Table 'test.u2' doesn't exist
         # [SQLCode: 1146], [SQLState: 42S02] 'DESCRIBE `u2`' ()
