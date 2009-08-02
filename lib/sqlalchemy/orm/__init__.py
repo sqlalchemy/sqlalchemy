@@ -26,6 +26,7 @@ from sqlalchemy.orm.interfaces import (
      MapperExtension,
      PropComparator,
      SessionExtension,
+     AttributeExtension,
      )
 from sqlalchemy.orm.util import (
      AliasedClass as aliased,
@@ -61,6 +62,7 @@ __all__ = (
     'EXT_STOP',
     'InstrumentationManager',
     'MapperExtension',
+    'AttributeExtension',
     'Validator',
     'PropComparator',
     'Query',

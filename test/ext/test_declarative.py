@@ -1473,7 +1473,7 @@ class DeclarativeReflectionTest(testing.TestBase):
 
             if testing.against('oracle', 'firebird'):
                 id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
-
+        
         u1 = User(name='u1', addresses=[
             Address(email='one'),
             Address(email='two'),

@@ -66,7 +66,7 @@ mapper(Company, companies, properties={
     'employees': relation(Person, lazy=False, backref='company', cascade="all, delete-orphan")
 })
 
-session = create_session(echo_uow=False)
+session = create_session()
 c = Company(name='company1')
 c.employees.append(Manager(name='pointy haired boss', status='AAB', manager_name='manager1'))
 c.employees.append(Engineer(name='dilbert', status='BBA', engineer_name='engineer1', primary_language='java'))

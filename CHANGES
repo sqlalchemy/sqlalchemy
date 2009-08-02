@@ -31,6 +31,19 @@ CHANGES
       inheritance attributes which were based on 
       column_property() or similar would fail to evaluate.
       [ticket:1480]
+    
+    - Improved support for MapperProperty objects overriding
+      that of an inherited mapper for non-concrete 
+      inheritance setups - attribute extensions won't randomly
+      collide with each other.  [ticket:1488]
+    
+    - UPDATE and DELETE do not support ORDER BY, LIMIT, OFFSET,
+      etc. in standard SQL.  Query.update() and Query.delete()
+      now raise an exception if any of limit(), offset(),
+      order_by(), group_by(), or distinct() have been
+      called. [ticket:1487]
+      
+    - Added AttributeExtension to sqlalchemy.orm.__all__
       
     - Improved error message when query() is called with
       a non-SQL /entity expression. [ticket:1476]
@@ -45,6 +58,11 @@ CHANGES
       [ticket:1424].  See
       http://www.sqlalchemy.org/trac/wiki/UsageRecipes/PreFilteredQuery
       for an example.
+
+    - Fixed a somewhat hypothetical issue which would result
+      in the wrong primary key being calculated for a mapper
+      using the old polymorphic_union function - but this
+      is old stuff.  [ticket:1486]
       
 - sql
     - Fixed a bug in extract() introduced in 0.5.4 whereby
@@ -59,6 +77,10 @@ CHANGES
     - Fixed bug in Table and Column whereby passing empty
       dict for "info" argument would raise an exception.
       [ticket:1482]
+
+- oracle
+    - Backported 0.6 fix for Oracle alias names not getting
+      truncated.  [ticket:1309]
       
 - ext
    - The collection proxies produced by associationproxy are now
@@ -69,6 +91,11 @@ CHANGES
    - Declarative will raise an informative exception if 
      __table_args__ is passed as a tuple with no dict argument.
      Improved documentation.  [ticket:1468]
+
+- test
+   - Added examples into the test suite so they get exercised
+     regularly and cleaned up a couple deprecation warnings.
+
      
 0.5.5
 =======

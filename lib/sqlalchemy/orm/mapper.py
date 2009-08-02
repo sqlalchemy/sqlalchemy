@@ -649,6 +649,9 @@ class Mapper(object):
                         return self
 
                     # initialize properties on all mappers
+                    # note that _mapper_registry is unordered, which 
+                    # may randomly conceal/reveal issues related to 
+                    # the order of mapper compilation
                     for mapper in list(_mapper_registry):
                         if getattr(mapper, '_compile_failed', False):
                             raise sa_exc.InvalidRequestError("One or more mappers failed to compile.  Exception was probably "

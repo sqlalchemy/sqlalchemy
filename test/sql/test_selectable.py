@@ -432,7 +432,6 @@ class ReduceTest(TestBase, AssertsExecutionResults):
                 magazine_page_table.c.page_id, 
                 cast(null(), Integer).label('magazine_page_id')
             ]).select_from(page_table.join(magazine_page_table)),
-            
         ).alias('pjoin')
 
         eq_(

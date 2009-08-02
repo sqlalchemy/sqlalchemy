@@ -68,7 +68,13 @@ class Foo(object):
 class Bar(object):
     def __init__(self, value):
         self.data = value
-    
+
+    def __eq__(self, other):
+        if not other is None:
+            return self.data == other.data
+        return NotImplemented
+
+
 mapper(Foo, foo_table, extension=MyExt())
 mapper(Bar, bar_table)
 
