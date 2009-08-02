@@ -115,6 +115,28 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
+    @testing.emits_warning(r".*omitted columns")
+    def test_include_columns_indexes(self):
+        m = MetaData(testing.db)
+        
+        t1 = Table('t1', m, Column('a', sa.Integer), Column('b', sa.Integer))
+        sa.Index('foobar', t1.c.a, t1.c.b)
+        sa.Index('bat', t1.c.a)
+        m.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('t1', m2, autoload=True)
+            assert len(t2.indexes) == 2
+
+            m2 = MetaData(testing.db)
+            t2 = Table('t1', m2, autoload=True, include_columns=['a'])
+            assert len(t2.indexes) == 1
+
+            m2 = MetaData(testing.db)
+            t2 = Table('t1', m2, autoload=True, include_columns=['a', 'b'])
+            assert len(t2.indexes) == 2
+        finally:
+            m.drop_all()
 
     def test_unknown_types(self):
         meta = MetaData(testing.db)

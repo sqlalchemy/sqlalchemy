@@ -353,7 +353,7 @@ class Inspector(object):
             if include_columns and \
                             not set(columns).issubset(include_columns):
                 util.warn(
-                    "Omitting %s KEY for (%s), key covers ommitted columns." %
+                    "Omitting %s KEY for (%s), key covers omitted columns." %
                     (flavor, ', '.join(columns)))
                 continue
             sa_schema.Index(name, *[table.columns[c] for c in columns], 
