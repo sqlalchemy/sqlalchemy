@@ -386,7 +386,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         if self.dialect.postfetch_lastrowid and \
             (not len(self._last_inserted_ids) or \
                         None in self._last_inserted_ids):
-
+            
             table = self.compiled.statement.table
             lastrowid = self.get_lastrowid()
             self._last_inserted_ids = [c is table._autoincrement_column and lastrowid or v

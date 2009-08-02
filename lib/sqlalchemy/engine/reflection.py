@@ -282,8 +282,9 @@ class Inspector(object):
             coltype = col_d['type']
             col_kw = {
                 'nullable':col_d['nullable'],
-                'autoincrement':col_d.get('autoincrement', False)
             }
+            if 'autoincrement' in col_d:
+                col_kw['autoincrement'] = col_d['autoincrement']
             
             colargs = []
             if col_d.get('default') is not None:

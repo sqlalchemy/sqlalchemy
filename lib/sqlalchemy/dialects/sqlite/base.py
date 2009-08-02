@@ -270,6 +270,7 @@ class SQLiteDialect(default.DefaultDialect):
     supports_default_values = True
     supports_empty_insert = False
     supports_cast = True
+
     default_paramstyle = 'qmark'
     statement_compiler = SQLiteCompiler
     ddl_compiler = SQLiteDDLCompiler

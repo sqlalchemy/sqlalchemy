@@ -138,6 +138,37 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             m.drop_all()
 
+    def test_autoincrement_col(self):
+        """test that 'autoincrement' is reflected according to sqla's policy.
+        
+        Don't mark this test as unsupported for any backend !
+        
+        (technically it fails with MySQL InnoDB since "id" comes before "id2")
+        
+        """
+        
+        meta = MetaData(testing.db)
+        t1 = Table('test', meta,
+            Column('id', sa.Integer, primary_key=True),
+            Column('data', sa.String(50)),
+        )
+        t2 = Table('test2', meta,
+            Column('id', sa.Integer, sa.ForeignKey('test.id'), primary_key=True),
+            Column('id2', sa.Integer, primary_key=True),
+            Column('data', sa.String(50)),
+        )
+        meta.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            t1a = Table('test', m2, autoload=True)
+            assert t1a._autoincrement_column is t1a.c.id
+            
+            t2a = Table('test2', m2, autoload=True)
+            assert t2a._autoincrement_column is t2a.c.id2
+            
+        finally:
+            meta.drop_all()
+            
     def test_unknown_types(self):
         meta = MetaData(testing.db)
         t = Table("test", meta,
