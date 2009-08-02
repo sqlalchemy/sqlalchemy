@@ -37,6 +37,12 @@ CHANGES
       inheritance setups - attribute extensions won't randomly
       collide with each other.  [ticket:1488]
     
+    - UPDATE and DELETE do not support ORDER BY, LIMIT, OFFSET,
+      etc. in standard SQL.  Query.update() and Query.delete()
+      now raise an exception if any of limit(), offset(),
+      order_by(), group_by(), or distinct() have been
+      called. [ticket:1487]
+      
     - Added AttributeExtension to sqlalchemy.orm.__all__
       
     - Improved error message when query() is called with

@@ -2844,6 +2844,22 @@ class UpdateDeleteTest(_base.MappedTest):
         })
 
     @testing.resolve_artifact_names
+    def test_illegal_operations(self):
+        s = create_session()
+        
+        for q, mname in (
+            (s.query(User).limit(2), "limit"),
+            (s.query(User).offset(2), "offset"),
+            (s.query(User).limit(2).offset(2), "limit"),
+            (s.query(User).order_by(User.id), "order_by"),
+            (s.query(User).group_by(User.id), "group_by"),
+            (s.query(User).distinct(), "distinct")
+        ):
+            assert_raises_message(sa_exc.InvalidRequestError, r"Can't call Query.update\(\) when %s\(\) has been called" % mname, q.update, {'name':'ed'})
+            assert_raises_message(sa_exc.InvalidRequestError, r"Can't call Query.delete\(\) when %s\(\) has been called" % mname, q.delete)
+            
+        
+    @testing.resolve_artifact_names
     def test_delete(self):
         sess = create_session(bind=testing.db, autocommit=False)
     

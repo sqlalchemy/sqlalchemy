@@ -316,6 +316,21 @@ class Query(object):
                 "Otherwise, call %s() before limit() or offset() are applied." % (meth, meth)
             )
 
+    def _no_select_modifiers(self, meth):
+        if not self._enable_assertions:
+            return
+        for attr, methname, notset in (
+            ('_limit', 'limit()', None),
+            ('_offset', 'offset()', None),
+            ('_order_by', 'order_by()', False),
+            ('_group_by', 'group_by()', False),
+            ('_distinct', 'distinct()', False),
+        ):
+            if getattr(self, attr) is not notset:
+                raise sa_exc.InvalidRequestError(
+                    "Can't call Query.%s() when %s has been called" % (meth, methname)
+                )
+
     def _get_options(self, populate_existing=None, 
                             version_check=None, 
                             only_load_props=None, 
@@ -1613,6 +1628,7 @@ class Query(object):
 
         if synchronize_session not in [False, 'evaluate', 'fetch']:
             raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'fetch'")
+        self._no_select_modifiers("delete")
 
         self = self.enable_eagerloads(False)
 
@@ -1707,6 +1723,7 @@ class Query(object):
         #TODO: updates of manytoone relations need to be converted to fk assignments
         #TODO: cascades need handling.
 
+        self._no_select_modifiers("update")
         if synchronize_session not in [False, 'evaluate', 'expire']:
             raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'expire'")
 
