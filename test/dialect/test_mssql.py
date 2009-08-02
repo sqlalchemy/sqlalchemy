@@ -297,7 +297,7 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
-    def testidentity(self):
+    def test_identity(self):
         meta = MetaData(testing.db)
         table = Table(
             'identity_test', meta,
@@ -343,7 +343,9 @@ class QueryTest(TestBase):
         meta = MetaData(testing.db)
         t1 = Table('t1', meta,
                 Column('id', Integer, Sequence('fred', 100, 1), primary_key=True),
-                Column('descr', String(200)))
+                Column('descr', String(200)),
+                implicit_returning = False
+                )
         t2 = Table('t2', meta,
                 Column('id', Integer, Sequence('fred', 200, 1), primary_key=True),
                 Column('descr', String(200)))
@@ -647,7 +649,7 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
         eq_([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password'], {}], connection)
 
 
-class TypesTest(TestBase, AssertsExecutionResults):
+class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
     __only_on__ = 'mssql'
 
     @classmethod
@@ -766,7 +768,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
              'TIME', ['>=', (10,)]),
             (mssql.MSTime, [], {},
              'TIME', ['>=', (10,)]),
-            (types.Time, [1], {},
+            (mssql.MSTime, [1], {},
              'TIME(1)', ['>=', (10,)]),
             (types.Time, [], {},
              'DATETIME', ['<', (10,)], mssql.MSDateTime),
@@ -807,10 +809,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
         reflected_dates = Table('test_mssql_dates', MetaData(testing.db), autoload=True)
         for col in reflected_dates.c:
-            index = int(col.name[1:])
-            c1 = testing.db.dialect.type_descriptor(col.type).__class__
-            c2 = len(columns[index]) > 5 and columns[index][5] or columns[index][0]
-            assert issubclass(c1, c2), "%r is not a subclass of %r" % (c1, c2)
+            self.assert_types_base(col, dates_table.c[col.key])
 
     def test_date_roundtrip(self):
         t = Table('test_dates', metadata,
@@ -836,7 +835,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
         t.insert().execute(adate=d1, adatetime=d2, atime=t1)
 
-        self.assertEquals(select([t.c.adate, t.c.atime, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, t1, d2)])
+        eq_(select([t.c.adate, t.c.atime, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, t1, d2)])
 
     def test_binary(self):
         "Exercise type specification for binary types."
@@ -922,16 +921,14 @@ class TypesTest(TestBase, AssertsExecutionResults):
         columns = [
             # column type, args, kwargs, expected ddl
             (mssql.MSNumeric, [], {},
-             'NUMERIC(10, 2)'),
+             'NUMERIC'),
             (mssql.MSNumeric, [None], {},
              'NUMERIC'),
-            (mssql.MSNumeric, [12], {},
-             'NUMERIC(12, 2)'),
             (mssql.MSNumeric, [12, 4], {},
              'NUMERIC(12, 4)'),
 
             (types.Float, [], {},
-             'FLOAT(10)'),
+             'FLOAT'),
             (types.Float, [None], {},
              'FLOAT'),
             (types.Float, [12], {},
@@ -1040,7 +1037,6 @@ class TypesTest(TestBase, AssertsExecutionResults):
         self.assert_(repr(t.c.t))
         t.create(checkfirst=True)
         
-    @testing.crashes('mssql', 'FIXME: unknown')
     def test_autoincrement(self):
         Table('ai_1', metadata,
                Column('int_y', Integer, primary_key=True),
@@ -1083,21 +1079,27 @@ class TypesTest(TestBase, AssertsExecutionResults):
         table_names = ['ai_1', 'ai_2', 'ai_3', 'ai_4',
                         'ai_5', 'ai_6', 'ai_7', 'ai_8']
         mr = MetaData(testing.db)
-        mr.reflect(only=table_names)
 
-        for tbl in [mr.tables[name] for name in table_names]:
+        for name in table_names:
+            tbl = Table(name, mr, autoload=True)
             for c in tbl.c:
                 if c.name.startswith('int_y'):
                     assert c.autoincrement
                 elif c.name.startswith('int_n'):
                     assert not c.autoincrement
-            tbl.insert().execute()
-            if 'int_y' in tbl.c:
-                assert select([tbl.c.int_y]).scalar() == 1
-                assert list(tbl.select().execute().first()).count(1) == 1
-            else:
-                assert 1 not in list(tbl.select().execute().first())
-
+            
+            for counter, engine in enumerate([
+                engines.testing_engine(options={'implicit_returning':False}),
+                engines.testing_engine(options={'implicit_returning':True}),
+                ]
+            ):
+                engine.execute(tbl.insert())
+                if 'int_y' in tbl.c:
+                    assert engine.scalar(select([tbl.c.int_y])) == counter + 1
+                    assert list(engine.execute(tbl.select()).first()).count(counter + 1) == 1
+                else:
+                    assert 1 not in list(engine.execute(tbl.select()).first())
+                engine.execute(tbl.delete())
 
 class BinaryTest(TestBase, AssertsExecutionResults):
     """Test the Binary and VarBinary types"""

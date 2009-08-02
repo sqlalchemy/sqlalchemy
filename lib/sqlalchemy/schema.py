@@ -123,6 +123,11 @@ class Table(SchemaItem, expression.TableClause):
         instance to be used for the table reflection.  If ``None``, the
         underlying MetaData's bound connectable will be used.
 
+    :param implicit_returning: True by default - indicates that 
+        RETURNING can be used by default to fetch newly inserted primary key 
+        values, for backends which support this.  Note that 
+        create_engine() also provides an implicit_returning flag.
+
     :param include_columns: A list of strings indicating a subset of columns to be loaded via
         the ``autoload`` operation; table columns who aren't present in
         this list will not be represented on the resulting ``Table``
@@ -216,6 +221,7 @@ class Table(SchemaItem, expression.TableClause):
         autoload_with = kwargs.pop('autoload_with', None)
         include_columns = kwargs.pop('include_columns', None)
 
+        self.implicit_returning = kwargs.pop('implicit_returning', True)
         self.quote = kwargs.pop('quote', None)
         self.quote_schema = kwargs.pop('quote_schema', None)
         if 'info' in kwargs:
@@ -285,7 +291,8 @@ class Table(SchemaItem, expression.TableClause):
         for col in self.primary_key:
             if col.autoincrement and \
                 isinstance(col.type, types.Integer) and \
-                not col.foreign_keys:
+                not col.foreign_keys and \
+                isinstance(col.default, (type(None), Sequence)):
 
                 return col
 
@@ -482,7 +489,7 @@ class Column(SchemaItem, expression.ColumnClause):
           
           Contrast this argument to ``server_default`` which creates a 
           default generator on the database side.
-
+        
         :param key: An optional string identifier which will identify this ``Column`` 
             object on the :class:`Table`.  When a key is provided, this is the
             only identifier referencing the ``Column`` within the application,

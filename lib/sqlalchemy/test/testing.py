@@ -604,18 +604,13 @@ class AssertsCompiledSQL(object):
 
 class ComparesTables(object):
     def assert_tables_equal(self, table, reflected_table):
-        base_mro = sqltypes.TypeEngine.__mro__
         assert len(table.c) == len(reflected_table.c)
         for c, reflected_c in zip(table.c, reflected_table.c):
             eq_(c.name, reflected_c.name)
             assert reflected_c is reflected_table.c[c.name]
             eq_(c.primary_key, reflected_c.primary_key)
             eq_(c.nullable, reflected_c.nullable)
-            assert len(
-                set(type(reflected_c.type).__mro__).difference(base_mro).intersection(
-                set(type(c.type).__mro__).difference(base_mro)
-                )
-            ) > 0, "On column %r, type '%s' doesn't correspond to type '%s'" % (reflected_c.name, reflected_c.type, c.type)
+            self.assert_types_base(reflected_c, c)
 
             if isinstance(c.type, sqltypes.String):
                 eq_(c.type.length, reflected_c.type.length)
@@ -634,7 +629,14 @@ class ComparesTables(object):
         assert len(table.primary_key) == len(reflected_table.primary_key)
         for c in table.primary_key:
             assert reflected_table.primary_key.columns[c.name]
-
+    
+    def assert_types_base(self, c1, c2):
+        base_mro = sqltypes.TypeEngine.__mro__
+        assert len(
+            set(type(c1.type).__mro__).difference(base_mro).intersection(
+            set(type(c2.type).__mro__).difference(base_mro)
+            )
+        ) > 0, "On column %r, type '%s' doesn't correspond to type '%s'" % (c1.name, c1.type, c2.type)
 
 class AssertsExecutionResults(object):
     def assert_result(self, result, class_, *objects):

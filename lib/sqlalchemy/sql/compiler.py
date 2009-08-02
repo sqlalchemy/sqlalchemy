@@ -691,9 +691,7 @@ class SQLCompiler(engine.Compiled):
         
         text += " INTO " + preparer.format_table(insert_stmt.table)
          
-        if not colparams and supports_default_values:
-            text += " DEFAULT VALUES"
-        else: 
+        if colparams or not supports_default_values:
             text += " (%s)" % ', '.join([preparer.format_column(c[0])
                        for c in colparams])
 
@@ -705,8 +703,10 @@ class SQLCompiler(engine.Compiled):
             if returning_clause.startswith("OUTPUT"):
                 text += " " + returning_clause
                 returning_clause = None
-                
-        if colparams or not supports_default_values:
+
+        if not colparams and supports_default_values:
+            text += " DEFAULT VALUES"
+        else:
             text += " VALUES (%s)" % \
                      ', '.join([c[1] for c in colparams])
         
@@ -780,6 +780,10 @@ class SQLCompiler(engine.Compiled):
 
         # create a list of column assignment clauses as tuples
         values = []
+        
+        implicit_returning = self.dialect.implicit_returning and \
+                                stmt.table.implicit_returning
+        
         for c in stmt.table.columns:
             if c.key in parameters:
                 value = parameters[c.key]
@@ -799,12 +803,12 @@ class SQLCompiler(engine.Compiled):
                     if c.primary_key and \
                         (
                             self.dialect.preexecute_pk_sequences or 
-                            self.dialect.implicit_returning
+                            implicit_returning
                         ) and \
                         not self.inline and \
                         not self.statement._returning:
 
-                        if self.dialect.implicit_returning:
+                        if implicit_returning:
                             if isinstance(c.default, schema.Sequence):
                                 proc = self.process(c.default)
                                 if proc is not None:

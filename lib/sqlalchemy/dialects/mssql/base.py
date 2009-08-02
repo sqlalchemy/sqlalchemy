@@ -1156,7 +1156,12 @@ class MSDialect(default.DefaultDialect):
 
     def do_release_savepoint(self, connection, name):
         pass
-
+    
+    def initialize(self, connection):
+        super(MSDialect, self).initialize(connection)
+        if self.server_version_info >= MS_2005_VERSION and 'implicit_returning' not in self.__dict__:
+            self.implicit_returning = True
+        
     def get_default_schema_name(self, connection):
         return self.default_schema_name
         
@@ -1317,6 +1322,7 @@ class MSDialect(default.DefaultDialect):
                 'type' : coltype,
                 'nullable' : nullable,
                 'default' : default,
+                'autoincrement':False,
             }
             cols.append(cdict)
         # autoincrement and identity
@@ -1338,11 +1344,14 @@ class MSDialect(default.DefaultDialect):
                                     name='%s_identity' % col_name)
                 break
         cursor.close()
-        if not ic is None:
+        if ic is not None:
             try:
                 # is this table_fullname reliable?
                 table_fullname = "%s.%s" % (current_schema, tablename)
-                cursor = connection.execute("select ident_seed(?), ident_incr(?)", table_fullname, table_fullname)
+                cursor = connection.execute(
+                    sql.text("select ident_seed(:seed), ident_incr(:incr)"), 
+                    {'seed':table_fullname, 'incr':table_fullname}
+                )
                 row = cursor.fetchone()
                 cursor.close()
                 if not row is None:
