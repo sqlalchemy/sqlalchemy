@@ -352,7 +352,7 @@ class Inspector(object):
             flavor = index_d.get('type', 'unknown type')
             if include_columns and \
                             not set(columns).issubset(include_columns):
-                self.logger.info(
+                util.warn(
                     "Omitting %s KEY for (%s), key covers ommitted columns." %
                     (flavor, ', '.join(columns)))
                 continue
