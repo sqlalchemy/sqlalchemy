@@ -45,9 +45,10 @@ def _register_attribute(strategy, mapper, useobject,
     
     if useobject:
         attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
-
+    
     for m in mapper.polymorphic_iterator():
-        if (m is prop.parent or not m.concrete) and m.has_property(prop.key):
+        if prop is m._props.get(prop.key):
+            
             attributes.register_attribute_impl(
                 m.class_, 
                 prop.key, 

@@ -31,6 +31,13 @@ CHANGES
       inheritance attributes which were based on 
       column_property() or similar would fail to evaluate.
       [ticket:1480]
+    
+    - Improved support for MapperProperty objects overriding
+      that of an inherited mapper for non-concrete 
+      inheritance setups - attribute extensions won't randomly
+      collide with each other.  [ticket:1488]
+    
+    - Added AttributeExtension to sqlalchemy.orm.__all__
       
     - Improved error message when query() is called with
       a non-SQL /entity expression. [ticket:1476]
