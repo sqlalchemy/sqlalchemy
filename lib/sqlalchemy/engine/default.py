@@ -262,6 +262,11 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.statement = self.compiled = None
             self.isinsert = self.isupdate = self.isdelete = self.executemany = self.should_autocommit = False
             self.cursor = self.create_cursor()
+    
+    @property
+    def _is_explicit_returning(self):
+        return self.compiled and \
+            getattr(self.compiled.statement, '_returning', False)
 
     @property
     def connection(self):

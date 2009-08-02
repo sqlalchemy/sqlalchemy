@@ -1086,7 +1086,7 @@ class Connection(Connectable):
         if context.should_autocommit and not self.in_transaction():
             self._commit_impl()
             
-        return context.get_result_proxy()
+        return context.get_result_proxy()._autoclose()
         
     def _handle_dbapi_exception(self, e, statement, parameters, cursor, context):
         if getattr(self, '_reentrant_error', False):
@@ -1615,9 +1615,26 @@ class ResultProxy(object):
         self.connection = context.root_connection
         self._echo = context.engine._should_log_info
         self._init_metadata()
-
+            
     @util.memoized_property
     def rowcount(self):
+        """Return the 'rowcount' for this result.
+        
+        The 'rowcount' reports the number of rows affected
+        by an UPDATE or DELETE statement.  It has *no* other
+        uses and is not intended to provide the number of rows
+        present from a SELECT.
+        
+        Additionally, this value is only meaningful if the
+        dialect's supports_sane_rowcount flag is True for
+        single-parameter executions, or supports_sane_multi_rowcount
+        is true for multiple parameter executions - otherwise
+        results are undefined.
+        
+        rowcount may not work at this time for a statement
+        that uses ``returning()``.
+        
+        """
         return self.context.rowcount
 
     @property
@@ -1626,7 +1643,8 @@ class ResultProxy(object):
         
         This is a DBAPI specific method and is only functional
         for those backends which support it, for statements
-        where it is appropriate.
+        where it is appropriate.  It's behavior is not 
+        consistent across backends.
         
         Usage of this method is normally unnecessary; the
         last_inserted_ids() method provides a
@@ -1641,20 +1659,27 @@ class ResultProxy(object):
         return self.context.out_parameters
     
     def _cursor_description(self):
-        metadata = self.cursor.description
-        if metadata is None:
-            return
-        else:
-            return [(r[0], r[1]) for r in metadata]
+        return self.cursor.description
             
-    def _init_metadata(self):
-        
-        metadata = self._cursor_description()
-        if metadata is None:
+    def _autoclose(self):
+        if self._metadata is None:
             # no results, get rowcount 
             # (which requires open cursor on some DB's such as firebird),
             self.rowcount
             self.close() # autoclose
+        elif self.context.isinsert and \
+            not self.context._is_explicit_returning:
+            # an insert, no explicit returning(), may need
+            # to fetch rows which were created via implicit 
+            # returning, then close
+            self.context.last_inserted_ids(self)
+            self.close()
+            
+        return self
+            
+    def _init_metadata(self):
+        self._metadata = metadata = self._cursor_description()
+        if metadata is None:
             return
         
         self._props = util.populate_column_dict(None)
@@ -1663,7 +1688,7 @@ class ResultProxy(object):
 
         typemap = self.dialect.dbapi_type_map
 
-        for i, (colname, coltype) in enumerate(metadata):
+        for i, (colname, coltype) in enumerate(m[0:2] for m in metadata):
 
             if self.dialect.description_encoding:
                 colname = colname.decode(self.dialect.description_encoding)
@@ -1738,6 +1763,9 @@ class ResultProxy(object):
         """Close this ResultProxy.
 
         Closes the underlying DBAPI cursor corresponding to the execution.
+        
+        Note that any data cached within this ResultProxy is still available.
+        For some types of results, this may include buffered rows.
 
         If this ResultProxy was generated from an implicit execution,
         the underlying Connection will also be closed (returns the
@@ -2000,8 +2028,8 @@ class FullyBufferedResultProxy(ResultProxy):
     
     """
     def _init_metadata(self):
-        self.__rowbuffer = self._buffer_rows()
         super(FullyBufferedResultProxy, self)._init_metadata()
+        self.__rowbuffer = self._buffer_rows()
         
     def _buffer_rows(self):
         return self.cursor.fetchall()

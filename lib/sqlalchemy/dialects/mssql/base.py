@@ -867,8 +867,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
         if self._enable_identity_insert:
             self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
-
-    
+        
     def get_lastrowid(self):
         return self._lastrowid
         
@@ -880,7 +879,10 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 pass
 
     def get_result_proxy(self):
-        return self._result_proxy or base.ResultProxy(self)
+        if self._result_proxy:
+            return self._result_proxy
+        else:
+            return base.ResultProxy(self)
 
 class MSSQLCompiler(compiler.SQLCompiler):
 

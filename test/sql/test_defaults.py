@@ -146,7 +146,7 @@ class DefaultTest(testing.TestBase):
             assert_raises_message(sa.exc.ArgumentError,
                                      ex_msg,
                                      sa.ColumnDefault, fn)
-
+    
     def test_arg_signature(self):
         def fn1(): pass
         def fn2(): pass
@@ -369,17 +369,27 @@ class PKDefaultTest(_base.TablesTest):
               Column('id', Integer, primary_key=True,
                      default=sa.select([func.max(t2.c.nextid)]).as_scalar()),
               Column('data', String(30)))
-
+    
+    @testing.requires.returning
+    def test_with_implicit_returning(self):
+        self._test(True)
+        
+    def test_regular(self):
+        self._test(False)
+        
     @testing.resolve_artifact_names
-    def test_basic(self):
-        t2.insert().execute(nextid=1)
-        r = t1.insert().execute(data='hi')
+    def _test(self, returning):
+        if not returning and not testing.db.dialect.implicit_returning:
+            engine = testing.db
+        else:
+            engine = engines.testing_engine(options={'implicit_returning':returning})
+        engine.execute(t2.insert(), nextid=1)
+        r = engine.execute(t1.insert(), data='hi')
         eq_([1], r.last_inserted_ids())
 
-        t2.insert().execute(nextid=2)
-        r = t1.insert().execute(data='there')
+        engine.execute(t2.insert(), nextid=2)
+        r = engine.execute(t1.insert(), data='there')
         eq_([2], r.last_inserted_ids())
-
 
 class PKIncrementTest(_base.TablesTest):
     run_define_tables = 'each'

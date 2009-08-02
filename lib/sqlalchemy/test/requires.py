@@ -131,6 +131,17 @@ def subqueries(fn):
         exclude('mysql', '<', (4, 1, 1), 'no subquery support'),
         )
 
+def returning(fn):
+    return _chain_decorators_on(
+        fn,
+        no_support('access', 'not supported by database'),
+        no_support('sqlite', 'not supported by database'),
+        no_support('mysql', 'not supported by database'),
+        no_support('maxdb', 'not supported by database'),
+        no_support('sybase', 'not supported by database'),
+        no_support('informix', 'not supported by database'),
+    )
+    
 def two_phase_transactions(fn):
     """Target database must support two-phase transactions."""
     return _chain_decorators_on(

@@ -80,7 +80,7 @@ class QueryTest(TestBase):
                     ret[c.key] = row[c]
             return ret
 
-        if testing.against('firebird', 'postgres', 'oracle', 'mssql'):
+        if testing.against('firebird', 'postgresql', 'oracle', 'mssql'):
             test_engines = [
                 engines.testing_engine(options={'implicit_returning':False}),
                 engines.testing_engine(options={'implicit_returning':True}),
@@ -166,7 +166,22 @@ class QueryTest(TestBase):
         r = t6.insert().values(manual_id=id).execute()
         eq_(r.last_inserted_ids(), [12, 1])
 
-
+    def test_autoclose_on_insert(self):
+        if testing.against('firebird', 'postgresql', 'oracle', 'mssql'):
+            test_engines = [
+                engines.testing_engine(options={'implicit_returning':False}),
+                engines.testing_engine(options={'implicit_returning':True}),
+            ]
+        else:
+            test_engines = [testing.db]
+            
+        for engine in test_engines:
+        
+            r = engine.execute(users.insert(), 
+                {'user_name':'jack'},
+            )
+            assert r.closed
+        
     def test_row_iteration(self):
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},

@@ -802,7 +802,8 @@ class SQLCompiler(engine.Compiled):
                     # then implicit_returning/supports sequence/doesnt
                     if c.primary_key and \
                         (
-                            self.dialect.preexecute_pk_sequences or 
+                            self.dialect.preexecute_pk_sequences or
+                            c is not stmt.table._autoincrement_column or 
                             implicit_returning
                         ) and \
                         not self.inline and \
