@@ -111,7 +111,8 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
         result3 = table.insert().returning(table.c.id).execute({'persons': 4, 'full': False})
         eq_([dict(row) for row in result3], [{'id': 4}])
-
+    
+        
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
     @testing.fails_on_everything_except('postgresql', 'firebird')

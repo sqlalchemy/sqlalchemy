@@ -861,12 +861,13 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self.cursor.execute("SELECT @@identity AS lastrowid")
             row = self.cursor.fetchall()[0]   # fetchall() ensures the cursor is consumed without closing it
             self._lastrowid = int(row[0])
-            
-        if self._enable_identity_insert:
-            self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
 
         if (self.isinsert or self.isupdate or self.isdelete) and self.compiled.returning:
             self._result_proxy = base.FullyBufferedResultProxy(self)
+
+        if self._enable_identity_insert:
+            self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
+
     
     def get_lastrowid(self):
         return self._lastrowid

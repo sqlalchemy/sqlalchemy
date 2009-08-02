@@ -88,8 +88,11 @@ class ExecuteTest(TestBase):
                                not testing.db.dialect.implicit_returning))
     def test_empty_insert(self):
         """test that execute() interprets [] as a list with no params"""
+        
         result = testing.db.execute(users.insert().values(user_name=bindparam('name')), [])
-        eq_(result.rowcount, 1)
+        eq_(testing.db.execute(users.select()).fetchall(), [
+            (1, None)
+        ])
 
 class ProxyConnectionTest(TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
@@ -123,8 +126,8 @@ class ProxyConnectionTest(TestBase):
                         break
 
         for engine in (
-            engines.testing_engine(options=dict(proxy=MyProxy())),
-            engines.testing_engine(options=dict(proxy=MyProxy(), strategy='threadlocal'))
+            engines.testing_engine(options=dict(implicit_returning=False, proxy=MyProxy())),
+            engines.testing_engine(options=dict(implicit_returning=False, proxy=MyProxy(), strategy='threadlocal'))
         ):
             m = MetaData(engine)
 
@@ -136,6 +139,7 @@ class ProxyConnectionTest(TestBase):
                 t1.insert().execute(c1=6)
                 assert engine.execute("select * from t1").fetchall() == [(5, 'some data'), (6, 'foo')]
             finally:
+                pass
                 m.drop_all()
             
             engine.dispose()

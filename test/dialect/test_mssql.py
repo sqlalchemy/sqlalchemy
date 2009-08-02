@@ -378,6 +378,19 @@ class QueryTest(TestBase):
             tbl.drop()
             con.execute('drop schema paj')
 
+    def test_returning_no_autoinc(self):
+        meta = MetaData(testing.db)
+        
+        table = Table('t1', meta, Column('id', Integer, primary_key=True), Column('data', String(50)))
+        table.create()
+        try:
+            result = table.insert().values(id=1, data=func.lower("SomeString")).returning(table.c.id, table.c.data).execute()
+            eq_(result.fetchall(), [(1, 'somestring',)])
+        finally:
+            # this will hang if the "SET IDENTITY_INSERT t1 OFF" occurs before the
+            # result is fetched
+            table.drop()
+
     def test_delete_schema(self):
         meta = MetaData(testing.db)
         con = testing.db.connect()
