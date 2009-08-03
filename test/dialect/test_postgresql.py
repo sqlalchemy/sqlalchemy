@@ -127,7 +127,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
 
         metadata.create_all()
 
-        ins = table.insert(values={'data':bindparam('x')}).compile()
+        ins = table.insert(inline=True, values={'data':bindparam('x')}).compile()
         ins.execute({'x':"five"}, {'x':"seven"})
         assert table.select().execute().fetchall() == [(1, 'five'), (2, 'seven')]
 

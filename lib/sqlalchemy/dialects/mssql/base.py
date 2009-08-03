@@ -864,7 +864,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
         if (self.isinsert or self.isupdate or self.isdelete) and self.compiled.returning:
             self._result_proxy = base.FullyBufferedResultProxy(self)
-
+            
         if self._enable_identity_insert:
             self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
         

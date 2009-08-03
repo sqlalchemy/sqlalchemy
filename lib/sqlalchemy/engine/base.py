@@ -1063,6 +1063,7 @@ class Connection(Connectable):
     def __execute_context(self, context):
         if context.compiled:
             context.pre_exec()
+            
         if context.executemany:
             self._cursor_executemany(context.cursor, context.statement, context.parameters, context=context)
         else:
@@ -1652,21 +1653,20 @@ class ResultProxy(object):
         return self.cursor.description
             
     def _autoclose(self):
-        if self._metadata is None:
+        if self.context.isinsert:
+            if self.context._is_implicit_returning:
+                self.context._fetch_implicit_returning(self)
+                self.close()
+            elif not self.context._is_explicit_returning:
+                self.close()
+        elif self._metadata is None:
             # no results, get rowcount 
             # (which requires open cursor on some DB's such as firebird),
             self.rowcount
             self.close() # autoclose
-        elif self.context.isinsert and \
-            not self.context.executemany and \
-            not self.context._is_explicit_returning:
-            # an insert, no explicit returning(), may need
-            # to fetch rows which were created via implicit 
-            # returning, then close
-            self.context._fetch_implicit_returning(self)
-            self.close()
             
         return self
+    
             
     def _init_metadata(self):
         self._metadata = metadata = self._cursor_description()

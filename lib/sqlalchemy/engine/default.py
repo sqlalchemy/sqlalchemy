@@ -267,7 +267,13 @@ class DefaultExecutionContext(base.ExecutionContext):
     def _is_explicit_returning(self):
         return self.compiled and \
             getattr(self.compiled.statement, '_returning', False)
-
+    
+    @util.memoized_property
+    def _is_implicit_returning(self):
+        return self.compiled and \
+            bool(self.compiled.returning) and \
+            not self.compiled.statement._returning
+    
     @property
     def connection(self):
         return self._connection._branch()
@@ -399,17 +405,12 @@ class DefaultExecutionContext(base.ExecutionContext):
             ]
             
     def _fetch_implicit_returning(self, resultproxy):
-            
-        if self.dialect.implicit_returning and \
-                not self.compiled.statement._returning and \
-                not resultproxy.closed:
-            
-            table = self.compiled.statement.table
-            row = resultproxy.first()
+        table = self.compiled.statement.table
+        row = resultproxy.first()
 
-            self._inserted_primary_key = [v is not None and v or row[c] 
-                for c, v in zip(table.primary_key, self._inserted_primary_key)
-            ]
+        self._inserted_primary_key = [v is not None and v or row[c] 
+            for c, v in zip(table.primary_key, self._inserted_primary_key)
+        ]
 
     def last_inserted_params(self):
         return self._last_inserted_params
