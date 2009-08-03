@@ -44,8 +44,6 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
     jdbc_db_name = 'mysql'
     jdbc_driver_name = 'com.mysql.jdbc.Driver'
 
-    preexecute_pk_sequences = True
-
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {

@@ -1127,7 +1127,6 @@ class MSDialect(default.DefaultDialect):
     schema_name = "dbo"
     colspecs = colspecs
     ischema_names = ischema_names
-    preexecute_pk_sequences = True
     
     supports_unicode_binds = True
     postfetch_lastrowid = True

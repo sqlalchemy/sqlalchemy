@@ -781,14 +781,12 @@ class SQLCompiler(engine.Compiled):
         # create a list of column assignment clauses as tuples
         values = []
         
-        #need_pks = self.isinsert and not self.inline
+        need_pks = self.isinsert and \
+                        not self.inline and \
+                        not self.statement._returning
         
-        #implicit_returning = need_pks and \
-        #                        self.dialect.implicit_returning and \
-        #                        stmt.table.implicit_returning and \
-        #                        not self.statement._returning and \
-        
-        implicit_returning = self.dialect.implicit_returning and \
+        implicit_returning = need_pks and \
+                                self.dialect.implicit_returning and \
                                 stmt.table.implicit_returning
         
         for c in stmt.table.columns:
@@ -803,18 +801,12 @@ class SQLCompiler(engine.Compiled):
 
             elif isinstance(c, schema.Column):
                 if self.isinsert:
-                    # TODO: need to mix this around some more until
-                    # conditionals are reduced.  might want to 
-                    # do primary key, then sequence/column default/none, 
-                    # then implicit_returning/supports sequence/doesnt
                     if c.primary_key and \
+                        need_pks and \
                         (
-                            self.dialect.preexecute_pk_sequences or
                             c is not stmt.table._autoincrement_column or 
-                            implicit_returning
-                        ) and \
-                        not self.inline and \
-                        not self.statement._returning:
+                            not self.dialect.postfetch_lastrowid
+                        ):
                         
                         if implicit_returning:
                             if isinstance(c.default, schema.Sequence):

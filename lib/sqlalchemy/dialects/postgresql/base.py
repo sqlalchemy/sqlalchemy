@@ -451,7 +451,6 @@ class PGDialect(default.DefaultDialect):
     
     supports_sequences = True
     sequences_optional = True
-    preexecute_pk_sequences = True
     preexecute_autoincrement_sequences = True
     postfetch_lastrowid = False
     

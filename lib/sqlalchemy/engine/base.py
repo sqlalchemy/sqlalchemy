@@ -104,13 +104,6 @@ class Dialect(object):
       ``UPDATE`` and ``DELETE`` statements when executed via
       executemany.
 
-    preexecute_pk_sequences
-      Indicate if the dialect should pre-execute sequences or default
-      generation functions on primary key columns during an INSERT, if 
-      it's desired that the new row's primary key be available after execution.
-      Pre-execution is disabled if the database supports "returning"
-      and "implicit_returning" is True.
-
     preexecute_autoincrement_sequences
       True if 'implicit' primary key functions must be executed separately
       in order to get their value.   This is currently oriented towards

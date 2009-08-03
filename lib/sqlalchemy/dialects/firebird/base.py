@@ -315,7 +315,6 @@ class FBDialect(default.DefaultDialect):
     supports_sequences = True
     sequences_optional = False
     supports_default_values = True
-    preexecute_pk_sequences = True
     postfetch_lastrowid = False
     
     requires_name_normalize = True

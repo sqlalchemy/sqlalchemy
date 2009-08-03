@@ -465,7 +465,6 @@ class OracleDialect(default.DefaultDialect):
 
     supports_sequences = True
     sequences_optional = False
-    preexecute_pk_sequences = True
     postfetch_lastrowid = False
     
     default_paramstyle = 'named'

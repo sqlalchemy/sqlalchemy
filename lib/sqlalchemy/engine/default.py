@@ -33,7 +33,6 @@ class DefaultDialect(base.Dialect):
 
     supports_sequences = False
     sequences_optional = False
-    preexecute_pk_sequences = False
     preexecute_autoincrement_sequences = False
     postfetch_lastrowid = True
     implicit_returning = False

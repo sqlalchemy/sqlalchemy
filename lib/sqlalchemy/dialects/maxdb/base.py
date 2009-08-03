@@ -801,7 +801,6 @@ class MaxDBDialect(default.DefaultDialect):
     max_identifier_length = 32
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
-    preexecute_pk_sequences = True
 
     preparer = MaxDBIdentifierPreparer
     statement_compiler = MaxDBCompiler
