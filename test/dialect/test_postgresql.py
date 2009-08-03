@@ -187,11 +187,11 @@ class InsertTest(TestBase, AssertsExecutionResults):
         def go():
             # execute with explicit id
             r = table.insert().execute({'id':30, 'data':'d1'})
-            assert r.last_inserted_ids() == [30]
+            assert r.inserted_primary_key == [30]
 
             # execute with prefetch id
             r = table.insert().execute({'data':'d2'})
-            assert r.last_inserted_ids() == [1]
+            assert r.inserted_primary_key == [1]
 
             # executemany with explicit ids
             table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
@@ -255,7 +255,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
         def go():
             table.insert().execute({'id':30, 'data':'d1'})
             r = table.insert().execute({'data':'d2'})
-            assert r.last_inserted_ids() == [5]
+            assert r.inserted_primary_key == [5]
             table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
             table.insert().execute({'data':'d5'}, {'data':'d6'})
             table.insert(inline=True).execute({'id':33, 'data':'d7'})
@@ -307,11 +307,11 @@ class InsertTest(TestBase, AssertsExecutionResults):
         def go():
             # execute with explicit id
             r = table.insert().execute({'id':30, 'data':'d1'})
-            assert r.last_inserted_ids() == [30]
+            assert r.inserted_primary_key == [30]
 
             # execute with prefetch id
             r = table.insert().execute({'data':'d2'})
-            assert r.last_inserted_ids() == [1]
+            assert r.inserted_primary_key == [1]
 
             # executemany with explicit ids
             table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
@@ -372,7 +372,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
         def go():
             table.insert().execute({'id':30, 'data':'d1'})
             r = table.insert().execute({'data':'d2'})
-            assert r.last_inserted_ids() == [5]
+            assert r.inserted_primary_key == [5]
             table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
             table.insert().execute({'data':'d5'}, {'data':'d6'})
             table.insert(inline=True).execute({'id':33, 'data':'d7'})
@@ -828,7 +828,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
             t = Table("speedy_users", meta, autoload=True)
             r = t.insert().execute(user_name='user', user_password='lala')
-            assert r.last_inserted_ids() == [1]
+            assert r.inserted_primary_key == [1]
             l = t.select().execute().fetchall()
             assert l == [(1, 'user', 'lala')]
         finally:

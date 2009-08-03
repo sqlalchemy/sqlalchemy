@@ -748,9 +748,11 @@ class PGDialect(default.DefaultDialect):
                           (attype, name))
                 coltype = sqltypes.NULLTYPE
             # adjust the default value
+            autoincrement = False
             if default is not None:
                 match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
                 if match is not None:
+                    autoincrement = True
                     # the default is related to a Sequence
                     sch = schema
                     if '.' not in match.group(2) and sch is not None:
@@ -759,7 +761,7 @@ class PGDialect(default.DefaultDialect):
                         default = match.group(1) + ('"%s"' % sch) + '.' + match.group(2) + match.group(3)
 
             column_info = dict(name=name, type=coltype, nullable=nullable,
-                               default=default)
+                               default=default, autoincrement=autoincrement)
             columns.append(column_info)
         return columns
 

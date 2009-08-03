@@ -1397,7 +1397,7 @@ class Mapper(object):
                 statement = table.insert()
                 for state, params, mapper, connection, value_params in insert:
                     c = connection.execute(statement.values(value_params), params)
-                    primary_key = c.last_inserted_ids()
+                    primary_key = c.inserted_primary_key
 
                     if primary_key is not None:
                         # set primary key attributes

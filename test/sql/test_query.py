@@ -58,7 +58,7 @@ class QueryTest(TestBase):
         assert users.select(users.c.user_id==7).execute().first()['user_name'] == 'fred'
 
     def test_lastrow_accessor(self):
-        """Tests the last_inserted_ids() and lastrow_has_id() functions."""
+        """Tests the inserted_primary_key and lastrow_has_id() functions."""
 
         def insert_values(engine, table, values):
             """
@@ -70,11 +70,11 @@ class QueryTest(TestBase):
             result = engine.execute(table.insert(), **values)
             ret = values.copy()
             
-            for col, id in zip(table.primary_key, result.last_inserted_ids()):
+            for col, id in zip(table.primary_key, result.inserted_primary_key):
                 ret[col.key] = id
 
             if result.lastrow_has_defaults():
-                criterion = and_(*[col==id for col, id in zip(table.primary_key, result.last_inserted_ids())])
+                criterion = and_(*[col==id for col, id in zip(table.primary_key, result.inserted_primary_key)])
                 row = engine.execute(table.select(criterion)).first()
                 for c in table.c:
                     ret[c.key] = row[c]
@@ -160,11 +160,11 @@ class QueryTest(TestBase):
 
         metadata.create_all()
         r = related.insert().values(id=12).execute()
-        id = r.last_inserted_ids()[0]
+        id = r.inserted_primary_key[0]
         assert id==12
 
         r = t6.insert().values(manual_id=id).execute()
-        eq_(r.last_inserted_ids(), [12, 1])
+        eq_(r.inserted_primary_key, [12, 1])
 
     def test_autoclose_on_insert(self):
         if testing.against('firebird', 'postgresql', 'oracle', 'mssql'):

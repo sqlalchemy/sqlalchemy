@@ -337,7 +337,7 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_update(self):
         r = t.insert().execute()
-        pk = r.last_inserted_ids()[0]
+        pk = r.inserted_primary_key[0]
         t.update(t.c.col1==pk).execute(col4=None, col5=None)
         ctexec = currenttime.scalar()
         l = t.select(t.c.col1==pk).execute()
@@ -350,7 +350,7 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_update_values(self):
         r = t.insert().execute()
-        pk = r.last_inserted_ids()[0]
+        pk = r.inserted_primary_key[0]
         t.update(t.c.col1==pk, values={'col3': 55}).execute()
         l = t.select(t.c.col1==pk).execute()
         l = l.first()
@@ -385,11 +385,11 @@ class PKDefaultTest(_base.TablesTest):
             engine = engines.testing_engine(options={'implicit_returning':returning})
         engine.execute(t2.insert(), nextid=1)
         r = engine.execute(t1.insert(), data='hi')
-        eq_([1], r.last_inserted_ids())
+        eq_([1], r.inserted_primary_key)
 
         engine.execute(t2.insert(), nextid=2)
         r = engine.execute(t1.insert(), data='there')
-        eq_([2], r.last_inserted_ids())
+        eq_([2], r.inserted_primary_key)
 
 class PKIncrementTest(_base.TablesTest):
     run_define_tables = 'each'
@@ -408,25 +408,25 @@ class PKIncrementTest(_base.TablesTest):
     def _test_autoincrement(self, bind):
         ids = set()
         rs = bind.execute(aitable.insert(), int1=1)
-        last = rs.last_inserted_ids()[0]
+        last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
         rs = bind.execute(aitable.insert(), str1='row 2')
-        last = rs.last_inserted_ids()[0]
+        last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
         rs = bind.execute(aitable.insert(), int1=3, str1='row 3')
-        last = rs.last_inserted_ids()[0]
+        last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
         rs = bind.execute(aitable.insert(values={'int1':func.length('four')}))
-        last = rs.last_inserted_ids()[0]
+        last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
@@ -490,7 +490,7 @@ class AutoIncrementTest(_base.TablesTest):
         single.create()
 
         r = single.insert().execute()
-        id_ = r.last_inserted_ids()[0]
+        id_ = r.inserted_primary_key[0]
         eq_(id_, 1)
         eq_(1, sa.select([func.count(sa.text('*'))], from_obj=single).scalar())
 
@@ -502,7 +502,7 @@ class AutoIncrementTest(_base.TablesTest):
         nodes.create()
 
         r = nodes.insert().execute(data='foo')
-        id_ = r.last_inserted_ids()[0]
+        id_ = r.inserted_primary_key[0]
         nodes.insert().execute(data='bar', parent_id=id_)
 
     @testing.fails_on('sqlite', 'FIXME: unknown')
@@ -571,8 +571,8 @@ class SequenceTest(testing.TestBase):
         cartitems.insert().execute(description='there')
         r = cartitems.insert().execute(description='lala')
 
-        assert r.last_inserted_ids() and r.last_inserted_ids()[0] is not None
-        id_ = r.last_inserted_ids()[0]
+        assert r.inserted_primary_key and r.inserted_primary_key[0] is not None
+        id_ = r.inserted_primary_key[0]
 
         eq_(1,
             sa.select([func.count(cartitems.c.cart_id)],

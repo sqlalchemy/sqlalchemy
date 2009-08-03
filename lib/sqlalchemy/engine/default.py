@@ -15,7 +15,7 @@ as the base class for their own corresponding classes.
 import re, random
 from sqlalchemy.engine import base, reflection
 from sqlalchemy.sql import compiler, expression
-from sqlalchemy import exc, types as sqltypes
+from sqlalchemy import exc, types as sqltypes, util
 
 AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
                                re.I | re.UNICODE)
@@ -263,7 +263,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isinsert = self.isupdate = self.isdelete = self.executemany = self.should_autocommit = False
             self.cursor = self.create_cursor()
     
-    @property
+    @util.memoized_property
     def _is_explicit_returning(self):
         return self.compiled and \
             getattr(self.compiled.statement, '_returning', False)
@@ -389,18 +389,16 @@ class DefaultExecutionContext(base.ExecutionContext):
     
     def post_insert(self):
         if self.dialect.postfetch_lastrowid and \
-            (not len(self._last_inserted_ids) or \
-                        None in self._last_inserted_ids):
+            (not len(self._inserted_primary_key) or \
+                        None in self._inserted_primary_key):
             
             table = self.compiled.statement.table
             lastrowid = self.get_lastrowid()
-            self._last_inserted_ids = [c is table._autoincrement_column and lastrowid or v
-                for c, v in zip(table.primary_key, self._last_inserted_ids)
+            self._inserted_primary_key = [c is table._autoincrement_column and lastrowid or v
+                for c, v in zip(table.primary_key, self._inserted_primary_key)
             ]
             
-    def last_inserted_ids(self, resultproxy):
-        if not self.isinsert:
-            raise exc.InvalidRequestError("Statement is not an insert() expression construct.")
+    def _fetch_implicit_returning(self, resultproxy):
             
         if self.dialect.implicit_returning and \
                 not self.compiled.statement._returning and \
@@ -409,13 +407,9 @@ class DefaultExecutionContext(base.ExecutionContext):
             table = self.compiled.statement.table
             row = resultproxy.first()
 
-            self._last_inserted_ids = [v is not None and v or row[c] 
-                for c, v in zip(table.primary_key, self._last_inserted_ids)
+            self._inserted_primary_key = [v is not None and v or row[c] 
+                for c, v in zip(table.primary_key, self._inserted_primary_key)
             ]
-            return self._last_inserted_ids
-            
-        else:
-            return self._last_inserted_ids
 
     def last_inserted_params(self):
         return self._last_inserted_params
@@ -468,7 +462,7 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def __process_defaults(self):
         """Generate default values for compiled insert/update statements,
-        and generate last_inserted_ids() collection.
+        and generate inserted_primary_key collection.
         """
 
         if self.executemany:
@@ -503,7 +497,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                     compiled_parameters[c.key] = val
 
             if self.isinsert:
-                self._last_inserted_ids = [compiled_parameters.get(c.key, None) 
+                self._inserted_primary_key = [compiled_parameters.get(c.key, None) 
                                             for c in self.compiled.statement.table.primary_key]
                 self._last_inserted_params = compiled_parameters
             else:

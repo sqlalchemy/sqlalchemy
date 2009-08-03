@@ -25,6 +25,9 @@
       generated sequence value (i.e. MySQL, MS-SQL) now work correctly
       when there is a composite primary key where the "autoincrement" column
       is not the first primary key column in the table.
+
+    - the last_inserted_ids() method has been renamed to the descriptor
+      "inserted_primary_key".
       
 - engines
     - transaction isolation level may be specified with

@@ -152,7 +152,7 @@ class ProxyConnectionTest(TestBase):
                 ("DROP TABLE t1", {}, None)
             ]
 
-            if engine.dialect.preexecute_pk_sequences:
+            if True: # or engine.dialect.preexecute_pk_sequences:
                 cursor = [
                     ("CREATE TABLE t1", {}, ()),
                     ("INSERT INTO t1 (c1, c2)", {'c2': 'some data', 'c1': 5}, [5, 'some data']),

@@ -229,7 +229,7 @@ class IdentityInsertTest(TestBase, AssertsCompiledSQL):
         eq_([(9, 'Python')], list(cats))
 
         result = cattable.insert().values(description='PHP').execute()
-        eq_([10], result.last_inserted_ids())
+        eq_([10], result.inserted_primary_key)
         lastcat = cattable.select().order_by(desc(cattable.c.id)).execute()
         eq_((10, 'PHP'), lastcat.first())
 
@@ -357,9 +357,9 @@ class QueryTest(TestBase):
         try:
             tr = con.begin()
             r = con.execute(t2.insert(), descr='hello')
-            self.assert_(r.last_inserted_ids() == [200])
+            self.assert_(r.inserted_primary_key == [200])
             r = con.execute(t1.insert(), descr='hello')
-            self.assert_(r.last_inserted_ids() == [100])
+            self.assert_(r.inserted_primary_key == [100])
 
         finally:
             tr.commit()

@@ -781,6 +781,13 @@ class SQLCompiler(engine.Compiled):
         # create a list of column assignment clauses as tuples
         values = []
         
+        #need_pks = self.isinsert and not self.inline
+        
+        #implicit_returning = need_pks and \
+        #                        self.dialect.implicit_returning and \
+        #                        stmt.table.implicit_returning and \
+        #                        not self.statement._returning and \
+        
         implicit_returning = self.dialect.implicit_returning and \
                                 stmt.table.implicit_returning
         
@@ -808,7 +815,7 @@ class SQLCompiler(engine.Compiled):
                         ) and \
                         not self.inline and \
                         not self.statement._returning:
-
+                        
                         if implicit_returning:
                             if isinstance(c.default, schema.Sequence):
                                 proc = self.process(c.default)

@@ -119,9 +119,9 @@ class Dialect(object):
     implicit_returning
       use RETURNING or equivalent during INSERT execution in order to load 
       newly generated primary keys and other column defaults in one execution,
-      which are then available via last_inserted_ids().
+      which are then available via inserted_primary_key.
       If an insert statement has returning() specified explicitly, 
-      the "implicit" functionality is not used and last_inserted_ids()
+      the "implicit" functionality is not used and inserted_primary_key
       will not be available.
       
     dbapi_type_map
@@ -529,17 +529,6 @@ class ExecutionContext(object):
 
     def should_autocommit_text(self, statement):
         """Parse the given textual statement and return True if it refers to a "committable" statement"""
-
-        raise NotImplementedError()
-
-    def last_inserted_ids(self):
-        """Return the list of the primary key values for the last insert statement executed.
-
-        This does not apply to straight textual clauses; only to
-        ``sql.Insert`` objects compiled against a ``schema.Table``
-        object.  The order of items in the list is the same as that of
-        the Table's 'primary_key' attribute.
-        """
 
         raise NotImplementedError()
 
@@ -1078,6 +1067,7 @@ class Connection(Connectable):
             self._cursor_executemany(context.cursor, context.statement, context.parameters, context=context)
         else:
             self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
+            
         if context.compiled:
             context.post_exec()
             if context.isinsert and not context.executemany:
@@ -1647,7 +1637,7 @@ class ResultProxy(object):
         consistent across backends.
         
         Usage of this method is normally unnecessary; the
-        last_inserted_ids() method provides a
+        inserted_primary_key method provides a
         tuple of primary key values for a newly inserted row,
         regardless of database backend.
         
@@ -1668,11 +1658,12 @@ class ResultProxy(object):
             self.rowcount
             self.close() # autoclose
         elif self.context.isinsert and \
+            not self.context.executemany and \
             not self.context._is_explicit_returning:
             # an insert, no explicit returning(), may need
             # to fetch rows which were created via implicit 
             # returning, then close
-            self.context.last_inserted_ids(self)
+            self.context._fetch_implicit_returning(self)
             self.close()
             
         return self
@@ -1799,14 +1790,28 @@ class ResultProxy(object):
                 raise StopIteration
             else:
                 yield row
+    
+    @util.memoized_property
+    def inserted_primary_key(self):
+        """Return the primary key for the row just inserted.
+        
+        This only applies to single row insert() constructs which
+        did not explicitly specify returning().
 
-    def last_inserted_ids(self):
-        """Return ``last_inserted_ids()`` from the underlying ExecutionContext.
-
-        See ExecutionContext for details.
         """
-        return self.context.last_inserted_ids(self)
+        if not self.context.isinsert:
+            raise exc.InvalidRequestError("Statement is not an insert() expression construct.")
+        elif self.context._is_explicit_returning:
+            raise exc.InvalidRequestError("Can't call inserted_primary_key when returning() is used.")
+            
+        return self.context._inserted_primary_key
 
+    @util.deprecated("Use inserted_primary_key")
+    def last_inserted_ids(self):
+        """deprecated.  use inserted_primary_key."""
+        
+        return self.inserted_primary_key
+        
     def last_updated_params(self):
         """Return ``last_updated_params()`` from the underlying ExecutionContext.
 

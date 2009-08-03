@@ -37,7 +37,7 @@ class InfoExecutionContext(default.DefaultExecutionContext):
     # 4 - offset of the error into the SQL statement
     # 5 - rowid after insert
     def post_exec(self):
-        if getattr(self.compiled, "isinsert", False) and self.last_inserted_ids() is None:
+        if getattr(self.compiled, "isinsert", False) and self.inserted_primary_key is None:
             self._last_inserted_ids = [self.cursor.sqlerrd[1]]
         elif hasattr( self.compiled , 'offset' ):
             self.cursor.offset( self.compiled.offset )

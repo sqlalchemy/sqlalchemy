@@ -231,7 +231,7 @@ class ExecuteTest(TestBase):
             assert t.select().execute().first()['value'] == 5
 
             r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
-            id = r.last_inserted_ids()[0]
+            id = r.inserted_primary_key[0]
             assert t.select(t.c.id==id).execute().first()['value'] == 9
             t.update(values={t.c.value:func.length("asdf")}).execute()
             assert t.select().execute().first()['value'] == 4

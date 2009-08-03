@@ -75,13 +75,13 @@ class ZooMarkTest(TestBase):
                            Opens=datetime.time(8, 15, 59),
                            LastEscape=datetime.datetime(2004, 7, 29, 5, 6, 7),
                            Admission=4.95,
-                           ).last_inserted_ids()[0]
+                           ).inserted_primary_key[0]
 
         sdz = Zoo.insert().execute(Name =u'San Diego Zoo',
                            Founded = datetime.date(1935, 9, 13),
                            Opens = datetime.time(9, 0, 0),
                            Admission = 0,
-                           ).last_inserted_ids()[0]
+                           ).inserted_primary_key[0]
 
         Zoo.insert().execute(
                   Name = u'Montr\xe9al Biod\xf4me',
@@ -91,26 +91,26 @@ class ZooMarkTest(TestBase):
                   )
 
         seaworld = Zoo.insert().execute(
-                Name =u'Sea_World', Admission = 60).last_inserted_ids()[0]
+                Name =u'Sea_World', Admission = 60).inserted_primary_key[0]
 
         # Let's add a crazy futuristic Zoo to test large date values.
         lp = Zoo.insert().execute(Name =u'Luna Park',
                                   Founded = datetime.date(2072, 7, 17),
                                   Opens = datetime.time(0, 0, 0),
                                   Admission = 134.95,
-                                  ).last_inserted_ids()[0]
+                                  ).inserted_primary_key[0]
 
         # Animals
         leopardid = Animal.insert().execute(Species=u'Leopard', Lifespan=73.5,
-                                            ).last_inserted_ids()[0]
+                                            ).inserted_primary_key[0]
         Animal.update(Animal.c.ID==leopardid).execute(ZooID=wap,
                 LastEscape=datetime.datetime(2004, 12, 21, 8, 15, 0, 999907))
 
-        lion = Animal.insert().execute(Species=u'Lion', ZooID=wap).last_inserted_ids()[0]
+        lion = Animal.insert().execute(Species=u'Lion', ZooID=wap).inserted_primary_key[0]
         Animal.insert().execute(Species=u'Slug', Legs=1, Lifespan=.75)
 
         tiger = Animal.insert().execute(Species=u'Tiger', ZooID=sdz
-                                        ).last_inserted_ids()[0]
+                                        ).inserted_primary_key[0]
 
         # Override Legs.default with itself just to make sure it works.
         Animal.insert().execute(Species=u'Bear', Legs=4)
@@ -118,15 +118,15 @@ class ZooMarkTest(TestBase):
         Animal.insert().execute(Species=u'Centipede', Legs=100)
 
         emp = Animal.insert().execute(Species=u'Emperor Penguin', Legs=2,
-                                      ZooID=seaworld).last_inserted_ids()[0]
+                                      ZooID=seaworld).inserted_primary_key[0]
         adelie = Animal.insert().execute(Species=u'Adelie Penguin', Legs=2,
-                                         ZooID=seaworld).last_inserted_ids()[0]
+                                         ZooID=seaworld).inserted_primary_key[0]
 
         Animal.insert().execute(Species=u'Millipede', Legs=1000000, ZooID=sdz)
 
         # Add a mother and child to test relationships
         bai_yun = Animal.insert().execute(Species=u'Ape', Name=u'Bai Yun',
-                                          Legs=2).last_inserted_ids()[0]
+                                          Legs=2).inserted_primary_key[0]
         Animal.insert().execute(Species=u'Ape', Name=u'Hua Mei', Legs=2,
                                 MotherID=bai_yun)
 
