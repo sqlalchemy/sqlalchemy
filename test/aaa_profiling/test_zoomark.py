@@ -34,7 +34,7 @@ class ZooMarkTest(TestBase):
 
         creator = testing.db.pool._creator
         recorder = lambda: dbapi_session.recorder(creator())
-        engine = engines.testing_engine(options={'creator':recorder, 'implicit_returning':False})
+        engine = engines.testing_engine(options={'creator':recorder})
         metadata = MetaData(engine)
 
     def test_baseline_1_create_tables(self):
@@ -83,7 +83,7 @@ class ZooMarkTest(TestBase):
                            Admission = 0,
                            ).inserted_primary_key[0]
 
-        Zoo.insert().execute(
+        Zoo.insert(inline=True).execute(
                   Name = u'Montr\xe9al Biod\xf4me',
                   Founded = datetime.date(1992, 6, 19),
                   Opens = datetime.time(9, 0, 0),
@@ -113,26 +113,26 @@ class ZooMarkTest(TestBase):
                                         ).inserted_primary_key[0]
 
         # Override Legs.default with itself just to make sure it works.
-        Animal.insert().execute(Species=u'Bear', Legs=4)
-        Animal.insert().execute(Species=u'Ostrich', Legs=2, Lifespan=103.2)
-        Animal.insert().execute(Species=u'Centipede', Legs=100)
+        Animal.insert(inline=True).execute(Species=u'Bear', Legs=4)
+        Animal.insert(inline=True).execute(Species=u'Ostrich', Legs=2, Lifespan=103.2)
+        Animal.insert(inline=True).execute(Species=u'Centipede', Legs=100)
 
         emp = Animal.insert().execute(Species=u'Emperor Penguin', Legs=2,
                                       ZooID=seaworld).inserted_primary_key[0]
         adelie = Animal.insert().execute(Species=u'Adelie Penguin', Legs=2,
                                          ZooID=seaworld).inserted_primary_key[0]
 
-        Animal.insert().execute(Species=u'Millipede', Legs=1000000, ZooID=sdz)
+        Animal.insert(inline=True).execute(Species=u'Millipede', Legs=1000000, ZooID=sdz)
 
         # Add a mother and child to test relationships
         bai_yun = Animal.insert().execute(Species=u'Ape', Name=u'Bai Yun',
                                           Legs=2).inserted_primary_key[0]
-        Animal.insert().execute(Species=u'Ape', Name=u'Hua Mei', Legs=2,
+        Animal.insert(inline=True).execute(Species=u'Ape', Name=u'Hua Mei', Legs=2,
                                 MotherID=bai_yun)
 
     def test_baseline_2_insert(self):
         Animal = metadata.tables['Animal']
-        i = Animal.insert()
+        i = Animal.insert(inline=True)
         for x in xrange(ITERATIONS):
             tick = i.execute(Species=u'Tick', Name=u'Tick %d' % x, Legs=8)
 
@@ -316,7 +316,7 @@ class ZooMarkTest(TestBase):
         global metadata
 
         player = lambda: dbapi_session.player()
-        engine = create_engine('postgresql:///', creator=player, implicit_returning=False)
+        engine = create_engine('postgresql:///', creator=player)
         metadata = MetaData(engine)
 
     @profiling.function_call_count(2991, {'2.4': 1796})
@@ -327,7 +327,7 @@ class ZooMarkTest(TestBase):
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
-    @profiling.function_call_count(325, {'2.4': 202})
+    @profiling.function_call_count(305, {'2.4': 202})
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
