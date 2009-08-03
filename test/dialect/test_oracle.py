@@ -9,6 +9,7 @@ from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
+from sqlalchemy.util import jython
 import os
 
 
@@ -439,17 +440,18 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
         meta.drop_all()
 
     def test_fetch(self):
-        eq_(
-            binary_table.select().execute().fetchall() ,
-            [(i, stream) for i in range(1, 11)], 
-        )
+        result = binary_table.select().execute().fetchall()
+        if jython:
+            result = [(i, value.tostring()) for i, value in result]
+        eq_(result, [(i, stream) for i in range(1, 11)])
 
+    @testing.fails_on('+zxjdbc', 'FIXME: zxjdbc should support this')
     def test_fetch_single_arraysize(self):
         eng = testing_engine(options={'arraysize':1})
-        eq_(
-            eng.execute(binary_table.select()).fetchall(),
-            [(i, stream) for i in range(1, 11)], 
-        )
+        result = eng.execute(binary_table.select()).fetchall(),
+        if jython:
+            result = [(i, value.tostring()) for i, value in result]
+        eq_(result, [(i, stream) for i in range(1, 11)])
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
