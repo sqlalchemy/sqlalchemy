@@ -40,6 +40,7 @@ def check_import(module):
 
 
 class ExamplesTest(TestBase):
+    @testing.crashes('+zxjdbc', 'FIXME: examples have hard dependency on sqlite')
     def test_examples(self):
         for module in find_modules():
             check_import.description = module
