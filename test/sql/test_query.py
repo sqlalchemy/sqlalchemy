@@ -155,7 +155,7 @@ class QueryTest(TestBase):
         )
         t6 = Table("t6", metadata,
             Column('manual_id', Integer, ForeignKey('related.id'), primary_key=True),
-            Column('auto_id', Integer, primary_key=True),
+            Column('auto_id', Integer, primary_key=True, test_needs_autoincrement=True),
         )
 
         metadata.create_all()
