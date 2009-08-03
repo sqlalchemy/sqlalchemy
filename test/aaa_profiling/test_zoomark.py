@@ -34,7 +34,7 @@ class ZooMarkTest(TestBase):
 
         creator = testing.db.pool._creator
         recorder = lambda: dbapi_session.recorder(creator())
-        engine = engines.testing_engine(options={'creator':recorder})
+        engine = engines.testing_engine(options={'creator':recorder, 'implicit_returning':False})
         metadata = MetaData(engine)
 
     def test_baseline_1_create_tables(self):
@@ -316,7 +316,7 @@ class ZooMarkTest(TestBase):
         global metadata
 
         player = lambda: dbapi_session.player()
-        engine = create_engine('postgresql:///', creator=player)
+        engine = create_engine('postgresql:///', creator=player, implicit_returning=False)
         metadata = MetaData(engine)
 
     @profiling.function_call_count(2991, {'2.4': 1796})
@@ -327,7 +327,7 @@ class ZooMarkTest(TestBase):
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
-    @profiling.function_call_count(305, {'2.4': 202})
+    @profiling.function_call_count(325, {'2.4': 202})
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
