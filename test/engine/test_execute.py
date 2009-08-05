@@ -84,11 +84,8 @@ class ExecuteTest(TestBase):
             except tsa.exc.DBAPIError:
                 assert True
 
-    @testing.fails_if(lambda: (not testing.db.dialect.supports_sane_rowcount and
-                               not testing.db.dialect.implicit_returning))
     def test_empty_insert(self):
         """test that execute() interprets [] as a list with no params"""
-        
         result = testing.db.execute(users.insert().values(user_name=bindparam('name')), [])
         eq_(testing.db.execute(users.select()).fetchall(), [
             (1, None)
