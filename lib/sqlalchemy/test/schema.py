@@ -33,7 +33,7 @@ def Table(*args, **kw):
         # expand to ForeignKeyConstraint too.
         fks = [fk
                for col in args if isinstance(col, schema.Column)
-               for fk in col.args if isinstance(fk, schema.ForeignKey)]
+               for fk in col.foreign_keys]
 
         for fk in fks:
             # root around in raw spec
@@ -51,13 +51,6 @@ def Table(*args, **kw):
                 if fk.onupdate is None:
                     fk.onupdate = 'CASCADE'
 
-    if testing.against('firebird', 'oracle'):
-        pk_seqs = [col for col in args
-                   if (isinstance(col, schema.Column)
-                       and col.primary_key
-                       and getattr(col, '_needs_autoincrement', False))]
-        for c in pk_seqs:
-            c.args.append(schema.Sequence(args[0] + '_' + c.name + '_seq', optional=True))
     return schema.Table(*args, **kw)
 
 
@@ -67,8 +60,20 @@ def Column(*args, **kw):
     test_opts = dict([(k,kw.pop(k)) for k in kw.keys()
                       if k.startswith('test_')])
 
-    c = schema.Column(*args, **kw)
-    if testing.against('firebird', 'oracle'):
-        if 'test_needs_autoincrement' in test_opts:
-            c._needs_autoincrement = True
-    return c
+    col = schema.Column(*args, **kw)
+    if 'test_needs_autoincrement' in test_opts and \
+        kw.get('primary_key', False) and \
+        testing.against('firebird', 'oracle'):
+        def add_seq(tbl):
+            col._init_items(
+                schema.Sequence(_truncate_name(testing.db.dialect, tbl.name + '_' + col.name + '_seq'), optional=True)
+            )
+        col._on_table_attach(add_seq)
+    return col
+
+def _truncate_name(dialect, name):
+    if len(name) > dialect.max_identifier_length:
+        return name[0:max(dialect.max_identifier_length - 6, 0)] + "_" + hex(hash(name) % 64)[2:]
+    else:
+        return name
+    

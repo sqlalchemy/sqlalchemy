@@ -1,4 +1,4 @@
-Access
-======
+Microsoft Access
+================
 
-.. automodule:: sqlalchemy.databases.access
+.. automodule:: sqlalchemy.dialects.access.base

@@ -20,7 +20,8 @@ class TransactionTest(TestBase):
         users.create(testing.db)
 
     def teardown(self):
-        testing.db.connect().execute(users.delete())
+        testing.db.execute(users.delete()).close()
+
     @classmethod
     def teardown_class(cls):
         users.drop(testing.db)
@@ -40,6 +41,7 @@ class TransactionTest(TestBase):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 3
         transaction.commit()
+        connection.close()
 
     def test_rollback(self):
         """test a basic rollback"""
@@ -176,6 +178,7 @@ class TransactionTest(TestBase):
         connection.close()
 
     @testing.requires.savepoints
+    @testing.crashes('oracle+zxjdbc', 'Errors out and causes subsequent tests to deadlock')
     def test_nested_subtransaction_commit(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -274,6 +277,7 @@ class TransactionTest(TestBase):
         connection.close()
 
     @testing.requires.two_phase_transactions
+    @testing.crashes('mysql+zxjdbc', 'Deadlocks, causing subsequent tests to fail')
     @testing.fails_on('mysql', 'FIXME: unknown')
     def test_two_phase_recover(self):
         # MySQL recovery doesn't currently seem to work correctly
@@ -369,7 +373,7 @@ class ExplicitAutoCommitTest(TestBase):
     Requires PostgreSQL so that we may define a custom function which modifies the database.
     """
 
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
@@ -380,7 +384,7 @@ class ExplicitAutoCommitTest(TestBase):
         testing.db.execute("create function insert_foo(varchar) returns integer as 'insert into foo(data) values ($1);select 1;' language sql")
 
     def teardown(self):
-        foo.delete().execute()
+        foo.delete().execute().close()
 
     @classmethod
     def teardown_class(cls):
@@ -453,8 +457,10 @@ class TLTransactionTest(TestBase):
             test_needs_acid=True,
         )
         users.create(tlengine)
+
     def teardown(self):
-        tlengine.execute(users.delete())
+        tlengine.execute(users.delete()).close()
+
     @classmethod
     def teardown_class(cls):
         users.drop(tlengine)
@@ -497,6 +503,7 @@ class TLTransactionTest(TestBase):
         try:
             assert len(result.fetchall()) == 0
         finally:
+            c.close()
             external_connection.close()
 
     def test_rollback(self):
@@ -530,7 +537,9 @@ class TLTransactionTest(TestBase):
             external_connection.close()
 
     def test_commits(self):
-        assert tlengine.connect().execute("select count(1) from query_users").scalar() == 0
+        connection = tlengine.connect()
+        assert connection.execute("select count(1) from query_users").scalar() == 0
+        connection.close()
 
         connection = tlengine.contextual_connect()
         transaction = connection.begin()
@@ -547,6 +556,7 @@ class TLTransactionTest(TestBase):
         l = result.fetchall()
         assert len(l) == 3, "expected 3 got %d" % len(l)
         transaction.commit()
+        connection.close()
 
     def test_rollback_off_conn(self):
         # test that a TLTransaction opened off a TLConnection allows that
@@ -563,6 +573,7 @@ class TLTransactionTest(TestBase):
         try:
             assert len(result.fetchall()) == 0
         finally:
+            conn.close()
             external_connection.close()
 
     def test_morerollback_off_conn(self):
@@ -581,6 +592,8 @@ class TLTransactionTest(TestBase):
         try:
             assert len(result.fetchall()) == 0
         finally:
+            conn.close()
+            conn2.close()
             external_connection.close()
 
     def test_commit_off_connection(self):
@@ -596,6 +609,7 @@ class TLTransactionTest(TestBase):
         try:
             assert len(result.fetchall()) == 3
         finally:
+            conn.close()
             external_connection.close()
 
     def test_nesting(self):
@@ -712,8 +726,10 @@ class ForUpdateTest(TestBase):
             test_needs_acid=True,
         )
         counters.create(testing.db)
+
     def teardown(self):
-        testing.db.connect().execute(counters.delete())
+        testing.db.execute(counters.delete()).close()
+
     @classmethod
     def teardown_class(cls):
         counters.drop(testing.db)
@@ -726,7 +742,7 @@ class ForUpdateTest(TestBase):
         for i in xrange(count):
             trans = con.begin()
             try:
-                existing = con.execute(sel).fetchone()
+                existing = con.execute(sel).first()
                 incr = existing['counter_value'] + 1
 
                 time.sleep(delay)
@@ -734,7 +750,7 @@ class ForUpdateTest(TestBase):
                                             values={'counter_value':incr}))
                 time.sleep(delay)
 
-                readback = con.execute(sel).fetchone()
+                readback = con.execute(sel).first()
                 if (readback['counter_value'] != incr):
                     raise AssertionError("Got %s post-update, expected %s" %
                                          (readback['counter_value'], incr))
@@ -778,7 +794,7 @@ class ForUpdateTest(TestBase):
         self.assert_(len(errors) == 0)
 
         sel = counters.select(whereclause=counters.c.counter_id==1)
-        final = db.execute(sel).fetchone()
+        final = db.execute(sel).first()
         self.assert_(final['counter_value'] == iterations * thread_count)
 
     def overlap(self, ids, errors, update_style):

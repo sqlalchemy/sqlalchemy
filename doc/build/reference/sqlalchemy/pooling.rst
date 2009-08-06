@@ -32,7 +32,7 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
 ``pool_size``, ``max_overflow``, ``pool_recycle`` and
 ``pool_timeout``.  For example::
 
-  engine = create_engine('postgres://me@localhost/mydb',
+  engine = create_engine('postgresql://me@localhost/mydb',
                          pool_size=20, max_overflow=0)
 
 In the case of SQLite, a :class:`SingletonThreadPool` is provided instead,

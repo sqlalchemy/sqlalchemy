@@ -178,9 +178,12 @@ class DependencySortTest(TestBase):
         self.assert_sort(tuples, head)
 
     def testbigsort(self):
-        tuples = []
-        for i in range(0,1500, 2):
-            tuples.append((i, i+1))
+        tuples = [(i, i + 1) for i in range(0, 1500, 2)]
         head = topological.sort_as_tree(tuples, [])
+
+
+    def testids(self):
+        # ticket:1380 regression: would raise a KeyError
+        topological.sort([(id(i), i) for i in range(3)], [])
 
 

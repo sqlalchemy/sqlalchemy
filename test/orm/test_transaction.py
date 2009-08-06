@@ -4,12 +4,10 @@ from sqlalchemy import *
 from sqlalchemy.orm import attributes
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
-
+from sqlalchemy.test.util import gc_collect
 from sqlalchemy.test import testing
 from test.orm import _base
 from test.orm._fixtures import FixtureTest, User, Address, users, addresses
-
-import gc
 
 class TransactionTest(FixtureTest):
     run_setup_mappers = 'once'
@@ -20,7 +18,7 @@ class TransactionTest(FixtureTest):
     def setup_mappers(cls):
         mapper(User, users, properties={
             'addresses':relation(Address, backref='user',
-                                 cascade="all, delete-orphan"),
+                                 cascade="all, delete-orphan", order_by=addresses.c.id),
             })
         mapper(Address, addresses)
 
@@ -109,7 +107,7 @@ class AutoExpireTest(TransactionTest):
         assert u1_state not in s.identity_map.all_states()
         assert u1_state not in s._deleted
         del u1
-        gc.collect()
+        gc_collect()
         assert u1_state.obj() is None
         
         s.rollback()

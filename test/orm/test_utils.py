@@ -39,8 +39,13 @@ class ExtensionCarrierTest(TestBase):
 
         assert 'populate_instance' not in carrier
         carrier.append(interfaces.MapperExtension)
+        
+        # Py3K
+        #assert 'populate_instance' not in carrier
+        # Py2K
         assert 'populate_instance' in carrier
-
+        # end Py2K
+        
         assert carrier.interface
         for m in carrier.interface:
             assert getattr(interfaces.MapperExtension, m)
@@ -85,7 +90,10 @@ class AliasedClassTest(TestBase):
         alias = aliased(Point)
 
         assert Point.zero
+        # Py2K
+        # TODO: what is this testing ??
         assert not getattr(alias, 'zero')
+        # end Py2K
 
     def test_classmethods(self):
         class Point(object):
@@ -152,9 +160,17 @@ class AliasedClassTest(TestBase):
                 self.func = func
             def __get__(self, instance, owner):
                 if instance is None:
+                    # Py3K
+                    #args = (self.func, owner)
+                    # Py2K
                     args = (self.func, owner, owner.__class__)
+                    # end Py2K
                 else:
+                    # Py3K
+                    #args = (self.func, instance)
+                    # Py2K
                     args = (self.func, instance, owner)
+                    # end Py2K
                 return types.MethodType(*args)
 
         class PropertyDescriptor(object):

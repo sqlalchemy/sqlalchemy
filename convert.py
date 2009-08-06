@@ -224,5 +224,7 @@ handlers.append((re.compile(r".*"), default))
 
 
 if __name__ == '__main__':
-    convert("test/orm/inheritance/abc_inheritance.py")
+    import sys
+    for f in sys.argv[1:]:
+        convert(f)
 #    walk()

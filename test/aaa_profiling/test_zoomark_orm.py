@@ -27,7 +27,7 @@ class ZooMarkTest(TestBase):
 
     """
 
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql+psycopg2'
     __skip_if__ = ((lambda: sys.version_info < (2, 5)), )  # TODO: get 2.4 support
 
     def test_baseline_0_setup(self):
@@ -281,7 +281,7 @@ class ZooMarkTest(TestBase):
         global metadata, session
 
         player = lambda: dbapi_session.player()
-        engine = create_engine('postgres:///', creator=player)
+        engine = create_engine('postgresql:///', creator=player)
         metadata = MetaData(engine)
         session = sessionmaker()()
 

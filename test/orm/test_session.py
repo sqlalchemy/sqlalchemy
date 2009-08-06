@@ -1,13 +1,12 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
-import gc
+from sqlalchemy.test.util import gc_collect
 import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, backref, eagerload
 from sqlalchemy.test.testing import eq_
 from test.engine import _base as engine_base
@@ -229,7 +228,7 @@ class SessionTest(_fixtures.FixtureTest):
         u = sess.query(User).get(u.id)
         q = sess.query(Address).filter(Address.user==u)
         del u
-        gc.collect()
+        gc_collect()
         eq_(q.one(), Address(email_address='foo'))
 
 
@@ -381,18 +380,18 @@ class SessionTest(_fixtures.FixtureTest):
         session = create_session(bind=testing.db)
 
         session.begin()
-        session.connection().execute("insert into users (name) values ('user1')")
+        session.connection().execute(users.insert().values(name='user1'))
 
         session.begin(subtransactions=True)
 
         session.begin_nested()
 
-        session.connection().execute("insert into users (name) values ('user2')")
+        session.connection().execute(users.insert().values(name='user2'))
         assert session.connection().execute("select count(1) from users").scalar() == 2
 
         session.rollback()
         assert session.connection().execute("select count(1) from users").scalar() == 1
-        session.connection().execute("insert into users (name) values ('user3')")
+        session.connection().execute(users.insert().values(name='user3'))
 
         session.commit()
         assert session.connection().execute("select count(1) from users").scalar() == 2
@@ -771,18 +770,18 @@ class SessionTest(_fixtures.FixtureTest):
 
         user = s.query(User).one()
         del user
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 0
 
         user = s.query(User).one()
         user.name = 'fred'
         del user
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 1
         assert len(s.dirty) == 1
         assert None not in s.dirty
         s.flush()
-        gc.collect()
+        gc_collect()
         assert not s.dirty
         assert not s.identity_map
 
@@ -809,13 +808,13 @@ class SessionTest(_fixtures.FixtureTest):
         s.add(u2)
         
         del u2
-        gc.collect()
+        gc_collect()
         
         assert len(s.identity_map) == 1
         assert len(s.dirty) == 1
         assert None not in s.dirty
         s.flush()
-        gc.collect()
+        gc_collect()
         assert not s.dirty
         
         assert not s.identity_map
@@ -835,14 +834,14 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(user, User(name="ed", addresses=[Address(email_address="ed1")]))
         
         del user
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 0
 
         user = s.query(User).options(eagerload(User.addresses)).one()
         user.addresses[0].email_address='ed2'
         user.addresses[0].user # lazyload
         del user
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 2
         
         s.commit()
@@ -864,7 +863,7 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(user, User(name="ed", address=Address(email_address="ed1")))
 
         del user
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 0
 
         user = s.query(User).options(eagerload(User.address)).one()
@@ -872,7 +871,7 @@ class SessionTest(_fixtures.FixtureTest):
         user.address.user # lazyload
 
         del user
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 2
         
         s.commit()
@@ -890,8 +889,7 @@ class SessionTest(_fixtures.FixtureTest):
         user = s.query(User).one()
         user = None
         print s.identity_map
-        import gc
-        gc.collect()
+        gc_collect()
         assert len(s.identity_map) == 1
 
         user = s.query(User).one()
@@ -901,7 +899,7 @@ class SessionTest(_fixtures.FixtureTest):
         s.flush()
         eq_(users.select().execute().fetchall(), [(user.id, 'u2')])
         
-        
+    @testing.fails_on('+zxjdbc', 'http://www.sqlalchemy.org/trac/ticket/1473')
     @testing.resolve_artifact_names
     def test_prune(self):
         s = create_session(weak_identity_map=False)
@@ -914,8 +912,7 @@ class SessionTest(_fixtures.FixtureTest):
         self.assert_(len(s.identity_map) == 0)
         self.assert_(s.prune() == 0)
         s.flush()
-        import gc
-        gc.collect()
+        gc_collect()
         self.assert_(s.prune() == 9)
         self.assert_(len(s.identity_map) == 1)
 
@@ -1228,7 +1225,7 @@ class DisposedStates(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1
         t1 = Table('t1', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50))
             )
 
@@ -1327,7 +1324,7 @@ class SessionInterface(testing.TestBase):
 
     def _map_it(self, cls):
         return mapper(cls, Table('t', sa.MetaData(),
-                                 Column('id', Integer, primary_key=True)))
+                                 Column('id', Integer, primary_key=True, test_needs_autoincrement=True)))
 
     @testing.uses_deprecated()
     def _test_instance_guards(self, user_arg):
@@ -1447,7 +1444,7 @@ class TLTransactionTest(engine_base.AltEngineTest, _base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(20)),
               test_needs_acid=True)
 

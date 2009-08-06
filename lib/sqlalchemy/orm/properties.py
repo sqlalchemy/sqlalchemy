@@ -53,7 +53,7 @@ class ColumnProperty(StrategizedProperty):
         self.columns = [expression._labeled(c) for c in columns]
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
-        self.no_instrument = kwargs.pop('_no_instrument', False)
+        self.instrument = kwargs.pop('_instrument', True)
         self.comparator_factory = kwargs.pop('comparator_factory', self.__class__.Comparator)
         self.descriptor = kwargs.pop('descriptor', None)
         self.extension = kwargs.pop('extension', None)
@@ -63,7 +63,7 @@ class ColumnProperty(StrategizedProperty):
                     self.__class__.__name__, ', '.join(sorted(kwargs.keys()))))
 
         util.set_creation_order(self)
-        if self.no_instrument:
+        if not self.instrument:
             self.strategy_class = strategies.UninstrumentedColumnLoader
         elif self.deferred:
             self.strategy_class = strategies.DeferredColumnLoader
@@ -71,7 +71,7 @@ class ColumnProperty(StrategizedProperty):
             self.strategy_class = strategies.ColumnLoader
     
     def instrument_class(self, mapper):
-        if self.no_instrument:
+        if not self.instrument:
             return
         
         attributes.register_descriptor(
@@ -104,7 +104,7 @@ class ColumnProperty(StrategizedProperty):
     def setattr(self, state, value, column):
         state.get_impl(self.key).set(state, state.dict, value, None)
 
-    def merge(self, session, source, dest, dont_load, _recursive):
+    def merge(self, session, source, dest, load, _recursive):
         value = attributes.instance_state(source).value_as_iterable(
             self.key, passive=True)
         if value:
@@ -302,7 +302,7 @@ class SynonymProperty(MapperProperty):
             proxy_property=self.descriptor
             )
 
-    def merge(self, session, source, dest, dont_load, _recursive):
+    def merge(self, session, source, dest, load, _recursive):
         pass
         
 log.class_logger(SynonymProperty)
@@ -335,7 +335,7 @@ class ComparableProperty(MapperProperty):
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
 
-    def merge(self, session, source, dest, dont_load, _recursive):
+    def merge(self, session, source, dest, load, _recursive):
         pass
 
 
@@ -627,8 +627,8 @@ class RelationProperty(StrategizedProperty):
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
 
-    def merge(self, session, source, dest, dont_load, _recursive):
-        if not dont_load:
+    def merge(self, session, source, dest, load, _recursive):
+        if load:
             # TODO: no test coverage for recursive check
             for r in self._reverse_property:
                 if (source, r) in _recursive:
@@ -650,10 +650,10 @@ class RelationProperty(StrategizedProperty):
             dest_list = []
             for current in instances:
                 _recursive[(current, self)] = True
-                obj = session._merge(current, dont_load=dont_load, _recursive=_recursive)
+                obj = session._merge(current, load=load, _recursive=_recursive)
                 if obj is not None:
                     dest_list.append(obj)
-            if dont_load:
+            if not load:
                 coll = attributes.init_collection(dest_state, self.key)
                 for c in dest_list:
                     coll.append_without_event(c)
@@ -663,9 +663,9 @@ class RelationProperty(StrategizedProperty):
             current = instances[0]
             if current is not None:
                 _recursive[(current, self)] = True
-                obj = session._merge(current, dont_load=dont_load, _recursive=_recursive)
+                obj = session._merge(current, load=load, _recursive=_recursive)
                 if obj is not None:
-                    if dont_load:
+                    if not load:
                         dest_state.dict[self.key] = obj
                     else:
                         setattr(dest, self.key, obj)

@@ -86,7 +86,7 @@ Full query documentation
 Get, filter, filter_by, order_by, limit, and the rest of the
 query methods are explained in detail in the `SQLAlchemy documentation`__.
 
-__ http://www.sqlalchemy.org/docs/04/ormtutorial.html#datamapping_querying
+__ http://www.sqlalchemy.org/docs/05/ormtutorial.html#datamapping_querying
 
 
 Modifying objects
@@ -447,9 +447,11 @@ def _selectable_name(selectable):
 def class_for_table(selectable, **mapper_kwargs):
     selectable = expression._clause_element_as_expr(selectable)
     mapname = 'Mapped' + _selectable_name(selectable)
+    # Py2K
     if isinstance(mapname, unicode): 
         engine_encoding = selectable.metadata.bind.dialect.encoding 
         mapname = mapname.encode(engine_encoding)
+    # end Py2K
     if isinstance(selectable, Table):
         klass = TableClassType(mapname, (object,), {})
     else:
@@ -543,10 +545,14 @@ class SqlSoup:
     def entity(self, attr, schema=None):
         try:
             t = self._cache[attr]
-        except KeyError:
+        except KeyError, ke:
             table = Table(attr, self._metadata, autoload=True, schema=schema or self.schema)
             if not table.primary_key.columns:
+                # Py3K
+                #raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys()))) from ke
+                # Py2K
                 raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys())))
+                # end Py2K
             if table.columns:
                 t = class_for_table(table)
             else:

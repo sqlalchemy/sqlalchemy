@@ -1,10 +1,8 @@
-import testenv; testenv.configure_for_tests()
 import time
-#import gc
 #import sqlalchemy.orm.attributes as attributes
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
+from sqlalchemy.test import *
 
 """
 
@@ -18,16 +16,18 @@ top while it runs
 NUM = 2500
 
 class LoadTest(TestBase, AssertsExecutionResults):
-    def setUpAll(self):
+    @classmethod
+    def setup_class(cls):
         global items, meta
         meta = MetaData(testing.db)
         items = Table('items', meta,
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))
         items.create()
-    def tearDownAll(self):
+    @classmethod
+    def teardown_class(cls):
         items.drop()
-    def setUp(self):
+    def setup(self):
         for x in range(1,NUM/500+1):
             l = []
             for y in range(x*500-500 + 1, x*500 + 1):
@@ -43,7 +43,7 @@ class LoadTest(TestBase, AssertsExecutionResults):
         query = sess.query(Item)
         for x in range (1,NUM/100):
             # this is not needed with cpython which clears non-circular refs immediately
-            #gc.collect()
+            #gc_collect()
             l = query.filter(items.c.item_id.between(x*100 - 100 + 1, x*100)).all()
             assert len(l) == 100
             print "loaded ", len(l), " items "
@@ -61,5 +61,3 @@ class LoadTest(TestBase, AssertsExecutionResults):
         print "total time ", total
 
 
-if __name__ == "__main__":
-    testenv.main()

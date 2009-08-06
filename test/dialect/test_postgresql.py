@@ -1,18 +1,19 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.test import  engines
 import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy import exc
-from sqlalchemy.databases import postgres
+from sqlalchemy import exc, schema
+from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.engine.strategies import MockEngineStrategy
 from sqlalchemy.test import *
 from sqlalchemy.sql import table, column
-
+from sqlalchemy.test.testing import eq_
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
         seq = Sequence("my_seq_no_schema")
-        dialect = postgres.PGDialect()
+        dialect = postgresql.PGDialect()
         assert dialect.identifier_preparer.format_sequence(seq) == "my_seq_no_schema"
 
         seq = Sequence("my_seq", schema="some_schema")
@@ -22,10 +23,48 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
 
 class CompileTest(TestBase, AssertsCompiledSQL):
-    __dialect__ = postgres.dialect()
+    __dialect__ = postgresql.dialect()
 
     def test_update_returning(self):
-        dialect = postgres.dialect()
+        dialect = postgresql.dialect()
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)),
+        )
+
+        u = update(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
+
+        u = update(table1, values=dict(name='foo')).returning(table1)
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s "\
+            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+
+        u = update(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name) AS length_1", dialect=dialect)
+
+        
+    def test_insert_returning(self):
+        dialect = postgresql.dialect()
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)),
+        )
+
+        i = insert(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING mytable.myid, mytable.name", dialect=dialect)
+
+        i = insert(table1, values=dict(name='foo')).returning(table1)
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) "\
+            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+
+        i = insert(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name) AS length_1", dialect=dialect)
+    
+    @testing.uses_deprecated(r".*argument is deprecated.  Please use statement.returning.*")
+    def test_old_returning_names(self):
+        dialect = postgresql.dialect()
         table1 = table('mytable',
             column('myid', Integer),
             column('name', String(128)),
@@ -35,30 +74,26 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         u = update(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
         self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
 
-        u = update(table1, values=dict(name='foo'), postgres_returning=[table1])
-        self.assert_compile(u, "UPDATE mytable SET name=%(name)s "\
-            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
-
-        u = update(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
-        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING length(mytable.name)", dialect=dialect)
-
-    def test_insert_returning(self):
-        dialect = postgres.dialect()
-        table1 = table('mytable',
-            column('myid', Integer),
-            column('name', String(128)),
-            column('description', String(128)),
-        )
+        u = update(table1, values=dict(name='foo'), postgresql_returning=[table1.c.myid, table1.c.name])
+        self.assert_compile(u, "UPDATE mytable SET name=%(name)s RETURNING mytable.myid, mytable.name", dialect=dialect)
 
         i = insert(table1, values=dict(name='foo'), postgres_returning=[table1.c.myid, table1.c.name])
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING mytable.myid, mytable.name", dialect=dialect)
+        
+    def test_create_partial_index(self):
+        tbl = Table('testtbl', MetaData(), Column('data',Integer))
+        idx = Index('test_idx1', tbl.c.data, postgresql_where=and_(tbl.c.data > 5, tbl.c.data < 10))
 
-        i = insert(table1, values=dict(name='foo'), postgres_returning=[table1])
-        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) "\
-            "RETURNING mytable.myid, mytable.name, mytable.description", dialect=dialect)
+        self.assert_compile(schema.CreateIndex(idx), 
+            "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgresql.dialect())
 
-        i = insert(table1, values=dict(name='foo'), postgres_returning=[func.length(table1.c.name)])
-        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING length(mytable.name)", dialect=dialect)
+    @testing.uses_deprecated(r".*'postgres_where' argument has been renamed.*")
+    def test_old_create_partial_index(self):
+        tbl = Table('testtbl', MetaData(), Column('data',Integer))
+        idx = Index('test_idx1', tbl.c.data, postgres_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+
+        self.assert_compile(schema.CreateIndex(idx), 
+            "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgresql.dialect())
 
     def test_extract(self):
         t = table('t', column('col1'))
@@ -70,72 +105,20 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 "FROM t" % field)
 
 
-class ReturningTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
-
-    @testing.exclude('postgres', '<', (8, 2), '8.3+ feature')
-    def test_update_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
-
-            result = table.update(table.c.persons > 4, dict(full=True), postgres_returning=[table.c.id]).execute()
-            eq_(result.fetchall(), [(1,)])
-
-            result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-            eq_(result2.fetchall(), [(1,True),(2,False)])
-        finally:
-            table.drop()
-
-    @testing.exclude('postgres', '<', (8, 2), '8.3+ feature')
-    def test_insert_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            result = table.insert(postgres_returning=[table.c.id]).execute({'persons': 1, 'full': False})
-
-            eq_(result.fetchall(), [(1,)])
-
-            @testing.fails_on('postgres', 'Known limitation of psycopg2')
-            def test_executemany():
-                # return value is documented as failing with psycopg2/executemany
-                result2 = table.insert(postgres_returning=[table]).execute(
-                     [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
-                eq_(result2.fetchall(), [(2, 2, False), (3,3,True)])
-            
-            test_executemany()
-            
-            result3 = table.insert(postgres_returning=[(table.c.id*2).label('double_id')]).execute({'persons': 4, 'full': False})
-            eq_([dict(row) for row in result3], [{'double_id':8}])
-
-            result4 = testing.db.execute('insert into tables (id, persons, "full") values (5, 10, true) returning persons')
-            eq_([dict(row) for row in result4], [{'persons': 10}])
-        finally:
-            table.drop()
-
-
 class InsertTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
         global metadata
+        cls.engine= testing.db
         metadata = MetaData(testing.db)
 
     def teardown(self):
         metadata.drop_all()
         metadata.tables.clear()
+        if self.engine is not testing.db:
+            self.engine.dispose()
 
     def test_compiled_insert(self):
         table = Table('testtable', metadata,
@@ -144,7 +127,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
 
         metadata.create_all()
 
-        ins = table.insert(values={'data':bindparam('x')}).compile()
+        ins = table.insert(inline=True, values={'data':bindparam('x')}).compile()
         ins.execute({'x':"five"}, {'x':"seven"})
         assert table.select().execute().fetchall() == [(1, 'five'), (2, 'seven')]
 
@@ -155,6 +138,13 @@ class InsertTest(TestBase, AssertsExecutionResults):
         metadata.create_all()
         self._assert_data_with_sequence(table, "my_seq")
 
+    def test_sequence_returning_insert(self):
+        table = Table('testtable', metadata,
+            Column('id', Integer, Sequence('my_seq'), primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_with_sequence_returning(table, "my_seq")
+
     def test_opt_sequence_insert(self):
         table = Table('testtable', metadata,
             Column('id', Integer, Sequence('my_seq', optional=True), primary_key=True),
@@ -162,12 +152,26 @@ class InsertTest(TestBase, AssertsExecutionResults):
         metadata.create_all()
         self._assert_data_autoincrement(table)
 
+    def test_opt_sequence_returning_insert(self):
+        table = Table('testtable', metadata,
+            Column('id', Integer, Sequence('my_seq', optional=True), primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_autoincrement_returning(table)
+
     def test_autoincrement_insert(self):
         table = Table('testtable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)))
         metadata.create_all()
         self._assert_data_autoincrement(table)
+
+    def test_autoincrement_returning_insert(self):
+        table = Table('testtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+        metadata.create_all()
+        self._assert_data_autoincrement_returning(table)
 
     def test_noautoincrement_insert(self):
         table = Table('testtable', metadata,
@@ -177,14 +181,17 @@ class InsertTest(TestBase, AssertsExecutionResults):
         self._assert_data_noautoincrement(table)
 
     def _assert_data_autoincrement(self, table):
+        self.engine = engines.testing_engine(options={'implicit_returning':False})
+        metadata.bind = self.engine
+
         def go():
             # execute with explicit id
             r = table.insert().execute({'id':30, 'data':'d1'})
-            assert r.last_inserted_ids() == [30]
+            assert r.inserted_primary_key == [30]
 
             # execute with prefetch id
             r = table.insert().execute({'data':'d2'})
-            assert r.last_inserted_ids() == [1]
+            assert r.inserted_primary_key == [1]
 
             # executemany with explicit ids
             table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
@@ -201,7 +208,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
         # note that the test framework doesnt capture the "preexecute" of a seqeuence
         # or default.  we just see it in the bind params.
 
-        self.assert_sql(testing.db, go, [], with_sequences=[
+        self.assert_sql(self.engine, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -242,19 +249,19 @@ class InsertTest(TestBase, AssertsExecutionResults):
 
         # test the same series of events using a reflected
         # version of the table
-        m2 = MetaData(testing.db)
+        m2 = MetaData(self.engine)
         table = Table(table.name, m2, autoload=True)
 
         def go():
             table.insert().execute({'id':30, 'data':'d1'})
             r = table.insert().execute({'data':'d2'})
-            assert r.last_inserted_ids() == [5]
+            assert r.inserted_primary_key == [5]
             table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
             table.insert().execute({'data':'d5'}, {'data':'d6'})
             table.insert(inline=True).execute({'id':33, 'data':'d7'})
             table.insert(inline=True).execute({'data':'d8'})
 
-        self.assert_sql(testing.db, go, [], with_sequences=[
+        self.assert_sql(self.engine, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -293,7 +300,127 @@ class InsertTest(TestBase, AssertsExecutionResults):
         ]
         table.delete().execute()
 
+    def _assert_data_autoincrement_returning(self, table):
+        self.engine = engines.testing_engine(options={'implicit_returning':True})
+        metadata.bind = self.engine
+
+        def go():
+            # execute with explicit id
+            r = table.insert().execute({'id':30, 'data':'d1'})
+            assert r.inserted_primary_key == [30]
+
+            # execute with prefetch id
+            r = table.insert().execute({'data':'d2'})
+            assert r.inserted_primary_key == [1]
+
+            # executemany with explicit ids
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+
+            # executemany, uses SERIAL
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+
+            # single execute, explicit id, inline
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+
+            # single execute, inline, uses SERIAL
+            table.insert(inline=True).execute({'data':'d8'})
+        
+        self.assert_sql(self.engine, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data) RETURNING testtable.id",
+                {'data': 'd2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d8'}]
+            ),
+        ])
+
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (1, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (2, 'd5'),
+            (3, 'd6'),
+            (33, 'd7'),
+            (4, 'd8'),
+        ]
+        table.delete().execute()
+
+        # test the same series of events using a reflected
+        # version of the table
+        m2 = MetaData(self.engine)
+        table = Table(table.name, m2, autoload=True)
+
+        def go():
+            table.insert().execute({'id':30, 'data':'d1'})
+            r = table.insert().execute({'data':'d2'})
+            assert r.inserted_primary_key == [5]
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+            table.insert(inline=True).execute({'data':'d8'})
+
+        self.assert_sql(self.engine, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data) RETURNING testtable.id",
+                {'data':'d2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (data) VALUES (:data)",
+                [{'data':'d8'}]
+            ),
+        ])
+
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (5, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (6, 'd5'),
+            (7, 'd6'),
+            (33, 'd7'),
+            (8, 'd8'),
+        ]
+        table.delete().execute()
+
     def _assert_data_with_sequence(self, table, seqname):
+        self.engine = engines.testing_engine(options={'implicit_returning':False})
+        metadata.bind = self.engine
+
         def go():
             table.insert().execute({'id':30, 'data':'d1'})
             table.insert().execute({'data':'d2'})
@@ -302,7 +429,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
             table.insert(inline=True).execute({'id':33, 'data':'d7'})
             table.insert(inline=True).execute({'data':'d8'})
 
-        self.assert_sql(testing.db, go, [], with_sequences=[
+        self.assert_sql(self.engine, go, [], with_sequences=[
             (
                 "INSERT INTO testtable (id, data) VALUES (:id, :data)",
                 {'id':30, 'data':'d1'}
@@ -343,18 +470,76 @@ class InsertTest(TestBase, AssertsExecutionResults):
         # cant test reflection here since the Sequence must be
         # explicitly specified
 
-    def _assert_data_noautoincrement(self, table):
-        table.insert().execute({'id':30, 'data':'d1'})
-        try:
+    def _assert_data_with_sequence_returning(self, table, seqname):
+        self.engine = engines.testing_engine(options={'implicit_returning':True})
+        metadata.bind = self.engine
+
+        def go():
+            table.insert().execute({'id':30, 'data':'d1'})
             table.insert().execute({'data':'d2'})
-            assert False
-        except exc.IntegrityError, e:
-            assert "violates not-null constraint" in str(e)
-        try:
-            table.insert().execute({'data':'d2'}, {'data':'d3'})
-            assert False
-        except exc.IntegrityError, e:
-            assert "violates not-null constraint" in str(e)
+            table.insert().execute({'id':31, 'data':'d3'}, {'id':32, 'data':'d4'})
+            table.insert().execute({'data':'d5'}, {'data':'d6'})
+            table.insert(inline=True).execute({'id':33, 'data':'d7'})
+            table.insert(inline=True).execute({'data':'d8'})
+
+        self.assert_sql(self.engine, go, [], with_sequences=[
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                {'id':30, 'data':'d1'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (nextval('my_seq'), :data) RETURNING testtable.id",
+                {'data':'d2'}
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':31, 'data':'d3'}, {'id':32, 'data':'d4'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), :data)" % seqname,
+                [{'data':'d5'}, {'data':'d6'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                [{'id':33, 'data':'d7'}]
+            ),
+            (
+                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), :data)" % seqname,
+                [{'data':'d8'}]
+            ),
+        ])
+
+        assert table.select().execute().fetchall() == [
+            (30, 'd1'),
+            (1, 'd2'),
+            (31, 'd3'),
+            (32, 'd4'),
+            (2, 'd5'),
+            (3, 'd6'),
+            (33, 'd7'),
+            (4, 'd8'),
+        ]
+
+        # cant test reflection here since the Sequence must be
+        # explicitly specified
+
+    def _assert_data_noautoincrement(self, table):
+        self.engine = engines.testing_engine(options={'implicit_returning':False})
+        metadata.bind = self.engine
+
+        table.insert().execute({'id':30, 'data':'d1'})
+        
+        if self.engine.driver == 'pg8000':
+            exception_cls = exc.ProgrammingError
+        else:
+            exception_cls = exc.IntegrityError
+        
+        assert_raises_message(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'})
+        assert_raises_message(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'}, {'data':'d3'})
+
+        assert_raises_message(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'})
+
+        assert_raises_message(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'}, {'data':'d3'})
 
         table.insert().execute({'id':31, 'data':'d2'}, {'id':32, 'data':'d3'})
         table.insert(inline=True).execute({'id':33, 'data':'d4'})
@@ -369,19 +554,12 @@ class InsertTest(TestBase, AssertsExecutionResults):
 
         # test the same series of events using a reflected
         # version of the table
-        m2 = MetaData(testing.db)
+        m2 = MetaData(self.engine)
         table = Table(table.name, m2, autoload=True)
         table.insert().execute({'id':30, 'data':'d1'})
-        try:
-            table.insert().execute({'data':'d2'})
-            assert False
-        except exc.IntegrityError, e:
-            assert "violates not-null constraint" in str(e)
-        try:
-            table.insert().execute({'data':'d2'}, {'data':'d3'})
-            assert False
-        except exc.IntegrityError, e:
-            assert "violates not-null constraint" in str(e)
+
+        assert_raises_message(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'})
+        assert_raises_message(exception_cls, "violates not-null constraint", table.insert().execute, {'data':'d2'}, {'data':'d3'})
 
         table.insert().execute({'id':31, 'data':'d2'}, {'id':32, 'data':'d3'})
         table.insert(inline=True).execute({'id':33, 'data':'d4'})
@@ -396,36 +574,36 @@ class InsertTest(TestBase, AssertsExecutionResults):
 class DomainReflectionTest(TestBase, AssertsExecutionResults):
     "Test PostgreSQL domains"
 
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
         con = testing.db.connect()
         for ddl in ('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42',
-                    'CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0'):
+                    'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0'):
             try:
                 con.execute(ddl)
             except exc.SQLError, e:
                 if not "already exists" in str(e):
                     raise e
         con.execute('CREATE TABLE testtable (question integer, answer testdomain)')
-        con.execute('CREATE TABLE alt_schema.testtable(question integer, answer alt_schema.testdomain, anything integer)')
-        con.execute('CREATE TABLE crosschema (question integer, answer alt_schema.testdomain)')
+        con.execute('CREATE TABLE test_schema.testtable(question integer, answer test_schema.testdomain, anything integer)')
+        con.execute('CREATE TABLE crosschema (question integer, answer test_schema.testdomain)')
 
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
         con.execute('DROP TABLE testtable')
-        con.execute('DROP TABLE alt_schema.testtable')
+        con.execute('DROP TABLE test_schema.testtable')
         con.execute('DROP TABLE crosschema')
         con.execute('DROP DOMAIN testdomain')
-        con.execute('DROP DOMAIN alt_schema.testdomain')
+        con.execute('DROP DOMAIN test_schema.testdomain')
 
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         eq_(set(table.columns.keys()), set(['question', 'answer']), "Columns of reflected table didn't equal expected columns")
-        eq_(table.c.answer.type.__class__, postgres.PGInteger)
+        assert isinstance(table.c.answer.type, Integer)
 
     def test_domain_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -433,15 +611,15 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         eq_(str(table.columns.answer.server_default.arg), '42', "Reflected default value didn't equal expected value")
         assert not table.columns.answer.nullable, "Expected reflected column to not be nullable."
 
-    def test_table_is_reflected_alt_schema(self):
+    def test_table_is_reflected_test_schema(self):
         metadata = MetaData(testing.db)
-        table = Table('testtable', metadata, autoload=True, schema='alt_schema')
+        table = Table('testtable', metadata, autoload=True, schema='test_schema')
         eq_(set(table.columns.keys()), set(['question', 'answer', 'anything']), "Columns of reflected table didn't equal expected columns")
-        eq_(table.c.anything.type.__class__, postgres.PGInteger)
+        assert isinstance(table.c.anything.type, Integer)
 
     def test_schema_domain_is_reflected(self):
         metadata = MetaData(testing.db)
-        table = Table('testtable', metadata, autoload=True, schema='alt_schema')
+        table = Table('testtable', metadata, autoload=True, schema='test_schema')
         eq_(str(table.columns.answer.server_default.arg), '0', "Reflected default value didn't equal expected value")
         assert table.columns.answer.nullable, "Expected reflected column to be nullable."
 
@@ -452,10 +630,10 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         assert table.columns.answer.nullable, "Expected reflected column to be nullable."
 
     def test_unknown_types(self):
-        from sqlalchemy.databases import postgres
+        from sqlalchemy.databases import postgresql
 
-        ischema_names = postgres.ischema_names
-        postgres.ischema_names = {}
+        ischema_names = postgresql.PGDialect.ischema_names
+        postgresql.PGDialect.ischema_names = {}
         try:
             m2 = MetaData(testing.db)
             assert_raises(exc.SAWarning, Table, "testtable", m2, autoload=True)
@@ -467,11 +645,11 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
                 assert t3.c.answer.type.__class__ == sa.types.NullType
 
         finally:
-            postgres.ischema_names = ischema_names
+            postgresql.PGDialect.ischema_names = ischema_names
 
 
-class MiscTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+    __only_on__ = 'postgresql'
 
     def test_date_reflection(self):
         m1 = MetaData(testing.db)
@@ -536,26 +714,26 @@ class MiscTest(TestBase, AssertsExecutionResults):
             'FROM mytable')
 
     def test_schema_reflection(self):
-        """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
+        """note: this test requires that the 'test_schema' schema be separate and accessible by the test user"""
 
         meta1 = MetaData(testing.db)
         users = Table('users', meta1,
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(30), nullable = False),
-            schema="alt_schema"
+            schema="test_schema"
             )
 
         addresses = Table('email_addresses', meta1,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
-            schema="alt_schema"
+            schema="test_schema"
         )
         meta1.create_all()
         try:
             meta2 = MetaData(testing.db)
-            addresses = Table('email_addresses', meta2, autoload=True, schema="alt_schema")
-            users = Table('users', meta2, mustexist=True, schema="alt_schema")
+            addresses = Table('email_addresses', meta2, autoload=True, schema="test_schema")
+            users = Table('users', meta2, mustexist=True, schema="test_schema")
 
             print users
             print addresses
@@ -574,12 +752,12 @@ class MiscTest(TestBase, AssertsExecutionResults):
         referer = Table("referer", meta1,
                         Column("id", Integer, primary_key=True),
                         Column("ref", Integer, ForeignKey('subject.id')),
-                        schema="alt_schema")
+                        schema="test_schema")
         meta1.create_all()
         try:
             meta2 = MetaData(testing.db)
             subject = Table("subject", meta2, autoload=True)
-            referer = Table("referer", meta2, schema="alt_schema", autoload=True)
+            referer = Table("referer", meta2, schema="test_schema", autoload=True)
             print str(subject.join(referer).onclause)
             self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
         finally:
@@ -589,19 +767,19 @@ class MiscTest(TestBase, AssertsExecutionResults):
         meta1 = MetaData(testing.db)
         subject = Table("subject", meta1,
                         Column("id", Integer, primary_key=True),
-                        schema='alt_schema_2'
+                        schema='test_schema_2'
                         )
 
         referer = Table("referer", meta1,
                         Column("id", Integer, primary_key=True),
-                        Column("ref", Integer, ForeignKey('alt_schema_2.subject.id')),
-                        schema="alt_schema")
+                        Column("ref", Integer, ForeignKey('test_schema_2.subject.id')),
+                        schema="test_schema")
 
         meta1.create_all()
         try:
             meta2 = MetaData(testing.db)
-            subject = Table("subject", meta2, autoload=True, schema="alt_schema_2")
-            referer = Table("referer", meta2, schema="alt_schema", autoload=True)
+            subject = Table("subject", meta2, autoload=True, schema="test_schema_2")
+            referer = Table("referer", meta2, schema="test_schema", autoload=True)
             print str(subject.join(referer).onclause)
             self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
         finally:
@@ -611,7 +789,7 @@ class MiscTest(TestBase, AssertsExecutionResults):
         meta = MetaData(testing.db)
         users = Table('users', meta,
             Column('id', Integer, primary_key=True),
-            Column('name', String(50)), schema='alt_schema')
+            Column('name', String(50)), schema='test_schema')
         users.create()
         try:
             users.insert().execute(id=1, name='name1')
@@ -646,15 +824,15 @@ class MiscTest(TestBase, AssertsExecutionResults):
                  user_name        VARCHAR    NOT NULL,
                  user_password    VARCHAR    NOT NULL
              );
-            """, None)
+            """)
 
             t = Table("speedy_users", meta, autoload=True)
             r = t.insert().execute(user_name='user', user_password='lala')
-            assert r.last_inserted_ids() == [1]
+            assert r.inserted_primary_key == [1]
             l = t.select().execute().fetchall()
             assert l == [(1, 'user', 'lala')]
         finally:
-            testing.db.execute("drop table speedy_users", None)
+            testing.db.execute("drop table speedy_users")
 
     @testing.emits_warning()
     def test_index_reflection(self):
@@ -676,10 +854,10 @@ class MiscTest(TestBase, AssertsExecutionResults):
         
         testing.db.execute("""
           create index idx1 on party ((id || name))
-        """, None) 
+        """) 
         testing.db.execute("""
           create unique index idx2 on party (id) where name = 'test'
-        """, None)
+        """)
         
         testing.db.execute("""
             create index idx3 on party using btree
@@ -713,35 +891,42 @@ class MiscTest(TestBase, AssertsExecutionResults):
             warnings.warn = capture_warnings._orig_showwarning
             m1.drop_all()
 
-    def test_create_partial_index(self):
-        tbl = Table('testtbl', MetaData(), Column('data',Integer))
-        idx = Index('test_idx1', tbl.c.data, postgres_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+    def test_set_isolation_level(self):
+        """Test setting the isolation level with create_engine"""
+        eng = create_engine(testing.db.url)
+        eq_(
+            eng.execute("show transaction isolation level").scalar(),
+            'read committed')
+        eng = create_engine(testing.db.url, isolation_level="SERIALIZABLE")
+        eq_(
+            eng.execute("show transaction isolation level").scalar(),
+            'serializable')
+        eng = create_engine(testing.db.url, isolation_level="FOO")
 
-        executed_sql = []
-        mock_strategy = MockEngineStrategy()
-        mock_conn = mock_strategy.create('postgres://', executed_sql.append)
+        if testing.db.driver == 'zxjdbc':
+            exception_cls = eng.dialect.dbapi.Error
+        else:
+            exception_cls = eng.dialect.dbapi.ProgrammingError
+        assert_raises(exception_cls, eng.execute, "show transaction isolation level")
 
-        idx.create(mock_conn)
-
-        assert executed_sql == ['CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10']
 
 class TimezoneTest(TestBase, AssertsExecutionResults):
     """Test timezone-aware datetimes.
 
-    psycopg will return a datetime with a tzinfo attached to it, if postgres
+    psycopg will return a datetime with a tzinfo attached to it, if postgresql
     returns it.  python then will not let you compare a datetime with a tzinfo
     to a datetime that doesnt have one.  this test illustrates two ways to
     have datetime types with and without timezone info.
     """
 
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
         global tztable, notztable, metadata
         metadata = MetaData(testing.db)
 
-        # current_timestamp() in postgres is assumed to return TIMESTAMP WITH TIMEZONE
+        # current_timestamp() in postgresql is assumed to return TIMESTAMP WITH TIMEZONE
         tztable = Table('tztable', metadata,
             Column("id", Integer, primary_key=True),
             Column("date", DateTime(timezone=True), onupdate=func.current_timestamp()),
@@ -762,17 +947,17 @@ class TimezoneTest(TestBase, AssertsExecutionResults):
         somedate = testing.db.connect().scalar(func.current_timestamp().select())
         tztable.insert().execute(id=1, name='row1', date=somedate)
         c = tztable.update(tztable.c.id==1).execute(name='newname')
-        print tztable.select(tztable.c.id==1).execute().fetchone()
+        print tztable.select(tztable.c.id==1).execute().first()
 
     def test_without_timezone(self):
         # get a date without a tzinfo
         somedate = datetime.datetime(2005, 10,20, 11, 52, 00)
         notztable.insert().execute(id=1, name='row1', date=somedate)
         c = notztable.update(notztable.c.id==1).execute(name='newname')
-        print notztable.select(tztable.c.id==1).execute().fetchone()
+        print notztable.select(tztable.c.id==1).execute().first()
 
 class ArrayTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql'
 
     @classmethod
     def setup_class(cls):
@@ -781,10 +966,14 @@ class ArrayTest(TestBase, AssertsExecutionResults):
 
         arrtable = Table('arrtable', metadata,
             Column('id', Integer, primary_key=True),
-            Column('intarr', postgres.PGArray(Integer)),
-            Column('strarr', postgres.PGArray(String(convert_unicode=True)), nullable=False)
+            Column('intarr', postgresql.PGArray(Integer)),
+            Column('strarr', postgresql.PGArray(String(convert_unicode=True)), nullable=False)
         )
         metadata.create_all()
+        
+    def teardown(self):
+        arrtable.delete().execute()
+        
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
@@ -792,34 +981,38 @@ class ArrayTest(TestBase, AssertsExecutionResults):
     def test_reflect_array_column(self):
         metadata2 = MetaData(testing.db)
         tbl = Table('arrtable', metadata2, autoload=True)
-        assert isinstance(tbl.c.intarr.type, postgres.PGArray)
-        assert isinstance(tbl.c.strarr.type, postgres.PGArray)
+        assert isinstance(tbl.c.intarr.type, postgresql.PGArray)
+        assert isinstance(tbl.c.strarr.type, postgresql.PGArray)
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
 
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_insert_array(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         results = arrtable.select().execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1,2,3])
         eq_(results[0]['strarr'], ['abc','def'])
-        arrtable.delete().execute()
 
+    @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_where(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         arrtable.insert().execute(intarr=[4,5,6], strarr='ABC')
         results = arrtable.select().where(arrtable.c.intarr == [1,2,3]).execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1,2,3])
-        arrtable.delete().execute()
 
+    @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_concat(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
         results = select([arrtable.c.intarr + [4,5,6]]).execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0][0], [1,2,3,4,5,6])
-        arrtable.delete().execute()
 
+    @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_subtype_resultprocessor(self):
         arrtable.insert().execute(intarr=[4,5,6], strarr=[[u'm\xe4\xe4'], [u'm\xf6\xf6']])
         arrtable.insert().execute(intarr=[1,2,3], strarr=[u'm\xe4\xe4', u'm\xf6\xf6'])
@@ -827,13 +1020,14 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(len(results), 2)
         eq_(results[0]['strarr'], [u'm\xe4\xe4', u'm\xf6\xf6'])
         eq_(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
-        arrtable.delete().execute()
 
+    @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_mutability(self):
         class Foo(object): pass
         footable = Table('foo', metadata,
             Column('id', Integer, primary_key=True),
-            Column('intarr', postgres.PGArray(Integer), nullable=True)
+            Column('intarr', postgresql.PGArray(Integer), nullable=True)
         )
         mapper(Foo, footable)
         metadata.create_all()
@@ -870,19 +1064,19 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         sess.add(foo)
         sess.flush()
 
-class TimeStampTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
-    
-    @testing.uses_deprecated()
+class TimestampTest(TestBase, AssertsExecutionResults):
+    __only_on__ = 'postgresql'
+
     def test_timestamp(self):
         engine = testing.db
         connection = engine.connect()
-        s = select([func.TIMESTAMP("12/25/07").label("ts")])
-        result = connection.execute(s).fetchone()
+        
+        s = select(["timestamp '2007-12-25'"])
+        result = connection.execute(s).first()
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 
 class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql+psycopg2'
 
     @classmethod
     def setup_class(cls):
@@ -927,8 +1121,8 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
 class SpecialTypesTest(TestBase, ComparesTables):
     """test DDL and reflection of PG-specific types """
     
-    __only_on__ = 'postgres'
-    __excluded_on__ = (('postgres', '<', (8, 3, 0)),)
+    __only_on__ = 'postgresql'
+    __excluded_on__ = (('postgresql', '<', (8, 3, 0)),)
     
     @classmethod
     def setup_class(cls):
@@ -936,11 +1130,11 @@ class SpecialTypesTest(TestBase, ComparesTables):
         metadata = MetaData(testing.db)
         
         table = Table('sometable', metadata,
-            Column('id', postgres.PGUuid, primary_key=True),
-            Column('flag', postgres.PGBit),
-            Column('addr', postgres.PGInet),
-            Column('addr2', postgres.PGMacAddr),
-            Column('addr3', postgres.PGCidr)
+            Column('id', postgresql.PGUuid, primary_key=True),
+            Column('flag', postgresql.PGBit),
+            Column('addr', postgresql.PGInet),
+            Column('addr2', postgresql.PGMacAddr),
+            Column('addr3', postgresql.PGCidr)
         )
         
         metadata.create_all()
@@ -957,8 +1151,8 @@ class SpecialTypesTest(TestBase, ComparesTables):
         
 
 class MatchTest(TestBase, AssertsCompiledSQL):
-    __only_on__ = 'postgres'
-    __excluded_on__ = (('postgres', '<', (8, 3, 0)),)
+    __only_on__ = 'postgresql'
+    __excluded_on__ = (('postgresql', '<', (8, 3, 0)),)
 
     @classmethod
     def setup_class(cls):
@@ -992,8 +1186,15 @@ class MatchTest(TestBase, AssertsCompiledSQL):
     def teardown_class(cls):
         metadata.drop_all()
 
-    def test_expression(self):
+    @testing.fails_on('postgresql+pg8000', 'uses positional')
+    @testing.fails_on('postgresql+zxjdbc', 'uses qmark')
+    def test_expression_pyformat(self):
         self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%(title_1)s)")
+
+    @testing.fails_on('postgresql+psycopg2', 'uses pyformat')
+    @testing.fails_on('postgresql+zxjdbc', 'uses qmark')
+    def test_expression_positional(self):
+        self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%s)")
 
     def test_simple_match(self):
         results = matchtable.select().where(matchtable.c.title.match('python')).order_by(matchtable.c.id).execute().fetchall()

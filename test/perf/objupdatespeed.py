@@ -1,8 +1,9 @@
-import testenv; testenv.configure_for_tests()
-import time, gc, resource
+import time, resource
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
+from sqlalchemy.test import *
+from sqlalchemy.test.util import gc_collect
+
 
 NUM = 100
 
@@ -72,14 +73,14 @@ def all():
 
         session = create_session()
 
-        gc.collect()
+        gc_collect()
         usage.snap()
         t = time.clock()
         people = orm_select(session)
         t2 = time.clock()
         usage('load objects')
 
-        gc.collect()
+        gc_collect()
         usage.snap()
         t = time.clock()
         update_and_flush(session, people)

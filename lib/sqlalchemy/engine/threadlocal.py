@@ -8,6 +8,7 @@ invoked automatically when the threadlocal engine strategy is used.
 from sqlalchemy import util
 from sqlalchemy.engine import base
 
+
 class TLSession(object):
     def __init__(self, engine):
         self.engine = engine
@@ -17,7 +18,8 @@ class TLSession(object):
         try:
             return self.__transaction._increment_connect()
         except AttributeError:
-            return self.engine.TLConnection(self, self.engine.pool.connect(), close_with_result=close_with_result)
+            return self.engine.TLConnection(self, self.engine.pool.connect(),
+                                            close_with_result=close_with_result)
 
     def reset(self):
         try:

@@ -1,9 +1,9 @@
 import testenv; testenv.simple_setup()
-import gc
 
 import random, string
 
 from sqlalchemy.orm import attributes
+from sqlalchemy.test.util import gc_collect
 
 # with this test, run top.  make sure the Python process doenst grow in size arbitrarily.
 
@@ -33,4 +33,4 @@ for i in xrange(1000):
       a.user = u
   print "clearing"
   #managed_attributes.clear()
-  gc.collect()
+  gc_collect()

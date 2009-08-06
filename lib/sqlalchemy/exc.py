@@ -103,6 +103,7 @@ class DBAPIError(SQLAlchemyError):
 
     """
 
+    @classmethod
     def instance(cls, statement, params, orig, connection_invalidated=False):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
@@ -115,7 +116,6 @@ class DBAPIError(SQLAlchemyError):
                 cls = glob[name]
 
         return cls(statement, params, orig, connection_invalidated)
-    instance = classmethod(instance)
 
     def __init__(self, statement, params, orig, connection_invalidated=False):
         try:

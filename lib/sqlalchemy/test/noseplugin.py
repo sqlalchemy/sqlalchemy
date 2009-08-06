@@ -14,7 +14,7 @@ from config import db, db_label, db_url, file_config, base_config, \
                            _set_table_options, _reverse_topological, _log
 from sqlalchemy.test import testing, config, requires
 from nose.plugins import Plugin
-from nose.util import tolist
+from sqlalchemy import util
 import nose.case
 
 log = logging.getLogger('nose.plugins.sqlalchemy')
@@ -30,9 +30,6 @@ class NoseSQLAlchemy(Plugin):
     def options(self, parser, env=os.environ):
         Plugin.options(self, parser, env)
         opt = parser.add_option
-        #opt("--verbose", action="store_true", dest="verbose",
-            #help="enable stdout echoing/printing")
-        #opt("--quiet", action="store_true", dest="quiet", help="suppress output")
         opt("--log-info", action="callback", type="string", callback=_log,
             help="turn on info logging for <LOG> (multiple OK)")
         opt("--log-debug", action="callback", type="string", callback=_log,
@@ -77,15 +74,16 @@ class NoseSQLAlchemy(Plugin):
         
     def configure(self, options, conf):
         Plugin.configure(self, options, conf)
-
-        import testing, requires
+        self.options = options
+        
+    def begin(self):
         testing.db = db
         testing.requires = requires
 
         # Lazy setup of other options (post coverage)
         for fn in post_configure:
-            fn(options, file_config)
-        
+            fn(self.options, file_config)
+
     def describeTest(self, test):
         return ""
         
@@ -117,15 +115,20 @@ class NoseSQLAlchemy(Plugin):
                 if check(test_suite)() != 'ok':
                     # The requirement will perform messaging.
                     return True
-        if (hasattr(cls, '__unsupported_on__') and
-            testing.db.name in cls.__unsupported_on__):
-            print "'%s' unsupported on DB implementation '%s'" % (
-                cls.__class__.__name__, testing.db.name)
-            return True
-        if (getattr(cls, '__only_on__', None) not in (None, testing.db.name)):
-            print "'%s' unsupported on DB implementation '%s'" % (
-                cls.__class__.__name__, testing.db.name)
-            return True
+
+        if cls.__unsupported_on__:
+            spec = testing.db_spec(*cls.__unsupported_on__)
+            if spec(testing.db):
+                print "'%s' unsupported on DB implementation '%s'" % (
+                     cls.__class__.__name__, testing.db.name)
+                return True
+        if getattr(cls, '__only_on__', None):
+            spec = testing.db_spec(*util.to_list(cls.__only_on__))
+            if not spec(testing.db):
+                print "'%s' unsupported on DB implementation '%s'" % (
+                     cls.__class__.__name__, testing.db.name)
+                return True                    
+
         if (getattr(cls, '__skip_if__', False)):
             for c in getattr(cls, '__skip_if__'):
                 if c():
@@ -140,14 +143,14 @@ class NoseSQLAlchemy(Plugin):
                 return True
         return False
 
-    #def begin(self):
-        #pass
-
     def beforeTest(self, test):
         testing.resetwarnings()
 
     def afterTest(self, test):
         testing.resetwarnings()
+        
+    def afterContext(self):
+        testing.global_cleanup_assertions()
         
     #def handleError(self, test, err):
         #pass

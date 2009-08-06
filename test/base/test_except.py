@@ -1,10 +1,14 @@
 """Tests exceptions and DB-API exception wrapping."""
-import exceptions as stdlib_exceptions
 from sqlalchemy import exc as sa_exceptions
 from sqlalchemy.test import TestBase
 
+# Py3K
+#StandardError = BaseException
+# Py2K
+from exceptions import StandardError, KeyboardInterrupt, SystemExit
+# end Py2K
 
-class Error(stdlib_exceptions.StandardError):
+class Error(StandardError):
     """This class will be old-style on <= 2.4 and new-style on >= 2.5."""
 class DatabaseError(Error):
     pass
@@ -101,19 +105,19 @@ class WrapTest(TestBase):
     def test_db_error_keyboard_interrupt(self):
         try:
             raise sa_exceptions.DBAPIError.instance(
-                '', [], stdlib_exceptions.KeyboardInterrupt())
+                '', [], KeyboardInterrupt())
         except sa_exceptions.DBAPIError:
             self.assert_(False)
-        except stdlib_exceptions.KeyboardInterrupt:
+        except KeyboardInterrupt:
             self.assert_(True)
 
     def test_db_error_system_exit(self):
         try:
             raise sa_exceptions.DBAPIError.instance(
-                '', [], stdlib_exceptions.SystemExit())
+                '', [], SystemExit())
         except sa_exceptions.DBAPIError:
             self.assert_(False)
-        except stdlib_exceptions.SystemExit:
+        except SystemExit:
             self.assert_(True)
 
 

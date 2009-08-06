@@ -43,9 +43,25 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.util import pickle
 import re
 import base64
-from cStringIO import StringIO
+# Py3K
+#from io import BytesIO as byte_buffer
+# Py2K
+from cStringIO import StringIO as byte_buffer
+# end Py2K
+
+# Py3K
+#def b64encode(x):
+#    return base64.b64encode(x).decode('ascii')
+#def b64decode(x):
+#    return base64.b64decode(x.encode('ascii'))
+# Py2K
+b64encode = base64.b64encode
+b64decode = base64.b64decode
+# end Py2K
 
 __all__ = ['Serializer', 'Deserializer', 'dumps', 'loads']
+
+
 
 def Serializer(*args, **kw):
     pickler = pickle.Pickler(*args, **kw)
@@ -55,9 +71,9 @@ def Serializer(*args, **kw):
         if isinstance(obj, QueryableAttribute):
             cls = obj.impl.class_
             key = obj.impl.key
-            id = "attribute:" + key + ":" + base64.b64encode(pickle.dumps(cls))
+            id = "attribute:" + key + ":" + b64encode(pickle.dumps(cls))
         elif isinstance(obj, Mapper) and not obj.non_primary:
-            id = "mapper:" + base64.b64encode(pickle.dumps(obj.class_))
+            id = "mapper:" + b64encode(pickle.dumps(obj.class_))
         elif isinstance(obj, Table):
             id = "table:" + str(obj)
         elif isinstance(obj, Column) and isinstance(obj.table, Table):
@@ -96,10 +112,10 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
             type_, args = m.group(1, 2)
             if type_ == 'attribute':
                 key, clsarg = args.split(":")
-                cls = pickle.loads(base64.b64decode(clsarg))
+                cls = pickle.loads(b64decode(clsarg))
                 return getattr(cls, key)
             elif type_ == "mapper":
-                cls = pickle.loads(base64.b64decode(args))
+                cls = pickle.loads(b64decode(args))
                 return class_mapper(cls)
             elif type_ == "table":
                 return metadata.tables[args]
@@ -116,13 +132,13 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
     return unpickler
 
 def dumps(obj):
-    buf = StringIO()
+    buf = byte_buffer()
     pickler = Serializer(buf)
     pickler.dump(obj)
     return buf.getvalue()
     
 def loads(data, metadata=None, scoped_session=None, engine=None):
-    buf = StringIO(data)
+    buf = byte_buffer(data)
     unpickler = Deserializer(buf, metadata, scoped_session, engine)
     return unpickler.load()
     

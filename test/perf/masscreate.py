@@ -3,7 +3,6 @@ import testenv; testenv.simple_setup()
 
 from sqlalchemy.orm import attributes
 import time
-import gc
 
 manage_attributes = True
 init_attributes = manage_attributes and True
@@ -34,7 +33,6 @@ for i in range(0,130):
             attributes.manage(a)
         a.email = 'foo@bar.com'
         u.addresses.append(a)
-#    gc.collect()
 #    print len(managed_attributes)
 #    managed_attributes.clear()
 total = time.time() - now

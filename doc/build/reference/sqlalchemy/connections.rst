@@ -65,7 +65,3 @@ Internals
 .. autoclass:: ExecutionContext
     :members:
 
-.. autoclass:: SchemaIterator
-    :members:
-    :show-inheritance:
-    

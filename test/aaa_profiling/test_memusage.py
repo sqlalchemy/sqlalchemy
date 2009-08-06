@@ -1,16 +1,21 @@
 from sqlalchemy.test.testing import eq_
-import gc
 from sqlalchemy.orm import mapper, relation, create_session, clear_mappers, sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
+from sqlalchemy.util import jython
 import operator
 from sqlalchemy.test import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, PickleType
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
+from sqlalchemy.test.util import gc_collect
+import gc
 from test.orm import _base
+
+if jython:
+    from nose import SkipTest
+    raise SkipTest("Profiling not supported on this platform")
 
 
 class A(_base.ComparableEntity):
@@ -22,11 +27,11 @@ def profile_memory(func):
     # run the test 50 times.  if length of gc.get_objects()
     # keeps growing, assert false
     def profile(*args):
-        gc.collect()
+        gc_collect()
         samples = [0 for x in range(0, 50)]
         for x in range(0, 50):
             func(*args)
-            gc.collect()
+            gc_collect()
             samples[x] = len(gc.get_objects())
         print "sample gc sizes:", samples
 
@@ -50,7 +55,7 @@ def profile_memory(func):
 
 def assert_no_mappers():
     clear_mappers()
-    gc.collect()
+    gc_collect()
     assert len(_mapper_registry) == 0
 
 class EnsureZeroed(_base.ORMTest):
@@ -61,7 +66,7 @@ class EnsureZeroed(_base.ORMTest):
 class MemUsageTest(EnsureZeroed):
     
     # ensure a pure growing test trips the assertion
-    @testing.fails_if(lambda:True)
+    @testing.fails_if(lambda: True)
     def test_fixture(self):
         class Foo(object):
             pass
@@ -76,11 +81,11 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)),
             Column('col3', Integer, ForeignKey("mytable.col1")))
 
@@ -129,11 +134,11 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)))
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)),
             Column('col3', Integer, ForeignKey("mytable.col1")))
 
@@ -184,13 +189,13 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30))
             )
 
         table2 = Table("mytable2", metadata,
             Column('col1', Integer, ForeignKey('mytable.col1'),
-                   primary_key=True),
+                   primary_key=True, test_needs_autoincrement=True),
             Column('col3', String(30)),
             )
 
@@ -244,12 +249,12 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30))
             )
 
         table2 = Table("mytable2", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', String(30)),
             )
 
@@ -308,12 +313,12 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("table1", metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30))
             )
 
         table2 = Table("table2", metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             Column('t1id', Integer, ForeignKey('table1.id'))
             )
@@ -347,7 +352,7 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
 
         table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('col2', PickleType(comparator=operator.eq))
             )
         
@@ -382,7 +387,7 @@ class MemUsageTest(EnsureZeroed):
             testing.eq_(len(session.identity_map._mutable_attrs), 12)
             testing.eq_(len(session.identity_map), 12)
             obj = None
-            gc.collect()
+            gc_collect()
             testing.eq_(len(session.identity_map._mutable_attrs), 0)
             testing.eq_(len(session.identity_map), 0)
             
@@ -392,7 +397,7 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
 
     def test_type_compile(self):
-        from sqlalchemy.databases.sqlite import SQLiteDialect
+        from sqlalchemy.dialects.sqlite.base import dialect as SQLiteDialect
         cast = sa.cast(column('x'), sa.Integer)
         @profile_memory
         def go():

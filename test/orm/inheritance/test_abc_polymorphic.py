@@ -4,13 +4,14 @@ from sqlalchemy.orm import *
 
 from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
+from sqlalchemy.test.schema import Table, Column
 
 class ABCTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global a, b, c
         a = Table('a', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('adata', String(30)),
             Column('type', String(30)),
             )
@@ -61,7 +62,7 @@ class ABCTest(_base.MappedTest):
                 C(cdata='c1', bdata='c1', adata='c1'),
                 C(cdata='c2', bdata='c2', adata='c2'),
                 C(cdata='c2', bdata='c2', adata='c2'),
-            ] == sess.query(A).all()
+            ] == sess.query(A).order_by(A.id).all()
 
             assert [
                 B(bdata='b1', adata='b1'),

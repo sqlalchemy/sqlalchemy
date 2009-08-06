@@ -5,8 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy.orm import eagerload, deferred, undefer
 from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, func
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session, lazyload, aliased
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.assertsql import CompiledSQL
@@ -459,20 +458,14 @@ class EagerTest(_fixtures.FixtureTest):
         })
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses), lazy=False, order_by=addresses.c.id),
-            'orders':relation(Order, lazy=True)
+            'orders':relation(Order, lazy=True, order_by=orders.c.id)
         })
 
         sess = create_session()
         q = sess.query(User)
 
-        if testing.against('mysql'):
-            l = q.limit(2).all()
-            assert self.static.user_all_result[:2] == l
-        else:
-            l = q.order_by(User.id).limit(2).offset(1).all()
-            print self.static.user_all_result[1:3]
-            print l
-            assert self.static.user_all_result[1:3] == l
+        l = q.order_by(User.id).limit(2).offset(1).all()
+        eq_(self.static.user_all_result[1:3], l)
 
     @testing.resolve_artifact_names
     def test_distinct(self):
@@ -483,15 +476,15 @@ class EagerTest(_fixtures.FixtureTest):
         s = sa.union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
 
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=False),
+            'addresses':relation(mapper(Address, addresses), lazy=False, order_by=addresses.c.id),
         })
 
         sess = create_session()
         q = sess.query(User)
 
         def go():
-            l = q.filter(s.c.u2_id==User.id).distinct().all()
-            assert self.static.user_address_result == l
+            l = q.filter(s.c.u2_id==User.id).distinct().order_by(User.id).all()
+            eq_(self.static.user_address_result, l)
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
@@ -656,9 +649,12 @@ class EagerTest(_fixtures.FixtureTest):
 
         mapper(Order, orders)
         mapper(User, users, properties={
-               'orders':relation(Order, backref='user', lazy=False),
-               'max_order':relation(mapper(Order, max_orders, non_primary=True), lazy=False, uselist=False)
+               'orders':relation(Order, backref='user', lazy=False, order_by=orders.c.id),
+               'max_order':relation(
+                                mapper(Order, max_orders, non_primary=True), 
+                                lazy=False, uselist=False)
                })
+
         q = create_session().query(User)
 
         def go():
@@ -675,7 +671,7 @@ class EagerTest(_fixtures.FixtureTest):
                     max_order=Order(id=4)
                 ),
                 User(id=10),
-            ] == q.all()
+            ] == q.order_by(User.id).all()
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
@@ -823,15 +819,15 @@ class OrderBySecondaryTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('m2m', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('aid', Integer, ForeignKey('a.id')),
               Column('bid', Integer, ForeignKey('b.id')))
 
         Table('a', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)))
         Table('b', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)))
 
     @classmethod
@@ -873,8 +869,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('nodes', metadata,
-              Column('id', Integer, sa.Sequence('node_id_seq', optional=True),
-                     primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
 
@@ -1088,11 +1083,11 @@ class MixedSelfReferentialEagerTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a_table', metadata,
-                       Column('id', Integer, primary_key=True)
+                       Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
                        )
 
         Table('b_table', metadata,
-                       Column('id', Integer, primary_key=True),
+                       Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                        Column('parent_b1_id', Integer, ForeignKey('b_table.id')),
                        Column('parent_a_id', Integer, ForeignKey('a_table.id')),
                        Column('parent_b2_id', Integer, ForeignKey('b_table.id')))
@@ -1161,7 +1156,7 @@ class SelfReferentialM2MEagerTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('widget', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', sa.Unicode(40), nullable=False, unique=True),
         )
 
@@ -1244,7 +1239,7 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
         self.assert_sql_count(testing.db, go, 1)
 
-    @testing.exclude('sqlite', '>', (0, 0, 0), "sqlite flat out blows it on the multiple JOINs")
+    @testing.exclude('sqlite', '>', (0, ), "sqlite flat out blows it on the multiple JOINs")
     @testing.resolve_artifact_names
     def test_two_entities_with_joins(self):
         sess = create_session()
@@ -1337,13 +1332,13 @@ class CyclicalInheritingEagerTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('c1', Integer, primary_key=True),
+            Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('c2', String(30)),
             Column('type', String(30))
             )
 
         Table('t2', metadata,
-            Column('c1', Integer, primary_key=True),
+            Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('c2', String(30)),
             Column('type', String(30)),
             Column('t1.id', Integer, ForeignKey('t1.c1')))
@@ -1376,12 +1371,12 @@ class SubqueryTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users_table', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(16))
         )
 
         Table('tags_table', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('user_id', Integer, ForeignKey("users_table.id")),
             Column('score1', sa.Float),
             Column('score2', sa.Float),
@@ -1461,16 +1456,20 @@ class CorrelatedSubqueryTest(_base.MappedTest):
     Exercises a variety of ways to configure this.
     
     """
+
+    # another argument for eagerload learning about inner joins
+    
+    __requires__ = ('correlated_outer_joins', )
     
     @classmethod
     def define_tables(cls, metadata):
         users = Table('users', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50))
             )
 
         stuff = Table('stuff', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('date', Date),
             Column('user_id', Integer, ForeignKey('users.id')))
     
@@ -1549,11 +1548,13 @@ class CorrelatedSubqueryTest(_base.MappedTest):
 
         if ondate:
             # the more 'relational' way to do this, join on the max date
-            stuff_view = select([func.max(salias.c.date).label('max_date')]).where(salias.c.user_id==users.c.id).correlate(users)
+            stuff_view = select([func.max(salias.c.date).label('max_date')]).\
+                                where(salias.c.user_id==users.c.id).correlate(users)
         else:
             # a common method with the MySQL crowd, which actually might perform better in some
             # cases - subquery does a limit with order by DESC, join on the id
-            stuff_view = select([salias.c.id]).where(salias.c.user_id==users.c.id).correlate(users).order_by(salias.c.date.desc()).limit(1)
+            stuff_view = select([salias.c.id]).where(salias.c.user_id==users.c.id).\
+                                    correlate(users).order_by(salias.c.date.desc()).limit(1)
 
         if labeled == 'label':
             stuff_view = stuff_view.label('foo')

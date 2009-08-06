@@ -1,140 +1,149 @@
 MySQL
 =====
 
-.. automodule:: sqlalchemy.databases.mysql
+.. automodule:: sqlalchemy.dialects.mysql.base
 
 MySQL Column Types
 ------------------
 
-.. autoclass:: MSNumeric
+.. autoclass:: NUMERIC
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSDecimal
+.. autoclass:: DECIMAL
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSDouble
+.. autoclass:: DOUBLE
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSReal
+.. autoclass:: REAL
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSFloat
+.. autoclass:: FLOAT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSInteger
+.. autoclass:: INTEGER
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSBigInteger
+.. autoclass:: BIGINT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSMediumInteger
+.. autoclass:: MEDIUMINT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSTinyInteger
+.. autoclass:: TINYINT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSSmallInteger
+.. autoclass:: SMALLINT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSBit
+.. autoclass:: BIT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSDateTime
+.. autoclass:: DATETIME
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSDate
+.. autoclass:: DATE
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSTime
+.. autoclass:: TIME
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSTimeStamp
+.. autoclass:: TIMESTAMP
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSYear
+.. autoclass:: YEAR
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSText
+.. autoclass:: TEXT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSTinyText
+.. autoclass:: TINYTEXT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSMediumText
+.. autoclass:: MEDIUMTEXT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSLongText
+.. autoclass:: LONGTEXT
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSString
+.. autoclass:: VARCHAR
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSChar
+.. autoclass:: CHAR
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSNVarChar
+.. autoclass:: NVARCHAR
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSNChar
+.. autoclass:: NCHAR
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSVarBinary
+.. autoclass:: VARBINARY
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSBinary
+.. autoclass:: BINARY
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSBlob
+.. autoclass:: BLOB
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSTinyBlob
+.. autoclass:: TINYBLOB
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSMediumBlob
+.. autoclass:: MEDIUMBLOB
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSLongBlob
+.. autoclass:: LONGBLOB
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSEnum
+.. autoclass:: ENUM
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSSet
+.. autoclass:: SET
    :members: __init__
    :show-inheritance:
 
-.. autoclass:: MSBoolean
+.. autoclass:: BOOLEAN
    :members: __init__
    :show-inheritance:
 
+MySQLdb Notes
+--------------
+
+.. automodule:: sqlalchemy.dialects.mysql.mysqldb
+
+zxjdbc Notes
+--------------
+
+.. automodule:: sqlalchemy.dialects.mysql.zxjdbc

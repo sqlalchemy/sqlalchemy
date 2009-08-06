@@ -3,7 +3,6 @@ from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.base import Connection
 from sqlalchemy import util
-import testing
 import re
 
 class AssertRule(object):

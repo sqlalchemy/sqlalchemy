@@ -4,8 +4,13 @@
 """Defines operators used in SQL expressions."""
 
 from operator import (
-    and_, or_, inv, add, mul, sub, div, mod, truediv, lt, le, ne, gt, ge, eq
+    and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq
     )
+    
+# Py2K
+from operator import (div,)
+# end Py2K
+
 from sqlalchemy.util import symbol
 
 
@@ -88,7 +93,10 @@ _largest = symbol('_largest')
 _PRECEDENCE = {
     from_: 15,
     mul: 7,
+    truediv: 7,
+    # Py2K
     div: 7,
+    # end Py2K
     mod: 7,
     add: 6,
     sub: 6,

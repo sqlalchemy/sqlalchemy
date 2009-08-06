@@ -121,7 +121,7 @@ class BindTest(testing.TestBase):
                 table = Table('test_table', metadata,
                     Column('foo', Integer))
 
-                metadata.connect(bind)
+                metadata.bind = bind
 
                 assert metadata.bind is table.bind is bind
                 metadata.create_all()
@@ -199,7 +199,7 @@ class BindTest(testing.TestBase):
                     try:
                         e = elem(bind=bind)
                         assert e.bind is bind
-                        e.execute()
+                        e.execute().close()
                     finally:
                         if isinstance(bind, engine.Connection):
                             bind.close()

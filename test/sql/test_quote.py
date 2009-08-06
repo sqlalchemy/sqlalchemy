@@ -129,7 +129,7 @@ class QuoteTest(TestBase, AssertsCompiledSQL):
     def testlabels(self):
         """test the quoting of labels.
 
-        if labels arent quoted, a query in postgres in particular will fail since it produces:
+        if labels arent quoted, a query in postgresql in particular will fail since it produces:
 
         SELECT LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC"
         FROM (SELECT DISTINCT "WorstCase1".lowercase AS lowercase, "WorstCase1"."UPPERCASE" AS UPPERCASE, "WorstCase1"."MixedCase" AS MixedCase, "WorstCase1"."ASC" AS ASC \nFROM "WorstCase1") AS LaLa

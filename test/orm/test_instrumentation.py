@@ -488,7 +488,7 @@ class InstrumentationCollisionTest(_base.ORMTest):
         class B(A):
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
 
-        assert_raises(TypeError, attributes.register_class, B)
+        assert_raises_message(TypeError, "multiple instrumentation implementations", attributes.register_class, B)
 
     def test_single_up(self):
 
@@ -499,7 +499,8 @@ class InstrumentationCollisionTest(_base.ORMTest):
         class B(A):
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
         attributes.register_class(B)
-        assert_raises(TypeError, attributes.register_class, A)
+
+        assert_raises_message(TypeError, "multiple instrumentation implementations", attributes.register_class, A)
 
     def test_diamond_b1(self):
         mgr_factory = lambda cls: attributes.ClassManager(cls)
@@ -507,10 +508,10 @@ class InstrumentationCollisionTest(_base.ORMTest):
         class A(object): pass
         class B1(A): pass
         class B2(A):
-            __sa_instrumentation_manager__ = mgr_factory
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
         class C(object): pass
 
-        assert_raises(TypeError, attributes.register_class, B1)
+        assert_raises_message(TypeError, "multiple instrumentation implementations", attributes.register_class, B1)
 
     def test_diamond_b2(self):
         mgr_factory = lambda cls: attributes.ClassManager(cls)
@@ -518,10 +519,11 @@ class InstrumentationCollisionTest(_base.ORMTest):
         class A(object): pass
         class B1(A): pass
         class B2(A):
-            __sa_instrumentation_manager__ = mgr_factory
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
         class C(object): pass
 
-        assert_raises(TypeError, attributes.register_class, B2)
+        attributes.register_class(B2)
+        assert_raises_message(TypeError, "multiple instrumentation implementations", attributes.register_class, B1)
 
     def test_diamond_c_b(self):
         mgr_factory = lambda cls: attributes.ClassManager(cls)
@@ -529,12 +531,12 @@ class InstrumentationCollisionTest(_base.ORMTest):
         class A(object): pass
         class B1(A): pass
         class B2(A):
-            __sa_instrumentation_manager__ = mgr_factory
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
         class C(object): pass
 
         attributes.register_class(C)
-        assert_raises(TypeError, attributes.register_class, B1)
 
+        assert_raises_message(TypeError, "multiple instrumentation implementations", attributes.register_class, B1)
 
 class OnLoadTest(_base.ORMTest):
     """Check that Events.on_load is not hit in regular attributes operations."""

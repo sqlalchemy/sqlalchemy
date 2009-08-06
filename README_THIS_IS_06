@@ -1,0 +1,11 @@
+Trunk is now moved to SQLAlchemy 0.6.
+
+An ongoing wiki page of changes etc. is at:
+
+http://www.sqlalchemy.org/trac/wiki/06Migration
+
+SQLAlchemy 0.5 is now in a maintenance branch.  Get it at:
+
+http://svn.sqlalchemy.org/sqlalchemy/branches/rel_0_5
+
+

@@ -10,9 +10,18 @@ downloads for nose are available at:
 
 http://somethingaboutorange.com/mrl/projects/nose/0.11.1/index.html
 
-
 SQLAlchemy implements a nose plugin that must be present when tests are run.
 This plugin is available when SQLAlchemy is installed via setuptools.
+
+INSTANT TEST RUNNER
+-------------------
+
+A plain vanilla run of all tests using sqlite can be run via setup.py:
+
+    $ python setup.py test
+    
+Setuptools will take care of the rest !   To run nose directly and have
+its full set of options available, read on...
 
 SETUP
 -----
@@ -67,11 +76,14 @@ DATABASE TARGETS
 Tests will target an in-memory SQLite database by default.  To test against
 another database, use the --dburi option with any standard SQLAlchemy URL:
 
-    --dburi=postgres://user:password@localhost/test
+    --dburi=postgresql://user:password@localhost/test
 
-Use an empty database and a database user with general DBA privileges.  The
-test suite will be creating and dropping many tables and other DDL, and
-preexisting tables will interfere with the tests
+Use an empty database and a database user with general DBA privileges.  
+The test suite will be creating and dropping many tables and other DDL, and
+preexisting tables will interfere with the tests.
+
+IMPORTANT !: please see TIPS at the end if your are testing on POSTGRESQL,
+ORACLE, or MSSQL - additional steps are required to prepare a test database.
 
 If you'll be running the tests frequently, database aliases can save a lot of
 typing.  The --dbs option lists the built-in aliases and their matching URLs:
@@ -80,19 +92,19 @@ typing.  The --dbs option lists the built-in aliases and their matching URLs:
     Available --db options (use --dburi to override)
                mysql    mysql://scott:tiger@127.0.0.1:3306/test
               oracle    oracle://scott:tiger@127.0.0.1:1521
-            postgres    postgres://scott:tiger@127.0.0.1:5432/test
+            postgresql    postgresql://scott:tiger@127.0.0.1:5432/test
     [...]
 
 To run tests against an aliased database:
 
-    $ nosetests --db=postgres
+    $ nosetests --db=postgresql
 
 To customize the URLs with your own users or hostnames, make a simple .ini
 file called `test.cfg` at the top level of the SQLAlchemy source distribution
 or a `.satest.cfg` in your home directory:
 
     [db]
-    postgres=postgres://myuser:mypass@localhost/mydb
+    postgresql=postgresql://myuser:mypass@localhost/mydb
 
 Your custom entries will override the defaults and you'll see them reflected
 in the output of --dbs.
@@ -159,13 +171,23 @@ IRC!
 
 TIPS
 ----
-PostgreSQL: The tests require an 'alt_schema' and 'alt_schema_2' to be present in
+
+PostgreSQL: The tests require an 'test_schema' and 'test_schema_2' to be present in
 the testing database.
 
-PostgreSQL: When running the tests on postgres, postgres can get slower and
-slower each time you run the tests.  This seems to be related to the constant
-creation/dropping of tables.  Running a "VACUUM FULL" on the database will
-speed it up again.
+Oracle: the database owner should be named "scott" (this will be fixed),
+and an additional "owner" named "ed" is required:
+
+1. create a user 'ed' in the oracle database.
+2. in 'ed', issue the following statements:
+    create table parent(id integer primary key, data varchar2(50));
+    create table child(id integer primary key, data varchar2(50), parent_id integer references parent(id));
+    create synonym ptable for parent;
+    create synonym ctable for child;
+    grant all on parent to scott;  (or to whoever you run the oracle tests as)
+    grant all on child to scott;  (same)
+    grant all on ptable to scott;
+    grant all on ctable to scott;
 
 MSSQL: Tests that involve multiple connections require Snapshot Isolation
 ability implented on the test database in order to prevent deadlocks that will

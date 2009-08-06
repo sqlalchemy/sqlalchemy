@@ -1,5 +1,7 @@
 from sqlalchemy import *
+from sqlalchemy.types import TypeEngine
 from sqlalchemy.sql.expression import ClauseElement, ColumnClause
+from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import table, column
 from sqlalchemy.test import *
@@ -25,7 +27,35 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             select([MyThingy('x'), MyThingy('y')]).where(MyThingy() == 5),
             "SELECT >>x<<, >>y<< WHERE >>MYTHINGY!<< = :MYTHINGY!_1"
         )
+    
+    def test_types(self):
+        class MyType(TypeEngine):
+            pass
+        
+        @compiles(MyType, 'sqlite')
+        def visit_type(type, compiler, **kw):
+            return "SQLITE_FOO"
 
+        @compiles(MyType, 'postgresql')
+        def visit_type(type, compiler, **kw):
+            return "POSTGRES_FOO"
+
+        from sqlalchemy.dialects.sqlite import base as sqlite
+        from sqlalchemy.dialects.postgresql import base as postgresql
+
+        self.assert_compile(
+            MyType(),
+            "SQLITE_FOO",
+            dialect=sqlite.dialect()
+        )
+
+        self.assert_compile(
+            MyType(),
+            "POSTGRES_FOO",
+            dialect=postgresql.dialect()
+        )
+        
+        
     def test_stateful(self):
         class MyThingy(ColumnClause):
             def __init__(self):
@@ -71,10 +101,10 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         )
 
     def test_dialect_specific(self):
-        class AddThingy(ClauseElement):
+        class AddThingy(DDLElement):
             __visit_name__ = 'add_thingy'
 
-        class DropThingy(ClauseElement):
+        class DropThingy(DDLElement):
             __visit_name__ = 'drop_thingy'
 
         @compiles(AddThingy, 'sqlite')
@@ -97,7 +127,7 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             "DROP THINGY"
         )
 
-        from sqlalchemy.databases import sqlite as base
+        from sqlalchemy.dialects.sqlite import base
         self.assert_compile(AddThingy(),
             "ADD SPECIAL SL THINGY",
             dialect=base.dialect()

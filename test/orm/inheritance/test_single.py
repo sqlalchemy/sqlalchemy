@@ -5,20 +5,21 @@ from sqlalchemy.orm import *
 from sqlalchemy.test import testing
 from test.orm import _fixtures
 from test.orm._base import MappedTest, ComparableEntity
+from sqlalchemy.test.schema import Table, Column
 
 
 class SingleInheritanceTest(MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
-            Column('employee_id', Integer, primary_key=True),
+            Column('employee_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
             Column('manager_data', String(50)),
             Column('engineer_info', String(50)),
             Column('type', String(20)))
 
         Table('reports', metadata,
-              Column('report_id', Integer, primary_key=True),
+              Column('report_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('employee_id', ForeignKey('employees.employee_id')),
               Column('name', String(50)),
         )
@@ -186,7 +187,7 @@ class RelationToSingleTest(MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
-            Column('employee_id', Integer, primary_key=True),
+            Column('employee_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
             Column('manager_data', String(50)),
             Column('engineer_info', String(50)),
@@ -195,7 +196,7 @@ class RelationToSingleTest(MappedTest):
         )
         
         Table('companies', metadata,
-            Column('company_id', Integer, primary_key=True),
+            Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
         )
     
@@ -342,7 +343,7 @@ class SingleOnJoinedTest(MappedTest):
         global persons_table, employees_table
         
         persons_table = Table('persons', metadata,
-           Column('person_id', Integer, primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
            Column('type', String(20), nullable=False)
         )

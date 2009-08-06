@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy import Sequence, Column, func
 from sqlalchemy.sql import select, text
 import sqlalchemy as sa
-from sqlalchemy.test import testing
+from sqlalchemy.test import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.testing import eq_
@@ -37,7 +37,7 @@ class DefaultTest(testing.TestBase):
                 # since its a "branched" connection
                 conn.close()
 
-        use_function_defaults = testing.against('postgres', 'mssql', 'maxdb')
+        use_function_defaults = testing.against('postgresql', 'mssql', 'maxdb')
         is_oracle = testing.against('oracle')
 
         # select "count(1)" returns different results on different DBs also
@@ -146,7 +146,7 @@ class DefaultTest(testing.TestBase):
             assert_raises_message(sa.exc.ArgumentError,
                                      ex_msg,
                                      sa.ColumnDefault, fn)
-
+    
     def test_arg_signature(self):
         def fn1(): pass
         def fn2(): pass
@@ -276,7 +276,7 @@ class DefaultTest(testing.TestBase):
         assert r.lastrow_has_defaults()
         eq_(set(r.context.postfetch_cols),
             set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]))
-
+        
         eq_(t.select(t.c.col1==54).execute().fetchall(),
             [(54, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, None)])
@@ -284,7 +284,7 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_insertmany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testing.against('mysql') and
+        if (testing.against('mysql') and not testing.against('+zxjdbc') and
             testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
@@ -304,12 +304,12 @@ class DefaultTest(testing.TestBase):
     def test_insert_values(self):
         t.insert(values={'col3':50}).execute()
         l = t.select().execute()
-        eq_(50, l.fetchone()['col3'])
+        eq_(50, l.first()['col3'])
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_updatemany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testing.against('mysql') and
+        if (testing.against('mysql') and not testing.against('+zxjdbc') and
             testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
@@ -337,11 +337,11 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_update(self):
         r = t.insert().execute()
-        pk = r.last_inserted_ids()[0]
+        pk = r.inserted_primary_key[0]
         t.update(t.c.col1==pk).execute(col4=None, col5=None)
         ctexec = currenttime.scalar()
         l = t.select(t.c.col1==pk).execute()
-        l = l.fetchone()
+        l = l.first()
         eq_(l,
             (pk, 'im the update', f2, None, None, ctexec, True, False,
              13, datetime.date.today(), 'py'))
@@ -350,42 +350,11 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_update_values(self):
         r = t.insert().execute()
-        pk = r.last_inserted_ids()[0]
+        pk = r.inserted_primary_key[0]
         t.update(t.c.col1==pk, values={'col3': 55}).execute()
         l = t.select(t.c.col1==pk).execute()
-        l = l.fetchone()
+        l = l.first()
         eq_(55, l['col3'])
-
-    @testing.fails_on_everything_except('postgres')
-    def test_passive_override(self):
-        """
-        Primarily for postgres, tests that when we get a primary key column
-        back from reflecting a table which has a default value on it, we
-        pre-execute that DefaultClause upon insert, even though DefaultClause
-        says "let the database execute this", because in postgres we must have
-        all the primary key values in memory before insert; otherwise we can't
-        locate the just inserted row.
-
-        """
-        # TODO: move this to dialect/postgres
-        try:
-            meta = MetaData(testing.db)
-            testing.db.execute("""
-             CREATE TABLE speedy_users
-             (
-                 speedy_user_id   SERIAL     PRIMARY KEY,
-
-                 user_name        VARCHAR    NOT NULL,
-                 user_password    VARCHAR    NOT NULL
-             );
-            """, None)
-
-            t = Table("speedy_users", meta, autoload=True)
-            t.insert().execute(user_name='user', user_password='lala')
-            l = t.select().execute().fetchall()
-            eq_(l, [(1, 'user', 'lala')])
-        finally:
-            testing.db.execute("drop table speedy_users", None)
 
 
 class PKDefaultTest(_base.TablesTest):
@@ -400,18 +369,27 @@ class PKDefaultTest(_base.TablesTest):
               Column('id', Integer, primary_key=True,
                      default=sa.select([func.max(t2.c.nextid)]).as_scalar()),
               Column('data', String(30)))
-
-    @testing.fails_on('mssql', 'FIXME: unknown')
+    
+    @testing.requires.returning
+    def test_with_implicit_returning(self):
+        self._test(True)
+        
+    def test_regular(self):
+        self._test(False)
+        
     @testing.resolve_artifact_names
-    def test_basic(self):
-        t2.insert().execute(nextid=1)
-        r = t1.insert().execute(data='hi')
-        eq_([1], r.last_inserted_ids())
+    def _test(self, returning):
+        if not returning and not testing.db.dialect.implicit_returning:
+            engine = testing.db
+        else:
+            engine = engines.testing_engine(options={'implicit_returning':returning})
+        engine.execute(t2.insert(), nextid=1)
+        r = engine.execute(t1.insert(), data='hi')
+        eq_([1], r.inserted_primary_key)
 
-        t2.insert().execute(nextid=2)
-        r = t1.insert().execute(data='there')
-        eq_([2], r.last_inserted_ids())
-
+        engine.execute(t2.insert(), nextid=2)
+        r = engine.execute(t1.insert(), data='there')
+        eq_([2], r.inserted_primary_key)
 
 class PKIncrementTest(_base.TablesTest):
     run_define_tables = 'each'
@@ -430,29 +408,31 @@ class PKIncrementTest(_base.TablesTest):
     def _test_autoincrement(self, bind):
         ids = set()
         rs = bind.execute(aitable.insert(), int1=1)
-        last = rs.last_inserted_ids()[0]
+        last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
         rs = bind.execute(aitable.insert(), str1='row 2')
-        last = rs.last_inserted_ids()[0]
+        last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
         rs = bind.execute(aitable.insert(), int1=3, str1='row 3')
-        last = rs.last_inserted_ids()[0]
+        last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
         rs = bind.execute(aitable.insert(values={'int1':func.length('four')}))
-        last = rs.last_inserted_ids()[0]
+        last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
+        eq_(ids, set([1,2,3,4]))
+        
         eq_(list(bind.execute(aitable.select().order_by(aitable.c.id))),
             [(1, 1, None), (2, None, 'row 2'), (3, 3, 'row 3'), (4, 4, None)])
 
@@ -510,8 +490,8 @@ class AutoIncrementTest(_base.TablesTest):
         single.create()
 
         r = single.insert().execute()
-        id_ = r.last_inserted_ids()[0]
-        assert id_ is not None
+        id_ = r.inserted_primary_key[0]
+        eq_(id_, 1)
         eq_(1, sa.select([func.count(sa.text('*'))], from_obj=single).scalar())
 
     def test_autoincrement_fk(self):
@@ -522,7 +502,7 @@ class AutoIncrementTest(_base.TablesTest):
         nodes.create()
 
         r = nodes.insert().execute(data='foo')
-        id_ = r.last_inserted_ids()[0]
+        id_ = r.inserted_primary_key[0]
         nodes.insert().execute(data='bar', parent_id=id_)
 
     @testing.fails_on('sqlite', 'FIXME: unknown')
@@ -535,7 +515,7 @@ class AutoIncrementTest(_base.TablesTest):
 
 
         try:
-            # postgres + mysql strict will fail on first row,
+            # postgresql + mysql strict will fail on first row,
             # mysql in legacy mode fails on second row
             nonai.insert().execute(data='row 1')
             nonai.insert().execute(data='row 2')
@@ -570,16 +550,17 @@ class SequenceTest(testing.TestBase):
     def testseqnonpk(self):
         """test sequences fire off as defaults on non-pk columns"""
 
-        result = sometable.insert().execute(name="somename")
+        engine = engines.testing_engine(options={'implicit_returning':False})
+        result = engine.execute(sometable.insert(), name="somename")
         assert 'id' in result.postfetch_cols()
 
-        result = sometable.insert().execute(name="someother")
+        result = engine.execute(sometable.insert(), name="someother")
         assert 'id' in result.postfetch_cols()
 
         sometable.insert().execute(
             {'name':'name3'},
             {'name':'name4'})
-        eq_(sometable.select().execute().fetchall(),
+        eq_(sometable.select().order_by(sometable.c.id).execute().fetchall(),
             [(1, "somename", 1),
              (2, "someother", 2),
              (3, "name3", 3),
@@ -590,8 +571,8 @@ class SequenceTest(testing.TestBase):
         cartitems.insert().execute(description='there')
         r = cartitems.insert().execute(description='lala')
 
-        assert r.last_inserted_ids() and r.last_inserted_ids()[0] is not None
-        id_ = r.last_inserted_ids()[0]
+        assert r.inserted_primary_key and r.inserted_primary_key[0] is not None
+        id_ = r.inserted_primary_key[0]
 
         eq_(1,
             sa.select([func.count(cartitems.c.cart_id)],

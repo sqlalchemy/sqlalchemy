@@ -5,7 +5,7 @@
 
 """Support for the MaxDB database.
 
-TODO: More module docs!  MaxDB support is currently experimental.
+This dialect is *not* tested on SQLAlchemy 0.6.
 
 Overview
 --------
@@ -65,29 +65,12 @@ from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import types as sqltypes
 
 
-__all__ = [
-    'MaxString', 'MaxUnicode', 'MaxChar', 'MaxText', 'MaxInteger',
-    'MaxSmallInteger', 'MaxNumeric', 'MaxFloat', 'MaxTimestamp',
-    'MaxDate', 'MaxTime', 'MaxBoolean', 'MaxBlob',
-    ]
-
-
 class _StringType(sqltypes.String):
     _type = None
 
     def __init__(self, length=None, encoding=None, **kw):
         super(_StringType, self).__init__(length=length, **kw)
         self.encoding = encoding
-
-    def get_col_spec(self):
-        if self.length is None:
-            spec = 'LONG'
-        else:
-            spec = '%s(%s)' % (self._type, self.length)
-
-        if self.encoding is not None:
-            spec = ' '.join([spec, self.encoding.upper()])
-        return spec
 
     def bind_processor(self, dialect):
         if self.encoding == 'unicode':
@@ -156,16 +139,6 @@ class MaxText(_StringType):
         return spec
 
 
-class MaxInteger(sqltypes.Integer):
-    def get_col_spec(self):
-        return 'INTEGER'
-
-
-class MaxSmallInteger(MaxInteger):
-    def get_col_spec(self):
-        return 'SMALLINT'
-
-
 class MaxNumeric(sqltypes.Numeric):
     """The FIXED (also NUMERIC, DECIMAL) data type."""
 
@@ -177,29 +150,7 @@ class MaxNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
         return None
 
-    def get_col_spec(self):
-        if self.scale and self.precision:
-            return 'FIXED(%s, %s)' % (self.precision, self.scale)
-        elif self.precision:
-            return 'FIXED(%s)' % self.precision
-        else:
-            return 'INTEGER'
-
-
-class MaxFloat(sqltypes.Float):
-    """The FLOAT data type."""
-
-    def get_col_spec(self):
-        if self.precision is None:
-            return 'FLOAT'
-        else:
-            return 'FLOAT(%s)' % (self.precision,)
-
-
 class MaxTimestamp(sqltypes.DateTime):
-    def get_col_spec(self):
-        return 'TIMESTAMP'
-
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -242,9 +193,6 @@ class MaxTimestamp(sqltypes.DateTime):
 
 
 class MaxDate(sqltypes.Date):
-    def get_col_spec(self):
-        return 'DATE'
-
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -279,9 +227,6 @@ class MaxDate(sqltypes.Date):
 
 
 class MaxTime(sqltypes.Time):
-    def get_col_spec(self):
-        return 'TIME'
-
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -316,15 +261,7 @@ class MaxTime(sqltypes.Time):
         return process
 
 
-class MaxBoolean(sqltypes.Boolean):
-    def get_col_spec(self):
-        return 'BOOLEAN'
-
-
 class MaxBlob(sqltypes.Binary):
-    def get_col_spec(self):
-        return 'LONG BYTE'
-
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -341,18 +278,54 @@ class MaxBlob(sqltypes.Binary):
                 return value.read(value.remainingLength())
         return process
 
+class MaxDBTypeCompiler(compiler.GenericTypeCompiler):
+    def _string_spec(self, string_spec, type_):
+        if type_.length is None:
+            spec = 'LONG'
+        else:
+            spec = '%s(%s)' % (string_spec, type_.length)
 
+        if getattr(type_, 'encoding'):
+            spec = ' '.join([spec, getattr(type_, 'encoding').upper()])
+        return spec
+
+    def visit_text(self, type_):
+        spec = 'LONG'
+        if getattr(type_, 'encoding', None):
+            spec = ' '.join((spec, type_.encoding))
+        elif type_.convert_unicode:
+            spec = ' '.join((spec, 'UNICODE'))
+
+        return spec
+
+    def visit_char(self, type_):
+        return self._string_spec("CHAR", type_)
+
+    def visit_string(self, type_):
+        return self._string_spec("VARCHAR", type_)
+
+    def visit_binary(self, type_):
+        return "LONG BYTE"
+    
+    def visit_numeric(self, type_):
+        if type_.scale and type_.precision:
+            return 'FIXED(%s, %s)' % (type_.precision, type_.scale)
+        elif type_.precision:
+            return 'FIXED(%s)' % type_.precision
+        else:
+            return 'INTEGER'
+    
+    def visit_BOOLEAN(self, type_):
+        return "BOOLEAN"
+        
 colspecs = {
-    sqltypes.Integer: MaxInteger,
-    sqltypes.Smallinteger: MaxSmallInteger,
     sqltypes.Numeric: MaxNumeric,
-    sqltypes.Float: MaxFloat,
     sqltypes.DateTime: MaxTimestamp,
     sqltypes.Date: MaxDate,
     sqltypes.Time: MaxTime,
     sqltypes.String: MaxString,
+    sqltypes.Unicode:MaxUnicode,
     sqltypes.Binary: MaxBlob,
-    sqltypes.Boolean: MaxBoolean,
     sqltypes.Text: MaxText,
     sqltypes.CHAR: MaxChar,
     sqltypes.TIMESTAMP: MaxTimestamp,
@@ -361,25 +334,25 @@ colspecs = {
     }
 
 ischema_names = {
-    'boolean': MaxBoolean,
-    'char': MaxChar,
-    'character': MaxChar,
-    'date': MaxDate,
-    'fixed': MaxNumeric,
-    'float': MaxFloat,
-    'int': MaxInteger,
-    'integer': MaxInteger,
-    'long binary': MaxBlob,
-    'long unicode': MaxText,
-    'long': MaxText,
-    'long': MaxText,
-    'smallint': MaxSmallInteger,
-    'time': MaxTime,
-    'timestamp': MaxTimestamp,
-    'varchar': MaxString,
+    'boolean': sqltypes.BOOLEAN,
+    'char': sqltypes.CHAR,
+    'character': sqltypes.CHAR,
+    'date': sqltypes.DATE,
+    'fixed': sqltypes.Numeric,
+    'float': sqltypes.FLOAT,
+    'int': sqltypes.INT,
+    'integer': sqltypes.INT,
+    'long binary': sqltypes.BLOB,
+    'long unicode': sqltypes.Text,
+    'long': sqltypes.Text,
+    'long': sqltypes.Text,
+    'smallint': sqltypes.SmallInteger,
+    'time': sqltypes.Time,
+    'timestamp': sqltypes.TIMESTAMP,
+    'varchar': sqltypes.VARCHAR,
     }
 
-
+# TODO: migrate this to sapdb.py
 class MaxDBExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
         # DB-API bug: if there were any functions as values,
@@ -421,6 +394,12 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
                     return MaxDBResultProxy(self)
         return engine_base.ResultProxy(self)
 
+    @property
+    def rowcount(self):
+        if hasattr(self, '_rowcount'):
+            return self._rowcount
+        else:
+            return self.cursor.rowcount
 
 class MaxDBCachedColumnRow(engine_base.RowProxy):
     """A RowProxy that only runs result_processors once per column."""
@@ -464,6 +443,356 @@ class MaxDBCachedColumnRow(engine_base.RowProxy):
 class MaxDBResultProxy(engine_base.ResultProxy):
     _process_row = MaxDBCachedColumnRow
 
+class MaxDBCompiler(compiler.SQLCompiler):
+
+    function_conversion = {
+        'CURRENT_DATE': 'DATE',
+        'CURRENT_TIME': 'TIME',
+        'CURRENT_TIMESTAMP': 'TIMESTAMP',
+        }
+
+    # These functions must be written without parens when called with no
+    # parameters.  e.g. 'SELECT DATE FROM DUAL' not 'SELECT DATE() FROM DUAL'
+    bare_functions = set([
+        'CURRENT_SCHEMA', 'DATE', 'FALSE', 'SYSDBA', 'TIME', 'TIMESTAMP',
+        'TIMEZONE', 'TRANSACTION', 'TRUE', 'USER', 'UID', 'USERGROUP',
+        'UTCDATE', 'UTCDIFF'])
+
+    def visit_mod(self, binary, **kw):
+        return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+        
+    def default_from(self):
+        return ' FROM DUAL'
+
+    def for_update_clause(self, select):
+        clause = select.for_update
+        if clause is True:
+            return " WITH LOCK EXCLUSIVE"
+        elif clause is None:
+            return ""
+        elif clause == "read":
+            return " WITH LOCK"
+        elif clause == "ignore":
+            return " WITH LOCK (IGNORE) EXCLUSIVE"
+        elif clause == "nowait":
+            return " WITH LOCK (NOWAIT) EXCLUSIVE"
+        elif isinstance(clause, basestring):
+            return " WITH LOCK %s" % clause.upper()
+        elif not clause:
+            return ""
+        else:
+            return " WITH LOCK EXCLUSIVE"
+
+    def function_argspec(self, fn, **kw):
+        if fn.name.upper() in self.bare_functions:
+            return ""
+        elif len(fn.clauses) > 0:
+            return compiler.SQLCompiler.function_argspec(self, fn, **kw)
+        else:
+            return ""
+
+    def visit_function(self, fn, **kw):
+        transform = self.function_conversion.get(fn.name.upper(), None)
+        if transform:
+            fn = fn._clone()
+            fn.name = transform
+        return super(MaxDBCompiler, self).visit_function(fn, **kw)
+
+    def visit_cast(self, cast, **kwargs):
+        # MaxDB only supports casts * to NUMERIC, * to VARCHAR or
+        # date/time to VARCHAR.  Casts of LONGs will fail.
+        if isinstance(cast.type, (sqltypes.Integer, sqltypes.Numeric)):
+            return "NUM(%s)" % self.process(cast.clause)
+        elif isinstance(cast.type, sqltypes.String):
+            return "CHR(%s)" % self.process(cast.clause)
+        else:
+            return self.process(cast.clause)
+
+    def visit_sequence(self, sequence):
+        if sequence.optional:
+            return None
+        else:
+            return (self.dialect.identifier_preparer.format_sequence(sequence) +
+                    ".NEXTVAL")
+
+    class ColumnSnagger(visitors.ClauseVisitor):
+        def __init__(self):
+            self.count = 0
+            self.column = None
+        def visit_column(self, column):
+            self.column = column
+            self.count += 1
+
+    def _find_labeled_columns(self, columns, use_labels=False):
+        labels = {}
+        for column in columns:
+            if isinstance(column, basestring):
+                continue
+            snagger = self.ColumnSnagger()
+            snagger.traverse(column)
+            if snagger.count == 1:
+                if isinstance(column, sql_expr._Label):
+                    labels[unicode(snagger.column)] = column.name
+                elif use_labels:
+                    labels[unicode(snagger.column)] = column._label
+
+        return labels
+
+    def order_by_clause(self, select):
+        order_by = self.process(select._order_by_clause)
+
+        # ORDER BY clauses in DISTINCT queries must reference aliased
+        # inner columns by alias name, not true column name.
+        if order_by and getattr(select, '_distinct', False):
+            labels = self._find_labeled_columns(select.inner_columns,
+                                                select.use_labels)
+            if labels:
+                for needs_alias in labels.keys():
+                    r = re.compile(r'(^| )(%s)(,| |$)' %
+                                   re.escape(needs_alias))
+                    order_by = r.sub((r'\1%s\3' % labels[needs_alias]),
+                                     order_by)
+
+        # No ORDER BY in subqueries.
+        if order_by:
+            if self.is_subquery():
+                # It's safe to simply drop the ORDER BY if there is no
+                # LIMIT.  Right?  Other dialects seem to get away with
+                # dropping order.
+                if select._limit:
+                    raise exc.InvalidRequestError(
+                        "MaxDB does not support ORDER BY in subqueries")
+                else:
+                    return ""
+            return " ORDER BY " + order_by
+        else:
+            return ""
+
+    def get_select_precolumns(self, select):
+        # Convert a subquery's LIMIT to TOP
+        sql = select._distinct and 'DISTINCT ' or ''
+        if self.is_subquery() and select._limit:
+            if select._offset:
+                raise exc.InvalidRequestError(
+                    'MaxDB does not support LIMIT with an offset.')
+            sql += 'TOP %s ' % select._limit
+        return sql
+
+    def limit_clause(self, select):
+        # The docs say offsets are supported with LIMIT.  But they're not.
+        # TODO: maybe emulate by adding a ROWNO/ROWNUM predicate?
+        if self.is_subquery():
+            # sub queries need TOP
+            return ''
+        elif select._offset:
+            raise exc.InvalidRequestError(
+                'MaxDB does not support LIMIT with an offset.')
+        else:
+            return ' \n LIMIT %s' % (select._limit,)
+
+    def visit_insert(self, insert):
+        self.isinsert = True
+        self._safeserial = True
+
+        colparams = self._get_colparams(insert)
+        for value in (insert.parameters or {}).itervalues():
+            if isinstance(value, sql_expr.Function):
+                self._safeserial = False
+                break
+
+        return ''.join(('INSERT INTO ',
+                         self.preparer.format_table(insert.table),
+                         ' (',
+                         ', '.join([self.preparer.format_column(c[0])
+                                    for c in colparams]),
+                         ') VALUES (',
+                         ', '.join([c[1] for c in colparams]),
+                         ')'))
+
+
+class MaxDBDefaultRunner(engine_base.DefaultRunner):
+    def visit_sequence(self, seq):
+        if seq.optional:
+            return None
+        return self.execute_string("SELECT %s.NEXTVAL FROM DUAL" % (
+            self.dialect.identifier_preparer.format_sequence(seq)))
+
+
+class MaxDBIdentifierPreparer(compiler.IdentifierPreparer):
+    reserved_words = set([
+        'abs', 'absolute', 'acos', 'adddate', 'addtime', 'all', 'alpha',
+        'alter', 'any', 'ascii', 'asin', 'atan', 'atan2', 'avg', 'binary',
+        'bit', 'boolean', 'byte', 'case', 'ceil', 'ceiling', 'char',
+        'character', 'check', 'chr', 'column', 'concat', 'constraint', 'cos',
+        'cosh', 'cot', 'count', 'cross', 'curdate', 'current', 'curtime',
+        'database', 'date', 'datediff', 'day', 'dayname', 'dayofmonth',
+        'dayofweek', 'dayofyear', 'dec', 'decimal', 'decode', 'default',
+        'degrees', 'delete', 'digits', 'distinct', 'double', 'except',
+        'exists', 'exp', 'expand', 'first', 'fixed', 'float', 'floor', 'for',
+        'from', 'full', 'get_objectname', 'get_schema', 'graphic', 'greatest',
+        'group', 'having', 'hex', 'hextoraw', 'hour', 'ifnull', 'ignore',
+        'index', 'initcap', 'inner', 'insert', 'int', 'integer', 'internal',
+        'intersect', 'into', 'join', 'key', 'last', 'lcase', 'least', 'left',
+        'length', 'lfill', 'list', 'ln', 'locate', 'log', 'log10', 'long',
+        'longfile', 'lower', 'lpad', 'ltrim', 'makedate', 'maketime',
+        'mapchar', 'max', 'mbcs', 'microsecond', 'min', 'minute', 'mod',
+        'month', 'monthname', 'natural', 'nchar', 'next', 'no', 'noround',
+        'not', 'now', 'null', 'num', 'numeric', 'object', 'of', 'on',
+        'order', 'packed', 'pi', 'power', 'prev', 'primary', 'radians',
+        'real', 'reject', 'relative', 'replace', 'rfill', 'right', 'round',
+        'rowid', 'rowno', 'rpad', 'rtrim', 'second', 'select', 'selupd',
+        'serial', 'set', 'show', 'sign', 'sin', 'sinh', 'smallint', 'some',
+        'soundex', 'space', 'sqrt', 'stamp', 'statistics', 'stddev',
+        'subdate', 'substr', 'substring', 'subtime', 'sum', 'sysdba',
+        'table', 'tan', 'tanh', 'time', 'timediff', 'timestamp', 'timezone',
+        'to', 'toidentifier', 'transaction', 'translate', 'trim', 'trunc',
+        'truncate', 'ucase', 'uid', 'unicode', 'union', 'update', 'upper',
+        'user', 'usergroup', 'using', 'utcdate', 'utcdiff', 'value', 'values',
+        'varchar', 'vargraphic', 'variance', 'week', 'weekofyear', 'when',
+        'where', 'with', 'year', 'zoned' ])
+
+    def _normalize_name(self, name):
+        if name is None:
+            return None
+        if name.isupper():
+            lc_name = name.lower()
+            if not self._requires_quotes(lc_name):
+                return lc_name
+        return name
+
+    def _denormalize_name(self, name):
+        if name is None:
+            return None
+        elif (name.islower() and
+              not self._requires_quotes(name)):
+            return name.upper()
+        else:
+            return name
+
+    def _maybe_quote_identifier(self, name):
+        if self._requires_quotes(name):
+            return self.quote_identifier(name)
+        else:
+            return name
+
+
+class MaxDBDDLCompiler(compiler.DDLCompiler):
+    def get_column_specification(self, column, **kw):
+        colspec = [self.preparer.format_column(column),
+                   self.dialect.type_compiler.process(column.type)]
+
+        if not column.nullable:
+            colspec.append('NOT NULL')
+
+        default = column.default
+        default_str = self.get_column_default_string(column)
+
+        # No DDL default for columns specified with non-optional sequence-
+        # this defaulting behavior is entirely client-side. (And as a
+        # consequence, non-reflectable.)
+        if (default and isinstance(default, schema.Sequence) and
+            not default.optional):
+            pass
+        # Regular default
+        elif default_str is not None:
+            colspec.append('DEFAULT %s' % default_str)
+        # Assign DEFAULT SERIAL heuristically
+        elif column.primary_key and column.autoincrement:
+            # For SERIAL on a non-primary key member, use
+            # DefaultClause(text('SERIAL'))
+            try:
+                first = [c for c in column.table.primary_key.columns
+                         if (c.autoincrement and
+                             (isinstance(c.type, sqltypes.Integer) or
+                              (isinstance(c.type, MaxNumeric) and
+                               c.type.precision)) and
+                             not c.foreign_keys)].pop(0)
+                if column is first:
+                    colspec.append('DEFAULT SERIAL')
+            except IndexError:
+                pass
+        return ' '.join(colspec)
+
+    def get_column_default_string(self, column):
+        if isinstance(column.server_default, schema.DefaultClause):
+            if isinstance(column.default.arg, basestring):
+                if isinstance(column.type, sqltypes.Integer):
+                    return str(column.default.arg)
+                else:
+                    return "'%s'" % column.default.arg
+            else:
+                return unicode(self._compile(column.default.arg, None))
+        else:
+            return None
+
+    def visit_create_sequence(self, create):
+        """Creates a SEQUENCE.
+
+        TODO: move to module doc?
+
+        start
+          With an integer value, set the START WITH option.
+
+        increment
+          An integer value to increment by.  Default is the database default.
+
+        maxdb_minvalue
+        maxdb_maxvalue
+          With an integer value, sets the corresponding sequence option.
+
+        maxdb_no_minvalue
+        maxdb_no_maxvalue
+          Defaults to False.  If true, sets the corresponding sequence option.
+
+        maxdb_cycle
+          Defaults to False.  If true, sets the CYCLE option.
+
+        maxdb_cache
+          With an integer value, sets the CACHE option.
+
+        maxdb_no_cache
+          Defaults to False.  If true, sets NOCACHE.
+        """
+        sequence = create.element
+        
+        if (not sequence.optional and
+            (not self.checkfirst or
+             not self.dialect.has_sequence(self.connection, sequence.name))):
+
+            ddl = ['CREATE SEQUENCE',
+                   self.preparer.format_sequence(sequence)]
+
+            sequence.increment = 1
+
+            if sequence.increment is not None:
+                ddl.extend(('INCREMENT BY', str(sequence.increment)))
+
+            if sequence.start is not None:
+                ddl.extend(('START WITH', str(sequence.start)))
+
+            opts = dict([(pair[0][6:].lower(), pair[1])
+                         for pair in sequence.kwargs.items()
+                         if pair[0].startswith('maxdb_')])
+
+            if 'maxvalue' in opts:
+                ddl.extend(('MAXVALUE', str(opts['maxvalue'])))
+            elif opts.get('no_maxvalue', False):
+                ddl.append('NOMAXVALUE')
+            if 'minvalue' in opts:
+                ddl.extend(('MINVALUE', str(opts['minvalue'])))
+            elif opts.get('no_minvalue', False):
+                ddl.append('NOMINVALUE')
+
+            if opts.get('cycle', False):
+                ddl.append('CYCLE')
+
+            if 'cache' in opts:
+                ddl.extend(('CACHE', str(opts['cache'])))
+            elif opts.get('no_cache', False):
+                ddl.append('NOCACHE')
+
+            return ' '.join(ddl)
+
 
 class MaxDBDialect(default.DefaultDialect):
     name = 'maxdb'
@@ -472,8 +801,16 @@ class MaxDBDialect(default.DefaultDialect):
     max_identifier_length = 32
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
-    preexecute_pk_sequences = True
 
+    preparer = MaxDBIdentifierPreparer
+    statement_compiler = MaxDBCompiler
+    ddl_compiler = MaxDBDDLCompiler
+    defaultrunner = MaxDBDefaultRunner
+    execution_ctx_cls = MaxDBExecutionContext
+
+    colspecs = colspecs
+    ischema_names = ischema_names
+    
     # MaxDB-specific
     datetimeformat = 'internal'
 
@@ -495,24 +832,6 @@ class MaxDBDialect(default.DefaultDialect):
                 datetime.date: MaxDate(),
                 datetime.time: MaxTime(),
             }
-
-    def dbapi(cls):
-        from sapdb import dbapi as _dbapi
-        return _dbapi
-    dbapi = classmethod(dbapi)
-
-    def create_connect_args(self, url):
-        opts = url.translate_connect_args(username='user')
-        opts.update(url.query)
-        return [], opts
-
-    def type_descriptor(self, typeobj):
-        if isinstance(typeobj, type):
-            typeobj = typeobj()
-        if isinstance(typeobj, sqltypes.Unicode):
-            return typeobj.adapt(MaxUnicode)
-        else:
-            return sqltypes.adapt_type(typeobj, colspecs)
 
     def do_execute(self, cursor, statement, parameters, context=None):
         res = cursor.execute(statement, parameters)
@@ -717,363 +1036,6 @@ class MaxDBDialect(default.DefaultDialect):
         return found
 
 
-class MaxDBCompiler(compiler.DefaultCompiler):
-    operators = compiler.DefaultCompiler.operators.copy()
-    operators[sql_operators.mod] = lambda x, y: 'mod(%s, %s)' % (x, y)
-
-    function_conversion = {
-        'CURRENT_DATE': 'DATE',
-        'CURRENT_TIME': 'TIME',
-        'CURRENT_TIMESTAMP': 'TIMESTAMP',
-        }
-
-    # These functions must be written without parens when called with no
-    # parameters.  e.g. 'SELECT DATE FROM DUAL' not 'SELECT DATE() FROM DUAL'
-    bare_functions = set([
-        'CURRENT_SCHEMA', 'DATE', 'FALSE', 'SYSDBA', 'TIME', 'TIMESTAMP',
-        'TIMEZONE', 'TRANSACTION', 'TRUE', 'USER', 'UID', 'USERGROUP',
-        'UTCDATE', 'UTCDIFF'])
-
-    def default_from(self):
-        return ' FROM DUAL'
-
-    def for_update_clause(self, select):
-        clause = select.for_update
-        if clause is True:
-            return " WITH LOCK EXCLUSIVE"
-        elif clause is None:
-            return ""
-        elif clause == "read":
-            return " WITH LOCK"
-        elif clause == "ignore":
-            return " WITH LOCK (IGNORE) EXCLUSIVE"
-        elif clause == "nowait":
-            return " WITH LOCK (NOWAIT) EXCLUSIVE"
-        elif isinstance(clause, basestring):
-            return " WITH LOCK %s" % clause.upper()
-        elif not clause:
-            return ""
-        else:
-            return " WITH LOCK EXCLUSIVE"
-
-    def apply_function_parens(self, func):
-        if func.name.upper() in self.bare_functions:
-            return len(func.clauses) > 0
-        else:
-            return True
-
-    def visit_function(self, fn, **kw):
-        transform = self.function_conversion.get(fn.name.upper(), None)
-        if transform:
-            fn = fn._clone()
-            fn.name = transform
-        return super(MaxDBCompiler, self).visit_function(fn, **kw)
-
-    def visit_cast(self, cast, **kwargs):
-        # MaxDB only supports casts * to NUMERIC, * to VARCHAR or
-        # date/time to VARCHAR.  Casts of LONGs will fail.
-        if isinstance(cast.type, (sqltypes.Integer, sqltypes.Numeric)):
-            return "NUM(%s)" % self.process(cast.clause)
-        elif isinstance(cast.type, sqltypes.String):
-            return "CHR(%s)" % self.process(cast.clause)
-        else:
-            return self.process(cast.clause)
-
-    def visit_sequence(self, sequence):
-        if sequence.optional:
-            return None
-        else:
-            return (self.dialect.identifier_preparer.format_sequence(sequence) +
-                    ".NEXTVAL")
-
-    class ColumnSnagger(visitors.ClauseVisitor):
-        def __init__(self):
-            self.count = 0
-            self.column = None
-        def visit_column(self, column):
-            self.column = column
-            self.count += 1
-
-    def _find_labeled_columns(self, columns, use_labels=False):
-        labels = {}
-        for column in columns:
-            if isinstance(column, basestring):
-                continue
-            snagger = self.ColumnSnagger()
-            snagger.traverse(column)
-            if snagger.count == 1:
-                if isinstance(column, sql_expr._Label):
-                    labels[unicode(snagger.column)] = column.name
-                elif use_labels:
-                    labels[unicode(snagger.column)] = column._label
-
-        return labels
-
-    def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause)
-
-        # ORDER BY clauses in DISTINCT queries must reference aliased
-        # inner columns by alias name, not true column name.
-        if order_by and getattr(select, '_distinct', False):
-            labels = self._find_labeled_columns(select.inner_columns,
-                                                select.use_labels)
-            if labels:
-                for needs_alias in labels.keys():
-                    r = re.compile(r'(^| )(%s)(,| |$)' %
-                                   re.escape(needs_alias))
-                    order_by = r.sub((r'\1%s\3' % labels[needs_alias]),
-                                     order_by)
-
-        # No ORDER BY in subqueries.
-        if order_by:
-            if self.is_subquery():
-                # It's safe to simply drop the ORDER BY if there is no
-                # LIMIT.  Right?  Other dialects seem to get away with
-                # dropping order.
-                if select._limit:
-                    raise exc.InvalidRequestError(
-                        "MaxDB does not support ORDER BY in subqueries")
-                else:
-                    return ""
-            return " ORDER BY " + order_by
-        else:
-            return ""
-
-    def get_select_precolumns(self, select):
-        # Convert a subquery's LIMIT to TOP
-        sql = select._distinct and 'DISTINCT ' or ''
-        if self.is_subquery() and select._limit:
-            if select._offset:
-                raise exc.InvalidRequestError(
-                    'MaxDB does not support LIMIT with an offset.')
-            sql += 'TOP %s ' % select._limit
-        return sql
-
-    def limit_clause(self, select):
-        # The docs say offsets are supported with LIMIT.  But they're not.
-        # TODO: maybe emulate by adding a ROWNO/ROWNUM predicate?
-        if self.is_subquery():
-            # sub queries need TOP
-            return ''
-        elif select._offset:
-            raise exc.InvalidRequestError(
-                'MaxDB does not support LIMIT with an offset.')
-        else:
-            return ' \n LIMIT %s' % (select._limit,)
-
-    def visit_insert(self, insert):
-        self.isinsert = True
-        self._safeserial = True
-
-        colparams = self._get_colparams(insert)
-        for value in (insert.parameters or {}).itervalues():
-            if isinstance(value, sql_expr.Function):
-                self._safeserial = False
-                break
-
-        return ''.join(('INSERT INTO ',
-                         self.preparer.format_table(insert.table),
-                         ' (',
-                         ', '.join([self.preparer.format_column(c[0])
-                                    for c in colparams]),
-                         ') VALUES (',
-                         ', '.join([c[1] for c in colparams]),
-                         ')'))
-
-
-class MaxDBDefaultRunner(engine_base.DefaultRunner):
-    def visit_sequence(self, seq):
-        if seq.optional:
-            return None
-        return self.execute_string("SELECT %s.NEXTVAL FROM DUAL" % (
-            self.dialect.identifier_preparer.format_sequence(seq)))
-
-
-class MaxDBIdentifierPreparer(compiler.IdentifierPreparer):
-    reserved_words = set([
-        'abs', 'absolute', 'acos', 'adddate', 'addtime', 'all', 'alpha',
-        'alter', 'any', 'ascii', 'asin', 'atan', 'atan2', 'avg', 'binary',
-        'bit', 'boolean', 'byte', 'case', 'ceil', 'ceiling', 'char',
-        'character', 'check', 'chr', 'column', 'concat', 'constraint', 'cos',
-        'cosh', 'cot', 'count', 'cross', 'curdate', 'current', 'curtime',
-        'database', 'date', 'datediff', 'day', 'dayname', 'dayofmonth',
-        'dayofweek', 'dayofyear', 'dec', 'decimal', 'decode', 'default',
-        'degrees', 'delete', 'digits', 'distinct', 'double', 'except',
-        'exists', 'exp', 'expand', 'first', 'fixed', 'float', 'floor', 'for',
-        'from', 'full', 'get_objectname', 'get_schema', 'graphic', 'greatest',
-        'group', 'having', 'hex', 'hextoraw', 'hour', 'ifnull', 'ignore',
-        'index', 'initcap', 'inner', 'insert', 'int', 'integer', 'internal',
-        'intersect', 'into', 'join', 'key', 'last', 'lcase', 'least', 'left',
-        'length', 'lfill', 'list', 'ln', 'locate', 'log', 'log10', 'long',
-        'longfile', 'lower', 'lpad', 'ltrim', 'makedate', 'maketime',
-        'mapchar', 'max', 'mbcs', 'microsecond', 'min', 'minute', 'mod',
-        'month', 'monthname', 'natural', 'nchar', 'next', 'no', 'noround',
-        'not', 'now', 'null', 'num', 'numeric', 'object', 'of', 'on',
-        'order', 'packed', 'pi', 'power', 'prev', 'primary', 'radians',
-        'real', 'reject', 'relative', 'replace', 'rfill', 'right', 'round',
-        'rowid', 'rowno', 'rpad', 'rtrim', 'second', 'select', 'selupd',
-        'serial', 'set', 'show', 'sign', 'sin', 'sinh', 'smallint', 'some',
-        'soundex', 'space', 'sqrt', 'stamp', 'statistics', 'stddev',
-        'subdate', 'substr', 'substring', 'subtime', 'sum', 'sysdba',
-        'table', 'tan', 'tanh', 'time', 'timediff', 'timestamp', 'timezone',
-        'to', 'toidentifier', 'transaction', 'translate', 'trim', 'trunc',
-        'truncate', 'ucase', 'uid', 'unicode', 'union', 'update', 'upper',
-        'user', 'usergroup', 'using', 'utcdate', 'utcdiff', 'value', 'values',
-        'varchar', 'vargraphic', 'variance', 'week', 'weekofyear', 'when',
-        'where', 'with', 'year', 'zoned' ])
-
-    def _normalize_name(self, name):
-        if name is None:
-            return None
-        if name.isupper():
-            lc_name = name.lower()
-            if not self._requires_quotes(lc_name):
-                return lc_name
-        return name
-
-    def _denormalize_name(self, name):
-        if name is None:
-            return None
-        elif (name.islower() and
-              not self._requires_quotes(name)):
-            return name.upper()
-        else:
-            return name
-
-    def _maybe_quote_identifier(self, name):
-        if self._requires_quotes(name):
-            return self.quote_identifier(name)
-        else:
-            return name
-
-
-class MaxDBSchemaGenerator(compiler.SchemaGenerator):
-    def get_column_specification(self, column, **kw):
-        colspec = [self.preparer.format_column(column),
-                   column.type.dialect_impl(self.dialect).get_col_spec()]
-
-        if not column.nullable:
-            colspec.append('NOT NULL')
-
-        default = column.default
-        default_str = self.get_column_default_string(column)
-
-        # No DDL default for columns specified with non-optional sequence-
-        # this defaulting behavior is entirely client-side. (And as a
-        # consequence, non-reflectable.)
-        if (default and isinstance(default, schema.Sequence) and
-            not default.optional):
-            pass
-        # Regular default
-        elif default_str is not None:
-            colspec.append('DEFAULT %s' % default_str)
-        # Assign DEFAULT SERIAL heuristically
-        elif column.primary_key and column.autoincrement:
-            # For SERIAL on a non-primary key member, use
-            # DefaultClause(text('SERIAL'))
-            try:
-                first = [c for c in column.table.primary_key.columns
-                         if (c.autoincrement and
-                             (isinstance(c.type, sqltypes.Integer) or
-                              (isinstance(c.type, MaxNumeric) and
-                               c.type.precision)) and
-                             not c.foreign_keys)].pop(0)
-                if column is first:
-                    colspec.append('DEFAULT SERIAL')
-            except IndexError:
-                pass
-        return ' '.join(colspec)
-
-    def get_column_default_string(self, column):
-        if isinstance(column.server_default, schema.DefaultClause):
-            if isinstance(column.default.arg, basestring):
-                if isinstance(column.type, sqltypes.Integer):
-                    return str(column.default.arg)
-                else:
-                    return "'%s'" % column.default.arg
-            else:
-                return unicode(self._compile(column.default.arg, None))
-        else:
-            return None
-
-    def visit_sequence(self, sequence):
-        """Creates a SEQUENCE.
-
-        TODO: move to module doc?
-
-        start
-          With an integer value, set the START WITH option.
-
-        increment
-          An integer value to increment by.  Default is the database default.
-
-        maxdb_minvalue
-        maxdb_maxvalue
-          With an integer value, sets the corresponding sequence option.
-
-        maxdb_no_minvalue
-        maxdb_no_maxvalue
-          Defaults to False.  If true, sets the corresponding sequence option.
-
-        maxdb_cycle
-          Defaults to False.  If true, sets the CYCLE option.
-
-        maxdb_cache
-          With an integer value, sets the CACHE option.
-
-        maxdb_no_cache
-          Defaults to False.  If true, sets NOCACHE.
-        """
-
-        if (not sequence.optional and
-            (not self.checkfirst or
-             not self.dialect.has_sequence(self.connection, sequence.name))):
-
-            ddl = ['CREATE SEQUENCE',
-                   self.preparer.format_sequence(sequence)]
-
-            sequence.increment = 1
-
-            if sequence.increment is not None:
-                ddl.extend(('INCREMENT BY', str(sequence.increment)))
-
-            if sequence.start is not None:
-                ddl.extend(('START WITH', str(sequence.start)))
-
-            opts = dict([(pair[0][6:].lower(), pair[1])
-                         for pair in sequence.kwargs.items()
-                         if pair[0].startswith('maxdb_')])
-
-            if 'maxvalue' in opts:
-                ddl.extend(('MAXVALUE', str(opts['maxvalue'])))
-            elif opts.get('no_maxvalue', False):
-                ddl.append('NOMAXVALUE')
-            if 'minvalue' in opts:
-                ddl.extend(('MINVALUE', str(opts['minvalue'])))
-            elif opts.get('no_minvalue', False):
-                ddl.append('NOMINVALUE')
-
-            if opts.get('cycle', False):
-                ddl.append('CYCLE')
-
-            if 'cache' in opts:
-                ddl.extend(('CACHE', str(opts['cache'])))
-            elif opts.get('no_cache', False):
-                ddl.append('NOCACHE')
-
-            self.append(' '.join(ddl))
-            self.execute()
-
-
-class MaxDBSchemaDropper(compiler.SchemaDropper):
-    def visit_sequence(self, sequence):
-        if (not sequence.optional and
-            (not self.checkfirst or
-             self.dialect.has_sequence(self.connection, sequence.name))):
-            self.append("DROP SEQUENCE %s" %
-                        self.preparer.format_sequence(sequence))
-            self.execute()
-
 
 def _autoserial_column(table):
     """Finds the effective DEFAULT SERIAL column of a Table, if any."""
@@ -1090,10 +1052,3 @@ def _autoserial_column(table):
 
     return None, None
 
-dialect = MaxDBDialect
-dialect.preparer = MaxDBIdentifierPreparer
-dialect.statement_compiler = MaxDBCompiler
-dialect.schemagenerator = MaxDBSchemaGenerator
-dialect.schemadropper = MaxDBSchemaDropper
-dialect.defaultrunner = MaxDBDefaultRunner
-dialect.execution_ctx_cls = MaxDBExecutionContext

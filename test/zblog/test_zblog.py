@@ -1,9 +1,9 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.test import *
-import mappers, tables
-from user import *
-from blog import *
+from test.zblog import mappers, tables
+from test.zblog.user import *
+from test.zblog.blog import *
 
 
 class ZBlogTest(TestBase, AssertsExecutionResults):

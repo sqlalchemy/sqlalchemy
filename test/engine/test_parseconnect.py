@@ -1,4 +1,6 @@
-import ConfigParser, StringIO
+from sqlalchemy.test.testing import assert_raises, assert_raises_message
+import ConfigParser
+import StringIO
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config
 import sqlalchemy as tsa
@@ -28,8 +30,6 @@ class ParseConnectTest(TestBase):
             'dbtype://username:apples%2Foranges@hostspec/mydatabase',
         ):
             u = url.make_url(text)
-            print u, text
-            print "username=", u.username, "password=", u.password,  "database=", u.database, "host=", u.host
             assert u.drivername == 'dbtype'
             assert u.username == 'username' or u.username is None
             assert u.password == 'password' or u.password == 'apples/oranges' or u.password is None
@@ -41,21 +41,28 @@ class CreateEngineTest(TestBase):
     def test_connect_query(self):
         dbapi = MockDBAPI(foober='12', lala='18', fooz='somevalue')
 
-        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
-        e = create_engine('postgres://scott:tiger@somehost/test?foober=12&lala=18&fooz=somevalue', module=dbapi)
+        e = create_engine(
+                'postgresql://scott:tiger@somehost/test?foober=12&lala=18&fooz=somevalue', 
+                module=dbapi,
+                _initialize=False
+                )
         c = e.connect()
 
     def test_kwargs(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
 
-        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
-        e = create_engine('postgres://scott:tiger@somehost/test?fooz=somevalue', connect_args={'foober':12, 'lala':18, 'hoho':{'this':'dict'}}, module=dbapi)
+        e = create_engine(
+                'postgresql://scott:tiger@somehost/test?fooz=somevalue', 
+                connect_args={'foober':12, 'lala':18, 'hoho':{'this':'dict'}}, 
+                module=dbapi,
+                _initialize=False
+                )
         c = e.connect()
 
     def test_coerce_config(self):
         raw = r"""
 [prefixed]
-sqlalchemy.url=postgres://scott:tiger@somehost/test?fooz=somevalue
+sqlalchemy.url=postgresql://scott:tiger@somehost/test?fooz=somevalue
 sqlalchemy.convert_unicode=0
 sqlalchemy.echo=false
 sqlalchemy.echo_pool=1
@@ -65,7 +72,7 @@ sqlalchemy.pool_size=2
 sqlalchemy.pool_threadlocal=1
 sqlalchemy.pool_timeout=10
 [plain]
-url=postgres://scott:tiger@somehost/test?fooz=somevalue
+url=postgresql://scott:tiger@somehost/test?fooz=somevalue
 convert_unicode=0
 echo=0
 echo_pool=1
@@ -79,7 +86,7 @@ pool_timeout=10
         ini.readfp(StringIO.StringIO(raw))
 
         expected = {
-            'url': 'postgres://scott:tiger@somehost/test?fooz=somevalue',
+            'url': 'postgresql://scott:tiger@somehost/test?fooz=somevalue',
             'convert_unicode': 0,
             'echo': False,
             'echo_pool': True,
@@ -97,17 +104,17 @@ pool_timeout=10
         self.assert_(tsa.engine._coerce_config(plain, '') == expected)
 
     def test_engine_from_config(self):
-        dbapi = MockDBAPI()
+        dbapi = mock_dbapi
 
         config = {
-            'sqlalchemy.url':'postgres://scott:tiger@somehost/test?fooz=somevalue',
+            'sqlalchemy.url':'postgresql://scott:tiger@somehost/test?fooz=somevalue',
             'sqlalchemy.pool_recycle':'50',
             'sqlalchemy.echo':'true'
         }
 
         e = engine_from_config(config, module=dbapi)
         assert e.pool._recycle == 50
-        assert e.url == url.make_url('postgres://scott:tiger@somehost/test?fooz=somevalue')
+        assert e.url == url.make_url('postgresql://scott:tiger@somehost/test?fooz=somevalue')
         assert e.echo is True
 
     def test_custom(self):
@@ -116,109 +123,77 @@ pool_timeout=10
         def connect():
             return dbapi.connect(foober=12, lala=18, fooz='somevalue', hoho={'this':'dict'})
 
-        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
-        e = create_engine('postgres://', creator=connect, module=dbapi)
+        # start the postgresql dialect, but put our mock DBAPI as the module instead of psycopg
+        e = create_engine('postgresql://', creator=connect, module=dbapi, _initialize=False)
         c = e.connect()
 
     def test_recycle(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
-        e = create_engine('postgres://', pool_recycle=472, module=dbapi)
+        e = create_engine('postgresql://', pool_recycle=472, module=dbapi, _initialize=False)
         assert e.pool._recycle == 472
 
     def test_badargs(self):
-        # good arg, use MockDBAPI to prevent oracle import errors
-        e = create_engine('oracle://', use_ansi=True, module=MockDBAPI())
+        assert_raises(ImportError, create_engine, "foobar://", module=mock_dbapi)
+
+        # bad arg
+        assert_raises(TypeError, create_engine, 'postgresql://', use_ansi=True, module=mock_dbapi)
+
+        # bad arg
+        assert_raises(TypeError, create_engine, 'oracle://', lala=5, use_ansi=True, module=mock_dbapi)
+
+        assert_raises(TypeError, create_engine, 'postgresql://', lala=5, module=mock_dbapi)
+
+        assert_raises(TypeError, create_engine,'sqlite://', lala=5, module=mock_sqlite_dbapi)
+
+        assert_raises(TypeError, create_engine, 'mysql+mysqldb://', use_unicode=True, module=mock_dbapi)
+
+        # sqlite uses SingletonThreadPool which doesnt have max_overflow
+        assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=5,
+                      module=mock_sqlite_dbapi)
 
         try:
-            e = create_engine("foobar://", module=MockDBAPI())
-            assert False
+            e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
         except ImportError:
-            assert True
-
-        # bad arg
-        try:
-            e = create_engine('postgres://', use_ansi=True, module=MockDBAPI())
-            assert False
-        except TypeError:
-            assert True
-
-        # bad arg
-        try:
-            e = create_engine('oracle://', lala=5, use_ansi=True, module=MockDBAPI())
-            assert False
-        except TypeError:
-            assert True
-
-        try:
-            e = create_engine('postgres://', lala=5, module=MockDBAPI())
-            assert False
-        except TypeError:
-            assert True
-
-        try:
-            e = create_engine('sqlite://', lala=5)
-            assert False
-        except TypeError:
-            assert True
-
-        try:
-            e = create_engine('mysql://', use_unicode=True, module=MockDBAPI())
-            assert False
-        except TypeError:
-            assert True
-
-        try:
-            # sqlite uses SingletonThreadPool which doesnt have max_overflow
-            e = create_engine('sqlite://', max_overflow=5)
-            assert False
-        except TypeError:
-            assert True
-
-        e = create_engine('mysql://', module=MockDBAPI(), connect_args={'use_unicode':True}, convert_unicode=True)
-
-        e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
-        try:
-            c = e.connect()
-            assert False
-        except tsa.exc.DBAPIError:
-            assert True
+            # no sqlite
+            pass
+        else:
+            # raises DBAPIerror due to use_unicode not a sqlite arg
+            assert_raises(tsa.exc.DBAPIError, e.connect)
 
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""
 
-        e = create_engine('mysql://scott:tiger@localhost/test', module=MockDBAPI())
+        e = create_engine('mysql://scott:tiger@localhost/test', module=mock_dbapi, _initialize=False)
         u = url.make_url('mysql://scott:tiger@localhost/test')
-        e2 = create_engine(u, module=MockDBAPI())
+        e2 = create_engine(u, module=mock_dbapi, _initialize=False)
         assert e.url.drivername == e2.url.drivername == 'mysql'
         assert e.url.username == e2.url.username == 'scott'
         assert e2.url is u
 
     def test_poolargs(self):
         """test that connection pool args make it thru"""
-        e = create_engine('postgres://', creator=None, pool_recycle=50, echo_pool=None, module=MockDBAPI())
+        e = create_engine('postgresql://', creator=None, pool_recycle=50, echo_pool=None, module=mock_dbapi, _initialize=False)
         assert e.pool._recycle == 50
 
         # these args work for QueuePool
-        e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=MockDBAPI())
+        e = create_engine('postgresql://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=mock_dbapi)
 
-        try:
-            # but not SingletonThreadPool
-            e = create_engine('sqlite://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.SingletonThreadPool)
-            assert False
-        except TypeError:
-            assert True
+        # but not SingletonThreadPool
+        assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=8, pool_timeout=60,
+                      poolclass=tsa.pool.SingletonThreadPool, module=mock_sqlite_dbapi)
 
 class MockDBAPI(object):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
         self.paramstyle = 'named'
-    def connect(self, **kwargs):
-        print kwargs, self.kwargs
+    def connect(self, *args, **kwargs):
         for k in self.kwargs:
             assert k in kwargs, "key %s not present in dictionary" % k
             assert kwargs[k]==self.kwargs[k], "value %s does not match %s" % (kwargs[k], self.kwargs[k])
         return MockConnection()
 class MockConnection(object):
+    def get_server_info(self):
+        return "5.0"
     def close(self):
         pass
     def cursor(self):
@@ -227,4 +202,6 @@ class MockCursor(object):
     def close(self):
         pass
 mock_dbapi = MockDBAPI()
-
+mock_sqlite_dbapi = msd = MockDBAPI()
+msd.version_info = msd.sqlite_version_info = (99, 9, 9)
+msd.sqlite_version = '99.9.9'

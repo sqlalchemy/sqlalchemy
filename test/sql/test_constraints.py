@@ -1,10 +1,14 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.test.testing import assert_raises, assert_raises_message
 from sqlalchemy import *
-from sqlalchemy import exc
+from sqlalchemy import exc, schema
 from sqlalchemy.test import *
 from sqlalchemy.test import config, engines
+from sqlalchemy.engine import ddl
+from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
+from sqlalchemy.dialects.postgresql import base as postgresql
 
-class ConstraintTest(TestBase, AssertsExecutionResults):
+class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def setup(self):
         global metadata
@@ -33,11 +37,8 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
     def test_double_fk_usage_raises(self):
         f = ForeignKey('b.id')
         
-        assert_raises(exc.InvalidRequestError, Table, "a", metadata,
-            Column('x', Integer, f),
-            Column('y', Integer, f)
-        )
-        
+        Column('x', Integer, f)
+        assert_raises(exc.InvalidRequestError, Column, "y", Integer, f)
         
     def test_circular_constraint(self):
         a = Table("a", metadata,
@@ -78,18 +79,9 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
 
         metadata.create_all()
         foo.insert().execute(id=1,x=9,y=5)
-        try:
-            foo.insert().execute(id=2,x=5,y=9)
-            assert False
-        except exc.SQLError:
-            assert True
-
+        assert_raises(exc.SQLError, foo.insert().execute, id=2,x=5,y=9)
         bar.insert().execute(id=1,x=10)
-        try:
-            bar.insert().execute(id=2,x=5)
-            assert False
-        except exc.SQLError:
-            assert True
+        assert_raises(exc.SQLError, bar.insert().execute, id=2,x=5)
 
     def test_unique_constraint(self):
         foo = Table('foo', metadata,
@@ -106,16 +98,8 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         foo.insert().execute(id=2, value='value2')
         bar.insert().execute(id=1, value='a', value2='a')
         bar.insert().execute(id=2, value='a', value2='b')
-        try:
-            foo.insert().execute(id=3, value='value1')
-            assert False
-        except exc.SQLError:
-            assert True
-        try:
-            bar.insert().execute(id=3, value='a', value2='b')
-            assert False
-        except exc.SQLError:
-            assert True
+        assert_raises(exc.SQLError, foo.insert().execute, id=3, value='value1')
+        assert_raises(exc.SQLError, bar.insert().execute, id=3, value='a', value2='b')
 
     def test_index_create(self):
         employees = Table('employees', metadata,
@@ -174,35 +158,22 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         Index('sport_announcer', events.c.sport, events.c.announcer, unique=True)
         Index('idx_winners', events.c.winner)
 
-        index_names = [ ix.name for ix in events.indexes ]
-        assert 'ix_events_name' in index_names
-        assert 'ix_events_location' in index_names
-        assert 'sport_announcer' in index_names
-        assert 'idx_winners' in index_names
-        assert len(index_names) == 4
+        eq_(
+            set([ ix.name for ix in events.indexes ]),
+            set(['ix_events_name', 'ix_events_location', 'sport_announcer', 'idx_winners'])
+        )
 
-        capt = []
-        connection = testing.db.connect()
-        # TODO: hacky, put a real connection proxy in
-        ex = connection._Connection__execute_context
-        def proxy(context):
-            capt.append(context.statement)
-            capt.append(repr(context.parameters))
-            ex(context)
-        connection._Connection__execute_context = proxy
-        schemagen = testing.db.dialect.schemagenerator(testing.db.dialect, connection)
-        schemagen.traverse(events)
-
-        assert capt[0].strip().startswith('CREATE TABLE events')
-
-        s = set([capt[x].strip() for x in [2,4,6,8]])
-
-        assert s == set([
-            'CREATE UNIQUE INDEX ix_events_name ON events (name)',
-            'CREATE INDEX ix_events_location ON events (location)',
-            'CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)',
-            'CREATE INDEX idx_winners ON events (winner)'
-            ])
+        self.assert_sql_execution(
+            testing.db,
+            lambda: events.create(testing.db),
+            RegexSQL("^CREATE TABLE events"),
+            AllOf(
+                ExactSQL('CREATE UNIQUE INDEX ix_events_name ON events (name)'),
+                ExactSQL('CREATE INDEX ix_events_location ON events (location)'),
+                ExactSQL('CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)'),
+                ExactSQL('CREATE INDEX idx_winners ON events (winner)')
+            )
+        )
 
         # verify that the table is functional
         events.insert().execute(id=1, name='hockey finals', location='rink',
@@ -214,84 +185,57 @@ class ConstraintTest(TestBase, AssertsExecutionResults):
         dialect = testing.db.dialect.__class__()
         dialect.max_identifier_length = 20
 
-        schemagen = dialect.schemagenerator(dialect, None)
-        schemagen.execute = lambda : None
-
         t1 = Table("sometable", MetaData(), Column("foo", Integer))
-        schemagen.visit_index(Index("this_name_is_too_long_for_what_were_doing", t1.c.foo))
-        eq_(schemagen.buffer.getvalue(), "CREATE INDEX this_name_is_t_1 ON sometable (foo)")
-        schemagen.buffer.truncate(0)
-        schemagen.visit_index(Index("this_other_name_is_too_long_for_what_were_doing", t1.c.foo))
-        eq_(schemagen.buffer.getvalue(), "CREATE INDEX this_other_nam_2 ON sometable (foo)")
-
-        schemadrop = dialect.schemadropper(dialect, None)
-        schemadrop.execute = lambda: None
-        assert_raises(exc.IdentifierError, schemadrop.visit_index, Index("this_name_is_too_long_for_what_were_doing", t1.c.foo))
+        self.assert_compile(
+            schema.CreateIndex(Index("this_name_is_too_long_for_what_were_doing", t1.c.foo)),
+            "CREATE INDEX this_name_is_t_1 ON sometable (foo)",
+            dialect=dialect
+        )
+        
+        self.assert_compile(
+            schema.CreateIndex(Index("this_other_name_is_too_long_for_what_were_doing", t1.c.foo)),
+            "CREATE INDEX this_other_nam_1 ON sometable (foo)",
+            dialect=dialect
+        )
 
     
-class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
-    class accum(object):
-        def __init__(self):
-            self.statements = []
-        def __call__(self, sql, *a, **kw):
-            self.statements.append(sql)
-        def __contains__(self, substring):
-            for s in self.statements:
-                if substring in s:
-                    return True
-            return False
-        def __str__(self):
-            return '\n'.join([repr(x) for x in self.statements])
-        def clear(self):
-            del self.statements[:]
-
-    def setup(self):
-        self.sql = self.accum()
-        opts = config.db_opts.copy()
-        opts['strategy'] = 'mock'
-        opts['executor'] = self.sql
-        self.engine = engines.testing_engine(options=opts)
-
+class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
 
     def _test_deferrable(self, constraint_factory):
-        meta = MetaData(self.engine)
-        t = Table('tbl', meta,
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True))
-        t.create()
-        assert 'DEFERRABLE' in self.sql, self.sql
-        assert 'NOT DEFERRABLE' not in self.sql, self.sql
-        self.sql.clear()
-        meta.clear()
-
-        t = Table('tbl', meta,
+                  
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        assert 'DEFERRABLE' in sql, sql
+        assert 'NOT DEFERRABLE' not in sql, sql
+        
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=False))
-        t.create()
-        assert 'NOT DEFERRABLE' in self.sql
-        self.sql.clear()
-        meta.clear()
 
-        t = Table('tbl', meta,
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        assert 'NOT DEFERRABLE' in sql
+
+
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True, initially='IMMEDIATE'))
-        t.create()
-        assert 'NOT DEFERRABLE' not in self.sql
-        assert 'INITIALLY IMMEDIATE' in self.sql
-        self.sql.clear()
-        meta.clear()
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
+        assert 'NOT DEFERRABLE' not in sql
+        assert 'INITIALLY IMMEDIATE' in sql
 
-        t = Table('tbl', meta,
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True, initially='DEFERRED'))
-        t.create()
+        sql = str(schema.CreateTable(t).compile(bind=testing.db))
 
-        assert 'NOT DEFERRABLE' not in self.sql
-        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+        assert 'NOT DEFERRABLE' not in sql
+        assert 'INITIALLY DEFERRED' in sql
 
     def test_deferrable_pk(self):
         factory = lambda **kw: PrimaryKeyConstraint('a', **kw)
@@ -302,15 +246,16 @@ class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
         self._test_deferrable(factory)
 
     def test_deferrable_column_fk(self):
-        meta = MetaData(self.engine)
-        t = Table('tbl', meta,
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer,
                          ForeignKey('tbl.a', deferrable=True,
                                     initially='DEFERRED')))
-        t.create()
-        assert 'DEFERRABLE' in self.sql, self.sql
-        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl (a INTEGER, b INTEGER, FOREIGN KEY(b) REFERENCES tbl (a) DEFERRABLE INITIALLY DEFERRED)",
+        )
 
     def test_deferrable_unique(self):
         factory = lambda **kw: UniqueConstraint('b', **kw)
@@ -321,15 +266,105 @@ class ConstraintCompilationTest(TestBase, AssertsExecutionResults):
         self._test_deferrable(factory)
 
     def test_deferrable_column_check(self):
-        meta = MetaData(self.engine)
-        t = Table('tbl', meta,
+        t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer,
                          CheckConstraint('a < b',
                                          deferrable=True,
                                          initially='DEFERRED')))
-        t.create()
-        assert 'DEFERRABLE' in self.sql, self.sql
-        assert 'INITIALLY DEFERRED' in self.sql, self.sql
+        
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl (a INTEGER, b INTEGER  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
+        )
+    
+    def test_use_alter(self):
+        m = MetaData()
+        t = Table('t', m,
+                  Column('a', Integer),
+        )
+        
+        t2 = Table('t2', m,
+                Column('a', Integer, ForeignKey('t.a', use_alter=True, name='fk_ta')),
+                Column('b', Integer, ForeignKey('t.a', name='fk_tb')), # to ensure create ordering ...
+        )
 
+        e = engines.mock_engine(dialect_name='postgresql')
+        m.create_all(e)
+        m.drop_all(e)
 
+        e.assert_sql([
+            'CREATE TABLE t (a INTEGER)', 
+            'CREATE TABLE t2 (a INTEGER, b INTEGER, CONSTRAINT fk_tb FOREIGN KEY(b) REFERENCES t (a))', 
+            'ALTER TABLE t2 ADD CONSTRAINT fk_ta FOREIGN KEY(a) REFERENCES t (a)', 
+            'ALTER TABLE t2 DROP CONSTRAINT fk_ta', 
+            'DROP TABLE t2', 
+            'DROP TABLE t'
+        ])
+        
+        
+    def test_add_drop_constraint(self):
+        m = MetaData()
+        
+        t = Table('tbl', m,
+                  Column('a', Integer),
+                  Column('b', Integer)
+        )
+        
+        t2 = Table('t2', m,
+                Column('a', Integer),
+                Column('b', Integer)
+        )
+        
+        constraint = CheckConstraint('a < b',name="my_test_constraint", deferrable=True,initially='DEFERRED', table=t)
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+        )
+
+        self.assert_compile(
+            schema.DropConstraint(constraint),
+            "ALTER TABLE tbl DROP CONSTRAINT my_test_constraint"
+        )
+
+        self.assert_compile(
+            schema.DropConstraint(constraint, cascade=True),
+            "ALTER TABLE tbl DROP CONSTRAINT my_test_constraint CASCADE"
+        )
+
+        constraint = ForeignKeyConstraint(["b"], ["t2.a"])
+        t.append_constraint(constraint)
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD FOREIGN KEY(b) REFERENCES t2 (a)"
+        )
+
+        constraint = ForeignKeyConstraint([t.c.a], [t2.c.b])
+        t.append_constraint(constraint)
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD FOREIGN KEY(a) REFERENCES t2 (b)"
+        )
+
+        constraint = UniqueConstraint("a", "b", name="uq_cst")
+        t2.append_constraint(constraint)
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE t2 ADD CONSTRAINT uq_cst  UNIQUE (a, b)"
+        )
+        
+        constraint = UniqueConstraint(t2.c.a, t2.c.b, name="uq_cs2")
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE t2 ADD CONSTRAINT uq_cs2  UNIQUE (a, b)"
+        )
+        
+        assert t.c.a.primary_key is False
+        constraint = PrimaryKeyConstraint(t.c.a)
+        assert t.c.a.primary_key is True
+        self.assert_compile(
+            schema.AddConstraint(constraint),
+            "ALTER TABLE tbl ADD PRIMARY KEY (a)"
+        )
+    
+        

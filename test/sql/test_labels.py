@@ -35,6 +35,7 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
         maxlen = testing.db.dialect.max_identifier_length
         testing.db.dialect.max_identifier_length = IDENT_LENGTH
 
+    @engines.close_first
     def teardown(self):
         table1.delete().execute()
 
@@ -92,10 +93,16 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
         ], repr(result)
 
     def test_table_alias_names(self):
-        self.assert_compile(
-            table2.alias().select(),
-            "SELECT table_with_exactly_29_c_1.this_is_the_primarykey_column, table_with_exactly_29_c_1.this_is_the_data_column FROM table_with_exactly_29_characs AS table_with_exactly_29_c_1"
-        )
+        if testing.against('oracle'):
+            self.assert_compile(
+                table2.alias().select(),
+                "SELECT table_with_exactly_29_c_1.this_is_the_primarykey_column, table_with_exactly_29_c_1.this_is_the_data_column FROM table_with_exactly_29_characs table_with_exactly_29_c_1"
+            )
+        else:
+            self.assert_compile(
+                table2.alias().select(),
+                "SELECT table_with_exactly_29_c_1.this_is_the_primarykey_column, table_with_exactly_29_c_1.this_is_the_data_column FROM table_with_exactly_29_characs AS table_with_exactly_29_c_1"
+            )
 
         ta = table2.alias()
         dialect = default.DefaultDialect()

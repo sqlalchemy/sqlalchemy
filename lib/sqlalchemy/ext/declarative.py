@@ -396,7 +396,7 @@ only intended as an optional syntax for the regular usage of mappers and Table
 objects.  A typical application setup using :func:`~sqlalchemy.orm.scoped_session` might look
 like::
 
-    engine = create_engine('postgres://scott:tiger@localhost/test')
+    engine = create_engine('postgresql://scott:tiger@localhost/test')
     Session = scoped_session(sessionmaker(autocommit=False,
                                           autoflush=False,
                                           bind=engine))

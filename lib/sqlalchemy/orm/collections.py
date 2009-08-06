@@ -529,7 +529,11 @@ class CollectionAdapter(object):
         if getattr(obj, '_sa_adapter', None) is not None:
             return getattr(obj, '_sa_adapter')
         elif setting_type == dict:
+            # Py3K
+            #return obj.values()
+            # Py2K
             return getattr(obj, 'itervalues', getattr(obj, 'values'))()
+            # end Py2K
         else:
             return iter(obj)
 
@@ -561,7 +565,9 @@ class CollectionAdapter(object):
 
     def __iter__(self):
         """Iterate over entities in the collection."""
-        return getattr(self._data(), '_sa_iterator')()
+        
+        # Py3K requires iter() here
+        return iter(getattr(self._data(), '_sa_iterator')())
 
     def __len__(self):
         """Count entities in the collection."""
@@ -938,22 +944,23 @@ def _list_decorators():
                 fn(self, index, value)
             else:
                 # slice assignment requires __delitem__, insert, __len__
-                if index.stop is None:
-                    stop = 0
-                elif index.stop < 0:
-                    stop = len(self) + index.stop
-                else:
-                    stop = index.stop
                 step = index.step or 1
-                rng = range(index.start or 0, stop, step)
+                start = index.start or 0
+                if start < 0:
+                    start += len(self)
+                stop = index.stop or len(self)
+                if stop < 0:
+                    stop += len(self)
+                
                 if step == 1:
-                    for i in rng:
-                        del self[index.start]
-                    i = index.start
-                    for item in value:
-                        self.insert(i, item)
-                        i += 1
+                    for i in xrange(start, stop, step):
+                        if len(self) > start:
+                            del self[start]
+                    
+                    for i, item in enumerate(value):
+                        self.insert(i + start, item)
                 else:
+                    rng = range(start, stop, step)
                     if len(value) != len(rng):
                         raise ValueError(
                             "attempt to assign sequence of size %s to "
@@ -980,6 +987,7 @@ def _list_decorators():
         _tidy(__delitem__)
         return __delitem__
 
+    # Py2K
     def __setslice__(fn):
         def __setslice__(self, start, end, values):
             for value in self[start:end]:
@@ -996,7 +1004,8 @@ def _list_decorators():
             fn(self, start, end)
         _tidy(__delslice__)
         return __delslice__
-
+    # end Py2K
+    
     def extend(fn):
         def extend(self, iterable):
             for value in iterable:
@@ -1319,9 +1328,14 @@ class InstrumentedSet(set):
 class InstrumentedDict(dict):
     """An instrumented version of the built-in dict."""
 
+    # Py3K
+    #__instrumentation__ = {
+    #    'iterator': 'values', }
+    # Py2K
     __instrumentation__ = {
         'iterator': 'itervalues', }
-
+    # end Py2K
+    
 __canned_instrumentation = {
     list: InstrumentedList,
     set: InstrumentedSet,
@@ -1338,8 +1352,13 @@ __interfaces = {
           'iterator': '__iter__',
           '_decorators': _set_decorators(), },
     # decorators are required for dicts and object collections.
+    # Py3K
+    #dict: {'iterator': 'values',
+    #       '_decorators': _dict_decorators(), },
+    # Py2K
     dict: {'iterator': 'itervalues',
            '_decorators': _dict_decorators(), },
+    # end Py2K
     # < 0.4 compatible naming, deprecated- use decorators instead.
     None: {}
     }

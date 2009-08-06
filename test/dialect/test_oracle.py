@@ -2,12 +2,14 @@
 
 from sqlalchemy.test.testing import eq_
 from sqlalchemy import *
+from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import table, column
-from sqlalchemy.databases import oracle
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.engines import testing_engine
+from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
+from sqlalchemy.util import jython
 import os
 
 
@@ -43,10 +45,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         meta  = MetaData()
         parent = Table('parent', meta, Column('id', Integer, primary_key=True), 
            Column('name', String(50)),
-           owner='ed')
+           schema='ed')
         child = Table('child', meta, Column('id', Integer, primary_key=True),
            Column('parent_id', Integer, ForeignKey('ed.parent.id')),
-           owner = 'ed')
+           schema = 'ed')
 
         self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id")
 
@@ -342,6 +344,25 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
 
+    def test_type_adapt(self):
+        dialect = cx_oracle.dialect()
+
+        for start, test in [
+            (DateTime(), cx_oracle._OracleDateTime),
+            (TIMESTAMP(), cx_oracle._OracleTimestamp),
+            (oracle.OracleRaw(), cx_oracle._OracleRaw),
+            (String(), String),
+            (VARCHAR(), VARCHAR),
+            (String(50), String),
+            (Unicode(), Unicode),
+            (Text(), cx_oracle._OracleText),
+            (UnicodeText(), cx_oracle._OracleUnicodeText),
+            (NCHAR(), NCHAR),
+            (oracle.RAW(50), cx_oracle._OracleRaw),
+        ]:
+            assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
+
+
     def test_reflect_raw(self):
         types_table = Table(
         'all_types', MetaData(testing.db),
@@ -354,16 +375,16 @@ class TypesTest(TestBase, AssertsCompiledSQL):
     def test_reflect_nvarchar(self):
         metadata = MetaData(testing.db)
         t = Table('t', metadata,
-            Column('data', oracle.OracleNVarchar(255))
+            Column('data', sqltypes.NVARCHAR(255))
         )
         metadata.create_all()
         try:
             m2 = MetaData(testing.db)
             t2 = Table('t', m2, autoload=True)
-            assert isinstance(t2.c.data.type, oracle.OracleNVarchar)
+            assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
             data = u'm’a réveillé.'
             t2.insert().execute(data=data)
-            eq_(t2.select().execute().fetchone()['data'], data)
+            eq_(t2.select().execute().first()['data'], data)
         finally:
             metadata.drop_all()
         
@@ -391,7 +412,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         t.create(engine)
         try:
             engine.execute(t.insert(), id=1, data='this is text', bindata='this is binary')
-            row = engine.execute(t.select()).fetchone()
+            row = engine.execute(t.select()).first()
             eq_(row['data'].read(), 'this is text')
             eq_(row['bindata'].read(), 'this is binary')
         finally:
@@ -408,7 +429,6 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
            Column('data', Binary)
         )
         meta.create_all()
-        
         stream = os.path.join(os.path.dirname(__file__), "..", 'binary_data_one.dat')
         stream = file(stream).read(12000)
 
@@ -420,17 +440,18 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
         meta.drop_all()
 
     def test_fetch(self):
-        eq_(
-            binary_table.select().execute().fetchall() ,
-            [(i, stream) for i in range(1, 11)], 
-        )
+        result = binary_table.select().execute().fetchall()
+        if jython:
+            result = [(i, value.tostring()) for i, value in result]
+        eq_(result, [(i, stream) for i in range(1, 11)])
 
+    @testing.fails_on('+zxjdbc', 'FIXME: zxjdbc should support this')
     def test_fetch_single_arraysize(self):
         eng = testing_engine(options={'arraysize':1})
-        eq_(
-            eng.execute(binary_table.select()).fetchall(),
-            [(i, stream) for i in range(1, 11)], 
-        )
+        result = eng.execute(binary_table.select()).fetchall(),
+        if jython:
+            result = [(i, value.tostring()) for i, value in result]
+        eq_(result, [(i, stream) for i in range(1, 11)])
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):

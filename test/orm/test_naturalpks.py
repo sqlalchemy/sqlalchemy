@@ -6,8 +6,7 @@ from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
@@ -16,6 +15,11 @@ class NaturalPKTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
+        if testing.against('oracle'):
+            fk_args = dict(deferrable=True, initially='deferred')
+        else:
+            fk_args = dict(onupdate='cascade')
+            
         users = Table('users', metadata,
             Column('username', String(50), primary_key=True),
             Column('fullname', String(100)),
@@ -23,7 +27,7 @@ class NaturalPKTest(_base.MappedTest):
 
         addresses = Table('addresses', metadata,
             Column('email', String(50), primary_key=True),
-            Column('username', String(50), ForeignKey('users.username', onupdate="cascade")),
+            Column('username', String(50), ForeignKey('users.username', **fk_args)),
             test_needs_fk=True)
 
         items = Table('items', metadata,
@@ -32,8 +36,8 @@ class NaturalPKTest(_base.MappedTest):
             test_needs_fk=True)
 
         users_to_items = Table('users_to_items', metadata,
-            Column('username', String(50), ForeignKey('users.username', onupdate='cascade'), primary_key=True),
-            Column('itemname', String(50), ForeignKey('items.itemname', onupdate='cascade'), primary_key=True),
+            Column('username', String(50), ForeignKey('users.username', **fk_args), primary_key=True),
+            Column('itemname', String(50), ForeignKey('items.itemname', **fk_args), primary_key=True),
             test_needs_fk=True)
 
     @classmethod
@@ -110,6 +114,7 @@ class NaturalPKTest(_base.MappedTest):
         
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 
@@ -161,6 +166,7 @@ class NaturalPKTest(_base.MappedTest):
         
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_manytoone_passive(self):
         self._test_manytoone(True)
 
@@ -203,6 +209,7 @@ class NaturalPKTest(_base.MappedTest):
         eq_([Address(username='ed'), Address(username='ed')], sess.query(Address).all())
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_onetoone_passive(self):
         self._test_onetoone(True)
 
@@ -244,6 +251,7 @@ class NaturalPKTest(_base.MappedTest):
         eq_([Address(username='ed')], sess.query(Address).all())
         
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_bidirectional_passive(self):
         self._test_bidirectional(True)
 
@@ -298,10 +306,12 @@ class NaturalPKTest(_base.MappedTest):
 
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_manytomany_passive(self):
         self._test_manytomany(True)
 
-    @testing.fails_on('mysql', 'the executemany() of the association table fails to report the correct row count')
+    # mysqldb executemany() of the association table fails to report the correct row count
+    @testing.fails_if(lambda: testing.against('mysql') and not testing.against('+zxjdbc'))
     def test_manytomany_nonpassive(self):
         self._test_manytomany(False)
 
@@ -361,10 +371,15 @@ class SelfRefTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
+        if testing.against('oracle'):
+            fk_args = dict(deferrable=True, initially='deferred')
+        else:
+            fk_args = dict(onupdate='cascade')
+        
         Table('nodes', metadata,
               Column('name', String(50), primary_key=True),
               Column('parent', String(50),
-                     ForeignKey('nodes.name', onupdate='cascade')))
+                     ForeignKey('nodes.name', **fk_args)))
 
     @classmethod
     def setup_classes(cls):
@@ -400,17 +415,22 @@ class SelfRefTest(_base.MappedTest):
 class NonPKCascadeTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
+        if testing.against('oracle'):
+            fk_args = dict(deferrable=True, initially='deferred')
+        else:
+            fk_args = dict(onupdate='cascade')
+
         Table('users', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('username', String(50), unique=True),
             Column('fullname', String(100)),
             test_needs_fk=True)
 
         Table('addresses', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('email', String(50)),
               Column('username', String(50),
-                     ForeignKey('users.username', onupdate="cascade")),
+                     ForeignKey('users.username', **fk_args)),
                      test_needs_fk=True
                      )
 
@@ -422,6 +442,7 @@ class NonPKCascadeTest(_base.MappedTest):
             pass
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 

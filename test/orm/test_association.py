@@ -1,8 +1,7 @@
 
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session
 from test.orm import _base
 from sqlalchemy.test.testing import eq_
@@ -15,14 +14,14 @@ class AssociationTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('items', metadata,
-            Column('item_id', Integer, primary_key=True),
+            Column('item_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(40)))
         Table('item_keywords', metadata,
             Column('item_id', Integer, ForeignKey('items.item_id')),
             Column('keyword_id', Integer, ForeignKey('keywords.keyword_id')),
             Column('data', String(40)))
         Table('keywords', metadata,
-            Column('keyword_id', Integer, primary_key=True),
+            Column('keyword_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(40)))
 
     @classmethod

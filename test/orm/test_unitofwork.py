@@ -379,7 +379,6 @@ class MutableTypesTest(_base.MappedTest):
              "WHERE mutable_t.id = :mutable_t_id",
              {'mutable_t_id': f1.id, 'val': u'hi', 'data':f1.data})])
 
-
     @testing.resolve_artifact_names
     def test_resurrect(self):
         f1 = Foo()
@@ -392,42 +391,13 @@ class MutableTypesTest(_base.MappedTest):
 
         f1.data.y = 19
         del f1
-        
+
         gc.collect()
         assert len(session.identity_map) == 1
-        
+
         session.commit()
-        
+
         assert session.query(Foo).one().data == pickleable.Bar(4, 19)
-        
-        
-    @testing.uses_deprecated()
-    @testing.resolve_artifact_names
-    def test_nocomparison(self):
-        """Changes are detected on MutableTypes lacking an __eq__ method."""
-
-        f1 = Foo()
-        f1.data = pickleable.BarWithoutCompare(4,5)
-        session = create_session(autocommit=False)
-        session.add(f1)
-        session.commit()
-
-        self.sql_count_(0, session.commit)
-        session.close()
-
-        session = create_session(autocommit=False)
-        f2 = session.query(Foo).filter_by(id=f1.id).one()
-        self.sql_count_(0, session.commit)
-
-        f2.data.y = 19
-        self.sql_count_(1, session.commit)
-        session.close()
-
-        session = create_session(autocommit=False)
-        f3 = session.query(Foo).filter_by(id=f1.id).one()
-        eq_((f3.data.x, f3.data.y), (4,19))
-        self.sql_count_(0, session.commit)
-        session.close()
 
     @testing.resolve_artifact_names
     def test_unicode(self):
@@ -892,7 +862,7 @@ class DefaultTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        use_string_defaults = testing.against('postgres', 'oracle', 'sqlite', 'mssql')
+        use_string_defaults = testing.against('postgresql', 'oracle', 'sqlite', 'mssql')
 
         if use_string_defaults:
             hohotype = String(30)
@@ -910,15 +880,14 @@ class DefaultTest(_base.MappedTest):
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
             Column('hoho', hohotype, server_default=str(hohoval)),
-            Column('counter', Integer, default=sa.func.char_length("1234567")),
-            Column('foober', String(30), default="im foober",
-                   onupdate="im the update"))
+            Column('counter', Integer, default=sa.func.char_length("1234567", type_=Integer)),
+            Column('foober', String(30), default="im foober", onupdate="im the update"))
 
         st = Table('secondary_table', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)))
 
-        if testing.against('postgres', 'oracle'):
+        if testing.against('postgresql', 'oracle'):
             dt.append_column(
                 Column('secondary_id', Integer, sa.Sequence('sec_id_seq'),
                        unique=True))
@@ -1004,14 +973,14 @@ class DefaultTest(_base.MappedTest):
         # "post-update"
         mapper(Hoho, default_t)
 
-        h1 = Hoho(hoho="15", counter="15")
+        h1 = Hoho(hoho="15", counter=15)
         session = create_session()
         session.add(h1)
         session.flush()
 
         def go():
             eq_(h1.hoho, "15")
-            eq_(h1.counter, "15")
+            eq_(h1.counter, 15)
             eq_(h1.foober, "im foober")
         self.sql_count_(0, go)
 
@@ -1036,7 +1005,7 @@ class DefaultTest(_base.MappedTest):
         """A server-side default can be used as the target of a foreign key"""
 
         mapper(Hoho, default_t, properties={
-            'secondaries':relation(Secondary)})
+            'secondaries':relation(Secondary, order_by=secondary_table.c.id)})
         mapper(Secondary, secondary_table)
 
         h1 = Hoho()
@@ -1068,7 +1037,7 @@ class ColumnPropertyTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('data', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('a', String(50)),
             Column('b', String(50))
             )
@@ -1681,7 +1650,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         l = sa.select([users, addresses],
                       sa.and_(users.c.id==addresses.c.user_id,
                               addresses.c.id==a.id)).execute()
-        eq_(l.fetchone().values(),
+        eq_(l.first().values(),
             [a.user.id, 'asdf8d', a.id, a.user_id, 'theater@foo.com'])
 
     @testing.resolve_artifact_names
@@ -2201,8 +2170,14 @@ class RowSwitchTest(_base.MappedTest):
         sess.add(o5)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some t5')]
-        assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some t6', 1), (2, 'some other t6', 1)]
+        eq_(
+            list(sess.execute(t5.select(), mapper=T5)),
+            [(1, 'some t5')]
+        )
+        eq_(
+            list(sess.execute(t6.select().order_by(t6.c.id), mapper=T5)),
+            [(1, 'some t6', 1), (2, 'some other t6', 1)]
+        )
 
         o6 = T5(data='some other t5', id=o5.id, t6s=[
             T6(data='third t6', id=3),
@@ -2212,8 +2187,14 @@ class RowSwitchTest(_base.MappedTest):
         sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some other t5')]
-        assert list(sess.execute(t6.select(), mapper=T5)) == [(3, 'third t6', 1), (4, 'fourth t6', 1)]
+        eq_(
+            list(sess.execute(t5.select(), mapper=T5)),
+            [(1, 'some other t5')]
+        )
+        eq_(
+            list(sess.execute(t6.select().order_by(t6.c.id), mapper=T5)),
+            [(3, 'third t6', 1), (4, 'fourth t6', 1)]
+        )
 
     @testing.resolve_artifact_names
     def test_manytomany(self):
@@ -2369,6 +2350,6 @@ class TransactionTest(_base.MappedTest):
         # todo: on 8.3 at least, the failed commit seems to close the cursor?
         # needs investigation.  leaving in the DDL above now to help verify
         # that the new deferrable support on FK isn't involved in this issue.
-        if testing.against('postgres'):
+        if testing.against('postgresql'):
             t1.bind.engine.dispose()
 

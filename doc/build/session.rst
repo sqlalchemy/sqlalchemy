@@ -54,7 +54,7 @@ In our previous example regarding ``sessionmaker()``, we specified a ``bind`` fo
     Session = sessionmaker()
 
     # later, we create the engine
-    engine = create_engine('postgres://...')
+    engine = create_engine('postgresql://...')
     
     # associate it with our custom Session class
     Session.configure(bind=engine)
@@ -74,7 +74,7 @@ The ``Session`` can also be explicitly bound to an individual database ``Connect
     # global application scope.  create Session class, engine
     Session = sessionmaker()
 
-    engine = create_engine('postgres://...')
+    engine = create_engine('postgresql://...')
     
     ...
     
@@ -219,7 +219,7 @@ With ``merge()``, the given instance is not placed within the session, and can b
   * An application which reads an object structure from a file and wishes to save it to the database might parse the file, build up the structure, and then use ``merge()`` to save it to the database, ensuring that the data within the file is used to formulate the primary key of each element of the structure.  Later, when the file has changed, the same process can be re-run, producing a slightly different object structure, which can then be ``merged()`` in again, and the ``Session`` will automatically update the database to reflect those changes.
   * A web application stores mapped entities within an HTTP session object.  When each request starts up, the serialized data can be merged into the session, so that the original entity may be safely shared among requests and threads.
 
-``merge()`` is frequently used by applications which implement their own second level caches.  This refers to an application which uses an in memory dictionary, or an tool like Memcached to store objects over long running spans of time.  When such an object needs to exist within a ``Session``, ``merge()`` is a good choice since it leaves the original cached object untouched.  For this use case, merge provides a keyword option called ``dont_load=True``.  When this boolean flag is set to ``True``, ``merge()`` will not issue any SQL to reconcile the given object against the current state of the database, thereby reducing query overhead.   The limitation is that the given object and all of its children may not contain any pending changes, and it's also of course possible that newer information in the database will not be present on the merged object, since no load is issued.
+``merge()`` is frequently used by applications which implement their own second level caches.  This refers to an application which uses an in memory dictionary, or an tool like Memcached to store objects over long running spans of time.  When such an object needs to exist within a ``Session``, ``merge()`` is a good choice since it leaves the original cached object untouched.  For this use case, merge provides a keyword option called ``load=False``.  When this boolean flag is set to ``False``, ``merge()`` will not issue any SQL to reconcile the given object against the current state of the database, thereby reducing query overhead.   The limitation is that the given object and all of its children may not contain any pending changes, and it's also of course possible that newer information in the database will not be present on the merged object, since no load is issued.
 
 Deleting
 --------
@@ -459,8 +459,8 @@ Enabling Two-Phase Commit
 
 Finally, for MySQL, PostgreSQL, and soon Oracle as well, the session can be instructed to use two-phase commit semantics. This will coordinate the committing of transactions across databases so that the transaction is either committed or rolled back in all databases. You can also ``prepare()`` the session for interacting with transactions not managed by SQLAlchemy. To use two phase transactions set the flag ``twophase=True`` on the session::
 
-    engine1 = create_engine('postgres://db1')
-    engine2 = create_engine('postgres://db2')
+    engine1 = create_engine('postgresql://db1')
+    engine2 = create_engine('postgresql://db2')
     
     Session = sessionmaker(twophase=True)
 
@@ -549,7 +549,7 @@ Note that above, we issue a ``commit()`` both on the ``Session`` as well as the 
 
 When using the ``threadlocal`` engine context, the process above is simplified; the ``Session`` uses the same connection/transaction as everyone else in the current thread, whether or not you explicitly bind it::
 
-    engine = create_engine('postgres://mydb', strategy="threadlocal")
+    engine = create_engine('postgresql://mydb', strategy="threadlocal")
     engine.begin()
     
     session = Session()  # session takes place in the transaction like everyone else
@@ -652,8 +652,8 @@ Vertical Partitioning
 
 Vertical partitioning places different kinds of objects, or different tables, across multiple databases::
 
-    engine1 = create_engine('postgres://db1')
-    engine2 = create_engine('postgres://db2')
+    engine1 = create_engine('postgresql://db1')
+    engine2 = create_engine('postgresql://db2')
 
     Session = sessionmaker(twophase=True)
 

@@ -3,17 +3,33 @@
 sqlalchemy.databases
 ====================
 
+Supported Databases
+-------------------
+
+These backends are fully operational with 
+current versions of SQLAlchemy.
+
+.. toctree::
+    :glob:
+
+    firebird
+    mssql
+    mysql
+    oracle
+    postgresql
+    sqlite
+
+Unsupported Databases
+---------------------
+
+These backends are untested and may not be completely
+ported to current versions of SQLAlchemy.
+
 .. toctree::
     :glob:
 
     access
-    firebird
     informix
     maxdb
-    mssql
-    mysql
-    oracle
-    postgres
-    sqlite
     sybase
 

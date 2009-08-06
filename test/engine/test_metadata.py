@@ -1,11 +1,11 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import pickle
-from sqlalchemy import MetaData
-from sqlalchemy import Integer, String, UniqueConstraint, CheckConstraint, ForeignKey
+from sqlalchemy import Integer, String, UniqueConstraint, CheckConstraint, ForeignKey, MetaData
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
+from sqlalchemy import schema
 import sqlalchemy as tsa
-from sqlalchemy.test import TestBase, ComparesTables, testing, engines
+from sqlalchemy.test import TestBase, ComparesTables, AssertsCompiledSQL, testing, engines
 from sqlalchemy.test.testing import eq_
 
 class MetaDataTest(TestBase, ComparesTables):
@@ -83,7 +83,7 @@ class MetaDataTest(TestBase, ComparesTables):
 
         meta.create_all(testing.db)
         try:
-            for test, has_constraints in ((test_to_metadata, True), (test_pickle, True), (test_pickle_via_reflect, False)):
+            for test, has_constraints in ((test_to_metadata, True), (test_pickle, True),(test_pickle_via_reflect, False)):
                 table_c, table2_c = test()
                 self.assert_tables_equal(table, table_c)
                 self.assert_tables_equal(table2, table2_c)
@@ -143,29 +143,30 @@ class MetaDataTest(TestBase, ComparesTables):
                           MetaData(testing.db), autoload=True)
 
 
-class TableOptionsTest(TestBase):
-    def setup(self):
-        self.engine = engines.mock_engine()
-        self.metadata = MetaData(self.engine)
-
+class TableOptionsTest(TestBase, AssertsCompiledSQL):
     def test_prefixes(self):
-        table1 = Table("temporary_table_1", self.metadata,
+        table1 = Table("temporary_table_1", MetaData(),
                       Column("col1", Integer),
                       prefixes = ["TEMPORARY"])
-        table1.create()
-        assert [str(x) for x in self.engine.mock if 'CREATE TEMPORARY TABLE' in str(x)]
-        del self.engine.mock[:]
-        table2 = Table("temporary_table_2", self.metadata,
+                      
+        self.assert_compile(
+            schema.CreateTable(table1), 
+            "CREATE TEMPORARY TABLE temporary_table_1 (col1 INTEGER)"
+        )
+
+        table2 = Table("temporary_table_2", MetaData(),
                       Column("col1", Integer),
                       prefixes = ["VIRTUAL"])
-        table2.create()
-        assert [str(x) for x in self.engine.mock if 'CREATE VIRTUAL TABLE' in str(x)]
+        self.assert_compile(
+          schema.CreateTable(table2), 
+          "CREATE VIRTUAL TABLE temporary_table_2 (col1 INTEGER)"
+        )
 
     def test_table_info(self):
-
-        t1 = Table('foo', self.metadata, info={'x':'y'})
-        t2 = Table('bar', self.metadata, info={})
-        t3 = Table('bat', self.metadata)
+        metadata = MetaData()
+        t1 = Table('foo', metadata, info={'x':'y'})
+        t2 = Table('bar', metadata, info={})
+        t3 = Table('bat', metadata)
         assert t1.info == {'x':'y'}
         assert t2.info == {}
         assert t3.info == {}

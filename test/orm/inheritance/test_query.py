@@ -8,6 +8,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.test import AssertsCompiledSQL, testing
 from test.orm import _base, _fixtures
 from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.schema import Table, Column
 
 class Company(_fixtures.Base):
     pass
@@ -38,11 +39,11 @@ def _produce_test(select_type):
             global companies, people, engineers, managers, boss, paperwork, machines
 
             companies = Table('companies', metadata,
-               Column('company_id', Integer, Sequence('company_id_seq', optional=True), primary_key=True),
+               Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
                Column('name', String(50)))
 
             people = Table('people', metadata,
-               Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+               Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
                Column('company_id', Integer, ForeignKey('companies.company_id')),
                Column('name', String(50)),
                Column('type', String(30)))
@@ -55,7 +56,7 @@ def _produce_test(select_type):
               )
          
             machines = Table('machines', metadata,
-                Column('machine_id', Integer, primary_key=True),
+                Column('machine_id', Integer, primary_key=True, test_needs_autoincrement=True),
                 Column('name', String(50)),
                 Column('engineer_id', Integer, ForeignKey('engineers.person_id')))
             
@@ -71,7 +72,7 @@ def _produce_test(select_type):
                 )
 
             paperwork = Table('paperwork', metadata,
-                Column('paperwork_id', Integer, primary_key=True),
+                Column('paperwork_id', Integer, primary_key=True, test_needs_autoincrement=True),
                 Column('description', String(50)),
                 Column('person_id', Integer, ForeignKey('people.person_id')))
 
@@ -771,7 +772,7 @@ class SelfReferentialTestJoinedToBase(_base.MappedTest):
     def define_tables(cls, metadata):
         global people, engineers
         people = Table('people', metadata,
-           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
            Column('type', String(30)))
 
@@ -831,7 +832,7 @@ class SelfReferentialJ2JTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global people, engineers, managers
         people = Table('people', metadata,
-           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
            Column('type', String(30)))
 
@@ -947,7 +948,7 @@ class M2MFilterTest(_base.MappedTest):
         global people, engineers, organizations, engineers_to_org
         
         organizations = Table('organizations', metadata,
-            Column('id', Integer, Sequence('org_id_seq', optional=True), primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
             )
         engineers_to_org = Table('engineers_org', metadata,
@@ -956,7 +957,7 @@ class M2MFilterTest(_base.MappedTest):
         )
         
         people = Table('people', metadata,
-           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
            Column('type', String(30)))
 
@@ -1023,7 +1024,7 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
 
         class Parent(Base):
            __tablename__ = 'parent'
-           id = Column(Integer, primary_key=True)
+           id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
            cls = Column(String(50))
            __mapper_args__ = dict(polymorphic_on = cls )
 

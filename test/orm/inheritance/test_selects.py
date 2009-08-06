@@ -46,6 +46,6 @@ class InheritingSelectablesTest(MappedTest):
 
         s = sessionmaker(bind=testing.db)()
 
-        assert [Baz(), Baz(), Bar(), Bar()] == s.query(Foo).all()
+        assert [Baz(), Baz(), Bar(), Bar()] == s.query(Foo).order_by(Foo.b.desc()).all()
         assert [Bar(), Bar()] == s.query(Bar).all()
 

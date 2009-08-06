@@ -20,9 +20,9 @@ class URL(object):
     format of the URL is an RFC-1738-style string.
 
     All initialization parameters are available as public attributes.
-    
-    :param drivername: the name of the database backend.  
-      This name will correspond to a module in sqlalchemy/databases 
+
+    :param drivername: the name of the database backend.
+      This name will correspond to a module in sqlalchemy/databases
       or a third party plug-in.
 
     :param username: The user name.
@@ -35,12 +35,13 @@ class URL(object):
 
     :param database: The database name.
 
-    :param query: A dictionary of options to be passed to the 
+    :param query: A dictionary of options to be passed to the
       dialect and/or the DBAPI upon connect.
-        
+
     """
 
-    def __init__(self, drivername, username=None, password=None, host=None, port=None, database=None, query=None):
+    def __init__(self, drivername, username=None, password=None,
+                 host=None, port=None, database=None, query=None):
         self.drivername = drivername
         self.username = username
         self.password = password
@@ -70,10 +71,10 @@ class URL(object):
             keys.sort()
             s += '?' + "&".join("%s=%s" % (k, self.query[k]) for k in keys)
         return s
-    
+
     def __hash__(self):
         return hash(str(self))
-    
+
     def __eq__(self, other):
         return \
             isinstance(other, URL) and \
@@ -83,12 +84,22 @@ class URL(object):
             self.host == other.host and \
             self.database == other.database and \
             self.query == other.query
-            
+
     def get_dialect(self):
-        """Return the SQLAlchemy database dialect class corresponding to this URL's driver name."""
-        
+        """Return the SQLAlchemy database dialect class corresponding
+        to this URL's driver name.
+        """
+
         try:
-            module = getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
+            if '+' in self.drivername:
+                dialect, driver = self.drivername.split('+')
+            else:
+                dialect, driver = self.drivername, 'base'
+
+            module = __import__('sqlalchemy.dialects.%s' % (dialect, )).dialects
+            module = getattr(module, dialect)
+            module = getattr(module, driver)
+
             return module.dialect
         except ImportError:
             if sys.exc_info()[2].tb_next is None:
@@ -97,7 +108,7 @@ class URL(object):
                     if res.name == self.drivername:
                         return res.load()
             raise
-  
+
     def translate_connect_args(self, names=[], **kw):
         """Translate url attributes into a dictionary of connection arguments.
 
@@ -107,10 +118,9 @@ class URL(object):
         from the final dictionary.
 
         :param \**kw: Optional, alternate key names for url attributes.
-        
+
         :param names: Deprecated.  Same purpose as the keyword-based alternate names,
             but correlates the name to the original positionally.
-        
         """
 
         translated = {}
@@ -131,8 +141,8 @@ def make_url(name_or_url):
 
     The given string is parsed according to the RFC 1738 spec.  If an
     existing URL object is passed, just returns the object.
-    
     """
+
     if isinstance(name_or_url, basestring):
         return _parse_rfc1738_args(name_or_url)
     else:
@@ -140,7 +150,7 @@ def make_url(name_or_url):
 
 def _parse_rfc1738_args(name):
     pattern = re.compile(r'''
-            (?P<name>\w+)://
+            (?P<name>[\w\+]+)://
             (?:
                 (?P<username>[^:/]*)
                 (?::(?P<password>[^/]*))?
@@ -160,8 +170,10 @@ def _parse_rfc1738_args(name):
             tokens = components['database'].split('?', 2)
             components['database'] = tokens[0]
             query = (len(tokens) > 1 and dict(cgi.parse_qsl(tokens[1]))) or None
+            # Py2K
             if query is not None:
                 query = dict((k.encode('ascii'), query[k]) for k in query)
+            # end Py2K
         else:
             query = None
         components['query'] = query

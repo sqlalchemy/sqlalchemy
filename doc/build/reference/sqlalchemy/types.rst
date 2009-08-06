@@ -153,22 +153,36 @@ reference for the database you're interested in.
 For example, MySQL has a ``BIGINTEGER`` type and PostgreSQL has an
 ``INET`` type.  To use these, import them from the module explicitly::
 
-    from sqlalchemy.databases.mysql import MSBigInteger, MSEnum
+    from sqlalchemy.dialect.mysql import dialect as mysql
 
     table = Table('foo', meta,
-        Column('id', MSBigInteger),
-        Column('enumerates', MSEnum('a', 'b', 'c'))
+        Column('id', mysql.BIGINTEGER),
+        Column('enumerates', mysql.ENUM('a', 'b', 'c'))
     )
 
 Or some PostgreSQL types::
 
-    from sqlalchemy.databases.postgres import PGInet, PGArray
+    from sqlalchemy.dialect.postgresql import dialect as postgresql
 
     table = Table('foo', meta,
-        Column('ipaddress', PGInet),
-        Column('elements', PGArray(str))
+        Column('ipaddress', postgresql.INET),
+        Column('elements', postgresql.ARRAY(str))
         )
 
+Each dialect should provide the full set of typenames supported by
+that backend, so that a backend-specific schema can be created without
+the need to locate types::
+
+    from sqlalchemy.dialects.postgresql import dialect as pg
+
+    t = Table('mytable', metadata,
+               Column('id', pg.INTEGER, primary_key=True),
+               Column('name', pg.VARCHAR(300)),
+               Column('inetaddr', pg.INET)
+    )
+
+Where above, the INTEGER and VARCHAR types are ultimately from 
+sqlalchemy.types, but the Postgresql dialect makes them available.
 
 Custom Types
 ------------
@@ -181,9 +195,15 @@ The simplest method is implementing a :class:`TypeDecorator`, a helper
 class that makes it easy to augment the bind parameter and result
 processing capabilities of one of the built in types.
 
-To build a type object from scratch, subclass `:class:TypeEngine`.
+To build a type object from scratch, subclass `:class:UserDefinedType`.
 
 .. autoclass:: TypeDecorator
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :show-inheritance:
+
+.. autoclass:: UserDefinedType
    :members:
    :undoc-members:
    :inherited-members:

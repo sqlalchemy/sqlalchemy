@@ -26,7 +26,7 @@ class ZooMarkTest(TestBase):
 
     """
 
-    __only_on__ = 'postgres'
+    __only_on__ = 'postgresql+psycopg2'
     __skip_if__ = ((lambda: sys.version_info < (2, 4)), )
 
     def test_baseline_0_setup(self):
@@ -75,15 +75,15 @@ class ZooMarkTest(TestBase):
                            Opens=datetime.time(8, 15, 59),
                            LastEscape=datetime.datetime(2004, 7, 29, 5, 6, 7),
                            Admission=4.95,
-                           ).last_inserted_ids()[0]
+                           ).inserted_primary_key[0]
 
         sdz = Zoo.insert().execute(Name =u'San Diego Zoo',
                            Founded = datetime.date(1935, 9, 13),
                            Opens = datetime.time(9, 0, 0),
                            Admission = 0,
-                           ).last_inserted_ids()[0]
+                           ).inserted_primary_key[0]
 
-        Zoo.insert().execute(
+        Zoo.insert(inline=True).execute(
                   Name = u'Montr\xe9al Biod\xf4me',
                   Founded = datetime.date(1992, 6, 19),
                   Opens = datetime.time(9, 0, 0),
@@ -91,48 +91,48 @@ class ZooMarkTest(TestBase):
                   )
 
         seaworld = Zoo.insert().execute(
-                Name =u'Sea_World', Admission = 60).last_inserted_ids()[0]
+                Name =u'Sea_World', Admission = 60).inserted_primary_key[0]
 
         # Let's add a crazy futuristic Zoo to test large date values.
         lp = Zoo.insert().execute(Name =u'Luna Park',
                                   Founded = datetime.date(2072, 7, 17),
                                   Opens = datetime.time(0, 0, 0),
                                   Admission = 134.95,
-                                  ).last_inserted_ids()[0]
+                                  ).inserted_primary_key[0]
 
         # Animals
         leopardid = Animal.insert().execute(Species=u'Leopard', Lifespan=73.5,
-                                            ).last_inserted_ids()[0]
+                                            ).inserted_primary_key[0]
         Animal.update(Animal.c.ID==leopardid).execute(ZooID=wap,
                 LastEscape=datetime.datetime(2004, 12, 21, 8, 15, 0, 999907))
 
-        lion = Animal.insert().execute(Species=u'Lion', ZooID=wap).last_inserted_ids()[0]
+        lion = Animal.insert().execute(Species=u'Lion', ZooID=wap).inserted_primary_key[0]
         Animal.insert().execute(Species=u'Slug', Legs=1, Lifespan=.75)
 
         tiger = Animal.insert().execute(Species=u'Tiger', ZooID=sdz
-                                        ).last_inserted_ids()[0]
+                                        ).inserted_primary_key[0]
 
         # Override Legs.default with itself just to make sure it works.
-        Animal.insert().execute(Species=u'Bear', Legs=4)
-        Animal.insert().execute(Species=u'Ostrich', Legs=2, Lifespan=103.2)
-        Animal.insert().execute(Species=u'Centipede', Legs=100)
+        Animal.insert(inline=True).execute(Species=u'Bear', Legs=4)
+        Animal.insert(inline=True).execute(Species=u'Ostrich', Legs=2, Lifespan=103.2)
+        Animal.insert(inline=True).execute(Species=u'Centipede', Legs=100)
 
         emp = Animal.insert().execute(Species=u'Emperor Penguin', Legs=2,
-                                      ZooID=seaworld).last_inserted_ids()[0]
+                                      ZooID=seaworld).inserted_primary_key[0]
         adelie = Animal.insert().execute(Species=u'Adelie Penguin', Legs=2,
-                                         ZooID=seaworld).last_inserted_ids()[0]
+                                         ZooID=seaworld).inserted_primary_key[0]
 
-        Animal.insert().execute(Species=u'Millipede', Legs=1000000, ZooID=sdz)
+        Animal.insert(inline=True).execute(Species=u'Millipede', Legs=1000000, ZooID=sdz)
 
         # Add a mother and child to test relationships
         bai_yun = Animal.insert().execute(Species=u'Ape', Name=u'Bai Yun',
-                                          Legs=2).last_inserted_ids()[0]
-        Animal.insert().execute(Species=u'Ape', Name=u'Hua Mei', Legs=2,
+                                          Legs=2).inserted_primary_key[0]
+        Animal.insert(inline=True).execute(Species=u'Ape', Name=u'Hua Mei', Legs=2,
                                 MotherID=bai_yun)
 
     def test_baseline_2_insert(self):
         Animal = metadata.tables['Animal']
-        i = Animal.insert()
+        i = Animal.insert(inline=True)
         for x in xrange(ITERATIONS):
             tick = i.execute(Species=u'Tick', Name=u'Tick %d' % x, Legs=8)
 
@@ -142,7 +142,7 @@ class ZooMarkTest(TestBase):
 
         def fullobject(select):
             """Iterate over the full result row."""
-            return list(select.execute().fetchone())
+            return list(select.execute().first())
 
         for x in xrange(ITERATIONS):
             # Zoos
@@ -254,7 +254,7 @@ class ZooMarkTest(TestBase):
 
         for x in xrange(ITERATIONS):
             # Edit
-            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().first()
             Zoo.update(Zoo.c.ID==SDZ['ID']).execute(
                      Name=u'The San Diego Zoo',
                      Founded = datetime.date(1900, 1, 1),
@@ -262,7 +262,7 @@ class ZooMarkTest(TestBase):
                      Admission = "35.00")
 
             # Test edits
-            SDZ = Zoo.select(Zoo.c.Name==u'The San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'The San Diego Zoo').execute().first()
             assert SDZ['Founded'] == datetime.date(1900, 1, 1), SDZ['Founded']
 
             # Change it back
@@ -273,7 +273,7 @@ class ZooMarkTest(TestBase):
                      Admission = "0")
 
             # Test re-edits
-            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().fetchone()
+            SDZ = Zoo.select(Zoo.c.Name==u'San Diego Zoo').execute().first()
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
 
     def test_baseline_7_multiview(self):
@@ -316,10 +316,10 @@ class ZooMarkTest(TestBase):
         global metadata
 
         player = lambda: dbapi_session.player()
-        engine = create_engine('postgres:///', creator=player)
+        engine = create_engine('postgresql:///', creator=player)
         metadata = MetaData(engine)
 
-    @profiling.function_call_count(3230, {'2.4': 1796})
+    @profiling.function_call_count(2991, {'2.4': 1796})
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
@@ -327,7 +327,7 @@ class ZooMarkTest(TestBase):
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
-    @profiling.function_call_count(322, {'2.4': 202})
+    @profiling.function_call_count(305, {'2.4': 202})
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 

@@ -45,7 +45,7 @@ class IdentityMap(dict):
         self._modified.discard(state)
 
     def _dirty_states(self):
-        return self._modified.union(s for s in list(self._mutable_attrs)
+        return self._modified.union(s for s in self._mutable_attrs.copy()
                                     if s.modified)
 
     def check_modified(self):
@@ -54,7 +54,7 @@ class IdentityMap(dict):
         if self._modified:
             return True
         else:
-            for state in list(self._mutable_attrs):
+            for state in self._mutable_attrs.copy():
                 if state.modified:
                     return True
         return False
@@ -145,34 +145,49 @@ class WeakInstanceDict(IdentityMap):
             return self[key]
         except KeyError:
             return default
-            
+    
+    # Py2K        
     def items(self):
         return list(self.iteritems())
 
     def iteritems(self):
         for state in dict.itervalues(self):
+    # end Py2K
+    # Py3K
+    #def items(self):
+    #    for state in dict.values(self):
             value = state.obj()
             if value is not None:
                 yield state.key, value
 
+    # Py2K
+    def values(self):
+        return list(self.itervalues())
+
     def itervalues(self):
         for state in dict.itervalues(self):
+    # end Py2K
+    # Py3K
+    #def values(self):
+    #    for state in dict.values(self):
             instance = state.obj()
             if instance is not None:
                 yield instance
 
-    def values(self):
-        return list(self.itervalues())
-
     def all_states(self):
+        # Py3K
+        # return list(dict.values(self))
+        
+        # Py2K
         return dict.values(self)
+        # end Py2K
     
     def prune(self):
         return 0
         
 class StrongInstanceDict(IdentityMap):
     def all_states(self):
-        return [attributes.instance_state(o) for o in self.values()]
+        return [attributes.instance_state(o) for o in self.itervalues()]
     
     def contains_state(self, state):
         return state.key in self and attributes.instance_state(self[state.key]) is state
@@ -212,7 +227,11 @@ class StrongInstanceDict(IdentityMap):
         
         ref_count = len(self)
         dirty = [s.obj() for s in self.all_states() if s.check_modified()]
-        keepers = weakref.WeakValueDictionary(self)
+
+        # work around http://bugs.python.org/issue6149
+        keepers = weakref.WeakValueDictionary()
+        keepers.update(self)
+
         dict.clear(self)
         dict.update(self, keepers)
         self.modified = bool(dirty)

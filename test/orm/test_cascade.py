@@ -1,8 +1,7 @@
 
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, exc as sa_exc
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session, class_mapper, backref
 from sqlalchemy.orm import attributes, exc as orm_exc
 from sqlalchemy.test import testing
@@ -20,7 +19,7 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         mapper(User, users, properties = dict(
             addresses = relation(Address, cascade="all, delete-orphan", backref="user"),
             orders = relation(
-                mapper(Order, orders), cascade="all, delete-orphan")
+                mapper(Order, orders), cascade="all, delete-orphan", order_by=orders.c.id)
         ))
         mapper(Dingaling,dingalings, properties={
             'address':relation(Address)
@@ -50,16 +49,12 @@ class O2MCascadeTest(_fixtures.FixtureTest):
                     orders=[Order(description="order 3"),
                             Order(description="order 4")]))
 
-        eq_(sess.query(Order).all(),
+        eq_(sess.query(Order).order_by(Order.id).all(),
             [Order(description="order 3"), Order(description="order 4")])
 
         o5 = Order(description="order 5")
         sess.add(o5)
-        try:
-            sess.flush()
-            assert False
-        except orm_exc.FlushError, e:
-            assert "is an orphan" in str(e)
+        assert_raises_message(orm_exc.FlushError, "is an orphan", sess.flush)
 
 
     @testing.resolve_artifact_names
@@ -351,18 +346,15 @@ class M2OCascadeTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("extra", metadata,
-            Column("id", Integer, Sequence("extra_id_seq", optional=True),
-                   primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("prefs_id", Integer, ForeignKey("prefs.id")))
 
         Table('prefs', metadata,
-            Column('id', Integer, Sequence('prefs_id_seq', optional=True),
-                   primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(40)))
 
         Table('users', metadata,
-            Column('id', Integer, Sequence('user_id_seq', optional=True),
-                   primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(40)),
             Column('pref_id', Integer, ForeignKey('prefs.id')))
 
@@ -453,22 +445,22 @@ class M2OCascadeTest(_base.MappedTest):
         jack.pref = newpref
         jack.pref = newpref
         sess.flush()
-        eq_(sess.query(Pref).all(),
+        eq_(sess.query(Pref).order_by(Pref.id).all(),
             [Pref(data="pref 1"), Pref(data="pref 3"), Pref(data="newpref")])
 
 class M2OCascadeDeleteTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)),
               Column('t2id', Integer, ForeignKey('t2.id')))
         Table('t2', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)),
               Column('t3id', Integer, ForeignKey('t3.id')))
         Table('t3', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)))
 
     @classmethod
@@ -581,15 +573,15 @@ class M2OCascadeDeleteOrphanTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)),
               Column('t2id', Integer, ForeignKey('t2.id')))
         Table('t2', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)),
               Column('t3id', Integer, ForeignKey('t3.id')))
         Table('t3', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)))
 
     @classmethod
@@ -696,12 +688,12 @@ class M2MCascadeTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             test_needs_fk=True
             )
         Table('b', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)),
             test_needs_fk=True
             
@@ -713,7 +705,7 @@ class M2MCascadeTest(_base.MappedTest):
             
             )
         Table('c', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(30)),
               Column('bid', Integer, ForeignKey('b.id')),
               test_needs_fk=True
@@ -838,15 +830,11 @@ class UnsavedOrphansTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-            Column('user_id', Integer,
-                   Sequence('user_id_seq', optional=True),
-                   primary_key=True),
+            Column('user_id', Integer,primary_key=True, test_needs_autoincrement=True),
             Column('name', String(40)))
 
         Table('addresses', metadata,
-            Column('address_id', Integer,
-                   Sequence('address_id_seq', optional=True),
-                   primary_key=True),
+            Column('address_id', Integer,primary_key=True, test_needs_autoincrement=True),
             Column('user_id', Integer, ForeignKey('users.user_id')),
             Column('email_address', String(40)))
 
@@ -923,20 +911,17 @@ class UnsavedOrphansTest2(_base.MappedTest):
     @classmethod
     def define_tables(cls, meta):
         Table('orders', meta,
-            Column('id', Integer, Sequence('order_id_seq'),
-                   primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)))
 
         Table('items', meta,
-            Column('id', Integer, Sequence('item_id_seq'),
-                   primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('order_id', Integer, ForeignKey('orders.id'),
                    nullable=False),
             Column('name', String(50)))
 
         Table('attributes', meta,
-            Column('id', Integer, Sequence('attribute_id_seq'),
-                   primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('item_id', Integer, ForeignKey('items.id'),
                    nullable=False),
             Column('name', String(50)))
@@ -982,19 +967,13 @@ class UnsavedOrphansTest3(_base.MappedTest):
     @classmethod
     def define_tables(cls, meta):
         Table('sales_reps', meta,
-            Column('sales_rep_id', Integer,
-                   Sequence('sales_rep_id_seq'),
-                   primary_key=True),
+            Column('sales_rep_id', Integer,primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)))
         Table('accounts', meta,
-            Column('account_id', Integer,
-                   Sequence('account_id_seq'),
-                   primary_key=True),
+            Column('account_id', Integer,primary_key=True, test_needs_autoincrement=True),
             Column('balance', Integer))
         Table('customers', meta,
-            Column('customer_id', Integer,
-                   Sequence('customer_id_seq'),
-                   primary_key=True),
+            Column('customer_id', Integer,primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
             Column('sales_rep_id', Integer,
                    ForeignKey('sales_reps.sales_rep_id')),
@@ -1087,19 +1066,19 @@ class DoubleParentOrphanTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('addresses', metadata,
-            Column('address_id', Integer, primary_key=True),
+            Column('address_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('street', String(30)),
         )
 
         Table('homes', metadata,
-            Column('home_id', Integer, primary_key=True, key="id"),
+            Column('home_id', Integer, primary_key=True, key="id", test_needs_autoincrement=True),
             Column('description', String(30)),
             Column('address_id', Integer, ForeignKey('addresses.address_id'),
                    nullable=False),
         )
 
         Table('businesses', metadata,
-            Column('business_id', Integer, primary_key=True, key="id"),
+            Column('business_id', Integer, primary_key=True, key="id", test_needs_autoincrement=True),
             Column('description', String(30), key="description"),
             Column('address_id', Integer, ForeignKey('addresses.address_id'),
                    nullable=False),
@@ -1159,10 +1138,10 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('table_a', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(30)))
         Table('table_b', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(30)),
               Column('a_id', Integer, ForeignKey('table_a.id')))
 
@@ -1208,12 +1187,12 @@ class PartialFlushTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("base", metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("descr", String(50))
         )
 
         Table("noninh_child", metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('base_id', Integer, ForeignKey('base.id'))
         )
 

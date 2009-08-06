@@ -1,21 +1,23 @@
-import testenv; testenv.configure_for_tests()
+import gc
 import types
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from testlib import *
+from sqlalchemy.test import *
 
 
 NUM = 2500
 
 class SaveTest(TestBase, AssertsExecutionResults):
-    def setUpAll(self):
+    @classmethod
+    def setup_class(cls):
         global items, metadata
         metadata = MetaData(testing.db)
         items = Table('items', metadata,
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))
         items.create()
-    def tearDownAll(self):
+    @classmethod
+    def teardown_class(cls):
         clear_mappers()
         metadata.drop_all()
 
@@ -50,5 +52,3 @@ class SaveTest(TestBase, AssertsExecutionResults):
             print x
 
 
-if __name__ == "__main__":
-    testenv.main()

@@ -14,9 +14,9 @@ groups = [user, administrator]
 
 def cryptpw(password, salt=None):
     if salt is None:
-        salt = string.join([chr(random.randint(ord('a'), ord('z'))),
-                            chr(random.randint(ord('a'), ord('z')))],'')
-    return sha(password + salt).hexdigest()
+        salt = "".join([chr(random.randint(ord('a'), ord('z'))),
+                            chr(random.randint(ord('a'), ord('z')))])
+    return sha((password+ salt).encode('ascii')).hexdigest()
 
 def checkpw(password, dbpw):
     return cryptpw(password, dbpw[:2]) == dbpw

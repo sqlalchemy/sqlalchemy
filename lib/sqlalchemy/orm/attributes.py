@@ -159,7 +159,7 @@ class InstrumentedAttribute(QueryableAttribute):
 
 class _ProxyImpl(object):
     accepts_scalar_loader = False
-    dont_expire_missing = False
+    expire_missing = True
     
     def __init__(self, key):
         self.key = key
@@ -231,7 +231,7 @@ class AttributeImpl(object):
     def __init__(self, class_, key,
                     callable_, trackparent=False, extension=None,
                     compare_function=None, active_history=False, parent_token=None, 
-                    dont_expire_missing=False,
+                    expire_missing=True,
                     **kwargs):
         """Construct an AttributeImpl.
 
@@ -269,8 +269,8 @@ class AttributeImpl(object):
           Allows multiple AttributeImpls to all match a single 
           owner attribute.
           
-        dont_expire_missing
-          if True, don't add an "expiry" callable to this attribute
+        expire_missing
+          if False, don't add an "expiry" callable to this attribute
           during state.expire_attributes(None), if no value is present 
           for this key.
           
@@ -290,7 +290,7 @@ class AttributeImpl(object):
                 active_history = True
                 break
         self.active_history = active_history
-        self.dont_expire_missing = dont_expire_missing
+        self.expire_missing = expire_missing
         
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.
@@ -991,9 +991,8 @@ class ClassManager(dict):
             self.local_attrs[key] = inst
             self.install_descriptor(key, inst)
         self[key] = inst
+        
         for cls in self.class_.__subclasses__():
-            if isinstance(cls, types.ClassType):
-                continue
             manager = self._subclass_manager(cls)
             manager.instrument_attribute(key, inst, True)
 
@@ -1013,8 +1012,6 @@ class ClassManager(dict):
         if key in self.mutable_attributes:
             self.mutable_attributes.remove(key)
         for cls in self.class_.__subclasses__():
-            if isinstance(cls, types.ClassType):
-                continue
             manager = self._subclass_manager(cls)
             manager.uninstrument_attribute(key, True)
 
@@ -1646,8 +1643,12 @@ def __init__(%(apply_pos)s):
     func_vars = util.format_argspec_init(original__init__, grouped=False)
     func_text = func_body % func_vars
 
+    # Py3K
+    #func_defaults = getattr(original__init__, '__defaults__', None)
+    # Py2K
     func = getattr(original__init__, 'im_func', original__init__)
     func_defaults = getattr(func, 'func_defaults', None)
+    # end Py2K
 
     env = locals().copy()
     exec func_text in env

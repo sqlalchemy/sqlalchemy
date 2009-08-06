@@ -3,8 +3,7 @@ import datetime
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, MetaData, and_
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, backref, create_session, compile_mappers, clear_mappers, sessionmaker
 from sqlalchemy.test.testing import eq_, startswith_
 from test.orm import _base, _fixtures
@@ -32,17 +31,17 @@ class RelationTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("tbl_a", metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("name", String(128)))
         Table("tbl_b", metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("name", String(128)))
         Table("tbl_c", metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("tbl_a_id", Integer, ForeignKey("tbl_a.id"), nullable=False),
             Column("name", String(128)))
         Table("tbl_d", metadata,
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("tbl_c_id", Integer, ForeignKey("tbl_c.id"), nullable=False),
             Column("tbl_b_id", Integer, ForeignKey("tbl_b.id")),
             Column("name", String(128)))
@@ -132,7 +131,7 @@ class RelationTest2(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('company_t', metadata,
-              Column('company_id', Integer, primary_key=True),
+              Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', sa.Unicode(30)))
 
         Table('employee_t', metadata,
@@ -395,7 +394,7 @@ class RelationTest4(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("tableA", metadata,
-              Column("id",Integer,primary_key=True),
+              Column("id",Integer,primary_key=True, test_needs_autoincrement=True),
               Column("foo",Integer,),
               test_needs_fk=True)
         Table("tableB",metadata,
@@ -456,7 +455,7 @@ class RelationTest4(_base.MappedTest):
     @testing.fails_on_everything_except('sqlite', 'mysql')
     @testing.resolve_artifact_names
     def test_nullPKsOK_BtoA(self):
-        # postgres cant handle a nullable PK column...?
+        # postgresql cant handle a nullable PK column...?
         tableC = Table('tablec', tableA.metadata,
             Column('id', Integer, primary_key=True),
             Column('a_id', Integer, ForeignKey('tableA.id'),
@@ -642,12 +641,12 @@ class RelationTest6(_base.MappedTest):
     
     @classmethod
     def define_tables(cls, metadata):
-        Table('tags', metadata, Column("id", Integer, primary_key=True),
+        Table('tags', metadata, Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column("data", String(50)),
         )
 
         Table('tag_foo', metadata, 
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
             Column('tagid', Integer),
             Column("data", String(50)),
         )
@@ -691,11 +690,11 @@ class BackrefPropagatesForwardsArgs(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50))
         )
         Table('addresses', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('user_id', Integer),
             Column('email', String(50))
         )
@@ -738,7 +737,7 @@ class AmbiguousJoinInterpretedAsSelfRef(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         subscriber_table = Table('subscriber', metadata,
-           Column('id', Integer, primary_key=True),
+           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('dummy', String(10)) # to appease older sqlite version
           )
 
@@ -947,18 +946,18 @@ class TypeMatchTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("a", metadata,
-              Column('aid', Integer, primary_key=True),
+              Column('aid', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(30)))
         Table("b", metadata,
-               Column('bid', Integer, primary_key=True),
+               Column('bid', Integer, primary_key=True, test_needs_autoincrement=True),
                Column("a_id", Integer, ForeignKey("a.aid")),
                Column('data', String(30)))
         Table("c", metadata,
-              Column('cid', Integer, primary_key=True),
+              Column('cid', Integer, primary_key=True, test_needs_autoincrement=True),
               Column("b_id", Integer, ForeignKey("b.bid")),
               Column('data', String(30)))
         Table("d", metadata,
-              Column('did', Integer, primary_key=True),
+              Column('did', Integer, primary_key=True, test_needs_autoincrement=True),
               Column("a_id", Integer, ForeignKey("a.aid")),
               Column('data', String(30)))
 
@@ -1116,14 +1115,14 @@ class ViewOnlyOverlappingNames(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("t1", metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(40)))
         Table("t2", metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(40)),
             Column('t1id', Integer, ForeignKey('t1.id')))
         Table("t3", metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(40)),
             Column('t2id', Integer, ForeignKey('t2.id')))
 
@@ -1176,14 +1175,14 @@ class ViewOnlyUniqueNames(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("t1", metadata,
-            Column('t1id', Integer, primary_key=True),
+            Column('t1id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(40)))
         Table("t2", metadata,
-            Column('t2id', Integer, primary_key=True),
+            Column('t2id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(40)),
             Column('t1id_ref', Integer, ForeignKey('t1.t1id')))
         Table("t3", metadata,
-            Column('t3id', Integer, primary_key=True),
+            Column('t3id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(40)),
             Column('t2id_ref', Integer, ForeignKey('t2.t2id')))
 
@@ -1309,12 +1308,12 @@ class ViewOnlyRepeatedRemoteColumn(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('foos', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('bid1', Integer,ForeignKey('bars.id')),
               Column('bid2', Integer,ForeignKey('bars.id')))
 
         Table('bars', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)))
 
     @testing.resolve_artifact_names
@@ -1357,10 +1356,10 @@ class ViewOnlyRepeatedLocalColumn(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('foos', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)))
 
-        Table('bars', metadata, Column('id', Integer, primary_key=True),
+        Table('bars', metadata, Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('fid1', Integer, ForeignKey('foos.id')),
               Column('fid2', Integer, ForeignKey('foos.id')),
               Column('data', String(50)))
@@ -1405,14 +1404,14 @@ class ViewOnlyComplexJoin(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)))
         Table('t2', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)),
             Column('t1id', Integer, ForeignKey('t1.id')))
         Table('t3', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)))
         Table('t2tot3', metadata,
             Column('t2id', Integer, ForeignKey('t2.id')),
@@ -1476,10 +1475,10 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('id', String(50), primary_key=True),
+            Column('id', String(50), primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)))
         Table('t2', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)),
             Column('t1id', String(50)))
 

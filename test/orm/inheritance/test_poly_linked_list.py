@@ -3,6 +3,7 @@ from sqlalchemy.orm import *
 
 from test.orm import _base
 from sqlalchemy.test import testing
+from sqlalchemy.test.schema import Table, Column
 
 
 class PolymorphicCircularTest(_base.MappedTest):
@@ -12,7 +13,7 @@ class PolymorphicCircularTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global Table1, Table1B, Table2, Table3,  Data
         table1 = Table('table1', metadata,
-                       Column('id', Integer, primary_key=True),
+                       Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                        Column('related_id', Integer, ForeignKey('table1.id'), nullable=True),
                        Column('type', String(30)),
                        Column('name', String(30))
@@ -27,7 +28,7 @@ class PolymorphicCircularTest(_base.MappedTest):
                       )
 
         data = Table('data', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('node_id', Integer, ForeignKey('table1.id')),
             Column('data', String(30))
             )
@@ -72,7 +73,7 @@ class PolymorphicCircularTest(_base.MappedTest):
                                    polymorphic_on=table1.c.type,
                                    polymorphic_identity='table1',
                                    properties={
-                                    'next': relation(Table1,
+                                    'nxt': relation(Table1,
                                         backref=backref('prev', foreignkey=join.c.id, uselist=False),
                                         uselist=False, primaryjoin=join.c.id==join.c.related_id),
                                     'data':relation(mapper(Data, data))
@@ -86,15 +87,16 @@ class PolymorphicCircularTest(_base.MappedTest):
 
         # currently, the "eager" relationships degrade to lazy relationships
         # due to the polymorphic load.
-        # the "next" relation used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential"
+        # the "nxt" relation used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential"
         # exception now.  since eager loading would never work for that relation anyway, its better that the user
         # gets an exception instead of it silently not eager loading.
+        # NOTE: using "nxt" instead of "next" to avoid 2to3 turning it into __next__() for some reason.
         table1_mapper = mapper(Table1, table1,
                                #select_table=join,
                                polymorphic_on=table1.c.type,
                                polymorphic_identity='table1',
                                properties={
-                               'next': relation(Table1,
+                               'nxt': relation(Table1,
                                    backref=backref('prev', remote_side=table1.c.id, uselist=False),
                                    uselist=False, primaryjoin=table1.c.id==table1.c.related_id),
                                'data':relation(mapper(Data, data), lazy=False, order_by=data.c.id)
@@ -147,7 +149,7 @@ class PolymorphicCircularTest(_base.MappedTest):
             else:
                 newobj = c
             if obj is not None:
-                obj.next = newobj
+                obj.nxt = newobj
             else:
                 t = newobj
             obj = newobj
@@ -161,7 +163,7 @@ class PolymorphicCircularTest(_base.MappedTest):
         node = t
         while (node):
             assertlist.append(node)
-            n = node.next
+            n = node.nxt
             if n is not None:
                 assert n.prev is node
             node = n
@@ -174,7 +176,7 @@ class PolymorphicCircularTest(_base.MappedTest):
         assertlist = []
         while (node):
             assertlist.append(node)
-            n = node.next
+            n = node.nxt
             if n is not None:
                 assert n.prev is node
             node = n
@@ -188,7 +190,7 @@ class PolymorphicCircularTest(_base.MappedTest):
             assertlist.insert(0, node)
             n = node.prev
             if n is not None:
-                assert n.next is node
+                assert n.nxt is node
             node = n
         backwards = repr(assertlist)
 

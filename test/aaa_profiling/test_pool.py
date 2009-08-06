@@ -5,6 +5,9 @@ from sqlalchemy.pool import QueuePool
 
 class QueuePoolTest(TestBase, AssertsExecutionResults):
     class Connection(object):
+        def rollback(self):
+            pass
+            
         def close(self):
             pass
 
@@ -15,7 +18,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
                          use_threadlocal=True)
 
 
-    @profiling.function_call_count(54, {'2.4': 38})
+    @profiling.function_call_count(54, {'2.4': 38, '3.0':57})
     def test_first_connect(self):
         conn = pool.connect()
 
@@ -23,7 +26,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
         conn = pool.connect()
         conn.close()
 
-        @profiling.function_call_count(31, {'2.4': 21})
+        @profiling.function_call_count(29, {'2.4': 21})
         def go():
             conn2 = pool.connect()
             return conn2
@@ -32,7 +35,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
     def test_second_samethread_connect(self):
         conn = pool.connect()
 
-        @profiling.function_call_count(5, {'2.4': 3})
+        @profiling.function_call_count(5, {'2.4': 3, '3.0':6})
         def go():
             return pool.connect()
         c2 = go()

@@ -71,6 +71,18 @@ class PoolListener(object):
 
         """
 
+    def first_connect(self, dbapi_con, con_record):
+        """Called exactly once for the first DB-API connection.
+
+        dbapi_con
+          A newly connected raw DB-API connection (not a SQLAlchemy
+          ``Connection`` wrapper).
+
+        con_record
+          The ``_ConnectionRecord`` that persistently manages the connection
+
+        """
+
     def checkout(self, dbapi_con, con_record, con_proxy):
         """Called when a connection is retrieved from the Pool.
 

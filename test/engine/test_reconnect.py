@@ -1,12 +1,13 @@
 from sqlalchemy.test.testing import eq_
+import time
 import weakref
 from sqlalchemy import select, MetaData, Integer, String, pool
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing, engines
-import time
-import gc
+from sqlalchemy.test.util import gc_collect
+
 
 class MockDisconnect(Exception):
     pass
@@ -54,7 +55,7 @@ class MockReconnectTest(TestBase):
         dbapi = MockDBAPI()
 
         # create engine using our current dburi
-        db = tsa.create_engine('postgres://foo:bar@localhost/test', module=dbapi)
+        db = tsa.create_engine('postgresql://foo:bar@localhost/test', module=dbapi, _initialize=False)
 
         # monkeypatch disconnect checker
         db.dialect.is_disconnect = lambda e: isinstance(e, MockDisconnect)
@@ -98,7 +99,7 @@ class MockReconnectTest(TestBase):
         assert id(db.pool) != pid
 
         # ensure all connections closed (pool was recycled)
-        gc.collect()
+        gc_collect()
         assert len(dbapi.connections) == 0
 
         conn =db.connect()
@@ -118,7 +119,7 @@ class MockReconnectTest(TestBase):
             pass
 
         # assert was invalidated
-        gc.collect()
+        gc_collect()
         assert len(dbapi.connections) == 0
         assert not conn.closed
         assert conn.invalidated
@@ -168,7 +169,7 @@ class MockReconnectTest(TestBase):
         assert conn.invalidated
 
         # ensure all connections closed (pool was recycled)
-        gc.collect()
+        gc_collect()
         assert len(dbapi.connections) == 0
 
         # test reconnects
@@ -334,7 +335,8 @@ class InvalidateDuringResultTest(TestBase):
         meta.drop_all()
         engine.dispose()
 
-    @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('+mysqldb', "Buffers the result set and doesn't check for connection close")
+    @testing.fails_on('+pg8000', "Buffers the result set and doesn't check for connection close")
     def test_invalidate_on_results(self):
         conn = engine.connect()
 
@@ -344,7 +346,7 @@ class InvalidateDuringResultTest(TestBase):
 
         engine.test_shutdown()
         try:
-            result.fetchone()
+            print "ghost result: %r" % result.fetchone()
             assert False
         except tsa.exc.DBAPIError, e:
             if not e.connection_invalidated:

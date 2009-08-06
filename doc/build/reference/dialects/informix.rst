@@ -1,4 +1,4 @@
 Informix
 ========
 
-.. automodule:: sqlalchemy.databases.informix
+.. automodule:: sqlalchemy.dialects.informix.base

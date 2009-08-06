@@ -5,6 +5,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""
+Support for the Microsoft Access database.
+
+This dialect is *not* tested on SQLAlchemy 0.6.
+
+
+"""
 from sqlalchemy import sql, schema, types, exc, pool
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, base
@@ -46,7 +53,7 @@ class AcTinyInteger(types.Integer):
     def get_col_spec(self):
         return "TINYINT"
 
-class AcSmallInteger(types.Smallinteger):
+class AcSmallInteger(types.SmallInteger):
     def get_col_spec(self):
         return "SMALLINT"
 
@@ -155,7 +162,7 @@ class AccessDialect(default.DefaultDialect):
     colspecs = {
         types.Unicode : AcUnicode,
         types.Integer : AcInteger,
-        types.Smallinteger: AcSmallInteger,
+        types.SmallInteger: AcSmallInteger,
         types.Numeric : AcNumeric,
         types.Float : AcFloat,
         types.DateTime : AcDateTime,
@@ -327,8 +334,8 @@ class AccessDialect(default.DefaultDialect):
         return names
 
 
-class AccessCompiler(compiler.DefaultCompiler):
-    extract_map = compiler.DefaultCompiler.extract_map.copy()
+class AccessCompiler(compiler.SQLCompiler):
+    extract_map = compiler.SQLCompiler.extract_map.copy()
     extract_map.update ({
             'month': 'm',
             'day': 'd',
@@ -341,7 +348,7 @@ class AccessCompiler(compiler.DefaultCompiler):
             'dow': 'w',
             'week': 'ww'
     })
-
+        
     def visit_select_precolumns(self, select):
         """Access puts TOP, it's version of LIMIT here """
         s = select.distinct and "DISTINCT " or ""
@@ -393,8 +400,7 @@ class AccessCompiler(compiler.DefaultCompiler):
         field = self.extract_map.get(extract.field, extract.field)
         return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
 
-
-class AccessSchemaGenerator(compiler.SchemaGenerator):
+class AccessDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
 
@@ -417,14 +423,9 @@ class AccessSchemaGenerator(compiler.SchemaGenerator):
 
         return colspec
 
-class AccessSchemaDropper(compiler.SchemaDropper):
-    def visit_index(self, index):
-        
+    def visit_drop_index(self, drop):
+        index = drop.element
         self.append("\nDROP INDEX [%s].[%s]" % (index.table.name, self._validate_identifier(index.name, False)))
-        self.execute()
-
-class AccessDefaultRunner(base.DefaultRunner):
-    pass
 
 class AccessIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = compiler.RESERVED_WORDS.copy()
@@ -436,8 +437,6 @@ class AccessIdentifierPreparer(compiler.IdentifierPreparer):
 dialect = AccessDialect
 dialect.poolclass = pool.SingletonThreadPool
 dialect.statement_compiler = AccessCompiler
-dialect.schemagenerator = AccessSchemaGenerator
-dialect.schemadropper = AccessSchemaDropper
+dialect.ddlcompiler = AccessDDLCompiler
 dialect.preparer = AccessIdentifierPreparer
-dialect.defaultrunner = AccessDefaultRunner
 dialect.execution_ctx_cls = AccessExecutionContext

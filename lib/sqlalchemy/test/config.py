@@ -1,4 +1,8 @@
-import optparse, os, sys, re, ConfigParser, StringIO, time, warnings
+import optparse, os, sys, re, ConfigParser, time, warnings
+
+# 2to3
+import StringIO
+
 logging = None
 
 __all__ = 'parser', 'configure', 'options',
@@ -13,7 +17,11 @@ base_config = """
 [db]
 sqlite=sqlite:///:memory:
 sqlite_file=sqlite:///querytest.db
-postgres=postgres://scott:tiger@127.0.0.1:5432/test
+postgresql=postgresql://scott:tiger@127.0.0.1:5432/test
+postgres=postgresql://scott:tiger@127.0.0.1:5432/test
+pg8000=postgresql+pg8000://scott:tiger@127.0.0.1:5432/test
+postgresql_jython=postgresql+zxjdbc://scott:tiger@127.0.0.1:5432/test
+mysql_jython=mysql+zxjdbc://scott:tiger@127.0.0.1:5432/test
 mysql=mysql://scott:tiger@127.0.0.1:3306/test
 oracle=oracle://scott:tiger@127.0.0.1:1521
 oracle8=oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
@@ -125,28 +133,22 @@ def _prep_testing_database(options, file_config):
     from sqlalchemy.test import engines
     from sqlalchemy import schema
 
-    try:
-        # also create alt schemas etc. here?
-        if options.dropfirst:
-            e = engines.utf8_engine()
-            existing = e.table_names()
-            if existing:
-                print "Dropping existing tables in database: " + db_url
-                try:
-                    print "Tables: %s" % ', '.join(existing)
-                except:
-                    pass
-                print "Abort within 5 seconds..."
-                time.sleep(5)
-                md = schema.MetaData(e, reflect=True)
-                md.drop_all()
-            e.dispose()
-    except (KeyboardInterrupt, SystemExit):
-        raise
-    except Exception, e:
-        warnings.warn(RuntimeWarning(
-            "Error checking for existing tables in testing "
-            "database: %s" % e))
+    # also create alt schemas etc. here?
+    if options.dropfirst:
+        e = engines.utf8_engine()
+        existing = e.table_names()
+        if existing:
+            print "Dropping existing tables in database: " + db_url
+            try:
+                print "Tables: %s" % ', '.join(existing)
+            except:
+                pass
+            print "Abort within 5 seconds..."
+            time.sleep(5)
+            md = schema.MetaData(e, reflect=True)
+            md.drop_all()
+        e.dispose()
+
 post_configure['prep_db'] = _prep_testing_database
 
 def _set_table_options(options, file_config):

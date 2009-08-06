@@ -6,8 +6,9 @@ in a more fine-grained way than nose's profiling plugin.
 """
 
 import os, sys
-from sqlalchemy.util import function_named
-import config
+from sqlalchemy.test import config
+from sqlalchemy.test.util import function_named, gc_collect
+from nose import SkipTest
 
 __all__ = 'profiled', 'function_call_count', 'conditional_call_count'
 
@@ -162,15 +163,22 @@ def conditional_call_count(discriminator, categories):
 def _profile(filename, fn, *args, **kw):
     global profiler
     if not profiler:
-        profiler = 'hotshot'
         if sys.version_info > (2, 5):
             try:
                 import cProfile
                 profiler = 'cProfile'
             except ImportError:
                 pass
+        if not profiler:
+            try:
+                import hotshot
+                profiler = 'hotshot'
+            except ImportError:
+                profiler = 'skip'
 
-    if profiler == 'cProfile':
+    if profiler == 'skip':
+        raise SkipTest('Profiling not supported on this platform')
+    elif profiler == 'cProfile':
         return _profile_cProfile(filename, fn, *args, **kw)
     else:
         return _profile_hotshot(filename, fn, *args, **kw)
@@ -179,7 +187,7 @@ def _profile_cProfile(filename, fn, *args, **kw):
     import cProfile, gc, pstats, time
 
     load_stats = lambda: pstats.Stats(filename)
-    gc.collect()
+    gc_collect()
 
     began = time.time()
     cProfile.runctx('result = fn(*args, **kw)', globals(), locals(),
@@ -192,7 +200,7 @@ def _profile_hotshot(filename, fn, *args, **kw):
     import gc, hotshot, hotshot.stats, time
     load_stats = lambda: hotshot.stats.load(filename)
 
-    gc.collect()
+    gc_collect()
     prof = hotshot.Profile(filename)
     began = time.time()
     prof.start()

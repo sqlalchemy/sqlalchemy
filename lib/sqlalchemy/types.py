@@ -11,11 +11,11 @@ types.
 For more information see the SQLAlchemy documentation on types.
 
 """
-__all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
-            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'Text', 'FLOAT',
-            'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
-            'BOOLEAN', 'SMALLINT', 'DATE', 'TIME',
-            'String', 'Integer', 'SmallInteger','Smallinteger',
+__all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
+            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text', 'FLOAT',
+            'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'NCLOB', 'BLOB',
+            'BOOLEAN', 'SMALLINT', 'INTEGER','DATE', 'TIME',
+            'String', 'Integer', 'SmallInteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
             'Boolean', 'Unicode', 'MutableType', 'Concatenable', 'UnicodeText', 'PickleType', 'Interval',
             'type_map'
@@ -24,17 +24,23 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType',
 import inspect
 import datetime as dt
 from decimal import Decimal as _python_Decimal
-import weakref
+
 from sqlalchemy import exc
 from sqlalchemy.util import pickle
+from sqlalchemy.sql.visitors import Visitable
 import sqlalchemy.util as util
 NoneType = type(None)
+if util.jython:
+    import array
     
-class AbstractType(object):
+class AbstractType(Visitable):
 
     def __init__(self, *args, **kwargs):
         pass
 
+    def compile(self, dialect):
+        return dialect.type_compiler.process(self)
+        
     def copy_value(self, value):
         return value
 
@@ -89,55 +95,22 @@ class AbstractType(object):
                       for k in inspect.getargspec(self.__init__)[0][1:]))
 
 class TypeEngine(AbstractType):
-    """Base for built-in types.
+    """Base for built-in types."""
 
-    May be sub-classed to create entirely new types.  Example::
-
-      import sqlalchemy.types as types
-
-      class MyType(types.TypeEngine):
-          def __init__(self, precision = 8):
-              self.precision = precision
-
-          def get_col_spec(self):
-              return "MYTYPE(%s)" % self.precision
-
-          def bind_processor(self, dialect):
-              def process(value):
-                  return value
-              return process
-
-          def result_processor(self, dialect):
-              def process(value):
-                  return value
-              return process
-
-    Once the type is made, it's immediately usable::
-
-      table = Table('foo', meta,
-          Column('id', Integer, primary_key=True),
-          Column('data', MyType(16))
-          )
-
-    """
-
+    @util.memoized_property
+    def _impl_dict(self):
+        return {}
+        
     def dialect_impl(self, dialect, **kwargs):
         try:
-            return self._impl_dict[dialect]
-        except AttributeError:
-            self._impl_dict = weakref.WeakKeyDictionary()   # will be optimized in 0.6
-            return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
+            return self._impl_dict[dialect.__class__]
         except KeyError:
-            return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
+            return self._impl_dict.setdefault(dialect.__class__, dialect.__class__.type_descriptor(self))
 
     def __getstate__(self):
         d = self.__dict__.copy()
         d.pop('_impl_dict', None)
         return d
-
-    def get_col_spec(self):
-        """Return the DDL representation for this type."""
-        raise NotImplementedError()
 
     def bind_processor(self, dialect):
         """Return a conversion function for processing bind values.
@@ -166,14 +139,42 @@ class TypeEngine(AbstractType):
     def adapt(self, cls):
         return cls()
 
-    def get_search_list(self):
-        """return a list of classes to test for a match
-        when adapting this type to a dialect-specific type.
+class UserDefinedType(TypeEngine):
+    """Base for user defined types.
+    
+    This should be the base of new types.  Note that
+    for most cases, :class:`TypeDecorator` is probably
+    more appropriate.
 
-        """
+      import sqlalchemy.types as types
 
-        return self.__class__.__mro__[0:-1]
+      class MyType(types.UserDefinedType):
+          def __init__(self, precision = 8):
+              self.precision = precision
 
+          def get_col_spec(self):
+              return "MYTYPE(%s)" % self.precision
+
+          def bind_processor(self, dialect):
+              def process(value):
+                  return value
+              return process
+
+          def result_processor(self, dialect):
+              def process(value):
+                  return value
+              return process
+
+    Once the type is made, it's immediately usable::
+
+      table = Table('foo', meta,
+          Column('id', Integer, primary_key=True),
+          Column('data', MyType(16))
+          )
+
+    """
+    __visit_name__ = "user_defined"
+    
 class TypeDecorator(AbstractType):
     """Allows the creation of types which add additional functionality
     to an existing type.
@@ -214,19 +215,33 @@ class TypeDecorator(AbstractType):
 
     """
 
+    __visit_name__ = "type_decorator"
+    
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
-            raise AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
+            raise AssertionError("TypeDecorator implementations require a class-level "
+                        "variable 'impl' which refers to the class of type being decorated")
         self.impl = self.__class__.impl(*args, **kwargs)
 
-    def dialect_impl(self, dialect, **kwargs):
+    def dialect_impl(self, dialect):
         try:
-            return self._impl_dict[dialect]
+            return self._impl_dict[dialect.__class__]
         except AttributeError:
-            self._impl_dict = weakref.WeakKeyDictionary()   # will be optimized in 0.6
+            self._impl_dict = {}
         except KeyError:
             pass
 
+        # adapt the TypeDecorator first, in 
+        # the case that the dialect maps the TD
+        # to one of its native types (i.e. PGInterval)
+        adapted = dialect.__class__.type_descriptor(self)
+        if adapted is not self:
+            self._impl_dict[dialect] = adapted
+            return adapted
+        
+        # otherwise adapt the impl type, link
+        # to a copy of this TypeDecorator and return
+        # that.
         typedesc = self.load_dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
@@ -236,25 +251,29 @@ class TypeDecorator(AbstractType):
         self._impl_dict[dialect] = tt
         return tt
 
+    def type_engine(self, dialect):
+        impl = self.dialect_impl(dialect)
+        if not isinstance(impl, TypeDecorator):
+            return impl
+        else:
+            return impl.impl
+
     def load_dialect_impl(self, dialect):
         """Loads the dialect-specific implementation of this type.
 
         by default calls dialect.type_descriptor(self.impl), but
         can be overridden to provide different behavior.
+        
         """
-
         if isinstance(self.impl, TypeDecorator):
             return self.impl.dialect_impl(dialect)
         else:
-            return dialect.type_descriptor(self.impl)
+            return dialect.__class__.type_descriptor(self.impl)
 
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying implementation."""
 
         return getattr(self.impl, key)
-
-    def get_col_spec(self):
-        return self.impl.get_col_spec()
 
     def process_bind_param(self, value, dialect):
         raise NotImplementedError()
@@ -339,7 +358,7 @@ def to_instance(typeobj):
 def adapt_type(typeobj, colspecs):
     if isinstance(typeobj, type):
         typeobj = typeobj()
-    for t in typeobj.get_search_list():
+    for t in typeobj.__class__.__mro__[0:-1]:
         try:
             impltype = colspecs[t]
             break
@@ -370,9 +389,7 @@ class NullType(TypeEngine):
     encountered during a :meth:`~sqlalchemy.Table.create` operation.
 
     """
-
-    def get_col_spec(self):
-        raise NotImplementedError()
+    __visit_name__ = 'null'
 
 NullTypeEngine = NullType
 
@@ -400,6 +417,8 @@ class String(Concatenable, TypeEngine):
 
     """
 
+    __visit_name__ = 'string'
+    
     def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
         """
         Create a string-holding type.
@@ -439,7 +458,10 @@ class String(Concatenable, TypeEngine):
         self.assert_unicode = assert_unicode
 
     def adapt(self, impltype):
-        return impltype(length=self.length, convert_unicode=self.convert_unicode, assert_unicode=self.assert_unicode)
+        return impltype(
+                    length=self.length, 
+                    convert_unicode=self.convert_unicode, 
+                    assert_unicode=self.assert_unicode)
 
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
@@ -447,18 +469,33 @@ class String(Concatenable, TypeEngine):
                 assert_unicode = dialect.assert_unicode
             else:
                 assert_unicode = self.assert_unicode
-            def process(value):
-                if isinstance(value, unicode):
-                    return value.encode(dialect.encoding)
-                elif assert_unicode and not isinstance(value, (unicode, NoneType)):
-                    if assert_unicode == 'warn':
-                        util.warn("Unicode type received non-unicode bind "
-                                  "param value %r" % value)
-                        return value
+            
+            if dialect.supports_unicode_binds and assert_unicode:
+                def process(value):
+                    if not isinstance(value, (unicode, NoneType)):
+                        if assert_unicode == 'warn':
+                            util.warn("Unicode type received non-unicode bind "
+                                      "param value %r" % value)
+                            return value
+                        else:
+                            raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
                     else:
-                        raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
-                else:
-                    return value
+                        return value
+            elif dialect.supports_unicode_binds:
+                return None
+            else:
+                def process(value):
+                    if isinstance(value, unicode):
+                        return value.encode(dialect.encoding)
+                    elif assert_unicode and not isinstance(value, (unicode, NoneType)):
+                        if assert_unicode == 'warn':
+                            util.warn("Unicode type received non-unicode bind "
+                                      "param value %r" % value)
+                            return value
+                        else:
+                            raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
+                    else:
+                        return value
             return process
         else:
             return None
@@ -485,6 +522,7 @@ class Text(String):
     params (and the reverse for result sets.)
 
     """
+    __visit_name__ = 'text'
 
 class Unicode(String):
     """A variable length Unicode string.
@@ -511,10 +549,10 @@ class Unicode(String):
     :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which defaults
     to `utf-8`.
 
-    A synonym for String(length, convert_unicode=True, assert_unicode='warn').
-
     """
 
+    __visit_name__ = 'unicode'
+    
     def __init__(self, length=None, **kwargs):
         """
         Create a Unicode-converting String type.
@@ -532,7 +570,14 @@ class Unicode(String):
         super(Unicode, self).__init__(length=length, **kwargs)
 
 class UnicodeText(Text):
-    """A synonym for Text(convert_unicode=True, assert_unicode='warn')."""
+    """An unbounded-length Unicode string.
+    
+    See :class:`Unicode` for details on the unicode
+    behavior of this object.
+    
+    """
+
+    __visit_name__ = 'unicode_text'
 
     def __init__(self, length=None, **kwargs):
         """
@@ -553,7 +598,9 @@ class UnicodeText(Text):
 
 class Integer(TypeEngine):
     """A type for ``int`` integers."""
-
+    
+    __visit_name__ = 'integer'
+    
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
@@ -566,7 +613,17 @@ class SmallInteger(Integer):
 
     """
 
-Smallinteger = SmallInteger
+    __visit_name__ = 'small_integer'
+
+class BigInteger(Integer):
+    """A type for bigger ``int`` integers.
+
+    Typically generates a ``BIGINT`` in DDL, and otherwise acts like
+    a normal :class:`Integer` on the Python side.
+
+    """
+
+    __visit_name__ = 'big_integer'
 
 class Numeric(TypeEngine):
     """A type for fixed precision numbers.
@@ -576,7 +633,9 @@ class Numeric(TypeEngine):
 
     """
 
-    def __init__(self, precision=10, scale=2, asdecimal=True, length=None):
+    __visit_name__ = 'numeric'
+    
+    def __init__(self, precision=None, scale=None, asdecimal=True):
         """
         Construct a Numeric.
 
@@ -590,9 +649,6 @@ class Numeric(TypeEngine):
           use.
 
         """
-        if length:
-            util.warn_deprecated("'length' is deprecated for Numeric.  Use 'scale'.")
-            scale = length
         self.precision = precision
         self.scale = scale
         self.asdecimal = asdecimal
@@ -626,7 +682,9 @@ class Numeric(TypeEngine):
 class Float(Numeric):
     """A type for ``float`` numbers."""
 
-    def __init__(self, precision=10, asdecimal=False, **kwargs):
+    __visit_name__ = 'float'
+    
+    def __init__(self, precision=None, asdecimal=False, **kwargs):
         """
         Construct a Float.
 
@@ -650,7 +708,9 @@ class DateTime(TypeEngine):
     converted back to datetime objects when rows are returned.
 
     """
-
+    
+    __visit_name__ = 'datetime'
+    
     def __init__(self, timezone=False):
         self.timezone = timezone
 
@@ -664,12 +724,16 @@ class DateTime(TypeEngine):
 class Date(TypeEngine):
     """A type for ``datetime.date()`` objects."""
 
+    __visit_name__ = 'date'
+    
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
 
 class Time(TypeEngine):
     """A type for ``datetime.time()`` objects."""
+
+    __visit_name__ = 'time'
 
     def __init__(self, timezone=False):
         self.timezone = timezone
@@ -689,6 +753,8 @@ class Binary(TypeEngine):
     provided by each DB-API.
 
     """
+
+    __visit_name__ = 'binary'
 
     def __init__(self, length=None):
         """
@@ -775,7 +841,15 @@ class PickleType(MutableType, TypeDecorator):
         loads = self.pickler.loads
         if value is None:
             return None
-        return loads(str(value))
+        # Py3K
+        #return loads(value)
+        # Py2K
+        if util.jython and isinstance(value, array.ArrayType):
+            value = value.tostring()
+        else:
+            value = str(value)
+        return loads(value)
+        # end Py2K
 
     def copy_value(self, value):
         if self.mutable:
@@ -786,9 +860,6 @@ class PickleType(MutableType, TypeDecorator):
     def compare_values(self, x, y):
         if self.comparator:
             return self.comparator(x, y)
-        elif self.mutable and not hasattr(x, '__eq__') and x is not None:
-            util.warn_deprecated("Objects stored with PickleType when mutable=True must implement __eq__() for reliable comparison.")
-            return self.pickler.dumps(x, self.protocol) == self.pickler.dumps(y, self.protocol)
         else:
             return x == y
 
@@ -804,6 +875,7 @@ class Boolean(TypeEngine):
 
     """
 
+    __visit_name__ = 'boolean'
 
 class Interval(TypeDecorator):
     """A type for ``datetime.timedelta()`` objects.
@@ -815,106 +887,133 @@ class Interval(TypeDecorator):
 
     """
 
-    impl = TypeEngine
-
-    def __init__(self):
-        super(Interval, self).__init__()
-        import sqlalchemy.databases.postgres as pg
-        self.__supported = {pg.PGDialect:pg.PGInterval}
-        del pg
-
-    def load_dialect_impl(self, dialect):
-        if dialect.__class__ in self.__supported:
-            return self.__supported[dialect.__class__]()
-        else:
-            return dialect.type_descriptor(DateTime)
+    impl = DateTime
 
     def process_bind_param(self, value, dialect):
-        if dialect.__class__ in self.__supported:
-            return value
-        else:
-            if value is None:
-                return None
-            return dt.datetime.utcfromtimestamp(0) + value
+        if value is None:
+            return None
+        return dt.datetime.utcfromtimestamp(0) + value
 
     def process_result_value(self, value, dialect):
-        if dialect.__class__ in self.__supported:
-            return value
-        else:
-            if value is None:
-                return None
-            return value - dt.datetime.utcfromtimestamp(0)
+        if value is None:
+            return None
+        return value - dt.datetime.utcfromtimestamp(0)
 
 class FLOAT(Float):
     """The SQL FLOAT type."""
 
+    __visit_name__ = 'FLOAT'
 
 class NUMERIC(Numeric):
     """The SQL NUMERIC type."""
+
+    __visit_name__ = 'NUMERIC'
 
 
 class DECIMAL(Numeric):
     """The SQL DECIMAL type."""
 
+    __visit_name__ = 'DECIMAL'
 
-class INT(Integer):
+
+class INTEGER(Integer):
     """The SQL INT or INTEGER type."""
 
+    __visit_name__ = 'INTEGER'
+INT = INTEGER
 
-INTEGER = INT
 
-class SMALLINT(Smallinteger):
+class SMALLINT(SmallInteger):
     """The SQL SMALLINT type."""
 
+    __visit_name__ = 'SMALLINT'
+
+
+class BIGINT(BigInteger):
+    """The SQL BIGINT type."""
+
+    __visit_name__ = 'BIGINT'
 
 class TIMESTAMP(DateTime):
     """The SQL TIMESTAMP type."""
 
+    __visit_name__ = 'TIMESTAMP'
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.TIMESTAMP
 
 class DATETIME(DateTime):
     """The SQL DATETIME type."""
+
+    __visit_name__ = 'DATETIME'
 
 
 class DATE(Date):
     """The SQL DATE type."""
 
+    __visit_name__ = 'DATE'
+
 
 class TIME(Time):
     """The SQL TIME type."""
 
+    __visit_name__ = 'TIME'
 
-TEXT = Text
+class TEXT(Text):
+    """The SQL TEXT type."""
+    
+    __visit_name__ = 'TEXT'
 
 class CLOB(Text):
-    """The SQL CLOB type."""
+    """The CLOB type.
+    
+    This type is found in Oracle and Informix.
+    """
 
+    __visit_name__ = 'CLOB'
 
 class VARCHAR(String):
     """The SQL VARCHAR type."""
 
+    __visit_name__ = 'VARCHAR'
+
+class NVARCHAR(Unicode):
+    """The SQL NVARCHAR type."""
+
+    __visit_name__ = 'NVARCHAR'
 
 class CHAR(String):
     """The SQL CHAR type."""
+
+    __visit_name__ = 'CHAR'
 
 
 class NCHAR(Unicode):
     """The SQL NCHAR type."""
 
+    __visit_name__ = 'NCHAR'
+
 
 class BLOB(Binary):
     """The SQL BLOB type."""
 
+    __visit_name__ = 'BLOB'
+
 
 class BOOLEAN(Boolean):
     """The SQL BOOLEAN type."""
+
+    __visit_name__ = 'BOOLEAN'
 
 NULLTYPE = NullType()
 
 # using VARCHAR/NCHAR so that we dont get the genericized "String"
 # type which usually resolves to TEXT/CLOB
 type_map = {
-    str : VARCHAR,
-    unicode : NCHAR,
+    str: String,
+    # Py2K
+    unicode : String,
+    # end Py2K
     int : Integer,
     float : Numeric,
     bool: Boolean,
@@ -923,5 +1022,6 @@ type_map = {
     dt.datetime : DateTime,
     dt.time : Time,
     dt.timedelta : Interval,
-    type(None): NullType
+    NoneType: NullType
 }
+

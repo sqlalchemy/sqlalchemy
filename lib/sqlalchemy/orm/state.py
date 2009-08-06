@@ -31,11 +31,17 @@ class InstanceState(object):
         
     def detach(self):
         if self.session_id:
-            del self.session_id
+            try:
+                del self.session_id
+            except AttributeError:
+                pass
 
     def dispose(self):
         if self.session_id:
-            del self.session_id
+            try:
+                del self.session_id
+            except AttributeError:
+                pass
         del self.obj
     
     def _cleanup(self, ref):
@@ -230,7 +236,7 @@ class InstanceState(object):
         for key in attribute_names:
             impl = self.manager[key].impl
             if not filter_deferred or \
-                not impl.dont_expire_missing or \
+                impl.expire_missing or \
                 key in dict_:
                 self.expired_attributes.add(key)
                 if impl.accepts_scalar_loader:

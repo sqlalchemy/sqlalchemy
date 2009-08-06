@@ -3,8 +3,7 @@ import operator
 from sqlalchemy.orm import dynamic_loader, backref
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, desc, select, func
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session, Query, attributes
 from sqlalchemy.orm.dynamic import AppenderMixin
 from sqlalchemy.test.testing import eq_
@@ -344,7 +343,8 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         sess.commit()
         u1.addresses.append(Address(email_address='foo@bar.com'))
-        eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
+        eq_(u1.addresses.order_by(Address.id).all(), 
+                 [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
         sess.rollback()
         eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
 
@@ -502,13 +502,13 @@ class DontDereferenceTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('name', String(40)),
               Column('fullname', String(100)),
               Column('password', String(15)))
 
         Table('addresses', metadata,
-              Column('id', Integer, primary_key=True),
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('email_address', String(100), nullable=False),
               Column('user_id', Integer, ForeignKey('users.id')))
 

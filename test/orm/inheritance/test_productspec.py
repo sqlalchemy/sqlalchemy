@@ -2,10 +2,9 @@ from datetime import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-
 from sqlalchemy.test import testing
 from test.orm import _base
-
+from sqlalchemy.test.schema import Table, Column
 
 class InheritTest(_base.MappedTest):
     """tests some various inheritance round trips involving a particular set of polymorphic inheritance relationships"""
@@ -15,14 +14,14 @@ class InheritTest(_base.MappedTest):
         global Product, Detail, Assembly, SpecLine, Document, RasterDocument
 
         products_table = Table('products', metadata,
-           Column('product_id', Integer, primary_key=True),
+           Column('product_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('product_type', String(128)),
            Column('name', String(128)),
            Column('mark', String(128)),
            )
 
         specification_table = Table('specification', metadata,
-            Column('spec_line_id', Integer, primary_key=True),
+            Column('spec_line_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('master_id', Integer, ForeignKey("products.product_id"),
                 nullable=True),
             Column('slave_id', Integer, ForeignKey("products.product_id"),
@@ -31,7 +30,7 @@ class InheritTest(_base.MappedTest):
             )
 
         documents_table = Table('documents', metadata,
-            Column('document_id', Integer, primary_key=True),
+            Column('document_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('document_type', String(128)),
             Column('product_id', Integer, ForeignKey('products.product_id')),
             Column('create_date', DateTime, default=lambda:datetime.now()),

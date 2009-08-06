@@ -34,12 +34,9 @@ class VisitableType(type):
     """
     
     def __init__(cls, clsname, bases, clsdict):
-        if cls.__name__ == 'Visitable':
+        if cls.__name__ == 'Visitable' or not hasattr(cls, '__visit_name__'):
             super(VisitableType, cls).__init__(clsname, bases, clsdict)
             return
-        
-        assert hasattr(cls, '__visit_name__'), "`Visitable` descendants " \
-                                               "should define `__visit_name__`"
         
         # set up an optimized visit dispatch function
         # for use by the compiler

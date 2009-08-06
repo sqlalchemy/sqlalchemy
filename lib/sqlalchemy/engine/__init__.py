@@ -50,7 +50,9 @@ url.py
     within a URL.
 """
 
-import sqlalchemy.databases
+# not sure what this was used for
+#import sqlalchemy.databases  
+
 from sqlalchemy.engine.base import (
     BufferedColumnResultProxy,
     BufferedColumnRow,
@@ -66,9 +68,9 @@ from sqlalchemy.engine.base import (
     ResultProxy,
     RootTransaction,
     RowProxy,
-    SchemaIterator,
     Transaction,
-    TwoPhaseTransaction
+    TwoPhaseTransaction,
+    TypeCompiler
     )
 from sqlalchemy.engine import strategies
 from sqlalchemy import util
@@ -89,9 +91,9 @@ __all__ = (
     'ResultProxy',
     'RootTransaction',
     'RowProxy',
-    'SchemaIterator',
     'Transaction',
     'TwoPhaseTransaction',
+    'TypeCompiler',
     'create_engine',
     'engine_from_config',
     )
@@ -108,7 +110,7 @@ def create_engine(*args, **kwargs):
 
     The URL is a string in the form
     ``dialect://user:password@host/dbname[?key=value..]``, where
-    ``dialect`` is a name such as ``mysql``, ``oracle``, ``postgres``,
+    ``dialect`` is a name such as ``mysql``, ``oracle``, ``postgresql``,
     etc.  Alternatively, the URL can be an instance of
     :class:`~sqlalchemy.engine.url.URL`.
 

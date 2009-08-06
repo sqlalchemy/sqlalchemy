@@ -531,7 +531,7 @@ class UOWTask(object):
                     if subtask not in deps_by_targettask:
                         continue
                     for dep in deps_by_targettask[subtask]:
-                        if dep.processor.no_dependencies or not dependency_in_cycles(dep):
+                        if not dep.processor.has_dependencies or not dependency_in_cycles(dep):
                             continue
                         (processor, targettask) = (dep.processor, dep.targettask)
                         isdelete = taskelement.isdelete

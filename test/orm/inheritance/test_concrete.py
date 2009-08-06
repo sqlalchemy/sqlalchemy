@@ -8,6 +8,7 @@ from sqlalchemy.test import testing
 from test.orm import _base
 from sqlalchemy.orm import attributes
 from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.schema import Table, Column
 
 class Employee(object):
     def __init__(self, name):
@@ -48,31 +49,31 @@ class ConcreteTest(_base.MappedTest):
         global managers_table, engineers_table, hackers_table, companies, employees_table
 
         companies = Table('companies', metadata,
-           Column('id', Integer, primary_key=True),
+           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)))
 
         employees_table = Table('employees', metadata,
-            Column('employee_id', Integer, primary_key=True),
+            Column('employee_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
             Column('company_id', Integer, ForeignKey('companies.id'))
         )
         
         managers_table = Table('managers', metadata,
-            Column('employee_id', Integer, primary_key=True),
+            Column('employee_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
             Column('manager_data', String(50)),
             Column('company_id', Integer, ForeignKey('companies.id'))
         )
 
         engineers_table = Table('engineers', metadata,
-            Column('employee_id', Integer, primary_key=True),
+            Column('employee_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
             Column('engineer_info', String(50)),
             Column('company_id', Integer, ForeignKey('companies.id'))
         )
 
         hackers_table = Table('hackers', metadata,
-            Column('employee_id', Integer, primary_key=True),
+            Column('employee_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
             Column('engineer_info', String(50)),
             Column('company_id', Integer, ForeignKey('companies.id')),
@@ -320,17 +321,17 @@ class PropertyInheritanceTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a_table', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('some_c_id', Integer, ForeignKey('c_table.id')),
             Column('aname', String(50)),
         )
         Table('b_table', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('some_c_id', Integer, ForeignKey('c_table.id')),
             Column('bname', String(50)),
         )
         Table('c_table', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('cname', String(50)),
             
         )
@@ -525,11 +526,11 @@ class ColKeysTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global offices_table, refugees_table
         refugees_table = Table('refugee', metadata,
-           Column('refugee_fid', Integer, primary_key=True),
+           Column('refugee_fid', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('refugee_name', Unicode(30), key='name'))
 
         offices_table = Table('office', metadata,
-           Column('office_fid', Integer, primary_key=True),
+           Column('office_fid', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('office_name', Unicode(30), key='name'))
     
     @classmethod

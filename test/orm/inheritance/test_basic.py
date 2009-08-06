@@ -7,6 +7,7 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.test import testing, engines
 from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
+from sqlalchemy.test.schema import Table, Column
 
 class O2MTest(_base.MappedTest):
     """deals with inheritance and one-to-many relationships"""
@@ -14,8 +15,7 @@ class O2MTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global foo, bar, blub
         foo = Table('foo', metadata,
-            Column('id', Integer, Sequence('foo_seq', optional=True),
-                   primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(20)))
 
         bar = Table('bar', metadata,
@@ -73,9 +73,8 @@ class FalseDiscriminatorTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1
         t1 = Table('t1', metadata, 
-                    Column('id', Integer, primary_key=True), 
-                    Column('type', Boolean, nullable=False)
-                )
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True), 
+            Column('type', Boolean, nullable=False))
         
     def test_false_on_sub(self):
         class Foo(object):pass
@@ -108,7 +107,7 @@ class PolymorphicSynonymTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1, t2
         t1 = Table('t1', metadata,
-                   Column('id', Integer, primary_key=True),
+                   Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                    Column('type', String(10), nullable=False),
                    Column('info', String(255)))
         t2 = Table('t2', metadata,
@@ -149,12 +148,12 @@ class CascadeTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1, t2, t3, t4
         t1= Table('t1', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30))
             )
 
         t2 = Table('t2', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('t1id', Integer, ForeignKey('t1.id')),
             Column('type', String(30)),
             Column('data', String(30))
@@ -164,7 +163,7 @@ class CascadeTest(_base.MappedTest):
             Column('moredata', String(30)))
 
         t4 = Table('t4', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('t3id', Integer, ForeignKey('t3.id')),
             Column('data', String(30)))
 
@@ -214,8 +213,7 @@ class GetTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global foo, bar, blub
         foo = Table('foo', metadata,
-            Column('id', Integer, Sequence('foo_seq', optional=True),
-                   primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('type', String(30)),
             Column('data', String(20)))
 
@@ -224,7 +222,7 @@ class GetTest(_base.MappedTest):
             Column('data', String(20)))
 
         blub = Table('blub', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('foo_id', Integer, ForeignKey('foo.id')),
             Column('bar_id', Integer, ForeignKey('bar.id')),
             Column('data', String(20)))
@@ -304,8 +302,7 @@ class EagerLazyTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global foo, bar, bar_foo
         foo = Table('foo', metadata,
-                    Column('id', Integer, Sequence('foo_seq', optional=True),
-                           primary_key=True),
+                    Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                     Column('data', String(30)))
         bar = Table('bar', metadata,
                     Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
@@ -350,13 +347,13 @@ class FlushTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global users, roles, user_roles, admins
         users = Table('users', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('email', String(128)),
             Column('password', String(16)),
         )
 
         roles = Table('role', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('description', String(32))
         )
 
@@ -366,7 +363,7 @@ class FlushTest(_base.MappedTest):
         )
 
         admins = Table('admin', metadata,
-            Column('admin_id', Integer, primary_key=True),
+            Column('admin_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('user_id', Integer, ForeignKey('users.id'))
         )
 
@@ -439,7 +436,7 @@ class VersioningTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global base, subtable, stuff
         base = Table('base', metadata,
-            Column('id', Integer, Sequence('version_test_seq', optional=True), primary_key=True ),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('version_id', Integer, nullable=False),
             Column('value', String(40)),
             Column('discriminator', Integer, nullable=False)
@@ -449,11 +446,10 @@ class VersioningTest(_base.MappedTest):
             Column('subdata', String(50))
             )
         stuff = Table('stuff', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('parent', Integer, ForeignKey('base.id'))
             )
 
-    @testing.fails_on('mssql', 'FIXME: the flush still happens with the concurrency issue.')
     @engines.close_open_connections
     def test_save_update(self):
         class Base(_fixtures.Base):
@@ -493,16 +489,16 @@ class VersioningTest(_base.MappedTest):
 
         try:
             sess2.flush()
-            assert False
+            assert not testing.db.dialect.supports_sane_rowcount
         except orm_exc.ConcurrentModificationError, e:
             assert True
 
         sess2.refresh(s2)
-        assert s2.subdata == 'sess1 subdata'
+        if testing.db.dialect.supports_sane_rowcount:
+            assert s2.subdata == 'sess1 subdata'
         s2.subdata = 'sess2 subdata'
         sess2.flush()
 
-    @testing.fails_on('mssql', 'FIXME: the flush still happens with the concurrency issue.')
     def test_delete(self):
         class Base(_fixtures.Base):
             pass
@@ -534,7 +530,7 @@ class VersioningTest(_base.MappedTest):
         try:
             s1.subdata = 'some new subdata'
             sess.flush()
-            assert False
+            assert not testing.db.dialect.supports_sane_rowcount
         except orm_exc.ConcurrentModificationError, e:
             assert True
 
@@ -550,12 +546,12 @@ class DistinctPKTest(_base.MappedTest):
         global person_table, employee_table, Person, Employee
 
         person_table = Table("persons", metadata,
-                Column("id", Integer, primary_key=True),
+                Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
                 Column("name", String(80)),
                 )
 
         employee_table = Table("employees", metadata,
-                Column("id", Integer, primary_key=True),
+                Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
                 Column("salary", Integer),
                 Column("person_id", Integer, ForeignKey("persons.id")),
                 )
@@ -623,7 +619,7 @@ class SyncCompileTest(_base.MappedTest):
         global _a_table, _b_table, _c_table
 
         _a_table = Table('a', metadata,
-           Column('id', Integer, primary_key=True),
+           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('data1', String(128))
         )
 
@@ -691,7 +687,7 @@ class OverrideColKeyTest(_base.MappedTest):
         global base, subtable
         
         base = Table('base', metadata, 
-            Column('base_id', Integer, primary_key=True),
+            Column('base_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(255)),
             Column('sqlite_fixer', String(10))
             )
@@ -921,7 +917,7 @@ class OptimizedLoadTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global base, sub
         base = Table('base', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)),
             Column('type', String(50))
         )
@@ -1008,7 +1004,7 @@ class PKDiscriminatorTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         parents = Table('parents', metadata,
-                           Column('id', Integer, primary_key=True),
+                           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                            Column('name', String(60)))
                            
         children = Table('children', metadata,
@@ -1061,14 +1057,14 @@ class DeleteOrphanTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global single, parent
         single = Table('single', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('type', String(50), nullable=False),
             Column('data', String(50)),
             Column('parent_id', Integer, ForeignKey('parent.id'), nullable=False),
             )
             
         parent = Table('parent', metadata,
-                Column('id', Integer, primary_key=True),
+                Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                 Column('data', String(50))
             )
     

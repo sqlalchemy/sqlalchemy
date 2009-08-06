@@ -171,7 +171,7 @@ class _ScopedExt(MapperExtension):
 
     def _default__init__(ext, mapper):
         def __init__(self, **kwargs):
-            for key, value in kwargs.items():
+            for key, value in kwargs.iteritems():
                 if ext.validate:
                     if not mapper.get_property(key, resolve_synonyms=False,
                                                raiseerr=False):

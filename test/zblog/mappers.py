@@ -1,7 +1,7 @@
 """mapper.py - defines mappers for domain objects, mapping operations"""
 
-import tables, user
-from blog import *
+from test.zblog import tables, user
+from test.zblog.blog import *
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import sqlalchemy.util as util

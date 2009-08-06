@@ -11,6 +11,7 @@ from sqlalchemy.test import TestBase, AssertsExecutionResults, testing
 from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
 from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.schema import Table, Column
 
 class AttrSettable(object):
     def __init__(self, **kwargs):
@@ -105,7 +106,7 @@ class RelationTest2(_base.MappedTest):
     def define_tables(cls, metadata):
         global people, managers, data
         people = Table('people', metadata,
-           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
            Column('type', String(30)))
 
@@ -201,7 +202,7 @@ class RelationTest3(_base.MappedTest):
     def define_tables(cls, metadata):
         global people, managers, data
         people = Table('people', metadata,
-           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('colleague_id', Integer, ForeignKey('people.person_id')),
            Column('name', String(50)),
            Column('type', String(30)))
@@ -307,7 +308,7 @@ class RelationTest4(_base.MappedTest):
     def define_tables(cls, metadata):
         global people, engineers, managers, cars
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)))
 
         engineers = Table('engineers', metadata,
@@ -319,7 +320,7 @@ class RelationTest4(_base.MappedTest):
            Column('longer_status', String(70)))
 
         cars = Table('cars', metadata,
-           Column('car_id', Integer, primary_key=True),
+           Column('car_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('owner', Integer, ForeignKey('people.person_id')))
 
     def testmanytoonepolymorphic(self):
@@ -420,7 +421,7 @@ class RelationTest5(_base.MappedTest):
     def define_tables(cls, metadata):
         global people, engineers, managers, cars
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
            Column('type', String(50)))
 
@@ -433,7 +434,7 @@ class RelationTest5(_base.MappedTest):
            Column('longer_status', String(70)))
 
         cars = Table('cars', metadata,
-           Column('car_id', Integer, primary_key=True),
+           Column('car_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('owner', Integer, ForeignKey('people.person_id')))
 
     def testeagerempty(self):
@@ -482,7 +483,7 @@ class RelationTest6(_base.MappedTest):
     def define_tables(cls, metadata):
         global people, managers, data
         people = Table('people', metadata,
-           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
            )
 
@@ -525,14 +526,14 @@ class RelationTest7(_base.MappedTest):
     def define_tables(cls, metadata):
         global people, engineers, managers, cars, offroad_cars
         cars = Table('cars', metadata,
-                Column('car_id', Integer, primary_key=True),
+                Column('car_id', Integer, primary_key=True, test_needs_autoincrement=True),
                 Column('name', String(30)))
 
         offroad_cars = Table('offroad_cars', metadata,
                 Column('car_id',Integer, ForeignKey('cars.car_id'),nullable=False,primary_key=True))
 
         people = Table('people', metadata,
-                Column('person_id', Integer, primary_key=True),
+                Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
                 Column('car_id', Integer, ForeignKey('cars.car_id'), nullable=False),
                 Column('name', String(50)))
 
@@ -625,7 +626,7 @@ class RelationTest8(_base.MappedTest):
     def define_tables(cls, metadata):
         global taggable, users
         taggable = Table('taggable', metadata,
-                         Column('id', Integer, primary_key=True),
+                         Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                          Column('type', String(30)),
                          Column('owner_id', Integer, ForeignKey('taggable.id')),
                          )
@@ -680,11 +681,11 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         # table definitions
         status = Table('status', metadata,
-           Column('status_id', Integer, primary_key=True),
+           Column('status_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(20)))
 
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True),
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('status_id', Integer, ForeignKey('status.status_id'), nullable=False),
            Column('name', String(50)))
 
@@ -697,7 +698,7 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
            Column('category', String(70)))
 
         cars = Table('cars', metadata,
-           Column('car_id', Integer, primary_key=True),
+           Column('car_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('status_id', Integer, ForeignKey('status.status_id'), nullable=False),
            Column('owner', Integer, ForeignKey('people.person_id'), nullable=False))
 
@@ -786,13 +787,13 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         e = exists([Car.owner], Car.owner==employee_join.c.person_id)
         Query(Person)._adapt_clause(employee_join, False, False)
         
-        r = session.query(Person).filter(Person.name.like('%2')).join('status').filter_by(name="active")
-        assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
+        r = session.query(Person).filter(Person.name.like('%2')).join('status').filter_by(name="active").order_by(Person.person_id)
+        eq_(str(list(r)), "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]")
         r = session.query(Engineer).join('status').filter(Person.name.in_(['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & (status.c.name=="active")).order_by(Person.name)
-        assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"
+        eq_(str(list(r)), "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]")
 
         r = session.query(Person).filter(exists([1], Car.owner==Person.person_id))
-        assert str(list(r)) == "[Engineer E4, field X, status Status dead]"
+        eq_(str(list(r)), "[Engineer E4, field X, status Status dead]")
 
 class MultiLevelTest(_base.MappedTest):
     @classmethod
@@ -800,7 +801,7 @@ class MultiLevelTest(_base.MappedTest):
         global table_Employee, table_Engineer, table_Manager
         table_Employee = Table( 'Employee', metadata,
             Column( 'name', type_= String(100), ),
-            Column( 'id', primary_key= True, type_= Integer, ),
+            Column( 'id', primary_key= True, type_= Integer, test_needs_autoincrement=True),
             Column( 'atype', type_= String(100), ),
         )
 
@@ -878,7 +879,7 @@ class ManyToManyPolyTest(_base.MappedTest):
         global base_item_table, item_table, base_item_collection_table, collection_table
         base_item_table = Table(
             'base_item', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('child_name', String(255), default=None))
 
         item_table = Table(
@@ -893,7 +894,7 @@ class ManyToManyPolyTest(_base.MappedTest):
 
         collection_table = Table(
             'collection', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', Unicode(255)))
 
     def test_pjoin_compile(self):
@@ -928,7 +929,7 @@ class CustomPKTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1, t2
         t1 = Table('t1', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('type', String(30), nullable=False),
             Column('data', String(30)))
         # note that the primary key column in t2 is named differently
@@ -1013,7 +1014,7 @@ class InheritingEagerTest(_base.MappedTest):
         global people, employees, tags, peopleTags
 
         people = Table('people', metadata,
-                           Column('id', Integer, primary_key=True),
+                           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                            Column('_type', String(30), nullable=False),
                           )
 
@@ -1023,7 +1024,7 @@ class InheritingEagerTest(_base.MappedTest):
                         )
 
         tags = Table('tags', metadata,
-                           Column('id', Integer, primary_key=True),
+                           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                            Column('label', String(50), nullable=False),
                        )
 
@@ -1074,11 +1075,11 @@ class MissingPolymorphicOnTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global tablea, tableb, tablec, tabled
         tablea = Table('tablea', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('adata', String(50)),
             )
         tableb = Table('tableb', metadata, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('aid', Integer, ForeignKey('tablea.id')),
             Column('data', String(50)),
             )

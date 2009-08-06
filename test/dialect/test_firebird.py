@@ -50,6 +50,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con.execute('DROP GENERATOR gen_testtable_id')
 
     def test_table_is_reflected(self):
+        from sqlalchemy.types import Integer, Text, Binary, String, Date, Time, DateTime
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         eq_(set(table.columns.keys()),
@@ -57,17 +58,17 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
                           "Columns of reflected table didn't equal expected columns")
         eq_(table.c.question.primary_key, True)
         eq_(table.c.question.sequence.name, 'gen_testtable_id')
-        eq_(table.c.question.type.__class__, firebird.FBInteger)
+        assert isinstance(table.c.question.type, Integer)
         eq_(table.c.question.server_default.arg.text, "42")
-        eq_(table.c.answer.type.__class__, firebird.FBString)
+        assert isinstance(table.c.answer.type, String)
         eq_(table.c.answer.server_default.arg.text, "'no answer'")
-        eq_(table.c.remark.type.__class__, firebird.FBText)
+        assert isinstance(table.c.remark.type, Text)
         eq_(table.c.remark.server_default.arg.text, "''")
-        eq_(table.c.photo.type.__class__, firebird.FBBinary)
+        assert isinstance(table.c.photo.type, Binary)
         # The following assume a Dialect 3 database
-        eq_(table.c.d.type.__class__, firebird.FBDate)
-        eq_(table.c.t.type.__class__, firebird.FBTime)
-        eq_(table.c.dt.type.__class__, firebird.FBDateTime)
+        assert isinstance(table.c.d.type, Date)
+        assert isinstance(table.c.t.type, Time)
+        assert isinstance(table.c.dt.type, DateTime)
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
@@ -76,7 +77,13 @@ class CompileTest(TestBase, AssertsCompiledSQL):
     def test_alias(self):
         t = table('sometable', column('col1'), column('col2'))
         s = select([t.alias()])
-        self.assert_compile(s, "SELECT sometable_1.col1, sometable_1.col2 FROM sometable sometable_1")
+        self.assert_compile(s, "SELECT sometable_1.col1, sometable_1.col2 FROM sometable AS sometable_1")
+
+        dialect = firebird.FBDialect()
+        dialect._version_two = False
+        self.assert_compile(s, "SELECT sometable_1.col1, sometable_1.col2 FROM sometable sometable_1",
+            dialect = dialect
+        )
 
     def test_function(self):
         self.assert_compile(func.foo(1, 2), "foo(:foo_1, :foo_2)")
@@ -98,15 +105,15 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             column('description', String(128)),
         )
 
-        u = update(table1, values=dict(name='foo'), firebird_returning=[table1.c.myid, table1.c.name])
+        u = update(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
         self.assert_compile(u, "UPDATE mytable SET name=:name RETURNING mytable.myid, mytable.name")
 
-        u = update(table1, values=dict(name='foo'), firebird_returning=[table1])
+        u = update(table1, values=dict(name='foo')).returning(table1)
         self.assert_compile(u, "UPDATE mytable SET name=:name "\
             "RETURNING mytable.myid, mytable.name, mytable.description")
 
-        u = update(table1, values=dict(name='foo'), firebird_returning=[func.length(table1.c.name)])
-        self.assert_compile(u, "UPDATE mytable SET name=:name RETURNING char_length(mytable.name)")
+        u = update(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
+        self.assert_compile(u, "UPDATE mytable SET name=:name RETURNING char_length(mytable.name) AS length_1")
 
     def test_insert_returning(self):
         table1 = table('mytable',
@@ -115,90 +122,20 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             column('description', String(128)),
         )
 
-        i = insert(table1, values=dict(name='foo'), firebird_returning=[table1.c.myid, table1.c.name])
+        i = insert(table1, values=dict(name='foo')).returning(table1.c.myid, table1.c.name)
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (:name) RETURNING mytable.myid, mytable.name")
 
-        i = insert(table1, values=dict(name='foo'), firebird_returning=[table1])
+        i = insert(table1, values=dict(name='foo')).returning(table1)
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (:name) "\
             "RETURNING mytable.myid, mytable.name, mytable.description")
 
-        i = insert(table1, values=dict(name='foo'), firebird_returning=[func.length(table1.c.name)])
-        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (:name) RETURNING char_length(mytable.name)")
+        i = insert(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
+        self.assert_compile(i, "INSERT INTO mytable (name) VALUES (:name) RETURNING char_length(mytable.name) AS length_1")
 
 
-class ReturningTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'firebird'
-
-    @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    def test_update_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, Sequence('gen_tables_id'), primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
-
-            result = table.update(table.c.persons > 4, dict(full=True), firebird_returning=[table.c.id]).execute()
-            eq_(result.fetchall(), [(1,)])
-
-            result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-            eq_(result2.fetchall(), [(1,True),(2,False)])
-        finally:
-            table.drop()
-
-    @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    def test_insert_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, Sequence('gen_tables_id'), primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            result = table.insert(firebird_returning=[table.c.id]).execute({'persons': 1, 'full': False})
-
-            eq_(result.fetchall(), [(1,)])
-
-            # Multiple inserts only return the last row
-            result2 = table.insert(firebird_returning=[table]).execute(
-                 [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
-
-            eq_(result2.fetchall(), [(3,3,True)])
-
-            result3 = table.insert(firebird_returning=[table.c.id]).execute({'persons': 4, 'full': False})
-            eq_([dict(row) for row in result3], [{'ID':4}])
-
-            result4 = testing.db.execute('insert into tables (id, persons, "full") values (5, 10, 1) returning persons')
-            eq_([dict(row) for row in result4], [{'PERSONS': 10}])
-        finally:
-            table.drop()
-
-    @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    def test_delete_returning(self):
-        meta = MetaData(testing.db)
-        table = Table('tables', meta,
-            Column('id', Integer, Sequence('gen_tables_id'), primary_key=True),
-            Column('persons', Integer),
-            Column('full', Boolean)
-        )
-        table.create()
-        try:
-            table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
-
-            result = table.delete(table.c.persons > 4, firebird_returning=[table.c.id]).execute()
-            eq_(result.fetchall(), [(1,)])
-
-            result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
-            eq_(result2.fetchall(), [(2,False),])
-        finally:
-            table.drop()
 
 
-class MiscFBTests(TestBase):
+class MiscTest(TestBase):
     __only_on__ = 'firebird'
 
     def test_strlen(self):
@@ -217,12 +154,20 @@ class MiscFBTests(TestBase):
         try:
             t.insert(values=dict(name='dante')).execute()
             t.insert(values=dict(name='alighieri')).execute()
-            select([func.count(t.c.id)],func.length(t.c.name)==5).execute().fetchone()[0] == 1
+            select([func.count(t.c.id)],func.length(t.c.name)==5).execute().first()[0] == 1
         finally:
             meta.drop_all()
 
     def test_server_version_info(self):
-        version = testing.db.dialect.server_version_info(testing.db.connect())
+        version = testing.db.dialect.server_version_info
         assert len(version) == 3, "Got strange version info: %s" % repr(version)
 
+    def test_percents_in_text(self):
+        for expr, result in (
+            (text("select '%' from rdb$database"), '%'),
+            (text("select '%%' from rdb$database"), '%%'),
+            (text("select '%%%' from rdb$database"), '%%%'),
+            (text("select 'hello % world' from rdb$database"), "hello % world")
+        ):
+            eq_(testing.db.scalar(expr), result)
 

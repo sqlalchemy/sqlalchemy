@@ -416,7 +416,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
             Column('magazine_page_id', Integer, ForeignKey('magazine_page.page_id'), primary_key=True),
         )
         
-       # this is essentially the union formed by the ORM's polymorphic_union function.
+        # this is essentially the union formed by the ORM's polymorphic_union function.
         # we define two versions with different ordering of selects.
 
         # the first selectable has the "real" column classified_page.magazine_page_id
@@ -432,7 +432,6 @@ class ReduceTest(TestBase, AssertsExecutionResults):
                 magazine_page_table.c.page_id, 
                 cast(null(), Integer).label('magazine_page_id')
             ]).select_from(page_table.join(magazine_page_table)),
-            
         ).alias('pjoin')
 
         eq_(

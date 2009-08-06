@@ -60,7 +60,7 @@ email_bounces = fixture_table(
 
 orders = fixture_table(
     Table('orders', fixture_metadata,
-          Column('id', Integer, primary_key=True),
+          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
           Column('user_id', None, ForeignKey('users.id')),
           Column('address_id', None, ForeignKey('addresses.id')),
           Column('description', String(30)),
@@ -76,7 +76,7 @@ orders = fixture_table(
 
 dingalings = fixture_table(
     Table("dingalings", fixture_metadata,
-          Column('id', Integer, primary_key=True),
+          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
           Column('address_id', None, ForeignKey('addresses.id')),
           Column('data', String(30)),
           test_needs_acid=True,

@@ -1,7 +1,7 @@
 """Attribute/instance expiration, deferral of attributes, etc."""
 
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
-import gc
+from sqlalchemy.test.util import gc_collect
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc
@@ -666,7 +666,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert self.static.user_address_result == userlist
         assert len(list(sess)) == 9
         sess.expire_all()
-        gc.collect()
+        gc_collect()
         assert len(list(sess)) == 4 # since addresses were gc'ed
 
         userlist = sess.query(User).order_by(User.id).all()

@@ -199,7 +199,7 @@ CHANGES
     - Repaired the printing of SQL exceptions which are not 
       based on parameters or are not executemany() style.
       
-- postgres
+- postgresql
     - Deprecated the hardcoded TIMESTAMP function, which when
       used as func.TIMESTAMP(value) would render "TIMESTAMP value".
       This breaks on some platforms as PostgreSQL doesn't allow
@@ -524,7 +524,7 @@ CHANGES
       fail on recent versions of pysqlite which raise 
       an error when fetchone() called with no rows present.
       
-- postgres
+- postgresql
     - Index reflection won't fail when an index with 
       multiple expressions is encountered.
       

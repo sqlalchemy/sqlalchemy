@@ -109,9 +109,9 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       like::
 
         sess = Session(binds={
-            SomeMappedClass: create_engine('postgres://engine1'),
-            somemapper: create_engine('postgres://engine2'),
-            some_table: create_engine('postgres://engine3'),
+            SomeMappedClass: create_engine('postgresql://engine1'),
+            somemapper: create_engine('postgresql://engine2'),
+            some_table: create_engine('postgresql://engine3'),
             })
 
       Also see the ``bind_mapper()`` and ``bind_table()`` methods.
@@ -1139,7 +1139,7 @@ class Session(object):
         for state, m, o in cascade_states:
             self._delete_impl(state)
 
-    def merge(self, instance, dont_load=False):
+    def merge(self, instance, load=True, **kw):
         """Copy the state an instance onto the persistent instance with the same identifier.
 
         If there is no persistent instance currently associated with the
@@ -1152,6 +1152,10 @@ class Session(object):
         mapped with ``cascade="merge"``.
 
         """
+        if 'dont_load' in kw:
+            load = not kw['dont_load']
+            util.warn_deprecated("dont_load=True has been renamed to load=False.")
+        
         # TODO: this should be an IdentityDict for instances, but will
         # need a separate dict for PropertyLoader tuples
         _recursive = {}
@@ -1159,11 +1163,11 @@ class Session(object):
         autoflush = self.autoflush
         try:
             self.autoflush = False
-            return self._merge(instance, dont_load=dont_load, _recursive=_recursive)
+            return self._merge(instance, load=load, _recursive=_recursive)
         finally:
             self.autoflush = autoflush
         
-    def _merge(self, instance, dont_load=False, _recursive=None):
+    def _merge(self, instance, load=True, _recursive=None):
         mapper = _object_mapper(instance)
         if instance in _recursive:
             return _recursive[instance]
@@ -1173,24 +1177,24 @@ class Session(object):
         key = state.key
 
         if key is None:
-            if dont_load:
+            if not load:
                 raise sa_exc.InvalidRequestError(
-                    "merge() with dont_load=True option does not support "
+                    "merge() with load=False option does not support "
                     "objects transient (i.e. unpersisted) objects.  flush() "
                     "all changes on mapped instances before merging with "
-                    "dont_load=True.")
+                    "load=False.")
             key = mapper._identity_key_from_state(state)
 
         merged = None
         if key:
             if key in self.identity_map:
                 merged = self.identity_map[key]
-            elif dont_load:
+            elif not load:
                 if state.modified:
                     raise sa_exc.InvalidRequestError(
-                        "merge() with dont_load=True option does not support "
+                        "merge() with load=False option does not support "
                         "objects marked as 'dirty'.  flush() all changes on "
-                        "mapped instances before merging with dont_load=True.")
+                        "mapped instances before merging with load=False.")
                 merged = mapper.class_manager.new_instance()
                 merged_state = attributes.instance_state(merged)
                 merged_state.key = key
@@ -1208,9 +1212,9 @@ class Session(object):
         _recursive[instance] = merged
 
         for prop in mapper.iterate_properties:
-            prop.merge(self, instance, merged, dont_load, _recursive)
+            prop.merge(self, instance, merged, load, _recursive)
 
-        if dont_load:
+        if not load:
             attributes.instance_state(merged).commit_all(attributes.instance_dict(merged), self.identity_map)  # remove any history
 
         if new_instance:

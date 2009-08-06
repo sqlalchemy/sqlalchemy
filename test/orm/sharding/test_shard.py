@@ -6,6 +6,7 @@ from sqlalchemy.orm.shard import ShardedSession
 from sqlalchemy.sql import operators
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_
+from nose import SkipTest
 
 # TODO: ShardTest can be turned into a base for further subclasses
 
@@ -14,7 +15,10 @@ class ShardTest(TestBase):
     def setup_class(cls):
         global db1, db2, db3, db4, weather_locations, weather_reports
 
-        db1 = create_engine('sqlite:///shard1.db')
+        try:
+            db1 = create_engine('sqlite:///shard1.db')
+        except ImportError:
+            raise SkipTest('Requires sqlite')
         db2 = create_engine('sqlite:///shard2.db')
         db3 = create_engine('sqlite:///shard3.db')
         db4 = create_engine('sqlite:///shard4.db')

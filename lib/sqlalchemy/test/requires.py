@@ -28,6 +28,25 @@ def foreign_keys(fn):
         no_support('sqlite', 'not supported by database'),
         )
 
+
+def unbounded_varchar(fn):
+    """Target database must support VARCHAR with no length"""
+    return _chain_decorators_on(
+        fn,
+        no_support('firebird', 'not supported by database'),
+        no_support('oracle', 'not supported by database'),
+        no_support('mysql', 'not supported by database'),
+    )
+
+def boolean_col_expressions(fn):
+    """Target database must support boolean expressions as columns"""
+    return _chain_decorators_on(
+        fn,
+        no_support('firebird', 'not supported by database'),
+        no_support('oracle', 'not supported by database'),
+        no_support('mssql', 'not supported by database'),
+    )
+    
 def identity(fn):
     """Target database must support GENERATED AS IDENTITY or a facsimile.
 
@@ -40,7 +59,7 @@ def identity(fn):
         fn,
         no_support('firebird', 'not supported by database'),
         no_support('oracle', 'not supported by database'),
-        no_support('postgres', 'not supported by database'),
+        no_support('postgresql', 'not supported by database'),
         no_support('sybase', 'not supported by database'),
         )
 
@@ -61,9 +80,19 @@ def row_triggers(fn):
         # no access to same table
         no_support('mysql', 'requires SUPER priv'),
         exclude('mysql', '<', (5, 0, 10), 'not supported by database'),
-        no_support('postgres', 'not supported by database: no statements'),
+        
+        # huh?  TODO: implement triggers for PG tests, remove this
+        no_support('postgresql', 'PG triggers need to be implemented for tests'),  
         )
 
+def correlated_outer_joins(fn):
+    """Target must support an outer join to a subquery which correlates to the parent."""
+    
+    return _chain_decorators_on(
+        fn,
+        no_support('oracle', 'Raises "ORA-01799: a column may not be outer-joined to a subquery"')
+    )
+    
 def savepoints(fn):
     """Target database must support savepoints."""
     return _chain_decorators_on(
@@ -75,6 +104,15 @@ def savepoints(fn):
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
         )
 
+def schemas(fn):
+    """Target database must support external schemas, and have one named 'test_schema'."""
+    
+    return _chain_decorators_on(
+        fn,
+        no_support('sqlite', 'no schema support'),
+        no_support('firebird', 'no schema support')
+    )
+    
 def sequences(fn):
     """Target database must support SEQUENCEs."""
     return _chain_decorators_on(
@@ -93,6 +131,17 @@ def subqueries(fn):
         exclude('mysql', '<', (4, 1, 1), 'no subquery support'),
         )
 
+def returning(fn):
+    return _chain_decorators_on(
+        fn,
+        no_support('access', 'not supported by database'),
+        no_support('sqlite', 'not supported by database'),
+        no_support('mysql', 'not supported by database'),
+        no_support('maxdb', 'not supported by database'),
+        no_support('sybase', 'not supported by database'),
+        no_support('informix', 'not supported by database'),
+    )
+    
 def two_phase_transactions(fn):
     """Target database must support two-phase transactions."""
     return _chain_decorators_on(
@@ -104,6 +153,8 @@ def two_phase_transactions(fn):
         no_support('oracle', 'no SA implementation'),
         no_support('sqlite', 'not supported by database'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
+        no_support('postgresql+zxjdbc', 'FIXME: JDBC driver confuses the transaction state, may '
+                   'need separate XA implementation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
         )
 
