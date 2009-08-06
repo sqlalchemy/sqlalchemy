@@ -1006,7 +1006,7 @@ class DDLCompiler(engine.Compiled):
         return "ALTER TABLE %s DROP CONSTRAINT %s%s" % (
             self.preparer.format_table(drop.element.table),
             self.preparer.format_constraint(drop.element),
-            " CASCADE" if drop.cascade else ""
+            drop.cascade and " CASCADE" or ""
         )
     
     def get_column_specification(self, column, **kwargs):
