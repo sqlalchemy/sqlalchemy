@@ -1064,6 +1064,7 @@ class Connection(Connectable):
             
         if context.compiled:
             context.post_exec()
+            
             if context.isinsert and not context.executemany:
                 context.post_insert()
             
