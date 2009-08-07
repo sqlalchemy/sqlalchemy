@@ -29,7 +29,8 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
                                                photo img_domain,
                                                d date,
                                                t time,
-                                               dt timestamp)''')
+                                               dt timestamp,
+                                               redundant str_domain DEFAULT NULL)''')
         con.execute('''ALTER TABLE testtable
                        ADD CONSTRAINT testtable_pk PRIMARY KEY (question)''')
         con.execute('''CREATE TRIGGER testtable_autoid FOR testtable
@@ -54,8 +55,9 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         eq_(set(table.columns.keys()),
-                          set(['question', 'answer', 'remark', 'photo', 'd', 't', 'dt']),
-                          "Columns of reflected table didn't equal expected columns")
+            set(['question', 'answer', 'remark',
+                 'photo', 'd', 't', 'dt', 'redundant']),
+            "Columns of reflected table didn't equal expected columns")
         eq_(table.c.question.primary_key, True)
         eq_(table.c.question.sequence.name, 'gen_testtable_id')
         assert isinstance(table.c.question.type, Integer)
@@ -65,6 +67,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         assert isinstance(table.c.remark.type, Text)
         eq_(table.c.remark.server_default.arg.text, "''")
         assert isinstance(table.c.photo.type, Binary)
+        assert table.c.redundant.server_default is None
         # The following assume a Dialect 3 database
         assert isinstance(table.c.d.type, Date)
         assert isinstance(table.c.t.type, Time)
@@ -170,4 +173,3 @@ class MiscTest(TestBase):
             (text("select 'hello % world' from rdb$database"), "hello % world")
         ):
             eq_(testing.db.scalar(expr), result)
-
