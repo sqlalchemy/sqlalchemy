@@ -475,7 +475,7 @@ class FBDialect(default.DefaultDialect):
                         r.rdb$null_flag AS null_flag,
                         t.rdb$type_name AS ftype,
                         f.rdb$field_sub_type AS stype,
-                        f.rdb$field_length AS flen,
+                        f.rdb$field_length/COALESCE(cs.rdb$bytes_per_character,1) AS flen,
                         f.rdb$field_precision AS fprec,
                         f.rdb$field_scale AS fscale,
                         COALESCE(r.rdb$default_source, f.rdb$default_source) AS fdefault
@@ -483,6 +483,7 @@ class FBDialect(default.DefaultDialect):
              JOIN rdb$fields f ON r.rdb$field_source=f.rdb$field_name
              JOIN rdb$types t
                   ON t.rdb$type=f.rdb$field_type AND t.rdb$field_name='RDB$FIELD_TYPE'
+             LEFT JOIN rdb$character_sets cs ON f.rdb$character_set_id=cs.rdb$character_set_id
         WHERE f.rdb$system_flag=0 AND r.rdb$relation_name=?
         ORDER BY r.rdb$field_position
         """

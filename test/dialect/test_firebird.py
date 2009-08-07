@@ -63,6 +63,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         assert isinstance(table.c.question.type, Integer)
         eq_(table.c.question.server_default.arg.text, "42")
         assert isinstance(table.c.answer.type, String)
+        assert table.c.answer.type.length == 255
         eq_(table.c.answer.server_default.arg.text, "'no answer'")
         assert isinstance(table.c.remark.type, Text)
         eq_(table.c.remark.server_default.arg.text, "''")
