@@ -76,7 +76,7 @@ class DynamicTest(_fixtures.FixtureTest):
         ad = sess.query(Address).get(1)
         def go():
             ad.user = None
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 0)
         sess.flush()
         u = sess.query(User).get(7)
         assert ad not in u.addresses

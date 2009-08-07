@@ -1447,21 +1447,24 @@ class Query(object):
                 break
     iterate_instances = util.deprecated()(instances)
 
-    def _get(self, key=None, ident=None, refresh_state=None, lockmode=None, only_load_props=None):
+    def _get(self, key=None, ident=None, refresh_state=None, lockmode=None, only_load_props=None, passive=None):
         lockmode = lockmode or self._lockmode
         if not self._populate_existing and not refresh_state and not self._mapper_zero().always_refresh and lockmode is None:
-            try:
-                instance = self.session.identity_map[key]
+            instance = self.session.identity_map.get(key)
+            if instance:
                 state = attributes.instance_state(instance)
                 if state.expired:
+                    if passive is attributes.PASSIVE_NO_FETCH:
+                        return attributes.PASSIVE_NO_RESULT
+                    
                     try:
                         state()
                     except orm_exc.ObjectDeletedError:
                         self.session._remove_newly_deleted(state)
                         return None
                 return instance
-            except KeyError:
-                pass
+            elif passive is attributes.PASSIVE_NO_FETCH:
+                return attributes.PASSIVE_NO_RESULT
 
         if ident is None:
             if key is not None:

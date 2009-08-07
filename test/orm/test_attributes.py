@@ -55,7 +55,7 @@ class AttributesTest(_base.ORMTest):
         attributes.register_attribute(MyTest2, 'a', uselist=False, useobject=False)
         attributes.register_attribute(MyTest2, 'b', uselist=False, useobject=False)
         # shouldnt be pickling callables at the class level
-        def somecallable(*args):
+        def somecallable(*args, **kw):
             return None
         attributes.register_attribute(MyTest, "mt2", uselist = True, trackparent=True, callable_=somecallable, useobject=True)
 
@@ -276,8 +276,8 @@ class AttributesTest(_base.ORMTest):
         # create objects as if they'd been freshly loaded from the database (without history)
         b = Blog()
         p1 = Post()
-        attributes.instance_state(b).set_callable('posts', lambda:[p1])
-        attributes.instance_state(p1).set_callable('blog', lambda:b)
+        attributes.instance_state(b).set_callable('posts', lambda **kw:[p1])
+        attributes.instance_state(p1).set_callable('blog', lambda **kw:b)
         p1, attributes.instance_state(b).commit_all(attributes.instance_dict(b))
 
         # no orphans (called before the lazy loaders fire off)
@@ -304,13 +304,13 @@ class AttributesTest(_base.ORMTest):
         attributes.register_class(Foo)
         attributes.register_class(Bar)
 
-        def func1():
+        def func1(**kw):
             print "func1"
             return "this is the foo attr"
-        def func2():
+        def func2(**kw):
             print "func2"
             return "this is the bar attr"
-        def func3():
+        def func3(**kw):
             print "func3"
             return "this is the shared attr"
         attributes.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1, useobject=True)
@@ -377,9 +377,9 @@ class AttributesTest(_base.ORMTest):
         attributes.register_class(Bar)
 
         bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
-        def func1():
+        def func1(**kw):
             return "this is func 1"
-        def func2():
+        def func2(**kw):
             return [bar1, bar2, bar3]
 
         attributes.register_attribute(Foo, 'col1', uselist=False, callable_=lambda o:func1, useobject=True)
@@ -626,22 +626,25 @@ class PendingBackrefTest(_base.ORMTest):
                 self.name = name
             __hash__ = None
             def __eq__(self, other):
-                return other.name == self.name
+                return other is not None and other.name == self.name
 
         class Blog(object):
             def __init__(self, name):
                 self.name = name
             __hash__ = None
             def __eq__(self, other):
-                return other.name == self.name
+                return other is not None and other.name == self.name
 
         called = [0]
 
         lazy_load = []
         def lazy_posts(instance):
-            def load():
-                called[0] += 1
-                return lazy_load
+            def load(**kw):
+                if kw['passive'] is not attributes.PASSIVE_NO_FETCH:
+                    called[0] += 1
+                    return lazy_load
+                else:
+                    return attributes.PASSIVE_NO_RESULT
             return load
 
         attributes.register_class(Post)
@@ -1129,7 +1132,7 @@ class HistoryTest(_base.ORMTest):
 
         lazy_load = []
         def lazyload(instance):
-            def load():
+            def load(**kw):
                 return lazy_load
             return load
 
@@ -1164,7 +1167,7 @@ class HistoryTest(_base.ORMTest):
 
         lazy_load = []
         def lazyload(instance):
-            def load():
+            def load(**kw):
                 return lazy_load
             return load
 
@@ -1204,7 +1207,7 @@ class HistoryTest(_base.ORMTest):
 
         lazy_load = None
         def lazyload(instance):
-            def load():
+            def load(**kw):
                 return lazy_load
             return load
 
@@ -1242,7 +1245,7 @@ class HistoryTest(_base.ORMTest):
 
         lazy_load = None
         def lazyload(instance):
-            def load():
+            def load(**kw):
                 return lazy_load
             return load
 
@@ -1282,7 +1285,7 @@ class HistoryTest(_base.ORMTest):
 
         lazy_load = None
         def lazyload(instance):
-            def load():
+            def load(**kw):
                 return lazy_load
             return load
 

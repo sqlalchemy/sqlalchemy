@@ -28,7 +28,7 @@ _entity_info = None
 identity_equal = None
 state = None
 
-PASSIVE_NORESULT = util.symbol('PASSIVE_NORESULT')
+PASSIVE_NO_RESULT = util.symbol('PASSIVE_NO_RESULT')
 ATTR_WAS_SET = util.symbol('ATTR_WAS_SET')
 NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
@@ -43,7 +43,7 @@ PASSIVE_NO_INITIALIZE = True #util.symbol('PASSIVE_NO_INITIALIZE')
 # don't fire off any callables, but if no callables present
 # then initialize to an empty value/collection
 # this is used by backrefs.
-PASSIVE_NO_CALLABLES = util.symbol('PASSIVE_NO_CALLABLES')
+PASSIVE_NO_FETCH = util.symbol('PASSIVE_NO_FETCH')
 
 # fire callables/initialize as needed
 PASSIVE_OFF = False #util.symbol('PASSIVE_OFF')
@@ -368,14 +368,16 @@ class AttributeImpl(object):
             # if no history, check for lazy callables, etc.
             if state.committed_state.get(self.key, NEVER_SET) is NEVER_SET:
                 if passive is PASSIVE_NO_INITIALIZE:
-                    return PASSIVE_NORESULT
+                    return PASSIVE_NO_RESULT
                     
                 callable_ = self._get_callable(state)
                 if callable_ is not None:
-                    if passive is not PASSIVE_OFF:
-                        return PASSIVE_NORESULT
-                    value = callable_()
-                    if value is not ATTR_WAS_SET:
+                    #if passive is not PASSIVE_OFF:
+                    #    return PASSIVE_NO_RESULT
+                    value = callable_(passive=passive)
+                    if value is PASSIVE_NO_RESULT:
+                        return value
+                    elif value is not ATTR_WAS_SET:
                         return self.set_committed_value(state, dict_, value)
                     else:
                         if self.key not in dict_:
@@ -504,7 +506,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
     def get(self, state, dict_, passive=PASSIVE_OFF):
         if self.key not in state.mutable_dict:
             ret = ScalarAttributeImpl.get(self, state, dict_, passive=passive)
-            if ret is not PASSIVE_NORESULT:
+            if ret is not PASSIVE_NO_RESULT:
                 state.mutable_dict[self.key] = ret
             return ret
         else:
@@ -557,7 +559,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             return History.from_attribute(self, state, dict_[self.key])
         else:
             current = self.get(state, dict_, passive=passive)
-            if current is PASSIVE_NORESULT:
+            if current is PASSIVE_NO_RESULT:
                 return HISTORY_BLANK
             else:
                 return History.from_attribute(self, state, current)
@@ -576,16 +578,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if self.active_history:
             old = self.get(state, dict_)
         else:
-            # this would be the "laziest" approach,
-            # however it breaks currently expected backref
-            # behavior
-            #old = dict_.get(self.key, None)
-            # instead, use the "passive" setting, which
-            # is only going to be PASSIVE_NOCALLABLES if it
-            # came from a backref
-            old = self.get(state, dict_, passive=passive)
-            if old is PASSIVE_NORESULT:
-                old = None
+            old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)
              
         value = self.fire_replace_event(state, dict_, value, old, initiator)
         dict_[self.key] = value
@@ -603,7 +596,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         state.modified_event(dict_, self, False, previous)
 
         if self.trackparent:
-            if previous is not value and previous is not None:
+            if previous is not value and previous not in (None, PASSIVE_NO_RESULT):
                 self.sethasparent(instance_state(previous), False)
 
         for ext in self.extensions:
@@ -650,7 +643,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         current = self.get(state, dict_, passive=passive)
-        if current is PASSIVE_NORESULT:
+        if current is PASSIVE_NO_RESULT:
             return HISTORY_BLANK
         else:
             return History.from_attribute(self, state, current)
@@ -705,7 +698,7 @@ class CollectionAttributeImpl(AttributeImpl):
             return
 
         collection = self.get_collection(state, dict_, passive=passive)
-        if collection is PASSIVE_NORESULT:
+        if collection is PASSIVE_NO_RESULT:
             value = self.fire_append_event(state, dict_, value, initiator)
             state.get_pending(self.key).append(value)
         else:
@@ -716,7 +709,7 @@ class CollectionAttributeImpl(AttributeImpl):
             return
 
         collection = self.get_collection(state, state.dict, passive=passive)
-        if collection is PASSIVE_NORESULT:
+        if collection is PASSIVE_NO_RESULT:
             self.fire_remove_event(state, dict_, value, initiator)
             state.get_pending(self.key).remove(value)
         else:
@@ -810,7 +803,7 @@ class CollectionAttributeImpl(AttributeImpl):
         """
         if user_data is None:
             user_data = self.get(state, dict_, passive=passive)
-            if user_data is PASSIVE_NORESULT:
+            if user_data is PASSIVE_NO_RESULT:
                 return user_data
 
         return getattr(user_data, '_sa_adapter')
@@ -832,29 +825,29 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
     def set(self, state, child, oldchild, initiator):
         if oldchild is child:
             return child
-        if oldchild is not None:
+        if oldchild not in (None, PASSIVE_NO_RESULT):
             # With lazy=None, there's no guarantee that the full collection is
             # present when updating via a backref.
             old_state, old_dict = instance_state(oldchild), instance_dict(oldchild)
             impl = old_state.get_impl(self.key)
             try:
-                impl.remove(old_state, old_dict, state.obj(), initiator, passive=PASSIVE_NO_CALLABLES)
+                impl.remove(old_state, old_dict, state.obj(), initiator, passive=PASSIVE_NO_FETCH)
             except (ValueError, KeyError, IndexError):
                 pass
         if child is not None:
             new_state,  new_dict = instance_state(child), instance_dict(child)
-            new_state.get_impl(self.key).append(new_state, new_dict, state.obj(), initiator, passive=PASSIVE_NO_CALLABLES)
+            new_state.get_impl(self.key).append(new_state, new_dict, state.obj(), initiator, passive=PASSIVE_NO_FETCH)
         return child
 
     def append(self, state, child, initiator):
         child_state, child_dict = instance_state(child), instance_dict(child)
-        child_state.get_impl(self.key).append(child_state, child_dict, state.obj(), initiator, passive=PASSIVE_NO_CALLABLES)
+        child_state.get_impl(self.key).append(child_state, child_dict, state.obj(), initiator, passive=PASSIVE_NO_FETCH)
         return child
 
     def remove(self, state, child, initiator):
         if child is not None:
             child_state, child_dict = instance_state(child), instance_dict(child)
-            child_state.get_impl(self.key).remove(child_state, child_dict, state.obj(), initiator, passive=PASSIVE_NO_CALLABLES)
+            child_state.get_impl(self.key).remove(child_state, child_dict, state.obj(), initiator, passive=PASSIVE_NO_FETCH)
 
 
 class Events(object):
@@ -1248,9 +1241,9 @@ class History(tuple):
         
     def as_state(self):
         return History(
-            [c is not None and instance_state(c) or None for c in self.added],
-            [c is not None and instance_state(c) or None for c in self.unchanged],
-            [c is not None and instance_state(c) or None for c in self.deleted],
+            [c not in (None, PASSIVE_NO_RESULT) and instance_state(c) or None for c in self.added],
+            [c not in (None, PASSIVE_NO_RESULT) and instance_state(c) or None for c in self.unchanged],
+            [c not in (None, PASSIVE_NO_RESULT) and instance_state(c) or None for c in self.deleted],
         )
     
     @classmethod

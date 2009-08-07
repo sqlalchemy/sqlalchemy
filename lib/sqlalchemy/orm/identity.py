@@ -141,10 +141,15 @@ class WeakInstanceDict(IdentityMap):
             self._manage_removed_state(state)
         
     def get(self, key, default=None):
-        try:
-            return self[key]
-        except KeyError:
+        state = dict.get(self, key, default)
+        if state is default:
             return default
+        o = state.obj()
+        if o is None:
+            o = state._is_really_none()
+        if o is None:
+            return default
+        return o
     
     # Py2K        
     def items(self):

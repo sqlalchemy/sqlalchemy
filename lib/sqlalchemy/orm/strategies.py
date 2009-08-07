@@ -261,9 +261,11 @@ class LoadDeferredColumns(object):
     def __init__(self, state, key):
         self.state, self.key = state, key
 
-    def __call__(self):
+    def __call__(self, **kw):
+        if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
+            return attributes.PASSIVE_NO_RESULT
+
         state = self.state
-        
         
         localparent = mapper._state_mapper(state)
         
@@ -536,12 +538,14 @@ class LoadLazyAttribute(object):
     def __setstate__(self, state):
         self.state, self.key = state
         
-    def __call__(self):
+    def __call__(self, **kw):
         state = self.state
-
         instance_mapper = mapper._state_mapper(state)
         prop = instance_mapper.get_property(self.key)
         strategy = prop._get_strategy(LazyLoader)
+
+        if kw.get('passive') is attributes.PASSIVE_NO_FETCH and not strategy.use_get:
+            return attributes.PASSIVE_NO_RESULT
         
         if strategy._should_log_debug:
             strategy.logger.debug("loading %s" % mapperutil.state_attribute_str(state, self.key))
@@ -565,14 +569,21 @@ class LoadLazyAttribute(object):
             ident = []
             allnulls = True
             for primary_key in prop.mapper.primary_key: 
-                val = instance_mapper._get_committed_state_attr_by_column(state, strategy._equated_columns[primary_key])
+                val = instance_mapper._get_committed_state_attr_by_column(state, strategy._equated_columns[primary_key], **kw)
+                if val is attributes.PASSIVE_NO_RESULT:
+                    return val
                 allnulls = allnulls and val is None
                 ident.append(val)
+                
             if allnulls:
                 return None
+                
             if state.load_options:
                 q = q._conditional_options(*state.load_options)
-            return q.get(ident)
+
+            key = prop.mapper.identity_key_from_primary_key(ident)
+            return q._get(key, ident, **kw)
+            
 
         if prop.order_by:
             q = q.order_by(*util.to_list(prop.order_by))

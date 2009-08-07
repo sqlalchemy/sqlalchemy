@@ -1,7 +1,7 @@
 from sqlalchemy.util import EMPTY_SET
 import weakref
 from sqlalchemy import util
-from sqlalchemy.orm.attributes import PASSIVE_NORESULT, PASSIVE_OFF, NEVER_SET, NO_VALUE, manager_of_class, ATTR_WAS_SET
+from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, PASSIVE_OFF, NEVER_SET, NO_VALUE, manager_of_class, ATTR_WAS_SET
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import interfaces
 
@@ -108,13 +108,13 @@ class InstanceState(object):
         attribute.
 
         returns None if passive is not PASSIVE_OFF and the getter returns
-        PASSIVE_NORESULT.
+        PASSIVE_NO_RESULT.
         """
 
         impl = self.get_impl(key)
         dict_ = self.dict
         x = impl.get(self, dict_, passive=passive)
-        if x is PASSIVE_NORESULT:
+        if x is PASSIVE_NO_RESULT:
             return None
         elif hasattr(impl, 'get_collection'):
             return impl.get_collection(self, dict_, x, passive=passive)
@@ -176,12 +176,16 @@ class InstanceState(object):
         self.dict.pop(key, None)
         self.callables[key] = callable_
 
-    def __call__(self):
+    def __call__(self, **kw):
         """__call__ allows the InstanceState to act as a deferred
         callable for loading expired attributes, which is also
         serializable (picklable).
 
         """
+
+        if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
+            return attributes.PASSIVE_NO_RESULT
+        
         unmodified = self.unmodified
         class_manager = self.manager
         class_manager.deferred_scalar_loader(self, [

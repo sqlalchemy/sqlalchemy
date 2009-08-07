@@ -1124,12 +1124,12 @@ class Mapper(object):
 
             if leftcol.table not in tables:
                 leftval = self._get_committed_state_attr_by_column(state, leftcol, passive=True)
-                if leftval is attributes.PASSIVE_NORESULT:
+                if leftval is attributes.PASSIVE_NO_RESULT:
                     raise ColumnsNotAvailable()
                 binary.left = sql.bindparam(None, leftval, type_=binary.right.type)
             elif rightcol.table not in tables:
                 rightval = self._get_committed_state_attr_by_column(state, rightcol, passive=True)
-                if rightval is attributes.PASSIVE_NORESULT:
+                if rightval is attributes.PASSIVE_NO_RESULT:
                     raise ColumnsNotAvailable()
                 binary.right = sql.bindparam(None, rightval, type_=binary.right.type)
 

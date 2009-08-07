@@ -131,14 +131,55 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         # u1.addresses is loaded
         u1.addresses
 
-        # direct set - the fetching of the 
-        # "old" u1 here allows the backref
-        # to remove it from the addresses collection
+        # direct set - the "old" is "fetched",
+        # but only from the local session - not the 
+        # database, due to the PASSIVE_NO_FETCH flag.
+        # this is a more fine grained behavior introduced
+        # in 0.6
         a1.user = u2
 
         assert a1 not in u1.addresses
         assert a1 in u2.addresses
 
+    @testing.resolve_artifact_names
+    def test_plain_load_passive(self):
+        """test that many-to-one set doesn't load the old value."""
+        
+        sess = sessionmaker()()
+        u1 = User(name='jack')
+        u2 = User(name='ed')
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add_all([u1, u2, a1])
+        sess.commit()
+
+        # in this case, a lazyload would
+        # ordinarily occur except for the
+        # PASSIVE_NO_FETCH flag.
+        def go():
+            a1.user = u2
+        self.assert_sql_count(testing.db, go, 0)
+        
+        assert a1 not in u1.addresses
+        assert a1 in u2.addresses
+        
+    @testing.resolve_artifact_names
+    def test_set_none(self):
+        sess = sessionmaker()()
+        u1 = User(name='jack')
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add_all([u1, a1])
+        sess.commit()
+
+        # works for None too
+        def go():
+            a1.user = None
+        self.assert_sql_count(testing.db, go, 0)
+        
+        assert a1 not in u1.addresses
+        
+        
         
     @testing.resolve_artifact_names
     def test_scalar_move_notloaded(self):
