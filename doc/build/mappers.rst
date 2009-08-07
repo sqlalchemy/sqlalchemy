@@ -312,7 +312,7 @@ The "equals" comparison operation by default produces an AND of all correspondin
 Controlling Ordering 
 ---------------------
 
-As of version 0.5, the ORM does not generate ordering for any query unless explicitly configured.
+The ORM does not generate ordering for any query unless explicitly configured.
 
 The "default" ordering for a collection, which applies to list-based collections, can be configured using the ``order_by`` keyword argument on ``relation()``::
 
@@ -806,7 +806,6 @@ Above, the "customers" table is joined against the "orders" table to produce a f
 Multiple Mappers for One Class 
 -------------------------------
 
-
 The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well on the "load side" - these are called **secondary mappers**.   This is a mapper that must be constructed with the keyword argument ``non_primary=True``, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new ``relation()`` objects to a non-primary mapper. To use this mapper with the Session, specify it to the ``query`` method:
 
 example:
@@ -823,8 +822,6 @@ example:
     result = session.query(othermapper).select()
 
 The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the ``Query`` object can produce any kind of query that's desired.  It's recommended that a straight ``Query`` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a ``relation()`` of a parent mapper.
-
-Versions of SQLAlchemy previous to 0.5 included another mapper flag called "entity_name", as of version 0.5.0 this feature has been removed (it never worked very well).
 
 Constructors and Object Initialization 
 ---------------------------------------
@@ -1765,7 +1762,7 @@ When ``passive_deletes`` is applied, the ``children`` relation will not be loade
 Mutable Primary Keys / Update Cascades 
 ---------------------------------------
 
-As of SQLAlchemy 0.4.2, the primary key attributes of an instance can be changed freely, and will be persisted upon flush.  When the primary key of an entity changes, related items which reference the primary key must also be updated as well.  For databases which enforce referential integrity, it's required to use the database's ON UPDATE CASCADE functionality in order to propagate primary key changes.  For those which don't, the ``passive_cascades`` flag can be set to ``False`` which instructs SQLAlchemy to issue UPDATE statements individually.  The ``passive_cascades`` flag can also be ``False`` in conjunction with ON UPDATE CASCADE functionality, although in that case it issues UPDATE statements unnecessarily.
+When the primary key of an entity changes, related items which reference the primary key must also be updated as well.  For databases which enforce referential integrity, it's required to use the database's ON UPDATE CASCADE functionality in order to propagate primary key changes.  For those which don't, the ``passive_cascades`` flag can be set to ``False`` which instructs SQLAlchemy to issue UPDATE statements individually.  The ``passive_cascades`` flag can also be ``False`` in conjunction with ON UPDATE CASCADE functionality, although in that case it issues UPDATE statements unnecessarily.
 
 A typical mutable primary key setup might look like:
 

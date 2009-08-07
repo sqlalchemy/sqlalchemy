@@ -465,21 +465,47 @@ class Column(SchemaItem, expression.ColumnClause):
           argument is available such as ``server_default``, ``default``
           and ``unique``.
 
-        :param autoincrement: This flag may be set to ``False`` to disable
-          SQLAlchemy indicating at the DDL level that an integer primary 
-          key column should have autoincrementing behavior.  This 
-          is an oft misunderstood flag and has no effect whatsoever unless
-          all of the following conditions are met:
+        :param autoincrement: This flag may be set to ``False`` to 
+          indicate an integer primary key column that should not be
+          considered to be the "autoincrement" column, that is
+          the integer primary key column which generates values 
+          implicitly upon INSERT and whose value is usually returned
+          via the DBAPI cursor.lastrowid attribute.   It defaults
+          to ``True`` to satisfy the common use case of a table
+          with a single integer primary key column.  If the table
+          has a composite primary key consisting of more than one
+          integer column, set this flag to True only on the 
+          column that should be considered "autoincrement".
+          
+          The setting *only* has an effect for columns which are:
+          
+          * Integer derived (i.e. INT, SMALLINT, BIGINT)
+          
+          * Part of the primary key
+          
+          * Are not referenced by any foreign keys
+          
+          * have no server side or client side defaults (with the exception
+            of Postgresql SERIAL).
             
-          * The column is of the :class:`~sqlalchemy.types.Integer` datatype.
-          * The column has the ``primary_key`` flag set, or is otherwise
-            a member of a :class:`PrimaryKeyConstraint` on this table.
-          * a CREATE TABLE statement is being issued via :meth:`create()`
-            or :meth:`create_all()`.  The flag has no relevance at any
-            other time.
-          * The database supports autoincrementing behavior, such as 
-            PostgreSQL or MySQL, and this behavior can be disabled (which does
-            not include SQLite).
+          The setting has these two effects on columns that meet the
+          above criteria:
+          
+          * DDL issued for the column will include database-specific
+            keywords intended to signify this column as an
+            "autoincrement" column, such as AUTO INCREMENT on MySQL,
+            SERIAL on Postgresql, and IDENTITY on MS-SQL.  It does 
+            *not* issue AUTOINCREMENT for SQLite since this is a
+            special SQLite flag that is not required for autoincrementing
+            behavior.
+            
+          * The column will be considered to be available as 
+            cursor.lastrowid or equivalent, for those dialects which
+            "post fetch" newly inserted identifiers after a row has
+            been inserted (SQLite, MySQL, MS-SQL).  It does not have 
+            any effect in this regard for databases that use sequences 
+            to generate primary key identifiers (i.e. Firebird, Postgresql, 
+            Oracle).
 
         :param default: A scalar, Python callable, or :class:`~sqlalchemy.sql.expression.ClauseElement`
           representing the *default value* for this column, which will be

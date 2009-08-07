@@ -8,11 +8,11 @@ In this tutorial we will cover a basic SQLAlchemy object-relational mapping scen
 Version Check
 =============
 
-A quick check to verify that we are on at least **version 0.5** of SQLAlchemy::
+A quick check to verify that we are on at least **version 0.6** of SQLAlchemy::
 
     >>> import sqlalchemy
     >>> sqlalchemy.__version__ # doctest:+SKIP
-    0.5.0
+    0.6.0
 
 Connecting
 ==========

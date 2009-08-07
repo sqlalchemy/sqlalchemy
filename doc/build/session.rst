@@ -179,7 +179,7 @@ The ``query()`` function takes one or more *entities* and returns a new ``Query`
     user_mapper = class_mapper(User)
     session.query(user_mapper)
 
-When ``Query`` returns results, each object instantiated is stored within the identity map.   When a row matches an object which is already present, the same object is returned.  In the latter case, whether or not the row is populated onto an existing object depends upon whether the attributes of the instance have been *expired* or not.  As of 0.5, a default-configured ``Session`` automatically expires all instances along transaction boundaries, so that with a normally isolated transaction, there shouldn't be any issue of instances representing data which is stale with regards to the current transaction.
+When ``Query`` returns results, each object instantiated is stored within the identity map.   When a row matches an object which is already present, the same object is returned.  In the latter case, whether or not the row is populated onto an existing object depends upon whether the attributes of the instance have been *expired* or not.  A default-configured ``Session`` automatically expires all instances along transaction boundaries, so that with a normally isolated transaction, there shouldn't be any issue of instances representing data which is stale with regards to the current transaction.
 
 Adding New or Existing Items
 ----------------------------
@@ -290,7 +290,7 @@ Rolling Back
   * Objects which were marked as *deleted* within the lifespan of the transaction are promoted back to the *persistent* state, corresponding to their DELETE statement being rolled back.  Note that if those objects were first *pending* within the transaction, that operation takes precedence instead.
   * All objects not expunged are fully expired.  
 
-With that state understood, the ``Session`` may safely continue usage after a rollback occurs (note that this is a new feature as of version 0.5).
+With that state understood, the ``Session`` may safely continue usage after a rollback occurs.
 
 When a ``flush()`` fails, typically for reasons like primary key, foreign key, or "not nullable" constraint violations, a ``rollback()`` is issued automatically (it's currently not possible for a flush to continue after a partial failure).  However, the flush process always uses its own transactional demarcator called a *subtransaction*, which is described more fully in the docstrings for ``Session``.  What it means here is that even though the database transaction has been rolled back, the end user must still issue ``rollback()`` to fully reset the state of the ``Session``.
 
@@ -632,7 +632,7 @@ A (really, really) common question is when does the contextual session get creat
                         Session.remove() <-
     web response   <-  
 
-The above example illustrates an explicit call to ``Session.remove()``.  This has the effect such that each web request starts fresh with a brand new session.   When integrating with a web framework, there's actually many options on how to proceed for this step, particularly as of version 0.5:
+The above example illustrates an explicit call to ``Session.remove()``.  This has the effect such that each web request starts fresh with a brand new session.   When integrating with a web framework, there's actually many options on how to proceed for this step:
 
 * Session.remove() - this is the most cut and dry approach; the ``Session`` is thrown away, all of its transactional/connection resources are closed out, everything within it is explicitly gone.  A new ``Session`` will be used on the next request.
 * Session.close() - Similar to calling ``remove()``, in that all objects are explicitly expunged and all transactional/connection resources closed, except the actual ``Session`` object hangs around.  It doesn't make too much difference here unless the start of the web request would like to pass specific options to the initial construction of ``Session()``, such as a specific ``Engine`` to bind to.
