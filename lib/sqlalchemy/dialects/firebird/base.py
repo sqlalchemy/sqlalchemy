@@ -257,10 +257,10 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
         columns = [
                 self.process(
-                    self.label_select_column(None, c, asfrom=False), 
-                    within_columns_clause=True, 
+                    self.label_select_column(None, c, asfrom=False),
+                    within_columns_clause=True,
                     result_map=self.result_map
-                ) 
+                )
                 for c in expression._select_iterables(returning_cols)
             ]
         return 'RETURNING ' + ', '.join(columns)
@@ -311,12 +311,12 @@ class FBDialect(default.DefaultDialect):
     name = 'firebird'
 
     max_identifier_length = 31
-    
+
     supports_sequences = True
     sequences_optional = False
     supports_default_values = True
     postfetch_lastrowid = False
-    
+
     requires_name_normalize = True
     supports_empty_insert = False
 
@@ -346,7 +346,7 @@ class FBDialect(default.DefaultDialect):
             }
         else:
             self.implicit_returning = True
-            
+
     def normalize_name(self, name):
         # Remove trailing spaces: FB uses a CHAR() type,
         # that is padded with spaces
