@@ -885,7 +885,8 @@ class MSExecutionContext(default.DefaultExecutionContext):
             return base.ResultProxy(self)
 
 class MSSQLCompiler(compiler.SQLCompiler):
-
+    returning_precedes_values = True
+    
     extract_map = compiler.SQLCompiler.extract_map.copy()
     extract_map.update ({
         'doy': 'dayofyear',

@@ -179,6 +179,20 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         u = update(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
         self.assert_compile(u, "UPDATE mytable SET name=:name OUTPUT LEN(inserted.name) AS length_1")
 
+    def test_delete_returning(self):
+        table1 = table('mytable',
+            column('myid', Integer),
+            column('name', String(128)),
+            column('description', String(128)),
+        )
+
+        d = delete(table1).returning(table1.c.myid, table1.c.name)
+        self.assert_compile(d, "DELETE FROM mytable OUTPUT deleted.myid, deleted.name")
+
+        d = delete(table1).where(table1.c.name=='bar').returning(table1.c.myid, table1.c.name)
+        self.assert_compile(d, "DELETE FROM mytable OUTPUT deleted.myid, deleted.name WHERE mytable.name = :name_1")
+
+
     def test_insert_returning(self):
         table1 = table('mytable',
             column('myid', Integer),
