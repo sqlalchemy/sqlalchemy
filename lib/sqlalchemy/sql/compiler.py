@@ -764,7 +764,10 @@ class SQLCompiler(engine.Compiled):
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
         if self.column_keys is None and stmt.parameters is None:
-            return [(c, self._create_crud_bind_param(c, None)) for c in stmt.table.columns]
+            return [
+                        (c, self._create_crud_bind_param(c, None)) 
+                        for c in stmt.table.columns
+                    ]
 
         # if we have statement parameters - set defaults in the
         # compiled params
@@ -789,6 +792,8 @@ class SQLCompiler(engine.Compiled):
                                 self.dialect.implicit_returning and \
                                 stmt.table.implicit_returning
         
+        postfetch_lastrowid = need_pks and self.dialect.postfetch_lastrowid
+        
         for c in stmt.table.columns:
             if c.key in parameters:
                 value = parameters[c.key]
@@ -798,14 +803,13 @@ class SQLCompiler(engine.Compiled):
                     self.postfetch.append(c)
                     value = self.process(value.self_group())
                 values.append((c, value))
-
-            elif isinstance(c, schema.Column):
+            else:
                 if self.isinsert:
                     if c.primary_key and \
                         need_pks and \
                         (
-                            c is not stmt.table._autoincrement_column or 
-                            not self.dialect.postfetch_lastrowid
+                            not postfetch_lastrowid or 
+                            c is not stmt.table._autoincrement_column
                         ):
                         
                         if implicit_returning:
@@ -835,26 +839,26 @@ class SQLCompiler(engine.Compiled):
 
                                 values.append((c, self._create_crud_bind_param(c, None)))
                                 self.prefetch.append(c)
-                                
-                    elif isinstance(c.default, schema.ColumnDefault):
-                        if isinstance(c.default.arg, sql.ClauseElement):
-                            values.append((c, self.process(c.default.arg.self_group())))
-                            
-                            if not c.primary_key:
-                                # dont add primary key column to postfetch
-                                self.postfetch.append(c)
-                        else:
-                            values.append((c, self._create_crud_bind_param(c, None)))
-                            self.prefetch.append(c)
-                    elif c.server_default is not None:
-                        if not c.primary_key:
-                            self.postfetch.append(c)
+
                     elif isinstance(c.default, schema.Sequence):
                         proc = self.process(c.default)
                         if proc is not None:
                             values.append((c, proc))
                             if not c.primary_key:
                                 self.postfetch.append(c)
+                    elif isinstance(c.default, schema.ColumnDefault) and \
+                            isinstance(c.default.arg, sql.ClauseElement):
+                        values.append((c, self.process(c.default.arg.self_group())))
+                        
+                        if not c.primary_key:
+                            # dont add primary key column to postfetch
+                            self.postfetch.append(c)
+                    elif c.default is not None:
+                        values.append((c, self._create_crud_bind_param(c, None)))
+                        self.prefetch.append(c)
+                    elif c.server_default is not None:
+                        if not c.primary_key:
+                            self.postfetch.append(c)
                 elif self.isupdate:
                     if isinstance(c.onupdate, schema.ColumnDefault):
                         if isinstance(c.onupdate.arg, sql.ClauseElement):
@@ -864,9 +868,6 @@ class SQLCompiler(engine.Compiled):
                             values.append((c, self._create_crud_bind_param(c, None)))
                             self.prefetch.append(c)
                     elif c.server_onupdate is not None:
-                        self.postfetch.append(c)
-                    # deprecated? or remove?
-                    elif isinstance(c.onupdate, schema.FetchedValue):
                         self.postfetch.append(c)
         return values
 

@@ -2964,6 +2964,8 @@ class ColumnClause(_Immutable, ColumnElement):
     """
     __visit_name__ = 'column'
 
+    onupdate = default = server_default = server_onupdate = None
+
     def __init__(self, text, selectable=None, type_=None, is_literal=False):
         self.key = self.name = text
         self.table = selectable
