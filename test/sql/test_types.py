@@ -75,7 +75,7 @@ class UserDefinedTest(TestBase):
             user_id=4, goofy='fred', goofy2='fred', goofy4=u'fred',
             goofy7=u'fred', goofy8=9, goofy9=9)
 
-        l = users.select().execute().fetchall()
+        l = users.select().order_by(users.c.user_id).execute().fetchall()
         for assertstr, assertint, assertint2, row in zip(
             ["BIND_INjackBIND_OUT", "BIND_INlalaBIND_OUT", "BIND_INfredBIND_OUT"],
             [1200, 1500, 900],
@@ -597,7 +597,8 @@ class DateTest(TestBase, AssertsExecutionResults):
     def testdate(self):
         global insert_data
 
-        l = map(tuple, users_with_date.select().execute().fetchall())
+        l = map(tuple,
+                users_with_date.select().order_by(users_with_date.c.user_id).execute().fetchall())
         self.assert_(l == insert_data,
                      'DateTest mismatch: got:%s expected:%s' % (l, insert_data))
 
@@ -628,8 +629,8 @@ class DateTest(TestBase, AssertsExecutionResults):
             t.insert().execute(adate=d2, adatetime=d2)
 
             x = t.select().execute().fetchall()[0]
-            self.assert_(x.adate.__class__ == datetime.date)
-            self.assert_(x.adatetime.__class__ == datetime.datetime)
+            eq_(x.adate.__class__, datetime.date)
+            eq_(x.adatetime.__class__, datetime.datetime)
 
             t.delete().execute()
 
@@ -691,7 +692,7 @@ class NumericTest(TestBase, AssertsExecutionResults):
             numericcol=Decimal("3.5"), floatcol=Decimal("5.6"),
             ncasdec=Decimal("12.4"), fcasdec=Decimal("15.75"))
 
-        l = numeric_table.select().execute().fetchall()
+        l = numeric_table.select().order_by(numeric_table.c.id).execute().fetchall()
         rounded = [
             (l[0][0], l[0][1], round(l[0][2], 5), l[0][3], l[0][4]),
             (l[1][0], l[1][1], round(l[1][2], 5), l[1][3], l[1][4]),
@@ -762,11 +763,13 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         bool_table.insert().execute(id=4, value=True)
         bool_table.insert().execute(id=5, value=True)
 
-        res = bool_table.select(bool_table.c.value==True).execute().fetchall()
-        assert(res==[(1, True),(3, True),(4, True),(5, True)])
+        res = bool_table.select(
+            bool_table.c.value == True
+            ).order_by(bool_table.c.id).execute().fetchall()
+        eq_(res, [(1, True), (3, True), (4, True), (5, True)])
 
-        res2 = bool_table.select(bool_table.c.value==False).execute().fetchall()
-        assert(res2==[(2, False)])
+        res2 = bool_table.select(bool_table.c.value == False).execute().fetchall()
+        eq_(res2, [(2, False)])
 
 class PickleTest(TestBase):
     def test_eq_comparison(self):

@@ -136,7 +136,6 @@ class ProxyConnectionTest(TestBase):
                 t1.insert().execute(c1=6)
                 assert engine.execute("select * from t1").fetchall() == [(5, 'some data'), (6, 'foo')]
             finally:
-                pass
                 m.drop_all()
             
             engine.dispose()
