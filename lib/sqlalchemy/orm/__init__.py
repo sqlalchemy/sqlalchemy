@@ -52,7 +52,7 @@ from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import AliasOption, Query
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.orm.session import Session as _Session
-from sqlalchemy.orm.session import object_session, sessionmaker
+from sqlalchemy.orm.session import object_session, sessionmaker, make_transient
 from sqlalchemy.orm.scoping import ScopedSession
 from sqlalchemy import util as sa_util
 
@@ -86,6 +86,7 @@ __all__ = (
     'join',
     'lazyload',
     'mapper',
+    'make_transient',
     'noload',
     'object_mapper',
     'object_session',

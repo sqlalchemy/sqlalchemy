@@ -2,7 +2,7 @@ from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.test.util import gc_collect
 import inspect
 import pickle
-from sqlalchemy.orm import create_session, sessionmaker, attributes
+from sqlalchemy.orm import create_session, sessionmaker, attributes, make_transient
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
@@ -205,6 +205,25 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(bind.connect().execute("select count(1) from users").scalar(), 1)
         sess.close()
 
+    @testing.resolve_artifact_names
+    def test_make_transient(self):
+        mapper(User, users)
+        sess = create_session()
+        sess.add(User(name='test'))
+        sess.flush()
+        
+        u1 = sess.query(User).first()
+        make_transient(u1)
+        assert u1 not in sess
+        sess.add(u1)
+        assert u1 in sess.new
+
+        u1 = sess.query(User).first()
+        sess.expunge(u1)
+        make_transient(u1)
+        sess.add(u1)
+        assert u1 in sess.new
+        
     @testing.resolve_artifact_names
     def test_autoflush_expressions(self):
         """test that an expression which is dependent on object state is 

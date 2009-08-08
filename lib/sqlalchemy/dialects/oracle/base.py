@@ -492,11 +492,10 @@ class OracleDialect(default.DefaultDialect):
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
 
-# TODO: implement server_version_info for oracle
-#    def initialize(self, connection):
-#        super(OracleDialect, self).initialize(connection)
-#        self.implicit_returning = self.server_version_info > (10, ) and \
-#                                        self.__dict__.get('implicit_returning', True)
+    def initialize(self, connection):
+        super(OracleDialect, self).initialize(connection)
+        self.implicit_returning = self.server_version_info > (10, ) and \
+                                        self.__dict__.get('implicit_returning', True)
 
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT

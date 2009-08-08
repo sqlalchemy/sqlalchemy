@@ -746,16 +746,16 @@ class SQLCompiler(engine.Compiled):
 
         return text
 
+    def _create_crud_bind_param(self, col, value):
+        bindparam = sql.bindparam(col.key, value, type_=col.type)
+        self.binds[col.key] = bindparam
+        return self.bindparam_string(self._truncate_bindparam(bindparam))
+        
     def _get_colparams(self, stmt):
         """create a set of tuples representing column/string pairs for use
         in an INSERT or UPDATE statement.
 
         """
-
-        def create_bind_param(col, value):
-            bindparam = sql.bindparam(col.key, value, type_=col.type)
-            self.binds[col.key] = bindparam
-            return self.bindparam_string(self._truncate_bindparam(bindparam))
 
         self.postfetch = []
         self.prefetch = []
@@ -764,7 +764,7 @@ class SQLCompiler(engine.Compiled):
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
         if self.column_keys is None and stmt.parameters is None:
-            return [(c, create_bind_param(c, None)) for c in stmt.table.columns]
+            return [(c, self._create_crud_bind_param(c, None)) for c in stmt.table.columns]
 
         # if we have statement parameters - set defaults in the
         # compiled params
@@ -793,7 +793,7 @@ class SQLCompiler(engine.Compiled):
             if c.key in parameters:
                 value = parameters[c.key]
                 if sql._is_literal(value):
-                    value = create_bind_param(c, value)
+                    value = self._create_crud_bind_param(c, value)
                 else:
                     self.postfetch.append(c)
                     value = self.process(value.self_group())
@@ -819,7 +819,7 @@ class SQLCompiler(engine.Compiled):
                                 values.append((c, self.process(c.default.arg.self_group())))
                                 self.returning.append(c)
                             elif c.default is not None:
-                                values.append((c, create_bind_param(c, None)))
+                                values.append((c, self._create_crud_bind_param(c, None)))
                                 self.prefetch.append(c)
                             else:
                                 self.returning.append(c)
@@ -833,7 +833,7 @@ class SQLCompiler(engine.Compiled):
                                 ) or \
                                 self.dialect.preexecute_autoincrement_sequences:
 
-                                values.append((c, create_bind_param(c, None)))
+                                values.append((c, self._create_crud_bind_param(c, None)))
                                 self.prefetch.append(c)
                                 
                     elif isinstance(c.default, schema.ColumnDefault):
@@ -844,7 +844,7 @@ class SQLCompiler(engine.Compiled):
                                 # dont add primary key column to postfetch
                                 self.postfetch.append(c)
                         else:
-                            values.append((c, create_bind_param(c, None)))
+                            values.append((c, self._create_crud_bind_param(c, None)))
                             self.prefetch.append(c)
                     elif c.server_default is not None:
                         if not c.primary_key:
@@ -861,7 +861,7 @@ class SQLCompiler(engine.Compiled):
                             values.append((c, self.process(c.onupdate.arg.self_group())))
                             self.postfetch.append(c)
                         else:
-                            values.append((c, create_bind_param(c, None)))
+                            values.append((c, self._create_crud_bind_param(c, None)))
                             self.prefetch.append(c)
                     elif c.server_onupdate is not None:
                         self.postfetch.append(c)

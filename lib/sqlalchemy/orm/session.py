@@ -1593,6 +1593,22 @@ def _state_for_unknown_persistence_instance(instance):
 
     return state
 
+def make_transient(instance):
+    """Make the given instance 'transient'.
+    
+    This will remove its association with any 
+    session and additionally will remove its "identity key",
+    such that it's as though the object were newly constructed,
+    except retaining its values.
+    
+    """
+    state = attributes.instance_state(instance)
+    s = _state_session(state)
+    if s:
+        s._expunge_state(state)
+    del state.key
+    
+    
 def object_session(instance):
     """Return the ``Session`` to which instance belongs, or None."""
 
