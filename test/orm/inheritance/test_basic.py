@@ -208,6 +208,58 @@ class CascadeTest(_base.MappedTest):
         assert t4_1 in sess.deleted
         sess.flush()
 
+class M2OUseGetTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('base', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('type', String(30))
+        )
+        Table('sub', metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+        )
+        Table('related', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('sub_id', Integer, ForeignKey('sub.id')),
+        )
+
+    @testing.resolve_artifact_names
+    def test_use_get(self):
+        # test [ticket:1186]
+        class Base(_base.BasicEntity):
+            pass
+        class Sub(Base):
+            pass
+        class Related(Base):
+            pass
+        mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='b')
+        mapper(Sub, sub, inherits=Base, polymorphic_identity='s')
+        mapper(Related, related, properties={
+            # previously, this was needed for the comparison to occur:
+            # the 'primaryjoin' looks just like "Sub"'s "get" clause (based on the Base id),
+            # and foreign_keys since that join condition doesn't actually have any fks in it
+            #'sub':relation(Sub, primaryjoin=base.c.id==related.c.sub_id, foreign_keys=related.c.sub_id)
+            
+            # now we can use this:
+            'sub':relation(Sub)
+        })
+        
+        assert class_mapper(Related).get_property('sub').strategy.use_get
+        
+        sess = create_session()
+        s1 = Sub()
+        r1 = Related(sub=s1)
+        sess.add(r1)
+        sess.flush()
+        sess.expunge_all()
+
+        r1 = sess.query(Related).first()
+        s1 = sess.query(Sub).first()
+        def go():
+            assert r1.sub
+        self.assert_sql_count(testing.db, go, 0)
+        
+
 class GetTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

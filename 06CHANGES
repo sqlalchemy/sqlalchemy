@@ -14,7 +14,16 @@
     - added "make_transient()" helper function which transforms a persistent/
       detached instance into a transient one (i.e. deletes the instance_key
       and removes from any session.) [ticket:1052]
-      
+    - many-to-one "lazyload" fixes:
+        - many-to-one relation to a joined-table subclass now uses get()
+          for a simple load (known as the "use_get" condition), 
+          i.e. Related->Sub(Base), without the need
+          to redefine the primaryjoin condition in terms of the base
+          table. [ticket:1186]
+        - specifying a foreign key with a declarative column,
+          i.e. ForeignKey(MyRelatedClass.id) doesn't break the "use_get"
+          condition from taking place [ticket:1492]
+    
 - sql
     - returning() support is native to insert(), update(), delete().  Implementations
       of varying levels of functionality exist for Postgresql, Firebird, MSSQL and

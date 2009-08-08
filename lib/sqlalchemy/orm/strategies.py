@@ -372,8 +372,18 @@ class LazyLoader(AbstractRelationLoader):
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
         #from sqlalchemy.orm import query
-        self.use_get = not self.uselist and self.mapper._get_clause[0].compare(self.__lazywhere)
+        self.use_get = not self.uselist and \
+                        self.mapper._get_clause[0].compare(
+                            self.__lazywhere, 
+                            use_proxies=True, 
+                            equivalents=self.mapper._equivalent_columns
+                        )
         if self.use_get:
+            for col in self._equated_columns.keys():
+                if col in self.mapper._equivalent_columns:
+                    for c in self.mapper._equivalent_columns[col]:
+                        self._equated_columns[c] = self._equated_columns[col]
+            
             self.logger.info("%s will use query.get() to optimize instance loads" % self)
 
     def init_class_attribute(self, mapper):

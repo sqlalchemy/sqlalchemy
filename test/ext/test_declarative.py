@@ -246,6 +246,37 @@ class DeclarativeTest(DeclarativeTestBase):
         Base = decl.declarative_base(cls=MyBase)
         assert hasattr(Base, 'metadata')
         assert Base().foobar() == "foobar"
+    
+    def test_uses_get_on_class_col_fk(self):
+        # test [ticket:1492]
+        
+        class Master(Base): 
+            __tablename__ = 'master' 
+            id = Column(Integer, primary_key=True) 
+
+        class Detail(Base): 
+            __tablename__ = 'detail' 
+            id = Column(Integer, primary_key=True) 
+            master_id = Column(None, ForeignKey(Master.id)) 
+            master = relation(Master) 
+
+        Base.metadata.create_all()
+        
+        compile_mappers()
+        assert class_mapper(Detail).get_property('master').strategy.use_get
+        
+        m1 = Master()
+        d1 = Detail(master=m1)
+        sess = create_session()
+        sess.add(d1)
+        sess.flush()
+        sess.expunge_all()
+
+        d1 = sess.query(Detail).first()
+        m1 = sess.query(Master).first()
+        def go():
+            assert d1.master
+        self.assert_sql_count(testing.db, go, 0)
         
     def test_index_doesnt_compile(self):
         class User(Base):
