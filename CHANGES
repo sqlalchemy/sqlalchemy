@@ -3,6 +3,337 @@
 =======
 CHANGES
 =======
+0.6.0b1
+========
+- Major Release
+  - For the full set of feature descriptions, see
+    http://www.sqlalchemy.org/trac/wiki/06Migration .
+    This document is a work in progress.
+
+  - All bug fixes and feature enhancements from 0.5.6 and 
+    below are also included within 0.6.
+
+  - Platforms targeted now include Python 2.4/2.5/2.6, Python
+    3.1, Jython2.5.
+    
+- orm
+  - the 'expire' option on query.update() has been renamed to
+    'fetch', thus matching that of query.delete()
+
+  - query.update() and query.delete() both default to
+    'evaluate' for the synchronize strategy.
+
+  - the 'synchronize' strategy for update() and delete() raises
+    an error on failure. There is no implicit fallback onto
+    "fetch". Failure of evaluation is based on the structure of
+    criteria, so success/failure is deterministic based on code
+    structure.
+
+  - the "dont_load=True" flag on Session.merge() is deprecated
+    and is now "load=False".
+
+  - many-to-one relations now fire off a lazyload in fewer
+    cases, including in most cases will not fetch the "old"
+    value when a new one is replaced.
+
+  - added "make_transient()" helper function which transforms a
+    persistent/ detached instance into a transient one (i.e.
+    deletes the instance_key and removes from any session.)
+    [ticket:1052]
+
+  - many-to-one "lazyload" fixes:
+      - many-to-one relation to a joined-table subclass now
+        uses get() for a simple load (known as the "use_get"
+        condition), i.e. Related->Sub(Base), without the need
+        to redefine the primaryjoin condition in terms of the
+        base table. [ticket:1186]
+      - specifying a foreign key with a declarative column,
+        i.e. ForeignKey(MyRelatedClass.id) doesn't break the
+        "use_get" condition from taking place [ticket:1492]
+
+- sql
+    - the autoincrement flag on column now indicates the column
+      which should be linked to cursor.lastrowid, if that method
+      is used.  See the API docs for details.
+      
+    - returning() support is native to insert(), update(),
+      delete(). Implementations of varying levels of
+      functionality exist for Postgresql, Firebird, MSSQL and
+      Oracle. returning() can be called explicitly with column
+      expressions which are then returned in the resultset,
+      usually via fetchone() or first().
+
+      insert() constructs will also use RETURNING implicitly to
+      get newly generated primary key values, if the database
+      version in use supports it (a version number check is
+      performed). This occurs if no end-user returning() was
+      specified.
+
+    - Databases which rely upon postfetch of "last inserted id"
+      to get at a generated sequence value (i.e. MySQL, MS-SQL)
+      now work correctly when there is a composite primary key
+      where the "autoincrement" column is not the first primary
+      key column in the table.
+
+    - the last_inserted_ids() method has been renamed to the
+      descriptor "inserted_primary_key".
+
+- engines
+  - transaction isolation level may be specified with
+    create_engine(... isolation_level="..."); available on
+    postgresql and sqlite. [ticket:443]
+
+  - added first() method to ResultProxy, returns first row and
+    closes result set immediately.
+
+- schema
+    - deprecated MetaData.connect() and
+      ThreadLocalMetaData.connect() have been removed - send
+      the "bind" attribute to bind a metadata.
+
+    - deprecated metadata.table_iterator() method removed (use
+      sorted_tables)
+
+    - the "metadata" argument is removed from DefaultGenerator
+      and subclasses, but remains locally present on Sequence,
+      which is a standalone construct in DDL.
+
+    - Removed public mutability from Index and Constraint
+      objects:
+        - ForeignKeyConstraint.append_element()
+        - Index.append_column()
+        - UniqueConstraint.append_column()
+        - PrimaryKeyConstraint.add()
+        - PrimaryKeyConstraint.remove()
+      These should be constructed declaratively (i.e. in one
+      construction).
+
+    - UniqueConstraint, Index, PrimaryKeyConstraint all accept
+      lists of column names or column objects as arguments.
+
+    - Other removed things:
+        - Table.key (no idea what this was for)
+        - Table.primary_key is not assignable - use
+          table.append_constraint(PrimaryKeyConstraint(...))
+        - Column.bind       (get via column.table.bind)
+        - Column.metadata   (get via column.table.metadata)
+
+    - The use_alter flag on ForeignKey is now a shortcut option
+      for operations that can be hand-constructed using the
+      DDL() event system. A side effect of this refactor is
+      that ForeignKeyConstraint objects with use_alter=True
+      will *not* be emitted on SQLite, which does not support
+      ALTER for foreign keys. This has no effect on SQLite's
+      behavior since SQLite does not actually honor FOREIGN KEY
+      constraints.
+
+- Reflection/Inspection
+    - Table reflection has been expanded and generalized into 
+      a new API called "sqlalchemy.engine.reflection.Inspector".
+      The Inspector object provides fine-grained information about
+      a wide variety of schema information, with room for expansion,
+      including table names, column names, view definitions, sequences,
+      indexes, etc.  
+      
+    - The existing autoload=True system now uses Inspector underneath
+      so that each dialect need only return "raw" data about tables
+      and other objects - Inspector is the single place that information
+      is compiled into Table objects so that consistency is at a maximum.
+      
+- DDL
+    - the DDL() system has been greatly expanded:
+        - CreateTable()
+        - DropTable()
+        - AddConstraint()
+        - DropConstraint()
+        - CreateIndex()
+        - DropIndex()
+        - CreateSequence()
+        - DropSequence()
+        - these support "on" and "execute-at()" just like
+          plain DDL() does.
+
+    - The "on" callable passed to DDL() needs to accept **kw
+      arguments. In the case of MetaData before/after
+      create/drop, the list of Table objects for which
+      CREATE/DROP DDL is to be issued is passed as the kw
+      argument "tables". This is necessary for metadata-level
+      DDL that is dependent on the presence of specific tables.
+
+- dialect refactor
+    - Dialect modules are now broken into database dialects
+      plus DBAPI implementations. Connect URLs are now
+      preferred to be specified using dialect+driver://...,
+      i.e. "mysql+mysqldb://scott:tiger@localhost/test". See
+      the 0.6 documentation for examples.
+
+    - the "owner" keyword argument is removed from Table. Use
+      "schema" to represent any namespaces to be prepended to
+      the table name.
+
+    - server_version_info becomes a static attribute.
+
+    - dialects receive an initialize() event on initial
+      connection to determine connection properties.
+
+    - dialects receive a visit_pool event have an opportunity
+      to establish pool listeners.
+
+    - cached TypeEngine classes are cached per-dialect class 
+      instead of per-dialect.
+
+    - Deprecated Dialect.get_params() removed.
+
+    - Dialect.get_rowcount() has been renamed to a descriptor
+      "rowcount", and calls cursor.rowcount directly. Dialects
+      which need to hardwire a rowcount in for certain calls
+      should override the method to provide different behavior.
+
+    - Functions and operators generated by the compiler now use
+      (almost) regular dispatch functions of the form
+      "visit_<opname>" and "visit_<funcname>_fn" to provide
+      customed processing. This replaces the need to copy the
+      "functions" and "operators" dictionaries in compiler
+      subclasses with straightforward visitor methods, and also
+      allows compiler subclasses complete control over
+      rendering, as the full _Function or _BinaryExpression
+      object is passed in.
+
+- postgresql
+    - The "postgres" dialect is now named "postgresql" !
+      Connection strings look like:
+
+           postgresql://scott:tiger@localhost/test
+           postgresql+pg8000://scott:tiger@localhost/test
+
+       The "postgres" name remains for backwards compatiblity
+       in the following ways:
+
+           - There is a "postgres.py" dummy dialect which
+             allows old URLs to work, i.e.
+             postgres://scott:tiger@localhost/test
+
+           - The "postgres" name can be imported from the old
+             "databases" module, i.e. "from
+             sqlalchemy.databases import postgres" as well as
+             "dialects", "from sqlalchemy.dialects.postgres
+             import base as pg", will send a deprecation
+             warning.
+
+           - Special expression arguments are now named
+             "postgresql_returning" and "postgresql_where", but
+             the older "postgres_returning" and
+             "postgres_where" names still work with a
+             deprecation warning.
+
+    - using new dialect.initialize() feature to set up
+      version-dependent behavior.
+
+- mysql
+    - all the _detect_XXX() functions now run once underneath
+      dialect.initialize()
+
+- oracle
+    - unit tests pass 100% with cx_oracle !
+
+    - support for cx_Oracle's "native unicode" mode which does
+      not require NLS_LANG to be set. Use the latest 5.0.2 or
+      later of cx_oracle.
+
+    - an NCLOB type is added to the base types.
+
+    - func.char_length is a generic function for LENGTH
+
+    - ForeignKey() which includes onupdate=<value> will emit a
+      warning, not emit ON UPDATE CASCADE which is unsupported
+      by oracle
+
+    - the keys() method of RowProxy() now returns the result
+      column names *normalized* to be SQLAlchemy case
+      insensitive names. This means they will be lower case for
+      case insensitive names, whereas the DBAPI would normally
+      return them as UPPERCASE names. This allows row keys() to
+      be compatible with further SQLAlchemy operations.
+
+    - using new dialect.initialize() feature to set up
+      version-dependent behavior.
+
+- firebird
+    - the keys() method of RowProxy() now returns the result
+      column names *normalized* to be SQLAlchemy case
+      insensitive names. This means they will be lower case for
+      case insensitive names, whereas the DBAPI would normally
+      return them as UPPERCASE names. This allows row keys() to
+      be compatible with further SQLAlchemy operations.
+
+    - using new dialect.initialize() feature to set up
+      version-dependent behavior.
+
+- new dialects
+    - postgresql+pg8000
+    - postgresql+pypostgresql (partial)
+    - postgresql+zxjdbc
+    - mysql+pyodbc
+    - mysql+zxjdbc
+
+- mssql
+    - MSSQL + Pyodbc + FreeTDS now works for the most part,
+      with possible exceptions regarding binary data as well as
+      unicode schema identifiers.
+    - the "has_window_funcs" flag is removed. LIMIT/OFFSET
+      usage will use ROW NUMBER as always, and if on an older
+      version of SQL Server, the operation fails. The behavior
+      is exactly the same except the error is raised by SQL
+      server instead of the dialect, and no flag setting is
+      required to enable it.
+    - the "auto_identity_insert" flag is removed. This feature
+      always takes effect when an INSERT statement overrides a
+      column that is known to have a sequence on it. As with
+      "has_window_funcs", if the underlying driver doesn't
+      support this, then you can't do this operation in any
+      case, so there's no point in having a flag.
+    - using new dialect.initialize() feature to set up
+      version-dependent behavior.
+
+- types
+    - The construction of types within dialects has been totally
+      overhauled.  Dialects now define publically available types
+      as UPPERCASE names exclusively, and internal implementation
+      types using underscore identifiers (i.e. are private).
+      The system by which types are expressed in SQL and DDL
+      has been moved to the compiler system.  This has the 
+      effect that there are much fewer type objects within
+      most dialects. A detailed document on this architecture
+      for dialect authors is in 
+      lib/sqlalchemy/dialects/type_migration_guidelines.txt .
+
+    - Types no longer make any guesses as to default
+      parameters. In particular, Numeric, Float, NUMERIC,
+      FLOAT, DECIMAL don't generate any length or scale unless
+      specified.
+      
+    - Reflection of types now returns the exact UPPERCASE
+      type within types.py, or the UPPERCASE type within
+      the dialect itself if the type is not a standard SQL 
+      type.  This means reflection now returns more accurate
+      information about reflected types.  
+      
+    - PickleType now uses == for comparison of values when
+      mutable=True, unless the "comparator" argument with a
+      comparsion function is specified to the type. Objects
+      being pickled will be compared based on identity (which
+      defeats the purpose of mutable=True) if __eq__() is not
+      overridden or a comparison function is not provided.
+      
+    - The default "precision" and "scale" arguments of Numeric
+      and Float have been removed and now default to None.
+      NUMERIC and FLOAT will be rendered with no numeric
+      arguments by default unless these values are provided.
+
+    - AbstractType.get_search_list() is removed - the games
+      that was used for are no longer necessary.
+
+
 0.5.6
 =====
 - orm
