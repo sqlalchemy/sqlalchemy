@@ -30,8 +30,10 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
         """)
 
     def test_out_params(self):
-        result = testing.db.execute(text("begin foo(:x_in, :x_out, :y_out, :z_out); end;", bindparams=[bindparam('x_in', Numeric), outparam('x_out', Numeric), outparam('y_out', Numeric), outparam('z_out', String)]), x_in=5)
+        result = testing.db.execute(text("begin foo(:x_in, :x_out, :y_out, :z_out); end;", 
+                bindparams=[bindparam('x_in', Numeric), outparam('x_out', Integer), outparam('y_out', Numeric), outparam('z_out', String)]), x_in=5)
         assert result.out_parameters == {'x_out':10, 'y_out':75, 'z_out':None}, result.out_parameters
+        assert isinstance(result.out_parameters['x_out'], int)
 
     @classmethod
     def teardown_class(cls):
@@ -362,7 +364,22 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 
+    def test_int_not_float(self):
+        m = MetaData(testing.db)
+        t1 = Table('t1', m, Column('foo', Integer))
+        t1.create()
+        try:
+            r = t1.insert().values(foo=5).returning(t1.c.foo).execute()
+            x = r.scalar()
+            assert x == 5
+            assert isinstance(x, int)
 
+            x = t1.select().scalar()
+            assert x == 5
+            assert isinstance(x, int)
+        finally:
+            t1.drop()
+        
     def test_reflect_raw(self):
         types_table = Table(
         'all_types', MetaData(testing.db),
@@ -417,6 +434,8 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             eq_(row['bindata'].read(), 'this is binary')
         finally:
             t.drop(engine)
+            
+            
 class BufferedColumnTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
@@ -448,7 +467,7 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
     @testing.fails_on('+zxjdbc', 'FIXME: zxjdbc should support this')
     def test_fetch_single_arraysize(self):
         eng = testing_engine(options={'arraysize':1})
-        result = eng.execute(binary_table.select()).fetchall(),
+        result = eng.execute(binary_table.select()).fetchall()
         if jython:
             result = [(i, value.tostring()) for i, value in result]
         eq_(result, [(i, stream) for i in range(1, 11)])

@@ -4,7 +4,6 @@ from sqlalchemy.test import *
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
 
-        
 class ReturningTest(TestBase, AssertsExecutionResults):
     __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
 
@@ -35,7 +34,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
     
     def teardown(self):
         table.drop()
-
+    
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
     def test_column_targeting(self):
@@ -157,3 +156,33 @@ class SequenceReturningTest(TestBase):
         r = table.insert().values(data='hi').returning(table.c.id).execute()
         assert r.first() == (1, )
         assert seq.execute() == 2
+
+class KeyReturningTest(TestBase, AssertsExecutionResults):
+    """test returning() works with columns that define 'key'."""
+    
+    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
+
+    def setup(self):
+        meta = MetaData(testing.db)
+        global table
+
+        table = Table('tables', meta,
+            Column('id', Integer, primary_key=True, key='foo_id', test_needs_autoincrement=True),
+            Column('data', String(20)),
+        )
+        table.create(checkfirst=True)
+
+    def teardown(self):
+        table.drop()
+
+    @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    def test_insert(self):
+        result = table.insert().returning(table.c.foo_id).execute(data='somedata')
+        row = result.first()
+        assert row[table.c.foo_id] == row['id'] == 1
+        
+        result = table.select().execute().first()
+        assert row[table.c.foo_id] == row['id'] == 1
+        
+

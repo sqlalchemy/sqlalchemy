@@ -1591,6 +1591,7 @@ class ResultProxy(object):
     """
 
     _process_row = RowProxy
+    out_parameters = None
     
     def __init__(self, context):
         self.context = context
@@ -1639,10 +1640,6 @@ class ResultProxy(object):
         """
         return self.cursor.lastrowid
 
-    @property
-    def out_parameters(self):
-        return self.context.out_parameters
-    
     def _cursor_description(self):
         return self.cursor.description
             
