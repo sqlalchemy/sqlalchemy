@@ -336,19 +336,19 @@ class DictlikeIteritemsTest(TestBase):
     def test_object(self):
         self._notok(object())
 
+    # Py2K
     def test_duck_1(self):
         class duck1(object):
             def iteritems(duck):
                 return iter(self.baseline)
         self._ok(duck1())
+    # end Py2K
 
-    # Py2K
     def test_duck_2(self):
         class duck2(object):
             def items(duck):
                 return list(self.baseline)
         self._ok(duck2())
-    # end Py2K
 
     # Py2K
     def test_duck_3(self):

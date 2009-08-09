@@ -45,7 +45,7 @@ class ExamplesTest(TestBase):
     # ensure that examples with external dependencies are not run if those dependencies are 
     # not present (i.e. elementtree, postgis)
     def test_examples(self):
-	pass
+        pass
         #for module in find_modules():
         #    check_import.description = module
         #    yield check_import, module

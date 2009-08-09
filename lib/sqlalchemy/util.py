@@ -540,10 +540,15 @@ def duck_type_collection(specimen, default=None):
 def dictlike_iteritems(dictlike):
     """Return a (key, value) iterator for almost any dict-like object."""
 
+    # Py3K
+    #if hasattr(dictlike, 'items'):
+    #    return dictlike.items()
+    # Py2K
     if hasattr(dictlike, 'iteritems'):
         return dictlike.iteritems()
     elif hasattr(dictlike, 'items'):
         return iter(dictlike.items())
+    # end Py2K
 
     getter = getattr(dictlike, '__getitem__', getattr(dictlike, 'get', None))
     if getter is None:
@@ -970,7 +975,7 @@ class IdentitySet(object):
         if len(self) < len(other):
             return False
 
-        for m in itertools.ifilterfalse(self._members.has_key,
+        for m in itertools.ifilterfalse(self._members.__contains__,
                                         other._members.iterkeys()):
             return False
         return True

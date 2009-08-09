@@ -818,12 +818,12 @@ class ForUpdateTest(TestBase):
 
         errors, threads = [], []
         for i in xrange(thread_count):
-            thread = threading.Thread(target=self.overlap,
+            thrd = threading.Thread(target=self.overlap,
                                       args=(groups.pop(0), errors, update_style))
-            thread.start()
-            threads.append(thread)
-        for thread in threads:
-            thread.join()
+            thrd.start()
+            threads.append(thrd)
+        for thrd in threads:
+            thrd.join()
 
         return errors
 

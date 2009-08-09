@@ -9,12 +9,13 @@ import warnings
 from cStringIO import StringIO
 
 from sqlalchemy.test import config, assertsql, util as testutil
-from sqlalchemy.util import function_named
+from sqlalchemy.util import function_named, py3k
 from engines import drop_all_tables
 
 from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, pool
 from nose import SkipTest
 
+    
 _ops = { '<': operator.lt,
          '>': operator.gt,
          '==': operator.eq,
@@ -593,10 +594,24 @@ class AssertsCompiledSQL(object):
 
         c = clause.compile(dialect=dialect, **kw)
 
+        # Py3K
+        ## I kid you not.
+        ##
+        ## 1. Doesn't work:
+        ## http://mail.python.org/pipermail/python-3000/2008-February/012144.html
+        ##
+        ## 2. no more setdefaultencoding(). (although this is undocumented)
+        ##
+        ## 3. Therefore:
+        ## http://docs.python.org/3.1/library/sys.html#sys.stdin
+        ## 
+        #sys.stdout.buffer.write(("\nSQL String:\n" + str(c) + repr(getattr(c, 'params', {}))).encode('utf-8'))
+        # Py2K
         print "\nSQL String:\n" + str(c) + repr(getattr(c, 'params', {}))
-
+        # end Py2K
+        
         cc = re.sub(r'[\n\t]', '', str(c))
-
+        
         eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
         if checkparams is not None:

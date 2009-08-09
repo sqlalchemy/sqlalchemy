@@ -1029,8 +1029,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
         
         adapter = sql_util.ClauseAdapter(target)
         def col_label(col):
-            adapted = adapter.traverse(c)
-            if isinstance(c, expression._Label):
+            adapted = adapter.traverse(col)
+            if isinstance(col, expression._Label):
                 return adapted.label(c.key)
             else:
                 return self.label_select_column(None, adapted, asfrom=False)

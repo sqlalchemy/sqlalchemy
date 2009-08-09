@@ -170,7 +170,16 @@ class Table(SchemaItem, expression.TableClause):
 
     ddl_events = ('before-create', 'after-create', 'before-drop', 'after-drop')
 
-    def __new__(cls, name, metadata, *args, **kw):
+    def __new__(cls, *args, **kw):
+        if not args:
+            # python3k pickle seems to call this
+            return object.__new__(cls)
+            
+        try:
+            name, metadata, args = args[0], args[1], args[2:]
+        except IndexError:
+            raise TypeError("Table() takes at least two arguments")
+        
         schema = kw.get('schema', None)
         useexisting = kw.pop('useexisting', False)
         mustexist = kw.pop('mustexist', False)
