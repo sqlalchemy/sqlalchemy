@@ -5,7 +5,7 @@ from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
 
 class ReturningTest(TestBase, AssertsExecutionResults):
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
+    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'oracle+zxjdbc')
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -137,7 +137,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         eq_(result2.fetchall(), [(2,False),])
 
 class SequenceReturningTest(TestBase):
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'mssql')
+    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'mssql', 'oracle+zxjdbc')
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -160,7 +160,7 @@ class SequenceReturningTest(TestBase):
 class KeyReturningTest(TestBase, AssertsExecutionResults):
     """test returning() works with columns that define 'key'."""
     
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
+    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'oracle+zxjdbc')
 
     def setup(self):
         meta = MetaData(testing.db)

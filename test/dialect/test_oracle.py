@@ -14,7 +14,7 @@ import os
 
 
 class OutParamTest(TestBase, AssertsExecutionResults):
-    __only_on__ = 'oracle'
+    __only_on__ = 'oracle+cx_oracle'
 
     @classmethod
     def setup_class(cls):
@@ -364,6 +364,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 
+    @testing.requires.returning
     def test_int_not_float(self):
         m = MetaData(testing.db)
         t1 = Table('t1', m, Column('foo', Integer))
@@ -421,6 +422,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             testing.db.execute("DROP TABLE Z_TEST")
 
+    @testing.fails_on('+zxjdbc', 'auto_convert_lobs not applicable')
     def test_raw_lobs(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
         metadata = MetaData()

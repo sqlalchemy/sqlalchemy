@@ -80,7 +80,8 @@ class QueryTest(TestBase):
                     ret[c.key] = row[c]
             return ret
 
-        if testing.against('firebird', 'postgresql', 'oracle', 'mssql'):
+        if (testing.against('firebird', 'postgresql', 'oracle', 'mssql') and
+            not testing.against('oracle+zxjdbc')):
             test_engines = [
                 engines.testing_engine(options={'implicit_returning':False}),
                 engines.testing_engine(options={'implicit_returning':True}),
@@ -167,7 +168,8 @@ class QueryTest(TestBase):
         eq_(r.inserted_primary_key, [12, 1])
 
     def test_autoclose_on_insert(self):
-        if testing.against('firebird', 'postgresql', 'oracle', 'mssql'):
+        if (testing.against('firebird', 'postgresql', 'oracle', 'mssql') and
+            not testing.against('oracle+zxjdbc')):
             test_engines = [
                 engines.testing_engine(options={'implicit_returning':False}),
                 engines.testing_engine(options={'implicit_returning':True}),
