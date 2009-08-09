@@ -132,14 +132,26 @@ class NCLOB(sqltypes.Text):
 VARCHAR2 = VARCHAR
 NVARCHAR2 = NVARCHAR
 
-class NUMBER(sqltypes.Numeric):
+
+class NUMBER(sqltypes.Numeric, sqltypes.Integer):
     __visit_name__ = 'NUMBER'
     
-class BFILE(sqltypes.Binary):
-    __visit_name__ = 'BFILE'
-
+    def __init__(self, precision=None, scale=None, asdecimal=None):
+        if asdecimal is None:
+            asdecimal = bool(scale and scale > 0)
+                
+        super(NUMBER, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal)
+            
 class DOUBLE_PRECISION(sqltypes.Numeric):
     __visit_name__ = 'DOUBLE_PRECISION'
+    def __init__(self, precision=None, scale=None, asdecimal=None):
+        if asdecimal is None:
+            asdecimal = False
+                
+        super(DOUBLE_PRECISION, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal)
+
+class BFILE(sqltypes.Binary):
+    __visit_name__ = 'BFILE'
 
 class LONG(sqltypes.Text):
     __visit_name__ = 'LONG'
@@ -200,13 +212,24 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_DATE(type_)
     
     def visit_float(self, type_):
-        if type_.precision is None:
-            return "NUMERIC"
-        else:
-            return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : 2}
+        return self.visit_FLOAT(type_)
         
     def visit_unicode(self, type_):
         return self.visit_NVARCHAR(type_)
+ 
+    def visit_DOUBLE_PRECISION(self, type_):
+        return self._generate_numeric(type_, "DOUBLE PRECISION")
+        
+    def visit_NUMBER(self, type_):
+        return self._generate_numeric(type_, "NUMBER")
+    
+    def _generate_numeric(self, type_, name):
+        if type_.precision is None:
+            return name
+        elif type_.scale is None:
+            return "%(name)s(%(precision)s)" % {'name':name,'precision': type_.precision}
+        else:
+            return "%(name)s(%(precision)s, %(scale)s)" % {'name':name,'precision': type_.precision, 'scale' : type_.scale}
         
     def visit_VARCHAR(self, type_):
         return "VARCHAR(%(length)s)" % {'length' : type_.length}
@@ -658,18 +681,8 @@ class OracleDialect(default.DefaultDialect):
             (colname, coltype, length, precision, scale, nullable, default) = \
                 (self.normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
-            # INTEGER if the scale is 0 and precision is null
-            # NUMBER if the scale and precision are both null
-            # NUMBER(9,2) if the precision is 9 and the scale is 2
-            # NUMBER(3) if the precision is 3 and scale is 0
-            #length is ignored except for CHAR and VARCHAR2
             if coltype == 'NUMBER' :
-                if precision is None and scale is None:
-                    coltype = sqltypes.NUMERIC
-                elif precision is None and scale == 0:
-                    coltype = sqltypes.INTEGER
-                else :
-                    coltype = sqltypes.NUMERIC(precision, scale)
+                coltype = NUMBER(precision, scale)
             elif coltype=='CHAR' or coltype=='VARCHAR2':
                 coltype = self.ischema_names.get(coltype)(length)
             else:

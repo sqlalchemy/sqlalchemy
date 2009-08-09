@@ -205,7 +205,7 @@ class ColumnsTest(TestBase, AssertsExecutionResults):
 
         db = testing.db
         if testing.against('oracle'):
-            expectedResults['float_column'] = 'float_column NUMERIC(25, 2)'
+            expectedResults['float_column'] = 'float_column FLOAT'
 
         if testing.against('sqlite'):
             expectedResults['float_column'] = 'float_column FLOAT'

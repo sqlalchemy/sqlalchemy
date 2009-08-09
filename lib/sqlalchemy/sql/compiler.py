@@ -1149,6 +1149,8 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_NUMERIC(self, type_):
         if type_.precision is None:
             return "NUMERIC"
+        elif type_.scale is None:
+            return "NUMERIC(%(precision)s)" % {'precision': type_.precision}
         else:
             return "NUMERIC(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : type_.scale}
 

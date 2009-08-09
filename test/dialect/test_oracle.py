@@ -10,6 +10,7 @@ from sqlalchemy.test.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
 from sqlalchemy.util import jython
+from decimal import Decimal
 import os
 
 
@@ -380,7 +381,57 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             assert isinstance(x, int)
         finally:
             t1.drop()
-        
+    
+    def test_numerics(self):
+        m = MetaData(testing.db)
+        t1 = Table('t1', m, 
+            Column('intcol', Integer),
+            Column('numericcol', Numeric(precision=9, scale=2)),
+            Column('floatcol1', Float()),
+            Column('floatcol2', FLOAT()),
+            Column('doubleprec', oracle.DOUBLE_PRECISION),
+            Column('numbercol1', oracle.NUMBER(9)),
+            Column('numbercol2', oracle.NUMBER(9, 3)),
+            Column('numbercol3', oracle.NUMBER),
+            
+        )
+        t1.create()
+        try:
+            t1.insert().execute(
+                intcol=1, 
+                numericcol=5.2, 
+                floatcol1=6.5, 
+                floatcol2 = 8.5,
+                doubleprec = 9.5, 
+                numbercol1=12,
+                numbercol2=14.85,
+                numbercol3=15.76
+                )
+            
+            m2 = MetaData(testing.db)
+            t2 = Table('t1', m2, autoload=True)
+
+            for row in (
+                t1.select().execute().first(),
+                t2.select().execute().first() 
+            ):
+                for i, (val, type_) in enumerate((
+                    (1, int),
+                    (Decimal("5.2"), Decimal),
+                    (6.5, float),
+                    (8.5, float),
+                    (9.5, float),
+                    (12, int),
+                    (Decimal("14.85"), Decimal),
+                    (15.76, float),
+                )):
+                    eq_(row[i], val)
+                    assert isinstance(row[i], type_)
+
+        finally:
+            t1.drop()
+    
+    
     def test_reflect_raw(self):
         types_table = Table(
         'all_types', MetaData(testing.db),

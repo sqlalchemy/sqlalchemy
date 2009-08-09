@@ -178,6 +178,7 @@ colspecs = {
     sqltypes.TIMESTAMP : _OracleTimestamp,
     sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
                                         # it would be nice if we could not use it otherwise.
+    oracle.NUMBER : oracle.NUMBER, # don't let this get converted
     oracle.RAW: _OracleRaw,
 }
 

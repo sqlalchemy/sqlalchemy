@@ -253,6 +253,12 @@ CHANGES
 
     - an NCLOB type is added to the base types.
 
+    - the Oracle dialect now features NUMBER which intends
+      to act justlike Oracle's NUMBER type.  It is the primary
+      numeric type returned by table reflection and attempts
+      to return Decimal()/float/int based on the precision/scale
+      parameters.  [ticket:885]
+      
     - func.char_length is a generic function for LENGTH
 
     - ForeignKey() which includes onupdate=<value> will emit a
