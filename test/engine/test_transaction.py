@@ -779,14 +779,14 @@ class ForUpdateTest(TestBase):
         iterations, thread_count = 10, 5
         threads, errors = [], []
         for i in xrange(thread_count):
-            thread = threading.Thread(target=self.increment,
+            thrd = threading.Thread(target=self.increment,
                                       args=(iterations,),
                                       kwargs={'errors': errors,
                                               'update_style': True})
-            thread.start()
-            threads.append(thread)
-        for thread in threads:
-            thread.join()
+            thrd.start()
+            threads.append(thrd)
+        for thrd in threads:
+            thrd.join()
 
         for e in errors:
             sys.stdout.write("Failure: %s\n" % e)
