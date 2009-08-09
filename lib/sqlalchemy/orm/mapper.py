@@ -1629,8 +1629,8 @@ class Mapper(object):
             else:
                 identitykey = identity_key(row)
 
-            if identitykey in session_identity_map:
-                instance = session_identity_map[identitykey]
+            instance = session_identity_map.get(identitykey)
+            if instance is not None:
                 state = attributes.instance_state(instance)
                 dict_ = attributes.instance_dict(instance)
 
