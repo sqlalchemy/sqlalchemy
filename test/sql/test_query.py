@@ -734,77 +734,89 @@ class PercentSchemaNamesTest(TestBase):
     """
 
     @classmethod
-    @testing.crashes('mysql', 'mysqldb calls name % (params)')
-    @testing.crashes('postgresql', 'postgresql calls name % (params)')
     def setup_class(cls):
         global percent_table, metadata
         metadata = MetaData(testing.db)
         percent_table = Table('percent%table', metadata,
             Column("percent%", Integer),
-            Column("%(oneofthese)s", Integer),
             Column("spaces % more spaces", Integer),
         )
         metadata.create_all()
 
+    def teardown(self):
+        percent_table.delete().execute()
+        
     @classmethod
-    @testing.crashes('mysql', 'mysqldb calls name % (params)')
-    @testing.crashes('postgresql', 'postgresql calls name % (params)')
     def teardown_class(cls):
         metadata.drop_all()
     
-    @testing.crashes('mysql', 'mysqldb calls name % (params)')
-    @testing.crashes('postgresql', 'postgresql calls name % (params)')
-    def test_roundtrip(self):
+    def test_single_roundtrip(self):
         percent_table.insert().execute(
-            {'percent%':5, '%(oneofthese)s':7, 'spaces % more spaces':12},
+            {'percent%':5, 'spaces % more spaces':12},
         )
         percent_table.insert().execute(
-            {'percent%':7, '%(oneofthese)s':8, 'spaces % more spaces':11},
-            {'percent%':9, '%(oneofthese)s':9, 'spaces % more spaces':10},
-            {'percent%':11, '%(oneofthese)s':10, 'spaces % more spaces':9},
+            {'percent%':7, 'spaces % more spaces':11},
         )
+        percent_table.insert().execute(
+            {'percent%':9, 'spaces % more spaces':10},
+        )
+        percent_table.insert().execute(
+            {'percent%':11, 'spaces % more spaces':9},
+        )
+        self._assert_table()
+    
+    @testing.crashes('mysql+mysqldb', 'MySQLdb handles executemany() inconsistently vs. execute()')
+    def test_executemany_roundtrip(self):
+        percent_table.insert().execute(
+            {'percent%':5, 'spaces % more spaces':12},
+        )
+        percent_table.insert().execute(
+            {'percent%':7, 'spaces % more spaces':11},
+            {'percent%':9, 'spaces % more spaces':10},
+            {'percent%':11, 'spaces % more spaces':9},
+        )
+        self._assert_table()
         
+    def _assert_table(self):
         for table in (percent_table, percent_table.alias()):
             eq_(
-                table.select().order_by(table.c['%(oneofthese)s']).execute().fetchall(),
+                table.select().order_by(table.c['percent%']).execute().fetchall(),
                 [
-                    (5, 7, 12),
-                    (7, 8, 11),
-                    (9, 9, 10),
-                    (11, 10, 9)
+                    (5, 12),
+                    (7, 11),
+                    (9, 10),
+                    (11, 9)
                 ]
             )
 
             eq_(
                 table.select().
                     where(table.c['spaces % more spaces'].in_([9, 10])).
-                    order_by(table.c['%(oneofthese)s']).execute().fetchall(),
+                    order_by(table.c['percent%']).execute().fetchall(),
                     [
-                        (9, 9, 10),
-                        (11, 10, 9)
+                        (9, 10),
+                        (11, 9)
                     ]
             )
 
-            result = table.select().order_by(table.c['%(oneofthese)s']).execute()
+            result = table.select().order_by(table.c['percent%']).execute()
             row = result.fetchone()
             eq_(row[table.c['percent%']], 5)
-            eq_(row[table.c['%(oneofthese)s']], 7)
             eq_(row[table.c['spaces % more spaces']], 12)
             row = result.fetchone()
             eq_(row['percent%'], 7)
-            eq_(row['%(oneofthese)s'], 8)
             eq_(row['spaces % more spaces'], 11)
             result.close()
 
-        percent_table.update().values({percent_table.c['%(oneofthese)s']:9, percent_table.c['spaces % more spaces']:15}).execute()
+        percent_table.update().values({percent_table.c['spaces % more spaces']:15}).execute()
 
         eq_(
             percent_table.select().order_by(percent_table.c['percent%']).execute().fetchall(),
             [
-                (5, 9, 15),
-                (7, 9, 15),
-                (9, 9, 15),
-                (11, 9, 15)
+                (5, 15),
+                (7, 15),
+                (9, 15),
+                (11, 15)
             ]
         )
         

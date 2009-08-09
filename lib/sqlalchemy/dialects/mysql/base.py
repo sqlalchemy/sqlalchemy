@@ -2514,6 +2514,10 @@ class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):
 
         return tuple([self.quote_identifier(i) for i in ids if i is not None])
 
+    def _escape_identifier(self, value):
+        value = value.replace('"', '""')
+        return value.replace('%', '%%')
+
 
 class MySQLIdentifierPreparer(_MySQLIdentifierPreparer):
     """Traditional MySQL-specific schema identifier configuration."""
@@ -2522,7 +2526,8 @@ class MySQLIdentifierPreparer(_MySQLIdentifierPreparer):
         super(MySQLIdentifierPreparer, self).__init__(dialect, initial_quote="`")
         
     def _escape_identifier(self, value):
-        return value.replace('`', '``')
+        value = value.replace('`', '``')
+        return value.replace('%', '%%')
 
     def _unescape_identifier(self, value):
         return value.replace('``', '`')

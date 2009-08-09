@@ -431,6 +431,10 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             value = value[1:-1].replace('""','"')
         return value
 
+    def _escape_identifier(self, value):
+        value = value.replace('"', '""')
+        return value.replace('%', '%%')
+        
 class PGInspector(reflection.Inspector):
 
     def __init__(self, conn):

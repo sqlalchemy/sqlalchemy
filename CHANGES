@@ -229,9 +229,20 @@ CHANGES
     - using new dialect.initialize() feature to set up
       version-dependent behavior.
 
+    - somewhat better support for % signs in table/column names;
+      psycopg2 can't handle a bind parameter name of 
+      %(foobar)s however and SQLA doesn't want to add overhead
+      just to treat that one non-existent use case.
+      [ticket:1279]
+    
 - mysql
     - all the _detect_XXX() functions now run once underneath
       dialect.initialize()
+
+    - somewhat better support for % signs in table/column names;
+      MySQLdb can't handle % signs in SQL when executemany() is used,
+      and SQLA doesn't want to add overhead just to treat that one 
+      non-existent use case. [ticket:1279]
 
 - oracle
     - unit tests pass 100% with cx_oracle !
