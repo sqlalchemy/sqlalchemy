@@ -1,6 +1,6 @@
-.. _sqlalchemy.databases:
+.. _sqlalchemy.dialects:
 
-sqlalchemy.databases
+sqlalchemy.dialects
 ====================
 
 Supported Databases

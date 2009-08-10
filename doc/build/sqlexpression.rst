@@ -625,7 +625,7 @@ That's the output ``outerjoin()`` produces, unless, of course, you're stuck in a
 
 .. sourcecode:: pycon+sql
 
-    >>> from sqlalchemy.databases.oracle import OracleDialect
+    >>> from sqlalchemy.dialects.oracle import dialect as OracleDialect
     >>> print s.compile(dialect=OracleDialect(use_ansi=False))
     SELECT users.fullname 
     FROM users, addresses 

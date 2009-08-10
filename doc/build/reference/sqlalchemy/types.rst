@@ -147,7 +147,7 @@ Vendor-Specific Types
 ---------------------
 
 Database-specific types are also available for import from each
-database's dialect module. See the :ref:`sqlalchemy.databases`
+database's dialect module. See the :ref:`sqlalchemy.dialects`
 reference for the database you're interested in.
 
 For example, MySQL has a ``BIGINTEGER`` type and PostgreSQL has an
