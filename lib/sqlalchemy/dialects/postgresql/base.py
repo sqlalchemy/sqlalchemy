@@ -433,6 +433,7 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
 
     def _escape_identifier(self, value):
         value = value.replace('"', '""')
+        # TODO: might want to move this to psycopg2 + pg8000 individually
         return value.replace('%', '%%')
         
 class PGInspector(reflection.Inspector):

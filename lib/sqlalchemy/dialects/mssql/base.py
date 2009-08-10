@@ -1109,7 +1109,6 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
         super(MSIdentifierPreparer, self).__init__(dialect, initial_quote='[', final_quote=']')
 
     def _escape_identifier(self, value):
-        #TODO: determine MSSQL's escaping rules
         return value
 
     def quote_schema(self, schema, force=True):

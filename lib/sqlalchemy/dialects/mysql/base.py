@@ -1608,8 +1608,29 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         return "BOOL"
         
 
+class MySQLIdentifierPreparer(compiler.IdentifierPreparer):
+
+    reserved_words = RESERVED_WORDS
+
+    def __init__(self, dialect, server_ansiquotes=False, **kw):
+        if not server_ansiquotes:
+            quote = "`"
+        else:
+            quote = '"'    
+
+        super(MySQLIdentifierPreparer, self).__init__(
+                                                dialect, 
+                                                initial_quote=quote, 
+                                                escape_quote=quote)
+
+    def _quote_free_identifiers(self, *ids):
+        """Unilaterally identifier-quote any number of strings."""
+
+        return tuple([self.quote_identifier(i) for i in ids if i is not None])
+
 class MySQLDialect(default.DefaultDialect):
     """Details of the MySQL dialect.  Not used directly in application code."""
+    
     name = 'mysql'
     supports_alter = True
     # identifiers are 64, however aliases can be 255...
@@ -1625,6 +1646,7 @@ class MySQLDialect(default.DefaultDialect):
     ddl_compiler = MySQLDDLCompiler
     type_compiler = MySQLTypeCompiler
     ischema_names = ischema_names
+    preparer = MySQLIdentifierPreparer
     
     def __init__(self, use_ansiquotes=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -1750,12 +1772,10 @@ class MySQLDialect(default.DefaultDialect):
         self._server_casing = self._detect_casing(connection)
         self._server_collations = self._detect_collations(connection)
         self._server_ansiquotes = self._detect_ansiquotes(connection)
-            
         if self._server_ansiquotes:
-            self.preparer = MySQLANSIIdentifierPreparer
-        else:
-            self.preparer = MySQLIdentifierPreparer
-        self.identifier_preparer = self.preparer(self)
+            # if ansiquotes == True, build a new IdentifierPreparer
+            # with the new setting
+            self.identifier_preparer = self.preparer(self, server_ansiquotes=self._server_ansiquotes)
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):
@@ -1894,19 +1914,26 @@ class MySQLDialect(default.DefaultDialect):
                         schema, 
                         info_cache=kw.get('info_cache', None)
                     )
+    
+    @util.memoized_property
+    def _tabledef_parser(self):
+        """return the MySQLTableDefinitionParser, generate if needed.
+        
+        The deferred creation ensures that the dialect has 
+        retrieved server version information first.
+        
+        """
+        if (self.server_version_info < (4, 1) and self._server_ansiquotes):
+            # ANSI_QUOTES doesn't affect SHOW CREATE TABLE on < 4.1
+            preparer = self.preparer(self, server_ansiquotes=False)
+        else:
+            preparer = self.identifier_preparer
+        return MySQLTableDefinitionParser(self, preparer)
         
     @reflection.cache
     def _setup_parser(self, connection, table_name, schema=None, **kw):
         charset = self._connection_charset
-        try:
-            parser = self.parser
-        except AttributeError:
-            preparer = self.identifier_preparer
-            if (self.server_version_info < (4, 1) and
-                self._server_ansiquotes):
-                # ANSI_QUOTES doesn't affect SHOW CREATE TABLE on < 4.1
-                preparer = MySQLIdentifierPreparer(self)
-            self.parser = parser = MySQLTableDefinitionParser(self, preparer)
+        parser = self._tabledef_parser
         full_name = '.'.join(self.identifier_preparer._quote_free_identifiers(
             schema, table_name))
         sql = self._show_create_table(connection, None, charset,
@@ -2500,43 +2527,6 @@ class _DecodingRowProxy(object):
         else:
             return item
 
-
-class _MySQLIdentifierPreparer(compiler.IdentifierPreparer):
-    """MySQL-specific schema identifier configuration."""
-
-    reserved_words = RESERVED_WORDS
-
-    def __init__(self, dialect, **kw):
-        super(_MySQLIdentifierPreparer, self).__init__(dialect, **kw)
-
-    def _quote_free_identifiers(self, *ids):
-        """Unilaterally identifier-quote any number of strings."""
-
-        return tuple([self.quote_identifier(i) for i in ids if i is not None])
-
-    def _escape_identifier(self, value):
-        value = value.replace('"', '""')
-        return value.replace('%', '%%')
-
-
-class MySQLIdentifierPreparer(_MySQLIdentifierPreparer):
-    """Traditional MySQL-specific schema identifier configuration."""
-
-    def __init__(self, dialect):
-        super(MySQLIdentifierPreparer, self).__init__(dialect, initial_quote="`")
-        
-    def _escape_identifier(self, value):
-        value = value.replace('`', '``')
-        return value.replace('%', '%%')
-
-    def _unescape_identifier(self, value):
-        return value.replace('``', '`')
-
-
-class MySQLANSIIdentifierPreparer(_MySQLIdentifierPreparer):
-    """ANSI_QUOTES MySQL schema identifier configuration."""
-
-    pass
 
 def _pr_compile(regex, cleanup=None):
     """Prepare a 2-tuple of compiled regex and callable."""

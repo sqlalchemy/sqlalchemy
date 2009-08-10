@@ -24,7 +24,7 @@ import decimal
 import re
 
 from sqlalchemy.dialects.mysql.base import (DECIMAL, MySQLDialect, MySQLExecutionContext,
-                                            MySQLCompiler, NUMERIC, _NumericType)
+                                            MySQLCompiler, MySQLIdentifierPreparer, NUMERIC, _NumericType)
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
@@ -66,6 +66,11 @@ class _MySQLdbNumeric(_DecimalType, NUMERIC):
 class _MySQLdbDecimal(_DecimalType, DECIMAL):
     pass
 
+class MySQL_mysqldbIdentifierPreparer(MySQLIdentifierPreparer):
+    
+    def _escape_identifier(self, value):
+        value = value.replace(self.escape_quote, self.escape_to_quote)
+        return value.replace("%", "%%")
 
 class MySQL_mysqldb(MySQLDialect):
     driver = 'mysqldb'
@@ -76,7 +81,8 @@ class MySQL_mysqldb(MySQLDialect):
     default_paramstyle = 'format'
     execution_ctx_cls = MySQL_mysqldbExecutionContext
     statement_compiler = MySQL_mysqldbCompiler
-
+    preparer = MySQL_mysqldbIdentifierPreparer
+    
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {

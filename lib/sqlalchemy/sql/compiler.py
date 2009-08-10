@@ -1259,7 +1259,7 @@ class IdentifierPreparer(object):
 
     illegal_initial_characters = ILLEGAL_INITIAL_CHARACTERS
 
-    def __init__(self, dialect, initial_quote='"', final_quote=None, omit_schema=False):
+    def __init__(self, dialect, initial_quote='"', final_quote=None, escape_quote='"', omit_schema=False):
         """Construct a new ``IdentifierPreparer`` object.
 
         initial_quote
@@ -1276,6 +1276,8 @@ class IdentifierPreparer(object):
         self.dialect = dialect
         self.initial_quote = initial_quote
         self.final_quote = final_quote or self.initial_quote
+        self.escape_quote = escape_quote
+        self.escape_to_quote = self.escape_quote * 2
         self.omit_schema = omit_schema
         self._strings = {}
         
@@ -1286,7 +1288,7 @@ class IdentifierPreparer(object):
         escaping behavior.
         """
 
-        return value.replace('"', '""')
+        return value.replace(self.escape_quote, self.escape_to_quote)
 
     def _unescape_identifier(self, value):
         """Canonicalize an escaped identifier.
@@ -1295,7 +1297,7 @@ class IdentifierPreparer(object):
         unescaping behavior that reverses _escape_identifier.
         """
 
-        return value.replace('""', '"')
+        return value.replace(self.escape_to_quote, self.escape_quote)
 
     def quote_identifier(self, value):
         """Quote an identifier.
