@@ -42,7 +42,7 @@ from sqlalchemy.engine import base, default
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler
+from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, PGIdentifierPreparer
 
 class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -93,12 +93,20 @@ class PostgreSQL_psycopg2ExecutionContext(default.DefaultExecutionContext):
         else:
             return base.ResultProxy(self)
 
+
 class PostgreSQL_psycopg2Compiler(PGCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
     
     def post_process_text(self, text):
         return text.replace('%', '%%')
+
+
+class PostgreSQL_psycopg2IdentifierPreparer(PGIdentifierPreparer):
+    def _escape_identifier(self, value):
+        value = value.replace(self.escape_quote, self.escape_to_quote)
+        return value.replace('%', '%%')
+
 
 class PostgreSQL_psycopg2(PGDialect):
     driver = 'psycopg2'
@@ -107,6 +115,7 @@ class PostgreSQL_psycopg2(PGDialect):
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PostgreSQL_psycopg2ExecutionContext
     statement_compiler = PostgreSQL_psycopg2Compiler
+    preparer = PostgreSQL_psycopg2IdentifierPreparer
 
     colspecs = util.update_copy(
         PGDialect.colspecs,

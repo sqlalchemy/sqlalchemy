@@ -22,7 +22,7 @@ from sqlalchemy.engine import default
 import decimal
 from sqlalchemy import util
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler
+from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, PGIdentifierPreparer
 
 class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -39,13 +39,27 @@ class _PGNumeric(sqltypes.Numeric):
                     return value
             return process
 
+
 class PostgreSQL_pg8000ExecutionContext(default.DefaultExecutionContext):
     pass
+
 
 class PostgreSQL_pg8000Compiler(PGCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
-    
+
+    def post_process_text(self, text):
+        if '%%' in text:
+            util.warn("The SQLAlchemy postgresql dialect now automatically escapes '%' in text() "
+                      "expressions to '%%'.")
+        return text.replace('%', '%%')
+
+
+class PostgreSQL_pg8000IdentifierPreparer(PGIdentifierPreparer):
+    def _escape_identifier(self, value):
+        value = value.replace(self.escape_quote, self.escape_to_quote)
+        return value.replace('%', '%%')
+
     
 class PostgreSQL_pg8000(PGDialect):
     driver = 'pg8000'
@@ -58,6 +72,7 @@ class PostgreSQL_pg8000(PGDialect):
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PostgreSQL_pg8000ExecutionContext
     statement_compiler = PostgreSQL_pg8000Compiler
+    preparer = PostgreSQL_pg8000IdentifierPreparer
     
     colspecs = util.update_copy(
         PGDialect.colspecs,

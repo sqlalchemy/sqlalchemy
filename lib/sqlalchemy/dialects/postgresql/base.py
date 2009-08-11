@@ -223,11 +223,6 @@ class PGCompiler(compiler.SQLCompiler):
         return '%s NOT ILIKE %s' % (self.process(binary.left), self.process(binary.right)) \
             + (escape and ' ESCAPE \'%s\'' % escape or '')
 
-    def post_process_text(self, text):
-        if '%%' in text:
-            util.warn("The SQLAlchemy postgresql dialect now automatically escapes '%' in text() expressions to '%%'.")
-        return text.replace('%', '%%')
-
     def visit_sequence(self, seq):
         if seq.optional:
             return None
@@ -373,6 +368,7 @@ class PGDefaultRunner(base.DefaultRunner):
         else:
             return None
 
+
 class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_INET(self, type_):
         return "INET"
@@ -425,16 +421,13 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_ARRAY(self, type_):
         return self.process(type_.item_type) + '[]'
 
+
 class PGIdentifierPreparer(compiler.IdentifierPreparer):
     def _unquote_identifier(self, value):
         if value[0] == self.initial_quote:
-            value = value[1:-1].replace('""','"')
+            value = value[1:-1].replace(self.escape_to_quote, self.escape_quote)
         return value
 
-    def _escape_identifier(self, value):
-        value = value.replace('"', '""')
-        # TODO: might want to move this to psycopg2 + pg8000 individually
-        return value.replace('%', '%%')
         
 class PGInspector(reflection.Inspector):
 
