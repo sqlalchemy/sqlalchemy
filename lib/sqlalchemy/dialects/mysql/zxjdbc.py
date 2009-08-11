@@ -6,6 +6,15 @@ JDBC Driver
 The official MySQL JDBC driver is at
 http://dev.mysql.com/downloads/connector/j/.
 
+Character Sets
+--------------
+
+SQLAlchemy zxjdbc dialects pass unicode straight through to the
+zxjdbc/JDBC layer. To allow multiple character sets to be sent from the
+MySQL Connector/J JDBC driver, by default SQLAlchemy sets its
+``characterEncoding`` connection property to ``UTF-8``. It may be
+overriden via a ``create_engine`` URL parameter.
+
 """
 import re
 
@@ -71,7 +80,7 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
 
     def _driver_kwargs(self):
         """return kw arg dict to be sent to connect()."""
-        return dict(CHARSET=self.encoding, yearIsDateType='false')
+        return dict(characterEncoding='UTF-8', yearIsDateType='false')
 
     def _extract_error_code(self, exception):
         # e.g.: DBAPIError: (Error) Table 'test.u2' doesn't exist

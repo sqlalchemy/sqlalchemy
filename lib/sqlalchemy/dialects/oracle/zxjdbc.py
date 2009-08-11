@@ -64,13 +64,8 @@ class Oracle_jdbc(ZxJDBCConnector, OracleDialect):
         super(Oracle_jdbc, self).initialize(connection)
         self.implicit_returning = False
 
-    def create_connect_args(self, url):
-        hostname = url.host
-        port = url.port or '1521'
-        dbname = url.database
-        jdbc_url = 'jdbc:oracle:thin:@%s:%s:%s' % (hostname, port, dbname)
-        return [[jdbc_url, url.username, url.password, self.jdbc_driver_name],
-                self._driver_kwargs()]
+    def _create_jdbc_url(self, url):
+        return 'jdbc:oracle:thin:@%s:%s:%s' % (url.host, url.port or 1521, url.database)
 
     def _get_server_version_info(self, connection):
         version = re.search(r'Release ([\d\.]+)', connection.connection.dbversion).group(1)

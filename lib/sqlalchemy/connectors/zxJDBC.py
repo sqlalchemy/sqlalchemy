@@ -21,16 +21,19 @@ class ZxJDBCConnector(Connector):
         return zxJDBC
 
     def _driver_kwargs(self):
-        """return kw arg dict to be sent to connect()."""
+        """Return kw arg dict to be sent to connect()."""
         return {}
         
-    def create_connect_args(self, url):
-        hostname = url.host
-        dbname = url.database
-        d, u, p, v = ("jdbc:%s://%s/%s" % (self.jdbc_db_name, hostname, dbname),
-                      url.username, url.password, self.jdbc_driver_name)
-        return [[d, u, p, v], self._driver_kwargs()]
+    def _create_jdbc_url(self, url):
+        """Create a JDBC url from a :class:`~sqlalchemy.engine.url.URL`"""
+        return "jdbc:%s://%s/%s" % (self.jdbc_db_name, url.host, url.database)
         
+    def create_connect_args(self, url):
+        opts = self._driver_kwargs()
+        opts.update(url.query)
+        return [[self._create_jdbc_url(url), url.username, url.password, self.jdbc_driver_name],
+                opts]
+
     def is_disconnect(self, e):
         if not isinstance(e, self.dbapi.ProgrammingError):
             return False
