@@ -48,7 +48,7 @@ class Oracle_jdbcExecutionContext(DefaultExecutionContext):
 class Oracle_jdbc(ZxJDBCConnector, OracleDialect):
     execution_ctx_cls = Oracle_jdbcExecutionContext
     jdbc_db_name = 'oracle'
-    jdbc_driver_name = 'oracle.jdbc.driver.OracleDriver'
+    jdbc_driver_name = 'oracle.jdbc.OracleDriver'
 
     implicit_returning = False
 
