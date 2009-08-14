@@ -636,10 +636,6 @@ class Mapper(object):
             try:
                 global _already_compiling
                 if _already_compiling:
-                    # re-entrance to compile() occurs rarely, when a class-mapped construct is
-                    # used within a ForeignKey, something that is possible
-                    # when using the declarative layer
-                    self._post_configure_properties()
                     return
                 _already_compiling = True
                 try:
