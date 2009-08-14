@@ -892,6 +892,24 @@ class MapperTest(_fixtures.FixtureTest):
         
 
     @testing.resolve_artifact_names
+    def test_reentrant_compile(self):
+        # this trips the _already_compiling
+        # flag in mapper.compile().  but if the m2.compile is 
+        # changed to m1.compile, you still get a stack overflow.
+        # not sure why the previous use case did it that way (i.e. 
+        # it was declarative compiling a mapper within ForeignKey()).
+        class MyFakeProperty(sa.orm.properties.ColumnProperty):
+            def post_instrument_class(self, mapper):
+                super(MyFakeProperty, self).post_instrument_class(mapper)
+                m2.compile()
+            
+        m1 = mapper(User, users, properties={
+            'name':MyFakeProperty(users.c.name)
+        })
+        m2 = mapper(Address, addresses)
+        compile_mappers()
+        
+    @testing.resolve_artifact_names
     def test_reconstructor(self):
         recon = []
 
