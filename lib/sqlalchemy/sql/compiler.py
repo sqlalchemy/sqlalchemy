@@ -738,16 +738,14 @@ class SQLCompiler(engine.Compiled):
 
         if update_stmt._returning:
             self.returning = update_stmt._returning
-            returning_clause = self.returning_clause(update_stmt, update_stmt._returning)
-            
             if self.returning_precedes_values:
-                text += " " + returning_clause
+                text += " " + self.returning_clause(update_stmt, update_stmt._returning)
                 
         if update_stmt._whereclause:
             text += " WHERE " + self.process(update_stmt._whereclause)
 
         if self.returning and not self.returning_precedes_values:
-            text += " " + returning_clause
+            text += " " + self.returning_clause(update_stmt, update_stmt._returning)
             
         self.stack.pop(-1)
 
@@ -891,16 +889,14 @@ class SQLCompiler(engine.Compiled):
 
         if delete_stmt._returning:
             self.returning = delete_stmt._returning
-            returning_clause = self.returning_clause(delete_stmt, delete_stmt._returning)
-            
             if self.returning_precedes_values:
-                text += " " + returning_clause
+                text += " " + self.returning_clause(delete_stmt, delete_stmt._returning)
                 
         if delete_stmt._whereclause:
             text += " WHERE " + self.process(delete_stmt._whereclause)
 
         if self.returning and not self.returning_precedes_values:
-            text += " " + returning_clause
+            text += " " + self.returning_clause(delete_stmt, delete_stmt._returning)
             
         self.stack.pop(-1)
 
