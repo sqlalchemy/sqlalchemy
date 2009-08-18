@@ -33,14 +33,18 @@ class _JDBCNumeric(sqltypes.Numeric):
 
     def result_processor(self, dialect):
         if self.asdecimal:
-            return None
+            def process(value):
+                if isinstance(value, decimal.Decimal):
+                    return value
+                else:
+                    return decimal.Decimal(str(value))
         else:
             def process(value):
                 if isinstance(value, decimal.Decimal):
                     return float(value)
                 else:
                     return value
-            return process
+        return process
 
 
 class Oracle_jdbcCompiler(OracleCompiler):
