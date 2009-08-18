@@ -108,7 +108,7 @@ class ProxyConnectionTest(TestBase):
             def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
                 print "CE", statement, parameters
                 cursor_stmts.append(
-                    (statement, parameters, None)
+                    (str(statement), parameters, None)
                 )
                 return execute(cursor, statement, parameters, context)
         
@@ -148,7 +148,7 @@ class ProxyConnectionTest(TestBase):
                 ("DROP TABLE t1", {}, None)
             ]
 
-            if True: # or engine.dialect.preexecute_pk_sequences:
+            if not testing.against('oracle+zxjdbc'): # or engine.dialect.preexecute_pk_sequences:
                 cursor = [
                     ("CREATE TABLE t1", {}, ()),
                     ("INSERT INTO t1 (c1, c2)", {'c2': 'some data', 'c1': 5}, [5, 'some data']),
@@ -158,10 +158,14 @@ class ProxyConnectionTest(TestBase):
                     ("DROP TABLE t1", {}, ())
                 ]
             else:
+                insert2_params = [6, 'Foo']
+                if testing.against('oracle+zxjdbc'):
+                    from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
+                    insert2_params.append(ReturningParam(12))
                 cursor = [
                     ("CREATE TABLE t1", {}, ()),
                     ("INSERT INTO t1 (c1, c2)", {'c2': 'some data', 'c1': 5}, [5, 'some data']),
-                    ("INSERT INTO t1 (c1, c2)", {'c1': 6, "lower_2":"Foo"}, [6, "Foo"]),  # bind param name 'lower_2' might be incorrect
+                    ("INSERT INTO t1 (c1, c2)", {'c1': 6, "lower_2":"Foo"}, insert2_params),  # bind param name 'lower_2' might be incorrect
                     ("select * from t1", {}, ()),
                     ("DROP TABLE t1", {}, ())
                 ]

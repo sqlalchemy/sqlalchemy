@@ -216,6 +216,9 @@ class AllOf(AssertRule):
         return len(self.rules) == 0
         
 def _process_engine_statement(query, context):
+    if util.jython:
+        # oracle+zxjdbc passes a PyStatement when returning into
+        query = unicode(query)
     if context.engine.name == 'mssql' and query.endswith('; select scope_identity()'):
         query = query[:-25]
     

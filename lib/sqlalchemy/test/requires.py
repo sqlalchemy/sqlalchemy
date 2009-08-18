@@ -140,7 +140,6 @@ def returning(fn):
         no_support('maxdb', 'not supported by database'),
         no_support('sybase', 'not supported by database'),
         no_support('informix', 'not supported by database'),
-        no_support('oracle+zxjdbc', 'FIXME: tricky; currently broken'),
     )
     
 def two_phase_transactions(fn):

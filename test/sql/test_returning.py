@@ -5,7 +5,7 @@ from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
 
 class ReturningTest(TestBase, AssertsExecutionResults):
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'oracle+zxjdbc')
+    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -61,6 +61,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         assert row['lala'] == 6
 
     @testing.fails_on('firebird', "fb/kintersbasdb can't handle the bind params")
+    @testing.fails_on('oracle+zxjdbc', "JDBC driver bug")
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
     def test_anon_expressions(self):
@@ -92,6 +93,8 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
         eq_(result.fetchall(), [(1,)])
 
+        @testing.crashes('oracle+zxjdbc', 'Triggers a "No more data to read from socket" and '
+                         'prevents table from being dropped')
         @testing.fails_on('postgresql', '')
         @testing.fails_on('oracle', '')
         def test_executemany():
@@ -109,7 +112,8 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         test_executemany()
 
         result3 = table.insert().returning(table.c.id).execute({'persons': 4, 'full': False})
-        eq_([dict(row) for row in result3], [{'id': 4}])
+        next = testing.against('oracle+zxjdbc') and 2 or 4
+        eq_([dict(row) for row in result3], [{'id': next}])
     
         
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
@@ -137,7 +141,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         eq_(result2.fetchall(), [(2,False),])
 
 class SequenceReturningTest(TestBase):
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'mssql', 'oracle+zxjdbc')
+    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'mssql')
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -160,7 +164,7 @@ class SequenceReturningTest(TestBase):
 class KeyReturningTest(TestBase, AssertsExecutionResults):
     """test returning() works with columns that define 'key'."""
     
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'oracle+zxjdbc')
+    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
 
     def setup(self):
         meta = MetaData(testing.db)
