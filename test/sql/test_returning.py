@@ -93,8 +93,6 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
         eq_(result.fetchall(), [(1,)])
 
-        @testing.crashes('oracle+zxjdbc', 'Triggers a "No more data to read from socket" and '
-                         'prevents table from being dropped')
         @testing.fails_on('postgresql', '')
         @testing.fails_on('oracle', '')
         def test_executemany():
@@ -112,8 +110,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         test_executemany()
 
         result3 = table.insert().returning(table.c.id).execute({'persons': 4, 'full': False})
-        next = testing.against('oracle+zxjdbc') and 2 or 4
-        eq_([dict(row) for row in result3], [{'id': next}])
+        eq_([dict(row) for row in result3], [{'id': 4}])
     
         
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
