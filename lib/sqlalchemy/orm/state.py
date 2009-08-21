@@ -47,7 +47,10 @@ class InstanceState(object):
     def _cleanup(self, ref):
         instance_dict = self._instance_dict()
         if instance_dict:
-            instance_dict.remove(self)
+            try:
+                instance_dict.remove(self)
+            except AssertionError:
+                pass
         self.dispose()
     
     def obj(self):
@@ -418,7 +421,10 @@ class MutableAttrInstanceState(InstanceState):
         else:
             instance_dict = self._instance_dict()
             if instance_dict:
-                instance_dict.remove(self)
+                try:
+                    instance_dict.remove(self)
+                except AssertionError:
+                    pass
             self.dispose()
             
     def __resurrect(self):
