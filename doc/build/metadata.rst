@@ -540,8 +540,7 @@ Note that some databases do not actively support check constraints such as MySQL
 Indexes
 -------
 
-
-Indexes can be created anonymously (using an auto-generated name "ix_\ *column label*") for a single column using the inline ``index`` keyword on ``Column``, which also modifies the usage of ``unique`` to apply the uniqueness to the index itself, instead of adding a separate UNIQUE constraint.  For indexes with specific names or which encompass more than one column, use the ``Index`` construct, which requires a name.  
+Indexes can be created anonymously (using an auto-generated name ``ix_\ *column label*``) for a single column using the inline ``index`` keyword on ``Column``, which also modifies the usage of ``unique`` to apply the uniqueness to the index itself, instead of adding a separate UNIQUE constraint.  For indexes with specific names or which encompass more than one column, use the ``Index`` construct, which requires a name.  
 
 Note that the ``Index`` construct is created **externally** to the table which it corresponds, using ``Column`` objects and not strings.
 

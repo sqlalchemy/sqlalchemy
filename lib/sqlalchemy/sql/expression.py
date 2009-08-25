@@ -283,11 +283,11 @@ def insert(table, values=None, inline=False, **kwargs):
       may also be used for this.
 
     :param prefixes: A list of modifier keywords to be inserted between INSERT
-    and INTO. Alternatively, the :meth:`~Insert.prefix_with` generative method
-    may be used.
+      and INTO. Alternatively, the :meth:`~Insert.prefix_with` generative method
+      may be used.
 
     :param inline: if True, SQL defaults will be compiled 'inline' into the
-    statement and not pre-executed.
+      statement and not pre-executed.
 
     If both `values` and compile-time bind parameters are present, the
     compile-time bind parameters override the information specified
@@ -316,8 +316,8 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
     :param table: The table to be updated.
 
     :param whereclause: A ``ClauseElement`` describing the ``WHERE`` condition
-    of the ``UPDATE`` statement. Note that the :meth:`~Update.where()`
-    generative method may also be used for this.
+      of the ``UPDATE`` statement. Note that the :meth:`~Update.where()`
+      generative method may also be used for this.
 
     :param values:
       A dictionary which specifies the ``SET`` conditions of the
@@ -360,13 +360,13 @@ def delete(table, whereclause = None, **kwargs):
     """Return a :class:`~sqlalchemy.sql.expression.Delete` clause element.
 
     Similar functionality is available via the ``delete()`` method on
-    :class:`~sqlalchemy.schema.Table`.
+     :class:`~sqlalchemy.schema.Table`.
 
     :param table: The table to be updated.
 
     :param whereclause: A :class:`ClauseElement` describing the ``WHERE``
-    condition of the ``UPDATE`` statement. Note that the :meth:`~Delete.where()`
-    generative method may be used instead.
+      condition of the ``UPDATE`` statement. Note that the :meth:`~Delete.where()`
+      generative method may be used instead.
 
     """
     return Delete(table, whereclause, **kwargs)
@@ -1107,7 +1107,7 @@ class ClauseElement(Visitable):
         Subclasses should override the default behavior, which is a
         straight identity comparison.
         
-        **kw are arguments consumed by subclass compare() methods and
+        \**kw are arguments consumed by subclass compare() methods and
         may be used to modify the criteria for comparison.
         (see :class:`ColumnElement`)
 
@@ -1707,14 +1707,14 @@ class ColumnElement(ClauseElement, _CompareMixin):
         Special arguments understood:
         
         :param use_proxies: when True, consider two columns that
-        share a common base column as equivalent (i.e. shares_lineage())
+          share a common base column as equivalent (i.e. shares_lineage())
         
         :param equivalents: a dictionary of columns as keys mapped to sets
-        of columns.  If the given "other" column is present in this dictionary,
-        if any of the columns in the correponding set() pass the comparison 
-        test, the result is True.  This is used to expand the comparison to
-        other columns that may be known to be equivalent to this one via 
-        foreign key or other criterion.
+          of columns.  If the given "other" column is present in this dictionary,
+          if any of the columns in the correponding set() pass the comparison 
+          test, the result is True.  This is used to expand the comparison to
+          other columns that may be known to be equivalent to this one via 
+          foreign key or other criterion.
 
         """
         to_compare = (other, )
@@ -3632,14 +3632,14 @@ class Select(_SelectBaseMixin, FromClause):
         """return a new select() construct which will correlate the given FROM clauses to
         that of an enclosing select(), if a match is found.
         
-         By "match", the given fromclause must be present in this select's list of FROM
+        By "match", the given fromclause must be present in this select's list of FROM
         objects and also present in an enclosing select's list of FROM objects.
         
-         Calling this method turns off the select's default behavior of
+        Calling this method turns off the select's default behavior of
         "auto-correlation". Normally, select() auto-correlates all of its FROM clauses to
         those of an embedded select when compiled.
         
-         If the fromclause is None, correlation is disabled for the returned select().
+        If the fromclause is None, correlation is disabled for the returned select().
 
         """
         self._should_correlate = False
