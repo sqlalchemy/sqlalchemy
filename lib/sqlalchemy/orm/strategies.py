@@ -133,7 +133,7 @@ class ColumnLoader(LoaderStrategy):
                 if isnew:
                     state.expire_attributes([key])
             if self._should_log_debug:
-                self.logger.debug("%s deferring load" % self)
+                self.logger.debug("%s deferring load", self)
             return (new_execute, None)
 
 log.class_logger(ColumnLoader)
@@ -143,7 +143,7 @@ class CompositeColumnLoader(ColumnLoader):
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
-        self.logger.info("%s register managed composite attribute" % self)
+        self.logger.info("%s register managed composite attribute", self)
 
         def copy(obj):
             if obj is None:
@@ -179,7 +179,7 @@ class CompositeColumnLoader(ColumnLoader):
                     if isnew:
                         state.expire_attributes([key])
                 if self._should_log_debug:
-                    self.logger.debug("%s deferring load" % self)
+                    self.logger.debug("%s deferring load", self)
                 return (new_execute, None)
         else:
             def new_execute(state, dict_, row, **flags):
@@ -367,7 +367,7 @@ class LazyLoader(AbstractRelationLoader):
         super(LazyLoader, self).init()
         (self.__lazywhere, self.__bind_to_col, self._equated_columns) = self._create_lazy_clause(self.parent_property)
         
-        self.logger.info("%s lazy loading clause %s" % (self, self.__lazywhere))
+        self.logger.info("%s lazy loading clause %s", self, self.__lazywhere)
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()

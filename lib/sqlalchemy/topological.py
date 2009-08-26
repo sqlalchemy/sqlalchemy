@@ -79,7 +79,7 @@ class _Node(object):
             ''.join(str(n) for n in self.children)
 
     def __repr__(self):
-        return "%s" % (str(self.item))
+        return str(self.item)
 
     def all_deps(self):
         """Return a set of dependencies for this node and all its cycles."""

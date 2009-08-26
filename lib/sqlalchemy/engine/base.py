@@ -1118,7 +1118,7 @@ class Connection(Connectable):
     def _cursor_execute(self, cursor, statement, parameters, context=None):
         if self.engine._should_log_info:
             self.engine.logger.info(statement)
-            self.engine.logger.info(repr(parameters))
+            self.engine.logger.info("%r", parameters)
         try:
             self.dialect.do_execute(cursor, statement, parameters, context=context)
         except Exception, e:
@@ -1128,7 +1128,7 @@ class Connection(Connectable):
     def _cursor_executemany(self, cursor, statement, parameters, context=None):
         if self.engine._should_log_info:
             self.engine.logger.info(statement)
-            self.engine.logger.info(repr(parameters))
+            self.engine.logger.info("%r", parameters)
         try:
             self.dialect.do_executemany(cursor, statement, parameters, context=context)
         except Exception, e:
@@ -1496,7 +1496,7 @@ class RowProxy(object):
         self.__parent = parent
         self.__row = row
         if self.__parent._echo:
-            self.__parent.context.engine.logger.debug("Row " + repr(row))
+            self.__parent.context.engine.logger.debug("Row %r", row)
 
     def close(self):
         """Close the parent ResultProxy."""
@@ -1711,7 +1711,7 @@ class ResultProxy(object):
 
         if self._echo:
             self.context.engine.logger.debug(
-                "Col " + repr(tuple(x[0] for x in metadata)))
+                "Col %r", tuple(x[0] for x in metadata))
 
     def __key_fallback(self):
         # create a closure without 'self' to avoid circular references

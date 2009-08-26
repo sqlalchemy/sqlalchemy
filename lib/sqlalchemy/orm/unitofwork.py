@@ -127,13 +127,13 @@ class UOWTransaction(object):
         # if object is not in the overall session, do nothing
         if not self.session._contains_state(state):
             if self._should_log_debug:
-                self.logger.debug("object %s not part of session, not registering for flush" % 
-                                        (mapperutil.state_str(state)))
+                self.logger.debug("object %s not part of session, not registering for flush",
+                                        mapperutil.state_str(state))
             return
 
         if self._should_log_debug:
-            self.logger.debug("register object for flush: %s isdelete=%s listonly=%s postupdate=%s"
-                                    % (mapperutil.state_str(state), isdelete, listonly, postupdate))
+            self.logger.debug("register object for flush: %s isdelete=%s listonly=%s postupdate=%s",
+                                    mapperutil.state_str(state), isdelete, listonly, postupdate)
 
         mapper = _state_mapper(state)
 
@@ -257,7 +257,7 @@ class UOWTransaction(object):
 
         tasks = self._sort_dependencies()
         if self._should_log_info:
-            self.logger.info("Task dump:\n" + self._dump(tasks))
+            self.logger.info("Task dump:\n%s", self._dump(tasks))
         UOWExecutor().execute(self, tasks)
         if self._should_log_info:
             self.logger.info("Execute Complete")
@@ -305,7 +305,7 @@ class UOWTransaction(object):
             self.logger.debug("Dependent tuples:\n" + "\n".join(
                     "(%s->%s)" % (d[0].class_.__name__, d[1].class_.__name__)
                     for d in self.dependencies))
-            self.logger.debug("Dependency sort:\n"+ str(ret))
+            self.logger.debug("Dependency sort:\n%s", ret)
         return ret
 
 log.class_logger(UOWTransaction)

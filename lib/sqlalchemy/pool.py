@@ -192,8 +192,8 @@ class Pool(object):
         if hasattr(listener, 'checkin'):
             self._on_checkin.append(listener)
 
-    def log(self, msg):
-        self.logger.info(msg)
+    def log(self, msg, *args):
+        self.logger.info(msg, *args)
 
 class _ConnectionRecord(object):
     def __init__(self, pool):
@@ -211,23 +211,23 @@ class _ConnectionRecord(object):
     def close(self):
         if self.connection is not None:
             if self.__pool._should_log_info:
-                self.__pool.log("Closing connection %r" % self.connection)
+                self.__pool.log("Closing connection %r", self.connection)
             try:
                 self.connection.close()
             except (SystemExit, KeyboardInterrupt):
                 raise
             except:
                 if self.__pool._should_log_info:
-                    self.__pool.log("Exception closing connection %r" %
+                    self.__pool.log("Exception closing connection %r",
                                     self.connection)
 
     def invalidate(self, e=None):
         if self.__pool._should_log_info:
             if e is not None:
-                self.__pool.log("Invalidate connection %r (reason: %s:%s)" %
-                                (self.connection, e.__class__.__name__, e))
+                self.__pool.log("Invalidate connection %r (reason: %s:%s)",
+                                self.connection, e.__class__.__name__, e)
             else:
-                self.__pool.log("Invalidate connection %r" % self.connection)
+                self.__pool.log("Invalidate connection %r", self.connection)
         self.__close()
         self.connection = None
 
@@ -240,7 +240,7 @@ class _ConnectionRecord(object):
                     l.connect(self.connection, self)
         elif (self.__pool._recycle > -1 and time.time() - self.starttime > self.__pool._recycle):
             if self.__pool._should_log_info:
-                self.__pool.log("Connection %r exceeded timeout; recycling" %
+                self.__pool.log("Connection %r exceeded timeout; recycling",
                                 self.connection)
             self.__close()
             self.connection = self.__connect()
@@ -253,7 +253,7 @@ class _ConnectionRecord(object):
     def __close(self):
         try:
             if self.__pool._should_log_info:
-                self.__pool.log("Closing connection %r" % self.connection)
+                self.__pool.log("Closing connection %r", self.connection)
             self.connection.close()
         except Exception, e:
             if self.__pool._should_log_info:
@@ -267,11 +267,11 @@ class _ConnectionRecord(object):
             self.starttime = time.time()
             connection = self.__pool._creator()
             if self.__pool._should_log_info:
-                self.__pool.log("Created new connection %r" % connection)
+                self.__pool.log("Created new connection %r", connection)
             return connection
         except Exception, e:
             if self.__pool._should_log_info:
-                self.__pool.log("Error on connect(): %s" % e)
+                self.__pool.log("Error on connect(): %s", e)
             raise
 
 
@@ -296,7 +296,7 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
     if connection_record is not None:
         connection_record.fairy = None
         if pool._should_log_info:
-            pool.log("Connection %r being returned to pool" % connection)
+            pool.log("Connection %r being returned to pool", connection)
         if pool._on_checkin:
             for l in pool._on_checkin:
                 l.checkin(connection, connection_record)
@@ -391,7 +391,7 @@ class _ConnectionFairy(object):
             except exc.DisconnectionError, e:
                 if self._pool._should_log_info:
                     self._pool.log(
-                    "Disconnection detected on checkout: %s" % e)
+                    "Disconnection detected on checkout: %s", e)
                 self._connection_record.invalidate(e)
                 self.connection = self._connection_record.get_connection()
                 attempts -= 1
