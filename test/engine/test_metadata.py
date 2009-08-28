@@ -94,7 +94,7 @@ class MetaDataTest(TestBase, ComparesTables):
                 assert table.primary_key is not table_c.primary_key
                 assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
                 assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
-                assert str(table_c.c.foo.server_default.arg) == 'x'
+                assert 'x' in str(table_c.c.foo.server_default.arg)
                 
                 if not reflect:
                     assert str(table_c.c.foo.server_onupdate.arg) == 'q'
