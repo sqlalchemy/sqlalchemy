@@ -46,6 +46,8 @@ class MetaDataTest(TestBase, ComparesTables):
         table = Table('mytable', meta,
             Column('myid', Integer, primary_key=True),
             Column('name', String(40), nullable=True),
+            Column('foo', String(40), nullable=False, server_default='x', server_onupdate='q'),
+            Column('bar', String(40), nullable=False, default='y', onupdate='z'),
             Column('description', String(30), CheckConstraint("description='hi'")),
             UniqueConstraint('name'),
             test_needs_fk=True,
@@ -83,7 +85,7 @@ class MetaDataTest(TestBase, ComparesTables):
 
         meta.create_all(testing.db)
         try:
-            for test, has_constraints in ((test_to_metadata, True), (test_pickle, True),(test_pickle_via_reflect, False)):
+            for test, has_constraints, reflect in ((test_to_metadata, True, False), (test_pickle, True, False),(test_pickle_via_reflect, False, True)):
                 table_c, table2_c = test()
                 self.assert_tables_equal(table, table_c)
                 self.assert_tables_equal(table2, table2_c)
@@ -92,7 +94,13 @@ class MetaDataTest(TestBase, ComparesTables):
                 assert table.primary_key is not table_c.primary_key
                 assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
                 assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
-
+                assert str(table_c.c.foo.server_default.arg) == 'x'
+                
+                if not reflect:
+                    assert str(table_c.c.foo.server_onupdate.arg) == 'q'
+                    assert str(table_c.c.bar.default.arg) == 'y'
+                    assert getattr(table_c.c.bar.onupdate.arg, 'arg', table_c.c.bar.onupdate.arg) == 'z'
+                
                 # constraints dont get reflected for any dialect right now
                 if has_constraints:
                     for c in table_c.c.description.constraints:

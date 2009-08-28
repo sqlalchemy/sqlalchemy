@@ -782,6 +782,10 @@ class Column(SchemaItem, expression.ColumnClause):
                 quote=self.quote, 
                 index=self.index, 
                 autoincrement=self.autoincrement, 
+                default=self.default,
+                server_default=self.server_default,
+                onupdate=self.onupdate,
+                server_onupdate=self.server_onupdate,
                 *[c.copy(**kw) for c in self.constraints])
 
     def _make_proxy(self, selectable, name=None):

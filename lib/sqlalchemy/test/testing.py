@@ -631,15 +631,9 @@ class ComparesTables(object):
                 eq_(c.type.length, reflected_c.type.length)
 
             eq_(set([f.column.name for f in c.foreign_keys]), set([f.column.name for f in reflected_c.foreign_keys]))
-            if c.default:
+            if c.server_default:
                 assert isinstance(reflected_c.server_default,
                                   schema.FetchedValue)
-            elif against(('mysql', '<', (5, 0))):
-                # ignore reflection of bogus db-generated DefaultClause()
-                pass
-            elif not c.primary_key or not against('postgresql', 'mssql'):
-                #print repr(c)
-                assert reflected_c.default is None, reflected_c.default
 
         assert len(table.primary_key) == len(reflected_table.primary_key)
         for c in table.primary_key:

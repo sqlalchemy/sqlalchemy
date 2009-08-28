@@ -413,6 +413,9 @@ CHANGES
       is old stuff.  [ticket:1486]
       
 - sql
+    - Fixed column.copy() to copy defaults and onupdates.
+      [ticket:1373]
+
     - Fixed a bug in extract() introduced in 0.5.4 whereby
       the string "field" argument was getting treated as a 
       ClauseElement, causing various errors within more 
