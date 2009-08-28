@@ -641,7 +641,7 @@ class Mapper(object):
                     # when using the declarative layer
                     self._post_configure_properties()
                     return
-                _already_compiling = True
+#                _already_compiling = True
                 try:
 
                     # double-check inside mutex
