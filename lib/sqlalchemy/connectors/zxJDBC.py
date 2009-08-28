@@ -26,7 +26,9 @@ class ZxJDBCConnector(Connector):
         
     def _create_jdbc_url(self, url):
         """Create a JDBC url from a :class:`~sqlalchemy.engine.url.URL`"""
-        return "jdbc:%s://%s/%s" % (self.jdbc_db_name, url.host, url.database)
+        return 'jdbc:%s://%s%s/%s' % (self.jdbc_db_name, url.host,
+                                      url.port is not None and ':%s' % url.port or '',
+                                      url.database)
         
     def create_connect_args(self, url):
         opts = self._driver_kwargs()
