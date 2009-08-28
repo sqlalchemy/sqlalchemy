@@ -116,7 +116,7 @@ class ColumnLoader(LoaderStrategy):
         key, col = self.key, self.columns[0]
         if adapter:
             col = adapter.columns[col]
-        if col in row:
+        if col is not None and col in row:
             def new_execute(state, dict_, row, **flags):
                 dict_[key] = row[col]
                 
@@ -700,7 +700,7 @@ class EagerLoader(AbstractRelationLoader):
 
         # create AliasedClauses object to build up the eager query.  
         clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
-                    equivalents=self.mapper._equivalent_columns)
+                    equivalents=self.mapper._equivalent_columns, adapt_required=True)
 
         join_to_left = False
         if adapter:

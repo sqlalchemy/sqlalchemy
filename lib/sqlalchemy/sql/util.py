@@ -498,11 +498,12 @@ class ColumnAdapter(ClauseAdapter):
     adapted_row() factory.
     
     """
-    def __init__(self, selectable, equivalents=None, chain_to=None, include=None, exclude=None):
+    def __init__(self, selectable, equivalents=None, chain_to=None, include=None, exclude=None, adapt_required=False):
         ClauseAdapter.__init__(self, selectable, equivalents, include, exclude)
         if chain_to:
             self.chain(chain_to)
         self.columns = util.populate_column_dict(self._locate_col)
+        self.adapt_required = adapt_required
 
     def wrap(self, adapter):
         ac = self.__class__.__new__(self.__class__)
@@ -530,6 +531,16 @@ class ColumnAdapter(ClauseAdapter):
             # anonymize labels in case they have a hardcoded name
             if isinstance(c, expression._Label):
                 c = c.label(None)
+                
+        # adapt_required indicates that if we got the same column
+        # back which we put in (i.e. it passed through), 
+        # it's not correct.  this is used by eagerloading which
+        # knows that all columns and expressions need to be adapted
+        # to a result row, and a "passthrough" is definitely targeting
+        # the wrong column.
+        if self.adapt_required and c is col:
+            return None
+            
         return c    
 
     def adapted_row(self, row):

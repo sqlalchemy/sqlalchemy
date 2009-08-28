@@ -392,7 +392,62 @@ class EagerLazyTest(_base.MappedTest):
         self.assert_(len(q.first().lazy) == 1)
         self.assert_(len(q.first().eager) == 1)
 
+class EagerTargetingTest(_base.MappedTest):
+    """test a scenario where joined table inheritance might be confused as an eagerly loaded joined table."""
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a_table', metadata,
+           Column('id', Integer, primary_key=True),
+           Column('name', String(50)),
+           Column('type', String(30), nullable=False),
+           Column('parent_id', Integer, ForeignKey('a_table.id'))
+        )
 
+        Table('b_table', metadata,
+           Column('id', Integer, ForeignKey('a_table.id'), primary_key=True),
+           Column('b_data', String(50)),
+        )
+    
+    @testing.resolve_artifact_names
+    def test_adapt_stringency(self):
+        class A(_base.ComparableEntity):
+            pass
+        class B(A):
+            pass
+        
+        mapper(A, a_table, polymorphic_on=a_table.c.type, polymorphic_identity='A', 
+                properties={
+                    'children': relation(A, order_by=a_table.c.name)
+            })
+
+        mapper(B, b_table, inherits=A, polymorphic_identity='B', properties={
+                'b_derived':column_property(b_table.c.b_data + "DATA")
+                })
+        
+        sess=create_session()
+
+        b1=B(id=1, name='b1',b_data='i')
+        sess.add(b1)
+        sess.flush()
+
+        b2=B(id=2, name='b2', b_data='l', parent_id=1)
+        sess.add(b2)
+        sess.flush()
+
+        bid=b1.id
+
+        sess.expunge_all()
+        node = sess.query(B).filter(B.id==bid).all()[0]
+        eq_(node, B(id=1, name='b1',b_data='i'))
+        eq_(node.children[0], B(id=2, name='b2',b_data='l'))
+        
+        sess.expunge_all()
+        node = sess.query(B).options(eagerload(B.children)).filter(B.id==bid).all()[0]
+        eq_(node, B(id=1, name='b1',b_data='i'))
+        eq_(node.children[0], B(id=2, name='b2',b_data='l'))
+        
+        
 class FlushTest(_base.MappedTest):
     """test dependency sorting among inheriting mappers"""
     @classmethod
