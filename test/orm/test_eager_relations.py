@@ -1,6 +1,6 @@
 """basic tests of eager loaded attributes"""
 
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, is_, is_not_
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy.orm import eagerload, deferred, undefer
@@ -24,7 +24,8 @@ class EagerTest(_fixtures.FixtureTest):
         sess = create_session()
         q = sess.query(User)
 
-        assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
+        eq_([User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])],
+            q.filter(User.id==7).all())
         eq_(self.static.user_address_result, q.order_by(User.id).all())
 
     @testing.resolve_artifact_names
@@ -62,7 +63,7 @@ class EagerTest(_fixtures.FixtureTest):
             'addresses':relation(mapper(Address, addresses), lazy=False, order_by=addresses.c.email_address),
         })
         q = create_session().query(User)
-        assert [
+        eq_([
             User(id=7, addresses=[
                 Address(id=1)
             ]),
@@ -75,7 +76,7 @@ class EagerTest(_fixtures.FixtureTest):
                 Address(id=5)
             ]),
             User(id=10, addresses=[])
-        ] == q.order_by(User.id).all()
+        ], q.order_by(User.id).all())
 
     @testing.resolve_artifact_names
     def test_orderby_multi(self):
@@ -83,7 +84,7 @@ class EagerTest(_fixtures.FixtureTest):
             'addresses':relation(mapper(Address, addresses), lazy=False, order_by=[addresses.c.email_address, addresses.c.id]),
         })
         q = create_session().query(User)
-        assert [
+        eq_([
             User(id=7, addresses=[
                 Address(id=1)
             ]),
@@ -96,7 +97,7 @@ class EagerTest(_fixtures.FixtureTest):
                 Address(id=5)
             ]),
             User(id=10, addresses=[])
-        ] == q.order_by(User.id).all()
+        ], q.order_by(User.id).all())
 
     @testing.resolve_artifact_names
     def test_orderby_related(self):
@@ -109,7 +110,7 @@ class EagerTest(_fixtures.FixtureTest):
         q = create_session().query(User)
         l = q.filter(User.id==Address.user_id).order_by(Address.email_address).all()
 
-        assert [
+        eq_([
             User(id=8, addresses=[
                 Address(id=2, email_address='ed@wood.com'),
                 Address(id=3, email_address='ed@bettyboop.com'),
@@ -121,7 +122,7 @@ class EagerTest(_fixtures.FixtureTest):
             User(id=7, addresses=[
                 Address(id=1)
             ]),
-        ] == l
+        ], l)
 
     @testing.resolve_artifact_names
     def test_orderby_desc(self):
@@ -131,7 +132,7 @@ class EagerTest(_fixtures.FixtureTest):
                                  order_by=[sa.desc(addresses.c.email_address)]),
         ))
         sess = create_session()
-        assert [
+        eq_([
             User(id=7, addresses=[
                 Address(id=1)
             ]),
@@ -144,7 +145,7 @@ class EagerTest(_fixtures.FixtureTest):
                 Address(id=5)
             ]),
             User(id=10, addresses=[])
-        ] == sess.query(User).order_by(User.id).all()
+        ], sess.query(User).order_by(User.id).all())
 
     @testing.resolve_artifact_names
     def test_deferred_fk_col(self):
@@ -203,7 +204,7 @@ class EagerTest(_fixtures.FixtureTest):
         sess.expunge_all()
         u = sess.query(User).get(7)
         def go():
-            assert u.addresses[0].user_id==7
+            eq_(u.addresses[0].user_id, 7)
         # assert that the eager loader didn't have to affect 'user_id' here
         # and that its still deferred
         self.assert_sql_count(testing.db, go, 1)
@@ -240,7 +241,7 @@ class EagerTest(_fixtures.FixtureTest):
 
         q = create_session().query(Item).order_by(Item.id)
         def go():
-            assert self.static.item_keyword_result == q.all()
+            eq_(self.static.item_keyword_result, q.all())
         self.assert_sql_count(testing.db, go, 1)
 
         def go():
@@ -285,8 +286,8 @@ class EagerTest(_fixtures.FixtureTest):
             addresses = relation(Address, lazy=False,
                                  backref=sa.orm.backref('user', lazy=False), order_by=Address.id)
         ))
-        assert sa.orm.class_mapper(User).get_property('addresses').lazy is False
-        assert sa.orm.class_mapper(Address).get_property('user').lazy is False
+        is_(sa.orm.class_mapper(User).get_property('addresses').lazy, False)
+        is_(sa.orm.class_mapper(Address).get_property('user').lazy, False)
 
         sess = create_session()
         eq_(self.static.user_address_result, sess.query(User).order_by(User.id).all())
@@ -324,7 +325,7 @@ class EagerTest(_fixtures.FixtureTest):
         q = create_session().query(User).order_by(User.id)
 
         def go():
-            assert [
+            eq_([
                 User(
                     id=7,
                     addresses=[Address(id=1)],
@@ -345,7 +346,7 @@ class EagerTest(_fixtures.FixtureTest):
                 ),
                 User(id=10)
 
-            ] == q.all()
+            ], q.all())
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
@@ -376,7 +377,7 @@ class EagerTest(_fixtures.FixtureTest):
         q = create_session().query(User).order_by(User.id)
 
         def go():
-            assert [
+            eq_([
                 User(id=7,
                      addresses=[
                        Address(id=1)],
@@ -415,7 +416,7 @@ class EagerTest(_fixtures.FixtureTest):
                                Item(id=2),
                                Item(id=3)])]),
                 User(id=10)
-            ] == q.all()
+            ], q.all())
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
@@ -500,7 +501,7 @@ class EagerTest(_fixtures.FixtureTest):
         l = q.filter((Item.description=='item 2') | (Item.description=='item 5') | (Item.description=='item 3')).\
             order_by(Item.id).limit(2).all()
 
-        assert self.static.item_keyword_result[1:3] == l
+        eq_(self.static.item_keyword_result[1:3], l)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
@@ -524,7 +525,7 @@ class EagerTest(_fixtures.FixtureTest):
 
         if not testing.against('maxdb', 'mssql'):
             l = q.join('orders').order_by(Order.user_id.desc()).limit(2).offset(1)
-            assert [
+            eq_([
                 User(id=9,
                     orders=[Order(id=2), Order(id=4)],
                     addresses=[Address(id=5)]
@@ -533,20 +534,21 @@ class EagerTest(_fixtures.FixtureTest):
                     orders=[Order(id=1), Order(id=3), Order(id=5)],
                     addresses=[Address(id=1)]
                 )
-            ] == l.all()
+            ], l.all())
 
         l = q.join('addresses').order_by(Address.email_address.desc()).limit(1).offset(0)
-        assert [
+        eq_([
             User(id=7,
                 orders=[Order(id=1), Order(id=3), Order(id=5)],
                 addresses=[Address(id=1)]
             )
-        ] == l.all()
+        ], l.all())
 
     @testing.resolve_artifact_names
     def test_limit_4(self):
         # tests the LIMIT/OFFSET aliasing on a mapper against a select.   original issue from ticket #904
-        sel = sa.select([users, addresses.c.email_address], users.c.id==addresses.c.user_id).alias('useralias')
+        sel = sa.select([users, addresses.c.email_address],
+                        users.c.id==addresses.c.user_id).alias('useralias')
         mapper(User, sel, properties={
             'orders':relation(Order, primaryjoin=sel.c.id==orders.c.user_id, lazy=False)
         })
@@ -570,7 +572,7 @@ class EagerTest(_fixtures.FixtureTest):
 
         def go():
             l = q.filter(users.c.id == 7).all()
-            assert [User(id=7, address=Address(id=1))] == l
+            eq_([User(id=7, address=Address(id=1))], l)
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
@@ -584,9 +586,9 @@ class EagerTest(_fixtures.FixtureTest):
 
         def go():
             a = q.filter(addresses.c.id==1).one()
-            assert a.user is not None
+            is_not_(a.user, None)
             u1 = sess.query(User).get(7)
-            assert a.user is u1
+            is_(a.user, u1)
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
@@ -638,12 +640,13 @@ class EagerTest(_fixtures.FixtureTest):
         l = q.filter("users.id in (7, 8, 9)").order_by("users.id")
 
         def go():
-            assert self.static.user_order_result[0:3] == l.all()
+            eq_(self.static.user_order_result[0:3], l.all())
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
     def test_double_with_aggregate(self):
-        max_orders_by_user = sa.select([sa.func.max(orders.c.id).label('order_id')], group_by=[orders.c.user_id]).alias('max_orders_by_user')
+        max_orders_by_user = sa.select([sa.func.max(orders.c.id).label('order_id')],
+                                       group_by=[orders.c.user_id]).alias('max_orders_by_user')
 
         max_orders = orders.select(orders.c.id==max_orders_by_user.c.order_id).alias('max_orders')
 
@@ -658,7 +661,7 @@ class EagerTest(_fixtures.FixtureTest):
         q = create_session().query(User)
 
         def go():
-            assert [
+            eq_([
                 User(id=7, orders=[
                         Order(id=1),
                         Order(id=3),
@@ -671,12 +674,13 @@ class EagerTest(_fixtures.FixtureTest):
                     max_order=Order(id=4)
                 ),
                 User(id=10),
-            ] == q.order_by(User.id).all()
+            ], q.order_by(User.id).all())
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
     def test_wide(self):
-        mapper(Order, orders, properties={'items':relation(Item, secondary=order_items, lazy=False, order_by=items.c.id)})
+        mapper(Order, orders, properties={'items':relation(Item, secondary=order_items, lazy=False,
+                                                           order_by=items.c.id)})
         mapper(Item, items)
         mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = False, order_by=addresses.c.id),
@@ -684,7 +688,7 @@ class EagerTest(_fixtures.FixtureTest):
         ))
         q = create_session().query(User)
         l = q.all()
-        assert self.static.user_all_result == q.order_by(User.id).all()
+        eq_(self.static.user_all_result, q.order_by(User.id).all())
 
     @testing.resolve_artifact_names
     def test_against_select(self):
@@ -699,15 +703,15 @@ class EagerTest(_fixtures.FixtureTest):
         mapper(Item, items)
 
         q = create_session().query(Order)
-        assert [
+        eq_([
             Order(id=3, user=User(id=7)),
             Order(id=4, user=User(id=9))
-        ] == q.all()
+        ], q.all())
 
         q = q.select_from(s.join(order_items).join(items)).filter(~Item.id.in_([1, 2, 5]))
-        assert [
+        eq_([
             Order(id=3, user=User(id=7)),
-        ] == q.all()
+        ], q.all())
 
     @testing.resolve_artifact_names
     def test_aliasing(self):
@@ -717,8 +721,9 @@ class EagerTest(_fixtures.FixtureTest):
             addresses = relation(mapper(Address, addresses), lazy=False, order_by=addresses.c.id)
         ))
         q = create_session().query(User)
-        l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(Address.user_id==User.id).order_by(User.id)
-        assert self.static.user_address_result[1:2] == l.all()
+        l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(
+            Address.user_id==User.id).order_by(User.id)
+        eq_(self.static.user_address_result[1:2], l.all())
 
 class AddEntityTest(_fixtures.FixtureTest):
     run_inserts = 'once'
@@ -785,7 +790,8 @@ class AddEntityTest(_fixtures.FixtureTest):
         sess = create_session()
         oalias = sa.orm.aliased(Order)
         def go():
-            ret = sess.query(User, oalias).join(('orders', oalias)).order_by(User.id, oalias.id).all()
+            ret = sess.query(User, oalias).join(('orders', oalias)).order_by(User.id,
+                                                                             oalias.id).all()
             eq_(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 1)
 
@@ -805,13 +811,16 @@ class AddEntityTest(_fixtures.FixtureTest):
 
         oalias = sa.orm.aliased(Order)
         def go():
-            ret = sess.query(User, oalias).options(eagerload('addresses')).join(('orders', oalias)).order_by(User.id, oalias.id).all()
+            ret = sess.query(User, oalias).options(eagerload('addresses')).join(
+                ('orders', oalias)).order_by(User.id, oalias.id).all()
             eq_(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 6)
 
         sess.expunge_all()
         def go():
-            ret = sess.query(User, oalias).options(eagerload('addresses'), eagerload(oalias.items)).join(('orders', oalias)).order_by(User.id, oalias.id).all()
+            ret = sess.query(User, oalias).options(eagerload('addresses'),
+                                                   eagerload(oalias.items)).join(
+                ('orders', oalias)).order_by(User.id, oalias.id).all()
             eq_(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 1)
 
@@ -862,7 +871,8 @@ class OrderBySecondaryTest(_base.MappedTest):
         mapper(B, b)
 
         sess = create_session()
-        eq_(sess.query(A).all(), [A(data='a1', bs=[B(data='b3'), B(data='b1'), B(data='b2')]), A(bs=[B(data='b4'), B(data='b3'), B(data='b2')])])
+        eq_(sess.query(A).all(), [A(data='a1', bs=[B(data='b3'), B(data='b1'), B(data='b2')]),
+                                  A(bs=[B(data='b4'), B(data='b3'), B(data='b2')])])
 
 
 class SelfReferentialEagerTest(_base.MappedTest):
@@ -896,7 +906,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
         sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').all()[0]
-            assert Node(data='n1', children=[
+            eq_(Node(data='n1', children=[
                 Node(data='n11'),
                 Node(data='n12', children=[
                     Node(data='n121'),
@@ -904,13 +914,13 @@ class SelfReferentialEagerTest(_base.MappedTest):
                     Node(data='n123')
                 ]),
                 Node(data='n13')
-            ]) == d
+            ]), d)
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').first()
-            assert Node(data='n1', children=[
+            eq_(Node(data='n1', children=[
                 Node(data='n11'),
                 Node(data='n12', children=[
                     Node(data='n121'),
@@ -918,7 +928,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
                     Node(data='n123')
                 ]),
                 Node(data='n13')
-            ]) == d
+            ]), d)
         self.assert_sql_count(testing.db, go, 1)
 
 
@@ -954,12 +964,12 @@ class SelfReferentialEagerTest(_base.MappedTest):
         def go():
             allnodes = sess.query(Node).order_by(Node.data).all()
             n12 = allnodes[2]
-            assert n12.data == 'n12'
-            assert [
+            eq_(n12.data, 'n12')
+            eq_([
                 Node(data='n121'),
                 Node(data='n122'),
                 Node(data='n123')
-            ] == list(n12.children)
+            ], list(n12.children))
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
@@ -990,13 +1000,15 @@ class SelfReferentialEagerTest(_base.MappedTest):
         sess.expunge_all()
 
         def go():
-            assert Node(data='n1', children=[Node(data='n11'), Node(data='n12')]) == sess.query(Node).options(undefer('data')).order_by(Node.id).first()
+            eq_(Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
+                sess.query(Node).options(undefer('data')).order_by(Node.id).first())
         self.assert_sql_count(testing.db, go, 3)
 
         sess.expunge_all()
 
         def go():
-            assert Node(data='n1', children=[Node(data='n11'), Node(data='n12')]) == sess.query(Node).options(undefer('data'), undefer('children.data')).first()
+            eq_(Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
+                sess.query(Node).options(undefer('data'), undefer('children.data')).first())
         self.assert_sql_count(testing.db, go, 1)
 
 
@@ -1022,7 +1034,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
         sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').options(eagerload('children.children')).first()
-            assert Node(data='n1', children=[
+            eq_(Node(data='n1', children=[
                 Node(data='n11'),
                 Node(data='n12', children=[
                     Node(data='n121'),
@@ -1030,7 +1042,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
                     Node(data='n123')
                 ]),
                 Node(data='n13')
-            ]) == d
+            ]), d)
         self.assert_sql_count(testing.db, go, 2)
 
         def go():
@@ -1068,7 +1080,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
         sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').first()
-            assert Node(data='n1', children=[
+            eq_(Node(data='n1', children=[
                 Node(data='n11'),
                 Node(data='n12', children=[
                     Node(data='n121'),
@@ -1076,7 +1088,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
                     Node(data='n123')
                 ]),
                 Node(data='n13')
-            ]) == d
+            ]), d)
         self.assert_sql_count(testing.db, go, 3)
 
 class MixedSelfReferentialEagerTest(_base.MappedTest):
@@ -1187,7 +1199,8 @@ class SelfReferentialM2MEagerTest(_base.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        assert [Widget(name='w1', children=[Widget(name='w2')])] == sess.query(Widget).filter(Widget.name==u'w1').all()
+        eq_([Widget(name='w1', children=[Widget(name='w2')])],
+            sess.query(Widget).filter(Widget.name==u'w1').all())
 
 class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_setup_mappers = 'once'
