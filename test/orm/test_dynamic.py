@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, ne_
 import operator
 from sqlalchemy.orm import dynamic_loader, backref
 from sqlalchemy.test import testing
@@ -125,8 +125,8 @@ class DynamicTest(_fixtures.FixtureTest):
         sess = create_session()
         u1 = User()
         u1.addresses.append(Address())
-        assert u1.addresses.count() == 1
-        assert u1.addresses[0] == Address()
+        eq_(u1.addresses.count(), 1)
+        eq_(u1.addresses[0], Address())
 
     @testing.resolve_artifact_names
     def test_custom_query(self):
@@ -145,13 +145,13 @@ class DynamicTest(_fixtures.FixtureTest):
         assert isinstance(col, Query)
         assert isinstance(col, MyQuery)
         assert hasattr(col, 'append')
-        assert type(col).__name__ == 'AppenderMyQuery'
+        eq_(type(col).__name__, 'AppenderMyQuery')
 
         q = col.limit(1)
         assert isinstance(q, Query)
         assert isinstance(q, MyQuery)
         assert not hasattr(q, 'append')
-        assert type(q).__name__ == 'MyQuery'
+        eq_(type(q).__name__, 'MyQuery')
 
     @testing.resolve_artifact_names
     def test_custom_query_with_custom_mixin(self):
@@ -182,14 +182,14 @@ class DynamicTest(_fixtures.FixtureTest):
         assert isinstance(col, MyQuery)
         assert hasattr(col, 'append')
         assert hasattr(col, 'add')
-        assert type(col).__name__ == 'MyAppenderQuery'
+        eq_(type(col).__name__, 'MyAppenderQuery')
 
         q = col.limit(1)
         assert isinstance(q, Query)
         assert isinstance(q, MyQuery)
         assert not hasattr(q, 'append')
         assert not hasattr(q, 'add')
-        assert type(q).__name__ == 'MyQuery'
+        eq_(type(q).__name__, 'MyQuery')
 
 
 class SessionTest(_fixtures.FixtureTest):
@@ -206,32 +206,29 @@ class SessionTest(_fixtures.FixtureTest):
         sess.add_all([u1, a1])
         sess.flush()
 
-        assert testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)) == 0
+        eq_(testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)), 0)
         u1 = sess.query(User).get(u1.id)
         u1.addresses.append(a1)
         sess.flush()
 
-        assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
-            (a1.id, u1.id, 'foo')
-        ]
+        eq_(testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall(),
+            [(a1.id, u1.id, 'foo')])
 
         u1.addresses.remove(a1)
         sess.flush()
-        assert testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)) == 0
+        eq_(testing.db.scalar(select([func.count(1)]).where(addresses.c.user_id!=None)), 0)
 
         u1.addresses.append(a1)
         sess.flush()
-        assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
-            (a1.id, u1.id, 'foo')
-        ]
+        eq_(testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall(),
+            [(a1.id, u1.id, 'foo')])
 
-        a2= Address(email_address='bar')
+        a2 = Address(email_address='bar')
         u1.addresses.remove(a1)
         u1.addresses.append(a2)
         sess.flush()
-        assert testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall() == [
-            (a2.id, u1.id, 'bar')
-        ]
+        eq_(testing.db.execute(select([addresses]).where(addresses.c.user_id!=None)).fetchall(),
+            [(a2.id, u1.id, 'bar')])
 
 
     @testing.resolve_artifact_names
@@ -255,11 +252,11 @@ class SessionTest(_fixtures.FixtureTest):
         u1.addresses.append(a1)
         u1.addresses.append(a3)
         u1 = sess.merge(u1)
-        assert attributes.get_history(u1, 'addresses') == (
+        eq_(attributes.get_history(u1, 'addresses'), (
             [a1],
             [a3],
             [a2]
-        )
+        ))
 
         sess.flush()
 
@@ -287,13 +284,16 @@ class SessionTest(_fixtures.FixtureTest):
         sess.expunge_all()
 
         # test the test fixture a little bit
-        assert User(name='jack', addresses=[Address(email_address='wrong')]) != sess.query(User).first()
-        assert User(name='jack', addresses=[Address(email_address='lala@hoho.com')]) == sess.query(User).first()
+        ne_(User(name='jack', addresses=[Address(email_address='wrong')]),
+            sess.query(User).first())
+        eq_(User(name='jack', addresses=[Address(email_address='lala@hoho.com')]),
+            sess.query(User).first())
 
-        assert [
+        eq_([
             User(name='jack', addresses=[Address(email_address='lala@hoho.com')]),
             User(name='ed', addresses=[Address(email_address='foo@bar.com')])
-        ] == sess.query(User).all()
+            ],
+            sess.query(User).all())
 
     @testing.resolve_artifact_names
     def test_hasattr(self):
@@ -320,16 +320,13 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess.add(u1)
         u1.addresses = [a1, a3]
-        assert list(u1.addresses) == [a1, a3]
+        eq_(list(u1.addresses), [a1, a3])
         u1.addresses = [a1, a2, a4]
-        assert list(u1.addresses) == [a1, a2, a4]
+        eq_(list(u1.addresses), [a1, a2, a4])
         u1.addresses = [a2, a3]
-        assert list(u1.addresses) == [a2, a3]
+        eq_(list(u1.addresses), [a2, a3])
         u1.addresses = []
-        assert list(u1.addresses) == []
-
-
-
+        eq_(list(u1.addresses), [])
 
     @testing.resolve_artifact_names
     def test_rollback(self):
@@ -352,7 +349,8 @@ class SessionTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_delete_nocascade(self):
         mapper(User, users, properties={
-            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id, backref='user')
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
+                                       backref='user')
         })
         sess = create_session(autoflush=True)
         u = User(name='ed')
@@ -364,11 +362,12 @@ class SessionTest(_fixtures.FixtureTest):
         u.addresses.append(Address(email_address='f'))
         sess.add(u)
 
-        assert Address(email_address='c') == u.addresses[2]
+        eq_(Address(email_address='c'), u.addresses[2])
         sess.delete(u.addresses[2])
         sess.delete(u.addresses[4])
         sess.delete(u.addresses[3])
-        assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
+        eq_([Address(email_address='a'), Address(email_address='b'), Address(email_address='d')],
+            list(u.addresses))
 
         sess.expunge_all()
         u = sess.query(User).get(u.id)
@@ -380,13 +379,14 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         sess.close()
 
-        assert testing.db.scalar(addresses.count(addresses.c.user_id != None)) ==0
+        eq_(testing.db.scalar(addresses.count(addresses.c.user_id != None)), 0)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_delete_cascade(self):
         mapper(User, users, properties={
-            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id, backref='user', cascade="all, delete-orphan")
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
+                                       backref='user', cascade="all, delete-orphan")
         })
         sess = create_session(autoflush=True)
         u = User(name='ed')
@@ -398,11 +398,12 @@ class SessionTest(_fixtures.FixtureTest):
         u.addresses.append(Address(email_address='f'))
         sess.add(u)
 
-        assert Address(email_address='c') == u.addresses[2]
+        eq_(Address(email_address='c'), u.addresses[2])
         sess.delete(u.addresses[2])
         sess.delete(u.addresses[4])
         sess.delete(u.addresses[3])
-        assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
+        eq_([Address(email_address='a'), Address(email_address='b'), Address(email_address='d')],
+            list(u.addresses))
 
         sess.expunge_all()
         u = sess.query(User).get(u.id)
@@ -414,13 +415,14 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         sess.close()
 
-        assert testing.db.scalar(addresses.count()) ==0
+        eq_(testing.db.scalar(addresses.count()), 0)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_remove_orphans(self):
         mapper(User, users, properties={
-            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id, cascade="all, delete-orphan", backref='user')
+            'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
+                                       cascade="all, delete-orphan", backref='user')
         })
         sess = create_session(autoflush=True)
         u = User(name='ed')
@@ -432,10 +434,11 @@ class SessionTest(_fixtures.FixtureTest):
         u.addresses.append(Address(email_address='f'))
         sess.add(u)
 
-        assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='c'),
-            Address(email_address='d'), Address(email_address='e'), Address(email_address='f')] == sess.query(Address).all()
+        eq_([Address(email_address='a'), Address(email_address='b'), Address(email_address='c'),
+             Address(email_address='d'), Address(email_address='e'), Address(email_address='f')],
+            sess.query(Address).all())
 
-        assert Address(email_address='c') == u.addresses[2]
+        eq_(Address(email_address='c'), u.addresses[2])
 
         try:
             del u.addresses[3]
@@ -446,9 +449,11 @@ class SessionTest(_fixtures.FixtureTest):
         for a in u.addresses.filter(Address.email_address.in_(['c', 'e', 'f'])):
             u.addresses.remove(a)
 
-        assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == list(u.addresses)
+        eq_([Address(email_address='a'), Address(email_address='b'), Address(email_address='d')],
+            list(u.addresses))
 
-        assert [Address(email_address='a'), Address(email_address='b'), Address(email_address='d')] == sess.query(Address).all()
+        eq_([Address(email_address='a'), Address(email_address='b'), Address(email_address='d')],
+            sess.query(Address).all())
 
         sess.delete(u)
         sess.close()
@@ -479,15 +484,15 @@ def _create_backref_test(autoflush, saveuser):
         assert u in sess
         assert a in sess
 
-        self.assert_(list(u.addresses) == [a])
+        eq_(list(u.addresses), [a])
 
         a.user = None
         if not autoflush:
-            self.assert_(list(u.addresses) == [a])
+            eq_(list(u.addresses), [a])
 
         if not autoflush:
             sess.flush()
-        self.assert_(list(u.addresses) == [])
+        eq_(list(u.addresses), [])
 
     test_backref = function_named(
         test_backref, "test%s%s" % ((autoflush and "_autoflush" or ""),
