@@ -22,7 +22,7 @@ from sqlalchemy import types as sqltypes, util
 from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy.dialects.mysql.base import BIT, MySQLDialect, MySQLExecutionContext
 
-class _JDBCBit(BIT):
+class _ZxJDBCBit(BIT):
     def result_processor(self, dialect):
         """Converts boolean or byte arrays from MySQL Connector/J to longs."""
         def process(value):
@@ -38,7 +38,7 @@ class _JDBCBit(BIT):
         return process
 
 
-class MySQL_jdbcExecutionContext(MySQLExecutionContext):
+class MySQL_zxjdbcExecutionContext(MySQLExecutionContext):
     def get_lastrowid(self):
         cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
@@ -47,17 +47,17 @@ class MySQL_jdbcExecutionContext(MySQLExecutionContext):
         return lastrowid
 
 
-class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
-    execution_ctx_cls = MySQL_jdbcExecutionContext
-
+class MySQL_zxjdbc(ZxJDBCConnector, MySQLDialect):
     jdbc_db_name = 'mysql'
     jdbc_driver_name = 'com.mysql.jdbc.Driver'
+
+    execution_ctx_cls = MySQL_zxjdbcExecutionContext
 
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {
             sqltypes.Time: sqltypes.Time,
-            BIT: _JDBCBit
+            BIT: _ZxJDBCBit
         }
     )
 
@@ -101,4 +101,4 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
                 version.append(n)
         return tuple(version)
 
-dialect = MySQL_jdbc
+dialect = MySQL_zxjdbc

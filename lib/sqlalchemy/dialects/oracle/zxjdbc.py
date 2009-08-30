@@ -18,7 +18,7 @@ from sqlalchemy.sql import expression
 
 SQLException = zxJDBC = None
 
-class _JDBCDate(sqltypes.Date):
+class _ZxJDBCDate(sqltypes.Date):
 
     def result_processor(self, dialect):
         def process(value):
@@ -29,7 +29,7 @@ class _JDBCDate(sqltypes.Date):
         return process
 
 
-class _JDBCNumeric(sqltypes.Numeric):
+class _ZxJDBCNumeric(sqltypes.Numeric):
 
     def result_processor(self, dialect):
         if self.asdecimal:
@@ -47,7 +47,7 @@ class _JDBCNumeric(sqltypes.Numeric):
         return process
 
 
-class Oracle_jdbcCompiler(OracleCompiler):
+class Oracle_zxjdbcCompiler(OracleCompiler):
 
     def returning_clause(self, stmt, returning_cols):
         columnlist = list(expression._select_iterables(returning_cols))
@@ -71,7 +71,7 @@ class Oracle_jdbcCompiler(OracleCompiler):
         return 'RETURNING ' + ', '.join(columns) +  " INTO " + ", ".join(binds)
 
 
-class Oracle_jdbcExecutionContext(default.DefaultExecutionContext):
+class Oracle_zxjdbcExecutionContext(default.DefaultExecutionContext):
 
     def pre_exec(self):
         if hasattr(self.compiled, 'returning_parameters'):
@@ -149,28 +149,34 @@ class ReturningParam(object):
             return self.type == other.type
         return NotImplemented
 
+    def __ne__(self, other):
+        if isinstance(other, ReturningParam):
+            return self.type != other.type
+        return NotImplemented
+
     def __repr__(self):
         kls = self.__class__
         return '<%s.%s object at 0x%x type=%s>' % (kls.__module__, kls.__name__, id(self),
                                                    self.type)
 
 
-class Oracle_jdbc(ZxJDBCConnector, OracleDialect):
-    statement_compiler = Oracle_jdbcCompiler
-    execution_ctx_cls = Oracle_jdbcExecutionContext
+class Oracle_zxjdbc(ZxJDBCConnector, OracleDialect):
     jdbc_db_name = 'oracle'
     jdbc_driver_name = 'oracle.jdbc.OracleDriver'
+
+    statement_compiler = Oracle_zxjdbcCompiler
+    execution_ctx_cls = Oracle_zxjdbcExecutionContext
 
     colspecs = util.update_copy(
         OracleDialect.colspecs,
         {
-            sqltypes.Date : _JDBCDate,
-            sqltypes.Numeric: _JDBCNumeric
+            sqltypes.Date : _ZxJDBCDate,
+            sqltypes.Numeric: _ZxJDBCNumeric
         }
     )
 
     def __init__(self, *args, **kwargs):
-        super(Oracle_jdbc, self).__init__(*args, **kwargs)
+        super(Oracle_zxjdbc, self).__init__(*args, **kwargs)
         global SQLException, zxJDBC
         from java.sql import SQLException
         from com.ziclix.python.sql import zxJDBC
@@ -189,7 +195,7 @@ class Oracle_jdbc(ZxJDBCConnector, OracleDialect):
         self.DataHandler = OracleReturningDataHandler
 
     def initialize(self, connection):
-        super(Oracle_jdbc, self).initialize(connection)
+        super(Oracle_zxjdbc, self).initialize(connection)
         self.implicit_returning = connection.connection.driverversion >= '10.2'
 
     def _create_jdbc_url(self, url):
@@ -199,4 +205,4 @@ class Oracle_jdbc(ZxJDBCConnector, OracleDialect):
         version = re.search(r'Release ([\d\.]+)', connection.connection.dbversion).group(1)
         return tuple(int(x) for x in version.split('.'))
 
-dialect = Oracle_jdbc
+dialect = Oracle_zxjdbc
