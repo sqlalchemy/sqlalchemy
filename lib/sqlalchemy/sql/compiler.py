@@ -844,8 +844,7 @@ class SQLCompiler(engine.Compiled):
                                         self.dialect.supports_sequences or 
                                         not isinstance(c.default, schema.Sequence)
                                     )
-                                ) or \
-                                self.dialect.preexecute_autoincrement_sequences:
+                                ) or self.dialect.preexecute_autoincrement_sequences:
 
                                 values.append((c, self._create_crud_bind_param(c, None)))
                                 self.prefetch.append(c)

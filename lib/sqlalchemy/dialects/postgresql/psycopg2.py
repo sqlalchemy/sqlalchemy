@@ -70,6 +70,7 @@ class PostgreSQL_psycopg2ExecutionContext(default.DefaultExecutionContext):
         # TODO: coverage for server side cursors + select.for_update()
         is_server_side = \
             self.dialect.server_side_cursors and \
+            not self.should_autocommit and \
             ((self.compiled and isinstance(self.compiled.statement, expression.Selectable) 
                 and not getattr(self.compiled.statement, 'for_update', False)) \
             or \

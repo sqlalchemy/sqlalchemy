@@ -235,6 +235,16 @@ CHANGES
       just to treat that one non-existent use case.
       [ticket:1279]
     
+    - Inserting NULL into a primary key + foreign key column
+      will allow the "not null constraint" error to raise,
+      not an attempt to execute a nonexistent "col_id_seq" 
+      sequence.  [ticket:1516]
+    
+    - autoincrement SELECT statements, i.e. those which 
+      select from a procedure that modifies rows, now work 
+      with server-side cursor mode (the named cursor isn't 
+      used for such statements.)
+      
 - mysql
     - all the _detect_XXX() functions now run once underneath
       dialect.initialize()

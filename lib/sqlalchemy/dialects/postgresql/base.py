@@ -333,32 +333,29 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
 
 class PGDefaultRunner(base.DefaultRunner):
-    def __init__(self, context):
-        base.DefaultRunner.__init__(self, context)
-        # craete cursor which won't conflict with a server-side cursor
-        self.cursor = context._connection.connection.cursor()
-    
+
     def get_column_default(self, column, isinsert=True):
         if column.primary_key:
-            # pre-execute passive defaults on primary keys
             if (isinstance(column.server_default, schema.DefaultClause) and
                 column.server_default.arg is not None):
+
+                # pre-execute passive defaults on primary key columns
                 return self.execute_string("select %s" % column.server_default.arg)
-            elif (isinstance(column.type, sqltypes.Integer) and column.autoincrement) \
+
+            elif column is column.table._autoincrement_column \
                     and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
+
+                # execute the sequence associated with a SERIAL primary key column.  
+                # for non-primary-key SERIAL, the ID just generates server side.
                 sch = column.table.schema
-                # TODO: this has to build into the Sequence object so we can get the quoting
-                # logic from it
+
                 if sch is not None:
                     exc = "select nextval('\"%s\".\"%s_%s_seq\"')" % (sch, column.table.name, column.name)
                 else:
                     exc = "select nextval('\"%s_%s_seq\"')" % (column.table.name, column.name)
 
-                if self.dialect.supports_unicode_statements:
-                    return self.execute_string(exc)
-                else:
-                    return self.execute_string(exc.encode(self.dialect.encoding))
-
+                return self.execute_string(exc)
+        
         return super(PGDefaultRunner, self).get_column_default(column)
 
     def visit_sequence(self, seq):

@@ -367,7 +367,10 @@ def _produce_test(select_type):
             )
             
             eq_(
-                sess.query(Manager.name, Paperwork.description).join((Paperwork, Manager.person_id==Paperwork.person_id)).all(),
+                sess.query(Manager.name, Paperwork.description).
+                    join((Paperwork, Manager.person_id==Paperwork.person_id)).
+                    order_by(Paperwork.paperwork_id).
+                    all(),
                 [(u'pointy haired boss', u'review #1'), (u'dogbert', u'review #2'), (u'dogbert', u'review #3')]
             )
             

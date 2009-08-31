@@ -131,6 +131,28 @@ class InsertTest(TestBase, AssertsExecutionResults):
         ins.execute({'x':"five"}, {'x':"seven"})
         assert table.select().execute().fetchall() == [(1, 'five'), (2, 'seven')]
 
+    def test_foreignkey_missing_insert(self):
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        t2 = Table('t2', metadata,
+            Column('id', Integer, ForeignKey('t1.id'), primary_key=True)
+        )
+        metadata.create_all()
+        
+        # want to ensure that 
+        # "null value in column "id" violates not-null constraint" is raised (IntegrityError on psycoopg2,
+        # but ProgrammingError on pg8000),
+        # and not "ProgrammingError: (ProgrammingError) relation "t2_id_seq" does not exist".
+        # the latter corresponds to autoincrement behavior, which is not the case
+        # here due to the foreign key.
+        for eng in [
+            engines.testing_engine(options={'implicit_returning':False}),
+            engines.testing_engine(options={'implicit_returning':True}),
+        ]:
+            assert_raises_message(exc.DBAPIError, "violates not-null constraint", eng.execute, t2.insert())
+        
+        
     def test_sequence_insert(self):
         table = Table('testtable', metadata,
             Column('id', Integer, Sequence('my_seq'), primary_key=True),

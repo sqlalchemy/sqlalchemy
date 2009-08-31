@@ -254,8 +254,8 @@ class DefaultExecutionContext(base.ExecutionContext):
             else:
                 self.statement = statement
             self.isinsert = self.isupdate = self.isdelete = False
-            self.cursor = self.create_cursor()
             self.should_autocommit = self.should_autocommit_text(statement)
+            self.cursor = self.create_cursor()
         else:
             # no statement. used for standalone ColumnDefault execution.
             self.statement = self.compiled = None
