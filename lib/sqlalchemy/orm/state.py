@@ -289,7 +289,7 @@ class InstanceState(object):
                 instance_dict._modified.add(self)
 
         self.modified = True
-        if not self._strong_obj:
+        if self._strong_obj is None:
             self._strong_obj = self.obj()
 
     def commit(self, dict_, keys):

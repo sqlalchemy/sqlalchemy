@@ -430,6 +430,10 @@ CHANGES
       http://www.sqlalchemy.org/trac/wiki/UsageRecipes/PreFilteredQuery
       for an example.
 
+    - Fixed recursion issue which occured if a mapped object's
+      `__len__()` or `__nonzero__()` method resulted in state
+      changes.  [ticket:1501]
+      
     - Fixed a somewhat hypothetical issue which would result
       in the wrong primary key being calculated for a mapper
       using the old polymorphic_union function - but this

@@ -2631,7 +2631,35 @@ class RequirementsTest(_base.MappedTest):
                                   sa.orm.eagerload_all('h3s.h1s')).all()
         eq_(len(h1s), 5)
 
+    @testing.resolve_artifact_names
+    def test_nonzero_len_recursion(self):
+        class H1(object):
+            def __len__(self):
+                return len(self.get_value())
+            
+            def get_value(self):
+                self.value = "foobar"
+                return self.value
 
+        class H2(object):
+            def __nonzero__(self):
+                return bool(self.get_value())
+
+            def get_value(self):
+                self.value = "foobar"
+                return self.value
+                
+        mapper(H1, ht1)
+        mapper(H2, ht1)
+        
+        h1 = H1()
+        h1.value = "Asdf"
+        h1.value = "asdf asdf" # ding
+
+        h2 = H2()
+        h2.value = "Asdf"
+        h2.value = "asdf asdf" # ding
+        
 class MagicNamesTest(_base.MappedTest):
 
     @classmethod
