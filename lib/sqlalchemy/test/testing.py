@@ -497,9 +497,12 @@ def startswith_(a, fragment, msg=None):
 def assert_raises(except_cls, callable_, *args, **kw):
     try:
         callable_(*args, **kw)
-        assert False, "Callable did not raise an exception"
+        success = False
     except except_cls, e:
-        pass
+        success = True
+    
+    # assert outside the block so it works for AssertionError too !
+    assert success, "Callable did not raise an exception"
 
 def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
     try:

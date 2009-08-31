@@ -433,6 +433,10 @@ CHANGES
     - Fixed recursion issue which occured if a mapped object's
       `__len__()` or `__nonzero__()` method resulted in state
       changes.  [ticket:1501]
+
+    - Fixed incorrect exception raise in 
+      Weak/StrongIdentityMap.add() 
+      [ticket:1506]
       
     - Fixed a somewhat hypothetical issue which would result
       in the wrong primary key being calculated for a mapper
