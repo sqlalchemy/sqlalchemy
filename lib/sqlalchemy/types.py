@@ -13,8 +13,8 @@ For more information see the SQLAlchemy documentation on types.
 """
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text', 'FLOAT',
-            'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'NCLOB', 'BLOB',
-            'BOOLEAN', 'SMALLINT', 'INTEGER','DATE', 'TIME',
+            'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
+            'BOOLEAN', 'SMALLINT', 'INTEGER', 'DATE', 'TIME',
             'String', 'Integer', 'SmallInteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
             'Boolean', 'Unicode', 'MutableType', 'Concatenable', 'UnicodeText', 'PickleType', 'Interval',
@@ -32,7 +32,7 @@ import sqlalchemy.util as util
 NoneType = type(None)
 if util.jython:
     import array
-    
+
 class AbstractType(Visitable):
 
     def __init__(self, *args, **kwargs):
@@ -40,7 +40,7 @@ class AbstractType(Visitable):
 
     def compile(self, dialect):
         return dialect.type_compiler.process(self)
-        
+
     def copy_value(self, value):
         return value
 
@@ -100,7 +100,7 @@ class TypeEngine(AbstractType):
     @util.memoized_property
     def _impl_dict(self):
         return {}
-        
+
     def dialect_impl(self, dialect, **kwargs):
         try:
             return self._impl_dict[dialect.__class__]
@@ -141,7 +141,7 @@ class TypeEngine(AbstractType):
 
 class UserDefinedType(TypeEngine):
     """Base for user defined types.
-    
+
     This should be the base of new types.  Note that
     for most cases, :class:`TypeDecorator` is probably
     more appropriate.
@@ -174,7 +174,7 @@ class UserDefinedType(TypeEngine):
 
     """
     __visit_name__ = "user_defined"
-    
+
 class TypeDecorator(AbstractType):
     """Allows the creation of types which add additional functionality
     to an existing type.
@@ -216,7 +216,7 @@ class TypeDecorator(AbstractType):
     """
 
     __visit_name__ = "type_decorator"
-    
+
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
             raise AssertionError("TypeDecorator implementations require a class-level "
@@ -231,14 +231,14 @@ class TypeDecorator(AbstractType):
         except KeyError:
             pass
 
-        # adapt the TypeDecorator first, in 
+        # adapt the TypeDecorator first, in
         # the case that the dialect maps the TD
         # to one of its native types (i.e. PGInterval)
         adapted = dialect.__class__.type_descriptor(self)
         if adapted is not self:
             self._impl_dict[dialect] = adapted
             return adapted
-        
+
         # otherwise adapt the impl type, link
         # to a copy of this TypeDecorator and return
         # that.
@@ -263,7 +263,7 @@ class TypeDecorator(AbstractType):
 
         by default calls dialect.type_descriptor(self.impl), but
         can be overridden to provide different behavior.
-        
+
         """
         if isinstance(self.impl, TypeDecorator):
             return self.impl.dialect_impl(dialect)
@@ -350,7 +350,7 @@ def to_instance(typeobj):
     if typeobj is None:
         return NULLTYPE
 
-    try: 
+    try:
         return typeobj()
     except TypeError:
         return typeobj
@@ -418,7 +418,7 @@ class String(Concatenable, TypeEngine):
     """
 
     __visit_name__ = 'string'
-    
+
     def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
         """
         Create a string-holding type.
@@ -459,8 +459,8 @@ class String(Concatenable, TypeEngine):
 
     def adapt(self, impltype):
         return impltype(
-                    length=self.length, 
-                    convert_unicode=self.convert_unicode, 
+                    length=self.length,
+                    convert_unicode=self.convert_unicode,
                     assert_unicode=self.assert_unicode)
 
     def bind_processor(self, dialect):
@@ -469,7 +469,7 @@ class String(Concatenable, TypeEngine):
                 assert_unicode = dialect.assert_unicode
             else:
                 assert_unicode = self.assert_unicode
-            
+
             if dialect.supports_unicode_binds and assert_unicode:
                 def process(value):
                     if not isinstance(value, (unicode, NoneType)):
@@ -552,7 +552,7 @@ class Unicode(String):
     """
 
     __visit_name__ = 'unicode'
-    
+
     def __init__(self, length=None, **kwargs):
         """
         Create a Unicode-converting String type.
@@ -571,10 +571,10 @@ class Unicode(String):
 
 class UnicodeText(Text):
     """An unbounded-length Unicode string.
-    
+
     See :class:`Unicode` for details on the unicode
     behavior of this object.
-    
+
     """
 
     __visit_name__ = 'unicode_text'
@@ -598,9 +598,9 @@ class UnicodeText(Text):
 
 class Integer(TypeEngine):
     """A type for ``int`` integers."""
-    
+
     __visit_name__ = 'integer'
-    
+
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
@@ -634,7 +634,7 @@ class Numeric(TypeEngine):
     """
 
     __visit_name__ = 'numeric'
-    
+
     def __init__(self, precision=None, scale=None, asdecimal=True):
         """
         Construct a Numeric.
@@ -683,7 +683,7 @@ class Float(Numeric):
     """A type for ``float`` numbers."""
 
     __visit_name__ = 'float'
-    
+
     def __init__(self, precision=None, asdecimal=False, **kwargs):
         """
         Construct a Float.
@@ -708,9 +708,9 @@ class DateTime(TypeEngine):
     converted back to datetime objects when rows are returned.
 
     """
-    
+
     __visit_name__ = 'datetime'
-    
+
     def __init__(self, timezone=False):
         self.timezone = timezone
 
@@ -725,7 +725,7 @@ class Date(TypeEngine):
     """A type for ``datetime.date()`` objects."""
 
     __visit_name__ = 'date'
-    
+
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
@@ -809,8 +809,8 @@ class PickleType(MutableType, TypeDecorator):
 
         :param mutable: defaults to True; implements
           :meth:`AbstractType.is_mutable`.   When ``True``, incoming
-          objects *must* provide an ``__eq__()`` method which 
-          performs the desired deep comparison of members, or the 
+          objects *must* provide an ``__eq__()`` method which
+          performs the desired deep comparison of members, or the
           ``comparator`` argument must be present.  Otherwise,
           comparisons are done by comparing pickle strings.
           The pickle form of comparison is a deprecated usage and will
@@ -961,12 +961,12 @@ class TIME(Time):
 
 class TEXT(Text):
     """The SQL TEXT type."""
-    
+
     __visit_name__ = 'TEXT'
 
 class CLOB(Text):
     """The CLOB type.
-    
+
     This type is found in Oracle and Informix.
     """
 
