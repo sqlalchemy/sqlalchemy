@@ -533,7 +533,6 @@ class MapperTest(_fixtures.FixtureTest):
 
 
         mapper(User, users.outerjoin(addresses),
-               allow_null_pks=True,
                primary_key=[users.c.id, addresses.c.id],
                properties=dict(
             address_id=addresses.c.id))
@@ -2039,7 +2038,7 @@ class CompositeTypesTest(_base.MappedTest):
             def __init__(self, version):
                 self.version = version
 
-        mapper(Graph, graphs, allow_null_pks=True, properties={
+        mapper(Graph, graphs, properties={
             'version':sa.orm.composite(Version, graphs.c.id,
                                        graphs.c.version_id)})
 

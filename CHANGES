@@ -41,6 +41,13 @@ CHANGES
     deletes the instance_key and removes from any session.)
     [ticket:1052]
 
+  - the allow_null_pks flag on mapper() is deprecated, and 
+    the feature is turned "on" by default.  This means that 
+    a row which has a non-null value for any of its primary key
+    columns will be considered an identity.  The need for this
+    scenario typically only occurs when mapping to an outer join.
+    [ticket:1339]
+    
   - many-to-one "lazyload" fixes:
       - many-to-one relation to a joined-table subclass now
         uses get() for a simple load (known as the "use_get"

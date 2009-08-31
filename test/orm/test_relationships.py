@@ -466,7 +466,7 @@ class RelationTest4(_base.MappedTest):
             pass
         mapper(C, tableC, properties={
             'a':relation(A, cascade="save-update")
-        }, allow_null_pks=True)
+        })
         mapper(A, tableA)
 
         c1 = C()

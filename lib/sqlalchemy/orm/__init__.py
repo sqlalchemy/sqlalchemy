@@ -620,10 +620,9 @@ def mapper(class_, local_table=None, *args, **params):
         :class:`~sqlalchemy.orm.query.Query`.
 
       allow_null_pks
-        Indicates that composite primary keys where one or more (but not all)
-        columns contain NULL is a valid primary key.  Primary keys which
-        contain NULL values usually indicate that a result row does not
-        contain an entity and should be skipped.
+        This flag is deprecated - allow_null_pks is now "on" in all cases.
+        Rows which contain NULL for some (but not all) of its primary key
+        columns will be considered to have a valid primary key.
 
       batch
         Indicates that save operations of multiple entities can be batched

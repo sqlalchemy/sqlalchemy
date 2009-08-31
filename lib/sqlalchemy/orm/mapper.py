@@ -41,6 +41,7 @@ __all__ = (
 _mapper_registry = weakref.WeakKeyDictionary()
 _new_mappers = False
 _already_compiling = False
+_none_set = frozenset([None])
 
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
@@ -90,7 +91,7 @@ class Mapper(object):
                  concrete=False,
                  select_table=None,
                  with_polymorphic=None,
-                 allow_null_pks=False,
+                 allow_null_pks=None,
                  batch=True,
                  column_prefix=None,
                  include_properties=None,
@@ -125,7 +126,6 @@ class Mapper(object):
         self.inherit_foreign_keys = inherit_foreign_keys
         self.extension = extension
         self._init_properties = properties or {}
-        self.allow_null_pks = allow_null_pks
         self.delete_orphans = []
         self.batch = batch
         self.eager_defaults = eager_defaults
@@ -137,7 +137,9 @@ class Mapper(object):
         self._requires_row_aliasing = False
         self._inherits_equated_pairs = None
 
-
+        if allow_null_pks:
+            util.warn_deprecated('the allow_null_pks option to Mapper() is deprecated.  It is now on in all cases.')
+            
         self.select_table = select_table
         if select_table:
             util.warn_deprecated('select_table option is deprecated.  Use with_polymorphic=("*", selectable) '
@@ -1657,15 +1659,11 @@ class Mapper(object):
                 if self._should_log_debug:
                     self._log_debug("_instance(): identity key %s not in session" % (identitykey,))
 
-                if self.allow_null_pks:
-                    for x in identitykey[1]:
-                        if x is not None:
-                            break
-                    else:
-                        return None
-                else:
-                    if None in identitykey[1]:
-                        return None
+                # check for non-NULL values in the primary key columns,
+                # else no entity is returned for the row
+                if _none_set.issuperset(identitykey[1]):
+                    return None
+                    
                 isnew = True
                 currentload = True
                 loaded_instance = True
