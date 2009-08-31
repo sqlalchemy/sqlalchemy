@@ -3,6 +3,7 @@ import gc
 import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes
+from sqlalchemy.orm.attributes import instance_state
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
@@ -819,7 +820,26 @@ class SessionTest(_fixtures.FixtureTest):
         assert not s.dirty
         
         assert not s.identity_map
-    
+
+    @testing.resolve_artifact_names
+    def test_identity_conflict(self):
+        mapper(User, users)
+        for s in (
+            create_session(),
+            create_session(weak_identity_map=False),
+        ):
+            users.delete().execute()
+            u1 = User(name="ed")
+            s.add(u1)
+            s.flush()
+            s.expunge(u1)
+            u2 = s.query(User).first()
+            s.expunge(u2)
+            s.identity_map.add(sa.orm.attributes.instance_state(u1))
+
+            assert_raises(AssertionError, s.identity_map.add, sa.orm.attributes.instance_state(u2))
+        
+        
     @testing.resolve_artifact_names
     def test_weakref_with_cycles_o2m(self):
         s = sessionmaker()()
