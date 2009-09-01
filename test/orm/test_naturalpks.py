@@ -365,7 +365,63 @@ class NaturalPKTest(_base.MappedTest):
         r = sess.query(Item).with_parent(u2).all()
         eq_(Item(itemname='item2'), r[0])
 
+class ReversePKsTest(_base.MappedTest):
+    """reverse the primary keys of two entities and ensure bookkeeping succeeds."""
+    
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            'user', metadata,
+            Column('code', Integer, primary_key=True),
+            Column('status', Integer, primary_key=True),
+            Column('username', String, nullable=False),
+            )
+    
+    @classmethod
+    def setup_classes(cls):
+        class User(_base.ComparableEntity):
+            def __init__(self, code, status, username):
+                self.code = code
+                self.status = status
+                self.username = username
 
+    @testing.resolve_artifact_names
+    def test_reverse(self):
+        PUBLISHED, EDITABLE, ARCHIVED = 1, 2, 3
+        
+        mapper(User, user)
+
+        session = sa.orm.sessionmaker()()
+        
+        a_published = User(0, PUBLISHED, u'a')
+        session.add(a_published)
+        session.commit()
+
+        a_editable = User(0, EDITABLE, u'a')
+
+        session.add(a_editable)
+        session.commit()
+
+        # do the switch in both directions - 
+        # one or the other should raise the error
+        # based on platform dictionary ordering
+        a_published.status = ARCHIVED
+        a_editable.status = PUBLISHED
+
+        session.commit()
+        assert session.query(User).get([0, PUBLISHED]) is a_editable
+        assert session.query(User).get([0, ARCHIVED]) is a_published
+
+        a_published.status = PUBLISHED
+        a_editable.status = EDITABLE
+
+        session.commit()
+
+        assert session.query(User).get([0, PUBLISHED]) is a_published
+        assert session.query(User).get([0, EDITABLE]) is a_editable
+
+    
 class SelfRefTest(_base.MappedTest):
     __unsupported_on__ = 'mssql' # mssql doesn't allow ON UPDATE on self-referential keys
 

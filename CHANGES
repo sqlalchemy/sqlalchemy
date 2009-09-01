@@ -379,6 +379,10 @@ CHANGES
       bidirectional reference to declare itself as "viewonly"
       [ticket:1507]
 
+    - Fixed bug which prevented two entities from mutually
+      replacing each other's primary key values within a single
+      flush() for some orderings of operations.  [ticket:1519]
+      
     - Fixed an obscure issue whereby a joined-table subclass
       with a self-referential eager load on the base class
       would populate the related object's "subclass" table with

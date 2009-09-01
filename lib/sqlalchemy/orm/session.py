@@ -1017,8 +1017,10 @@ class Session(object):
             if state.key is None:
                 state.key = instance_key
             elif state.key != instance_key:
-                # primary key switch
-                self.identity_map.remove(state)
+                # primary key switch.
+                # use discard() in case another state has already replaced this
+                # one in the identity map (see test/orm/test_naturalpks.py ReversePKsTest)
+                self.identity_map.discard(state)
                 state.key = instance_key
             
             self.identity_map.replace(state)
