@@ -1214,6 +1214,12 @@ class JoinTest(QueryTest):
         result = sess.query(ualias).join((oalias1, ualias.orders), (oalias2, ualias.orders)).\
                 filter(or_(oalias1.user_id==9, oalias2.user_id==7)).all()
         eq_(result, [User(id=7,name=u'jack'), User(id=9,name=u'fred')])
+    
+    def test_pure_expression_error(self):
+        sess = create_session()
+        
+        assert_raises_message(sa.exc.InvalidRequestError, "Could not find a FROM clause to join from", sess.query(users).join, addresses)
+        
         
     def test_orderby_arg_bug(self):
         sess = create_session()

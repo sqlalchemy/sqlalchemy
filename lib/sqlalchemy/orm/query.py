@@ -1036,7 +1036,7 @@ class Query(object):
                 if not clause:
                     clause = left_selectable
                     
-            if not clause:
+            if not clause and left_entity:
                 for ent in self._entities:
                     if ent.corresponds_to(left_entity):
                         clause = ent.selectable
