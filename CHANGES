@@ -374,7 +374,11 @@ CHANGES
     - Fixed bug whereby inheritance discriminator part of a
       composite primary key would fail on updates.
       Continuation of [ticket:1300].
-    
+
+    - Fixed bug which disallowed one side of a many-to-many 
+      bidirectional reference to declare itself as "viewonly"
+      [ticket:1507]
+
     - Fixed an obscure issue whereby a joined-table subclass
       with a self-referential eager load on the base class
       would populate the related object's "subclass" table with
@@ -442,7 +446,7 @@ CHANGES
       in query.join() which would fail to issue correctly
       if the query was against a pure SQL construct.
       [ticket:1522]
-      
+    
     - Fixed a somewhat hypothetical issue which would result
       in the wrong primary key being calculated for a mapper
       using the old polymorphic_union function - but this

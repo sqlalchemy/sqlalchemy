@@ -140,7 +140,7 @@ class DependencyProcessor(object):
         
         """
         for r in self.prop._reverse_property:
-            if (r._dependency_processor, action, parent, child) in uowcommit.attributes:
+            if not r.viewonly and (r._dependency_processor, action, parent, child) in uowcommit.attributes:
                 return True
         return False
     
