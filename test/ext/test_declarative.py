@@ -956,7 +956,34 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         def go():
             assert sess.query(Person).filter(Manager.name=='dogbert').one().id
         self.assert_sql_count(testing.db, go, 1)
+    
+    def test_add_subcol_after_the_fact(self):
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
+            name = Column('name', String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
 
+        class Engineer(Person):
+            __tablename__ = 'engineers'
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+        
+        Engineer.primary_language = Column('primary_language', String(50))
+        
+        Base.metadata.create_all()
+
+        sess = create_session()
+        e1 = Engineer(primary_language='java', name='dilbert')
+        sess.add(e1)
+        sess.flush()
+        sess.expunge_all()
+
+        eq_(sess.query(Person).first(),
+            Engineer(primary_language='java', name='dilbert')
+        )
+        
     def test_subclass_mixin(self):
         class Person(Base, ComparableEntity):
             __tablename__ = 'people'

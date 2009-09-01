@@ -479,6 +479,14 @@ CHANGES
      __table_args__ is passed as a tuple with no dict argument.
      Improved documentation.  [ticket:1468]
 
+   - A column can be added to a joined-table subclass after
+     the class has been constructed (i.e. via class-level
+     attribute assignment).  The column is added to the underlying
+     Table as always, but now the mapper will rebuild its
+     "join" to include the new column, instead of raising
+     an error about "no such column, use column_property()
+     instead".  [ticket:1523]
+     
 - test
    - Added examples into the test suite so they get exercised
      regularly and cleaned up a couple deprecation warnings.

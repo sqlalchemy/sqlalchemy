@@ -549,9 +549,16 @@ class Mapper(object):
                 for c in columns:
                     mc = self.mapped_table.corresponding_column(c)
                     if not mc:
-                        raise sa_exc.ArgumentError("Column '%s' is not represented in mapper's table.  "
-                            "Use the `column_property()` function to force this column "
-                            "to be mapped as a read-only attribute." % c)
+                        mc = self.local_table.corresponding_column(c)
+                        if mc:
+                            # if the column is in the local table but not the mapped table,
+                            # this corresponds to adding a column after the fact to the local table.
+                            self.mapped_table._reset_exported()
+                        mc = self.mapped_table.corresponding_column(c)
+                        if not mc:
+                            raise sa_exc.ArgumentError("Column '%s' is not represented in mapper's table.  "
+                                "Use the `column_property()` function to force this column "
+                                "to be mapped as a read-only attribute." % c)
                     mapped_column.append(mc)
                 prop = ColumnProperty(*mapped_column)
             else:

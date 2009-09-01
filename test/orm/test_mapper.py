@@ -159,6 +159,12 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(a.email_address, 'jack@bean.com')
 
     @testing.resolve_artifact_names
+    def test_column_not_present(self):
+        assert_raises_message(sa.exc.ArgumentError, "not represented in mapper's table", mapper, User, users, properties={
+            'foo':addresses.c.user_id
+        })
+        
+    @testing.resolve_artifact_names
     def test_bad_constructor(self):
         """If the construction of a mapped class fails, the instance does not get placed in the session"""
         class Foo(object):
