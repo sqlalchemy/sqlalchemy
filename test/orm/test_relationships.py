@@ -1109,7 +1109,44 @@ class TypedAssociationTable(_base.MappedTest):
 
         assert t3.count().scalar() == 1
 
+class ViewOnlyM2MBackrefTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("t1", metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', String(40)))
+        Table("t2", metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', String(40)),
+        )
+        Table("t1t2", metadata,
+            Column('t1id', Integer, ForeignKey('t1.id'), primary_key=True),
+            Column('t2id', Integer, ForeignKey('t2.id'), primary_key=True),
+        )
+    
+    @testing.resolve_artifact_names
+    def test_viewonly(self):
+        class A(_base.ComparableEntity):pass
+        class B(_base.ComparableEntity):pass
+        
+        mapper(A, t1, properties={
+            'bs':relation(B, secondary=t1t2, backref=backref('as_', viewonly=True))
+        })
+        mapper(B, t2)
+        
+        sess = create_session()
+        a1 = A()
+        b1 = B(as_=[a1])
 
+        sess.add(a1)
+        sess.flush()
+        eq_(
+            sess.query(A).first(), A(bs=[B(id=b1.id)])
+        )
+        eq_(
+            sess.query(B).first(), B(as_=[A(id=a1.id)])
+        )
+        
 class ViewOnlyOverlappingNames(_base.MappedTest):
     """'viewonly' mappings with overlapping PK column names."""
 
