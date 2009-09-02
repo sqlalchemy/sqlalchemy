@@ -394,11 +394,11 @@ class ReversePKsTest(_base.MappedTest):
 
         session = sa.orm.sessionmaker()()
         
-        a_published = User(0, PUBLISHED, u'a')
+        a_published = User(1, PUBLISHED, u'a')
         session.add(a_published)
         session.commit()
 
-        a_editable = User(0, EDITABLE, u'a')
+        a_editable = User(1, EDITABLE, u'a')
 
         session.add(a_editable)
         session.commit()
@@ -410,16 +410,16 @@ class ReversePKsTest(_base.MappedTest):
         a_editable.status = PUBLISHED
 
         session.commit()
-        assert session.query(User).get([0, PUBLISHED]) is a_editable
-        assert session.query(User).get([0, ARCHIVED]) is a_published
+        assert session.query(User).get([1, PUBLISHED]) is a_editable
+        assert session.query(User).get([1, ARCHIVED]) is a_published
 
         a_published.status = PUBLISHED
         a_editable.status = EDITABLE
 
         session.commit()
 
-        assert session.query(User).get([0, PUBLISHED]) is a_published
-        assert session.query(User).get([0, EDITABLE]) is a_editable
+        assert session.query(User).get([1, PUBLISHED]) is a_published
+        assert session.query(User).get([1, EDITABLE]) is a_editable
 
     
 class SelfRefTest(_base.MappedTest):
