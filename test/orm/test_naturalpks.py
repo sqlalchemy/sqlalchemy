@@ -375,7 +375,7 @@ class ReversePKsTest(_base.MappedTest):
             'user', metadata,
             Column('code', Integer, primary_key=True),
             Column('status', Integer, primary_key=True),
-            Column('username', String, nullable=False),
+            Column('username', String(50), nullable=False),
             )
     
     @classmethod
