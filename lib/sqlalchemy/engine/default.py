@@ -470,10 +470,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 drunner = self.dialect.defaultrunner(self)
                 params = self.compiled_parameters
                 for param in params:
-                    # assign each dict of params to self.compiled_parameters;
-                    # this allows user-defined default generators to access the full
-                    # set of bind params for the row
-                    self.compiled_parameters = param
+                    self.current_parameters = param
                     for c in self.compiled.prefetch:
                         if self.isinsert:
                             val = drunner.get_column_default(c)
@@ -481,10 +478,10 @@ class DefaultExecutionContext(base.ExecutionContext):
                             val = drunner.get_column_onupdate(c)
                         if val is not None:
                             param[c.key] = val
-                self.compiled_parameters = params
+                del self.current_parameters
 
         else:
-            compiled_parameters = self.compiled_parameters[0]
+            self.current_parameters = compiled_parameters = self.compiled_parameters[0]
             drunner = self.dialect.defaultrunner(self)
 
             for c in self.compiled.prefetch:
@@ -495,6 +492,7 @@ class DefaultExecutionContext(base.ExecutionContext):
 
                 if val is not None:
                     compiled_parameters[c.key] = val
+            del self.current_parameters
 
             if self.isinsert:
                 self._inserted_primary_key = [compiled_parameters.get(c.key, None) 
@@ -505,5 +503,5 @@ class DefaultExecutionContext(base.ExecutionContext):
 
             self.postfetch_cols = self.compiled.postfetch
             self.prefetch_cols = self.compiled.prefetch
-
+            
 DefaultDialect.execution_ctx_cls = DefaultExecutionContext

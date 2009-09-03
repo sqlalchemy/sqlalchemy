@@ -85,6 +85,13 @@ CHANGES
     - the last_inserted_ids() method has been renamed to the
       descriptor "inserted_primary_key".
 
+    - User-defined "default" and "onupdate" callables which 
+      accept a context should now call upon 
+      "context.current_parameters" to get at the dictionary
+      of bind parameters currently being processed.  This
+      dict is available in the same way regardless of 
+      single-execute or executemany-style statement execution.
+      
 - engines
   - transaction isolation level may be specified with
     create_engine(... isolation_level="..."); available on

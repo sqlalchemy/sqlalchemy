@@ -230,7 +230,7 @@ To enable the "check first for the table existing" logic, add the ``checkfirst=T
 Binding MetaData to an Engine or Connection 
 --------------------------------------------
 
-Notice in the previous section the creator/dropper methods accept an argument for the database engine in use.  When a schema construct is combined with an ``Engine`` object, or an individual ``Connection`` object, we call this the *bind*.   The bind above lasts for the duration of the operation, as it is an argument to the method.   The ``MetaData`` object also has the option to be persistently bound to a single ``Engine`` or ``Connection`` (which we sometimes call a *connectable*), such that subsequent operations with the ``MetaData`` will automatically use that resource::
+Notice in the previous section the creator/dropper methods accept an argument for the database engine in use.  When a schema construct is combined with an ``Engine`` object, or an individual ``Connection`` object, we call this the *bind*.   In the above examples the bind is associated with the schema construct only for the duration of the operation.   However, the option exists to persistently associate a bind with a set of schema constructs via the ``MetaData`` object's ``bind`` attribute::
 
     engine = create_engine('sqlite://')
     
@@ -262,12 +262,12 @@ Binding the MetaData to the Engine is a **completely optional** feature.   The a
     # generate a SELECT statement and execute
     result = engine.execute(users_table.select())
 
-Should you use bind ?   It's probably best to start without it.   If you find yourself constantly needing to specify the same ``Engine`` object throughout the entire application, consider binding as a convenience feature which is applicable to applications that don't have multiple engines in use and don't have the need to reference connections explicitly.    It should also be noted that an application which is focused on using the SQLAlchemy ORM will not be dealing explicitly with ``Engine`` or ``Connection`` objects very much in any case.
+Should you use bind ?   It's probably best to start without it.   If you find yourself constantly needing to specify the same ``Engine`` object throughout the entire application, consider binding as a convenience feature which is applicable to applications that don't have multiple engines in use and don't have the need to reference connections explicitly.    It should also be noted that an application which is focused on using the SQLAlchemy ORM will not be dealing explicitly with ``Engine`` or ``Connection`` objects very much in any case, so it's probably less confusing and more "future proof" to not use the `bind` attribute.
 
 Reflecting Tables
 -----------------
 
-A ``Table`` object can be instructed to load information about itself from the corresponding database schema object already existing within the database.  This process is called *reflection*.   Most simply you need only specify the name, a ``MetaData`` object, and the ``autoload=True`` flag::
+A ``Table`` object can be instructed to load information about itself from the corresponding database schema object already existing within the database.  This process is called *reflection*.   Most simply you need only specify the table name, a ``MetaData`` object, and the ``autoload=True`` flag.  If the ``MetaData`` is not persistently bound, also add the `autoload_with`` argument::
 
     >>> messages = Table('messages', meta, autoload=True, autoload_with=engine)
     >>> [c.name for c in messages.columns]
@@ -277,15 +277,15 @@ The above operation will use the given engine to query the database for informat
 
 When tables are reflected, if a given table references another one via foreign key, a second ``Table`` object is created within the ``MetaData`` object representing the connection.   Below, assume the table ``shopping_cart_items`` references a table named ``shopping_carts``.   Reflecting the ``shopping_cart_items`` table has the effect such that the ``shopping_carts`` table will also be loaded::
 
-    >>> shopping_cart_items = Table('shopping_cart_items', meta, autoload=True)
+    >>> shopping_cart_items = Table('shopping_cart_items', meta, autoload=True, autoload_with=engine)
     >>> 'shopping_carts' in meta.tables:
     True
         
-The ``MetaData`` has an interesting "singleton-like" behavior such that if you requested both tables individually, ``MetaData`` will ensure that each table name is only used once - the ``Table`` constructor actually returns to you the already-existing ``Table`` object if one exists.  Such as below, we can access the already generated ``shopping_carts`` table just by naming it::
+The ``MetaData`` has an interesting "singleton-like" behavior such that if you requested both tables individually, ``MetaData`` will ensure that exactly one ``Table`` object is created for each distinct table name.  The ``Table`` constructor actually returns to you the already-existing ``Table`` object if one already exists with the given name.  Such as below, we can access the already generated ``shopping_carts`` table just by naming it::
 
     shopping_carts = Table('shopping_carts', meta)
 
-Of course, it's a good idea to use ``autoload=True`` with the above table regardless.  This is so that if it hadn't been loaded already, the operation will load the table.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to ``Table`` will not re-issue any reflection queries.
+Of course, it's a good idea to use ``autoload=True`` with the above table regardless.  This is so that the table's attributes will be loaded if they have not been already.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to ``Table`` will not re-issue any reflection queries.
 
 Overriding Reflected Columns 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -299,7 +299,6 @@ Individual columns can be overridden with explicit values when reflecting tables
 
 Reflecting All Tables at Once 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
 The ``MetaData`` object can also get a listing of tables and reflect the full set.  This is achieved by using the ``reflect()`` method.  After calling it, all located tables are present within the ``MetaData`` object's dictionary of tables::
 
@@ -318,7 +317,6 @@ The ``MetaData`` object can also get a listing of tables and reflect the full se
 Specifying the Schema Name 
 ---------------------------
 
-
 Some databases support the concept of multiple schemas.  A ``Table`` can reference this by specifying the ``schema`` keyword argument::
 
     financial_info = Table('financial_info', meta,
@@ -329,23 +327,10 @@ Some databases support the concept of multiple schemas.  A ``Table`` can referen
 
 Within the ``MetaData`` collection, this table will be identified by the combination of ``financial_info`` and ``remote_banks``.  If another table called ``financial_info`` is referenced without the ``remote_banks`` schema, it will refer to a different ``Table``.  ``ForeignKey`` objects can reference columns in this table using the form ``remote_banks.financial_info.id``.
 
-ON UPDATE and ON DELETE 
+Backend-Specific Options 
 ------------------------
 
-
-``ON UPDATE`` and ``ON DELETE`` clauses to a table create are specified within the ``ForeignKeyConstraint`` object, using the ``onupdate`` and ``ondelete`` keyword arguments::
-
-    foobar = Table('foobar', meta,
-        Column('id', Integer, primary_key=True),
-        Column('lala', String(40)),
-        ForeignKeyConstraint(['lala'],['hoho.lala'], onupdate="CASCADE", ondelete="CASCADE"))
-
-Note that these clauses are not supported on SQLite, and require ``InnoDB`` tables when used with MySQL.  They may also not be supported on other databases.
-
-Other Options 
---------------
-
-``Tables`` may support database-specific options, such as MySQL's ``engine`` option that can specify "MyISAM", "InnoDB", and other backends for the table::
+``Table`` supports database-specific options.   For example, MySQL has different table backend types, including "MyISAM" and "InnoDB".   This can be expressed with ``Table`` using ``mysql_engine``::
 
     addresses = Table('engine_email_addresses', meta,
         Column('address_id', Integer, primary_key = True),
@@ -354,18 +339,46 @@ Other Options
         mysql_engine='InnoDB'
     )
     
+Other backends may support table-level options as well.  See the API documentation for each backend for further details.
 
 Column Insert/Update Defaults 
 ==============================
+
+SQLAlchemy provides a very rich featureset regarding column level events which take place during INSERT and UPDATE statements.  Options include:
+ 
+* Scalar values used as defaults during INSERT
+* Scalar values used as defaults during UPDATE
+* Python functions which execute upon INSERT
+* Python functions which execute upon UPDATE
+* SQL expressions which are embedded in INSERT statements (or in some cases execute beforehand)
+* SQL expressions which are embedded in UPDATE statements
+* Server side default values used during INSERT
+* Markers for server-side triggers used during UPDATE
+ 
+The general rule for all insert/update defaults is that they only take effect if no value for a particular column is passed during the statement; otherwise, the given value is used.
+
+Scalar Defaults
+---------------
+
+The simplest kind of default is a scalar value used as the default value of a column::
+
+    Table("mytable", meta,
+        Column("somecolumn", Integer, default=12)
+    )
     
+Above, the value "12" will be bound as the column value during an INSERT if no other value is supplied.
 
-SQLAlchemy includes several constructs which provide default values provided during INSERT and UPDATE statements.  The defaults may be provided as Python constants, Python functions, or SQL expressions, and the SQL expressions themselves may be "pre-executed", executed inline within the insert/update statement itself, or can be created as a SQL level "default" placed on the table definition itself.  A "default" value by definition is only invoked if no explicit value is passed into the INSERT or UPDATE statement.
+A scalar value may also be associated with an UPDATE statement, though this is not very common (as UPDATE statements are usually looking for dynamic defaults)::
 
-Pre-Executed Python Functions 
-------------------------------
+    Table("mytable", meta,
+        Column("somecolumn", Integer, onupdate=25)
+    )
 
 
-The "default" keyword argument on Column can reference a Python value or callable which is invoked at the time of an insert::
+Python-Executed Functions 
+-------------------------
+
+The ``default`` and ``onupdate`` keyword arguments also accept Python functions.   These functions are invoked at the time of insert or update if no other value for that column is supplied, and the value returned is used for the column's value.  Below illustrates a crude "sequence" that assigns an incrementing counter to a primary key column::
 
     # a function which counts upwards
     i = 0
@@ -375,16 +388,12 @@ The "default" keyword argument on Column can reference a Python value or callabl
         return i
 
     t = Table("mytable", meta, 
-        # function-based default
         Column('id', Integer, primary_key=True, default=mydefault),
-    
-        # a scalar default
-        Column('key', String(10), default="default")
     )
 
-Similarly, the "onupdate" keyword does the same thing for update statements:
+It should be noted that for real "incrementing sequence" behavior, the built-in capabilities of the database should normally be used, which may include sequence objects or other autoincrementing capabilities.  For primary key columns, SQLAlchemy will in most cases use these capabilities automatically.   See the API documentation for ``Column`` including the ``autoincrement`` flag, as well as the section on ``Sequence`` later in this chapter.
 
-.. sourcecode:: python+sql
+To illustrate onupdate, we assign the Python ``datetime`` function ``now`` to the ``onupdate`` attribute::
 
     import datetime
     
@@ -395,13 +404,29 @@ Similarly, the "onupdate" keyword does the same thing for update statements:
         Column('last_updated', DateTime, onupdate=datetime.datetime.now),
     )
 
-Pre-executed and Inline SQL Expressions 
-----------------------------------------
+When an update statement executes and no value is passed for ``last_updated``, the ``datetime.datetime.now()`` Python function is executed and its return value used as the value for ``last_updated``.   Notice that we provide ``now`` as the function itself without calling it (i.e. there are no parenthesis following) - SQLAlchemy will execute the function at the time the statement executes.
 
+Context-Sensitive Default Functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The "default" and "onupdate" keywords may also be passed SQL expressions, including select statements or direct function calls:
+The Python functions used by ``default`` and ``onupdate`` may also make use of the current statement's context in order to determine a value.  The `context` of a statement is an internal SQLAlchemy object which contains all information about the statement being executed, including its source expression, the parameters associated with it and the cursor.  The typical use case for this context with regards to default generation is to have access to the other values being inserted or updated on the row.   To access the context, provide a function that accepts a single ``context`` argument::
 
-.. sourcecode:: python+sql
+    def mydefault(context):
+        return context.current_parameters['counter'] + 12
+        
+    t = Table('mytable', meta,
+        Column('counter', Integer),
+        Column('counter_plus_twelve', Integer, default=mydefault, onupdate=mydefault)
+    )
+
+Above we illustrate a default function which will execute for all INSERT and UPDATE statements where a value for ``counter_plus_twelve`` was otherwise not provided, and the value will be that of whatever value is present in the execution for the ``counter`` column, plus the number 12.
+
+While the context object passed to the default function has many attributes, the ``current_parameters`` member is a special member provided only during the execution of a default function for the purposes of deriving defaults from its existing values.  For a single statement that is executing many sets of bind parameters, the user-defined function is called for each set of parameters, and ``current_parameters`` will be provided with each individual parameter set for each execution.
+
+SQL Expressions 
+---------------
+
+The "default" and "onupdate" keywords may also be passed SQL expressions, including select statements or direct function calls::
 
     t = Table("mytable", meta, 
         Column('id', Integer, primary_key=True),
@@ -428,9 +453,8 @@ The above SQL functions are usually executed "inline" with the INSERT or UPDATE 
 
 For a statement execution which is not an executemany, the returned ``ResultProxy`` will contain a collection accessible via ``result.postfetch_cols()`` which contains a list of all ``Column`` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the ``last_inserted_params()`` or ``last_updated_params()`` collections on ``ResultProxy``.  The ``inserted_primary_key`` collection contains a list of primary key values for the row inserted.  
 
-DDL-Level Defaults 
+Server Side Defaults 
 -------------------
-
 
 A variant on a SQL expression default is the ``server_default``, which gets placed in the CREATE TABLE statement during a ``create()`` operation:
 
@@ -465,7 +489,6 @@ These markers do not emit a ````default```` clause when the table is created, ho
 Defining Sequences 
 -------------------
 
-
 A table with a sequence looks like:
 
 .. sourcecode:: python+sql
@@ -492,6 +515,17 @@ A sequence can also be executed standalone, using an ``Engine`` or ``Connection`
 Defining Constraints and Indexes 
 =================================
 
+ON UPDATE and ON DELETE 
+------------------------
+
+``ON UPDATE`` and ``ON DELETE`` clauses to a table create are specified within the ``ForeignKeyConstraint`` object, using the ``onupdate`` and ``ondelete`` keyword arguments::
+
+    foobar = Table('foobar', meta,
+        Column('id', Integer, primary_key=True),
+        Column('lala', String(40)),
+        ForeignKeyConstraint(['lala'],['hoho.lala'], onupdate="CASCADE", ondelete="CASCADE"))
+
+Note that these clauses are not supported on SQLite, and require ``InnoDB`` tables when used with MySQL.  They may also not be supported on other databases.
 
 UNIQUE Constraint
 -----------------
@@ -579,6 +613,17 @@ The ``Index`` objects will be created along with the CREATE statements for the t
 
     # create the index, will use the table's bound connectable if the ``bind`` keyword argument not specified
     i.create()
+
+Customizing DDL
+===============
+
+
+
+Controlling DDL Sequences
+-------------------------
+
+Custom DDL
+----------
 
 Adapting Tables to Alternate Metadata 
 ======================================
