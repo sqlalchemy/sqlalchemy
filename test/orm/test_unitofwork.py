@@ -304,7 +304,41 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
 
         eq_([A(b=5), B(e=7)], session.query(A).all())
 
+class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('t1', metadata,
+            Column('id', sa.Integer, primary_key=True),
+            Column('data', sa.Binary),
+        )
 
+    @classmethod
+    def setup_classes(cls):
+        class Foo(_base.BasicEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def test_binary_equality(self):
+        
+        mapper(Foo, t1)
+        
+        s = create_session()
+        
+        f1 = Foo(data="this is some data")
+        s.add(f1)
+        s.flush()
+        s.expire_all()
+        f1 = s.query(Foo).first()
+        assert f1.data == "this is some data"
+        f1.data = "this is some data"
+        eq_(
+            sa.orm.attributes.get_history(f1, "data"),
+            ((), ["this is some data"], ())
+        )
+        def go():
+            s.flush()
+        self.assert_sql_count(testing.db, go, 0)
+        
 class MutableTypesTest(_base.MappedTest):
 
     @classmethod

@@ -778,6 +778,14 @@ class Binary(TypeEngine):
                 return None
         return process
 
+    def result_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                return str(value)
+            else:
+                return None
+        return process
+
     def adapt(self, impltype):
         return impltype(length=self.length)
 

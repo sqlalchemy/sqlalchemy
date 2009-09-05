@@ -85,6 +85,11 @@ CHANGES
     - the last_inserted_ids() method has been renamed to the
       descriptor "inserted_primary_key".
 
+    - the Binary type now returns data as a Python string
+      (or a "bytes" type in Python 3), instead of the built-
+      in "buffer" type.  This allows symmetric round trips
+      of binary data. [ticket:1524]
+      
     - User-defined "default" and "onupdate" callables which 
       accept a context should now call upon 
       "context.current_parameters" to get at the dictionary

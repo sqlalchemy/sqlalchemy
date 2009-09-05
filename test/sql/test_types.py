@@ -401,21 +401,29 @@ class BinaryTest(TestBase, AssertsExecutionResults):
 
         for stmt in (
             binary_table.select(order_by=binary_table.c.primary_id),
-            text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType, 'mypickle':MyPickleType}, bind=testing.db)
+            text(
+                "select * from binary_table order by binary_table.primary_id", 
+                typemap={'pickled':PickleType, 'mypickle':MyPickleType, 'data':Binary, 'data_slice':Binary}, 
+                bind=testing.db)
         ):
-            eq_data = lambda x, y: eq_(list(x), list(y))
-            if util.jython:
-                _eq_data = eq_data
-                def eq_data(x, y):
-                    # Jython currently returns arrays
-                    from array import ArrayType
-                    if isinstance(y, ArrayType):
-                        return eq_(x, y.tostring())
-                    return _eq_data(x, y)
+            #if util.jython:
+                # TODO: may need to modify Binary type directly
+                # to detect jython if something other than str()/bytes()
+                # is needed to convert from raw to string/bytes.
+                # ArrayType should no longer be expected here though.
+                # users who want raw ArrayType can of course create their
+                # own BinaryType that does no conversion.
+                #_eq_data = eq_data
+                #def eq_data(x, y):
+                #    # Jython currently returns arrays
+                #    from array import ArrayType
+                #    if isinstance(y, ArrayType):
+                #        return eq_(x, y.tostring())
+                #    return _eq_data(x, y)
             l = stmt.execute().fetchall()
-            eq_data(stream1, l[0]['data'])
-            eq_data(stream1[0:100], l[0]['data_slice'])
-            eq_data(stream2, l[1]['data'])
+            eq_(stream1, l[0]['data'])
+            eq_(stream1[0:100], l[0]['data_slice'])
+            eq_(stream2, l[1]['data'])
             eq_(testobj1, l[0]['pickled'])
             eq_(testobj2, l[1]['pickled'])
             eq_(testobj3.moredata, l[0]['mypickle'].moredata)

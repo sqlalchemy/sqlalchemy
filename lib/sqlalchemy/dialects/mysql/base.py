@@ -301,13 +301,7 @@ class _StringType(sqltypes.String):
 class _BinaryType(sqltypes.Binary):
     """Base for MySQL binary types."""
 
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            else:
-                return util.buffer(value)
-        return process
+    pass
 
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """MySQL NUMERIC type."""
