@@ -996,8 +996,8 @@ Finally, we're back to UPDATE.  Updates work a lot like INSERTS, except there is
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
 
-    >>> # update a column to an expression.  Send a dictionary to values():
-    {sql}>>> conn.execute(users.update().values({users.c.fullname:"Fullname: " + users.c.name})) #doctest: +ELLIPSIS
+    >>> # update a column to an expression.:
+    {sql}>>> conn.execute(users.update().values(fullname="Fullname: " + users.c.name)) #doctest: +ELLIPSIS
     UPDATE users SET fullname=(? || users.name)
     ['Fullname: ']
     COMMIT
@@ -1011,7 +1011,7 @@ A correlated update lets you update a table using selection from another table, 
 .. sourcecode:: pycon+sql
 
     >>> s = select([addresses.c.email_address], addresses.c.user_id==users.c.id).limit(1)
-    {sql}>>> conn.execute(users.update().values({users.c.fullname:s})) #doctest: +ELLIPSIS,+NORMALIZE_WHITESPACE
+    {sql}>>> conn.execute(users.update().values(fullname=s)) #doctest: +ELLIPSIS,+NORMALIZE_WHITESPACE
     UPDATE users SET fullname=(SELECT addresses.email_address 
     FROM addresses 
     WHERE addresses.user_id = users.id 
