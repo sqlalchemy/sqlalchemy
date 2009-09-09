@@ -781,6 +781,8 @@ class Binary(TypeEngine):
     def result_processor(self, dialect):
         def process(value):
             if value is not None:
+                if util.jython and isinstance(value, array.array):
+                    value = value.tostring()
                 return str(value)
             else:
                 return None
@@ -852,11 +854,7 @@ class PickleType(MutableType, TypeDecorator):
         # Py3K
         #return loads(value)
         # Py2K
-        if util.jython and isinstance(value, array.ArrayType):
-            value = value.tostring()
-        else:
-            value = str(value)
-        return loads(value)
+        return loads(str(value))
         # end Py2K
 
     def copy_value(self, value):

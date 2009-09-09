@@ -406,20 +406,6 @@ class BinaryTest(TestBase, AssertsExecutionResults):
                 typemap={'pickled':PickleType, 'mypickle':MyPickleType, 'data':Binary, 'data_slice':Binary}, 
                 bind=testing.db)
         ):
-            #if util.jython:
-                # TODO: may need to modify Binary type directly
-                # to detect jython if something other than str()/bytes()
-                # is needed to convert from raw to string/bytes.
-                # ArrayType should no longer be expected here though.
-                # users who want raw ArrayType can of course create their
-                # own BinaryType that does no conversion.
-                #_eq_data = eq_data
-                #def eq_data(x, y):
-                #    # Jython currently returns arrays
-                #    from array import ArrayType
-                #    if isinstance(y, ArrayType):
-                #        return eq_(x, y.tostring())
-                #    return _eq_data(x, y)
             l = stmt.execute().fetchall()
             eq_(stream1, l[0]['data'])
             eq_(stream1[0:100], l[0]['data_slice'])
