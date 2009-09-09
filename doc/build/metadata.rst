@@ -34,50 +34,6 @@ Above, a table called ``user`` is described, which contains four columns.   The 
 
 Note also that each column describes its datatype using objects corresponding to genericized types, such as ``Integer`` and ``String``.    SQLAlchemy features dozens of types of varying levels of specificity as well as the ability to create custom types.   Documentation on the type system can be found at :ref:`types`.
 
-.. _metadata_foreignkeys:
-
-Defining Foreign Keys
----------------------
-
-A *foreign key* in SQL is a table-level construct that constrains one or more columns in that table to only allow values that are present in a different set of columns, typically but not always located on a different table.  We call the columns which are constrained the *foreign key* columns and the columns which they are constrained towards the *referenced* columns.  The referenced columns almost always define the primary key for their owning table, though there are exceptions to this.  The foreign key is the "joint" that connects together pairs of rows which have a relationship with each other, and SQLAlchemy assigns very deep importance to this concept in virtually every area of its operation.
-
-In SQLAlchemy as well as in DDL, foreign key constraints can be defined as additional attributes within the table clause, or for single-column foreign keys they may optionally be specified within the definition of a single column.   The single column foreign key is more common, and at the column level is specified by constructing a ``ForeignKey`` object as an argument to a ``Column`` object::
-
-    user_preference = Table('user_preference', metadata, 
-        Column('pref_id', Integer, primary_key=True),
-        Column('user_id', Integer, ForeignKey("user.user_id"), nullable=False),
-        Column('pref_name', String(40), nullable=False),
-        Column('pref_value', String(100))
-    )
-
-Above, we define a new table ``user_preference`` for which each row must contain a value in the ``user_id`` column that also exists in the ``user`` table's ``user_id`` column.
-
-The argument to ``ForeignKey`` is most commonly a string of the form *<tablename>.<columnname>*, or for a table in a remote schema or "owner" of the form *<schemaname>.<tablename>.<columnname>*.   It may also be an actual ``Column`` object, which as we'll see later is accessed from an existing ``Table`` object via its ``c`` collection::
-
-    ForeignKey(user.c.user_id)
-
-The advantage to using a string is that the in-python linkage between ``user`` and ``user_preference`` is resolved only when first needed, so that table objects can be easily spread across multiple modules and defined in any order.
-
-Foreign keys may also be defined at the table level, using the ``ForeignKeyConstraint`` object.   This object can describe a single- or multi-column foreign key.  A multi-column foreign key is known as a *composite* foreign key, and almost always references a table that has a composite primary key.  Below we define a table ``invoice`` which has a composite primary key::
-
-    invoice = Table('invoice', metadata, 
-        Column('invoice_id', Integer, primary_key=True),
-        Column('ref_num', Integer, primary_key=True),
-        Column('description', String(60), nullable=False)
-    )
-
-And then a table ``invoice_item`` with a composite foreign key referencing ``invoice``::
-
-    invoice_item = Table('invoice_item', metadata, 
-        Column('item_id', Integer, primary_key=True),
-        Column('item_name', String(60), nullable=False),
-        Column('invoice_id', Integer, nullable=False),
-        Column('ref_num', Integer, nullable=False),
-        ForeignKeyConstraint(['invoice_id', 'ref_num'], ['invoice.invoice_id', 'invoice.ref_num'])
-    )
-    
-It's important to note that the ``ForeignKeyConstraint`` is the only way to define a composite foreign key.   While we could also have placed individual ``ForeignKey`` objects on both the ``invoice_item.invoice_id`` and ``invoice_item.ref_num`` columns, SQLAlchemy would not be aware that these two values should be paired together - it would be two individual foreign key constraints instead of a single composite foreign key referencing two columns.
-
 Accessing Tables and Columns
 ----------------------------
 
@@ -90,14 +46,17 @@ The ``MetaData`` object contains all of the schema constructs we've associated w
     invoice
     invoice_item
 
-In most cases, individual ``Table`` objects have been explicitly declared, and these objects are typically accessed directly as module-level variables in an application.  ``Table`` provides an interface to the table's properties as well as that of its columns::
+In most cases, individual ``Table`` objects have been explicitly declared, and these objects are typically accessed directly as module-level variables in an application. 
+Once a ``Table`` has been defined, it has a full set of accessors which allow inspection of its properties.  For example::
 
     employees = Table('employees', metadata, 
         Column('employee_id', Integer, primary_key=True),
         Column('employee_name', String(60), nullable=False),
         Column('employee_dept', Integer, ForeignKey("departments.department_id"))
     )
-    
+
+Above, we define a ``Table`` object.  It has one additional feature not covered yet, the ``ForeignKey`` object.  This construct defines a reference to a remote table, and is fully described in :ref:`metadata_foreignkeys`.   Methods of accessing information about this table include::
+
     # access the column "EMPLOYEE_ID":
     employees.columns.employee_id
     
@@ -523,8 +482,52 @@ The ``Sequence`` object also has the ability to be executed standalone like a SQ
 Defining Constraints and Indexes 
 =================================
 
+.. _metadata_foreignkeys:
+
+Defining Foreign Keys
+---------------------
+
+A *foreign key* in SQL is a table-level construct that constrains one or more columns in that table to only allow values that are present in a different set of columns, typically but not always located on a different table.  We call the columns which are constrained the *foreign key* columns and the columns which they are constrained towards the *referenced* columns.  The referenced columns almost always define the primary key for their owning table, though there are exceptions to this.  The foreign key is the "joint" that connects together pairs of rows which have a relationship with each other, and SQLAlchemy assigns very deep importance to this concept in virtually every area of its operation.
+
+In SQLAlchemy as well as in DDL, foreign key constraints can be defined as additional attributes within the table clause, or for single-column foreign keys they may optionally be specified within the definition of a single column.   The single column foreign key is more common, and at the column level is specified by constructing a ``ForeignKey`` object as an argument to a ``Column`` object::
+
+    user_preference = Table('user_preference', metadata, 
+        Column('pref_id', Integer, primary_key=True),
+        Column('user_id', Integer, ForeignKey("user.user_id"), nullable=False),
+        Column('pref_name', String(40), nullable=False),
+        Column('pref_value', String(100))
+    )
+
+Above, we define a new table ``user_preference`` for which each row must contain a value in the ``user_id`` column that also exists in the ``user`` table's ``user_id`` column.
+
+The argument to ``ForeignKey`` is most commonly a string of the form *<tablename>.<columnname>*, or for a table in a remote schema or "owner" of the form *<schemaname>.<tablename>.<columnname>*.   It may also be an actual ``Column`` object, which as we'll see later is accessed from an existing ``Table`` object via its ``c`` collection::
+
+    ForeignKey(user.c.user_id)
+
+The advantage to using a string is that the in-python linkage between ``user`` and ``user_preference`` is resolved only when first needed, so that table objects can be easily spread across multiple modules and defined in any order.
+
+Foreign keys may also be defined at the table level, using the ``ForeignKeyConstraint`` object.   This object can describe a single- or multi-column foreign key.  A multi-column foreign key is known as a *composite* foreign key, and almost always references a table that has a composite primary key.  Below we define a table ``invoice`` which has a composite primary key::
+
+    invoice = Table('invoice', metadata, 
+        Column('invoice_id', Integer, primary_key=True),
+        Column('ref_num', Integer, primary_key=True),
+        Column('description', String(60), nullable=False)
+    )
+
+And then a table ``invoice_item`` with a composite foreign key referencing ``invoice``::
+
+    invoice_item = Table('invoice_item', metadata, 
+        Column('item_id', Integer, primary_key=True),
+        Column('item_name', String(60), nullable=False),
+        Column('invoice_id', Integer, nullable=False),
+        Column('ref_num', Integer, nullable=False),
+        ForeignKeyConstraint(['invoice_id', 'ref_num'], ['invoice.invoice_id', 'invoice.ref_num'])
+    )
+    
+It's important to note that the ``ForeignKeyConstraint`` is the only way to define a composite foreign key.   While we could also have placed individual ``ForeignKey`` objects on both the ``invoice_item.invoice_id`` and ``invoice_item.ref_num`` columns, SQLAlchemy would not be aware that these two values should be paired together - it would be two individual foreign key constraints instead of a single composite foreign key referencing two columns.
+
 ON UPDATE and ON DELETE 
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 ``ON UPDATE`` and ``ON DELETE`` clauses to a table create are specified within the ``ForeignKeyConstraint`` object, using the ``onupdate`` and ``ondelete`` keyword arguments::
 
@@ -537,7 +540,6 @@ Note that these clauses are not supported on SQLite, and require ``InnoDB`` tabl
 
 UNIQUE Constraint
 -----------------
-
 
 Unique constraints can be created anonymously on a single column using the ``unique`` keyword on ``Column``.  Explicitly named unique constraints and/or those with multiple columns are created via the ``UniqueConstraint`` table-level construct.
 
@@ -558,7 +560,6 @@ Unique constraints can be created anonymously on a single column using the ``uni
 
 CHECK Constraint
 ----------------
-
 
 Check constraints can be named or unnamed and can be created at the Column or Table level, using the ``CheckConstraint`` construct.  The text of the check constraint is passed directly through to the database, so there is limited "database independent" behavior.  Column level check constraints generally should only refer to the column to which they are placed, while table level constraints can refer to any columns in the table.
 
