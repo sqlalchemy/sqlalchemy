@@ -26,7 +26,7 @@ To represent a table, use the ``Table`` class.  Its two primary arguments are th
     user = Table('user', metadata, 
         Column('user_id', Integer, primary_key = True),
         Column('user_name', String(16), nullable = False),
-        Column('email_address', String(60), key='email'),
+        Column('email_address', String(60)),
         Column('password', String(20), nullable = False)
     )
 
@@ -94,7 +94,7 @@ In most cases, individual ``Table`` objects have been explicitly declared, and t
 
     employees = Table('employees', metadata, 
         Column('employee_id', Integer, primary_key=True),
-        Column('employee_name', String(60), nullable=False, key='name'),
+        Column('employee_name', String(60), nullable=False),
         Column('employee_dept', Integer, ForeignKey("departments.department_id"))
     )
     
@@ -267,7 +267,7 @@ Should you use bind ?   It's probably best to start without it.   If you find yo
 Reflecting Tables
 -----------------
 
-A ``Table`` object can be instructed to load information about itself from the corresponding database schema object already existing within the database.  This process is called *reflection*.   Most simply you need only specify the table name, a ``MetaData`` object, and the ``autoload=True`` flag.  If the ``MetaData`` is not persistently bound, also add the `autoload_with`` argument::
+A ``Table`` object can be instructed to load information about itself from the corresponding database schema object already existing within the database.  This process is called *reflection*.   Most simply you need only specify the table name, a ``MetaData`` object, and the ``autoload=True`` flag.  If the ``MetaData`` is not persistently bound, also add the ``autoload_with`` argument::
 
     >>> messages = Table('messages', meta, autoload=True, autoload_with=engine)
     >>> [c.name for c in messages.columns]
@@ -285,7 +285,7 @@ The ``MetaData`` has an interesting "singleton-like" behavior such that if you r
 
     shopping_carts = Table('shopping_carts', meta)
 
-Of course, it's a good idea to use ``autoload=True`` with the above table regardless.  This is so that the table's attributes will be loaded if they have not been already.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to ``Table`` will not re-issue any reflection queries.
+Of course, it's a good idea to use ``autoload=True`` with the above table regardless.  This is so that the table's attributes will be loaded if they have not been already.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to ``Table`` with the same name will not re-issue any reflection queries.
 
 Overriding Reflected Columns 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -327,6 +327,10 @@ Some databases support the concept of multiple schemas.  A ``Table`` can referen
 
 Within the ``MetaData`` collection, this table will be identified by the combination of ``financial_info`` and ``remote_banks``.  If another table called ``financial_info`` is referenced without the ``remote_banks`` schema, it will refer to a different ``Table``.  ``ForeignKey`` objects can reference columns in this table using the form ``remote_banks.financial_info.id``.
 
+The ``schema`` argument should be used for any name qualifiers required, including Oracle's "owner" attribute and similar.  It also can accommodate a dotted name for longer schemes::
+
+    schema="dbo.scott"
+
 Backend-Specific Options 
 ------------------------
 
@@ -346,16 +350,14 @@ Column Insert/Update Defaults
 
 SQLAlchemy provides a very rich featureset regarding column level events which take place during INSERT and UPDATE statements.  Options include:
  
-* Scalar values used as defaults during INSERT
-* Scalar values used as defaults during UPDATE
-* Python functions which execute upon INSERT
-* Python functions which execute upon UPDATE
+* Scalar values used as defaults during INSERT and UPDATE operations
+* Python functions which execute upon INSERT and UPDATE operations
 * SQL expressions which are embedded in INSERT statements (or in some cases execute beforehand)
 * SQL expressions which are embedded in UPDATE statements
 * Server side default values used during INSERT
 * Markers for server-side triggers used during UPDATE
  
-The general rule for all insert/update defaults is that they only take effect if no value for a particular column is passed during the statement; otherwise, the given value is used.
+The general rule for all insert/update defaults is that they only take effect if no value for a particular column is passed as an ``execute()`` parameter; otherwise, the given value is used.
 
 Scalar Defaults
 ---------------
@@ -391,7 +393,7 @@ The ``default`` and ``onupdate`` keyword arguments also accept Python functions.
         Column('id', Integer, primary_key=True, default=mydefault),
     )
 
-It should be noted that for real "incrementing sequence" behavior, the built-in capabilities of the database should normally be used, which may include sequence objects or other autoincrementing capabilities.  For primary key columns, SQLAlchemy will in most cases use these capabilities automatically.   See the API documentation for ``Column`` including the ``autoincrement`` flag, as well as the section on ``Sequence`` later in this chapter.
+It should be noted that for real "incrementing sequence" behavior, the built-in capabilities of the database should normally be used, which may include sequence objects or other autoincrementing capabilities.  For primary key columns, SQLAlchemy will in most cases use these capabilities automatically.   See the API documentation for ``Column`` including the ``autoincrement`` flag, as well as the section on ``Sequence`` later in this chapter for background on standard primary key generation techniques.
 
 To illustrate onupdate, we assign the Python ``datetime`` function ``now`` to the ``onupdate`` attribute::
 
@@ -435,28 +437,36 @@ The "default" and "onupdate" keywords may also be passed SQL expressions, includ
         Column('create_date', DateTime, default=func.now()),
     
         # define 'key' to pull its default from the 'keyvalues' table
-        Column('key', String(20), default=keyvalues.select(keyvalues.c.type='type1', limit=1))
+        Column('key', String(20), default=keyvalues.select(keyvalues.c.type='type1', limit=1)),
 
         # define 'last_modified' to use the current_timestamp SQL function on update
-        Column('last_modified', DateTime, onupdate=func.current_timestamp())
+        Column('last_modified', DateTime, onupdate=func.utc_timestamp())
         )
 
-The above SQL functions are usually executed "inline" with the INSERT or UPDATE statement being executed.  In some cases, the function is "pre-executed" and its result pre-fetched explicitly.  This happens under the following circumstances:
+Above, the ``create_date`` column will be populated with the result of the ``now()`` SQL function (which, depending on backend, compiles into ``NOW()`` or ``CURRENT_TIMESTAMP`` in most cases) during an INSERT statement, and the ``key`` column with the result of a SELECT subquery from another table.   The ``last_modified`` column will be populated with the value of ``UTC_TIMESTAMP()``, a function specific to MySQL, when an UPDATE statement is emitted for this table.
+
+Note that when using ``func`` functions, unlike when using Python `datetime` functions we *do* call the function, i.e. with parenthesis "()" - this is because what we want in this case is the return value of the function, which is the SQL expression construct that will be rendered into the INSERT or UPDATE statement.
+
+The above SQL functions are usually executed "inline" with the INSERT or UPDATE statement being executed, meaning, a single statement is executed which embeds the given expressions or subqueries within the VALUES or SET clause of the statement.  Although in some cases, the function is "pre-executed" in a SELECT statement of its own beforehand.  This happens when all of the following is true:
 
 * the column is a primary key column
 
-* the database dialect does not support a usable ``cursor.lastrowid`` accessor (or equivalent); this currently includes PostgreSQL, Oracle, and Firebird.
+* the database dialect does not support a usable ``cursor.lastrowid`` accessor (or equivalent); this currently includes PostgreSQL, Oracle, and Firebird, as well as some MySQL dialects.
+
+* the dialect does not support the "RETURNING" clause or similar, or the ``implicit_returning`` flag is set to ``False`` for the dialect.  Dialects which support RETURNING currently include Postgresql, Oracle, Firebird, and MS-SQL.
 
 * the statement is a single execution, i.e. only supplies one set of parameters and doesn't use "executemany" behavior
 
-* the ``inline=True`` flag is not set on the ``Insert()`` or ``Update()`` construct.
+* the ``inline=True`` flag is not set on the ``Insert()`` or ``Update()`` construct, and the statement has not defined an explicit `returning()` clause.
 
-For a statement execution which is not an executemany, the returned ``ResultProxy`` will contain a collection accessible via ``result.postfetch_cols()`` which contains a list of all ``Column`` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the ``last_inserted_params()`` or ``last_updated_params()`` collections on ``ResultProxy``.  The ``inserted_primary_key`` collection contains a list of primary key values for the row inserted.  
+Whether or not the default generation clause "pre-executes" is not something that normally needs to be considered, unless it is being addressed for performance reasons. 
+
+When the statement is executed with a single set of parameters (that is, it is not an "executemany" style execution), the returned ``ResultProxy`` will contain a collection accessible via ``result.postfetch_cols()`` which contains a list of all ``Column`` objects which had an inline-executed default.  Similarly, all parameters which were bound to the statement, including all Python and SQL expressions which were pre-executed, are present in the ``last_inserted_params()`` or ``last_updated_params()`` collections on ``ResultProxy``.  The ``inserted_primary_key`` collection contains a list of primary key values for the row inserted (a list so that single-column and composite-column primary keys are represented in the same format).  
 
 Server Side Defaults 
--------------------
+--------------------
 
-A variant on a SQL expression default is the ``server_default``, which gets placed in the CREATE TABLE statement during a ``create()`` operation:
+A variant on the SQL expression default is the ``server_default``, which gets placed in the CREATE TABLE statement during a ``create()`` operation:
 
 .. sourcecode:: python+sql
 
@@ -484,14 +494,14 @@ Columns with values set by a database trigger or other external process may be c
         Column('def', String(20), server_onupdate=FetchedValue())
     )
 
-These markers do not emit a ````default```` clause when the table is created, however they do set the same internal flags as a static ``server_default`` clause, providing hints to higher-level tools that a "post-fetch" of these rows should be performed after an insert or update.
+These markers do not emit a "default" clause when the table is created, however they do set the same internal flags as a static ``server_default`` clause, providing hints to higher-level tools that a "post-fetch" of these rows should be performed after an insert or update.
 
 Defining Sequences 
 -------------------
 
-A table with a sequence looks like:
+SQLAlchemy represents database sequences using the ``Sequence`` object, which is considered to be a special case of "column default".   It only has an effect on databases which have explicit support for sequences, which currently includes Postgresql, Oracle, and Firebird.  The ``Sequence`` object is otherwise ignored.
 
-.. sourcecode:: python+sql
+The ``Sequence`` may be placed on any column as a "default" generator to be used during INSERT operations, and can also be configured to fire off during UPDATE operations if desired.  It is most commonly used in conjunction with a single integer primary key column::
 
     table = Table("cartitems", meta, 
         Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
@@ -499,15 +509,13 @@ A table with a sequence looks like:
         Column("createdate", DateTime())
     )
 
-The ``Sequence`` object works a lot like the ``default`` keyword on ``Column``, except that it only takes effect on a database which supports sequences.  When used with a database that does not support sequences, the ``Sequence`` object has no effect; therefore it's safe to place on a table which is used against multiple database backends.  The same rules for pre- and inline execution apply.
+Where above, the table "cartitems" is associated with a sequence named "cart_id_seq".   When INSERT statements take place for "cartitems", and no value is passed for the "cart_id" column, the "cart_id_seq" sequence will be used to generate a value.
 
 When the ``Sequence`` is associated with a table, CREATE and DROP statements issued for that table will also issue CREATE/DROP for the sequence object as well, thus "bundling" the sequence object with its parent table.
 
-The flag ``optional=True`` on ``Sequence`` will produce a sequence that is only used on databases which have no "autoincrementing" capability.  For example, PostgreSQL supports primary key generation using the SERIAL keyword, whereas Oracle has no such capability.  Therefore, a ``Sequence`` placed on a primary key column with ``optional=True`` will only be used with an Oracle backend but not PostgreSQL.
+The ``Sequence`` object also implements special functionality to accommodate Postgresql's SERIAL datatype.   The SERIAL type in PG automatically generates a sequence that is used implicitly during inserts.  This means that if a ``Table`` object defines a ``Sequence`` on its primary key column so that it works with Oracle and Firebird, the ``Sequence`` would get in the way of the "implicit" sequence that PG would normally use.  For this use case, add the flag ``optional=True`` to the ``Sequence`` object - this indicates that the ``Sequence`` should only be used if the database provides no other option for generating primary key identifiers.
 
-A sequence can also be executed standalone, using an ``Engine`` or ``Connection``, returning its next value in a database-independent fashion:
-
-.. sourcecode:: python+sql
+The ``Sequence`` object also has the ability to be executed standalone like a SQL expression, which has the effect of calling its "next value" function::
 
     seq = Sequence('some_sequence')
     nextid = connection.execute(seq)
