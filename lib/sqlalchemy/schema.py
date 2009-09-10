@@ -2057,6 +2057,7 @@ class DDL(DDLElement):
 
       drop_spow = DDL('ALTER TABLE users SET secretpowers FALSE')
       connection.execute(drop_spow)
+      
     """
 
     __visit_name__ = "ddl"
@@ -2079,11 +2080,11 @@ class DDL(DDLElement):
           executing database dialect::
 
             DDL('something', on='postgresql')
-        
-          If a tuple, specifies multiple dialect names:
-          
+
+          If a tuple, specifies multiple dialect names::
+
             DDL('something', on=('postgresql', 'mysql'))
-            
+
           If a callable, it will be invoked with three positional arguments
           as well as optional keyword arguments:
 
@@ -2098,7 +2099,7 @@ class DDL(DDLElement):
             connection
               The ``Connection`` being used for DDL execution
 
-            **kw
+            \**kw
               Keyword arguments which may be sent include:
                 tables - a list of Table objects which are to be created/
                 dropped within a MetaData.create_all() or drop_all() method

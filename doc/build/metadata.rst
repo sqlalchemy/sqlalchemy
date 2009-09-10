@@ -47,7 +47,7 @@ The ``MetaData`` object contains all of the schema constructs we've associated w
     invoice_item
 
 In most cases, individual ``Table`` objects have been explicitly declared, and these objects are typically accessed directly as module-level variables in an application. 
-Once a ``Table`` has been defined, it has a full set of accessors which allow inspection of its properties.  For example::
+Once a ``Table`` has been defined, it has a full set of accessors which allow inspection of its properties.  Given the following ``Table`` definition::
 
     employees = Table('employees', metadata, 
         Column('employee_id', Integer, primary_key=True),
@@ -55,7 +55,7 @@ Once a ``Table`` has been defined, it has a full set of accessors which allow in
         Column('employee_dept', Integer, ForeignKey("departments.department_id"))
     )
 
-Above, we define a ``Table`` object.  It has one additional feature not covered yet, the ``ForeignKey`` object.  This construct defines a reference to a remote table, and is fully described in :ref:`metadata_foreignkeys`.   Methods of accessing information about this table include::
+Note the ``ForeignKey`` object used in this table - this construct defines a reference to a remote table, and is fully described in :ref:`metadata_foreignkeys`.   Methods of accessing information about this table include::
 
     # access the column "EMPLOYEE_ID":
     employees.columns.employee_id
@@ -266,7 +266,7 @@ The ``MetaData`` object can also get a listing of tables and reflect the full se
     users_table = meta.tables['users']
     addresses_table = meta.tables['addresses']
     
-``metadata.reflect()`` is also a handy way to clear or drop all tables in a database::
+``metadata.reflect()`` also provides a handy way to clear or delete all the rows in a database::
 
     meta = MetaData()
     meta.reflect(bind=someengine)
@@ -284,7 +284,7 @@ Some databases support the concept of multiple schemas.  A ``Table`` can referen
         schema='remote_banks'
     )
 
-Within the ``MetaData`` collection, this table will be identified by the combination of ``financial_info`` and ``remote_banks``.  If another table called ``financial_info`` is referenced without the ``remote_banks`` schema, it will refer to a different ``Table``.  ``ForeignKey`` objects can reference columns in this table using the form ``remote_banks.financial_info.id``.
+Within the ``MetaData`` collection, this table will be identified by the combination of ``financial_info`` and ``remote_banks``.  If another table called ``financial_info`` is referenced without the ``remote_banks`` schema, it will refer to a different ``Table``.  ``ForeignKey`` objects can specify references to columns in this table using the form ``remote_banks.financial_info.id``.
 
 The ``schema`` argument should be used for any name qualifiers required, including Oracle's "owner" attribute and similar.  It also can accommodate a dotted name for longer schemes::
 
@@ -449,7 +449,7 @@ Triggered Columns
 Columns with values set by a database trigger or other external process may be called out with a marker::
 
     t = Table('test', meta,
-        Column('abc', String(20), server_default=FetchedValue())
+        Column('abc', String(20), server_default=FetchedValue()),
         Column('def', String(20), server_onupdate=FetchedValue())
     )
 
@@ -526,15 +526,51 @@ And then a table ``invoice_item`` with a composite foreign key referencing ``inv
     
 It's important to note that the ``ForeignKeyConstraint`` is the only way to define a composite foreign key.   While we could also have placed individual ``ForeignKey`` objects on both the ``invoice_item.invoice_id`` and ``invoice_item.ref_num`` columns, SQLAlchemy would not be aware that these two values should be paired together - it would be two individual foreign key constraints instead of a single composite foreign key referencing two columns.
 
+Creating/Dropping Foreign Key Constraints via ALTER
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In all the above examples, the ``ForeignKey`` object causes the "REFERENCES" keyword to be added inline to a column definition within a "CREATE TABLE" statement when ``create_all()`` is issued, and ``ForeignKeyConstraint`` invokes the "CONSTRAINT" keyword inline with "CREATE TABLE".    There are some cases where this is undesireable, particularly when two tables reference each other mutually, each with a foreign key referencing the other.   In such a situation at least one of the foreign key constraints must be generated after both tables have been built.  To support such a scheme, ``ForeignKey`` and ``ForeignKeyConstraint`` offer the flag ``use_alter=True``.  When using this flag, the constraint will be generated using a definition similar to "ALTER TABLE <tablename> ADD CONSTRAINT <name> ...".   Since a name is required, the ``name`` attribute must also be specified.  For example::
+
+    node = Table('node', meta,
+        Column('node_id', Integer, primary_key=True),
+        Column('primary_element', Integer, 
+            ForeignKey('element.element_id', use_alter=True, name='fk_node_element_id')
+        )
+    )
+    
+    element = Table('element', meta,
+        Column('element_id', Integer, primary_key=True),
+        Column('parent_node_id', Integer),
+        ForeignKeyConstraint(
+            ['parent_node_id'], 
+            ['node.node_id'], 
+            use_alter=True, 
+            name='fk_element_parent_node_id'
+        )
+    )
+
 ON UPDATE and ON DELETE 
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-``ON UPDATE`` and ``ON DELETE`` clauses to a table create are specified within the ``ForeignKeyConstraint`` object, using the ``onupdate`` and ``ondelete`` keyword arguments::
+Most databases support *cascading* of foreign key values, that is the when a parent row is updated the new value is placed in child rows, or when the parent row is deleted all corresponding child rows are set to null or deleted.  In data definition language these are specified using phrases like "ON UPDATE CASCADE", "ON DELETE CASCADE", and "ON DELETE SET NULL", corresponding to foreign key constraints.  The phrase after "ON UPDATE" or "ON DELETE" may also other allow other phrases that are specific to the database in use.  The ``ForeignKey`` and ``ForeignKeyConstraint`` objects support the generation of this clause via the ``onupdate`` and ``ondelete`` keyword arguments.  The value is any string which will be output after the appropriate "ON UPDATE" or "ON DELETE" phrase::
 
-    foobar = Table('foobar', meta,
+    child = Table('child', meta,
+        Column('id', Integer, 
+                ForeignKey('parent.id', onupdate="CASCADE", ondelete="CASCADE"), 
+                primary_key=True
+        )
+    )
+    
+    composite = Table('composite', meta,
         Column('id', Integer, primary_key=True),
-        Column('lala', String(40)),
-        ForeignKeyConstraint(['lala'],['hoho.lala'], onupdate="CASCADE", ondelete="CASCADE"))
+        Column('rev_id', Integer),
+        Column('note_id', Integer),
+        ForeignKeyConstraint(
+                    ['rev_id', 'note_id'],
+                    ['revisions.id', 'revisions.note_id'], 
+                    onupdate="CASCADE", ondelete="SET NULL"
+        )
+    )
 
 Note that these clauses are not supported on SQLite, and require ``InnoDB`` tables when used with MySQL.  They may also not be supported on other databases.
 
@@ -583,7 +619,7 @@ Note that some databases do not actively support check constraints such as MySQL
 Indexes
 -------
 
-Indexes can be created anonymously (using an auto-generated name ``ix_\ *column label*``) for a single column using the inline ``index`` keyword on ``Column``, which also modifies the usage of ``unique`` to apply the uniqueness to the index itself, instead of adding a separate UNIQUE constraint.  For indexes with specific names or which encompass more than one column, use the ``Index`` construct, which requires a name.  
+Indexes can be created anonymously (using an auto-generated name ``ix_<column label>``) for a single column using the inline ``index`` keyword on ``Column``, which also modifies the usage of ``unique`` to apply the uniqueness to the index itself, instead of adding a separate UNIQUE constraint.  For indexes with specific names or which encompass more than one column, use the ``Index`` construct, which requires a name.  
 
 Note that the ``Index`` construct is created **externally** to the table which it corresponds, using ``Column`` objects and not strings.
 
@@ -626,10 +662,18 @@ The ``Index`` objects will be created along with the CREATE statements for the t
 Customizing DDL
 ===============
 
-
+In the preceding sections we've discussed a variety of schema constructs including ``Table``, ``ForeignKeyConstraint``, ``CheckConstraint``, and ``Sequence``.   Throughout, we've relied upon the ``create()`` and ``create_all()`` methods of ``Table`` and ``MetaData`` in order to issue data definition language (DDL) for all constructs.   When issued, a pre-determined order of operations is invoked, and DDL to create each table is created unconditionally including all constraints and other objects associated with it.   For more complex scenarios where database-specific DDL is required, SQLAlchemy offers two techniques which can be used to add any DDL based on any condition along with the standard generation of tables.
 
 Controlling DDL Sequences
 -------------------------
+
+The ``sqlalchemy.schema`` package contains SQL expression constructs that provide DDL expressions.   For example, to produce a ``CREATE TABLE`` statement::
+
+    from sqlalchemy.schema import CreateTable
+    engine.execute(CreateTable(mytable))
+    
+Above, the ``CreateTable`` construct works like any other expression construct (such as ``select()``, ``table.insert()``, etc.).  A full reference of available constructs is in :ref:`schema_api_ddl`.
+
 
 Custom DDL
 ----------
