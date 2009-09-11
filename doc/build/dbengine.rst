@@ -92,7 +92,7 @@ SQLAlchemy indicates the source of an Engine strictly via `RFC-1738 <http://rfc.
 
     dialect+driver://username:password@host:port/database
 
-Dialect names include the identifying name of the SQLAlchemy dialect which include ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, ``mssql``, and ``firebird``.  The drivername is the name of the DBAPI to be used to connect to the database using all lowercase letters.   If not specified, a "default" DBAPI will be imported if available - this default is typically the most widely known driver available for that backend (i.e. cx_oracle, pysqlite/sqlite3, psycopg2, mysqldb).   For Jython connections, specify the `zxjdbc`, driver, which is the JDBC-DBAPI bridge included with Jython.
+Dialect names include the identifying name of the SQLAlchemy dialect which include ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, ``mssql``, and ``firebird``.  The drivername is the name of the DBAPI to be used to connect to the database using all lowercase letters.   If not specified, a "default" DBAPI will be imported if available - this default is typically the most widely known driver available for that backend (i.e. cx_oracle, pysqlite/sqlite3, psycopg2, mysqldb).   For Jython connections, specify the `zxjdbc` driver, which is the JDBC-DBAPI bridge included with Jython.
 
 .. sourcecode:: python+sql
 
