@@ -99,13 +99,16 @@ class ReturningTest(TestBase, AssertsExecutionResults):
             # return value is documented as failing with psycopg2/executemany
             result2 = table.insert().returning(table).execute(
                  [{'persons': 2, 'full': False}, {'persons': 3, 'full': True}])
-            
-            if testing.against('firebird', 'mssql'):
+
+            if testing.against('mssql+zxjdbc'):
+                # jtds apparently returns only the first row
+                eq_(result2.fetchall(), [(2, 2, False, None)])
+            elif testing.against('firebird', 'mssql'):
                 # Multiple inserts only return the last row
-                eq_(result2.fetchall(), [(3,3,True, None)])
+                eq_(result2.fetchall(), [(3, 3, True, None)])
             else:
                 # nobody does this as far as we know (pg8000?)
-                eq_(result2.fetchall(), [(2, 2, False, None), (3,3,True, None)])
+                eq_(result2.fetchall(), [(2, 2, False, None), (3, 3, True, None)])
 
         test_executemany()
 
