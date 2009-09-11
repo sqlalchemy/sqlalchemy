@@ -67,10 +67,12 @@ Downloads for each DBAPI at the time of this writing are as follows:
  - PostgreSQL on Jython: `PostgreSQL JDBC Driver <http://jdbc.postgresql.org/>`_
  - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
  - MySQL:   `MySQLDB (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_
- - MySQL on Jython: `JDBC Driver for MySQL <http://www.mysql.com/products/connector/>`_
+ - MySQL on Jython: `MySQL Connector/J JDBC driver <http://dev.mysql.com/downloads/connector/j/>`_
  - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
+ - Oracle on Jython:  `Oracle JDBC Driver <http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html>`_
  - Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
  - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) `adodbapi <http://adodbapi.sourceforge.net/>`_  `pymssql <http://pymssql.sourceforge.net/>`_
+ - MS-SQL on Jython:  `jTDS JDBC Driver <http://jtds.sourceforge.net/>`_
 
 * Experimental Dialects
  - MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_
@@ -90,7 +92,7 @@ SQLAlchemy indicates the source of an Engine strictly via `RFC-1738 <http://rfc.
 
     dialect+driver://username:password@host:port/database
 
-Dialect names include the identifying name of the SQLAlchemy dialect which include ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, ``mssql``, and ``firebird``.  The drivername is the name of the DBAPI to be used to connect to the database using all lowercase letters.   If not specified, a "default" DBAPI will be imported if available - this default is typically the most widely known driver available for that backend (i.e. cx_oracle, pysqlite/sqlite3, psycopg2, mysqldb).   For Jython connections, the driver is always `zxjdbc`, which is the JDBC-DBAPI bridge included with Jython.
+Dialect names include the identifying name of the SQLAlchemy dialect which include ``sqlite``, ``mysql``, ``postgresql``, ``oracle``, ``mssql``, and ``firebird``.  The drivername is the name of the DBAPI to be used to connect to the database using all lowercase letters.   If not specified, a "default" DBAPI will be imported if available - this default is typically the most widely known driver available for that backend (i.e. cx_oracle, pysqlite/sqlite3, psycopg2, mysqldb).   For Jython connections, specify the `zxjdbc`, driver, which is the JDBC-DBAPI bridge included with Jython.
 
 .. sourcecode:: python+sql
 
