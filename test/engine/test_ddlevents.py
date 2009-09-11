@@ -248,7 +248,7 @@ class DDLExecutionTest(TestBase):
         
         metadata.create_all(bind=nonpg_mock)
         strings = " ".join(str(x) for x in nonpg_mock.mock)
-        assert "my_test_constraint" not in strings
+        assert "my_test_constraint" not in strings  
         metadata.drop_all(bind=nonpg_mock)
         strings = " ".join(str(x) for x in nonpg_mock.mock)
         assert "my_test_constraint" not in strings

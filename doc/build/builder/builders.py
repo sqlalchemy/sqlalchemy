@@ -62,7 +62,7 @@ class PyConWithSQLLexer(RegexLexer):
             ],
             'sqlpopup':[
                 (
-                    r'(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?(?:{stop}\n*|$))',
+                    r'(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|ALTER|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?(?:{stop}\n?|$))',
                     bygroups(using(PythonConsoleLexer), Token.Sql.Popup), 
                     "#pop"
                 )
@@ -91,7 +91,7 @@ class PythonWithSQLLexer(RegexLexer):
             ],
             'sqlpopup':[
                 (
-                    r'(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?(?:{stop}\n*|$))',
+                    r'(.*?\n)((?:PRAGMA|BEGIN|SELECT|INSERT|DELETE|ROLLBACK|COMMIT|ALTER|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?(?:{stop}\n?|$))',
                     bygroups(using(PythonLexer), Token.Sql.Popup), 
                     "#pop"
                 )

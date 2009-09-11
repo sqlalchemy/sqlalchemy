@@ -372,7 +372,7 @@ You can control the names using the ``label()`` construct for scalar attributes 
     ...    print row.user_alias, row.name_label
     SELECT users_1.id AS users_1_id, users_1.name AS users_1_name, users_1.fullname AS users_1_fullname, users_1.password AS users_1_password, users_1.name AS name_label
     FROM users AS users_1
-    []
+    []{stop}
     <User('ed','Ed Jones', 'f8s7ccs')> ed
     <User('wendy','Wendy Williams', 'foobar')> wendy
     <User('mary','Mary Contrary', 'xxg527')> mary
@@ -387,8 +387,8 @@ Basic operations with ``Query`` include issuing LIMIT and OFFSET, most convenien
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users ORDER BY users.id
     LIMIT 2 OFFSET 1
-    []
-    {stop}<User('wendy','Wendy Williams', 'foobar')>
+    []{stop}
+    <User('wendy','Wendy Williams', 'foobar')>
     <User('mary','Mary Contrary', 'xxg527')>
 
 and filtering results, which is accomplished either with ``filter_by()``, which uses keyword arguments:

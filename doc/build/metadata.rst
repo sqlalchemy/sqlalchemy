@@ -616,12 +616,22 @@ Note that some databases do not actively support check constraints such as MySQL
         CheckConstraint('col2 > col3 + 5', name='check1')
         )
     
+    {sql}mytable.create(engine)
+    CREATE TABLE mytable (
+        col1 INTEGER  CHECK (col1>5), 
+        col2 INTEGER, 
+        col3 INTEGER, 
+        CONSTRAINT check1  CHECK (col2 > col3 + 5)
+    ){stop}
+    
 Indexes
 -------
 
 Indexes can be created anonymously (using an auto-generated name ``ix_<column label>``) for a single column using the inline ``index`` keyword on ``Column``, which also modifies the usage of ``unique`` to apply the uniqueness to the index itself, instead of adding a separate UNIQUE constraint.  For indexes with specific names or which encompass more than one column, use the ``Index`` construct, which requires a name.  
 
 Note that the ``Index`` construct is created **externally** to the table which it corresponds, using ``Column`` objects and not strings.
+
+Below we illustrate a ``Table`` with several ``Index`` objects associated.  The DDL for "CREATE INDEX" is issued right after the create statements for the table:
 
 .. sourcecode:: python+sql
 
@@ -646,34 +656,135 @@ Note that the ``Index`` construct is created **externally** to the table which i
     # place a unique index on col5, col6
     Index('myindex', mytable.c.col5, mytable.c.col6, unique=True)
 
-The ``Index`` objects will be created along with the CREATE statements for the table itself.  An index can also be created on its own independently of the table:
+    {sql}mytable.create(engine)
+    CREATE TABLE mytable (
+        col1 INTEGER, 
+        col2 INTEGER, 
+        col3 INTEGER, 
+        col4 INTEGER, 
+        col5 INTEGER, 
+        col6 INTEGER
+    )
+    CREATE INDEX ix_mytable_col1 ON mytable (col1)
+    CREATE UNIQUE INDEX ix_mytable_col2 ON mytable (col2)
+    CREATE UNIQUE INDEX myindex ON mytable (col5, col6)
+    CREATE INDEX idx_col34 ON mytable (col3, col4){stop}
+
+The ``Index`` object also supports its own ``create()`` method:
 
 .. sourcecode:: python+sql
 
-    # create a table
-    sometable.create()
-
-    # define an index
-    i = Index('someindex', sometable.c.col5)
-
-    # create the index, will use the table's bound connectable if the ``bind`` keyword argument not specified
-    i.create()
-
+    i = Index('someindex', mytable.c.col5)
+    {sql}i.create(engine)
+    CREATE INDEX someindex ON mytable (col5){stop}
+    
 Customizing DDL
 ===============
 
-In the preceding sections we've discussed a variety of schema constructs including ``Table``, ``ForeignKeyConstraint``, ``CheckConstraint``, and ``Sequence``.   Throughout, we've relied upon the ``create()`` and ``create_all()`` methods of ``Table`` and ``MetaData`` in order to issue data definition language (DDL) for all constructs.   When issued, a pre-determined order of operations is invoked, and DDL to create each table is created unconditionally including all constraints and other objects associated with it.   For more complex scenarios where database-specific DDL is required, SQLAlchemy offers two techniques which can be used to add any DDL based on any condition along with the standard generation of tables.
+In the preceding sections we've discussed a variety of schema constructs including ``Table``, ``ForeignKeyConstraint``, ``CheckConstraint``, and ``Sequence``.   Throughout, we've relied upon the ``create()`` and ``create_all()`` methods of ``Table`` and ``MetaData`` in order to issue data definition language (DDL) for all constructs.   When issued, a pre-determined order of operations is invoked, and DDL to create each table is created unconditionally including all constraints and other objects associated with it.   For more complex scenarios where database-specific DDL is required, SQLAlchemy offers two techniques which can be used to add any DDL based on any condition, either accompanying the standard generation of tables or by itself.
 
 Controlling DDL Sequences
 -------------------------
 
-The ``sqlalchemy.schema`` package contains SQL expression constructs that provide DDL expressions.   For example, to produce a ``CREATE TABLE`` statement::
+The ``sqlalchemy.schema`` package contains SQL expression constructs that provide DDL expressions.   For example, to produce a ``CREATE TABLE`` statement:
+
+.. sourcecode:: python+sql
 
     from sqlalchemy.schema import CreateTable
-    engine.execute(CreateTable(mytable))
+    {sql}engine.execute(CreateTable(mytable))
+    CREATE TABLE mytable (
+        col1 INTEGER, 
+        col2 INTEGER, 
+        col3 INTEGER, 
+        col4 INTEGER, 
+        col5 INTEGER, 
+        col6 INTEGER
+    ){stop}
     
 Above, the ``CreateTable`` construct works like any other expression construct (such as ``select()``, ``table.insert()``, etc.).  A full reference of available constructs is in :ref:`schema_api_ddl`.
 
+The DDL constructs all extend a common base class which provides the capability to be associated with an individual ``Table`` or ``MetaData`` object, to be invoked upon create/drop events.   Consider the example of a table which contains a CHECK constraint:
+
+.. sourcecode:: python+sql
+
+    users = Table('users', metadata,
+                   Column('user_id', Integer, primary_key=True),
+                   Column('user_name', String(40), nullable=False),
+                   CheckConstraint('length(user_name) >= 8',name="cst_user_name_length")
+                   )
+
+    {sql}users.create(engine)
+    CREATE TABLE users (
+        user_id SERIAL NOT NULL, 
+        user_name VARCHAR(40) NOT NULL, 
+        PRIMARY KEY (user_id), 
+        CONSTRAINT cst_user_name_length  CHECK (length(user_name) >= 8)
+    ){stop}
+
+The above table contains a column "user_name" which is subject to a CHECK constraint that validates that the length of the string is at least eight characters.   When a ``create()`` is issued for this table, DDL for the ``CheckConstraint`` will also be issued inline within the table definition.
+
+The ``CheckConstraint`` construct can also be constructed externally and associated with the ``Table`` afterwards::
+
+    constraint = CheckConstraint('length(user_name) >= 8',name="cst_user_name_length")
+    users.append_constraint(constraint)
+    
+So far, the effect is the same.  However, if we create DDL elements corresponding to the creation and removal of this constraint, and associate them with the ``Table`` as events, these new events will take over the job of issuing DDL for the constraint.  Additionally, the constraint will be added via ALTER:
+
+.. sourcecode:: python+sql
+
+    AddConstraint(constraint).execute_at("after-create", users)
+    DropConstraint(constraint).execute_at("before-drop", users)
+
+    {sql}users.create(engine)
+    CREATE TABLE users (
+        user_id SERIAL NOT NULL, 
+        user_name VARCHAR(40) NOT NULL, 
+        PRIMARY KEY (user_id)
+    )
+
+    ALTER TABLE users ADD CONSTRAINT cst_user_name_length  CHECK (length(user_name) >= 8){stop}
+
+    {sql}users.drop(engine)
+    ALTER TABLE users DROP CONSTRAINT cst_user_name_length
+    DROP TABLE users{stop}
+    
+The real usefulness of the above becomes clearer once we illustrate the ``on`` attribute of a DDL event.  The ``on`` parameter is part of the constructor, and may be a string name of a database dialect name, a tuple containing dialect names, or a Python callable.   This will limit the execution of the item to just those dialects, or when the return value of the callable is ``True``.  So if our ``CheckConstraint`` was only supported by Postgresql and not other databases, we could limit it to just that dialect::
+
+    AddConstraint(constraint, on='postgresql').execute_at("after-create", users)
+    DropConstraint(constraint, on='postgresql').execute_at("before-drop", users)
+    
+Or to any set of dialects::
+
+    AddConstraint(constraint, on=('postgresql', 'mysql')).execute_at("after-create", users)
+    DropConstraint(constraint, on=('postgresql', 'mysql')).execute_at("before-drop", users)
+    
+When using a callable, the callable is passed the event name, the schema object operated upon, and the ``Connection`` object being used for the operation, as well as additional information as keyword arguments.  The callable can perform checks, such as whether or not a given item already exists:
+
+.. sourcecode:: python+sql
+
+    def should_create(event, schema_item, connection, **kw):
+        row = connection.execute("select relname from pg_class where relname='%s'" % schema_item.name).scalar()
+        return bool(row)
+    
+    def should_drop(event, schema_item, connection, **kw):
+        return not should_create(event, schema_item, connection, **kw)
+        
+    AddConstraint(constraint, on=should_create).execute_at("after-create", users)
+    DropConstraint(constraint, on=should_drop).execute_at("before-drop", users)
+
+    {sql}users.create(engine)
+    CREATE TABLE users (
+        user_id SERIAL NOT NULL, 
+        user_name VARCHAR(40) NOT NULL, 
+        PRIMARY KEY (user_id)
+    )
+
+    select relname from pg_class where relname='users'
+    ALTER TABLE users ADD CONSTRAINT cst_user_name_length  CHECK (length(user_name) >= 8){stop}
+    
+    {sql}users.drop(engine)
+    select relname from pg_class where relname='users'
+    DROP TABLE users{stop}
 
 Custom DDL
 ----------

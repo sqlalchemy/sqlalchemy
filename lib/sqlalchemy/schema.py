@@ -37,7 +37,10 @@ __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
            'ForeignKeyConstraint', 'PrimaryKeyConstraint', 'CheckConstraint',
            'UniqueConstraint', 'DefaultGenerator', 'Constraint', 'MetaData',
            'ThreadLocalMetaData', 'SchemaVisitor', 'PassiveDefault',
-           'DefaultClause', 'FetchedValue', 'ColumnDefault', 'DDL']
+           'DefaultClause', 'FetchedValue', 'ColumnDefault', 'DDL',
+           'CreateTable', 'DropTable', 'CreateSequence', 'DropSequence',
+           'AddConstraint', 'DropConstraint',
+           ]
 __all__.sort()
 
 class SchemaItem(visitors.Visitable):
