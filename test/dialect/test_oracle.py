@@ -513,16 +513,12 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
 
     def test_fetch(self):
         result = binary_table.select().execute().fetchall()
-        if jython:
-            result = [(i, value.tostring()) for i, value in result]
         eq_(result, [(i, stream) for i in range(1, 11)])
 
     @testing.fails_on('+zxjdbc', 'FIXME: zxjdbc should support this')
     def test_fetch_single_arraysize(self):
         eng = testing_engine(options={'arraysize':1})
         result = eng.execute(binary_table.select()).fetchall()
-        if jython:
-            result = [(i, value.tostring()) for i, value in result]
         eq_(result, [(i, stream) for i in range(1, 11)])
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
