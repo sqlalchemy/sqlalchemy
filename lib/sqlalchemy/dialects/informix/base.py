@@ -225,7 +225,7 @@ class InformixDialect(default.DefaultDialect):
 
     def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("""select tabname from systables where tabname=?""", table_name.lower() )
-        return bool( cursor.fetchone() is not None )
+        return cursor.first() is not None
 
     def reflecttable(self, connection, table, include_columns):
         c = connection.execute ("select distinct OWNER from systables where tabname=?", table.name.lower() )

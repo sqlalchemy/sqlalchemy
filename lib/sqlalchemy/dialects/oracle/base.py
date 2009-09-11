@@ -531,7 +531,7 @@ class OracleDialect(default.DefaultDialect):
             sql.text("SELECT table_name FROM all_tables "
                      "WHERE table_name = :name AND owner = :schema_name"),
             name=self.denormalize_name(table_name), schema_name=self.denormalize_name(schema))
-        return cursor.fetchone() is not None
+        return cursor.first() is not None
 
     def has_sequence(self, connection, sequence_name, schema=None):
         if not schema:
@@ -540,7 +540,7 @@ class OracleDialect(default.DefaultDialect):
             sql.text("SELECT sequence_name FROM all_sequences "
                      "WHERE sequence_name = :name AND sequence_owner = :schema_name"),
             name=self.denormalize_name(sequence_name), schema_name=self.denormalize_name(schema))
-        return cursor.fetchone() is not None
+        return cursor.first() is not None
 
     def normalize_name(self, name):
         if name is None:
@@ -601,7 +601,7 @@ class OracleDialect(default.DefaultDialect):
 
         result = connection.execute(sql.text(q), **params)
         if desired_owner:
-            row = result.fetchone()
+            row = result.first()
             if row:
                 return row['table_name'], row['table_owner'], row['db_link'], row['synonym_name']
             else:

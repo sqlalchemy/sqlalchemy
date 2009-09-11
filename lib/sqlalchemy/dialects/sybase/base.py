@@ -363,10 +363,7 @@ class SybaseDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, schema=None):
         # FIXME: ignore schemas for sybase
         s = sql.select([tables.c.table_name], tables.c.table_name == tablename)
-
-        c = connection.execute(s)
-        row = c.fetchone()
-        return row is not None
+        return connection.execute(s).first() is not None
 
     def reflecttable(self, connection, table, include_columns):
         # Get base columns

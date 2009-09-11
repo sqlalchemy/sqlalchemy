@@ -391,7 +391,7 @@ class PoolTest(PoolTestBase):
         listener.connect = listener
         engine = create_engine(testing.db.url)
         engine.pool.add_listener(listener)
-        engine.execute(select([1]))
+        engine.execute(select([1])).close()
         assert called, "Listener not called on connect"
 
 

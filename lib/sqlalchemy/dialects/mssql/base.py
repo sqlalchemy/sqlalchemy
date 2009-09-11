@@ -1200,8 +1200,7 @@ class MSDialect(default.DefaultDialect):
                    )
 
         c = connection.execute(s)
-        row  = c.fetchone()
-        return row is not None
+        return c.first() is not None
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):
@@ -1354,8 +1353,7 @@ class MSDialect(default.DefaultDialect):
                     sql.text("select ident_seed(:seed), ident_incr(:incr)"), 
                     {'seed':table_fullname, 'incr':table_fullname}
                 )
-                row = cursor.fetchone()
-                cursor.close()
+                row = cursor.first()
                 if not row is None:
                     colmap[ic]['sequence'].update({
                         'start' : int(row[0]),

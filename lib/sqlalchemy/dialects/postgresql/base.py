@@ -538,7 +538,7 @@ class PGDialect(default.DefaultDialect):
                         sql.bindparam('schema', unicode(schema), type_=sqltypes.Unicode)] 
                 )
             )
-        return bool(cursor.fetchone())
+        return bool(cursor.first())
 
     def has_sequence(self, connection, sequence_name):
         cursor = connection.execute(
@@ -547,7 +547,7 @@ class PGDialect(default.DefaultDialect):
                         "AND nspname != 'information_schema' AND relname = :seqname)", 
                         bindparams=[sql.bindparam('seqname', unicode(sequence_name), type_=sqltypes.Unicode)]
                     ))
-        return bool(cursor.fetchone())
+        return bool(cursor.first())
 
     def table_names(self, connection, schema):
         result = connection.execute(

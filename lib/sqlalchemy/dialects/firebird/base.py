@@ -462,8 +462,7 @@ class FBDialect(default.DefaultDialect):
                FROM rdb$dependencies trigdep2
                WHERE trigdep2.rdb$dependent_name = trigdep.rdb$dependent_name) = 2
         """
-        genc = connection.execute(genqry, [tablename, colname])
-        genr = genc.fetchone()
+        genr = connection.execute(genqry, [tablename, colname]).first()
         if genr is not None:
             return dict(name=self.normalize_name(genr['fgenerator']))
 

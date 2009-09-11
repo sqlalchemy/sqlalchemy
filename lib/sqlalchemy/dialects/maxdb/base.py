@@ -870,9 +870,7 @@ class MaxDBDialect(default.DefaultDialect):
             bind.append(denormalize(schema))
 
         rp = connection.execute(sql, bind)
-        found = bool(rp.fetchone())
-        rp.close()
-        return found
+        return bool(rp.first())
 
     def table_names(self, connection, schema):
         if schema is None:
@@ -1031,10 +1029,7 @@ class MaxDBDialect(default.DefaultDialect):
                "WHERE SEQUENCE_NAME=? ")
 
         rp = connection.execute(sql, denormalize(name))
-        found = bool(rp.fetchone())
-        rp.close()
-        return found
-
+        return bool(rp.first())
 
 
 def _autoserial_column(table):
