@@ -658,7 +658,10 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
     def test_pyodbc_extra_connect(self):
         u = url.make_url('mssql://username:password@hostspec/database?LANGUAGE=us_english&foo=bar')
         connection = dialect.create_connect_args(u)
-        eq_([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password;foo=bar;LANGUAGE=us_english'], {}], connection)
+        eq_(connection[1], {})
+        eq_(connection[0][0] in
+            ('DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password;foo=bar;LANGUAGE=us_english',
+             'DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password;LANGUAGE=us_english;foo=bar'), True)
 
     def test_pyodbc_odbc_connect(self):
         u = url.make_url('mssql:///?odbc_connect=DRIVER%3D%7BSQL+Server%7D%3BServer%3Dhostspec%3BDatabase%3Ddatabase%3BUID%3Dusername%3BPWD%3Dpassword')
