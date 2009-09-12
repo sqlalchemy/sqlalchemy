@@ -390,7 +390,12 @@ CHANGES
     - Fixed bug which disallowed one side of a many-to-many 
       bidirectional reference to declare itself as "viewonly"
       [ticket:1507]
-
+    
+    - Added an assertion that prevents a @validates function
+      or other AttributeExtension from loading an unloaded
+      collection such that internal state may be corrupted.
+      [ticket:1526]
+      
     - Fixed bug which prevented two entities from mutually
       replacing each other's primary key values within a single
       flush() for some orderings of operations.  [ticket:1519]

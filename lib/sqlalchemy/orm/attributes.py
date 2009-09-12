@@ -700,6 +700,7 @@ class CollectionAttributeImpl(AttributeImpl):
         collection = self.get_collection(state, dict_, passive=passive)
         if collection is PASSIVE_NO_RESULT:
             value = self.fire_append_event(state, dict_, value, initiator)
+            assert self.key not in dict_, "Collection was loaded during event handling."
             state.get_pending(self.key).append(value)
         else:
             collection.append_with_event(value, initiator)
@@ -711,6 +712,7 @@ class CollectionAttributeImpl(AttributeImpl):
         collection = self.get_collection(state, state.dict, passive=passive)
         if collection is PASSIVE_NO_RESULT:
             self.fire_remove_event(state, dict_, value, initiator)
+            assert self.key not in dict_, "Collection was loaded during event handling."
             state.get_pending(self.key).remove(value)
         else:
             collection.remove_with_event(value, initiator)
