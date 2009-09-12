@@ -1175,8 +1175,8 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         testobj2 = pickleable.Foo('im foo 2')
         testobj3 = pickleable.Foo('im foo 3')
 
-        stream1 =self.load_stream('binary_data_one.dat')
-        stream2 =self.load_stream('binary_data_two.dat')
+        stream1 = self.load_stream('binary_data_one.dat')
+        stream2 = self.load_stream('binary_data_two.dat')
         binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat', data=stream1, data_image=stream1, data_slice=stream1[0:100], pickled=testobj1, mypickle=testobj3)
         binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_image=stream2, data_slice=stream2[0:99], pickled=testobj2)
         
@@ -1188,7 +1188,10 @@ class BinaryTest(TestBase, AssertsExecutionResults):
 
         for stmt in (
             binary_table.select(order_by=binary_table.c.primary_id),
-            text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType, 'mypickle':MyPickleType}, bind=testing.db)
+            text("select * from binary_table order by binary_table.primary_id",
+                 typemap=dict(data=mssql.MSVarBinary(8000), data_image=mssql.MSImage,
+                              data_slice=Binary(100), pickled=PickleType, mypickle=MyPickleType),
+                 bind=testing.db)
         ):
             l = stmt.execute().fetchall()
             eq_(list(stream1), list(l[0]['data']))
@@ -1205,7 +1208,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
             eq_(l[0]['mypickle'].stuff, 'this is the right stuff')
 
     def load_stream(self, name, len=3000):
-        f = os.path.join(os.path.dirname(__file__), "..", name)
-        return file(f, 'rb').read(len)
-
-
+        fp = open(os.path.join(os.path.dirname(__file__), "..", name), 'rb')
+        stream = fp.read(len)
+        fp.close()
+        return stream

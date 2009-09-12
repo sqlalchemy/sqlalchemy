@@ -782,7 +782,7 @@ class Binary(TypeEngine):
         def process(value):
             if value is not None:
                 if util.jython and isinstance(value, array.array):
-                    value = value.tostring()
+                    return value.tostring()
                 return str(value)
             else:
                 return None
