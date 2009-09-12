@@ -4,7 +4,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, assert_raises
 from test.orm import _base
 import gc
 
@@ -215,7 +215,45 @@ class AttributesTest(_base.ORMTest):
         a.email_address = 'foo@bar.com'
         u.addresses.append(a)
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.addresses[0].email_address == 'lala@123.com' and u.addresses[1].email_address == 'foo@bar.com')
+    
+    def test_extension_lazyload_assertion(self):
+        class Foo(_base.BasicEntity):
+            pass
+        class Bar(_base.BasicEntity):
+            pass
 
+        class ReceiveEvents(AttributeExtension):
+            def append(self, state, child, initiator):
+                state.obj().bars
+                return child
+
+            def remove(self, state, child, initiator):
+                state.obj().bars
+                return child
+
+            def set(self, state, child, oldchild, initiator):
+                return child
+
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+
+        bar1, bar2, bar3 = [Bar(id=1), Bar(id=2), Bar(id=3)]
+        def func1():
+            return [bar1, bar2, bar3]
+
+        attributes.register_attribute(Foo, 'bars', uselist=True, callable_=lambda o:func1, useobject=True, extension=[ReceiveEvents()])
+        attributes.register_attribute(Bar, 'foos', uselist=True, useobject=True, extension=[attributes.GenericBackrefExtension('bars')])
+
+        x = Foo()
+        assert_raises(AssertionError, Bar(id=4).foos.append, x)
+        
+        x.bars
+        b = Bar(id=4)
+        b.foos.append(x)
+        attributes.instance_state(x).expire_attributes(['bars'])
+        assert_raises(AssertionError, b.foos.remove, x)
+        
+        
     def test_scalar_listener(self):
         # listeners on ScalarAttributeImpl and MutableScalarAttributeImpl aren't used normally.
         # test that they work for the benefit of user extensions
