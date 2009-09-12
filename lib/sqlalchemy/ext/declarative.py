@@ -600,9 +600,11 @@ def _deferred_relation(cls, prop):
         import sqlalchemy
         
         def access_cls(key):
-            try:
+            if key in cls._decl_class_registry:
                 return _GetColumns(cls._decl_class_registry[key])
-            except KeyError:
+            elif key in cls.metadata.tables:
+                return cls.metadata.tables[key]
+            else:
                 return sqlalchemy.__dict__[key]
 
         d = util.PopulateDict(access_cls)

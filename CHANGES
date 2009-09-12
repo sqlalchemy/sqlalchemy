@@ -504,6 +504,11 @@ CHANGES
      __table_args__ is passed as a tuple with no dict argument.
      Improved documentation.  [ticket:1468]
 
+   - Table objects declared in the MetaData can now be used
+     in string expressions sent to primaryjoin/secondaryjoin/
+     secondary - the name is pulled from the MetaData of the
+     declarative base.  [ticket:1527]
+     
    - A column can be added to a joined-table subclass after
      the class has been constructed (i.e. via class-level
      attribute assignment).  The column is added to the underlying

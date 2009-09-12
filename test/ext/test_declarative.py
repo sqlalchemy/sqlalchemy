@@ -175,7 +175,31 @@ class DeclarativeTest(DeclarativeTestBase):
         compile_mappers()
         eq_(str(User.addresses.property.primaryjoin), str(Address.user.property.primaryjoin))
         
+    def test_string_dependency_resolution_tables(self):
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            
+            props = relation("Prop", 
+                        secondary="user_to_prop", 
+                        primaryjoin="User.id==user_to_prop.c.user_id", 
+                        secondaryjoin="user_to_prop.c.prop_id==Prop.id", 
+                    backref="users")
+
+        class Prop(Base, ComparableEntity):
+            __tablename__ = 'props'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
         
+        user_to_prop = Table('user_to_prop', Base.metadata, 
+            Column('user_id', Integer, ForeignKey('users.id')),
+            Column('prop_id', Integer, ForeignKey('props.id')),
+        )
+
+        compile_mappers()
+        assert class_mapper(User).get_property("props").secondary is user_to_prop
+
     def test_uncompiled_attributes_in_relation(self):
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
