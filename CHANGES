@@ -113,6 +113,10 @@ CHANGES
       dict for "info" argument would raise an exception.
       [ticket:1482]
 
+- postgresql
+    - The driver can be specified as "postgresql://" in URLs,
+      allowing forwards-compatibility with 0.6.
+      
 - oracle
     - Backported 0.6 fix for Oracle alias names not getting
       truncated.  [ticket:1309]

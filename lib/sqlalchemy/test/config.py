@@ -14,6 +14,7 @@ base_config = """
 sqlite=sqlite:///:memory:
 sqlite_file=sqlite:///querytest.db
 postgres=postgres://scott:tiger@127.0.0.1:5432/test
+postgresql=postgres://scott:tiger@127.0.0.1:5432/test
 mysql=mysql://scott:tiger@127.0.0.1:3306/test
 oracle=oracle://scott:tiger@127.0.0.1:1521
 oracle8=oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0

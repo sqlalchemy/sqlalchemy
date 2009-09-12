@@ -164,8 +164,8 @@ class LazyTest(_fixtures.FixtureTest):
         u2 = users.alias('u2')
         s = sa.union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
         print [key for key in s.c.keys()]
-        l = q.filter(s.c.u2_id==User.id).distinct().all()
-        assert self.static.user_all_result == l
+        l = q.filter(s.c.u2_id==User.id).distinct().order_by(User.id).all()
+        eq_(self.static.user_all_result, l)
 
     @testing.resolve_artifact_names
     def test_one_to_many_scalar(self):

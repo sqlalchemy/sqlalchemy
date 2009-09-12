@@ -483,15 +483,15 @@ class EagerTest(_fixtures.FixtureTest):
         s = sa.union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
 
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=False),
+            'addresses':relation(mapper(Address, addresses), lazy=False, order_by=addresses.c.id),
         })
 
         sess = create_session()
         q = sess.query(User)
 
         def go():
-            l = q.filter(s.c.u2_id==User.id).distinct().all()
-            assert self.static.user_address_result == l
+            l = q.filter(s.c.u2_id==User.id).distinct().order_by(User.id).all()
+            eq_(self.static.user_address_result, l)
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
