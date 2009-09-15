@@ -1,7 +1,6 @@
 from sqlalchemy.dialects.firebird.base import FBDialect, FBCompiler
 from sqlalchemy.engine.default import DefaultExecutionContext
 
-_initialized_kb  = False
 
 class Firebird_kinterbasdb(FBDialect):
     driver = 'kinterbasdb'
@@ -28,10 +27,15 @@ class Firebird_kinterbasdb(FBDialect):
 
         type_conv = opts.pop('type_conv', self.type_conv)
         concurrency_level = opts.pop('concurrency_level', self.concurrency_level)
-        global _initialized_kb
-        if not _initialized_kb and self.dbapi is not None:
-            _initialized_kb = True
-            self.dbapi.init(type_conv=type_conv, concurrency_level=concurrency_level)
+
+        if self.dbapi is not None:
+            initialized = getattr(self.dbapi, 'initialized', None)
+            if initialized is None:
+                # CVS rev 1.96 changed the name of the attribute:
+                # http://kinterbasdb.cvs.sourceforge.net/viewvc/kinterbasdb/Kinterbasdb-3.0/__init__.py?r1=1.95&r2=1.96
+                initialized = getattr(self.dbapi, '_initialized', False)
+            if not initialized:
+                self.dbapi.init(type_conv=type_conv, concurrency_level=concurrency_level)
         return ([], opts)
 
     def _get_server_version_info(self, connection):
