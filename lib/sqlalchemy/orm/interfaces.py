@@ -668,11 +668,11 @@ class PropertyOption(MapperOption):
         self._process(query, False)
 
     def _process(self, query, raiseerr):
-        paths = self.__get_paths(query, raiseerr)
+        paths, mappers = self.__get_paths(query, raiseerr)
         if paths:
-            self.process_query_property(query, paths)
+            self.process_query_property(query, paths, mappers)
 
-    def process_query_property(self, query, paths):
+    def process_query_property(self, query, paths, mappers):
         pass
 
     def __find_entity(self, query, mapper, raiseerr):
@@ -718,7 +718,8 @@ class PropertyOption(MapperOption):
         path = None
         entity = None
         l = []
-
+        mappers = []
+        
         # _current_path implies we're in a secondary load
         # with an existing path
         current_path = list(query._current_path)
@@ -739,6 +740,7 @@ class PropertyOption(MapperOption):
                         entity = query._entity_zero()
                         path_element = entity.path_entity
                         mapper = entity.mapper
+                    mappers.append(mapper)
                     prop = mapper.get_property(token, resolve_synonyms=True, raiseerr=raiseerr)
                     key = token
                 elif isinstance(token, PropComparator):
@@ -746,8 +748,9 @@ class PropertyOption(MapperOption):
                     if not entity:
                         entity = self.__find_entity(query, token.parententity, raiseerr)
                         if not entity:
-                            return []
+                            return [], []
                         path_element = entity.path_entity
+                    mappers.append(prop.parent)
                     key = prop.key
                 else:
                     raise sa_exc.ArgumentError("mapper option expects string key or list of attributes")
@@ -757,7 +760,7 @@ class PropertyOption(MapperOption):
                     continue
                     
                 if prop is None:
-                    return []
+                    return [], []
 
                 path = build_path(path_element, prop.key, path)
                 l.append(path)
@@ -765,15 +768,17 @@ class PropertyOption(MapperOption):
                     path_element = mapper = token._of_type
                 else:
                     path_element = mapper = getattr(prop, 'mapper', None)
+
                 if path_element:
                     path_element = path_element.base_mapper
-        
+                    
+                
         # if current_path tokens remain, then
         # we didn't have an exact path match.
         if current_path:
-            return []
+            return [], []
             
-        return l
+        return l, mappers
 
 class AttributeExtension(object):
     """An event handler for individual attribute change events.
@@ -823,7 +828,7 @@ class StrategizedOption(PropertyOption):
     def is_chained(self):
         return False
 
-    def process_query_property(self, query, paths):
+    def process_query_property(self, query, paths, mappers):
         if self.is_chained():
             for path in paths:
                 query._attributes[("loaderstrategy", path)] = self.get_strategy_class()

@@ -849,16 +849,17 @@ class LoadEagerFromAliasOption(PropertyOption):
         # dont run this option on a secondary load
         pass
         
-    def process_query_property(self, query, paths):
+    def process_query_property(self, query, paths, mappers):
         if self.alias:
             if isinstance(self.alias, basestring):
-                (mapper, propname) = paths[-1][-2:]
-
+                mapper = mappers[-1]
+                (root_mapper, propname) = paths[-1][-2:]
                 prop = mapper.get_property(propname, resolve_synonyms=True)
                 self.alias = prop.target.alias(self.alias)
             query._attributes[("user_defined_eager_row_processor", paths[-1])] = sql_util.ColumnAdapter(self.alias)
         else:
-            (mapper, propname) = paths[-1][-2:]
+            (root_mapper, propname) = paths[-1][-2:]
+            mapper = mappers[-1]
             prop = mapper.get_property(propname, resolve_synonyms=True)
             adapter = query._polymorphic_adapters.get(prop.mapper, None)
             query._attributes[("user_defined_eager_row_processor", paths[-1])] = adapter
