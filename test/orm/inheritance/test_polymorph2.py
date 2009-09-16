@@ -436,8 +436,8 @@ class RelationTest5(_base.MappedTest):
            Column('car_id', Integer, primary_key=True),
            Column('owner', Integer, ForeignKey('people.person_id')))
 
-    def testeagerempty(self):
-        """an easy one...test parent object with child relation to an inheriting mapper, using eager loads,
+    def test_eager_empty(self):
+        """test parent object with child relation to an inheriting mapper, using eager loads,
         works when there are no child objects present"""
         class Person(object):
             def __init__(self, **kwargs):
