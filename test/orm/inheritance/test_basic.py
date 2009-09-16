@@ -447,6 +447,88 @@ class EagerTargetingTest(_base.MappedTest):
         eq_(node, B(id=1, name='b1',b_data='i'))
         eq_(node.children[0], B(id=2, name='b2',b_data='l'))
         
+class EagerToSubclassTest(_base.MappedTest):
+    """Test eagerloads to subclass mappers"""
+    
+    run_setup_classes = 'once'
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    run_deletes = None
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('parent', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', String(10)),
+        )
+        
+        Table('base', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('type', String(10)),
+        )
+
+        Table('sub', metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('data', String(10)),
+            Column('parent_id', Integer, ForeignKey('parent.id'), nullable=False)
+        )
+    
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_classes(cls):
+        class Parent(_base.ComparableEntity):
+            pass
+        
+        class Base(_base.ComparableEntity):
+            pass
+        
+        class Sub(Base):
+            pass
+    
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        mapper(Parent, parent, properties={
+            'children':relation(Sub)
+        })
+        mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='b')
+        mapper(Sub, sub, inherits=Base, polymorphic_identity='s')
+    
+    @classmethod
+    @testing.resolve_artifact_names
+    def insert_data(cls):
+        sess = create_session()
+        p1 = Parent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')])
+        p2 = Parent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+        sess.add(p1)
+        sess.add(p2)
+        sess.flush()
+        
+    @testing.resolve_artifact_names
+    def test_eagerload(self):
+        sess = create_session()
+        def go():
+            eq_(
+                sess.query(Parent).options(eagerload(Parent.children)).all(), 
+                [
+                    Parent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
+                    Parent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+
+    @testing.resolve_artifact_names
+    def test_contains_eager(self):
+        sess = create_session()
+        def go():
+            eq_(
+                sess.query(Parent).join(Parent.children).options(contains_eager(Parent.children)).all(), 
+                [
+                    Parent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
+                    Parent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
         
 class FlushTest(_base.MappedTest):
     """test dependency sorting among inheriting mappers"""

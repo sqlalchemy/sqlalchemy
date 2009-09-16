@@ -858,7 +858,10 @@ class LoadEagerFromAliasOption(PropertyOption):
                 self.alias = prop.target.alias(self.alias)
             query._attributes[("user_defined_eager_row_processor", paths[-1])] = sql_util.ColumnAdapter(self.alias)
         else:
-            query._attributes[("user_defined_eager_row_processor", paths[-1])] = None
+            (mapper, propname) = paths[-1][-2:]
+            prop = mapper.get_property(propname, resolve_synonyms=True)
+            adapter = query._polymorphic_adapters.get(prop.mapper, None)
+            query._attributes[("user_defined_eager_row_processor", paths[-1])] = adapter
 
 class _SingleParentValidator(interfaces.AttributeExtension):
     def __init__(self, prop):

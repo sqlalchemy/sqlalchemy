@@ -379,7 +379,18 @@ CHANGES
     - AbstractType.get_search_list() is removed - the games
       that was used for are no longer necessary.
 
-
+0.5.7
+=====
+- orm
+    - contains_eager() now works with the automatically 
+      generated subquery that results when you say 
+      "query(Parent).join(Parent.somejoinedsubclass)", i.e. 
+      when Parent joins to a joined-table-inheritance subclass.  
+      Previously contains_eager() would erroneously add the 
+      subclass table to the query separately producing a 
+      cartesian product.  An example is in the ticket
+      description.  [ticket:1543]
+      
 0.5.6
 =====
 - orm
