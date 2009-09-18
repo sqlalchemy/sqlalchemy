@@ -12,7 +12,8 @@ from sqlalchemy.test import config, assertsql, util as testutil
 from sqlalchemy.util import function_named, py3k
 from engines import drop_all_tables
 
-from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, pool
+from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, pool, orm
+from sqlalchemy.engine import default
 from nose import SkipTest
 
     
@@ -587,14 +588,22 @@ class TestBase(object):
         assert val, msg
         
 class AssertsCompiledSQL(object):
-    def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None):
+    def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None, use_default_dialect=False):
+        if use_default_dialect:
+            dialect = default.DefaultDialect()
+            
         if dialect is None:
             dialect = getattr(self, '__dialect__', None)
 
         kw = {}
         if params is not None:
             kw['column_keys'] = params.keys()
-
+        
+        if isinstance(clause, orm.Query):
+            context = clause._compile_context()
+            context.statement.use_labels = True
+            clause = context.statement
+            
         c = clause.compile(dialect=dialect, **kw)
 
         # Py3K

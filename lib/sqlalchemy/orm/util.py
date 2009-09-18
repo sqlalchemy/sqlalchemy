@@ -506,14 +506,25 @@ def _entity_descriptor(entity, key):
 
     """
     if isinstance(entity, AliasedClass):
-        desc = getattr(entity, key)
-        return desc, desc.property
+        try:
+            desc = getattr(entity, key)
+            return desc, desc.property
+        except AttributeError:
+            raise sa_exc.InvalidRequestError("Entity '%s' has no property '%s'" % (entity, key))
+            
     elif isinstance(entity, type):
-        desc = attributes.manager_of_class(entity)[key]
-        return desc, desc.property
+        try:
+            desc = attributes.manager_of_class(entity)[key]
+            return desc, desc.property
+        except KeyError:
+            raise sa_exc.InvalidRequestError("Entity '%s' has no property '%s'" % (entity, key))
+            
     else:
-        desc = entity.class_manager[key]
-        return desc, desc.property
+        try:
+            desc = entity.class_manager[key]
+            return desc, desc.property
+        except KeyError:
+            raise sa_exc.InvalidRequestError("Entity '%s' has no property '%s'" % (entity, key))
 
 def _orm_columns(entity):
     mapper, selectable, is_aliased_class = _entity_info(entity)

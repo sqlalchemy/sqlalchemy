@@ -1134,17 +1134,351 @@ class ParentTest(QueryTest):
         k = sess.query(Keyword).with_parent(i1).all()
         assert [Keyword(name='red'), Keyword(name='small'), Keyword(name='square')] == k
 
+class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
+    run_setup_mappers = 'once'
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('companies', metadata,
+           Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
+           Column('name', String(50)))
 
-class JoinTest(QueryTest):
+        Table('people', metadata,
+           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
+           Column('company_id', Integer, ForeignKey('companies.company_id')),
+           Column('name', String(50)),
+           Column('type', String(30)))
 
+        Table('engineers', metadata,
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('status', String(30)),
+           Column('engineer_name', String(50)),
+           Column('primary_language', String(50)),
+          )
+     
+        Table('machines', metadata,
+            Column('machine_id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('name', String(50)),
+            Column('engineer_id', Integer, ForeignKey('engineers.person_id')))
+        
+        Table('managers', metadata,
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('status', String(30)),
+           Column('manager_name', String(50))
+           )
+
+        Table('boss', metadata,
+            Column('boss_id', Integer, ForeignKey('managers.person_id'), primary_key=True),
+            Column('golf_swing', String(30)),
+            )
+
+        Table('paperwork', metadata,
+            Column('paperwork_id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('description', String(50)),
+            Column('person_id', Integer, ForeignKey('people.person_id')))
+    
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_classes(cls):
+        class Company(_fixtures.Base):
+            pass
+        class Person(_fixtures.Base):
+            pass
+        class Engineer(Person):
+            pass
+        class Manager(Person):
+            pass
+        class Boss(Manager):
+            pass
+        class Machine(_fixtures.Base):
+            pass
+        class Paperwork(_fixtures.Base):
+            pass
+
+        mapper(Company, companies, properties={
+            'employees':relation(Person, order_by=people.c.person_id)
+        })
+
+        mapper(Machine, machines)
+
+        mapper(Person, people, 
+            polymorphic_on=people.c.type, polymorphic_identity='person', order_by=people.c.person_id, 
+            properties={
+                'paperwork':relation(Paperwork, order_by=paperwork.c.paperwork_id)
+            })
+        mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer', properties={
+                'machines':relation(Machine, order_by=machines.c.machine_id)
+            })
+        mapper(Manager, managers, 
+                    inherits=Person, polymorphic_identity='manager')
+        mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
+        mapper(Paperwork, paperwork)
+    
+    @testing.resolve_artifact_names
+    def test_single_prop(self):
+        sess = create_session()
+    
+        self.assert_compile(
+            sess.query(Company).join(Company.employees),
+            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN people ON companies.company_id = people.company_id"
+        )
+
+    @testing.resolve_artifact_names
+    def test_single_prop_of_type(self):
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(Company).join(Company.employees.of_type(Engineer)),
+            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id AS "
+            "engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
+            "engineers.primary_language AS engineers_primary_language "
+            "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS anon_1 ON companies.company_id = anon_1.people_company_id"
+        )
+
+    @testing.resolve_artifact_names
+    def test_prop_with_polymorphic(self):
+        sess = create_session()
+        
+        self.assert_compile(
+            sess.query(Person).with_polymorphic(Manager).join('paperwork').filter(Paperwork.description.like('%review%')),
+                "SELECT people.person_id AS people_person_id, people.company_id AS people_company_id, "
+                "people.name AS people_name, people.type AS people_type, managers.person_id AS managers_person_id, "
+                "managers.status AS managers_status, managers.manager_name AS managers_manager_name FROM people "
+                "LEFT OUTER JOIN managers ON people.person_id = managers.person_id JOIN paperwork ON people.person_id = "
+                "paperwork.person_id WHERE paperwork.description LIKE :description_1 ORDER BY people.person_id"
+                , use_default_dialect=True
+            )
+        
+        self.assert_compile(
+            sess.query(Person).with_polymorphic(Manager).join('paperwork', aliased=True).filter(Paperwork.description.like('%review%')),
+            "SELECT people.person_id AS people_person_id, people.company_id AS people_company_id, "
+            "people.name AS people_name, people.type AS people_type, managers.person_id AS managers_person_id, "
+            "managers.status AS managers_status, managers.manager_name AS managers_manager_name "
+            "FROM people LEFT OUTER JOIN managers ON people.person_id = managers.person_id JOIN "
+            "paperwork AS paperwork_1 ON people.person_id = paperwork_1.person_id "
+            "WHERE paperwork_1.description LIKE :description_1 ORDER BY people.person_id"
+            , use_default_dialect=True
+        )
+
+    @testing.resolve_artifact_names
+    def test_explicit_polymorphic_join(self):
+        sess = create_session()
+        
+        self.assert_compile(
+            sess.query(Company).join(Engineer).filter(Engineer.engineer_name=='vlad'),
+            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id AS "
+            "engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
+            "engineers.primary_language AS engineers_primary_language "
+            "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS anon_1 ON "
+            "companies.company_id = anon_1.people_company_id "
+            "WHERE anon_1.engineers_engineer_name = :engineer_name_1"
+            , use_default_dialect=True
+        )
+        self.assert_compile(
+            sess.query(Company).join((Engineer, Company.company_id==Engineer.company_id)).filter(Engineer.engineer_name=='vlad'),
+            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id AS "
+            "engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
+            "engineers.primary_language AS engineers_primary_language "
+            "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS anon_1 ON "
+            "companies.company_id = anon_1.people_company_id "
+            "WHERE anon_1.engineers_engineer_name = :engineer_name_1"
+            , use_default_dialect=True
+        )
+
+    @testing.resolve_artifact_names
+    def test_multiple_adaption(self):
+        """test that multiple filter() adapters get chained together and work correctly within a multiple-entry join()."""
+        
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(Company).join((people.join(engineers), Company.employees)).
+                filter(Engineer.name=='dilbert'),
+            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id "
+            "AS engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
+            "engineers.primary_language AS engineers_primary_language FROM people JOIN engineers ON people.person_id = "
+            "engineers.person_id) AS anon_1 ON companies.company_id = anon_1.people_company_id WHERE anon_1.people_name = :name_1"
+            , use_default_dialect = True
+        )
+        
+        mach_alias = machines.select()
+        self.assert_compile(
+            sess.query(Company).join((people.join(engineers), Company.employees), (mach_alias, Engineer.machines)).
+                filter(Engineer.name=='dilbert').filter(Machine.name=='foo'),
+            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id "
+            "AS engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
+            "engineers.primary_language AS engineers_primary_language FROM people JOIN engineers ON people.person_id = "
+            "engineers.person_id) AS anon_1 ON companies.company_id = anon_1.people_company_id JOIN "
+            "(SELECT machines.machine_id AS machine_id, machines.name AS name, machines.engineer_id AS engineer_id "
+            "FROM machines) AS anon_2 ON anon_1.engineers_person_id = anon_2.engineer_id "
+            "WHERE anon_1.people_name = :name_1 AND anon_2.name = :name_2"
+            , use_default_dialect = True
+        )
+        
+        
+        
+class JoinTest(QueryTest, AssertsCompiledSQL):
+    
+    def test_foo(self):
+        sess = create_session()
+    
+    def test_single_name(self):
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User).join("orders"),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id"
+        )
+
+        assert_raises(
+            sa_exc.InvalidRequestError,
+            sess.query(User).join, "user",
+        )
+
+        self.assert_compile(
+            sess.query(User).join("orders", "items"),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
+            "JOIN orders ON users.id = orders.user_id JOIN order_items AS order_items_1 "
+            "ON orders.id = order_items_1.order_id JOIN items ON items.id = order_items_1.item_id"
+            , use_default_dialect=True
+        )
+
+        # test overlapping paths.   User->orders is used by both joins, but rendered once.
+        self.assert_compile(
+            sess.query(User).join("orders", "items").join("orders", "address"),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users JOIN orders "
+            "ON users.id = orders.user_id JOIN order_items AS order_items_1 ON orders.id = "
+            "order_items_1.order_id JOIN items ON items.id = order_items_1.item_id JOIN addresses "
+            "ON addresses.id = orders.address_id"
+            , use_default_dialect=True
+        )
+        
+    def test_single_prop(self):
+        sess = create_session()
+        self.assert_compile(
+            sess.query(User).join(User.orders),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id"
+            , use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User).join(Order.user),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM orders JOIN users ON users.id = orders.user_id"
+            , use_default_dialect=True
+        )
+
+        oalias1 = aliased(Order)
+        oalias2 = aliased(Order)
+
+        self.assert_compile(
+            sess.query(User).join(oalias1.user),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM orders AS orders_1 JOIN users ON users.id = orders_1.user_id"
+            , use_default_dialect=True
+        )
+        
+        # another nonsensical query.  (from [ticket:1537]).
+        # in this case, the contract of "left to right" is honored
+        self.assert_compile(
+            sess.query(User).join(oalias1.user).join(oalias2.user),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM orders AS orders_1 JOIN users ON users.id = orders_1.user_id, "
+            "orders AS orders_2 JOIN users ON users.id = orders_2.user_id"
+            , use_default_dialect=True
+        )
+        
+        self.assert_compile(
+            sess.query(User).join(User.orders, Order.items),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
+            "JOIN orders ON users.id = orders.user_id JOIN order_items AS order_items_1 "
+            "ON orders.id = order_items_1.order_id JOIN items ON items.id = order_items_1.item_id"
+            , use_default_dialect=True
+        )
+        
+        ualias = aliased(User)
+        self.assert_compile(
+            sess.query(ualias).join(ualias.orders),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 JOIN orders ON users_1.id = orders.user_id"
+            , use_default_dialect=True
+        )
+        
+        # this query is somewhat nonsensical.  the old system didn't render a correct
+        # query for this.   In this case its the most faithful to what was asked -
+        # there's no linkage between User.orders and "oalias", so two FROM elements
+        # are generated.
+        oalias = aliased(Order)
+        self.assert_compile(
+            sess.query(User).join(User.orders, oalias.items),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users "
+            "JOIN orders ON users.id = orders.user_id, "
+            "orders AS orders_1 JOIN order_items AS order_items_1 ON orders_1.id = order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id"
+            , use_default_dialect=True
+        )
+
+        # same as before using an aliased() for User as well
+        ualias = aliased(User)
+        self.assert_compile(
+            sess.query(ualias).join(ualias.orders, oalias.items),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM users AS users_1 "
+            "JOIN orders ON users_1.id = orders.user_id, "
+            "orders AS orders_1 JOIN order_items AS order_items_1 ON orders_1.id = order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id"
+            , use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User).filter(User.name=='ed').from_self().join(User.orders),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users "
+            "WHERE users.name = :name_1) AS anon_1 JOIN orders ON anon_1.users_id = orders.user_id"
+            , use_default_dialect=True
+        )
+        
+        self.assert_compile(
+            sess.query(User).join(User.addresses, aliased=True).filter(Address.email_address=='foo'),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id "
+            "WHERE addresses_1.email_address = :email_address_1"
+            , use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User).join(User.orders, Order.items, aliased=True).filter(Item.id==10),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders AS orders_1 ON users.id = orders_1.user_id "
+            "JOIN order_items AS order_items_1 ON orders_1.id = order_items_1.order_id "
+            "JOIN items AS items_1 ON items_1.id = order_items_1.item_id "
+            "WHERE items_1.id = :id_1"
+            , use_default_dialect=True
+        )
+        
     def test_overlapping_paths(self):
         for aliased in (True,False):
             # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
-            result = create_session().query(User).join(['orders', 'items'], aliased=aliased).filter_by(id=3).join(['orders','address'], aliased=aliased).filter_by(id=1).all()
+            result = create_session().query(User).join(['orders', 'items'], aliased=aliased).\
+                    filter_by(id=3).join(['orders','address'], aliased=aliased).filter_by(id=1).all()
             assert [User(id=7, name='jack')] == result
 
     def test_overlapping_paths_outerjoin(self):
-        result = create_session().query(User).outerjoin(['orders', 'items']).filter_by(id=3).outerjoin(['orders','address']).filter_by(id=1).all()
+        result = create_session().query(User).outerjoin(['orders', 'items']).\
+                filter_by(id=3).outerjoin(['orders','address']).filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
     
     def test_from_joinpoint(self):
@@ -1211,10 +1545,153 @@ class JoinTest(QueryTest):
         ualias = aliased(User)
         oalias1 = aliased(Order)
         oalias2 = aliased(Order)
-        result = sess.query(ualias).join((oalias1, ualias.orders), (oalias2, ualias.orders)).\
-                filter(or_(oalias1.user_id==9, oalias2.user_id==7)).all()
-        eq_(result, [User(id=7,name=u'jack'), User(id=9,name=u'fred')])
+        self.assert_compile(
+            sess.query(ualias).join((oalias1, ualias.orders), (oalias2, ualias.orders)).\
+                    filter(or_(oalias1.user_id==9, oalias2.user_id==7)),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM users AS users_1 "
+            "JOIN orders AS orders_1 ON users_1.id = orders_1.user_id JOIN orders AS orders_2 ON "
+            "users_1.id = orders_2.user_id WHERE orders_1.user_id = :user_id_1 OR orders_2.user_id = :user_id_2",
+            use_default_dialect=True
+        )
+
+    def test_select_from_orm_joins(self):
+        sess = create_session()
+        
+        ualias = aliased(User)
+        oalias1 = aliased(Order)
+        oalias2 = aliased(Order)
+
+        self.assert_compile(
+            join(User, oalias2, User.id==oalias2.user_id),
+            "users JOIN orders AS orders_1 ON users.id = orders_1.user_id",
+            use_default_dialect=True
+        )
+
+        self.assert_compile(
+            join(ualias, oalias1, ualias.orders),
+            "users AS users_1 JOIN orders AS orders_1 ON users_1.id = orders_1.user_id",
+            use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(ualias).select_from(join(ualias, oalias1, ualias.orders)),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM users AS users_1 "
+            "JOIN orders AS orders_1 ON users_1.id = orders_1.user_id",
+            use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User, ualias).select_from(join(ualias, oalias1, ualias.orders)),
+            "SELECT users.id AS users_id, users.name AS users_name, users_1.id AS users_1_id, "
+            "users_1.name AS users_1_name FROM users, users AS users_1 JOIN orders AS orders_1 ON users_1.id = orders_1.user_id",
+            use_default_dialect=True
+        )
+
+        # this fails (and we cant quite fix right now).
+        if False:
+            self.assert_compile(
+                sess.query(User, ualias).\
+                        join((oalias1, ualias.orders)).\
+                        join((oalias2, User.id==oalias2.user_id)).\
+                        filter(or_(oalias1.user_id==9, oalias2.user_id==7)),
+                "SELECT users.id AS users_id, users.name AS users_name, users_1.id AS users_1_id, users_1.name AS "
+                "users_1_name FROM users JOIN orders AS orders_2 ON users.id = orders_2.user_id, "
+                "users AS users_1 JOIN orders AS orders_1 ON users_1.id = orders_1.user_id  "
+                "WHERE orders_1.user_id = :user_id_1 OR orders_2.user_id = :user_id_2",
+                use_default_dialect=True
+            )
+
+        # this is the same thing using explicit orm.join() (which now offers multiple again)
+        self.assert_compile(
+            sess.query(User, ualias).\
+                    select_from(
+                        join(ualias, oalias1, ualias.orders),
+                        join(User, oalias2, User.id==oalias2.user_id),
+                    ).\
+                    filter(or_(oalias1.user_id==9, oalias2.user_id==7)),
+            "SELECT users.id AS users_id, users.name AS users_name, users_1.id AS users_1_id, users_1.name AS "
+            "users_1_name FROM users AS users_1 JOIN orders AS orders_1 ON users_1.id = orders_1.user_id, "
+            "users JOIN orders AS orders_2 ON users.id = orders_2.user_id "
+            "WHERE orders_1.user_id = :user_id_1 OR orders_2.user_id = :user_id_2",
+            
+            use_default_dialect=True
+        )
+        
+        
+    def test_overlapping_backwards_joins(self):
+        sess = create_session()
+
+        oalias1 = aliased(Order)
+        oalias2 = aliased(Order)
+        
+        # this is invalid SQL - joins from orders_1/orders_2 to User twice.  
+        # but that is what was asked for so they get it !
+        self.assert_compile(
+            sess.query(User).join(oalias1.user).join(oalias2.user),
+            "SELECT users.id AS users_id, users.name AS users_name FROM orders AS orders_1 "
+            "JOIN users ON users.id = orders_1.user_id, orders AS orders_2 JOIN users ON users.id = orders_2.user_id",
+            use_default_dialect=True,
+        )
+
+    def test_replace_multiple_from_clause(self):
+        """test adding joins onto multiple FROM clauses"""
+        
+        sess = create_session()
+        
+        self.assert_compile(
+            sess.query(Address, User).join(Address.dingaling).join(User.orders, Order.items),
+            "SELECT addresses.id AS addresses_id, addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address, users.id AS users_id, "
+            "users.name AS users_name FROM addresses JOIN dingalings ON addresses.id = dingalings.address_id, "
+            "users JOIN orders ON users.id = orders.user_id JOIN order_items AS order_items_1 "
+            "ON orders.id = order_items_1.order_id JOIN items ON items.id = order_items_1.item_id",
+            use_default_dialect = True
+        )
     
+    def test_multiple_adaption(self):
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User).join(User.orders, Order.items, aliased=True).filter(Order.id==7).filter(Item.id==8),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users JOIN orders AS orders_1 "
+            "ON users.id = orders_1.user_id JOIN order_items AS order_items_1 ON orders_1.id = order_items_1.order_id "
+            "JOIN items AS items_1 ON items_1.id = order_items_1.item_id WHERE orders_1.id = :id_1 AND items_1.id = :id_2",
+            use_default_dialect=True
+        )
+    
+    def test_onclause_conditional_adaption(self):
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User).join(User.orders, 
+                (Item, 
+                    and_(Order.id==order_items.c.order_id, order_items.c.item_id==Item.id)
+                ),aliased=True
+                ),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users JOIN "
+            "orders AS orders_1 ON users.id = orders_1.user_id JOIN items AS items_1 "
+            "ON orders_1.id = order_items.order_id AND order_items.item_id = items_1.id",
+            use_default_dialect=True
+        )
+        
+        oalias = orders.select()
+        self.assert_compile(
+            sess.query(User).join((oalias, User.orders), 
+                (Item, 
+                    and_(Order.id==order_items.c.order_id, order_items.c.item_id==Item.id)
+                ),
+                ),
+            "SELECT users.id AS users_id, users.name AS users_name FROM users JOIN "
+            "(SELECT orders.id AS id, orders.user_id AS user_id, orders.address_id AS address_id, orders.description "
+            "AS description, orders.isopen AS isopen FROM orders) AS anon_1 ON users.id = anon_1.user_id JOIN items "
+            "ON anon_1.id = order_items.order_id AND order_items.item_id = items.id",
+            use_default_dialect=True
+        )
+        
+        
+        # query.join(<stuff>, aliased=True).join((target, sql_expression))
+        # or: query.join(path_to_some_joined_table_mapper).join((target, sql_expression))
+        
     def test_pure_expression_error(self):
         sess = create_session()
         
@@ -1464,7 +1941,7 @@ class JoinTest(QueryTest):
         )
 
     def test_plain_table(self):
-        
+            
         sess = create_session()
         
         eq_(
@@ -1473,7 +1950,7 @@ class JoinTest(QueryTest):
         )
         
         
-class MultiplePathTest(_base.MappedTest):
+class MultiplePathTest(_base.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
         global t1, t2, t1t2_1, t1t2_2
@@ -1506,13 +1983,15 @@ class MultiplePathTest(_base.MappedTest):
         })
         mapper(T2, t2)
 
-        q = create_session().query(T1).join('t2s_1').filter(t2.c.id==5).reset_joinpoint()
-        assert_raises_message(sa_exc.InvalidRequestError, "a path to this table along a different secondary table already exists.",
-            q.join, 't2s_2'
+        q = create_session().query(T1).join('t2s_1').filter(t2.c.id==5).reset_joinpoint().join('t2s_2')
+        self.assert_compile(
+            q,
+            "SELECT t1.id AS t1_id, t1.data AS t1_data FROM t1 JOIN t1t2_1 AS t1t2_1_1 "
+            "ON t1.id = t1t2_1_1.t1id JOIN t2 ON t2.id = t1t2_1_1.t2id JOIN t1t2_2 AS t1t2_2_1 "
+            "ON t1.id = t1t2_2_1.t1id JOIN t2 ON t2.id = t1t2_2_1.t2id WHERE t2.id = :id_1"
+            , use_default_dialect=True
         )
 
-        create_session().query(T1).join('t2s_1', aliased=True).filter(t2.c.id==5).reset_joinpoint().join('t2s_2').all()
-        create_session().query(T1).join('t2s_1').filter(t2.c.id==5).reset_joinpoint().join('t2s_2', aliased=True).all()
 
 class SynonymTest(QueryTest):
 

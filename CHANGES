@@ -22,7 +22,14 @@ CHANGES
 
   - query.update() and query.delete() both default to
     'evaluate' for the synchronize strategy.
+    
+  - query.join() has been reworked to provide more consistent 
+    behavior and more flexibility (includes [ticket:1537])
 
+  - query.select_from() accepts multiple clauses to produce 
+    multiple comma separated entries within the FROM clause.
+    Useful when selecting from multiple-homed join() clauses.
+    
   - the 'synchronize' strategy for update() and delete() raises
     an error on failure. There is no implicit fallback onto
     "fetch". Failure of evaluation is based on the structure of
