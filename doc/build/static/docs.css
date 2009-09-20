@@ -19,10 +19,6 @@ p {
 	margin-bottom:10px;
 }
 
-img {
-    display:block;
-    margin: 0 auto;
-}
 
 a {font-weight:normal; text-decoration:underline;}
 a:link {color:#0000FF;}
@@ -71,6 +67,11 @@ h1, h2, h3, h4, h5 {
 
 .document h1, .document h2, .document h3, .document h4, .document h5 {
     font-size: 1.4em;
+}
+
+.document img {
+    display:block;
+    margin: 0 auto;
 }
 
 .document h1 {
