@@ -1222,6 +1222,7 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             sess.query(Company).join(Company.employees),
             "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
             "FROM companies JOIN people ON companies.company_id = people.company_id"
+            , use_default_dialect = True
         )
 
     @testing.resolve_artifact_names
@@ -1236,6 +1237,7 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             "engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
             "engineers.primary_language AS engineers_primary_language "
             "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS anon_1 ON companies.company_id = anon_1.people_company_id"
+            , use_default_dialect = True
         )
 
     @testing.resolve_artifact_names
@@ -1340,6 +1342,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             sess.query(User).join("orders"),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN orders ON users.id = orders.user_id"
+            , use_default_dialect = True
         )
 
         assert_raises(
