@@ -19,6 +19,11 @@ p {
 	margin-bottom:10px;
 }
 
+img {
+    display:block;
+    margin: 0 auto;
+}
+
 a {font-weight:normal; text-decoration:underline;}
 a:link {color:#0000FF;}
 a:visited {color:#0000FF;}
