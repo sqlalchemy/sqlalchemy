@@ -192,16 +192,23 @@ class Mapper(object):
         self.exclude_properties = exclude_properties
 
         self.compiled = False
-
-        self._configure_inheritance()
-        self._configure_extensions()
-        self._configure_class_instrumentation()
-        self._configure_properties()
-        self._configure_pks()
-        global _new_mappers
-        _new_mappers = True
-        self._log("constructed")
-
+        
+        # prevent this mapper from being constructed
+        # while a compile() is occuring (and defer a compile()
+        # until construction succeeds)
+        _COMPILE_MUTEX.acquire()
+        try:
+            self._configure_inheritance()
+            self._configure_extensions()
+            self._configure_class_instrumentation()
+            self._configure_properties()
+            self._configure_pks()
+            global _new_mappers
+            _new_mappers = True
+            self._log("constructed")
+        finally:
+            _COMPILE_MUTEX.release()
+            
     # configurational / mutating methods.  not threadsafe
     # except for compile().
     
