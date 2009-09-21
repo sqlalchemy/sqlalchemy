@@ -66,7 +66,7 @@ Downloads for each DBAPI at the time of this writing are as follows:
  - PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_ `pg8000 <http://pybrary.net/pg8000/>`_
  - PostgreSQL on Jython: `PostgreSQL JDBC Driver <http://jdbc.postgresql.org/>`_
  - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
- - MySQL:   `MySQLDB (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_
+ - MySQL:   `MySQLdb (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_
  - MySQL on Jython: `MySQL Connector/J JDBC driver <http://dev.mysql.com/downloads/connector/j/>`_
  - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
  - Oracle on Jython:  `Oracle JDBC Driver <http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html>`_
