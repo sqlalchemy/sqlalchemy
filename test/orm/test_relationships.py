@@ -1293,7 +1293,7 @@ class ViewOnlyLocalRemoteM2M(testing.TestBase):
         compile_mappers()
         assert m.get_property('b_view').local_remote_pairs == \
             m.get_property('b_plain').local_remote_pairs == \
-            [(t1.c.id, t12.c.t1_id), (t12.c.t2_id, t2.c.id)]
+            [(t1.c.id, t12.c.t1_id), (t2.c.id, t12.c.t2_id)]
 
         
     

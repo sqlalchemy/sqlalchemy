@@ -378,6 +378,7 @@ class LazyLoader(AbstractRelationLoader):
                             use_proxies=True, 
                             equivalents=self.mapper._equivalent_columns
                         )
+                        
         if self.use_get:
             for col in self._equated_columns.keys():
                 if col in self.mapper._equivalent_columns:
@@ -419,7 +420,7 @@ class LazyLoader(AbstractRelationLoader):
                 o = state.obj() # strong ref
                 bindparam.value = lambda: mapper._get_committed_attr_by_column(o, bind_to_col[bindparam.key])
 
-        if self.parent_property.secondary and alias_secondary:
+        if self.parent_property.secondary is not None and alias_secondary:
             criterion = sql_util.ClauseAdapter(self.parent_property.secondary.alias()).traverse(criterion)
 
         criterion = visitors.cloned_traverse(criterion, {}, {'bindparam':visit_bindparam})
@@ -497,7 +498,7 @@ class LazyLoader(AbstractRelationLoader):
         lookup = util.column_dict()
         equated_columns = util.column_dict()
 
-        if reverse_direction and not prop.secondaryjoin:
+        if reverse_direction and prop.secondaryjoin is None:
             for l, r in prop.local_remote_pairs:
                 _list = lookup.setdefault(r, [])
                 _list.append((r, l))
@@ -520,7 +521,7 @@ class LazyLoader(AbstractRelationLoader):
         
         lazywhere = prop.primaryjoin
 
-        if not prop.secondaryjoin or not reverse_direction:
+        if prop.secondaryjoin is None or not reverse_direction:
             lazywhere = visitors.replacement_traverse(lazywhere, {}, col_to_bind) 
         
         if prop.secondaryjoin is not None:
@@ -685,7 +686,7 @@ class EagerLoader(AbstractRelationLoader):
             entity_key, default_towrap = entity, entity.selectable
         else:
             index, clause = sql_util.find_join_source(context.from_clause, entity.selectable)
-            if clause:
+            if clause is not None:
                 # join to an existing FROM clause on the query.
                 # key it to its list index in the eager_joins dict.
                 # Query._compile_context will adapt as needed and append to the
@@ -721,7 +722,7 @@ class EagerLoader(AbstractRelationLoader):
         # send a hint to the Query as to where it may "splice" this join
         eagerjoin.stop_on = entity.selectable
         
-        if not self.parent_property.secondary and context.query._should_nest_selectable and not parentmapper:
+        if self.parent_property.secondary is None and context.query._should_nest_selectable and not parentmapper:
             # for parentclause that is the non-eager end of the join,
             # ensure all the parent cols in the primaryjoin are actually in the
             # columns clause (i.e. are not deferred), so that aliasing applied by the Query propagates 
@@ -840,7 +841,7 @@ class EagerLazyOption(StrategizedOption):
 class LoadEagerFromAliasOption(PropertyOption):
     def __init__(self, key, alias=None):
         super(LoadEagerFromAliasOption, self).__init__(key)
-        if alias:
+        if alias is not None:
             if not isinstance(alias, basestring):
                 m, alias, is_aliased_class = mapperutil._entity_info(alias)
         self.alias = alias
@@ -850,7 +851,7 @@ class LoadEagerFromAliasOption(PropertyOption):
         pass
         
     def process_query_property(self, query, paths, mappers):
-        if self.alias:
+        if self.alias is not None:
             if isinstance(self.alias, basestring):
                 mapper = mappers[-1]
                 (root_mapper, propname) = paths[-1][-2:]

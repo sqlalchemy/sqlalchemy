@@ -322,7 +322,7 @@ class M2MTest3(_base.MappedTest):
             'a1s': relation(A, secondary=c2a1, lazy=False),
             'a2s': relation(A, secondary=c2a2, lazy=False)})
 
-        assert create_session().query(C).with_labels().statement
+        assert create_session().query(C).with_labels().statement is not None
         
         # TODO: seems like just a test for an ancient exception throw.
         # how about some data/inserts/queries/assertions for this one

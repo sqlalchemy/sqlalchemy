@@ -865,7 +865,7 @@ class Session(object):
                     return self.__binds[c_mapper.base_mapper]
                 elif c_mapper.mapped_table in self.__binds:
                     return self.__binds[c_mapper.mapped_table]
-            if clause:
+            if clause is not None:
                 for t in sql_util.find_tables(clause):
                     if t in self.__binds:
                         return self.__binds[t]

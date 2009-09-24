@@ -221,7 +221,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
     visit_char_length_func = visit_length_func
 
     def function_argspec(self, func, **kw):
-        if func.clauses:
+        if func.clauses is not None and len(func.clauses):
             return self.process(func.clause_expr)
         else:
             return ""

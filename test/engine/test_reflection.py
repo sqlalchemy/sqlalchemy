@@ -238,7 +238,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
             assert list(a2.primary_key) == [a2.c.id]
             assert list(u2.primary_key) == [u2.c.id]
-            assert u2.join(a2).onclause == u2.c.id==a2.c.id
+            assert u2.join(a2).onclause.compare(u2.c.id==a2.c.id)
 
             meta3 = MetaData(testing.db)
             u3 = Table('users', meta3, autoload=True)
@@ -249,7 +249,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
             assert list(a3.primary_key) == [a3.c.id]
             assert list(u3.primary_key) == [u3.c.id]
-            assert u3.join(a3).onclause == u3.c.id==a3.c.id
+            assert u3.join(a3).onclause.compare(u3.c.id==a3.c.id)
 
         finally:
             meta.drop_all()
@@ -280,7 +280,7 @@ class ReflectionTest(TestBase, ComparesTables):
             assert [c.parent for c in a2.foreign_keys] == [a2.c.user_id]
             assert [c.parent for c in a2.c.user_id.foreign_keys] == [a2.c.user_id]
             assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
-            assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
+            assert u2.join(a2).onclause.compare(u2.c.id==a2.c.user_id)
 
             meta3 = MetaData(testing.db)
             u3 = Table('users', meta3, autoload=True)
@@ -288,7 +288,7 @@ class ReflectionTest(TestBase, ComparesTables):
                 Column('user_id', sa.Integer, sa.ForeignKey('users.id')),
                 autoload=True)
 
-            assert u3.join(a3).onclause == u3.c.id==a3.c.user_id
+            assert u3.join(a3).onclause.compare(u3.c.id==a3.c.user_id)
 
             meta4 = MetaData(testing.db)
             u4 = Table('users', meta4,
@@ -388,14 +388,14 @@ class ReflectionTest(TestBase, ComparesTables):
             u2 = Table('users', meta2, autoload=True)
 
             s = sa.select([a2])
-            assert s.c.user_id
+            assert s.c.user_id is not None
             assert len(a2.foreign_keys) == 1
             assert len(a2.c.user_id.foreign_keys) == 1
             assert len(a2.constraints) == 2
             assert [c.parent for c in a2.foreign_keys] == [a2.c.user_id]
             assert [c.parent for c in a2.c.user_id.foreign_keys] == [a2.c.user_id]
             assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
-            assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
+            assert u2.join(a2).onclause.compare(u2.c.id==a2.c.user_id)
 
             meta2 = MetaData(testing.db)
             u2 = Table('users', meta2,
@@ -407,14 +407,14 @@ class ReflectionTest(TestBase, ComparesTables):
                 autoload=True)
 
             s = sa.select([a2])
-            assert s.c.user_id
+            assert s.c.user_id is not None
             assert len(a2.foreign_keys) == 1
             assert len(a2.c.user_id.foreign_keys) == 1
             assert len(a2.constraints) == 2
             assert [c.parent for c in a2.foreign_keys] == [a2.c.user_id]
             assert [c.parent for c in a2.c.user_id.foreign_keys] == [a2.c.user_id]
             assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
-            assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
+            assert u2.join(a2).onclause.compare(u2.c.id==a2.c.user_id)
         finally:
             meta.drop_all()
 
@@ -676,9 +676,9 @@ class ReflectionTest(TestBase, ComparesTables):
             assert r1.unique == True
             assert r2.unique == False
             assert r3.unique == False
-            assert [t2.c.id] == r1.columns
-            assert [t2.c.name, t2.c.id] == r2.columns
-            assert [t2.c.name] == r3.columns
+            assert set([t2.c.id]) == set(r1.columns)
+            assert set([t2.c.name, t2.c.id]) == set(r2.columns)
+            assert set([t2.c.name]) == set(r3.columns)
         finally:
             m1.drop_all()
 

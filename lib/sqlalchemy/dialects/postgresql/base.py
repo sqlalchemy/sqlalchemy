@@ -240,8 +240,8 @@ class PGCompiler(compiler.SQLCompiler):
         return text
 
     def get_select_precolumns(self, select):
-        if select._distinct:
-            if isinstance(select._distinct, bool):
+        if select._distinct is not False:
+            if select._distinct is True:
                 return "DISTINCT "
             elif isinstance(select._distinct, (list, tuple)):
                 return "DISTINCT ON (" + ', '.join(

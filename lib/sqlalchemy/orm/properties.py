@@ -499,7 +499,7 @@ class RelationProperty(StrategizedProperty):
                     to_selectable = to_selectable.alias()
 
                 single_crit = target_mapper._single_table_criterion
-                if single_crit:
+                if single_crit is not None:
                     if criterion is not None:
                         criterion = single_crit & criterion
                     else:
@@ -525,19 +525,19 @@ class RelationProperty(StrategizedProperty):
             # annotate the *local* side of the join condition, in the case of pj + sj this
             # is the full primaryjoin, in the case of just pj its the local side of
             # the primaryjoin.  
-            if sj:
+            if sj is not None:
                 j = _orm_annotate(pj) & sj
             else:
                 j = _orm_annotate(pj, exclude=self.property.remote_side)
             
-            if criterion and target_adapter:
+            if criterion is not None and target_adapter:
                 # limit this adapter to annotated only?
                 criterion = target_adapter.traverse(criterion)
 
             # only have the "joined left side" of what we return be subject to Query adaption.  The right
             # side of it is used for an exists() subquery and should not correlate or otherwise reach out
             # to anything in the enclosing query.
-            if criterion:
+            if criterion is not None:
                 criterion = criterion._annotate({'_halt_adapt': True})
             
             crit = j & criterion
@@ -560,7 +560,7 @@ class RelationProperty(StrategizedProperty):
                 raise sa_exc.InvalidRequestError("'contains' not implemented for scalar attributes.  Use ==")
             clause = self.property._optimized_compare(other, adapt_source=self.adapter)
 
-            if self.property.secondaryjoin:
+            if self.property.secondaryjoin is not None:
                 clause.negation_clause = self.__negated_contains_or_equals(other)
 
             return clause
@@ -747,7 +747,7 @@ class RelationProperty(StrategizedProperty):
                 util.assert_arg_type(val, sql.ClauseElement, attr)
                 setattr(self, attr, _orm_deannotate(val))
         
-        if self.order_by:
+        if self.order_by is not False and self.order_by is not None:
             self.order_by = [expression._literal_as_column(x) for x in util.to_list(self.order_by)]
         
         self._foreign_keys = util.column_set(expression._literal_as_column(x) for x in util.to_column_set(self._foreign_keys))
@@ -858,7 +858,7 @@ class RelationProperty(StrategizedProperty):
 
             self.synchronize_pairs = eq_pairs
 
-        if self.secondaryjoin:
+        if self.secondaryjoin is not None:
             sq_pairs = criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=self.viewonly)
             sq_pairs = [(l, r) for l, r in sq_pairs if (self._col_is_part_of_mappings(l) and self._col_is_part_of_mappings(r)) or r in self._foreign_keys]
 
@@ -968,11 +968,11 @@ class RelationProperty(StrategizedProperty):
             else:
                 if self.viewonly:
                     eq_pairs = self.synchronize_pairs
-                    if self.secondaryjoin:
+                    if self.secondaryjoin is not None:
                         eq_pairs += self.secondary_synchronize_pairs
                 else:
                     eq_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True)
-                    if self.secondaryjoin:
+                    if self.secondaryjoin is not None:
                         eq_pairs += criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True)
                     eq_pairs = [(l, r) for l, r in eq_pairs if self._col_is_part_of_mappings(l) and self._col_is_part_of_mappings(r)]
 
@@ -1061,7 +1061,7 @@ class RelationProperty(StrategizedProperty):
         else:
             aliased = True
 
-        aliased = aliased or bool(source_selectable)
+        aliased = aliased or (source_selectable is not None)
 
         primaryjoin, secondaryjoin, secondary = self.primaryjoin, self.secondaryjoin, self.secondary
         
@@ -1073,32 +1073,32 @@ class RelationProperty(StrategizedProperty):
         dest_mapper = of_type or self.mapper
         
         single_crit = dest_mapper._single_table_criterion
-        if single_crit:
-            if secondaryjoin:
+        if single_crit is not None:
+            if secondaryjoin is not None:
                 secondaryjoin = secondaryjoin & single_crit
             else:
                 primaryjoin = primaryjoin & single_crit
             
 
         if aliased:
-            if secondary:
+            if secondary is not None:
                 secondary = secondary.alias()
                 primary_aliasizer = ClauseAdapter(secondary)
-                if dest_selectable:
+                if dest_selectable is not None:
                     secondary_aliasizer = ClauseAdapter(dest_selectable, equivalents=self.mapper._equivalent_columns).chain(primary_aliasizer)
                 else:
                     secondary_aliasizer = primary_aliasizer
 
-                if source_selectable:
+                if source_selectable is not None:
                     primary_aliasizer = ClauseAdapter(secondary).chain(ClauseAdapter(source_selectable, equivalents=self.parent._equivalent_columns))
 
                 secondaryjoin = secondary_aliasizer.traverse(secondaryjoin)
             else:
-                if dest_selectable:
+                if dest_selectable is not None:
                     primary_aliasizer = ClauseAdapter(dest_selectable, exclude=self.local_side, equivalents=self.mapper._equivalent_columns)
-                    if source_selectable:
+                    if source_selectable is not None:
                         primary_aliasizer.chain(ClauseAdapter(source_selectable, exclude=self.remote_side, equivalents=self.parent._equivalent_columns))
-                elif source_selectable:
+                elif source_selectable is not None:
                     primary_aliasizer = ClauseAdapter(source_selectable, exclude=self.remote_side, equivalents=self.parent._equivalent_columns)
 
                 secondary_aliasizer = None
@@ -1109,9 +1109,15 @@ class RelationProperty(StrategizedProperty):
         else:
             target_adapter = None
 
+        if source_selectable is None:
+            source_selectable = self.parent.local_table
+            
+        if dest_selectable is None:
+            dest_selectable = self.mapper.local_table
+            
         return (primaryjoin, secondaryjoin, 
-                (source_selectable or self.parent.local_table), 
-                (dest_selectable or self.mapper.local_table), secondary, target_adapter)
+                source_selectable, 
+                dest_selectable, secondary, target_adapter)
 
     def _get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
         """deprecated.  use primary_join_against(), secondary_join_against(), full_join_against()"""
@@ -1162,7 +1168,7 @@ class BackRef(object):
 
         mapper = prop.mapper.primary_mapper()
         if mapper._get_property(self.key, raiseerr=False) is None:
-            if prop.secondary:
+            if prop.secondary is not None:
                 pj = self.kwargs.pop('primaryjoin', prop.secondaryjoin)
                 sj = self.kwargs.pop('secondaryjoin', prop.primaryjoin)
             else:

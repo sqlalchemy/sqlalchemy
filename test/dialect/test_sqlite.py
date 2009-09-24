@@ -223,7 +223,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
             table1 = Table("django_admin_log", meta, autoload=True)
             table2 = Table("django_content_type", meta, autoload=True)
             j = table1.join(table2)
-            assert j.onclause == table1.c.content_type_id==table2.c.id
+            assert j.onclause.compare(table1.c.content_type_id==table2.c.id)
         finally:
             testing.db.execute("drop table django_admin_log")
             testing.db.execute("drop table django_content_type")

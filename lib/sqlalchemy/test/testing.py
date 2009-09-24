@@ -649,7 +649,7 @@ class ComparesTables(object):
 
         assert len(table.primary_key) == len(reflected_table.primary_key)
         for c in table.primary_key:
-            assert reflected_table.primary_key.columns[c.name]
+            assert reflected_table.primary_key.columns[c.name] is not None
     
     def assert_types_base(self, c1, c2):
         base_mro = sqltypes.TypeEngine.__mro__

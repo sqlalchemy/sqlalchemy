@@ -167,7 +167,7 @@ class Query(object):
         else:
             search = None
 
-        if search:
+        if search is not None:
             alias = self._polymorphic_adapters.get(search, None)
             if alias:
                 return alias.adapt_clause(element)
@@ -179,7 +179,7 @@ class Query(object):
 
             for adapter in adapters:
                 e = adapter(elem)
-                if e:
+                if e is not None:
                     return e
         return replace
 
@@ -191,7 +191,7 @@ class Query(object):
             if "_orm_adapt" in elem._annotations or "parententity" in elem._annotations:
                 for adapter in adapters:
                     e = adapter(elem)
-                    if e:
+                    if e is not None:
                         return e
         return replace
 
@@ -284,7 +284,7 @@ class Query(object):
     def _no_criterion_condition(self, meth):
         if not self._enable_assertions:
             return
-        if self._criterion or self._statement or self._from_obj or \
+        if self._criterion is not None or self._statement is not None or self._from_obj or \
                 self._limit is not None or self._offset is not None or \
                 self._group_by:
             raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
@@ -606,7 +606,7 @@ class Query(object):
     def add_entity(self, entity, alias=None):
         """add a mapped entity to the list of result columns to be returned."""
 
-        if alias:
+        if alias is not None:
             entity = aliased(entity, alias)
 
         self._entities = list(self._entities)
@@ -992,7 +992,7 @@ class Query(object):
                 onclause = descriptor
 
             if isinstance(onclause, interfaces.PropComparator):
-                if not right_entity:
+                if right_entity is None:
                     right_entity = onclause.property.mapper
                     of_type = getattr(onclause, '_of_type', None)
                     if of_type:
@@ -1115,7 +1115,7 @@ class Query(object):
 
         if self._from_obj:
             replace_clause_index, clause = sql_util.find_join_source(self._from_obj, left_selectable)
-            if clause:
+            if clause is not None:
                 # the entire query's FROM clause is an alias of itself (i.e. from_self(), similar).
                 # if the left clause is that one, ensure it aliases to the left side.
                 if self._from_obj_alias and clause is self._from_obj[0]:
@@ -1268,7 +1268,7 @@ class Query(object):
         This results in an execution of the underlying query.
 
         """
-        if self._statement:
+        if self._statement is not None:
             ret = list(self)[0:1]
         else:
             ret = list(self[0:1])
@@ -1485,7 +1485,7 @@ class Query(object):
             'offset':self._offset,
             'distinct':self._distinct,
             'group_by':self._group_by or None,
-            'having':self._having or None
+            'having':self._having
         }
 
     @property
@@ -1619,7 +1619,11 @@ class Query(object):
         if synchronize_session == 'evaluate':
             try:
                 evaluator_compiler = evaluator.EvaluatorCompiler()
-                eval_condition = evaluator_compiler.process(self.whereclause or expression._Null)
+                if self.whereclause is not None:
+                    eval_condition = evaluator_compiler.process(self.whereclause)
+                else:
+                    eval_condition = evaluator_compiler.process(expression._Null)
+                    
             except evaluator.UnevaluatableError:
                 raise sa_exc.InvalidRequestError("Could not evaluate current criteria in Python.  "
                         "Specify 'fetch' or False for the synchronize_session parameter.")
@@ -1719,7 +1723,11 @@ class Query(object):
         if synchronize_session == 'evaluate':
             try:
                 evaluator_compiler = evaluator.EvaluatorCompiler()
-                eval_condition = evaluator_compiler.process(self.whereclause or expression._Null)
+                if self.whereclause is not None:
+                    eval_condition = evaluator_compiler.process(self.whereclause)
+                else:
+                    eval_condition = evaluator_compiler.process(expression._Null)
+                    
 
                 value_evaluators = {}
                 for key,value in values.iteritems():
@@ -1774,7 +1782,7 @@ class Query(object):
     def _compile_context(self, labels=True):
         context = QueryContext(self)
 
-        if context.statement:
+        if context.statement is not None:
             return context
 
         if self._lockmode:
@@ -1892,7 +1900,7 @@ class Query(object):
         """
         for entity, (mapper, adapter, s, i, w) in self._mapper_adapter_map.iteritems():
             single_crit = mapper._single_table_criterion
-            if single_crit:
+            if single_crit is not None:
                 if adapter:
                     single_crit = adapter.traverse(single_crit)
                 single_crit = self._adapt_clause(single_crit, False, False)
@@ -2043,7 +2051,7 @@ class _MapperEntity(_QueryEntity):
                 column_collection=context.primary_columns
             )
 
-        if self._polymorphic_discriminator:
+        if self._polymorphic_discriminator is not None:
             if adapter:
                 pd = adapter.columns[self._polymorphic_discriminator]
             else:
@@ -2151,7 +2159,7 @@ log.class_logger(Query)
 class QueryContext(object):
     def __init__(self, query):
 
-        if query._statement:
+        if query._statement is not None:
             if isinstance(query._statement, expression._SelectBaseMixin) and not query._statement.use_labels:
                 self.statement = query._statement.apply_labels()
             else:

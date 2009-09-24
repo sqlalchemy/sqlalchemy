@@ -5,7 +5,7 @@ from sqlalchemy.test import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
-
+from sqlalchemy.test.testing import eq_
 
 class TraversalTest(TestBase, AssertsExecutionResults):
     """test ClauseVisitor's traversal, particularly its ability to copy and modify
@@ -178,7 +178,7 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
 
     def test_binary(self):
         clause = t1.c.col2 == t2.c.col2
-        assert str(clause) == CloningVisitor().traverse(clause)
+        eq_(str(clause), str(CloningVisitor().traverse(clause)))
 
     def test_binary_anon_label_quirk(self):
         t = table('t1', column('col1'))

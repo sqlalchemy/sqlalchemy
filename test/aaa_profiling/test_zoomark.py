@@ -202,8 +202,8 @@ class ZooMarkTest(TestBase):
                                      ))) == ITERATIONS + 7
 
             # Test now(), today(), year(), month(), day()
-            assert len(fulltable(Zoo.select(Zoo.c.Founded != None
-                                  and Zoo.c.Founded < func.current_timestamp(_type=Date)))) == 3
+            assert len(fulltable(Zoo.select(and_(Zoo.c.Founded != None,
+                                  Zoo.c.Founded < func.current_timestamp(_type=Date))))) == 3
             assert len(fulltable(Animal.select(Animal.c.LastEscape == func.current_timestamp(_type=Date)))) == 0
             assert len(fulltable(Animal.select(func.date_part('year', Animal.c.LastEscape) == 2004))) == 1
             assert len(fulltable(Animal.select(func.date_part('month', Animal.c.LastEscape) == 12))) == 1

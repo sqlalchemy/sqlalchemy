@@ -552,10 +552,11 @@ class SequenceTest(testing.TestBase):
 
         engine = engines.testing_engine(options={'implicit_returning':False})
         result = engine.execute(sometable.insert(), name="somename")
-        assert 'id' in result.postfetch_cols()
+
+        assert set(result.postfetch_cols()) == set([sometable.c.obj_id])
 
         result = engine.execute(sometable.insert(), name="someother")
-        assert 'id' in result.postfetch_cols()
+        assert set(result.postfetch_cols()) == set([sometable.c.obj_id])
 
         sometable.insert().execute(
             {'name':'name3'},

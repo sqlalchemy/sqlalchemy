@@ -103,7 +103,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False):
             else:
                 raise
                 
-        if col:
+        if col is not None:
             crit.append(col == fk.parent)
             constraints.add(fk.constraint)
     if a is not b:
@@ -116,7 +116,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False):
                 else:
                     raise
 
-            if col:
+            if col is not None:
                 crit.append(col == fk.parent)
                 constraints.add(fk.constraint)
 
@@ -267,9 +267,9 @@ def splice_joins(left, right, stop_on=None):
             stack.append((right.left, right))
         else:
             right = adapter.traverse(right)
-        if prevright:
+        if prevright is not None:
             prevright.left = right
-        if not ret:
+        if ret is None:
             ret = right
 
     return ret
@@ -467,10 +467,10 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
     def _corresponding_column(self, col, require_embedded, _seen=util.EMPTY_SET):
         newcol = self.selectable.corresponding_column(col, require_embedded=require_embedded)
 
-        if not newcol and col in self.equivalents and col not in _seen:
+        if newcol is None and col in self.equivalents and col not in _seen:
             for equiv in self.equivalents[col]:
                 newcol = self._corresponding_column(equiv, require_embedded=require_embedded, _seen=_seen.union([col]))
-                if newcol:
+                if newcol is not None:
                     return newcol
         return newcol
 
@@ -525,7 +525,7 @@ class ColumnAdapter(ClauseAdapter):
 
     def _locate_col(self, col):
         c = self._corresponding_column(col, False)
-        if not c:
+        if c is None:
             c = self.adapt_clause(col)
             
             # anonymize labels in case they have a hardcoded name

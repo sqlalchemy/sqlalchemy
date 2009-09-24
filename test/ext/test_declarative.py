@@ -1140,11 +1140,11 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         # the exclude_properties collection so that sibling classes
         # don't cross-pollinate.
 
-        assert Person.__table__.c.company_id
-        assert Person.__table__.c.golf_swing
-        assert Person.__table__.c.primary_language
-        assert Engineer.primary_language
-        assert Manager.golf_swing
+        assert Person.__table__.c.company_id is not None
+        assert Person.__table__.c.golf_swing is not None
+        assert Person.__table__.c.primary_language is not None
+        assert Engineer.primary_language is not None
+        assert Manager.golf_swing is not None
         assert not hasattr(Person, 'primary_language')
         assert not hasattr(Person, 'golf_swing')
         assert not hasattr(Engineer, 'golf_swing')
@@ -1204,11 +1204,11 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             id = Column(Integer, ForeignKey('people.id'), primary_key=True)
             primary_language = Column(String(50))
 
-        assert Person.__table__.c.golf_swing
+        assert Person.__table__.c.golf_swing is not None
         assert not Person.__table__.c.has_key('primary_language')
-        assert Engineer.__table__.c.primary_language
-        assert Engineer.primary_language
-        assert Manager.golf_swing
+        assert Engineer.__table__.c.primary_language is not None
+        assert Engineer.primary_language is not None
+        assert Manager.golf_swing is not None
         assert not hasattr(Person, 'primary_language')
         assert not hasattr(Person, 'golf_swing')
         assert not hasattr(Engineer, 'golf_swing')

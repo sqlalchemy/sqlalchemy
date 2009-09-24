@@ -912,8 +912,8 @@ class OverrideColKeyTest(_base.MappedTest):
         # gets joined normally with the extra column.
         
         eq_(
-            class_mapper(Sub).get_property('id').columns,
-            [base.c.base_id, subtable.c.base_id]
+            set(class_mapper(Sub).get_property('id').columns),
+            set([base.c.base_id, subtable.c.base_id])
         )
         
         s1 = Sub()

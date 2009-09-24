@@ -368,11 +368,11 @@ class SQLCompiler(engine.Compiled):
 
     def visit_case(self, clause, **kwargs):
         x = "CASE "
-        if clause.value:
+        if clause.value is not None:
             x += self.process(clause.value) + " "
         for cond, result in clause.whens:
             x += "WHEN " + self.process(cond) + " THEN " + self.process(result) + " "
-        if clause.else_:
+        if clause.else_ is not None:
             x += "ELSE " + self.process(clause.else_) + " "
         x += "END"
         return x
@@ -538,7 +538,7 @@ class SQLCompiler(engine.Compiled):
         if isinstance(column, sql._Label):
             return column
 
-        if select and select.use_labels and column._label:
+        if select is not None and select.use_labels and column._label:
             return _CompileLabel(column, column._label)
 
         if \
@@ -741,7 +741,7 @@ class SQLCompiler(engine.Compiled):
             if self.returning_precedes_values:
                 text += " " + self.returning_clause(update_stmt, update_stmt._returning)
                 
-        if update_stmt._whereclause:
+        if update_stmt._whereclause is not None:
             text += " WHERE " + self.process(update_stmt._whereclause)
 
         if self.returning and not self.returning_precedes_values:
@@ -891,7 +891,7 @@ class SQLCompiler(engine.Compiled):
             if self.returning_precedes_values:
                 text += " " + self.returning_clause(delete_stmt, delete_stmt._returning)
                 
-        if delete_stmt._whereclause:
+        if delete_stmt._whereclause is not None:
             text += " WHERE " + self.process(delete_stmt._whereclause)
 
         if self.returning and not self.returning_precedes_values:

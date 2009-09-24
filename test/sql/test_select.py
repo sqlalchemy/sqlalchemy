@@ -1374,7 +1374,12 @@ UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
             (t1.c.col1, 'col1', 'mytable.col1', None),
             (column('some wacky thing'), 'some wacky thing', '"some wacky thing"', '')
         ):
-            s1 = select([col], from_obj=getattr(col, 'table', None) or table1)
+            if getattr(col, 'table', None) is not None:
+                t = col.table
+            else:
+                t = table1
+                
+            s1 = select([col], from_obj=t)
             assert s1.c.keys() == [key], s1.c.keys()
         
             if label:

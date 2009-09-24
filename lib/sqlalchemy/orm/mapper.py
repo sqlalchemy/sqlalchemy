@@ -111,7 +111,7 @@ class Mapper(object):
         self.primary_key_argument = primary_key
         self.non_primary = non_primary
 
-        if order_by:
+        if order_by is not False:
             self.order_by = util.to_list(order_by)
         else:
             self.order_by = order_by
@@ -238,10 +238,10 @@ class Mapper(object):
                 if self.concrete:
                     self.mapped_table = self.local_table
                     for mapper in self.iterate_to_root():
-                        if mapper.polymorphic_on:
+                        if mapper.polymorphic_on is not None:
                             mapper._requires_row_aliasing = True
                 else:
-                    if not self.inherit_condition:
+                    if self.inherit_condition is None:
                         # figure out inherit condition from our table to the immediate table
                         # of the inherited mapper, not its full table which could pull in other
                         # stuff we dont want (allows test/inheritance.InheritTest4 to pass)
@@ -276,11 +276,11 @@ class Mapper(object):
 
             if self.polymorphic_identity is not None:
                 self.polymorphic_map[self.polymorphic_identity] = self
-                if not self.polymorphic_on:
+                if self.polymorphic_on is None:
                     for mapper in self.iterate_to_root():
                         # try to set up polymorphic on using correesponding_column(); else leave
                         # as None
-                        if mapper.polymorphic_on:
+                        if mapper.polymorphic_on is not None:
                             self.polymorphic_on = self.mapped_table.corresponding_column(mapper.polymorphic_on)
                             break
         else:
@@ -512,9 +512,9 @@ class Mapper(object):
 
         # do a special check for the "discriminiator" column, as it may only be present
         # in the 'with_polymorphic' selectable but we need it for the base mapper
-        if self.polymorphic_on and self.polymorphic_on not in self._columntoproperty:
+        if self.polymorphic_on is not None and self.polymorphic_on not in self._columntoproperty:
             col = self.mapped_table.corresponding_column(self.polymorphic_on)
-            if not col:
+            if col is None:
                 instrument = False
                 col = self.polymorphic_on
             else:
@@ -555,14 +555,14 @@ class Mapper(object):
                 mapped_column = []
                 for c in columns:
                     mc = self.mapped_table.corresponding_column(c)
-                    if not mc:
+                    if mc is None:
                         mc = self.local_table.corresponding_column(c)
-                        if mc:
+                        if mc is not None:
                             # if the column is in the local table but not the mapped table,
                             # this corresponds to adding a column after the fact to the local table.
                             self.mapped_table._reset_exported()
                         mc = self.mapped_table.corresponding_column(c)
-                        if not mc:
+                        if mc is None:
                             raise sa_exc.ArgumentError("Column '%s' is not represented in mapper's table.  "
                                 "Use the `column_property()` function to force this column "
                                 "to be mapped as a read-only attribute." % c)
@@ -753,9 +753,15 @@ class Mapper(object):
             id(self), self.class_.__name__)
 
     def __str__(self):
-        return "Mapper|" + self.class_.__name__ + "|" + \
-                (self.local_table and self.local_table.description or str(self.local_table)) + \
-                (self.non_primary and "|non-primary" or "")
+        if self.local_table is not None:
+            tabledesc = self.local_table.description
+        else:
+            tabledesc = None
+        return "Mapper|%s|%s%s" % (
+            self.class_.__name__,
+            tabledesc,
+            self.non_primary and "|non-primary" or ""
+        )
 
     # informational / status
     
@@ -810,7 +816,7 @@ class Mapper(object):
         else:
             mappers = []
 
-        if selectable:
+        if selectable is not None:
             tables = set(sqlutil.find_tables(selectable, include_aliases=True))
             mappers = [m for m in mappers if m.local_table in tables]
 
@@ -837,7 +843,7 @@ class Mapper(object):
     def _single_table_criterion(self):
         if self.single and \
             self.inherits and \
-            self.polymorphic_on and \
+            self.polymorphic_on is not None and \
             self.polymorphic_identity is not None:
             return self.polymorphic_on.in_(
                 m.polymorphic_identity
@@ -858,7 +864,7 @@ class Mapper(object):
             return self.mapped_table
 
         spec, selectable = self.with_polymorphic
-        if selectable:
+        if selectable is not None:
             return selectable
         else:
             return self._selectable_from_mappers(self._mappers_from_spec(spec, selectable))
@@ -871,7 +877,7 @@ class Mapper(object):
                 selectable = self.with_polymorphic[1]
 
         mappers = self._mappers_from_spec(spec, selectable)
-        if selectable:
+        if selectable is not None:
             return mappers, selectable
         else:
             return mappers, self._selectable_from_mappers(mappers)
@@ -893,7 +899,7 @@ class Mapper(object):
                 chain(*[list(mapper.iterate_properties) for mapper in [self] + mappers])
             ):
                 if getattr(c, '_is_polymorphic_discriminator', False) and \
-                    (not self.polymorphic_on or c.columns[0] is not self.polymorphic_on):
+                    (self.polymorphic_on is None or c.columns[0] is not self.polymorphic_on):
                         continue
                 yield c
     
@@ -945,7 +951,7 @@ class Mapper(object):
                 else:
                     result[binary.right] = util.column_set((binary.left,))
         for mapper in self.base_mapper.polymorphic_iterator():
-            if mapper.inherit_condition:
+            if mapper.inherit_condition is not None:
                 visitors.traverse(mapper.inherit_condition, {}, {'binary':visit_binary})
 
         return result
@@ -964,11 +970,11 @@ class Mapper(object):
         # check for descriptors, either local or from
         # an inherited class
         if local:
-            if self.class_.__dict__.get(assigned_name, None)\
+            if self.class_.__dict__.get(assigned_name, None) is not None\
                 and self._is_userland_descriptor(self.class_.__dict__[assigned_name]):
                 return True
         else:
-            if getattr(self.class_, assigned_name, None)\
+            if getattr(self.class_, assigned_name, None) is not None\
                 and self._is_userland_descriptor(getattr(self.class_, assigned_name)):
                 return True
 
@@ -991,7 +997,7 @@ class Mapper(object):
 
     def _canload(self, state, allow_subtypes):
         s = self.primary_mapper()
-        if self.polymorphic_on or allow_subtypes:
+        if self.polymorphic_on is not None or allow_subtypes:
             return _state_mapper(state).isa(s)
         else:
             return _state_mapper(state) is s
@@ -1319,7 +1325,7 @@ class Mapper(object):
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
                             params[col.key] = 1
-                        elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col):
+                        elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col):
                             if self._should_log_debug:
                                 self._log_debug(
                                     "Using polymorphic identity '%s' for insert column '%s'" %
@@ -1352,7 +1358,7 @@ class Mapper(object):
                                 history = attributes.get_state_history(state, prop.key, passive=True)
                                 if history.added:
                                     hasdata = True
-                        elif mapper.polymorphic_on and mapper.polymorphic_on.shares_lineage(col) and col not in pks:
+                        elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col) and col not in pks:
                             pass
                         else:
                             if post_update_cols is not None and col not in post_update_cols:
@@ -1391,7 +1397,7 @@ class Mapper(object):
                 for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col._label, type_=col.type))
 
-                if mapper.version_id_col and table.c.contains_column(mapper.version_id_col):
+                if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
                     clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type_=col.type))
 
                 statement = table.update(clause)
@@ -1460,12 +1466,12 @@ class Mapper(object):
         postfetch_cols = resultproxy.postfetch_cols()
         generated_cols = list(resultproxy.prefetch_cols())
 
-        if self.polymorphic_on:
+        if self.polymorphic_on is not None:
             po = table.corresponding_column(self.polymorphic_on)
-            if po:
+            if po is not None:
                 generated_cols.append(po)
 
-        if self.version_id_col:
+        if self.version_id_col is not None:
             generated_cols.append(self.version_id_col)
 
         for c in generated_cols:
@@ -1513,7 +1519,7 @@ class Mapper(object):
                     delete.setdefault(connection, []).append(params)
                 for col in mapper._pks_by_table[table]:
                     params[col.key] = mapper._get_state_attr_by_column(state, col)
-                if mapper.version_id_col and table.c.contains_column(mapper.version_id_col):
+                if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
                     params[mapper.version_id_col.key] = mapper._get_state_attr_by_column(state, mapper.version_id_col)
 
             for connection, del_objects in delete.iteritems():
@@ -1521,7 +1527,7 @@ class Mapper(object):
                 clause = sql.and_()
                 for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.key, type_=col.type))
-                if mapper.version_id_col and table.c.contains_column(mapper.version_id_col):
+                if mapper.version_id_col is not None and table.c.contains_column(mapper.version_id_col):
                     clause.clauses.append(
                         mapper.version_id_col == 
                         sql.bindparam(mapper.version_id_col.key, type_=mapper.version_id_col.type))
@@ -1560,16 +1566,19 @@ class Mapper(object):
         if polymorphic_from or refresh_state:
             polymorphic_on = None
         else:
-            polymorphic_on = polymorphic_discriminator or self.polymorphic_on
+            if polymorphic_discriminator is not None:
+                polymorphic_on = polymorphic_discriminator
+            else:
+                polymorphic_on = self.polymorphic_on
             polymorphic_instances = util.PopulateDict(self._configure_subclass_mapper(context, path, adapter))
 
         version_id_col = self.version_id_col
 
         if adapter:
             pk_cols = [adapter.columns[c] for c in pk_cols]
-            if polymorphic_on:
+            if polymorphic_on is not None:
                 polymorphic_on = adapter.columns[polymorphic_on]
-            if version_id_col:
+            if version_id_col is not None:
                 version_id_col = adapter.columns[version_id_col]
 
         identity_class = self._identity_class
@@ -1623,7 +1632,7 @@ class Mapper(object):
                 if ret is not EXT_CONTINUE:
                     row = ret
 
-            if polymorphic_on:
+            if polymorphic_on is not None:
                 discriminator = row[polymorphic_on]
                 if discriminator is not None:
                     _instance = polymorphic_instances[discriminator]
@@ -1654,7 +1663,7 @@ class Mapper(object):
                 currentload = not isnew
                 loaded_instance = False
 
-                if not currentload and version_id_col and context.version_check and \
+                if not currentload and version_id_col is not None and context.version_check and \
                         self._get_state_attr_by_column(state, self.version_id_col) != row[version_id_col]:
                     raise exc.ConcurrentModificationError(
                             "Instance '%s' version of %s does not match %s" 
@@ -1856,7 +1865,7 @@ def _load_scalar_attributes(state, attribute_names):
     result = False
     if mapper.inherits and not mapper.concrete:
         statement = mapper._optimized_get_statement(state, attribute_names)
-        if statement:
+        if statement is not None:
             result = session.query(mapper).from_statement(statement)._get(None, only_load_props=attribute_names, refresh_state=state)
 
     if result is False:

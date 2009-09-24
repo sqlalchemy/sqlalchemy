@@ -365,7 +365,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 froms = select._get_display_froms(existingfroms)
                 whereclause = self._get_nonansi_join_whereclause(froms)
-                if whereclause:
+                if whereclause is not None:
                     select = select.where(whereclause)
                     select._oracle_visit = True
 

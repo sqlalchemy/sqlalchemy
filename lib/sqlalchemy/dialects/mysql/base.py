@@ -1300,7 +1300,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         text = "UPDATE " + self.preparer.format_table(update_stmt.table) + \
                 " SET " + ', '.join(["%s=%s" % (self.preparer.format_column(c[0]), c[1]) for c in colparams])
 
-        if update_stmt._whereclause:
+        if update_stmt._whereclause is not None:
             text += " WHERE " + self.process(update_stmt._whereclause)
 
         limit = update_stmt.kwargs.get('mysql_limit', None)

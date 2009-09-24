@@ -710,7 +710,7 @@ class Column(SchemaItem, expression.ColumnClause):
             [repr(self.name)] + [repr(self.type)] +
             [repr(x) for x in self.foreign_keys if x is not None] +
             [repr(x) for x in self.constraints] +
-            [(self.table and "table=<%s>" % self.table.description or "")] +
+            [(self.table is not None and "table=<%s>" % self.table.description or "")] +
             ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg])
 
     def _set_parent(self, table):
@@ -764,7 +764,7 @@ class Column(SchemaItem, expression.ColumnClause):
         del self._table_events
     
     def _on_table_attach(self, fn):
-        if self.table:
+        if self.table is not None:
             fn(self.table)
         else:
             self._table_events.add(fn)
@@ -1001,7 +1001,7 @@ class ForeignKey(SchemaItem):
                 key = colname
                 _column = table.c.get(colname, None)
 
-            if not _column:
+            if _column is None:
                 raise exc.NoReferencedColumnError(
                     "Could not create ForeignKey '%s' on table '%s': "
                     "table '%s' has no column named '%s'" % (
@@ -1061,7 +1061,7 @@ class DefaultGenerator(SchemaItem):
     @property
     def bind(self):
         """Return the connectable associated with this default."""
-        if getattr(self, 'column', None):
+        if getattr(self, 'column', None) is not None:
             return self.column.table.bind
         else:
             return None
@@ -1345,7 +1345,7 @@ class CheckConstraint(Constraint):
             raise exc.ArgumentError(
                 "sqltext must be a string and will be used verbatim.")
         self.sqltext = sqltext
-        if table:
+        if table is not None:
             self._set_parent(table)
             
     def __visit_name__(self):

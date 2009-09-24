@@ -974,7 +974,7 @@ def _no_literals(element):
 def _corresponding_column_or_error(fromclause, column, require_embedded=False):
     c = fromclause.corresponding_column(column,
             require_embedded=require_embedded)
-    if not c:
+    if c is None:
         raise exc.InvalidRequestError(
                 "Given column '%s', attached to table '%s', "
                 "failed to locate a corresponding column from table '%s'"
@@ -1044,7 +1044,18 @@ class ClauseElement(Visitable):
         d = self.__dict__.copy()
         d.pop('_is_clone_of', None)
         return d
+    
+    if util.jython:
+         def __hash__(self):
+             """Return a distinct hash code.
 
+             ClauseElements may have special equality comparisons which
+             makes us rely on them having unique hash codes for use in
+             hash-based collections. Stock __hash__ doesn't guarantee
+             unique values on platforms with moving GCs.
+             """
+             return id(self)
+        
     def _annotate(self, values):
         """return a copy of this ClauseElement with the given annotations
         dictionary.
@@ -1264,16 +1275,8 @@ class ClauseElement(Visitable):
     def __invert__(self):
         return self._negate()
 
-    if util.jython:
-        def __hash__(self):
-            """Return a distinct hash code.
-
-            ClauseElements may have special equality comparisons which
-            makes us rely on them having unique hash codes for use in
-            hash-based collections. Stock __hash__ doesn't guarantee
-            unique values on platforms with moving GCs.
-            """
-            return id(self)
+    def __nonzero__(self):
+       raise TypeError("Boolean value of this clause is not defined")
 
     def _negate(self):
         if hasattr(self, 'negation_clause'):
@@ -1797,10 +1800,9 @@ class ColumnCollection(util.OrderedProperties):
             # column names in their exported columns collection
             existing = self[key]
             if not existing.shares_lineage(value):
-                table = getattr(existing, 'table', None) and existing.table.description
                 util.warn(("Column %r on table %r being replaced by another "
                            "column with the same key.  Consider use_labels "
-                           "for select() statements.")  % (key, table))
+                           "for select() statements.")  % (key, getattr(existing, 'table', None)))
         util.OrderedProperties.__setitem__(self, key, value)
 
     def remove(self, column):
@@ -2343,7 +2345,7 @@ class _Case(ColumnElement):
         except TypeError:
             pass
 
-        if value:
+        if value is not None:
             whenlist = [
                 (_literal_as_binds(c).self_group(), _literal_as_binds(r)) for (c, r) in whens
             ]
@@ -2370,19 +2372,19 @@ class _Case(ColumnElement):
             self.else_ = None
 
     def _copy_internals(self, clone=_clone):
-        if self.value:
+        if self.value is not None:
             self.value = clone(self.value)
         self.whens = [(clone(x), clone(y)) for x, y in self.whens]
-        if self.else_:
+        if self.else_ is not None:
             self.else_ = clone(self.else_)
 
     def get_children(self, **kwargs):
-        if self.value:
+        if self.value is not None:
             yield self.value
         for x, y in self.whens:
             yield x
             yield y
-        if self.else_:
+        if self.else_ is not None:
             yield self.else_ 
 
     @property
@@ -2548,7 +2550,13 @@ class _BinaryExpression(ColumnElement):
             self.modifiers = {}
         else:
             self.modifiers = modifiers
-
+    
+    def __nonzero__(self):
+        try:
+            return self.operator(hash(self.left), hash(self.right))
+        except:
+            raise TypeError("Boolean value of this clause is not defined")
+        
     @property
     def _from_objects(self):
         return self.left._from_objects + self.right._from_objects
@@ -3017,7 +3025,7 @@ class ColumnClause(_Immutable, ColumnElement):
         if self.is_literal:
             return None
 
-        elif self.table and self.table.named_with_column:
+        elif self.table is not None and self.table.named_with_column:
             if getattr(self.table, 'schema', None):
                 label = self.table.schema + "_" + \
                             _escape_for_generated(self.table.name) + "_" + \
@@ -3047,7 +3055,7 @@ class ColumnClause(_Immutable, ColumnElement):
 
     @property
     def _from_objects(self):
-        if self.table:
+        if self.table is not None:
             return [self.table]
         else:
             return []
@@ -3264,7 +3272,7 @@ class _SelectBaseMixin(object):
         if len(clauses) == 1 and clauses[0] is None:
             self._order_by_clause = ClauseList()
         else:
-            if getattr(self, '_order_by_clause', None):
+            if getattr(self, '_order_by_clause', None) is not None:
                 clauses = list(self._order_by_clause) + list(clauses)
             self._order_by_clause = ClauseList(*clauses)
 
@@ -3277,7 +3285,7 @@ class _SelectBaseMixin(object):
         if len(clauses) == 1 and clauses[0] is None:
             self._group_by_clause = ClauseList()
         else:
-            if getattr(self, '_group_by_clause', None):
+            if getattr(self, '_group_by_clause', None) is not None:
                 clauses = list(self._group_by_clause) + list(clauses)
             self._group_by_clause = ClauseList(*clauses)
 
@@ -3433,28 +3441,31 @@ class Select(_SelectBaseMixin, FromClause):
         self._froms = util.OrderedSet()
 
         if columns:
-            self._raw_columns = [
-                isinstance(c, _ScalarSelect) and 
-                c.self_group(against=operators.comma_op) or c
-                for c in [_literal_as_column(c) for c in columns]
-            ]
+            self._raw_columns = []
+            for c in columns:
+                c = _literal_as_column(c)
+                if isinstance(c, _ScalarSelect):
+                    c = c.self_group(against=operators.comma_op)
+                self._raw_columns.append(c)
 
             self._froms.update(_from_objects(*self._raw_columns))
         else:
             self._raw_columns = []
 
-        if whereclause:
+        if whereclause is not None:
             self._whereclause = _literal_as_text(whereclause)
             self._froms.update(_from_objects(self._whereclause))
         else:
             self._whereclause = None
 
-        if from_obj:
-            self._froms.update(
-                _is_literal(f) and _TextClause(f) or f
-                for f in util.to_list(from_obj))
+        if from_obj is not None:
+            for f in util.to_list(from_obj):
+                if _is_literal(f):
+                    self._froms.add(_TextClause(f))
+                else:
+                    self._froms.add(f)
 
-        if having:
+        if having is not None:
             self._having = _literal_as_text(having)
         else:
             self._having = None
@@ -3977,7 +3988,7 @@ class Update(_ValuesBase):
         _ValuesBase.__init__(self, table, values)
         self._bind = bind
         self._returning = returning
-        if whereclause:
+        if whereclause is not None:
             self._whereclause = _literal_as_text(whereclause)
         else:
             self._whereclause = None
@@ -4027,7 +4038,7 @@ class Delete(_UpdateBase):
         self.table = table
         self._returning = returning
         
-        if whereclause:
+        if whereclause is not None:
             self._whereclause = _literal_as_text(whereclause)
         else:
             self._whereclause = None

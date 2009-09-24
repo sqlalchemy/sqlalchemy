@@ -1075,7 +1075,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
             else:
                 colspec += " NULL"
         
-        if not column.table:
+        if column.table is None:
             raise exc.InvalidRequestError("mssql requires Table-bound columns in order to generate DDL")
             
         seq_col = column.table._autoincrement_column

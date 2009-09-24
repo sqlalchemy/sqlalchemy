@@ -511,14 +511,14 @@ def _as_declarative(cls, classname, dict_):
     else:
         mapper_cls = mapper
 
-    if not table and 'inherits' not in mapper_args:
+    if table is None and 'inherits' not in mapper_args:
         raise exceptions.InvalidRequestError("Class %r does not have a __table__ or __tablename__ "
                     "specified and does not inherit from an existing table-mapped class." % cls)
 
     elif 'inherits' in mapper_args and not mapper_args.get('concrete', False):
         inherited_mapper = class_mapper(mapper_args['inherits'], compile=False)
         inherited_table = inherited_mapper.local_table
-        if 'inherit_condition' not in mapper_args and table:
+        if 'inherit_condition' not in mapper_args and table is not None:
             # figure out the inherit condition with relaxed rules
             # about nonexistent tables, to allow for ForeignKeys to
             # not-yet-defined tables (since we know for sure that our
@@ -527,7 +527,7 @@ def _as_declarative(cls, classname, dict_):
                 mapper_args['inherits'].__table__, table,
                 ignore_nonexistent_tables=True)
 
-        if not table:
+        if table is None:
             # single table inheritance.
             # ensure no table args
             table_args = cls.__dict__.get('__table_args__')

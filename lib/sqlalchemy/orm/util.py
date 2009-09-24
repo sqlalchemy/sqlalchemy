@@ -288,7 +288,8 @@ class AliasedClass(object):
     def __init__(self, cls, alias=None, name=None):
         self.__mapper = _class_to_mapper(cls)
         self.__target = self.__mapper.class_
-        alias = alias or self.__mapper._with_polymorphic_selectable.alias()
+        if alias is None:
+            alias = self.__mapper._with_polymorphic_selectable.alias()
         self.__adapter = sql_util.ClauseAdapter(alias, equivalents=self.__mapper._equivalent_columns)
         self.__alias = alias
         # used to assign a name to the RowTuple object
@@ -390,7 +391,7 @@ class _ORMJoin(expression.Join):
             if isinstance(onclause, basestring):
                 prop = left_mapper.get_property(onclause)
             elif isinstance(onclause, attributes.QueryableAttribute):
-                if not adapt_from:
+                if adapt_from is None:
                     adapt_from = onclause.__clause_element__()
                 prop = onclause.property
             elif isinstance(onclause, MapperProperty):
@@ -406,7 +407,7 @@ class _ORMJoin(expression.Join):
                                 dest_polymorphic=True,
                                 of_type=right_mapper)
 
-                if sj:
+                if sj is not None:
                     left = sql.join(left, secondary, pj, isouter)
                     onclause = sj
                 else:
