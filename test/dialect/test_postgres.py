@@ -940,7 +940,8 @@ class SpecialTypesTest(TestBase, ComparesTables):
             Column('flag', postgres.PGBit),
             Column('addr', postgres.PGInet),
             Column('addr2', postgres.PGMacAddr),
-            Column('addr3', postgres.PGCidr)
+            Column('addr3', postgres.PGCidr),
+            Column('doubleprec', postgres.PGDoublePrecision)
         )
         
         metadata.create_all()
@@ -953,7 +954,7 @@ class SpecialTypesTest(TestBase, ComparesTables):
         m = MetaData(testing.db)
         t = Table('sometable', m, autoload=True)
         
-        self.assert_tables_equal(table, t)
+        self.assert_tables_equal(table, t, strict_types=True)
         
 
 class MatchTest(TestBase, AssertsCompiledSQL):

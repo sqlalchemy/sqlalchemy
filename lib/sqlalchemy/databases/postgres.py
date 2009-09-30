@@ -200,6 +200,10 @@ class PGBit(sqltypes.TypeEngine):
 class PGUuid(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "UUID"
+
+class PGDoublePrecision(sqltypes.Float):
+    def get_col_spec(self):
+        return "DOUBLE PRECISION"
     
 class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     def __init__(self, item_type, mutable=True):
@@ -267,6 +271,7 @@ colspecs = {
     sqltypes.Smallinteger : PGSmallInteger,
     sqltypes.Numeric : PGNumeric,
     sqltypes.Float : PGFloat,
+    PGDoublePrecision : PGDoublePrecision,
     sqltypes.DateTime : PGDateTime,
     sqltypes.Date : PGDate,
     sqltypes.Time : PGTime,
@@ -294,7 +299,7 @@ ischema_names = {
     'uuid':PGUuid,
     'bit':PGBit,
     'macaddr': PGMacAddr,
-    'double precision' : PGFloat,
+    'double precision' : PGDoublePrecision,
     'timestamp' : PGDateTime,
     'timestamp with time zone' : PGDateTime,
     'timestamp without time zone' : PGDateTime,
@@ -518,7 +523,7 @@ class PGDialect(default.DefaultDialect):
                     numericprec, numericscale = charlen.split(',')
                 charlen = False
             if attype == 'double precision':
-                numericprec, numericscale = (53, False)
+                numericprec, numericscale = (True, False)
                 charlen = False
             if attype == 'integer':
                 numericprec, numericscale = (32, 0)

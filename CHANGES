@@ -15,6 +15,12 @@ CHANGES
       subclass table to the query separately producing a 
       cartesian product.  An example is in the ticket
       description.  [ticket:1543]
+
+- postgresql
+    - Added support for reflecting the DOUBLE PRECISION type,
+      via a new postgres.PGDoublePrecision object.  
+      This is postgresql.DOUBLE_PRECISION in 0.6.
+      [ticket:1085]
       
 0.5.6
 =====
