@@ -630,14 +630,18 @@ class AssertsCompiledSQL(object):
             eq_(c.construct_params(params), checkparams)
 
 class ComparesTables(object):
-    def assert_tables_equal(self, table, reflected_table):
+    def assert_tables_equal(self, table, reflected_table, strict_types=False):
         assert len(table.c) == len(reflected_table.c)
         for c, reflected_c in zip(table.c, reflected_table.c):
             eq_(c.name, reflected_c.name)
             assert reflected_c is reflected_table.c[c.name]
             eq_(c.primary_key, reflected_c.primary_key)
             eq_(c.nullable, reflected_c.nullable)
-            self.assert_types_base(reflected_c, c)
+            
+            if strict_types:
+                assert type(reflected_c.type) is type(c.type), "Type '%s' doesn't correspond to type '%s'" % (reflected_c.type, c.type)
+            else:
+                self.assert_types_base(reflected_c, c)
 
             if isinstance(c.type, sqltypes.String):
                 eq_(c.type.length, reflected_c.type.length)
