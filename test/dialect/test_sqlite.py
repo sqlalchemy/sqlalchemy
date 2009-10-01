@@ -289,7 +289,25 @@ class DialectTest(TestBase, AssertsExecutionResults):
             except exc.DBAPIError:
                 pass
             raise
-
+    
+    
+    def test_dont_reflect_autoindex(self):
+        meta = MetaData(testing.db)
+        t = Table('foo', meta, Column('bar', String, primary_key=True))
+        meta.create_all()
+        
+        from sqlalchemy.engine.reflection import Inspector
+        try:
+            inspector = Inspector(testing.db)
+            eq_(inspector.get_indexes('foo'), [])
+            eq_(
+                inspector.get_indexes('foo', include_auto_indexes=True), 
+                [{'unique': 1, 'name': u'sqlite_autoindex_foo_1', 'column_names': [u'bar']}]
+            )
+        finally:
+            meta.drop_all()
+        
+        
     def test_set_isolation_level(self):
         """Test setting the read uncommitted/serializable levels"""
         eng = create_engine(testing.db.url)

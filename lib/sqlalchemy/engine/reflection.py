@@ -33,7 +33,7 @@ def cache(fn, self, con, *args, **kw):
     key = (
             fn.__name__, 
             tuple(a for a in args if isinstance(a, basestring)), 
-            tuple((k, v) for k, v in kw.iteritems() if isinstance(v, basestring))
+            tuple((k, v) for k, v in kw.iteritems() if isinstance(v, (basestring, int, float)))
         )
     ret = info_cache.get(key)
     if ret is None:
@@ -207,6 +207,10 @@ class Inspector(object):
         referred_columns
           a list of column names in the referred table that correspond to
           constrained_columns
+
+        \**kw
+          other options passed to the dialect's get_foreign_keys() method.
+
         """
 
         fk_defs = self.dialect.get_foreign_keys(self.conn, table_name, schema,
@@ -214,7 +218,7 @@ class Inspector(object):
                                                 **kw)
         return fk_defs
 
-    def get_indexes(self, table_name, schema=None):
+    def get_indexes(self, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
 
         Given a string `table_name` and an optional string `schema`, return
@@ -228,11 +232,14 @@ class Inspector(object):
 
         unique
           boolean
+          
+        \**kw
+          other options passed to the dialect's get_indexes() method.
         """
 
         indexes = self.dialect.get_indexes(self.conn, table_name,
                                                   schema,
-                                            info_cache=self.info_cache)
+                                            info_cache=self.info_cache, **kw)
         return indexes
 
     def reflecttable(self, table, include_columns):

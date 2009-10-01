@@ -498,6 +498,7 @@ class SQLiteDialect(default.DefaultDialect):
             pragma = "PRAGMA %s." % quote(schema)
         else:
             pragma = "PRAGMA "
+        include_auto_indexes = kw.pop('include_auto_indexes', False)
         qtable = quote(table_name)
         c = _pragma_cursor(connection.execute("%sindex_list(%s)" % (pragma, qtable)))
         indexes = []
@@ -505,6 +506,11 @@ class SQLiteDialect(default.DefaultDialect):
             row = c.fetchone()
             if row is None:
                 break
+            # ignore implicit primary key index.
+            # http://www.mail-archive.com/sqlite-users@sqlite.org/msg30517.html
+            elif not include_auto_indexes and row[1].startswith('sqlite_autoindex'):
+                continue
+
             indexes.append(dict(name=row[1], column_names=[], unique=row[2]))
         # loop thru unique indexes to get the column names.
         for idx in indexes:
