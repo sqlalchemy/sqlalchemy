@@ -1193,12 +1193,12 @@ class MSDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, schema=None):
         current_schema = schema or self.default_schema_name
         columns = ischema.columns
-        s = sql.select([columns],
-                   current_schema
-                       and sql.and_(columns.c.table_name==tablename, columns.c.table_schema==current_schema)
-                       or columns.c.table_name==tablename,
-                   )
-
+        if current_schema:
+            whereclause = sql.and_(columns.c.table_name==tablename,
+                                   columns.c.table_schema==current_schema)
+        else:
+            whereclause = columns.c.table_name==tablename
+        s = sql.select([columns], whereclause)
         c = connection.execute(s)
         return c.first() is not None
 
@@ -1278,11 +1278,12 @@ class MSDialect(default.DefaultDialect):
         # Get base columns
         current_schema = schema or self.default_schema_name
         columns = ischema.columns
-        s = sql.select([columns],
-                   current_schema
-                       and sql.and_(columns.c.table_name==tablename, columns.c.table_schema==current_schema)
-                       or columns.c.table_name==tablename,
-                   order_by=[columns.c.ordinal_position])
+        if current_schema:
+            whereclause = sql.and_(columns.c.table_name==tablename,
+                                   columns.c.table_schema==current_schema)
+        else:
+            whereclause = columns.c.table_name==tablename
+        s = sql.select([columns], whereclause, order_by=[columns.c.ordinal_position])
         c = connection.execute(s)
         cols = []
         while True:
