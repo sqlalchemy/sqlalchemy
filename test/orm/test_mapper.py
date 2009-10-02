@@ -1119,7 +1119,6 @@ class OptionsTest(_fixtures.FixtureTest):
             eq_(l, self.static.user_address_result)
         self.sql_count_(4, go)
 
-
     @testing.resolve_artifact_names
     def test_eager_degrade_deep(self):
         # test with a deeper set of eager loads.  when we first load the three
@@ -1179,6 +1178,29 @@ class OptionsTest(_fixtures.FixtureTest):
             eq_(l, self.static.user_address_result)
         self.sql_count_(4, go)
 
+    @testing.resolve_artifact_names
+    def test_option_propagate(self):
+        mapper(User, users, properties=dict(
+            orders = relation(Order)
+        ))
+        mapper(Order, orders, properties=dict(
+            items = relation(Item, secondary=order_items)
+        ))
+        mapper(Item, items)
+        
+        sess = create_session()
+        
+        oalias = aliased(Order)
+        opt1 = sa.orm.eagerload(User.orders, Order.items)
+        opt2a, opt2b = sa.orm.contains_eager(User.orders, Order.items, alias=oalias)
+        u1 = sess.query(User).join((oalias, User.orders)).options(opt1, opt2a, opt2b).first()
+        ustate = attributes.instance_state(u1)
+        assert opt1 in ustate.load_options
+        assert opt2a not in ustate.load_options
+        assert opt2b not in ustate.load_options
+        
+        import pickle
+        pickle.dumps(u1)
 
 class DeepOptionsTest(_fixtures.FixtureTest):
     @classmethod

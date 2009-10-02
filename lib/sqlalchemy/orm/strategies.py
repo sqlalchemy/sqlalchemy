@@ -306,6 +306,8 @@ class LoadDeferredColumns(object):
         return attributes.ATTR_WAS_SET
 
 class DeferredOption(StrategizedOption):
+    propagate_to_loaders = True
+    
     def __init__(self, key, defer=False):
         super(DeferredOption, self).__init__(key)
         self.defer = defer
@@ -317,6 +319,8 @@ class DeferredOption(StrategizedOption):
             return ColumnLoader
 
 class UndeferGroupOption(MapperOption):
+    propagate_to_loaders = True
+
     def __init__(self, group):
         self.group = group
     def process_query(self, query):
@@ -817,16 +821,13 @@ class EagerLoader(AbstractRelationLoader):
 log.class_logger(EagerLoader)
 
 class EagerLazyOption(StrategizedOption):
-    def __init__(self, key, lazy=True, chained=False, mapper=None, _only_on_lead=False):
+
+    def __init__(self, key, lazy=True, chained=False, mapper=None, propagate_to_loaders=True):
         super(EagerLazyOption, self).__init__(key, mapper)
         self.lazy = lazy
         self.chained = chained
-        self._only_on_lead = _only_on_lead
+        self.propagate_to_loaders = propagate_to_loaders
         
-    def process_query_conditionally(self, query):
-        if not self._only_on_lead:
-            StrategizedOption.process_query_conditionally(self, query)
-            
     def is_chained(self):
         return not self.lazy and self.chained
         
@@ -839,6 +840,7 @@ class EagerLazyOption(StrategizedOption):
             return NoLoader
 
 class LoadEagerFromAliasOption(PropertyOption):
+    
     def __init__(self, key, alias=None):
         super(LoadEagerFromAliasOption, self).__init__(key)
         if alias is not None:
@@ -846,10 +848,6 @@ class LoadEagerFromAliasOption(PropertyOption):
                 m, alias, is_aliased_class = mapperutil._entity_info(alias)
         self.alias = alias
 
-    def process_query_conditionally(self, query):
-        # dont run this option on a secondary load
-        pass
-        
     def process_query_property(self, query, paths, mappers):
         if self.alias is not None:
             if isinstance(self.alias, basestring):

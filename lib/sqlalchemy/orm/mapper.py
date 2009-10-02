@@ -1590,14 +1590,8 @@ class Mapper(object):
 
         def populate_state(state, dict_, row, isnew, only_load_props, **flags):
             if isnew:
-                if context.options:
-                    state.load_options = context.options
-                if state.load_options:
-                    state.load_path = context.query._current_path + path
-
-            if isnew:
-                if context.options:
-                    state.load_options = context.options
+                if context.propagate_options:
+                    state.load_options = context.propagate_options
                 if state.load_options:
                     state.load_path = context.query._current_path + path
 

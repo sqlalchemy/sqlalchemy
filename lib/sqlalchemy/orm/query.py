@@ -2186,6 +2186,7 @@ class QueryContext(object):
         self.adapter = None
 
         self.options = set(query._with_options)
+        self.propagate_options = self.options.difference(o for o in self.options if not o.propagate_to_loaders)
         self.attributes = query._attributes.copy()
 
 class AliasOption(interfaces.MapperOption):
