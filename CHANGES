@@ -16,6 +16,13 @@ CHANGES
       cartesian product.  An example is in the ticket
       description.  [ticket:1543]
 
+    - query.options() now only propagate to loaded objects
+      for potential further sub-loads only for options where
+      such behavior is relevant, keeping
+      various unserializable options like those generated
+      by contains_eager() out of individual instance states.
+      [ticket:1553]
+
 - postgresql
     - Added support for reflecting the DOUBLE PRECISION type,
       via a new postgres.PGDoublePrecision object.  

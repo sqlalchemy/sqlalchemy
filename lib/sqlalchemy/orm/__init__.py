@@ -938,7 +938,7 @@ def contains_eager(*keys, **kwargs):
     if kwargs:
         raise exceptions.ArgumentError("Invalid kwargs for contains_eager: %r" % kwargs.keys())
 
-    return (strategies.EagerLazyOption(keys, lazy=False, _only_on_lead=True), strategies.LoadEagerFromAliasOption(keys, alias=alias))
+    return (strategies.EagerLazyOption(keys, lazy=False, propagate_to_loaders=False), strategies.LoadEagerFromAliasOption(keys, alias=alias))
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
 def defer(*keys):
