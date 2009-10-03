@@ -7,11 +7,10 @@
 """
 Support for the Firebird database.
 
-Connectivity is usually supplied via the kinterbasdb_
-DBAPI module.
+Connectivity is usually supplied via the kinterbasdb_ DBAPI module.
 
-Firebird dialects
------------------
+Dialects
+~~~~~~~~
 
 Firebird offers two distinct dialects_ (not to be confused with a
 SQLAlchemy ``Dialect``):
@@ -27,8 +26,8 @@ adjusts its representation of SQL accordingly.  However,
 support for dialect 1 is not well tested and probably has
 incompatibilities.
 
-Firebird Locking Behavior
--------------------------
+Locking Behavior
+~~~~~~~~~~~~~~~~
 
 Firebird locks tables aggressively.  For this reason, a DROP TABLE may
 hang until other transactions are released.  SQLAlchemy does its best
@@ -48,7 +47,7 @@ The above use case can be alleviated by calling ``first()`` on the
 all remaining cursor/connection resources.
 
 RETURNING support
------------------
+~~~~~~~~~~~~~~~~~
 
 Firebird 2.0 supports returning a result set from inserts, and 2.1 extends
 that to deletes and updates.
@@ -60,11 +59,7 @@ parameter when creating the queries::
                       firebird_returning=[empl.c.id, empl.c.salary]).execute().fetchall()
 
 
-.. [#] Well, that is not the whole story, as the client may still ask
-       a different (lower) dialect...
-
 .. _dialects: http://mc-computing.com/Databases/Firebird/SQL_Dialect.html
-.. _kinterbasdb: http://sourceforge.net/projects/kinterbasdb
 
 """
 

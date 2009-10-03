@@ -1,3 +1,32 @@
+# kinterbasdb.py
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Michael Bayer mike_mp@zzzcomputing.com
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
+"""
+The most common way to connect to a Firebird engine is implemented by
+kinterbasdb__, currently maintained__ directly by the Firebird people.
+
+The connection URL is of the form
+``firebird[+kinterbasdb]://user:password@host:port/path/to/db[?key=value&key=value...]``.
+
+Kinterbasedb backend specific keyword arguments are:
+
+type_conv
+  select the kind of mapping done on the types: by default SQLAlchemy
+  uses 200 with Unicode, datetime and decimal support (see details__).
+
+concurrency_level
+  set the backend policy with regards to threading issues: by default
+  SQLAlchemy uses policy 1 (see details__).
+
+__ http://sourceforge.net/projects/kinterbasdb
+__ http://firebirdsql.org/index.php?op=devel&sub=python
+__ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#adv_param_conv_dynamic_type_translation
+__ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurrency
+"""
+
 from sqlalchemy.dialects.firebird.base import FBDialect, FBCompiler
 from sqlalchemy.engine.default import DefaultExecutionContext
 
