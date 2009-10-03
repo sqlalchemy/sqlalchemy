@@ -139,6 +139,10 @@ class _LOBMixin(object):
                 else:
                     return value
         return process
+
+class _OracleChar(sqltypes.CHAR):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.FIXED_CHAR
     
 class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
@@ -176,10 +180,12 @@ colspecs = {
     sqltypes.Text : _OracleText,
     sqltypes.UnicodeText : _OracleUnicodeText,
     sqltypes.TIMESTAMP : _OracleTimestamp,
+    sqltypes.CHAR : _OracleChar,
     sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
                                         # it would be nice if we could not use it otherwise.
     oracle.NUMBER : oracle.NUMBER, # don't let this get converted
     oracle.RAW: _OracleRaw,
+    
 }
 
 class Oracle_cx_oracleCompiler(OracleCompiler):

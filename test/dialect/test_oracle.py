@@ -346,7 +346,36 @@ class TypesTest(TestBase, AssertsCompiledSQL):
 
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
+    
+    def test_fixed_char(self):
+        m = MetaData(testing.db)
+        t = Table('t1', m, 
+            Column('id', Integer, primary_key=True),
+            Column('data', CHAR(30), nullable=False)
+        )
+        
+        t.create()
+        try:
+            t.insert().execute(
+                dict(id=1, data="value 1"),
+                dict(id=2, data="value 2"),
+                dict(id=3, data="value 3")
+            )
 
+            eq_(t.select().where(t.c.data=='value 2').execute().fetchall(), 
+                [(2, 'value 2                       ')]
+                )
+                
+            m2 = MetaData(testing.db)
+            t2 = Table('t1', m2, autoload=True)
+            assert type(t2.c.data.type) is CHAR
+            eq_(t2.select().where(t2.c.data=='value 2').execute().fetchall(), 
+                [(2, 'value 2                       ')]
+                )
+            
+        finally:
+            t.drop()
+        
     def test_type_adapt(self):
         dialect = cx_oracle.dialect()
 

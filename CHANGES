@@ -288,7 +288,10 @@ CHANGES
       later of cx_oracle.
 
     - an NCLOB type is added to the base types.
-
+    
+    - usage of the CHAR type results in cx_oracle's 
+      FIXED_CHAR dbapi type being bound to statements.
+      
     - the Oracle dialect now features NUMBER which intends
       to act justlike Oracle's NUMBER type.  It is the primary
       numeric type returned by table reflection and attempts
