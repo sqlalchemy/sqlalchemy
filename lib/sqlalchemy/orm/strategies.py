@@ -35,13 +35,10 @@ def _register_attribute(strategy, mapper, useobject,
     attribute_ext = util.to_list(prop.extension) or []
         
     if useobject and prop.single_parent:
-        attribute_ext.append(_SingleParentValidator(prop))
+        attribute_ext.insert(0, _SingleParentValidator(prop))
 
-    if getattr(prop, 'backref', None):
-        attribute_ext.append(prop.backref.extension)
-    
     if prop.key in prop.parent._validators:
-        attribute_ext.append(mapperutil.Validator(prop.key, prop.parent._validators[prop.key]))
+        attribute_ext.insert(0, mapperutil.Validator(prop.key, prop.parent._validators[prop.key]))
     
     if useobject:
         attribute_ext.append(sessionlib.UOWEventHandler(prop.key))

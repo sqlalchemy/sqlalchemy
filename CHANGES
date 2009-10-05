@@ -65,6 +65,15 @@ CHANGES
         i.e. ForeignKey(MyRelatedClass.id) doesn't break the
         "use_get" condition from taking place [ticket:1492]
 
+   - the mechanics of "backref" have been fully merged into the
+     finer grained "back_populates" system, and take place entirely
+     within the _generate_backref() method of RelationProperty.  This
+     makes the initialization procedure of RelationProperty
+     simpler and allows easier propagation of settings (such as from
+     subclasses of RelationProperty) into the reverse reference. 
+     The internal BackRef() is gone and backref() returns a plain 
+     tuple that is understood by RelationProperty.
+     
 - sql
     - the autoincrement flag on column now indicates the column
       which should be linked to cursor.lastrowid, if that method

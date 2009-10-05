@@ -417,16 +417,6 @@ class RelationProperty(StrategizedProperty):
             if backref:
                 raise sa_exc.ArgumentError("backref and back_populates keyword arguments are mutually exclusive")
             self.backref = None
-        elif isinstance(backref, basestring):
-            # propagate explicitly sent primary/secondary join conditions to the BackRef object if
-            # just a string was sent
-            if secondary is not None:
-                # reverse primary/secondary in case of a many-to-many
-                self.backref = BackRef(backref, primaryjoin=secondaryjoin, 
-                                    secondaryjoin=primaryjoin, passive_updates=self.passive_updates)
-            else:
-                self.backref = BackRef(backref, primaryjoin=primaryjoin, 
-                                    secondaryjoin=secondaryjoin, passive_updates=self.passive_updates)
         else:
             self.backref = backref
 
@@ -705,16 +695,18 @@ class RelationProperty(StrategizedProperty):
         
         if self.direction in (ONETOMANY, MANYTOONE) and self.direction == other.direction:
             raise sa_exc.ArgumentError("%s and back-reference %s are both of the same direction %r."
-                "  Did you mean to set remote_side on the many-to-one side ?" % (self, other, self.direction))
+                "  Did you mean to set remote_side on the many-to-one side ?" % (other, self, self.direction))
         
     def do_init(self):
         self._get_target()
+        self._assert_is_primary()
         self._process_dependent_arguments()
         self._determine_joins()
         self._determine_synchronize_pairs()
         self._determine_direction()
         self._determine_local_remote_pairs()
         self._post_init()
+        self._generate_backref()
         super(RelationProperty, self).do_init()
 
     def _get_target(self):
@@ -886,6 +878,7 @@ class RelationProperty(StrategizedProperty):
     def _determine_direction(self):
         if self.secondaryjoin is not None:
             self.direction = MANYTOMANY
+            
         elif self._refers_to_parent_table():
             # self referential defaults to ONETOMANY unless the "remote" side is present
             # and does not reference any foreign key columns
@@ -997,7 +990,66 @@ class RelationProperty(StrategizedProperty):
 
         self.local_side, self.remote_side = [util.ordered_column_set(x) for x in zip(*list(self.local_remote_pairs))]
 
+    def _assert_is_primary(self):
+        if not self.is_primary() and \
+            not mapper.class_mapper(self.parent.class_, compile=False)._get_property(self.key, raiseerr=False):
 
+            raise sa_exc.ArgumentError("Attempting to assign a new relation '%s' to "
+                "a non-primary mapper on class '%s'.  New relations can only be "
+                "added to the primary mapper, i.e. the very first "
+                "mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
+            
+    def _generate_backref(self):
+        if not self.is_primary():
+            return
+
+        if self.backref is not None and not self.back_populates:
+            if isinstance(self.backref, basestring):
+                backref_key, kwargs = self.backref, {}
+            else:
+                backref_key, kwargs = self.backref
+            
+            mapper = self.mapper.primary_mapper()
+            if mapper._get_property(backref_key, raiseerr=False) is not None:
+                raise sa_exc.ArgumentError("Error creating backref '%s' on relation '%s': "
+                    "property of that name exists on mapper '%s'" % (backref_key, self, mapper))
+            
+            if self.secondary is not None:
+                pj = kwargs.pop('primaryjoin', self.secondaryjoin)
+                sj = kwargs.pop('secondaryjoin', self.primaryjoin)
+            else:
+                pj = kwargs.pop('primaryjoin', self.primaryjoin)
+                sj = kwargs.pop('secondaryjoin', None)
+                if sj:
+                    raise sa_exc.InvalidRequestError(
+                        "Can't assign 'secondaryjoin' on a backref against "
+                        "a non-secondary relation.")
+
+            foreign_keys = kwargs.pop('foreign_keys', self._foreign_keys)
+
+            parent = self.parent.primary_mapper()
+            kwargs.setdefault('viewonly', self.viewonly)
+            kwargs.setdefault('post_update', self.post_update)
+            
+            self.back_populates = backref_key
+            relation = RelationProperty(
+                                        parent, 
+                                        self.secondary, 
+                                        pj, 
+                                        sj, 
+                                        foreign_keys=foreign_keys,
+                                        back_populates=self.key,
+                                       **kwargs)
+
+            mapper._configure_property(backref_key, relation)
+
+
+        if self.back_populates:
+            self.extension = util.to_list(self.extension) or []
+            self.extension.append(attributes.GenericBackrefExtension(self.back_populates))
+            self._add_reverse_property(self.back_populates)
+        
+        
     def _post_init(self):
         if self._should_log_info:
             self.logger.info("%s setup primary join %s", self, self.primaryjoin)
@@ -1006,31 +1058,12 @@ class RelationProperty(StrategizedProperty):
             self.logger.info("%s secondary synchronize pairs [%s]", self, ",".join(("(%s => %s)" % (l, r) for l, r in self.secondary_synchronize_pairs or [])))
             self.logger.info("%s local/remote pairs [%s]", self, ",".join("(%s / %s)" % (l, r) for l, r in self.local_remote_pairs))
             self.logger.info("%s relation direction %s", self, self.direction)
-
-        if self.uselist is None and self.direction is MANYTOONE:
-            self.uselist = False
-
+        
         if self.uselist is None:
-            self.uselist = True
-
+            self.uselist = self.direction is not MANYTOONE
+            
         if not self.viewonly:
             self._dependency_processor = dependency.create_dependency_processor(self)
-
-        # primary property handler, set up class attributes
-        if self.is_primary():
-            if self.back_populates:
-                self.extension = util.to_list(self.extension) or []
-                self.extension.append(attributes.GenericBackrefExtension(self.back_populates))
-                self._add_reverse_property(self.back_populates)
-            
-            if self.backref is not None:
-                self.backref.compile(self)
-        elif not mapper.class_mapper(self.parent.class_, compile=False)._get_property(self.key, raiseerr=False):
-            raise sa_exc.ArgumentError("Attempting to assign a new relation '%s' to "
-                "a non-primary mapper on class '%s'.  New relations can only be "
-                "added to the primary mapper, i.e. the very first "
-                "mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
-        
 
     def _refers_to_parent_table(self):
         for c, f in self.synchronize_pairs:
@@ -1143,59 +1176,6 @@ class RelationProperty(StrategizedProperty):
 
 PropertyLoader = RelationProperty
 log.class_logger(RelationProperty)
-
-class BackRef(object):
-    """Attached to a RelationProperty to indicate a complementary reverse relationship.
-
-    Handles the job of creating the opposite RelationProperty according to configuration.
-    
-    Alternatively, two explicit RelationProperty objects can be associated bidirectionally
-    using the back_populates keyword argument on each.
-    
-    """
-
-    def __init__(self, key, _prop=None, **kwargs):
-        self.key = key
-        self.kwargs = kwargs
-        self.prop = _prop
-        self.extension = attributes.GenericBackrefExtension(self.key)
-
-    def compile(self, prop):
-        if self.prop:
-            return
-
-        self.prop = prop
-
-        mapper = prop.mapper.primary_mapper()
-        if mapper._get_property(self.key, raiseerr=False) is None:
-            if prop.secondary is not None:
-                pj = self.kwargs.pop('primaryjoin', prop.secondaryjoin)
-                sj = self.kwargs.pop('secondaryjoin', prop.primaryjoin)
-            else:
-                pj = self.kwargs.pop('primaryjoin', prop.primaryjoin)
-                sj = self.kwargs.pop('secondaryjoin', None)
-                if sj:
-                    raise sa_exc.InvalidRequestError(
-                        "Can't assign 'secondaryjoin' on a backref against "
-                        "a non-secondary relation.")
-            
-            foreign_keys = self.kwargs.pop('foreign_keys', prop._foreign_keys)
-            
-            parent = prop.parent.primary_mapper()
-            self.kwargs.setdefault('viewonly', prop.viewonly)
-            self.kwargs.setdefault('post_update', prop.post_update)
-
-            relation = RelationProperty(parent, prop.secondary, pj, sj, foreign_keys=foreign_keys,
-                                      backref=BackRef(prop.key, _prop=prop),
-                                      **self.kwargs)
-
-            mapper._configure_property(self.key, relation);
-
-            prop._add_reverse_property(self.key)
-
-        else:
-            raise sa_exc.ArgumentError("Error creating backref '%s' on relation '%s': "
-                "property of that name exists on mapper '%s'" % (self.key, prop, mapper))
 
 mapper.ColumnProperty = ColumnProperty
 mapper.SynonymProperty = SynonymProperty

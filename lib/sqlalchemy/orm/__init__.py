@@ -38,7 +38,6 @@ from sqlalchemy.orm.util import (
      with_parent,
      )
 from sqlalchemy.orm.properties import (
-     BackRef,
      ColumnProperty,
      ComparableProperty,
      CompositeProperty,
@@ -582,14 +581,14 @@ def composite(class_, *cols, **kwargs):
 
 
 def backref(name, **kwargs):
-    """Create a BackRef object with explicit arguments, which are the same
+    """Create a back reference with explicit arguments, which are the same
     arguments one can send to ``relation()``.
 
     Used with the `backref` keyword argument to ``relation()`` in
     place of a string argument.
 
     """
-    return BackRef(name, **kwargs)
+    return (name, kwargs)
 
 def deferred(*columns, **kwargs):
     """Return a ``DeferredColumnProperty``, which indicates this
