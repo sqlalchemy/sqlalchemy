@@ -28,6 +28,11 @@ CHANGES
       via a new postgres.PGDoublePrecision object.  
       This is postgresql.DOUBLE_PRECISION in 0.6.
       [ticket:1085]
+
+- mssql
+    - Changed the name of TrustedConnection to 
+      Trusted_Connection when constructing pyodbc connect
+      arguments [ticket:1561]
       
 0.5.6
 =====
