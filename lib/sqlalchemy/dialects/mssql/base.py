@@ -42,7 +42,7 @@ Examples of pyodbc connection string URLs:
 * *mssql+pyodbc://mydsn* - connects using the specified DSN named ``mydsn``.
   The connection string that is created will appear like::
 
-    dsn=mydsn;TrustedConnection=Yes
+    dsn=mydsn;Trusted_Connection=Yes
 
 * *mssql+pyodbc://user:pass@mydsn* - connects using the DSN named
   ``mydsn`` passing in the ``UID`` and ``PWD`` information. The

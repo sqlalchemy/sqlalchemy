@@ -48,7 +48,7 @@ class PyODBCConnector(Connector):
                 connectors.append("UID=%s" % user)
                 connectors.append("PWD=%s" % keys.pop('password', ''))
             else:
-                connectors.append("TrustedConnection=Yes")
+                connectors.append("Trusted_Connection=Yes")
 
             # if set to 'Yes', the ODBC layer will try to automagically convert 
             # textual data from your database encoding to your client encoding 

@@ -623,12 +623,12 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
     def test_pyodbc_connect_dsn_trusted(self):
         u = url.make_url('mssql://mydsn')
         connection = dialect.create_connect_args(u)
-        eq_([['dsn=mydsn;TrustedConnection=Yes'], {}], connection)
+        eq_([['dsn=mydsn;Trusted_Connection=Yes'], {}], connection)
 
     def test_pyodbc_connect_old_style_dsn_trusted(self):
         u = url.make_url('mssql:///?dsn=mydsn')
         connection = dialect.create_connect_args(u)
-        eq_([['dsn=mydsn;TrustedConnection=Yes'], {}], connection)
+        eq_([['dsn=mydsn;Trusted_Connection=Yes'], {}], connection)
 
     def test_pyodbc_connect_dsn_non_trusted(self):
         u = url.make_url('mssql://username:password@mydsn')
