@@ -407,6 +407,12 @@ CHANGES
       various unserializable options like those generated
       by contains_eager() out of individual instance states.
       [ticket:1553]
+
+- mssql
+    - Changed the name of TrustedConnection to
+      Trusted_Connection when constructing pyodbc connect
+      arguments [ticket:1561]
+
       
 0.5.6
 =====
