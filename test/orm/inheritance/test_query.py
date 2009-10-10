@@ -1190,7 +1190,8 @@ class EagerToSubclassTest(_base.MappedTest):
         sess = create_session()
         def go():
             eq_(
-                sess.query(Parent).join(Parent.children).options(contains_eager(Parent.children)).all(), 
+                sess.query(Parent).join(Parent.children).options(contains_eager(Parent.children)).\
+                                order_by(Parent.data, Sub.data).all(), 
                 [
                     Parent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
                     Parent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])

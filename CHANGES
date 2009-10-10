@@ -152,7 +152,8 @@ CHANGES
           table.append_constraint(PrimaryKeyConstraint(...))
         - Column.bind       (get via column.table.bind)
         - Column.metadata   (get via column.table.metadata)
-
+        - Column.sequence   (use column.default)
+        
     - The use_alter flag on ForeignKey is now a shortcut option
       for operations that can be hand-constructed using the
       DDL() event system. A side effect of this refactor is

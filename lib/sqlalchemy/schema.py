@@ -642,7 +642,7 @@ class Column(SchemaItem, expression.ColumnClause):
         self._table_events = set()
         
         if self.default is not None:
-            if isinstance(self.default, ColumnDefault):
+            if isinstance(self.default, (ColumnDefault, Sequence)):
                 args.append(self.default)
             else:
                 args.append(ColumnDefault(self.default))
@@ -1152,7 +1152,7 @@ class Sequence(DefaultGenerator):
 
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
-        column.sequence = self
+#        column.sequence = self
         
         column._on_table_attach(self._set_table)
     

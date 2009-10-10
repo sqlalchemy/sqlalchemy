@@ -613,7 +613,7 @@ class SequenceTest(testing.TestBase):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def teststandalone2(self):
-        x = cartitems.c.cart_id.sequence.execute()
+        x = cartitems.c.cart_id.default.execute()
         self.assert_(1 <= x <= 4)
 
     @classmethod

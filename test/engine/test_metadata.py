@@ -1,8 +1,7 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import pickle
-from sqlalchemy import Integer, String, UniqueConstraint, CheckConstraint, ForeignKey, MetaData
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy import Integer, String, UniqueConstraint, CheckConstraint, ForeignKey, MetaData, Sequence
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import schema
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, ComparesTables, AssertsCompiledSQL, testing, engines
@@ -38,7 +37,7 @@ class MetaDataTest(TestBase, ComparesTables):
                 assert str(e) == "Table 'table1' is already defined for this MetaData instance.  Specify 'useexisting=True' to redefine options and columns on an existing Table object."
         finally:
             metadata.drop_all()
-
+    
     @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_to_metadata(self):
         meta = MetaData()
@@ -54,7 +53,7 @@ class MetaDataTest(TestBase, ComparesTables):
         )
 
         table2 = Table('othertable', meta,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('foo_seq'), primary_key=True),
             Column('myid', Integer, ForeignKey('mytable.myid')),
             test_needs_fk=True,
             )
@@ -100,7 +99,8 @@ class MetaDataTest(TestBase, ComparesTables):
                     assert str(table_c.c.foo.server_onupdate.arg) == 'q'
                     assert str(table_c.c.bar.default.arg) == 'y'
                     assert getattr(table_c.c.bar.onupdate.arg, 'arg', table_c.c.bar.onupdate.arg) == 'z'
-                
+                    assert isinstance(table2_c.c.id.default, Sequence)
+                    
                 # constraints dont get reflected for any dialect right now
                 if has_constraints:
                     for c in table_c.c.description.constraints:

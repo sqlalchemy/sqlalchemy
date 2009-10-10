@@ -310,7 +310,7 @@ class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('id', sa.Integer, primary_key=True),
+            Column('id', sa.Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', sa.Binary),
         )
 

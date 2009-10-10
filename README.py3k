@@ -1,0 +1,39 @@
+=================
+PYTHON 3 SUPPORT
+=================
+
+Current Python 3k support in SQLAlchemy is provided by a customized
+2to3 script which wraps Python's 2to3 tool.
+
+This document will refer to the Python 2.6 interpreter binary as
+"python26" and the Python 3.xx interpreter binary as "python3".
+
+To build the Python 3K version, use the Python 2.6 interpreter to
+run the 2to3 script on the lib/ directory, and optionally the test/
+directory.   The -w flag indicates that the new files should be
+written.
+
+    python26 sa2to3.py ./lib/ ./test/ -w
+
+You now have a Python 3 version of SQLAlchemy in lib/.   
+
+
+Running Tests
+-------------
+
+The unit test runner, described in README.unittests, is built on
+Nose, and uses a plugin that is ordinarily installed using setuptools
+entry points.  At the time of this writing setuptools isn't available 
+for Python 3 although the "Distribute" project does seem to provide support.
+Additionally, Nose itself is only available in an old version for Python 3,
+which is available at http://bitbucket.org/jpellerin/nose3/ .
+
+To run the unit tests using the old version of nose and without the usage of 
+setuptools, use the "sqla_nose.py" script:
+
+    python3 sqla_nose.py
+    
+When running with Python 3, lots of debug output is dumped to the console.
+This is due to hacking around the old version of Nose to support the 
+SQLAlchemy test plugin without setuptools (details at 
+http://groups.google.com/group/nose-dev/browse_thread/thread/c6a25531baaa2531).

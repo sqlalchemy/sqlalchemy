@@ -276,11 +276,11 @@ class DeclarativeTest(DeclarativeTestBase):
         
         class Master(Base): 
             __tablename__ = 'master' 
-            id = Column(Integer, primary_key=True) 
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True) 
 
         class Detail(Base): 
             __tablename__ = 'detail' 
-            id = Column(Integer, primary_key=True) 
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True) 
             master_id = Column(None, ForeignKey(Master.id)) 
             master = relation(Master) 
 

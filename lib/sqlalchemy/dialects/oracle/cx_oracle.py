@@ -123,9 +123,12 @@ class _OracleTimestamp(sqltypes.TIMESTAMP):
 
 class _LOBMixin(object):
     def result_processor(self, dialect):
-        super_process = super(_LOBMixin, self).result_processor(dialect)
         if not dialect.auto_convert_lobs:
-            return super_process
+            # return the cx_oracle.LOB directly.
+            # don't even call super.result_processor here.
+            return None
+            
+        super_process = super(_LOBMixin, self).result_processor(dialect)
         lob = dialect.dbapi.LOB
         def process(value):
             if isinstance(value, lob):
