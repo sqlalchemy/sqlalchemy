@@ -43,12 +43,12 @@ The dialect supports PG 8.3's ``INSERT..RETURNING`` and ``UPDATE..RETURNING`` sy
 but must be explicitly enabled on a per-statement basis::
 
     # INSERT..RETURNING
-    result = table.insert(postgresql_returning=[table.c.col1, table.c.col2]).\\
+    result = table.insert().returning(table.c.col1, table.c.col2).\\
         values(name='foo')
     print result.fetchall()
     
     # UPDATE..RETURNING
-    result = table.update(postgresql_returning=[table.c.col1, table.c.col2]).\\
+    result = table.update().returning(table.c.col1, table.c.col2).\\
         where(table.c.name=='foo').values(name='bar')
     print result.fetchall()
 

@@ -153,7 +153,7 @@ reference for the database you're interested in.
 For example, MySQL has a ``BIGINTEGER`` type and PostgreSQL has an
 ``INET`` type.  To use these, import them from the module explicitly::
 
-    from sqlalchemy.dialect.mysql import dialect as mysql
+    from sqlalchemy.dialects import mysql
 
     table = Table('foo', meta,
         Column('id', mysql.BIGINTEGER),
@@ -162,27 +162,42 @@ For example, MySQL has a ``BIGINTEGER`` type and PostgreSQL has an
 
 Or some PostgreSQL types::
 
-    from sqlalchemy.dialect.postgresql import dialect as postgresql
+    from sqlalchemy.dialects import postgresql
 
     table = Table('foo', meta,
         Column('ipaddress', postgresql.INET),
         Column('elements', postgresql.ARRAY(str))
         )
 
-Each dialect should provide the full set of typenames supported by
-that backend, so that a backend-specific schema can be created without
-the need to locate types::
+Each dialect provides the full set of typenames supported by
+that backend within its `__all__` collection, so that a simple
+`import *` or similar will import all supported types as 
+implemented for that backend::
 
-    from sqlalchemy.dialects.postgresql import dialect as pg
+    from sqlalchemy.dialects.postgresql import *
 
     t = Table('mytable', metadata,
-               Column('id', pg.INTEGER, primary_key=True),
-               Column('name', pg.VARCHAR(300)),
-               Column('inetaddr', pg.INET)
+               Column('id', INTEGER, primary_key=True),
+               Column('name', VARCHAR(300)),
+               Column('inetaddr', INET)
     )
 
 Where above, the INTEGER and VARCHAR types are ultimately from 
-sqlalchemy.types, but the Postgresql dialect makes them available.
+sqlalchemy.types, and INET is specific to the Postgresql dialect.
+
+Some dialect level types have the same name as the SQL standard type,
+but also provide additional arguments.  For example, MySQL implements
+the full range of character and string types including additional arguments
+such as `collation` and `charset`::
+
+    from sqlalchemy.dialects.mysql import VARCHAR, TEXT
+
+    table = Table('foo', meta,
+        Column('col1', VARCHAR(200, collation='binary')),
+        Column('col2', TEXT(charset='latin1'))
+    )
+    
+
 
 Custom Types
 ------------
