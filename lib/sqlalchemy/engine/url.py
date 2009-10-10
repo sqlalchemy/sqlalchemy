@@ -104,7 +104,7 @@ class URL(object):
         except ImportError:
             if sys.exc_info()[2].tb_next is None:
                 import pkg_resources
-                for res in pkg_resources.iter_entry_points('sqlalchemy.databases'):
+                for res in pkg_resources.iter_entry_points('sqlalchemy.dialects'):
                     if res.name == self.drivername:
                         return res.load()
             raise

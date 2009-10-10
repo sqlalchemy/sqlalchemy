@@ -203,6 +203,9 @@ CHANGES
       i.e. "mysql+mysqldb://scott:tiger@localhost/test". See
       the 0.6 documentation for examples.
 
+    - the setuptools entrypoint for external dialects is now 
+      called "sqlalchemy.dialects".
+      
     - the "owner" keyword argument is removed from Table. Use
       "schema" to represent any namespaces to be prepended to
       the table name.
