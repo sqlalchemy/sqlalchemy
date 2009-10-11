@@ -635,6 +635,23 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
             pass
         setattr(into_cls, method, env[method])
 
+class NamedTuple(tuple):
+    """tuple() subclass that adds labeled names.
+    
+    Is also pickleable.
+    
+    """
+
+    def __new__(cls, labels, vals):
+        vals = list(vals)
+        t = tuple.__new__(cls, vals)
+        t.__dict__ = dict(zip(labels, vals))
+        t._labels = labels
+        return t
+
+    def keys(self):
+        return self._labels
+
 
 class OrderedProperties(object):
     """An object that maintains the order in which attributes are set upon it.

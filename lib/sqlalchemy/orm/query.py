@@ -1371,11 +1371,7 @@ class Query(object):
         (process, labels) = zip(*[query_entity.row_processor(self, context, custom_rows) for query_entity in self._entities])
 
         if not single_entity:
-            labels = dict((label, property(itemgetter(i)))
-                          for i, label in enumerate(labels)
-                          if label)
-            rowtuple = type.__new__(type, "RowTuple", (tuple,), labels)
-            rowtuple.keys = labels.keys
+            labels = [l for l in labels if l]
 
         while True:
             context.progress = {}
@@ -1395,7 +1391,7 @@ class Query(object):
             elif single_entity:
                 rows = [process[0](context, row) for row in fetch]
             else:
-                rows = [rowtuple(proc(context, row) for proc in process)
+                rows = [util.NamedTuple(labels, (proc(context, row) for proc in process))
                         for row in fetch]
 
             if filter:

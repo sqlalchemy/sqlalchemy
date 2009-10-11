@@ -22,6 +22,15 @@ CHANGES
 
   - query.update() and query.delete() both default to
     'evaluate' for the synchronize strategy.
+
+  - the 'synchronize' strategy for update() and delete() raises
+    an error on failure. There is no implicit fallback onto
+    "fetch". Failure of evaluation is based on the structure of
+    criteria, so success/failure is deterministic based on code
+    structure.
+
+  - the "named tuple" objects returned when iterating a
+    Query() are now pickleable.
     
   - query.join() has been reworked to provide more consistent 
     behavior and more flexibility (includes [ticket:1537])
@@ -30,12 +39,6 @@ CHANGES
     multiple comma separated entries within the FROM clause.
     Useful when selecting from multiple-homed join() clauses.
     
-  - the 'synchronize' strategy for update() and delete() raises
-    an error on failure. There is no implicit fallback onto
-    "fetch". Failure of evaluation is based on the structure of
-    criteria, so success/failure is deterministic based on code
-    structure.
-
   - the "dont_load=True" flag on Session.merge() is deprecated
     and is now "load=False".
 
@@ -120,6 +123,9 @@ CHANGES
 
   - added first() method to ResultProxy, returns first row and
     closes result set immediately.
+
+  - RowProxy objects are now pickleable, i.e. the object returned
+    by result.fetchone(), result.fetchall() etc.
 
 - schema
     - deprecated MetaData.connect() and

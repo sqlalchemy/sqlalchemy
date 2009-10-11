@@ -1497,7 +1497,7 @@ class RowProxy(object):
         self.__row = row
         if self.__parent._echo:
             self.__parent.context.engine.logger.debug("Row %r", row)
-
+        
     def close(self):
         """Close the parent ResultProxy."""
 
@@ -1508,7 +1508,17 @@ class RowProxy(object):
 
     def __len__(self):
         return len(self.__row)
-
+    
+    def __getstate__(self):
+        return {
+            '__row':[self.__parent._get_col(self.__row, i) for i in xrange(len(self.__row))],
+            '__parent':PickledResultProxy(self.__parent)
+        }
+    
+    def __setstate__(self, d):
+        self.__row = d['__row']
+        self.__parent = d['__parent']
+        
     def __iter__(self):
         for i in xrange(len(self.__row)):
             yield self.__parent._get_col(self.__row, i)
@@ -1561,7 +1571,52 @@ class RowProxy(object):
     def itervalues(self):
         return iter(self)
 
+class PickledResultProxy(object):
+    """a 'mock' ResultProxy used by a RowProxy being pickled."""
+    
+    _echo = False
+    
+    def __init__(self, resultproxy):
+        self._props = dict(
+            (k, resultproxy._props[k][2]) for k in resultproxy._props
+            if isinstance(k, (basestring, int))
+        )
+        self._keys = resultproxy.keys
 
+    def _fallback_key(self, key):
+        if key in self._props:
+            return self._props[key]
+            
+        if isinstance(key, basestring):
+            key = key.lower()
+            if key in self._props:
+                return self._props[key]
+
+        if isinstance(key, expression.ColumnElement):
+            if key._label and key._label.lower() in self._props:
+                return self._props[key._label.lower()]
+            elif hasattr(key, 'name') and key.name.lower() in self._props:
+                return self._props[key.name.lower()]
+        
+        return None
+        
+    def close(self):
+        pass
+        
+    def _has_key(self, row, key):
+        return self._fallback_key(key) is not None
+        
+    def _get_col(self, row, orig_key):
+        key = self._fallback_key(orig_key)
+        if key is None:
+            raise exc.NoSuchColumnError("Could not locate column in row for column '%s'" % orig_key)
+        return row[key]
+        
+    @property
+    def keys(self):
+        return self._keys
+        
+        
 class BufferedColumnRow(RowProxy):
     def __init__(self, parent, row):
         row = [ResultProxy._get_col(parent, row, i) for i in xrange(len(row))]
@@ -1639,7 +1694,7 @@ class ResultProxy(object):
         
         """
         return self.cursor.lastrowid
-
+    
     def _cursor_description(self):
         return self.cursor.description
             
@@ -1732,7 +1787,7 @@ class ResultProxy(object):
                 elif hasattr(key, 'name') and key.name.lower() in props:
                     return props[key.name.lower()]
 
-            raise exc.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
+            raise exc.NoSuchColumnError("Could not locate column in row for column '%s'" % key)
         return fallback
 
     def __ambiguous_processor(self, colname):

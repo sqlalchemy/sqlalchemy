@@ -1,10 +1,10 @@
 from sqlalchemy.test.testing import eq_
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exc, sql
+from sqlalchemy import exc, sql, util
 from sqlalchemy.engine import default
 from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, assert_raises_message
+from sqlalchemy.test.testing import eq_, assert_raises_message, assert_raises
 from sqlalchemy.test.schema import Table, Column
 
 class QueryTest(TestBase):
@@ -207,7 +207,7 @@ class QueryTest(TestBase):
         for row in select([sel + 1, sel + 3], bind=users.bind).execute():
             assert row['anon_1'] == 8
             assert row['anon_2'] == 10
-
+    
     @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
     def test_order_by_label(self):
         """test that a label within an ORDER BY works on each backend.
@@ -259,6 +259,47 @@ class QueryTest(TestBase):
         self.assert_(equal == rp)
         self.assert_(not (rp != equal))
         self.assert_(not (equal != equal))
+
+    def test_pickled_rows(self):
+        users.insert().execute(
+            {'user_id':7, 'user_name':'jack'},
+            {'user_id':8, 'user_name':'ed'},
+            {'user_id':9, 'user_name':'fred'},
+        )
+
+        for pickle in False, True:
+            for use_labels in False, True:
+                result = users.select(use_labels=use_labels).order_by(users.c.user_id).execute().fetchall()
+            
+                if pickle:
+                    result = util.pickle.loads(util.pickle.dumps(result))
+                
+                eq_(
+                    result, 
+                    [(7, "jack"), (8, "ed"), (9, "fred")]
+                )
+                if use_labels:
+                    eq_(result[0]['query_users_user_id'], 7)
+                    eq_(result[0].keys(), ["query_users_user_id", "query_users_user_name"])
+                else:
+                    eq_(result[0]['user_id'], 7)
+                    eq_(result[0].keys(), ["user_id", "user_name"])
+                    
+                eq_(result[0][0], 7)
+                eq_(result[0][users.c.user_id], 7)
+                eq_(result[0][users.c.user_name], 'jack')
+            
+                if use_labels:
+                    assert_raises(exc.NoSuchColumnError, lambda: result[0][addresses.c.user_id])
+                else:
+                    # test with a different table.  name resolution is 
+                    # causing 'user_id' to match when use_labels wasn't used.
+                    eq_(result[0][addresses.c.user_id], 7)
+            
+                assert_raises(exc.NoSuchColumnError, lambda: result[0]['fake key'])
+                assert_raises(exc.NoSuchColumnError, lambda: result[0][addresses.c.address_id])
+            
+
 
     @testing.requires.boolean_col_expressions
     def test_or_and_as_columns(self):
