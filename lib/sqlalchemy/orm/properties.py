@@ -23,6 +23,7 @@ from sqlalchemy.orm.interfaces import (
     MANYTOMANY, MANYTOONE, MapperProperty, ONETOMANY, PropComparator,
     StrategizedProperty,
     )
+from types import NoneType
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
            'ComparableProperty', 'RelationProperty', 'BackRef')
@@ -471,7 +472,7 @@ class RelationProperty(StrategizedProperty):
         __hash__ = None
         
         def __eq__(self, other):
-            if other is None:
+            if isinstance(other, (NoneType, expression._Null)):
                 if self.property.direction in [ONETOMANY, MANYTOMANY]:
                     return ~self._criterion_exists()
                 else:
@@ -581,7 +582,7 @@ class RelationProperty(StrategizedProperty):
             return ~self._criterion_exists(criterion)
 
         def __ne__(self, other):
-            if other is None:
+            if isinstance(other, (NoneType, expression._Null)):
                 if self.property.direction == MANYTOONE:
                     return sql.or_(*[x!=None for x in self.property._foreign_keys])
                 else:

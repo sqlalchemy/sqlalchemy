@@ -42,6 +42,11 @@ CHANGES
   - the "dont_load=True" flag on Session.merge() is deprecated
     and is now "load=False".
 
+  - `expression.null()` is fully understood the same way
+    None is when comparing an object/collection-referencing
+    attribute within query.filter(), filter_by(), etc.
+    [ticket:1415]
+    
   - many-to-one relations now fire off a lazyload in fewer
     cases, including in most cases will not fetch the "old"
     value when a new one is replaced.

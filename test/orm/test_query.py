@@ -737,6 +737,7 @@ class FilterTest(QueryTest):
 
         # generates an IS NULL
         assert [] == sess.query(Address).filter(Address.user == None).all()
+        assert [] == sess.query(Address).filter(Address.user == null()).all()
 
         assert [Order(id=5)] == sess.query(Order).filter(Order.address == None).all()
 
@@ -755,17 +756,32 @@ class FilterTest(QueryTest):
 
         # many to one generates IS NULL
         assert [] == sess.query(Address).filter_by(user = None).all()
+        assert [] == sess.query(Address).filter_by(user = null()).all()
 
         # one to many generates WHERE NOT EXISTS
         assert [User(name='chuck')] == sess.query(User).filter_by(addresses = None).all()
+        assert [User(name='chuck')] == sess.query(User).filter_by(addresses = null()).all()
     
     def test_none_comparison(self):
         sess = create_session()
         
+        # scalar
+        eq_(
+            [Order(description="order 5")],
+            sess.query(Order).filter(Order.address_id==None).all()
+        )
+        eq_(
+            [Order(description="order 5")],
+            sess.query(Order).filter(Order.address_id==null()).all()
+        )
+        
         # o2o
         eq_([Address(id=1), Address(id=3), Address(id=4)], 
             sess.query(Address).filter(Address.dingaling==None).order_by(Address.id).all())
+        eq_([Address(id=1), Address(id=3), Address(id=4)], 
+            sess.query(Address).filter(Address.dingaling==null()).order_by(Address.id).all())
         eq_([Address(id=2), Address(id=5)], sess.query(Address).filter(Address.dingaling != None).order_by(Address.id).all())
+        eq_([Address(id=2), Address(id=5)], sess.query(Address).filter(Address.dingaling != null()).order_by(Address.id).all())
         
         # m2o
         eq_([Order(id=5)], sess.query(Order).filter(Order.address==None).all())
