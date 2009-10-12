@@ -42,7 +42,7 @@ class TriggerDefaultsTest(_base.MappedTest):
             sa.DDL("CREATE TRIGGER dt_ins BEFORE INSERT ON dt "
                          "FOR EACH ROW BEGIN "
                          "SET NEW.col2='ins'; SET NEW.col4='ins'; END",
-                         on=lambda event, schema_item, bind, **kw: 
+                         on=lambda ddl, event, target, bind, **kw: 
                                 bind.engine.name not in ('oracle', 'mssql', 'sqlite')
                 ),
             ):
@@ -67,7 +67,7 @@ class TriggerDefaultsTest(_base.MappedTest):
             sa.DDL("CREATE TRIGGER dt_up BEFORE UPDATE ON dt "
                         "FOR EACH ROW BEGIN "
                         "SET NEW.col3='up'; SET NEW.col4='up'; END",
-                        on=lambda event, schema_item, bind, **kw: 
+                        on=lambda ddl, event, target, bind, **kw: 
                                 bind.engine.name not in ('oracle', 'mssql', 'sqlite')
                     ),
             ):

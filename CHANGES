@@ -183,7 +183,10 @@ CHANGES
       is compiled into Table objects so that consistency is at a maximum.
       
 - DDL
-    - the DDL() system has been greatly expanded:
+    - the DDL system has been greatly expanded.  the DDL() class
+      now extends the more generic DDLElement(), which forms the basis
+      of many new constructs:
+      
         - CreateTable()
         - DropTable()
         - AddConstraint()
@@ -192,15 +195,27 @@ CHANGES
         - DropIndex()
         - CreateSequence()
         - DropSequence()
-        - these support "on" and "execute-at()" just like
-          plain DDL() does.
+        
+       These support "on" and "execute-at()" just like plain DDL() 
+       does.  User-defined DDLElement subclasses can be created and 
+       linked to a compiler using the sqlalchemy.ext.compiler extension.
 
-    - The "on" callable passed to DDL() needs to accept **kw
-      arguments. In the case of MetaData before/after
-      create/drop, the list of Table objects for which
-      CREATE/DROP DDL is to be issued is passed as the kw
-      argument "tables". This is necessary for metadata-level
-      DDL that is dependent on the presence of specific tables.
+    - The signature of the "on" callable passed to DDL() and
+      DDLElement() is revised as follows:
+      
+        "ddl" - the DDLElement object itself.
+        "event" - the string event name.
+        "target" - previously "schema_item", the Table or 
+        MetaData object triggering the event.
+        "connection" - the Connection object in use for the operation.
+        **kw - keyword arguments.  In the case of MetaData before/after
+          create/drop, the list of Table objects for which
+          CREATE/DROP DDL is to be issued is passed as the kw
+          argument "tables". This is necessary for metadata-level
+          DDL that is dependent on the presence of specific tables.
+
+      - the "schema_item" attribute of DDL has been renamed to 
+        "target".
 
 - dialect refactor
     - Dialect modules are now broken into database dialects

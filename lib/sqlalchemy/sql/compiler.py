@@ -922,11 +922,11 @@ class DDLCompiler(engine.Compiled):
     def visit_ddl(self, ddl, **kwargs):
         # table events can substitute table and schema name
         context = ddl.context
-        if isinstance(ddl.schema_item, schema.Table):
+        if isinstance(ddl.target, schema.Table):
             context = context.copy()
 
             preparer = self.dialect.identifier_preparer
-            path = preparer.format_table_seq(ddl.schema_item)
+            path = preparer.format_table_seq(ddl.target)
             if len(path) == 1:
                 table, sch = path[0], ''
             else:
@@ -934,7 +934,7 @@ class DDLCompiler(engine.Compiled):
 
             context.setdefault('table', table)
             context.setdefault('schema', sch)
-            context.setdefault('fullname', preparer.format_table(ddl.schema_item))
+            context.setdefault('fullname', preparer.format_table(ddl.target))
         
         return ddl.statement % context
 

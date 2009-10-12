@@ -758,16 +758,16 @@ Or to any set of dialects::
     AddConstraint(constraint, on=('postgresql', 'mysql')).execute_at("after-create", users)
     DropConstraint(constraint, on=('postgresql', 'mysql')).execute_at("before-drop", users)
     
-When using a callable, the callable is passed the event name, the schema object operated upon, and the ``Connection`` object being used for the operation, as well as additional information as keyword arguments.  The callable can perform checks, such as whether or not a given item already exists:
+When using a callable, the callable is passed the ddl element, event name, the ``Table`` or ``MetaData`` object whose "create" or "drop" event is in progress, and the ``Connection`` object being used for the operation, as well as additional information as keyword arguments.  The callable can perform checks, such as whether or not a given item already exists.  Below we define ``should_create()`` and ``should_drop()`` callables that check for the presence of our named constraint:
 
 .. sourcecode:: python+sql
 
-    def should_create(event, schema_item, connection, **kw):
-        row = connection.execute("select relname from pg_class where relname='%s'" % schema_item.name).scalar()
-        return bool(row)
-    
-    def should_drop(event, schema_item, connection, **kw):
-        return not should_create(event, schema_item, connection, **kw)
+    def should_create(ddl, event, target, connection, **kw):
+        row = connection.execute("select conname from pg_constraint where conname='%s'" % ddl.element.name).scalar()
+        return not bool(row)
+
+    def should_drop(ddl, event, target, connection, **kw):
+        return not should_create(ddl, event, target, connection, **kw)
         
     AddConstraint(constraint, on=should_create).execute_at("after-create", users)
     DropConstraint(constraint, on=should_drop).execute_at("before-drop", users)

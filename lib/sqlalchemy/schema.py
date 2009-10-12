@@ -360,7 +360,7 @@ class Table(SchemaItem, expression.TableClause):
 
           event
             The event currently being handled
-          schema_item
+          target
             The ``Table`` object being created or dropped
           bind
             The ``Connection`` bueing used for DDL execution.
@@ -1250,10 +1250,12 @@ class Constraint(SchemaItem):
 
     @property
     def table(self):
-        if isinstance(self.parent, Table):
-            return self.parent
-        else:
-            raise exc.InvalidRequestError("This constraint is not bound to a table.")
+        try:
+            if isinstance(self.parent, Table):
+                return self.parent
+        except AttributeError:
+            pass
+        raise exc.InvalidRequestError("This constraint is not bound to a table.  Did you mean to call table.add_constraint(constraint) ?")
 
     def _set_parent(self, parent):
         self.parent = parent
@@ -1451,7 +1453,7 @@ class ForeignKeyConstraint(Constraint):
             fk._set_parent(col)
             
         if self.use_alter:
-            def supports_alter(event, schema_item, bind, **kw):
+            def supports_alter(ddl, event, schema_item, bind, **kw):
                 return table in set(kw['tables']) and bind.dialect.supports_alter
             AddConstraint(self, on=supports_alter).execute_at('after-create', table.metadata)
             DropConstraint(self, on=supports_alter).execute_at('before-drop', table.metadata)
@@ -1770,7 +1772,7 @@ class MetaData(SchemaItem):
 
           event
             The event currently being handled
-          schema_item
+          target
             The ``MetaData`` object being operated upon
           bind
             The ``Connection`` bueing used for DDL execution.
@@ -1917,10 +1919,10 @@ class DDLElement(expression.ClauseElement):
     supports_execution = True
     _autocommit = True
 
-    schema_item = None
+    target = None
     on = None
     
-    def execute(self, bind=None, schema_item=None):
+    def execute(self, bind=None, target=None):
         """Execute this DDL immediately.
 
         Executes the DDL statement in isolation using the supplied
@@ -1932,24 +1934,25 @@ class DDLElement(expression.ClauseElement):
           Optional, an ``Engine`` or ``Connection``.  If not supplied, a
           valid :class:`~sqlalchemy.engine.base.Connectable` must be present in the ``.bind`` property.
 
-        schema_item
-          Optional, defaults to None.  Will be passed to the ``on`` callable
-          criteria, if any, and may provide string expansion data for the
+        target
+          Optional, defaults to None.  The target SchemaItem for the 
+          execute call.  Will be passed to the ``on`` callable if any, 
+          and may also provide string expansion data for the
           statement. See ``execute_at`` for more information.
         """
 
         if bind is None:
             bind = _bind_or_error(self)
 
-        if self._should_execute(None, schema_item, bind):
-            return bind.execute(self.against(schema_item))
+        if self._should_execute(None, target, bind):
+            return bind.execute(self.against(target))
         else:
             bind.engine.logger.info("DDL execution skipped, criteria not met.")
 
-    def execute_at(self, event, schema_item):
+    def execute_at(self, event, target):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
 
-        Links this ``DDL`` to a ``Table`` or ``MetaData`` instance, executing
+        Links this ``DDLElement`` to a ``Table`` or ``MetaData`` instance, executing
         it when that schema item is created or dropped.  The DDL statement
         will be executed using the same Connection and transactional context
         as the Table create/drop itself.  The ``.bind`` property of this
@@ -1959,23 +1962,11 @@ class DDLElement(expression.ClauseElement):
           One of the events defined in the schema item's ``.ddl_events``;
           e.g. 'before-create', 'after-create', 'before-drop' or 'after-drop'
 
-        schema_item
-          A Table or MetaData instance
+        target
+          The Table or MetaData instance for which this DDLElement will
+          be associated with.
 
-        When operating on Table events, the following additional ``statement``
-        string substitions are available::
-
-            %(table)s  - the Table name, with any required quoting applied
-            %(schema)s - the schema name, with any required quoting applied
-            %(fullname)s - the Table name including schema, quoted if needed
-
-        The DDL's ``context``, if any, will be combined with the standard
-        substutions noted above.  Keys present in the context will override
-        the standard substitutions.
-
-        A DDL instance can be linked to any number of schema items. The
-        statement subsitution support allows for DDL instances to be used in a
-        template fashion.
+        A DDLElement instance can be linked to any number of schema items. 
 
         ``execute_at`` builds on the ``append_ddl_listener`` interface of
         MetaDta and Table objects.
@@ -1985,27 +1976,27 @@ class DDLElement(expression.ClauseElement):
         in a future release.
         """
 
-        if not hasattr(schema_item, 'ddl_listeners'):
+        if not hasattr(target, 'ddl_listeners'):
             raise exc.ArgumentError(
-                "%s does not support DDL events" % type(schema_item).__name__)
-        if event not in schema_item.ddl_events:
+                "%s does not support DDL events" % type(target).__name__)
+        if event not in target.ddl_events:
             raise exc.ArgumentError(
                 "Unknown event, expected one of (%s), got '%r'" %
-                (', '.join(schema_item.ddl_events), event))
-        schema_item.ddl_listeners[event].append(self)
+                (', '.join(target.ddl_events), event))
+        target.ddl_listeners[event].append(self)
         return self
 
     @expression._generative
-    def against(self, schema_item):
+    def against(self, target):
         """Return a copy of this DDL against a specific schema item."""
 
-        self.schema_item = schema_item
+        self.target = target
 
-    def __call__(self, event, schema_item, bind, **kw):
+    def __call__(self, event, target, bind, **kw):
         """Execute the DDL as a ddl_listener."""
 
-        if self._should_execute(event, schema_item, bind, **kw):
-            return bind.execute(self.against(schema_item))
+        if self._should_execute(event, target, bind, **kw):
+            return bind.execute(self.against(target))
 
     def _check_ddl_on(self, on):
         if (on is not None and
@@ -2014,7 +2005,7 @@ class DDLElement(expression.ClauseElement):
                 "Expected the name of a database dialect, a tuple of names, or a callable for "
                 "'on' criteria, got type '%s'." % type(on).__name__)
 
-    def _should_execute(self, event, schema_item, bind, **kw):
+    def _should_execute(self, event, target, bind, **kw):
         if self.on is None:
             return True
         elif isinstance(self.on, basestring):
@@ -2022,7 +2013,7 @@ class DDLElement(expression.ClauseElement):
         elif isinstance(self.on, (tuple, list, set)):
             return bind.engine.name in self.on
         else:
-            return self.on(event, schema_item, bind, **kw)
+            return self.on(self, event, target, bind, **kw)
 
     def bind(self):
         if self._bind:
@@ -2060,7 +2051,18 @@ class DDL(DDLElement):
 
       drop_spow = DDL('ALTER TABLE users SET secretpowers FALSE')
       connection.execute(drop_spow)
-      
+
+    When operating on Table events, the following ``statement``
+    string substitions are available::
+
+      %(table)s  - the Table name, with any required quoting applied
+      %(schema)s - the schema name, with any required quoting applied
+      %(fullname)s - the Table name including schema, quoted if needed
+
+    The DDL's ``context``, if any, will be combined with the standard
+    substutions noted above.  Keys present in the context will override
+    the standard substitutions.
+
     """
 
     __visit_name__ = "ddl"
@@ -2088,16 +2090,19 @@ class DDL(DDLElement):
 
             DDL('something', on=('postgresql', 'mysql'))
 
-          If a callable, it will be invoked with three positional arguments
+          If a callable, it will be invoked with four positional arguments
           as well as optional keyword arguments:
-
+            
+            ddl
+              This DDL element.
+              
             event
               The name of the event that has triggered this DDL, such as
               'after-create' Will be None if the DDL is executed explicitly.
 
-            schema_item
-              A SchemaItem instance, such as ``Table`` or ``MetaData``. May be
-              None if the DDL is executed explicitly.
+            target
+              The ``Table`` or ``MetaData`` object which is the target of 
+              this event. May be None if the DDL is executed explicitly.
 
             connection
               The ``Connection`` being used for DDL execution

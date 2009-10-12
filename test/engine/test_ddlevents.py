@@ -302,7 +302,7 @@ class DDLExecutionTest(TestBase):
             assert list(r) == [(1,)], py
 
         for py in ('ddl.execute()',
-                   'ddl.execute(schema_item=table)'):
+                   'ddl.execute(target=table)'):
             try:
                 r = eval(py)
                 assert False
@@ -312,7 +312,7 @@ class DDLExecutionTest(TestBase):
         for bind in engine, cx:
             ddl.bind = bind
             for py in ('ddl.execute()',
-                       'ddl.execute(schema_item=table)'):
+                       'ddl.execute(target=table)'):
                 r = eval(py)
                 assert list(r) == [(1,)], py
 
@@ -358,8 +358,8 @@ class DDLTest(TestBase, AssertsCompiledSQL):
         assert DDL('')._should_execute('x', tbl, cx)
         assert DDL('', on=target)._should_execute('x', tbl, cx)
         assert not DDL('', on='bogus')._should_execute('x', tbl, cx)
-        assert DDL('', on=lambda x,y,z: True)._should_execute('x', tbl, cx)
-        assert(DDL('', on=lambda x,y,z: z.engine.name != 'bogus').
+        assert DDL('', on=lambda d, x,y,z: True)._should_execute('x', tbl, cx)
+        assert(DDL('', on=lambda d, x,y,z: z.engine.name != 'bogus').
                _should_execute('x', tbl, cx))
 
     def test_repr(self):
