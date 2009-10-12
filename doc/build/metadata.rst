@@ -779,11 +779,12 @@ When using a callable, the callable is passed the ddl element, event name, the `
         PRIMARY KEY (user_id)
     )
 
-    select relname from pg_class where relname='users'
+    select conname from pg_constraint where conname='cst_user_name_length'
     ALTER TABLE users ADD CONSTRAINT cst_user_name_length  CHECK (length(user_name) >= 8){stop}
     
     {sql}users.drop(engine)
-    select relname from pg_class where relname='users'
+    select conname from pg_constraint where conname='cst_user_name_length'
+    ALTER TABLE users DROP CONSTRAINT cst_user_name_length
     DROP TABLE users{stop}
 
 Custom DDL
