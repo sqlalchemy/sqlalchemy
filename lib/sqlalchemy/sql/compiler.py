@@ -823,13 +823,12 @@ class SQLCompiler(engine.Compiled):
                         ):
                         
                         if implicit_returning:
-                            if isinstance(c.default, schema.Sequence):
+                            if c.default is not None and c.default.is_sequence:
                                 proc = self.process(c.default)
                                 if proc is not None:
                                     values.append((c, proc))
                                 self.returning.append(c)
-                            elif isinstance(c.default, schema.ColumnDefault) and \
-                                        isinstance(c.default.arg, sql.ClauseElement):
+                            elif c.default is not None and c.default.is_clause_element:
                                 values.append((c, self.process(c.default.arg.self_group())))
                                 self.returning.append(c)
                             elif c.default is not None:
@@ -842,21 +841,20 @@ class SQLCompiler(engine.Compiled):
                                 c.default is not None and \
                                     (
                                         self.dialect.supports_sequences or 
-                                        not isinstance(c.default, schema.Sequence)
+                                        not c.default.is_sequence
                                     )
                                 ) or self.dialect.preexecute_autoincrement_sequences:
 
                                 values.append((c, self._create_crud_bind_param(c, None)))
                                 self.prefetch.append(c)
 
-                    elif isinstance(c.default, schema.Sequence):
+                    elif c.default is not None and c.default.is_sequence:
                         proc = self.process(c.default)
                         if proc is not None:
                             values.append((c, proc))
                             if not c.primary_key:
                                 self.postfetch.append(c)
-                    elif isinstance(c.default, schema.ColumnDefault) and \
-                            isinstance(c.default.arg, sql.ClauseElement):
+                    elif c.default is not None and c.default.is_clause_element:
                         values.append((c, self.process(c.default.arg.self_group())))
                         
                         if not c.primary_key:
@@ -869,8 +867,8 @@ class SQLCompiler(engine.Compiled):
                         if not c.primary_key:
                             self.postfetch.append(c)
                 elif self.isupdate:
-                    if isinstance(c.onupdate, schema.ColumnDefault):
-                        if isinstance(c.onupdate.arg, sql.ClauseElement):
+                    if c.onupdate is not None and not c.onupdate.is_sequence:
+                        if c.onupdate.is_clause_element:
                             values.append((c, self.process(c.onupdate.arg.self_group())))
                             self.postfetch.append(c)
                         else:

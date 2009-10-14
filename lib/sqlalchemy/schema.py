@@ -1043,6 +1043,8 @@ class DefaultGenerator(SchemaItem):
 
     __visit_name__ = 'default_generator'
 
+    is_sequence = False
+    
     def __init__(self, for_update=False):
         self.for_update = for_update
 
@@ -1084,7 +1086,15 @@ class ColumnDefault(DefaultGenerator):
         if util.callable(arg):
             arg = self._maybe_wrap_callable(arg)
         self.arg = arg
-
+    
+    @util.memoized_property
+    def is_callable(self):
+        return util.callable(self.arg)
+        
+    @util.memoized_property
+    def is_clause_element(self):
+        return isinstance(self.arg, expression.ClauseElement)
+        
     def _maybe_wrap_callable(self, fn):
         """Backward compat: Wrap callables that don't accept a context."""
 
@@ -1133,6 +1143,8 @@ class Sequence(DefaultGenerator):
 
     __visit_name__ = 'sequence'
 
+    is_sequence = True
+    
     def __init__(self, name, start=None, increment=None, schema=None,
                  optional=False, quote=None, metadata=None, for_update=False):
         super(Sequence, self).__init__(for_update=for_update)
@@ -1143,6 +1155,14 @@ class Sequence(DefaultGenerator):
         self.quote = quote
         self.schema = schema
         self.metadata = metadata
+
+    @util.memoized_property
+    def is_callable(self):
+        return False
+
+    @util.memoized_property
+    def is_clause_element(self):
+        return False
 
     def __repr__(self):
         return "Sequence(%s)" % ', '.join(
