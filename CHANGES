@@ -482,6 +482,13 @@ CHANGES
       Trusted_Connection when constructing pyodbc connect
       arguments [ticket:1561]
 
+- ext 
+    - A column can be added to a joined-table declarative 
+      superclass after the class has been constructed 
+      (i.e. via class-level attribute assignment), and
+      the column will be propagated down to 
+      subclasses. [ticket:1570]  This is the reverse
+      situation as that of [ticket:1523], fixed in 0.5.6.
       
 0.5.6
 =====

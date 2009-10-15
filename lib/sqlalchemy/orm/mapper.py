@@ -559,6 +559,7 @@ class Mapper(object):
                         if mc is not None:
                             # if the column is in the local table but not the mapped table,
                             # this corresponds to adding a column after the fact to the local table.
+                            # [ticket:1523]
                             self.mapped_table._reset_exported()
                         mc = self.mapped_table.corresponding_column(c)
                         if mc is None:
@@ -577,7 +578,24 @@ class Mapper(object):
 
         if isinstance(prop, ColumnProperty):
             col = self.mapped_table.corresponding_column(prop.columns[0])
-            # col might not be present! the selectable given to the mapper need not include "deferred"
+            
+            # if the column is not present in the mapped table, 
+            # test if a column has been added after the fact to the parent table
+            # (or their parent, etc.)
+            # [ticket:1570]
+            if col is None and self.inherits:
+                path = [self]
+                for m in self.inherits.iterate_to_root():
+                    col = m.local_table.corresponding_column(prop.columns[0])
+                    if col is not None:
+                        for m2 in path:
+                            m2.mapped_table._reset_exported()
+                        col = self.mapped_table.corresponding_column(prop.columns[0])
+                        break
+                    path.append(m)
+                
+            # otherwise, col might not be present! the selectable given 
+            # to the mapper need not include "deferred"
             # columns (included in zblog tests)
             if col is None:
                 col = prop.columns[0]
