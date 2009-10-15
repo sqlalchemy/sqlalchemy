@@ -82,7 +82,7 @@ def instance_logger(instance, echoflag=None):
             default_logging(name)
             l.setLevel(logging.INFO)
         elif echoflag is False:
-            l.setLevel(logging.NOTSET)
+            l.setLevel(logging.WARN)
     else:
         l = logging.getLogger(name)
     instance._should_log_debug = l.isEnabledFor(logging.DEBUG)
