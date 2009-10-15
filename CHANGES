@@ -388,7 +388,10 @@ CHANGES
 
     - using new dialect.initialize() feature to set up
       version-dependent behavior.
-
+    
+    - using types.BigInteger with Oracle will generate
+      NUMBER(19) [ticket:1125]
+      
 - firebird
     - the keys() method of RowProxy() now returns the result
       column names *normalized* to be SQLAlchemy case
@@ -463,7 +466,10 @@ CHANGES
 
     - AbstractType.get_search_list() is removed - the games
       that was used for are no longer necessary.
-
+    
+    - Added a generic BigInteger type, compiles to 
+      BIGINT or NUMBER(19). [ticket:1125]
+      
 0.5.7
 =====
 - orm

@@ -132,7 +132,6 @@ class NCLOB(sqltypes.Text):
 VARCHAR2 = VARCHAR
 NVARCHAR2 = NVARCHAR
 
-
 class NUMBER(sqltypes.Numeric, sqltypes.Integer):
     __visit_name__ = 'NUMBER'
     
@@ -220,16 +219,22 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     def visit_DOUBLE_PRECISION(self, type_):
         return self._generate_numeric(type_, "DOUBLE PRECISION")
         
-    def visit_NUMBER(self, type_):
-        return self._generate_numeric(type_, "NUMBER")
+    def visit_NUMBER(self, type_, **kw):
+        return self._generate_numeric(type_, "NUMBER", **kw)
     
-    def _generate_numeric(self, type_, name):
-        if type_.precision is None:
+    def _generate_numeric(self, type_, name, precision=None, scale=None):
+        if precision is None:
+            precision = type_.precision
+            
+        if scale is None:
+            scale = getattr(type_, 'scale', None)
+            
+        if precision is None:
             return name
-        elif type_.scale is None:
-            return "%(name)s(%(precision)s)" % {'name':name,'precision': type_.precision}
+        elif scale is None:
+            return "%(name)s(%(precision)s)" % {'name':name,'precision': precision}
         else:
-            return "%(name)s(%(precision)s, %(scale)s)" % {'name':name,'precision': type_.precision, 'scale' : type_.scale}
+            return "%(name)s(%(precision)s, %(scale)s)" % {'name':name,'precision': precision, 'scale' : scale}
         
     def visit_VARCHAR(self, type_):
         return "VARCHAR(%(length)s)" % {'length' : type_.length}
@@ -245,7 +250,10 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_binary(self, type_):
         return self.visit_BLOB(type_)
-    
+
+    def visit_big_integer(self, type_):
+        return self.visit_NUMBER(type_, precision=19)
+        
     def visit_boolean(self, type_):
         return self.visit_SMALLINT(type_)
     

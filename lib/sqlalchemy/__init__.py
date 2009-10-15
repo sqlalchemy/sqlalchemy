@@ -50,6 +50,7 @@ from sqlalchemy.sql import (
 from sqlalchemy.types import (
     BLOB,
     BOOLEAN,
+    BigInteger,
     Binary,
     Boolean,
     CHAR,

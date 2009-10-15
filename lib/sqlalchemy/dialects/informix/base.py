@@ -7,7 +7,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 """Support for the Informix database.
 
+This dialect is *not* ported to SQLAlchemy 0.6.
+
 This dialect is *not* tested on SQLAlchemy 0.6.
+
 
 """
 
