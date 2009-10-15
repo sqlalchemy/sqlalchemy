@@ -1390,7 +1390,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         # select both
         userlist = session.query(User).filter(
-            users.c.id.in_([u.id, u2.id])).order_by([users.c.name]).all()
+            users.c.id.in_([u.id, u2.id])).order_by(users.c.name).all()
 
         eq_(u.id, userlist[0].id)
         eq_(userlist[0].name, 'modifiedname')

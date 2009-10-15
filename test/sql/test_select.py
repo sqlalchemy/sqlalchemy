@@ -296,10 +296,10 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         except exc.InvalidRequestError, err:
             assert str(err) == "Select objects don't have a type.  Call as_scalar() on this Select object to return a 'scalar' version of this Select.", str(err)
 
-        s = select([table1.c.myid], scalar=True, correlate=False)
+        s = select([table1.c.myid], correlate=False).as_scalar()
         self.assert_compile(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) AS anon_1 FROM mytable")
 
-        s = select([table1.c.myid], scalar=True)
+        s = select([table1.c.myid]).as_scalar()
         self.assert_compile(select([table2, s]), "SELECT myothertable.otherid, myothertable.othername, (SELECT mytable.myid FROM mytable) AS anon_1 FROM myothertable")
 
         s = select([table1.c.myid]).correlate(None).as_scalar()
@@ -356,15 +356,15 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         "FROM places, zips WHERE zips.zipcode = :zipcode_3 ORDER BY dist, places.nm")
 
         zalias = zips.alias('main_zip')
-        qlat = select([zips.c.latitude], zips.c.zipcode == zalias.c.zipcode, scalar=True)
-        qlng = select([zips.c.longitude], zips.c.zipcode == zalias.c.zipcode, scalar=True)
+        qlat = select([zips.c.latitude], zips.c.zipcode == zalias.c.zipcode).as_scalar()
+        qlng = select([zips.c.longitude], zips.c.zipcode == zalias.c.zipcode).as_scalar()
         q = select([places.c.id, places.c.nm, zalias.c.zipcode, func.latlondist(qlat, qlng).label('dist')],
                          order_by = ['dist', places.c.nm]
                          )
         self.assert_compile(q, "SELECT places.id, places.nm, main_zip.zipcode, latlondist((SELECT zips.latitude FROM zips WHERE zips.zipcode = main_zip.zipcode), (SELECT zips.longitude FROM zips WHERE zips.zipcode = main_zip.zipcode)) AS dist FROM places, zips AS main_zip ORDER BY dist, places.nm")
 
         a1 = table2.alias('t2alias')
-        s1 = select([a1.c.otherid], table1.c.myid==a1.c.otherid, scalar=True)
+        s1 = select([a1.c.otherid], table1.c.myid==a1.c.otherid).as_scalar()
         j1 = table1.join(table2, table1.c.myid==table2.c.otherid)
         s2 = select([table1, s1], from_obj=j1)
         self.assert_compile(s2, "SELECT mytable.myid, mytable.name, mytable.description, (SELECT t2alias.otherid FROM myothertable AS t2alias WHERE mytable.myid = t2alias.otherid) AS anon_1 FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")

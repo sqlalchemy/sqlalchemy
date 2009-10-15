@@ -10,7 +10,11 @@ from test.orm import _base
 def produce_test(parent, child, direction):
     """produce a testcase for A->B->C inheritance with a self-referential
     relationship between two of the classes, using either one-to-many or
-    many-to-one."""
+    many-to-one.
+    
+    the old "no discriminator column" pattern is used.
+    
+    """
     class ABCTest(_base.MappedTest):
         @classmethod
         def define_tables(cls, metadata):
@@ -55,6 +59,8 @@ def produce_test(parent, child, direction):
                 child_table.update(values={child_table.c.parent_id:None}).execute()
             super(ABCTest, self).teardown()
 
+
+        @testing.uses_deprecated("fold_equivalents is deprecated.")
         def test_roundtrip(self):
             parent_table = {"a":ta, "b":tb, "c": tc}[parent]
             child_table = {"a":ta, "b":tb, "c": tc}[child]

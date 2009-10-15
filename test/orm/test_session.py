@@ -676,10 +676,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert c.scalar("select count(1) from users") == 1
 
 
-    @testing.uses_deprecated()
     @engines.close_open_connections
     @testing.resolve_artifact_names
-    def test_save_update_delete(self):
+    def test_add_delete(self):
 
         s = create_session()
         mapper(User, users, properties={
@@ -689,7 +688,6 @@ class SessionTest(_fixtures.FixtureTest):
 
         user = User(name='u1')
 
-        assert_raises_message(sa.exc.InvalidRequestError, "is not persisted", s.update, user)
         assert_raises_message(sa.exc.InvalidRequestError, "is not persisted", s.delete, user)
 
         s.add(user)
@@ -715,8 +713,6 @@ class SessionTest(_fixtures.FixtureTest):
         s.add(user)
         assert user in s
         assert user not in s.dirty
-
-        assert_raises_message(sa.exc.InvalidRequestError, "is already persistent", s.save, user)
 
         s2 = create_session()
         assert_raises_message(sa.exc.InvalidRequestError, "is already attached to session", s2.delete, user)
@@ -1406,12 +1402,6 @@ class SessionInterface(testing.TestBase):
         raises_('merge', user_arg)
 
         raises_('refresh', user_arg)
-
-        raises_('save', user_arg)
-
-        raises_('save_or_update', user_arg)
-
-        raises_('update', user_arg)
 
         instance_methods = self._public_session_methods() - self._class_methods
 

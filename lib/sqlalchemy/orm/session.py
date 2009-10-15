@@ -122,10 +122,6 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       that is local to the ``sessionmaker()`` function, and is not sent
       directly to the constructor for ``Session``.
 
-    echo_uow
-      Deprecated.  Use
-      ``logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)``.
-
     _enable_transaction_accounting
       Defaults to ``True``.  A legacy-only flag which when ``False``
       disables *all* 0.5-style object accounting on transaction boundaries,
@@ -169,12 +165,6 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       present until they are removed using expunge(), clear(), or purge().
 
     """
-    if 'transactional' in kwargs:
-        util.warn_deprecated(
-            "The 'transactional' argument to sessionmaker() is deprecated; "
-            "use autocommit=True|False instead.")
-        autocommit = not kwargs.pop('transactional')
-
     kwargs['bind'] = bind
     kwargs['autoflush'] = autoflush
     kwargs['autocommit'] = autocommit
@@ -525,14 +515,14 @@ class Session(object):
 
     public_methods = (
         '__contains__', '__iter__', 'add', 'add_all', 'begin', 'begin_nested',
-        'clear', 'close', 'commit', 'connection', 'delete', 'execute', 'expire',
+        'close', 'commit', 'connection', 'delete', 'execute', 'expire',
         'expire_all', 'expunge', 'expunge_all', 'flush', 'get_bind', 'is_modified', 
-        'merge', 'query', 'refresh', 'rollback', 'save',
-        'save_or_update', 'scalar', 'update')
+        'merge', 'query', 'refresh', 'rollback', 
+        'scalar')
 
     def __init__(self, bind=None, autoflush=True, expire_on_commit=True,
                 _enable_transaction_accounting=True,
-                 autocommit=False, twophase=False, echo_uow=None,
+                 autocommit=False, twophase=False, 
                  weak_identity_map=True, binds=None, extension=None, query_cls=query.Query):
         """Construct a new Session.
 
@@ -541,12 +531,6 @@ class Session(object):
 
         """
         
-        if echo_uow is not None:
-            util.warn_deprecated(
-                "echo_uow is deprecated. "
-                "Use logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG).")
-            log.class_logger(UOWTransaction, echo_uow)
-
         if weak_identity_map:
             self._identity_cls = identity.WeakInstanceDict
         else:
@@ -795,8 +779,6 @@ class Session(object):
         self._new = {}
         self._deleted = {}
 
-    clear = util.deprecated("Use session.expunge_all()")(expunge_all)
-
     # TODO: need much more test coverage for bind_mapper() and similar !
     # TODO: + crystalize + document resolution order vis. bind_mapper/bind_table
 
@@ -1039,43 +1021,11 @@ class Session(object):
         self.identity_map.discard(state)
         self._deleted.pop(state, None)
 
-    @util.deprecated("Use session.add()")
-    def save(self, instance):
-        """Add a transient (unsaved) instance to this ``Session``.
-
-        This operation cascades the `save_or_update` method to associated
-        instances if the relation is mapped with ``cascade="save-update"``.
-
-
-        """
-        state = _state_for_unsaved_instance(instance)
-        self._save_impl(state)
-        self._cascade_save_or_update(state)
-
     def _save_without_cascade(self, instance):
         """Used by scoping.py to save on init without cascade."""
 
         state = _state_for_unsaved_instance(instance, create=True)
         self._save_impl(state)
-
-    @util.deprecated("Use session.add()")
-    def update(self, instance):
-        """Bring a detached (saved) instance into this ``Session``.
-
-        If there is a persistent instance with the same instance key, but
-        different identity already associated with this ``Session``, an
-        InvalidRequestError exception is thrown.
-
-        This operation cascades the `save_or_update` method to associated
-        instances if the relation is mapped with ``cascade="save-update"``.
-
-        """
-        try:
-            state = attributes.instance_state(instance)
-        except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance)
-        self._update_impl(state)
-        self._cascade_save_or_update(state)
 
     def add(self, instance):
         """Place an object in the ``Session``.
@@ -1099,9 +1049,6 @@ class Session(object):
     def _save_or_update_state(self, state):
         self._save_or_update_impl(state)
         self._cascade_save_or_update(state)
-
-    save_or_update = (
-        util.deprecated("Use session.add()")(add))
 
     def _cascade_save_or_update(self, state):
         for state, mapper in _cascade_unknown_state_iterator('save-update', state, halt_on=lambda c:c in self):

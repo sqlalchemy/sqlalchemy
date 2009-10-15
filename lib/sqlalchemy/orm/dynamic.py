@@ -236,7 +236,7 @@ class AppenderMixin(object):
         query = query.with_parent(instance, self.attr.key)
 
         if self.attr.order_by:
-            query = query.order_by(self.attr.order_by)
+            query = query.order_by(*self.attr.order_by)
         return query
 
     def append(self, item):

@@ -819,19 +819,13 @@ class PickleType(MutableType, TypeDecorator):
 
         :param mutable: defaults to True; implements
           :meth:`AbstractType.is_mutable`.   When ``True``, incoming
-          objects *must* provide an ``__eq__()`` method which
+          objects should provide an ``__eq__()`` method which
           performs the desired deep comparison of members, or the
-          ``comparator`` argument must be present.  Otherwise,
-          comparisons are done by comparing pickle strings.
-          The pickle form of comparison is a deprecated usage and will
-          raise a warning.
+          ``comparator`` argument must be present.  
 
         :param comparator: optional. a 2-arg callable predicate used
-          to compare values of this type.  Otherwise, either
-          the == operator is used to compare values, or if mutable==True
-          and the incoming object does not implement __eq__(), the value
-          of pickle.dumps(obj) is compared.  The last option is a deprecated
-          usage and will raise a warning.
+          to compare values of this type.  Otherwise, 
+          the == operator is used to compare values.
 
         """
         self.protocol = protocol

@@ -95,6 +95,54 @@ CHANGES
      The internal BackRef() is gone and backref() returns a plain 
      tuple that is understood by RelationProperty.
      
+   - Deprecated or removed:
+      * 'allow_null_pks' flag on mapper() is deprecated.  It does
+        nothing now and the setting is "on" in all cases.
+      * 'transactional' flag on sessionmaker() and others is
+        removed. Use 'autocommit=True' to indicate 'transactional=False'.
+      * 'polymorphic_fetch' argument on mapper() is removed.
+        Loading can be controlled using the 'with_polymorphic'
+        option.
+      * 'select_table' argument on mapper() is removed.  Use 
+        'with_polymorphic=("*", <some selectable>)' for this 
+        functionality.
+      * 'proxy' argument on synonym() is removed.  This flag
+        did nothing throughout 0.5, as the "proxy generation"
+        behavior is now automatic.
+      * Passing a single list of elements to eagerload(),
+        eagerload_all(), contains_eager(), lazyload(),
+        defer(), and undefer() instead of multiple positional 
+        *args is deprecated.
+      * Passing a single list of elements to query.order_by(),
+        query.group_by(), query.join(), or query.outerjoin()
+        instead of multiple positional *args is deprecated.
+      * query.iterate_instances() is removed.  Use query.instances().
+      * Query.query_from_parent() is removed.  Use the
+        sqlalchemy.orm.with_parent() function to produce a 
+        "parent" clause, or alternatively query.with_parent().
+      * query._from_self() is removed, use query.from_self()
+        instead.
+      * the "comparator" argument to composite() is removed.
+        Use "comparator_factory".
+      * RelationProperty._get_join() is removed.
+      * the 'echo_uow' flag on Session is removed.  Use
+        logging on the "sqlalchemy.orm.unitofwork" name.
+      * session.clear() is removed.  use session.expunge_all().
+      * session.save(), session.update(), session.save_or_update()
+        are removed.  Use session.add() and session.add_all().
+      * the "objects" flag on session.flush() remains deprecated.
+      * the "dont_load=True" flag on session.merge() is deprecated
+        in favor of "load=False".
+      * ScopedSession.mapper remains deprecated.  See the 
+        usage recipe at 
+        http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
+      * passing an InstanceState (internal SQLAlchemy state object) to
+        attributes.init_collection() or attributes.get_history() is 
+        deprecated.  These functions are public API and normally
+        expect a regular mapped object instance.
+      * the 'engine' parameter to declarative_base() is removed.
+        Use the 'bind' keyword argument.
+        
 - sql
     - the autoincrement flag on column now indicates the column
       which should be linked to cursor.lastrowid, if that method
@@ -144,7 +192,17 @@ CHANGES
       of bind parameters currently being processed.  This
       dict is available in the same way regardless of 
       single-execute or executemany-style statement execution.
-      
+    
+    - Deprecated or removed:
+        * "scalar" flag on select() is removed, use 
+          select.as_scalar().
+        * "shortname" attribute on bindparam() is removed.
+        * postgres_returning, firebird_returning flags on 
+          insert(), update(), delete() are deprecated, use
+          the new returning() method.
+        * fold_equivalents flag on join is deprecated (will remain
+          until [ticket:1131] is implemented)
+    
 - engines
   - transaction isolation level may be specified with
     create_engine(... isolation_level="..."); available on
@@ -161,7 +219,11 @@ CHANGES
     disabled for a particular engine even if logging
     for "sqlalchemy.engine" is enabled overall.  Note that the
     default setting of "echo" is `None`. [ticket:1554]
-    
+  
+  - deprecated or removed
+      * result.last_inserted_ids() is deprecated.  Use 
+        result.inserted_primary_key
+            
 - schema
     - deprecated MetaData.connect() and
       ThreadLocalMetaData.connect() have been removed - send
@@ -169,7 +231,9 @@ CHANGES
 
     - deprecated metadata.table_iterator() method removed (use
       sorted_tables)
-
+    
+    - deprecated PassiveDefault - use DefaultClause.
+    
     - the "metadata" argument is removed from DefaultGenerator
       and subclasses, but remains locally present on Sequence,
       which is a standalone construct in DDL.
@@ -354,7 +418,15 @@ CHANGES
       MySQLdb can't handle % signs in SQL when executemany() is used,
       and SQLA doesn't want to add overhead just to treat that one 
       non-existent use case. [ticket:1279]
-
+    
+    - the BINARY and MSBinary types now generate "BINARY" in all
+      cases.  Omitting the "length" parameter will generate
+      "BINARY" with no length.  Use BLOB to generate an unlengthed
+      binary column.
+      
+    - the "quoting='quoted'" argument to MSEnum/ENUM is deprecated.
+      It's best to rely upon the automatic quoting.
+      
 - oracle
     - unit tests pass 100% with cx_oracle !
 

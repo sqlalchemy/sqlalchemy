@@ -143,9 +143,6 @@ class CompositeProperty(ColumnProperty):
     """subclasses ColumnProperty to provide composite type support."""
     
     def __init__(self, class_, *columns, **kwargs):
-        if 'comparator' in kwargs:
-            util.warn_deprecated("The 'comparator' argument to CompositeProperty is deprecated.  Use comparator_factory.")
-            kwargs['comparator_factory'] = kwargs['comparator']
         super(CompositeProperty, self).__init__(*columns, **kwargs)
         self._col_position_map = util.column_dict((c, i) for i, c in enumerate(columns))
         self.composite_class = class_
@@ -645,7 +642,7 @@ class RelationProperty(StrategizedProperty):
                 if obj is not None:
                     dest_list.append(obj)
             if not load:
-                coll = attributes.init_collection(dest_state, self.key)
+                coll = attributes.init_state_collection(dest_state, dest_dict, self.key)
                 for c in dest_list:
                     coll.append_without_event(c)
             else:
@@ -1152,20 +1149,6 @@ class RelationProperty(StrategizedProperty):
         return (primaryjoin, secondaryjoin, 
                 source_selectable, 
                 dest_selectable, secondary, target_adapter)
-
-    def _get_join(self, parent, primary=True, secondary=True, polymorphic_parent=True):
-        """deprecated.  use primary_join_against(), secondary_join_against(), full_join_against()"""
-
-        pj, sj, source, dest, secondarytable, adapter = self._create_joins(source_polymorphic=polymorphic_parent)
-
-        if primary and secondary:
-            return pj & sj
-        elif primary:
-            return pj
-        elif secondary:
-            return sj
-        else:
-            raise AssertionError("illegal condition")
 
     def register_dependencies(self, uowcommit):
         if not self.viewonly:

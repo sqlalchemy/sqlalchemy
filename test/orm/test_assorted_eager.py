@@ -400,7 +400,7 @@ class EagerTest4(_base.MappedTest):
              join('employees').
              filter(Employee.name.startswith('J')).
              distinct().
-             order_by([sa.desc(Department.name)]))
+             order_by(sa.desc(Department.name)))
 
         eq_(q.count(), 2)
         assert q[0] is d2

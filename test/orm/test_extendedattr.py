@@ -266,27 +266,27 @@ class UserDefinedExtensionTest(_base.ORMTest):
             f1 = Foo()
             f1.name = 'f1'
 
-            eq_(attributes.get_history(attributes.instance_state(f1), 'name'), (['f1'], (), ()))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'name'), (['f1'], (), ()))
 
             b1 = Bar()
             b1.name = 'b1'
             f1.bars.append(b1)
-            eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b1], [], []))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ([b1], [], []))
 
             attributes.instance_state(f1).commit_all(attributes.instance_dict(f1))
             attributes.instance_state(b1).commit_all(attributes.instance_dict(b1))
 
-            eq_(attributes.get_history(attributes.instance_state(f1), 'name'), ((), ['f1'], ()))
-            eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ((), [b1], ()))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'name'), ((), ['f1'], ()))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ((), [b1], ()))
 
             f1.name = 'f1mod'
             b2 = Bar()
             b2.name = 'b2'
             f1.bars.append(b2)
-            eq_(attributes.get_history(attributes.instance_state(f1), 'name'), (['f1mod'], (), ['f1']))
-            eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b2], [b1], []))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'name'), (['f1mod'], (), ['f1']))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ([b2], [b1], []))
             f1.bars.remove(b1)
-            eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b2], [], [b1]))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ([b2], [], [b1]))
 
     def test_null_instrumentation(self):
         class Foo(MyBaseClass):

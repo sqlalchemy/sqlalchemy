@@ -167,14 +167,6 @@ def create_session(bind=None, **kwargs):
     create_session().
 
     """
-    if 'transactional' in kwargs:
-        sa_util.warn_deprecated(
-            "The 'transactional' argument to sessionmaker() is deprecated; "
-            "use autocommit=True|False instead.")
-        if 'autocommit' in kwargs:
-            raise TypeError('Specify autocommit *or* transactional, not both.')
-        kwargs['autocommit'] = not kwargs.pop('transactional')
-
     kwargs.setdefault('autoflush', False)
     kwargs.setdefault('autocommit', True)
     kwargs.setdefault('expire_on_commit', False)
@@ -688,10 +680,6 @@ def mapper(class_, local_table=None, *args, **params):
         A value which will be stored in the Column denoted by polymorphic_on,
         corresponding to the *class identity* of this mapper.
 
-      polymorphic_fetch
-        Deprecated. Unloaded columns load as deferred in all cases; loading
-        can be controlled using the "with_polymorphic" option.
-
       properties
         A dictionary mapping the string names of object attributes to
         ``MapperProperty`` instances, which define the persistence behavior of
@@ -735,10 +723,6 @@ def mapper(class_, local_table=None, *args, **params):
         <selectable> argument is required, since it usually requires more
         complex UNION queries.
 
-      select_table
-        Deprecated.  Synonymous with
-        ``with_polymorphic=('*', <selectable>)``.
-
       version_id_col
         A ``Column`` which must have an integer type that will be used to keep
         a running *version id* of mapped entities in the database.  this is
@@ -749,7 +733,7 @@ def mapper(class_, local_table=None, *args, **params):
     """
     return Mapper(class_, local_table, *args, **params)
 
-def synonym(name, map_column=False, descriptor=None, comparator_factory=None, proxy=False):
+def synonym(name, map_column=False, descriptor=None, comparator_factory=None):
     """Set up `name` as a synonym to another mapped property.
 
     Used with the ``properties`` dictionary sent to  :func:`~sqlalchemy.orm.mapper`.
@@ -785,10 +769,6 @@ def synonym(name, map_column=False, descriptor=None, comparator_factory=None, pr
     The column named ``status`` will be mapped to the attribute named
     ``_status``, and the ``status`` attribute on ``MyClass`` will be used to
     proxy access to the column-based attribute.
-
-    The `proxy` keyword argument is deprecated and currently does nothing;
-    synonyms now always establish an attribute getter/setter function if one
-    is not already available.
 
     """
     return SynonymProperty(name, map_column=map_column, descriptor=descriptor, comparator_factory=comparator_factory)
@@ -868,7 +848,7 @@ def extension(ext):
     """
     return ExtensionOption(ext)
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
+@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def eagerload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
     name into an eager load.
@@ -878,7 +858,7 @@ def eagerload(*keys):
     """
     return strategies.EagerLazyOption(keys, lazy=False)
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
+@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def eagerload_all(*keys):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path into an eager load.
@@ -895,7 +875,7 @@ def eagerload_all(*keys):
     """
     return strategies.EagerLazyOption(keys, lazy=False, chained=True)
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
+@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
     name into a lazy load.
@@ -924,7 +904,7 @@ def contains_alias(alias):
     """
     return AliasOption(alias)
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
+@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def contains_eager(*keys, **kwargs):
     """Return a ``MapperOption`` that will indicate to the query that
     the given attribute will be eagerly loaded.
@@ -944,7 +924,7 @@ def contains_eager(*keys, **kwargs):
 
     return (strategies.EagerLazyOption(keys, lazy=False, propagate_to_loaders=False), strategies.LoadEagerFromAliasOption(keys, alias=alias))
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
+@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def defer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the
     given name into a deferred load.
@@ -953,7 +933,7 @@ def defer(*keys):
     """
     return strategies.DeferredOption(keys, defer=True)
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='pending')
+@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def undefer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the
     given name into a non-deferred (regular column) load.

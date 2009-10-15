@@ -840,8 +840,7 @@ class BINARY(_BinaryType):
         This is a fixed length type, and short values will be right-padded
         with a server-version-specific pad value.
 
-        :param length: Maximum data length, in bytes.  If length is not
-          specified, this will generate a BLOB.  This usage is deprecated.
+        :param length: Maximum data length, in bytes. 
 
         """
         super(BINARY, self).__init__(length=length, **kw)
@@ -923,7 +922,7 @@ class ENUM(_StringType):
           character, then use 'quoted' mode.  Otherwise, use 'unquoted' mode.
 
           'quoted': values in enums are already quoted, they will be used
-          directly when generating the schema.
+          directly when generating the schema - this usage is deprecated.
 
           'unquoted': values in enums are not quoted, they will be escaped and
           surrounded by single quotes when generating the schema.
@@ -935,7 +934,7 @@ class ENUM(_StringType):
         """
         self.quoting = kw.pop('quoting', 'auto')
 
-        if self.quoting == 'auto':
+        if self.quoting == 'auto' and len(enums):
             # What quoting character are we using?
             q = None
             for e in enums:
@@ -952,7 +951,7 @@ class ENUM(_StringType):
                 self.quoting = 'quoted'
 
         if self.quoting == 'quoted':
-            util.warn_pending_deprecation(
+            util.warn_deprecated(
                 'Manually quoting ENUM value literals is deprecated.  Supply '
                 'unquoted values and use the quoting= option in cases of '
                 'ambiguity.')
@@ -1572,7 +1571,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.length:
             return "BINARY(%d)" % type_.length
         else:
-            return self.visit_BLOB(type_)
+            return "BINARY"
     
     def visit_BLOB(self, type_):
         if type_.length:

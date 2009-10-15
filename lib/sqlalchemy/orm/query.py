@@ -508,34 +508,6 @@ class Query(object):
                 ).identity_key_from_primary_key(ident)
         return self._get(key, ident)
 
-    @classmethod
-    @util.deprecated('Deprecated.  Use sqlalchemy.orm.with_parent '
-                     'in conjunction with filter().')
-    def query_from_parent(cls, instance, property, **kwargs):
-        """Return a new Query with criterion corresponding to a parent instance.
-
-        Return a newly constructed Query object, with criterion corresponding
-        to a relationship to the given parent instance.
-
-        instance
-          a persistent or detached instance which is related to class
-          represented by this query.
-
-         property
-           string name of the property which relates this query's class to the
-           instance.
-
-         \**kwargs
-           all extra keyword arguments are propagated to the constructor of
-           Query.
-
-        """
-        mapper = object_mapper(instance)
-        prop = mapper.get_property(property, resolve_synonyms=True)
-        target = prop.mapper
-        criterion = prop.compare(operators.eq, instance, value_is_parent=True)
-        return Query(target, **kwargs).filter(criterion)
-
     @_generative()
     def correlate(self, *args):
         self._correlate = self._correlate.union(_orm_selectable(s) for s in args)
@@ -625,8 +597,6 @@ class Query(object):
         if entities:
             q._set_entities(entities)
         return q
-
-    _from_self = from_self
 
     @_generative()
     def _from_selectable(self, fromclause):
@@ -750,7 +720,7 @@ class Query(object):
 
 
     @_generative(_no_statement_condition, _no_limit_offset)
-    @util.accepts_a_list_as_starargs(list_deprecation='pending')
+    @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def order_by(self, *criterion):
         """apply one or more ORDER BY criterion to the query and return the newly resulting ``Query``"""
 
@@ -765,7 +735,7 @@ class Query(object):
                 self._order_by = self._order_by + criterion
 
     @_generative(_no_statement_condition, _no_limit_offset)
-    @util.accepts_a_list_as_starargs(list_deprecation='pending')
+    @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def group_by(self, *criterion):
         """apply one or more GROUP BY criterion to the query and return the newly resulting ``Query``"""
 
@@ -883,7 +853,7 @@ class Query(object):
                     expression.except_all(*([self]+ list(q)))
                 )
 
-    @util.accepts_a_list_as_starargs(list_deprecation='pending')
+    @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def join(self, *props, **kwargs):
         """Create a join against this ``Query`` object's criterion
         and apply generatively, returning the newly resulting ``Query``.
@@ -950,7 +920,7 @@ class Query(object):
             raise TypeError("unknown arguments: %s" % ','.join(kwargs.iterkeys()))
         return self._join(props, outerjoin=False, create_aliases=aliased, from_joinpoint=from_joinpoint)
 
-    @util.accepts_a_list_as_starargs(list_deprecation='pending')
+    @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def outerjoin(self, *props, **kwargs):
         """Create a left outer join against this ``Query`` object's criterion
         and apply generatively, retunring the newly resulting ``Query``.
@@ -1417,7 +1387,6 @@ class Query(object):
 
             if not self._yield_per:
                 break
-    iterate_instances = util.deprecated()(instances)
 
     def _get(self, key=None, ident=None, refresh_state=None, lockmode=None, only_load_props=None, passive=None):
         lockmode = lockmode or self._lockmode

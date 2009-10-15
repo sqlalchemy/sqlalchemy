@@ -1235,8 +1235,10 @@ class DefaultClause(FetchedValue):
     def __repr__(self):
         return "DefaultClause(%r, for_update=%r)" % (self.arg, self.for_update)
 
-# alias; deprecated starting 0.5.0
-PassiveDefault = DefaultClause
+class PassiveDefault(DefaultClause):
+    def __init__(self, *arg, **kw):
+        util.warn_deprecated("PassiveDefault is deprecated.  Use DefaultClause.")
+        DefaultClause.__init__(self, *arg, **kw)
 
 class Constraint(SchemaItem):
     """A table-level SQL constraint."""

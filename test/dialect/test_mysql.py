@@ -1002,9 +1002,9 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             (m.MSBoolean, "t.col"),
 
             (m.MSEnum, "t.col"),
-            (m.MSEnum("'1'", "'2'"), "t.col"),
+            (m.MSEnum("1", "2"), "t.col"),
             (m.MSSet, "t.col"),
-            (m.MSSet("'1'", "'2'"), "t.col"),
+            (m.MSSet("1", "2"), "t.col"),
             ]
 
         for type_, expected in specs:

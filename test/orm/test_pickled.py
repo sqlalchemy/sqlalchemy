@@ -119,9 +119,7 @@ class PickleTest(_fixtures.FixtureTest):
             sa.orm.eagerload("addresses"),
             sa.orm.defer("name"),
             sa.orm.defer(User.name),
-            sa.orm.defer([User.name]),
             sa.orm.eagerload("addresses", User.addresses),
-            sa.orm.eagerload(["addresses", User.addresses]),
         ]:
             opt2 = pickle.loads(pickle.dumps(opt))
             eq_(opt.key, opt2.key)

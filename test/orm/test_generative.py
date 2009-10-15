@@ -37,8 +37,8 @@ class GenerativeQueryTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_selectby(self):
         res = create_session().query(Foo).filter_by(range=5)
-        assert res.order_by([Foo.bar])[0].bar == 5
-        assert res.order_by([sa.desc(Foo.bar)])[0].bar == 95
+        assert res.order_by(Foo.bar)[0].bar == 5
+        assert res.order_by(sa.desc(Foo.bar))[0].bar == 95
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
@@ -134,13 +134,13 @@ class GenerativeQueryTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_order_by(self):
         query = create_session().query(Foo)
-        assert query.order_by([Foo.bar])[0].bar == 0
-        assert query.order_by([sa.desc(Foo.bar)])[0].bar == 99
+        assert query.order_by(Foo.bar)[0].bar == 0
+        assert query.order_by(sa.desc(Foo.bar))[0].bar == 99
 
     @testing.resolve_artifact_names
     def test_offset(self):
         query = create_session().query(Foo)
-        assert list(query.order_by([Foo.bar]).offset(10))[0].bar == 10
+        assert list(query.order_by(Foo.bar).offset(10))[0].bar == 10
 
     @testing.resolve_artifact_names
     def test_offset(self):
@@ -217,7 +217,7 @@ class RelationsTest(_fixtures.FixtureTest):
         """Query.join"""
 
         session = create_session()
-        q = (session.query(User).join(['orders', 'addresses']).
+        q = (session.query(User).join('orders', 'addresses').
              filter(Address.id == 1))
         eq_([User(id=7)], q.all())
 
@@ -226,7 +226,7 @@ class RelationsTest(_fixtures.FixtureTest):
         """Query.outerjoin"""
 
         session = create_session()
-        q = (session.query(User).outerjoin(['orders', 'addresses']).
+        q = (session.query(User).outerjoin('orders', 'addresses').
              filter(sa.or_(Order.id == None, Address.id == 1)))
         eq_(set([User(id=7), User(id=8), User(id=10)]),
             set(q.all()))
@@ -237,7 +237,7 @@ class RelationsTest(_fixtures.FixtureTest):
 
         session = create_session()
 
-        q = (session.query(User).outerjoin(['orders', 'addresses']).
+        q = (session.query(User).outerjoin('orders', 'addresses').
              filter(sa.or_(Order.id == None, Address.id == 1)))
         eq_(q.count(), 4)
 

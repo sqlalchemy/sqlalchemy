@@ -335,7 +335,7 @@ class MapperTest(_fixtures.FixtureTest):
     def test_replace_property(self):
         m = mapper(User, users)
         m.add_property('_name',users.c.name)
-        m.add_property('name', synonym('_name', proxy=True))
+        m.add_property('name', synonym('_name'))
 
         sess = create_session()
         u = sess.query(User).filter_by(name='jack').one()
@@ -689,7 +689,7 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(User, users, properties=dict(
             addresses = relation(mapper(Address, addresses), lazy=True),
             uname = synonym('name'),
-            adlist = synonym('addresses', proxy=True),
+            adlist = synonym('addresses'),
             adname = synonym('addresses')
         ))
         
@@ -1024,7 +1024,7 @@ class OptionsTest(_fixtures.FixtureTest):
         mapper(User, users, properties=dict(
             addresses = relation(mapper(Address, addresses), lazy=True,
                                  order_by=addresses.c.id),
-            adlist = synonym('addresses', proxy=True)))
+            adlist = synonym('addresses')))
 
 
         def go():

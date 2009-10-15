@@ -546,6 +546,7 @@ class RelationTest7(_base.MappedTest):
                 Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
                 Column('category', String(70)))
 
+    @testing.uses_deprecated("fold_equivalents is deprecated.")
     def test_manytoone_lazyload(self):
         """test that lazy load clause to a polymorphic child mapper generates correctly [ticket:493]"""
         class PersistentObject(object):

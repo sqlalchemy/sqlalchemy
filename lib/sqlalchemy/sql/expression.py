@@ -235,20 +235,8 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
         ``Connectable`` instances can be located within its contained
         ``ClauseElement`` members.
 
-      scalar=False
-        deprecated.  Use select(...).as_scalar() to create a "scalar
-        column" proxy for an existing Select object.
-
     """
-    if 'scalar' in kwargs:
-        util.warn_deprecated(
-            'scalar option is deprecated; see docs for details')
-    scalar = kwargs.pop('scalar', False)
-    s = Select(columns, whereclause=whereclause, from_obj=from_obj, **kwargs)
-    if scalar:
-        return s.as_scalar()
-    else:
-        return s
+    return Select(columns, whereclause=whereclause, from_obj=from_obj, **kwargs)
 
 def subquery(alias, *args, **kwargs):
     """Return an :class:`~sqlalchemy.sql.expression.Alias` object derived 
@@ -743,7 +731,7 @@ def table(name, *columns):
     """
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, shortname=None, type_=None, unique=False, required=False):
+def bindparam(key, value=None, type_=None, unique=False, required=False):
     """Create a bind parameter clause with the given key.
 
     value
@@ -753,9 +741,6 @@ def bindparam(key, value=None, shortname=None, type_=None, unique=False, require
     type\_
       a sqlalchemy.types.TypeEngine object indicating the type of this
       bind param, will invoke type-specific bind parameter processing
-
-    shortname
-      deprecated.
 
     unique
       if True, bind params sharing the same name will have their
@@ -767,9 +752,9 @@ def bindparam(key, value=None, shortname=None, type_=None, unique=False, require
       
     """
     if isinstance(key, ColumnClause):
-        return _BindParamClause(key.name, value, type_=key.type, unique=unique, shortname=shortname, required=required)
+        return _BindParamClause(key.name, value, type_=key.type, unique=unique, required=required)
     else:
-        return _BindParamClause(key, value, type_=type_, unique=unique, shortname=shortname, required=required)
+        return _BindParamClause(key, value, type_=type_, unique=unique, required=required)
 
 def outparam(key, type_=None):
     """Create an 'OUT' parameter for usage in functions (stored procedures), for
@@ -2074,7 +2059,7 @@ class _BindParamClause(ColumnElement):
     __visit_name__ = 'bindparam'
     quote = None
 
-    def __init__(self, key, value, type_=None, unique=False, isoutparam=False, shortname=None, required=False):
+    def __init__(self, key, value, type_=None, unique=False, isoutparam=False, required=False):
         """Construct a _BindParamClause.
 
         key
@@ -2089,9 +2074,6 @@ class _BindParamClause(ColumnElement):
           Initial value for this bind param.  This value may be
           overridden by the dictionary of parameters sent to statement
           compilation/execution.
-
-        shortname
-          deprecated.
 
         type\_
           A ``TypeEngine`` object that will be used to pre-process the
@@ -2120,7 +2102,6 @@ class _BindParamClause(ColumnElement):
         self.unique = unique
         self.value = value
         self.isoutparam = isoutparam
-        self.shortname = shortname
         self.required = required
         
         if type_ is None:
@@ -2730,7 +2711,7 @@ class Join(FromClause):
           based on the join criterion of this :class:`Join`. This will
           recursively apply to any joins directly nested by this one
           as well.  This flag is specific to a particular use case
-          by the ORM and will be deprecated in 0.6.
+          by the ORM and is deprecated as of 0.6.
 
         :param \**kwargs: all other kwargs are sent to the 
           underlying :func:`select()` function.
@@ -2740,6 +2721,7 @@ class Join(FromClause):
             global sql_util
             if not sql_util:
                 from sqlalchemy.sql import util as sql_util
+            util.warn_deprecated("fold_equivalents is deprecated.")
             collist = sql_util.folded_equivalents(self)
         else:
             collist = [self.left, self.right]

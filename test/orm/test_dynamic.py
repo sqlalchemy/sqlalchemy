@@ -279,7 +279,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
 
         from sqlalchemy.orm import attributes
-        eq_(attributes.get_history(attributes.instance_state(u1), 'addresses'), ([], [Address(email_address='lala@hoho.com')], []))
+        eq_(attributes.get_history(u1, 'addresses'), ([], [Address(email_address='lala@hoho.com')], []))
 
         sess.expunge_all()
 

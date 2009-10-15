@@ -462,7 +462,7 @@ def _produce_test(select_type):
             def go():
                 # currently, it doesn't matter if we say Company.employees, or Company.employees.of_type(Engineer).  eagerloader doesn't
                 # pick up on the "of_type()" as of yet.
-                eq_(sess.query(Company).options(eagerload_all([Company.employees.of_type(Engineer), Engineer.machines])).all(), assert_result)
+                eq_(sess.query(Company).options(eagerload_all(Company.employees.of_type(Engineer), Engineer.machines)).all(), assert_result)
             
             # in the case of select_type='', the eagerload doesn't take in this case; 
             # it eagerloads company->people, then a load for each of 5 rows, then lazyload of "machines"            
@@ -472,7 +472,7 @@ def _produce_test(select_type):
             sess = create_session()
             def go():
                 # test load People with eagerload to engineers + machines
-                eq_(sess.query(Person).with_polymorphic('*').options(eagerload([Engineer.machines])).filter(Person.name=='dilbert').all(), 
+                eq_(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).filter(Person.name=='dilbert').all(), 
                 [Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")])]
                 )
             self.assert_sql_count(testing.db, go, 1)
@@ -490,15 +490,15 @@ def _produce_test(select_type):
 
                 eq_(sess.query(Person).select_from(people.join(engineers)).join(Engineer.machines).all(), [e1, e2, e3])
                 eq_(sess.query(Person).select_from(people.join(engineers)).join(Engineer.machines).filter(Machine.name.ilike("%ibm%")).all(), [e1, e3])
-                eq_(sess.query(Company).join([('employees', people.join(engineers)), Engineer.machines]).all(), [c1, c2])
-                eq_(sess.query(Company).join([('employees', people.join(engineers)), Engineer.machines]).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
+                eq_(sess.query(Company).join(('employees', people.join(engineers)), Engineer.machines).all(), [c1, c2])
+                eq_(sess.query(Company).join(('employees', people.join(engineers)), Engineer.machines).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
             else:
                 eq_(sess.query(Company).select_from(companies.join(people).join(engineers)).filter(Engineer.primary_language=='java').all(), [c1])
-                eq_(sess.query(Company).join(['employees']).filter(Engineer.primary_language=='java').all(), [c1])
+                eq_(sess.query(Company).join('employees').filter(Engineer.primary_language=='java').all(), [c1])
                 eq_(sess.query(Person).join(Engineer.machines).all(), [e1, e2, e3])
                 eq_(sess.query(Person).join(Engineer.machines).filter(Machine.name.ilike("%ibm%")).all(), [e1, e3])
-                eq_(sess.query(Company).join(['employees', Engineer.machines]).all(), [c1, c2])
-                eq_(sess.query(Company).join(['employees', Engineer.machines]).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
+                eq_(sess.query(Company).join('employees', Engineer.machines).all(), [c1, c2])
+                eq_(sess.query(Company).join('employees', Engineer.machines).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
             
             # non-polymorphic
             eq_(sess.query(Engineer).join(Engineer.machines).all(), [e1, e2, e3])
@@ -506,7 +506,7 @@ def _produce_test(select_type):
 
             # here's the new way
             eq_(sess.query(Company).join(Company.employees.of_type(Engineer)).filter(Engineer.primary_language=='java').all(), [c1])
-            eq_(sess.query(Company).join([Company.employees.of_type(Engineer), 'machines']).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
+            eq_(sess.query(Company).join(Company.employees.of_type(Engineer), 'machines').filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
 
         def test_join_through_polymorphic(self):
 
@@ -515,25 +515,25 @@ def _produce_test(select_type):
             for aliased in (True, False):
                 eq_(
                     sess.query(Company).\
-                        join(['employees', 'paperwork'], aliased=aliased).filter(Paperwork.description.like('%#2%')).all(),
+                        join('employees', 'paperwork', aliased=aliased).filter(Paperwork.description.like('%#2%')).all(),
                     [c1]
                 )
 
                 eq_(
                     sess.query(Company).\
-                        join(['employees', 'paperwork'], aliased=aliased).filter(Paperwork.description.like('%#%')).all(),
+                        join('employees', 'paperwork', aliased=aliased).filter(Paperwork.description.like('%#%')).all(),
                     [c1, c2]
                 )
 
                 eq_(
                     sess.query(Company).\
-                        join(['employees', 'paperwork'], aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).filter(Paperwork.description.like('%#2%')).all(),
+                        join('employees', 'paperwork', aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).filter(Paperwork.description.like('%#2%')).all(),
                     [c1]
                 )
         
                 eq_(
                     sess.query(Company).\
-                        join(['employees', 'paperwork'], aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).filter(Paperwork.description.like('%#%')).all(),
+                        join('employees', 'paperwork', aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).filter(Paperwork.description.like('%#%')).all(),
                     [c1, c2]
                 )
 

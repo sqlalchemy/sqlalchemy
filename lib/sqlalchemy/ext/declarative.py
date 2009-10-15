@@ -700,7 +700,7 @@ _declarative_constructor.__name__ = '__init__'
 
 def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
                      name='Base', constructor=_declarative_constructor,
-                     metaclass=DeclarativeMeta, engine=None):
+                     metaclass=DeclarativeMeta):
     """Construct a base class for declarative class definitions.
 
     The new base class will be given a metaclass that invokes
@@ -710,7 +710,7 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
 
     :param bind: An optional :class:`~sqlalchemy.engine.base.Connectable`, will be assigned 
       the ``bind`` attribute on the :class:`~sqlalchemy.MetaData` instance.
-      The `engine` keyword argument is a deprecated synonym for `bind`.
+      
 
     :param metadata:
       An optional :class:`~sqlalchemy.MetaData` instance.  All :class:`~sqlalchemy.schema.Table` 
@@ -747,8 +747,8 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
 
     """
     lcl_metadata = metadata or MetaData()
-    if bind or engine:
-        lcl_metadata.bind = bind or engine
+    if bind:
+        lcl_metadata.bind = bind
 
     bases = not isinstance(cls, tuple) and (cls,) or cls
     class_dict = dict(_decl_class_registry=dict(),

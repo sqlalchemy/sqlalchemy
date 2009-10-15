@@ -415,15 +415,6 @@ class QueryTest(TestBase):
         r = s.execute(userid='fred').fetchall()
         assert len(r) == 1
 
-    def test_bindparam_shortname(self):
-        """test the 'shortname' field on BindParamClause."""
-        users.insert().execute(user_id = 7, user_name = 'jack')
-        users.insert().execute(user_id = 8, user_name = 'fred')
-        u = bindparam('userid', shortname='someshortname')
-        s = users.select(users.c.user_name==u)
-        r = s.execute(someshortname='fred').fetchall()
-        assert len(r) == 1
-
     def test_bindparam_detection(self):
         dialect = default.DefaultDialect(paramstyle='qmark')
         prep = lambda q: str(sql.text(q).compile(dialect=dialect))

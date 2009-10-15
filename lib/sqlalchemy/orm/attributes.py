@@ -1293,6 +1293,8 @@ HISTORY_BLANK = History(None, None, None)
 def _conditional_instance_state(obj):
     if not isinstance(obj, state.InstanceState):
         obj = instance_state(obj)
+    else:
+        util.warn_deprecated("Passing an InstanceState to get_history() or init_collection() is deprecated.")
     return obj
         
 def get_history(obj, key, **kwargs):

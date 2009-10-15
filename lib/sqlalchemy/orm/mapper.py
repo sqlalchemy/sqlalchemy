@@ -87,9 +87,7 @@ class Mapper(object):
                  polymorphic_on=None,
                  _polymorphic_map=None,
                  polymorphic_identity=None,
-                 polymorphic_fetch=None,
                  concrete=False,
-                 select_table=None,
                  with_polymorphic=None,
                  allow_null_pks=None,
                  batch=True,
@@ -140,27 +138,17 @@ class Mapper(object):
         if allow_null_pks:
             util.warn_deprecated('the allow_null_pks option to Mapper() is deprecated.  It is now on in all cases.')
             
-        self.select_table = select_table
-        if select_table:
-            util.warn_deprecated('select_table option is deprecated.  Use with_polymorphic=("*", selectable) '
-                            'instead.')
-
-            if with_polymorphic:
-                raise sa_exc.ArgumentError("select_table can't be used with "
-                            "with_polymorphic (they define conflicting settings)")
-            self.with_polymorphic = ('*', select_table)
-        else:
-            if with_polymorphic == '*':
-                self.with_polymorphic = ('*', None)
-            elif isinstance(with_polymorphic, (tuple, list)):
-                if isinstance(with_polymorphic[0], (basestring, tuple, list)):
-                    self.with_polymorphic = with_polymorphic
-                else:
-                    self.with_polymorphic = (with_polymorphic, None)
-            elif with_polymorphic is not None:
-                raise sa_exc.ArgumentError("Invalid setting for with_polymorphic")
+        if with_polymorphic == '*':
+            self.with_polymorphic = ('*', None)
+        elif isinstance(with_polymorphic, (tuple, list)):
+            if isinstance(with_polymorphic[0], (basestring, tuple, list)):
+                self.with_polymorphic = with_polymorphic
             else:
-                self.with_polymorphic = None
+                self.with_polymorphic = (with_polymorphic, None)
+        elif with_polymorphic is not None:
+            raise sa_exc.ArgumentError("Invalid setting for with_polymorphic")
+        else:
+            self.with_polymorphic = None
 
         if isinstance(self.local_table, expression._SelectBaseMixin):
             raise sa_exc.InvalidRequestError(
@@ -174,11 +162,6 @@ class Mapper(object):
         # our 'polymorphic identity', a string name that when located in a result set row
         # indicates this Mapper should be used to construct the object instance for that row.
         self.polymorphic_identity = polymorphic_identity
-
-        if polymorphic_fetch:
-            util.warn_deprecated('polymorphic_fetch option is deprecated.  Unloaded columns '
-                            'load as deferred in all cases; loading can be controlled '
-                            'using the "with_polymorphic" option.')
 
         # a dictionary of 'polymorphic identity' names, associating those names with
         # Mappers that will be used to construct object instances upon a select operation.
