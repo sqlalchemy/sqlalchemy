@@ -913,6 +913,66 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         eq_(sess.query(Person).first(),
             Engineer(primary_language='java', name='dilbert')
         )
+    
+    def test_add_parentcol_after_the_fact(self):
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        class Engineer(Person):
+            __tablename__ = 'engineers'
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            primary_language = Column(String(50))
+            id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+        
+        Person.name = Column('name', String(50))
+        
+        Base.metadata.create_all()
+
+        sess = create_session()
+        e1 = Engineer(primary_language='java', name='dilbert')
+        sess.add(e1)
+        sess.flush()
+        sess.expunge_all()
+
+        eq_(sess.query(Person).first(),
+            Engineer(primary_language='java', name='dilbert')
+        )
+
+    def test_add_sub_parentcol_after_the_fact(self):
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        class Engineer(Person):
+            __tablename__ = 'engineers'
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            primary_language = Column(String(50))
+            id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+        
+        class Admin(Engineer):
+            __tablename__ = 'admins'
+            __mapper_args__ = {'polymorphic_identity':'admin'}
+            workstation = Column(String(50))
+            id = Column('id', Integer, ForeignKey('engineers.id'), primary_key=True)
+            
+        Person.name = Column('name', String(50))
+
+        Base.metadata.create_all()
+
+        sess = create_session()
+        e1 = Admin(primary_language='java', name='dilbert', workstation='foo')
+        sess.add(e1)
+        sess.flush()
+        sess.expunge_all()
+
+        eq_(sess.query(Person).first(),
+            Admin(primary_language='java', name='dilbert', workstation='foo')
+        )
         
     def test_subclass_mixin(self):
         class Person(Base, ComparableEntity):
