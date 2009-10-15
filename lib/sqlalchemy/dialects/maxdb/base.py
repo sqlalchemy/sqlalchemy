@@ -401,6 +401,12 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
         else:
             return self.cursor.rowcount
 
+    def fire_sequence(self, seq):
+        if seq.optional:
+            return None
+        return self._execute_scalar("SELECT %s.NEXTVAL FROM DUAL" % (
+            self.dialect.identifier_preparer.format_sequence(seq)))
+
 class MaxDBCachedColumnRow(engine_base.RowProxy):
     """A RowProxy that only runs result_processors once per column."""
 
@@ -610,14 +616,6 @@ class MaxDBCompiler(compiler.SQLCompiler):
                          ')'))
 
 
-class MaxDBDefaultRunner(engine_base.DefaultRunner):
-    def visit_sequence(self, seq):
-        if seq.optional:
-            return None
-        return self.execute_string("SELECT %s.NEXTVAL FROM DUAL" % (
-            self.dialect.identifier_preparer.format_sequence(seq)))
-
-
 class MaxDBIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = set([
         'abs', 'absolute', 'acos', 'adddate', 'addtime', 'all', 'alpha',
@@ -805,7 +803,6 @@ class MaxDBDialect(default.DefaultDialect):
     preparer = MaxDBIdentifierPreparer
     statement_compiler = MaxDBCompiler
     ddl_compiler = MaxDBDDLCompiler
-    defaultrunner = MaxDBDefaultRunner
     execution_ctx_cls = MaxDBExecutionContext
 
     colspecs = colspecs

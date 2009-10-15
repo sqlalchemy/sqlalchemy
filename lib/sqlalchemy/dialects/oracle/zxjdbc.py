@@ -12,7 +12,7 @@ import re
 
 from sqlalchemy import sql, types as sqltypes, util
 from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
-from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect
+from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, OracleExecutionContext
 from sqlalchemy.engine import base, default
 from sqlalchemy.sql import expression
 
@@ -71,7 +71,7 @@ class Oracle_zxjdbcCompiler(OracleCompiler):
         return 'RETURNING ' + ', '.join(columns) +  " INTO " + ", ".join(binds)
 
 
-class Oracle_zxjdbcExecutionContext(default.DefaultExecutionContext):
+class Oracle_zxjdbcExecutionContext(OracleExecutionContext):
 
     def pre_exec(self):
         if hasattr(self.compiled, 'returning_parameters'):

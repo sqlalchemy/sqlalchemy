@@ -72,6 +72,7 @@ from sqlalchemy.sql import expression
 from sqlalchemy.engine import base, default, reflection
 from sqlalchemy.sql import compiler
 
+
 from sqlalchemy.types import (BIGINT, BLOB, BOOLEAN, CHAR, DATE,
                               FLOAT, INTEGER, NUMERIC, SMALLINT,
                               TEXT, TIME, TIMESTAMP, VARCHAR)
@@ -174,6 +175,8 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_BLOB(self, type_):
         return "BLOB SUB_TYPE 0"
+
+
 
 
 class FBCompiler(sql.compiler.SQLCompiler):
@@ -280,16 +283,6 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
             return "DROP GENERATOR %s" % self.preparer.format_sequence(drop.element)
 
 
-class FBDefaultRunner(base.DefaultRunner):
-    """Firebird specific idiosincrasies"""
-
-    def visit_sequence(self, seq):
-        """Get the next value from the sequence using ``gen_id()``."""
-
-        return self.execute_string("SELECT gen_id(%s, 1) FROM rdb$database" % \
-            self.dialect.identifier_preparer.format_sequence(seq))
-
-
 class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
     """Install Firebird specific reserved words."""
 
@@ -298,7 +291,13 @@ class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
     def __init__(self, dialect):
         super(FBIdentifierPreparer, self).__init__(dialect, omit_schema=True)
 
+class FBExecutionContext(default.DefaultExecutionContext):
+    def fire_sequence(self, seq):
+        """Get the next value from the sequence using ``gen_id()``."""
 
+        return self._execute_scalar("SELECT gen_id(%s, 1) FROM rdb$database" % \
+            self.dialect.identifier_preparer.format_sequence(seq))
+    
 class FBDialect(default.DefaultDialect):
     """Firebird dialect"""
 
@@ -316,10 +315,10 @@ class FBDialect(default.DefaultDialect):
 
     statement_compiler = FBCompiler
     ddl_compiler = FBDDLCompiler
-    defaultrunner = FBDefaultRunner
     preparer = FBIdentifierPreparer
     type_compiler = FBTypeCompiler
-
+    execution_ctx_cls = FBExecutionContext
+    
     colspecs = colspecs
     ischema_names = ischema_names
 

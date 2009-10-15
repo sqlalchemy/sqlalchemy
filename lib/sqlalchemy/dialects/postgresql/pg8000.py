@@ -23,7 +23,7 @@ from sqlalchemy.engine import default
 import decimal
 from sqlalchemy import util
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, PGIdentifierPreparer
+from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, PGIdentifierPreparer, PGExecutionContext
 
 class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -41,7 +41,7 @@ class _PGNumeric(sqltypes.Numeric):
             return process
 
 
-class PostgreSQL_pg8000ExecutionContext(default.DefaultExecutionContext):
+class PostgreSQL_pg8000ExecutionContext(PGExecutionContext):
     pass
 
 

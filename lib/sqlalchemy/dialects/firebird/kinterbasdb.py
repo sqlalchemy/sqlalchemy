@@ -28,7 +28,6 @@ __ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurr
 """
 
 from sqlalchemy.dialects.firebird.base import FBDialect, FBCompiler
-from sqlalchemy.engine.default import DefaultExecutionContext
 
 
 class Firebird_kinterbasdb(FBDialect):

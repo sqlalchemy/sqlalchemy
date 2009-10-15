@@ -454,12 +454,6 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         
         return text
 
-class OracleDefaultRunner(base.DefaultRunner):
-    def visit_sequence(self, seq):
-        return self.execute_string("SELECT " + 
-                    self.dialect.identifier_preparer.format_sequence(seq) + 
-                    ".nextval FROM DUAL", ())
-
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
     
     reserved_words = set([x.lower() for x in RESERVED_WORDS])
@@ -477,6 +471,13 @@ class OracleIdentifierPreparer(compiler.IdentifierPreparer):
         name = re.sub(r'^_+', '', savepoint.ident)
         return super(OracleIdentifierPreparer, self).format_savepoint(savepoint, name)
         
+        
+class OracleExecutionContext(default.DefaultExecutionContext):
+    def fire_sequence(self, seq):
+        return self._execute_scalar("SELECT " + 
+                    self.dialect.identifier_preparer.format_sequence(seq) + 
+                    ".nextval FROM DUAL")
+    
 class OracleDialect(default.DefaultDialect):
     name = 'oracle'
     supports_alter = True
@@ -502,7 +503,7 @@ class OracleDialect(default.DefaultDialect):
     ddl_compiler = OracleDDLCompiler
     type_compiler = OracleTypeCompiler
     preparer = OracleIdentifierPreparer
-    defaultrunner = OracleDefaultRunner
+    execution_ctx_cls = OracleExecutionContext
     
     reflection_options = ('oracle_resolve_synonyms', )
     

@@ -28,7 +28,6 @@ class DefaultDialect(base.Dialect):
     ddl_compiler = compiler.DDLCompiler
     type_compiler = compiler.GenericTypeCompiler
     preparer = compiler.IdentifierPreparer
-    defaultrunner = base.DefaultRunner
     supports_alter = True
 
     supports_sequences = False
@@ -198,10 +197,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.result_map = None
             self.cursor = self.create_cursor()
             self.compiled_parameters = []
-            if self.dialect.positional:
-                self.parameters = [()]
-            else:
-                self.parameters = [{}]
+            self.parameters = [self._default_params]
         elif compiled_sql is not None:
             self.compiled = compiled = compiled_sql
 
@@ -273,6 +269,27 @@ class DefaultExecutionContext(base.ExecutionContext):
             bool(self.compiled.returning) and \
             not self.compiled.statement._returning
     
+    @util.memoized_property
+    def _default_params(self):
+        if self.dialect.positional:
+            return ()
+        else:
+            return {}
+        
+    def _execute_scalar(self, stmt):
+        """Execute a string statement on the current cursor, returning a scalar result.
+        
+        Used to fire off sequences, default phrases, and "select lastrowid" types of statements individually
+        or in the context of a parent INSERT or UPDATE statement.
+        
+        """
+
+        conn = self._connection
+        if isinstance(stmt, unicode) and not self.dialect.supports_unicode_statements:
+            stmt = stmt.encode(self.dialect.encoding)
+        conn._cursor_execute(self.cursor, stmt, self._default_params)
+        return self.cursor.fetchone()[0]
+    
     @property
     def connection(self):
         return self._connection._branch()
@@ -286,10 +303,8 @@ class DefaultExecutionContext(base.ExecutionContext):
         if self.dialect.positional or self.dialect.supports_unicode_statements:
             if params:
                 return params
-            elif self.dialect.positional:
-                return [()]
             else:
-                return [{}]
+                return [self._default_params]
         else:
             def proc(d):
                 # sigh, sometimes we get positional arguments with a dialect
@@ -460,6 +475,32 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self._connection._handle_dbapi_exception(e, None, None, None, self)
                 raise
 
+    def _exec_default(self, default):
+        if default.is_sequence:
+            return self.fire_sequence(default)
+        elif default.is_callable:
+            return default.arg(self)
+        elif default.is_clause_element:
+            # TODO: expensive branching here should be 
+            # pulled into _exec_scalar()
+            conn = self.connection  
+            c = expression.select([default.arg]).compile(bind=conn)
+            return conn._execute_compiled(c, (), {}).scalar()
+        else:
+            return default.arg
+        
+    def get_insert_default(self, column):
+        if column.default is None:
+            return None
+        else:
+            return self._exec_default(column.default)
+
+    def get_update_default(self, column):
+        if column.onupdate is None:
+            return None
+        else:
+            return self._exec_default(column.onupdate)
+
     def __process_defaults(self):
         """Generate default values for compiled insert/update statements,
         and generate inserted_primary_key collection.
@@ -467,28 +508,26 @@ class DefaultExecutionContext(base.ExecutionContext):
 
         if self.executemany:
             if len(self.compiled.prefetch):
-                drunner = self.dialect.defaultrunner(self)
                 params = self.compiled_parameters
                 for param in params:
                     self.current_parameters = param
                     for c in self.compiled.prefetch:
                         if self.isinsert:
-                            val = drunner.get_column_default(c)
+                            val = self.get_insert_default(c)
                         else:
-                            val = drunner.get_column_onupdate(c)
+                            val = self.get_update_default(c)
                         if val is not None:
                             param[c.key] = val
                 del self.current_parameters
 
         else:
             self.current_parameters = compiled_parameters = self.compiled_parameters[0]
-            drunner = self.dialect.defaultrunner(self)
 
             for c in self.compiled.prefetch:
                 if self.isinsert:
-                    val = drunner.get_column_default(c)
+                    val = self.get_insert_default(c)
                 else:
-                    val = drunner.get_column_onupdate(c)
+                    val = self.get_update_default(c)
 
                 if val is not None:
                     compiled_parameters[c.key] = val

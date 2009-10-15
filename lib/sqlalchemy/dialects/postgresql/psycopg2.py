@@ -42,7 +42,7 @@ from sqlalchemy.engine import base, default
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, PGIdentifierPreparer
+from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, PGIdentifierPreparer, PGExecutionContext
 
 class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -65,7 +65,7 @@ SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
     re.I | re.UNICODE)
 
-class PostgreSQL_psycopg2ExecutionContext(default.DefaultExecutionContext):
+class PostgreSQL_psycopg2ExecutionContext(PGExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
         is_server_side = \

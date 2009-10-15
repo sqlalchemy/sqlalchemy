@@ -11,7 +11,7 @@ from sqlalchemy.engine import default
 import decimal
 from sqlalchemy import util
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGDefaultRunner
+from sqlalchemy.dialects.postgresql.base import PGDialect, PGExecutionContext
 
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -28,13 +28,9 @@ class PGNumeric(sqltypes.Numeric):
                     return value
             return process
 
-class PostgreSQL_pypostgresqlExecutionContext(default.DefaultExecutionContext):
+class PostgreSQL_pypostgresqlExecutionContext(PGExecutionContext):
     pass
 
-class PostgreSQL_pypostgresqlDefaultRunner(PGDefaultRunner):
-    def execute_string(self, stmt, params=None):
-        return PGDefaultRunner.execute_string(self, stmt, params or ())
-        
 class PostgreSQL_pypostgresql(PGDialect):
     driver = 'pypostgresql'
 
@@ -42,8 +38,6 @@ class PostgreSQL_pypostgresql(PGDialect):
     
     supports_unicode_binds = True
     description_encoding = None
-    
-    defaultrunner = PostgreSQL_pypostgresqlDefaultRunner
     
     default_paramstyle = 'format'
     

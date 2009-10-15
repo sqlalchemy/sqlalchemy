@@ -74,9 +74,8 @@ with this feature but it should be regarded as experimental.
 
 """
 
-from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, RESERVED_WORDS
+from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, RESERVED_WORDS, OracleExecutionContext
 from sqlalchemy.dialects.oracle import base as oracle
-from sqlalchemy.engine.default import DefaultExecutionContext
 from sqlalchemy.engine import base
 from sqlalchemy import types as sqltypes, util
 import datetime
@@ -200,7 +199,7 @@ class Oracle_cx_oracleCompiler(OracleCompiler):
         else:
             return OracleCompiler.bindparam_string(self, name)
 
-class Oracle_cx_oracleExecutionContext(DefaultExecutionContext):
+class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
     def pre_exec(self):
         quoted_bind_names = getattr(self.compiled, '_quoted_bind_names', {})
         if quoted_bind_names:

@@ -14,7 +14,7 @@ and result contexts.
 
 __all__ = [
     'BufferedColumnResultProxy', 'BufferedColumnRow', 'BufferedRowResultProxy',
-    'Compiled', 'Connectable', 'Connection', 'DefaultRunner', 'Dialect', 'Engine',
+    'Compiled', 'Connectable', 'Connection', 'Dialect', 'Engine',
     'ExecutionContext', 'NestedTransaction', 'ResultProxy', 'RootTransaction',
     'RowProxy', 'SchemaIterator', 'StringIO', 'Transaction', 'TwoPhaseTransaction',
     'connection_memoize']
@@ -56,10 +56,6 @@ class Dialect(object):
     encoding
       type of encoding to use for unicode, usually defaults to
       'utf-8'.
-
-    defaultrunner
-      a :class:`~sqlalchemy.schema.SchemaVisitor` class which executes
-      defaults.
 
     statement_compiler
       a :class:`~Compiled` class used to compile SQL statements
@@ -1012,9 +1008,8 @@ class Connection(Connectable):
         return self._execute_clauseelement(func.select(), multiparams, params)
 
     def _execute_default(self, default, multiparams, params):
-        ret = self.engine.dialect.\
-                    defaultrunner(self.__create_execution_context()).\
-                    traverse_single(default)
+        ctx = self.__create_execution_context()
+        ret = ctx._exec_default(default)
         if self.__close_with_result:
             self.close()
         return ret
@@ -2154,68 +2149,6 @@ class BufferedColumnResultProxy(ResultProxy):
         return l
 
 
-class DefaultRunner(schema.SchemaVisitor):
-    """A visitor which accepts ColumnDefault objects, produces the
-    dialect-specific SQL corresponding to their execution, and
-    executes the SQL, returning the result value.
-
-    DefaultRunners are used internally by Engines and Dialects.
-    Specific database modules should provide their own subclasses of
-    DefaultRunner to allow database-specific behavior.
-    """
-
-    def __init__(self, context):
-        self.context = context
-        self.dialect = context.dialect
-        self.cursor = context.cursor
-
-    def get_column_default(self, column):
-        if column.default is not None:
-            return self.traverse_single(column.default)
-        else:
-            return None
-
-    def get_column_onupdate(self, column):
-        if column.onupdate is not None:
-            return self.traverse_single(column.onupdate)
-        else:
-            return None
-
-    def visit_passive_default(self, default):
-        return None
-
-    def visit_sequence(self, seq):
-        return None
-
-    def exec_default_sql(self, default):
-        conn = self.context.connection
-        c = expression.select([default.arg]).compile(bind=conn)
-        return conn._execute_compiled(c, (), {}).scalar()
-
-    def execute_string(self, stmt, params=None):
-        """execute a string statement, using the raw cursor, and return a scalar result."""
-
-        conn = self.context._connection
-        if isinstance(stmt, unicode) and not self.dialect.supports_unicode_statements:
-            stmt = stmt.encode(self.dialect.encoding)
-        conn._cursor_execute(self.cursor, stmt, params)
-        return self.cursor.fetchone()[0]
-
-    def visit_column_onupdate(self, onupdate):
-        if isinstance(onupdate.arg, expression.ClauseElement):
-            return self.exec_default_sql(onupdate)
-        elif util.callable(onupdate.arg):
-            return onupdate.arg(self.context)
-        else:
-            return onupdate.arg
-
-    def visit_column_default(self, default):
-        if isinstance(default.arg, expression.ClauseElement):
-            return self.exec_default_sql(default)
-        elif util.callable(default.arg):
-            return default.arg(self.context)
-        else:
-            return default.arg
 
 
 def connection_memoize(key):
