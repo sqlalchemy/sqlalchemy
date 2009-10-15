@@ -27,15 +27,19 @@ class SelectableNoFromsTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_no_tables(self):
 
-        selectable = select(["x", "y", "z"])
+        selectable = select(["x", "y", "z"]).alias()
         assert_raises_message(sa.exc.InvalidRequestError,
                                  "Could not find any Table objects",
                                  mapper, Subset, selectable)
 
-    @testing.emits_warning('.*creating an Alias.*')
+    @testing.resolve_artifact_names
+    def test_no_selects(self):
+        subset_select = select([common.c.id, common.c.data])
+        assert_raises(sa.exc.InvalidRequestError, mapper, Subset, subset_select)
+        
     @testing.resolve_artifact_names
     def test_basic(self):
-        subset_select = select([common.c.id, common.c.data])
+        subset_select = select([common.c.id, common.c.data]).alias()
         subset_mapper = mapper(Subset, subset_select)
 
         sess = create_session(bind=testing.db)

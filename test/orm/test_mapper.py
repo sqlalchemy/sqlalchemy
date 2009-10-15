@@ -115,12 +115,9 @@ class MapperTest(_fixtures.FixtureTest):
         s = sa.select([users.c.name]).alias('foo')
         assert_raises(sa.exc.ArgumentError, mapper, User, s)
 
-    @testing.emits_warning(
-        'mapper Mapper|User|Select object creating an alias for '
-        'the given selectable - use Class attributes for queries')
     @testing.resolve_artifact_names
     def test_no_pks_2(self):
-        s = sa.select([users.c.name])
+        s = sa.select([users.c.name]).alias()
         assert_raises(sa.exc.ArgumentError, mapper, User, s)
 
     @testing.resolve_artifact_names

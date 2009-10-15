@@ -31,6 +31,10 @@ CHANGES
 
   - the "named tuple" objects returned when iterating a
     Query() are now pickleable.
+
+  - mapping to a select() construct now requires that you 
+    make an alias() out of it distinctly.   This to eliminate
+    confusion over such issues as [ticket:1542]
     
   - query.join() has been reworked to provide more consistent 
     behavior and more flexibility (includes [ticket:1537])
