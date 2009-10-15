@@ -232,7 +232,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.compiled_parameters = [compiled.construct_params()]
                 self.executemany = False
             else:
-                self.compiled_parameters = [compiled.construct_params(m) for m in parameters]
+                self.compiled_parameters = [compiled.construct_params(m, _group_number=grp) for grp,m in enumerate(parameters)]
                 self.executemany = len(parameters) > 1
 
             self.cursor = self.create_cursor()
@@ -508,11 +508,22 @@ class DefaultExecutionContext(base.ExecutionContext):
 
         if self.executemany:
             if len(self.compiled.prefetch):
-                params = self.compiled_parameters
-                for param in params:
+                scalar_defaults = {}
+                
+                # pre-determine scalar Python-side defaults
+                # to avoid many calls of get_insert_default()/get_update_default()
+                for c in self.compiled.prefetch:
+                    if self.isinsert and c.default and c.default.is_scalar:
+                        scalar_defaults[c] = c.default.arg
+                    elif self.isupdate and c.onupdate and c.onupdate.is_scalar:
+                        scalar_defaults[c] = c.onupdate.arg
+                        
+                for param in self.compiled_parameters:
                     self.current_parameters = param
                     for c in self.compiled.prefetch:
-                        if self.isinsert:
+                        if c in scalar_defaults:
+                            val = scalar_defaults[c]
+                        elif self.isinsert:
                             val = self.get_insert_default(c)
                         else:
                             val = self.get_update_default(c)

@@ -743,7 +743,7 @@ def table(name, *columns):
     """
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, shortname=None, type_=None, unique=False):
+def bindparam(key, value=None, shortname=None, type_=None, unique=False, required=False):
     """Create a bind parameter clause with the given key.
 
     value
@@ -762,11 +762,14 @@ def bindparam(key, value=None, shortname=None, type_=None, unique=False):
       underlying ``key`` modified to a uniquely generated name.
       mostly useful with value-based bind params.
 
+    required
+      A value is required at execution time.
+      
     """
     if isinstance(key, ColumnClause):
-        return _BindParamClause(key.name, value, type_=key.type, unique=unique, shortname=shortname)
+        return _BindParamClause(key.name, value, type_=key.type, unique=unique, shortname=shortname, required=required)
     else:
-        return _BindParamClause(key, value, type_=type_, unique=unique, shortname=shortname)
+        return _BindParamClause(key, value, type_=type_, unique=unique, shortname=shortname, required=required)
 
 def outparam(key, type_=None):
     """Create an 'OUT' parameter for usage in functions (stored procedures), for
@@ -2071,7 +2074,7 @@ class _BindParamClause(ColumnElement):
     __visit_name__ = 'bindparam'
     quote = None
 
-    def __init__(self, key, value, type_=None, unique=False, isoutparam=False, shortname=None):
+    def __init__(self, key, value, type_=None, unique=False, isoutparam=False, shortname=None, required=False):
         """Construct a _BindParamClause.
 
         key
@@ -2100,7 +2103,10 @@ class _BindParamClause(ColumnElement):
           modified if another ``_BindParamClause`` of the same name
           already has been located within the containing
           ``ClauseElement``.
-
+        
+        required
+          a value is required at execution time.
+          
         isoutparam
           if True, the parameter should be treated like a stored procedure "OUT"
           parameter.
@@ -2115,7 +2121,8 @@ class _BindParamClause(ColumnElement):
         self.value = value
         self.isoutparam = isoutparam
         self.shortname = shortname
-
+        self.required = required
+        
         if type_ is None:
             self.type = sqltypes.type_map.get(type(value), sqltypes.NullType)()
         elif isinstance(type_, type):

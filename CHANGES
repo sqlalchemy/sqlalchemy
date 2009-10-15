@@ -86,6 +86,17 @@ CHANGES
     - the autoincrement flag on column now indicates the column
       which should be linked to cursor.lastrowid, if that method
       is used.  See the API docs for details.
+    
+    - an executemany() now requires that all bound parameter
+      sets require that all keys are present which are 
+      present in the first bound parameter set.  The structure
+      and behavior of an insert/update statement is very much
+      determined by the first parameter set, including which
+      defaults are going to fire off, and a minimum of 
+      guesswork is performed with all the rest so that performance
+      is not impacted.  For this reason defaults would otherwise 
+      silently "fail" for missing parameters, so this is now guarded 
+      against. [ticket:1566]
       
     - returning() support is native to insert(), update(),
       delete(). Implementations of varying levels of

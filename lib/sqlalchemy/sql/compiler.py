@@ -231,7 +231,7 @@ class SQLCompiler(engine.Compiled):
     def is_subquery(self):
         return len(self.stack) > 1
 
-    def construct_params(self, params=None):
+    def construct_params(self, params=None, _group_number=None):
         """return a dictionary of bind parameter keys and values"""
 
         if params:
@@ -242,7 +242,12 @@ class SQLCompiler(engine.Compiled):
                         pd[name] = params[paramname]
                         break
                 else:
-                    if util.callable(bindparam.value):
+                    if bindparam.required:
+                        if _group_number:
+                            raise exc.InvalidRequestError("A value is required for bind parameter %r, in parameter group %d" % (bindparam.key, _group_number))
+                        else:
+                            raise exc.InvalidRequestError("A value is required for bind parameter %r" % bindparam.key)
+                    elif util.callable(bindparam.value):
                         pd[name] = bindparam.value()
                     else:
                         pd[name] = bindparam.value
@@ -751,8 +756,8 @@ class SQLCompiler(engine.Compiled):
 
         return text
 
-    def _create_crud_bind_param(self, col, value):
-        bindparam = sql.bindparam(col.key, value, type_=col.type)
+    def _create_crud_bind_param(self, col, value, required=False):
+        bindparam = sql.bindparam(col.key, value, type_=col.type, required=required)
         self.binds[col.key] = bindparam
         return self.bindparam_string(self._truncate_bindparam(bindparam))
         
@@ -770,21 +775,23 @@ class SQLCompiler(engine.Compiled):
         self.postfetch = []
         self.prefetch = []
         self.returning = []
-        
+
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
         if self.column_keys is None and stmt.parameters is None:
             return [
-                        (c, self._create_crud_bind_param(c, None)) 
+                        (c, self._create_crud_bind_param(c, None, required=True)) 
                         for c in stmt.table.columns
                     ]
 
+        required = object()
+        
         # if we have statement parameters - set defaults in the
         # compiled params
         if self.column_keys is None:
             parameters = {}
         else:
-            parameters = dict((sql._column_as_key(key), None)
+            parameters = dict((sql._column_as_key(key), required)
                               for key in self.column_keys)
 
         if stmt.parameters is not None:
@@ -808,7 +815,7 @@ class SQLCompiler(engine.Compiled):
             if c.key in parameters:
                 value = parameters[c.key]
                 if sql._is_literal(value):
-                    value = self._create_crud_bind_param(c, value)
+                    value = self._create_crud_bind_param(c, value, required=value is required)
                 else:
                     self.postfetch.append(c)
                     value = self.process(value.self_group())

@@ -1094,6 +1094,10 @@ class ColumnDefault(DefaultGenerator):
     @util.memoized_property
     def is_clause_element(self):
         return isinstance(self.arg, expression.ClauseElement)
+    
+    @util.memoized_property
+    def is_scalar(self):
+        return not self.is_callable and not self.is_clause_element and not self.is_sequence
         
     def _maybe_wrap_callable(self, fn):
         """Backward compat: Wrap callables that don't accept a context."""

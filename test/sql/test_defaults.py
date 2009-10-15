@@ -4,7 +4,7 @@ from sqlalchemy import Sequence, Column, func
 from sqlalchemy.sql import select, text
 import sqlalchemy as sa
 from sqlalchemy.test import testing, engines
-from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean
+from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.testing import eq_
 from test.sql import _base
@@ -300,7 +300,16 @@ class DefaultTest(testing.TestBase):
               12, today, 'py'),
              (53, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, 'py')])
-
+    
+    def test_missing_many_param(self):
+        assert_raises_message(exc.InvalidRequestError, 
+            "A value is required for bind parameter 'col7', in parameter group 1",
+            t.insert().execute,
+            {'col4':7, 'col7':12, 'col8':19},
+            {'col4':7, 'col8':19},
+            {'col4':7, 'col7':12, 'col8':19},
+        )
+        
     def test_insert_values(self):
         t.insert(values={'col3':50}).execute()
         l = t.select().execute()
@@ -356,7 +365,7 @@ class DefaultTest(testing.TestBase):
         l = l.first()
         eq_(55, l['col3'])
 
-
+    
 class PKDefaultTest(_base.TablesTest):
     __requires__ = ('subqueries',)
 
