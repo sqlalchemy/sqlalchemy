@@ -634,6 +634,10 @@ class Query(object):
         self._order_by = self._group_by = self._distinct = False
         self._limit = self._offset = None
         self._set_select_from(fromclause)
+        old_entities = self._entities
+        self._entities = []
+        for e in old_entities:
+            e.adapt_to_selectable(self, self._from_obj[0])
 
     def values(self, *columns):
         """Return an iterator yielding result tuples corresponding to the given list of columns"""
@@ -819,6 +823,8 @@ class Query(object):
             SELECT * FROM (SELECT * FROM X UNION SELECT * FROM y UNION SELECT * FROM Z)
 
         """
+        
+        
         return self._from_selectable(
                     expression.union(*([self]+ list(q))))
 
@@ -1968,6 +1974,9 @@ class _MapperEntity(_QueryEntity):
         else:
             return entity.base_mapper is self.path_entity
 
+    def adapt_to_selectable(self, query, sel):
+        query._entities.append(self)
+
     def _get_entity_clauses(self, query, context):
 
         adapter = None
@@ -2117,7 +2126,10 @@ class _ColumnEntity(_QueryEntity):
             self.entity_zero = list(self.entities)[0]
         else:
             self.entity_zero = None
-
+    
+    def adapt_to_selectable(self, query, sel):
+        _ColumnEntity(query, sel.corresponding_column(self.column))
+        
     def setup_entity(self, entity, mapper, adapter, from_obj, is_aliased_class, with_polymorphic):
         self.selectable = from_obj
         self.froms.add(from_obj)

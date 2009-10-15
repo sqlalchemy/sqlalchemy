@@ -920,6 +920,40 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         eq_(fred.union(ed, jack).order_by(User.name).all(), 
             [User(name='ed'), User(name='fred'), User(name='jack')]
         )
+    
+    def test_union_labels(self):
+        """test that column expressions translate during the _from_statement() portion of union(), others"""
+        
+        s = create_session()
+        q1 = s.query(User, literal("x"))
+        q2 = s.query(User, literal_column("'y'"))
+        q3 = q1.union(q2)
+
+        self.assert_compile(
+            q3,
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name, anon_1.anon_2 AS anon_1_anon_2 FROM "
+            "(SELECT users.id AS id, users.name AS name, :param_1 AS anon_2 FROM users "
+            "UNION SELECT users.id AS id, users.name AS name, 'y' FROM users) AS anon_1"
+            , use_default_dialect = True
+        )
+
+        q4 = s.query(User, literal_column("'x'").label('foo'))
+        q5 = s.query(User, literal("y"))
+        q6 = q4.union(q5)
+        
+        for q in (q3, q6):
+            eq_(q.all(),
+                [
+                    (User(id=7, name=u'jack'), u'x'), 
+                    (User(id=7, name=u'jack'), u'y'), 
+                    (User(id=8, name=u'ed'), u'x'), 
+                    (User(id=8, name=u'ed'), u'y'), 
+                    (User(id=9, name=u'fred'), u'x'), 
+                    (User(id=9, name=u'fred'), u'y'), 
+                    (User(id=10, name=u'chuck'), u'x'), 
+                    (User(id=10, name=u'chuck'), u'y')
+                ]
+            )
         
     @testing.fails_on('mysql', "mysql doesn't support intersect")
     def test_intersect(self):
@@ -2231,7 +2265,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
     
     
-class MixedEntitiesTest(QueryTest):
+class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
     def test_values(self):
         sess = create_session()
@@ -2470,16 +2504,16 @@ class MixedEntitiesTest(QueryTest):
 
         for q in [
             sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).order_by(Order.id, oalias.id),
-            sess.query(Order, oalias)._from_self().filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).order_by(Order.id, oalias.id),
+            sess.query(Order, oalias).from_self().filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).order_by(Order.id, oalias.id),
         
             # same thing, but reversed.  
-            sess.query(oalias, Order)._from_self().filter(oalias.user_id==Order.user_id).filter(oalias.user_id==7).filter(Order.id<oalias.id).order_by(oalias.id, Order.id),
+            sess.query(oalias, Order).from_self().filter(oalias.user_id==Order.user_id).filter(oalias.user_id==7).filter(Order.id<oalias.id).order_by(oalias.id, Order.id),
         
             # here we go....two layers of aliasing
-            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id)._from_self().order_by(Order.id, oalias.id).limit(10).options(eagerload(Order.items)),
+            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).from_self().order_by(Order.id, oalias.id).limit(10).options(eagerload(Order.items)),
 
             # gratuitous four layers
-            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id)._from_self()._from_self()._from_self().order_by(Order.id, oalias.id).limit(10).options(eagerload(Order.items)),
+            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).from_self().from_self().from_self().order_by(Order.id, oalias.id).limit(10).options(eagerload(Order.items)),
 
         ]:
     
@@ -2491,6 +2525,19 @@ class MixedEntitiesTest(QueryTest):
                 (Order(address_id=None,description=u'order 5',isopen=0,user_id=7,id=5), Order(address_id=1,description=u'order 3',isopen=1,user_id=7,id=3))                
             ]
         )
+        
+        
+        # ensure column expressions are taken from inside the subquery, not restated at the top
+        q = sess.query(Order.id, Order.description, literal_column("'q'").label('foo')).filter(Order.description == u'order 3').from_self()
+        self.assert_compile(q, 
+            "SELECT anon_1.orders_id AS anon_1_orders_id, anon_1.orders_description AS anon_1_orders_description, "
+            "anon_1.foo AS anon_1_foo FROM (SELECT orders.id AS orders_id, orders.description AS orders_description, "
+            "'q' AS foo FROM orders WHERE orders.description = :description_1) AS anon_1", use_default_dialect=True)
+        eq_(
+            q.all(),
+            [(3, u'order 3', 'q')]
+        )
+        
     
     def test_multi_mappers(self):
 
@@ -3026,7 +3073,7 @@ class SelfReferentialTest(_base.MappedTest):
             sess.query(Node, parent, grandparent).\
                 join((Node.parent, parent), (parent.parent, grandparent)).\
                     filter(Node.data=='n122').filter(parent.data=='n12').\
-                    filter(grandparent.data=='n1')._from_self().first(),
+                    filter(grandparent.data=='n1').from_self().first(),
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
         )
 
@@ -3035,7 +3082,7 @@ class SelfReferentialTest(_base.MappedTest):
             sess.query(parent, grandparent, Node).\
                 join((Node.parent, parent), (parent.parent, grandparent)).\
                     filter(Node.data=='n122').filter(parent.data=='n12').\
-                    filter(grandparent.data=='n1')._from_self().first(),
+                    filter(grandparent.data=='n1').from_self().first(),
             (Node(data='n12'), Node(data='n1'), Node(data='n122'))
         )
 
@@ -3052,7 +3099,7 @@ class SelfReferentialTest(_base.MappedTest):
             sess.query(Node, parent, grandparent).\
                 join((Node.parent, parent), (parent.parent, grandparent)).\
                     filter(Node.data=='n122').filter(parent.data=='n12').\
-                    filter(grandparent.data=='n1')._from_self().\
+                    filter(grandparent.data=='n1').from_self().\
                     options(eagerload(Node.children)).first(),
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
         )
