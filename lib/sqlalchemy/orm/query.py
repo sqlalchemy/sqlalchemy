@@ -1769,13 +1769,19 @@ class Query(object):
 
         for entity in self._entities:
             entity.setup_context(self, context)
-
+        
+        for rec in context.create_eager_joins:
+            strategy = rec[0]
+            strategy(*rec[1:])
+            
         eager_joins = context.eager_joins.values()
 
         if context.from_clause:
-            froms = list(context.from_clause)  # "load from explicit FROMs" mode, i.e. when select_from() or join() is used
+            froms = list(context.from_clause)  # "load from explicit FROMs" mode, 
+                                               # i.e. when select_from() or join() is used
         else:
-            froms = context.froms   # "load from discrete FROMs" mode, i.e. when each _MappedEntity has its own FROM
+            froms = context.froms   # "load from discrete FROMs" mode, 
+                                    # i.e. when each _MappedEntity has its own FROM
 
         self._adjust_for_single_inheritance(context)
 
@@ -1786,7 +1792,7 @@ class Query(object):
             else:
                 raise sa_exc.InvalidRequestError("Query contains no columns with which to SELECT from.")
 
-        if eager_joins and self._should_nest_selectable:
+        if context.multi_row_eager_loaders and self._should_nest_selectable:
             # for eager joins present and LIMIT/OFFSET/DISTINCT, wrap the query inside a select,
             # then append eager joins onto that
 
@@ -1837,7 +1843,7 @@ class Query(object):
                 order_by_col_expr = list(chain(*[sql_util.find_columns(o) for o in context.order_by]))
                 context.primary_columns += order_by_col_expr
 
-            froms += context.eager_joins.values()
+            froms += tuple(context.eager_joins.values())
 
             statement = sql.select(
                             context.primary_columns + context.secondary_columns,
@@ -2004,7 +2010,7 @@ class _MapperEntity(_QueryEntity):
     def setup_context(self, query, context):
         adapter = self._get_entity_clauses(query, context)
 
-        context.froms.append(self.selectable)
+        context.froms += (self.selectable,)
 
         if context.order_by is False and self.mapper.order_by:
             context.order_by = self.mapper.order_by
@@ -2125,7 +2131,7 @@ class _ColumnEntity(_QueryEntity):
 
     def setup_context(self, query, context):
         column = self._resolve_expr_against_query_aliases(query, self.column, context)
-        context.froms += list(self.froms)
+        context.froms += tuple(self.froms)
         context.primary_columns.append(column)
 
     def __str__(self):
@@ -2134,6 +2140,10 @@ class _ColumnEntity(_QueryEntity):
 log.class_logger(Query)
 
 class QueryContext(object):
+    multi_row_eager_loaders = False
+    adapter = None
+    froms = ()
+    
     def __init__(self, query):
 
         if query._statement is not None:
@@ -2146,8 +2156,6 @@ class QueryContext(object):
             self.from_clause = query._from_obj
             self.whereclause = query._criterion
             self.order_by = query._order_by
-            if self.order_by:
-                self.order_by = [expression._literal_as_text(o) for o in util.to_list(self.order_by)]
 
         self.query = query
         self.session = query.session
@@ -2157,13 +2165,9 @@ class QueryContext(object):
         self.primary_columns = []
         self.secondary_columns = []
         self.eager_order_by = []
-        self.enable_eagerloads = query._enable_eagerloads
         self.eager_joins = {}
-        self.froms = []
-        self.adapter = None
-
-        self.options = set(query._with_options)
-        self.propagate_options = self.options.difference(o for o in self.options if not o.propagate_to_loaders)
+        self.create_eager_joins = []
+        self.propagate_options = set(o for o in query._with_options if o.propagate_to_loaders)
         self.attributes = query._attributes.copy()
 
 class AliasOption(interfaces.MapperOption):

@@ -173,6 +173,15 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                  Address(id=5, user=User(id=9))]
             )
 
+        sess.expunge_all()
+        a = sess.query(Address).filter(Address.id==1).all()[0]
+        def go():
+            eq_(a.user_id, 7)
+        # assert that the eager loader added 'user_id' to the row and deferred
+        # loading of that col was disabled
+        self.assert_sql_count(testing.db, go, 0)
+
+        sess.expunge_all()
         a = sess.query(Address).filter(Address.id==1).first()
         def go():
             eq_(a.user_id, 7)
@@ -563,6 +572,93 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             email_address=u'jack@bean.com',id=7)
         )
 
+    @testing.resolve_artifact_names
+    def test_manytoone_limit(self):
+        """test that the subquery wrapping only occurs with limit/offset and m2m or o2m joins present."""
+        
+        mapper(User, users, properties={
+            'orders':relation(Order, backref='user')
+        })
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items, backref='orders'),
+            'address':relation(Address)
+        })
+        mapper(Address, addresses)
+        mapper(Item, items)
+        
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(User).options(eagerload(User.orders)).limit(10),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name, "
+            "orders_1.id AS orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users "
+            " LIMIT 10) AS anon_1 LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = orders_1.user_id"
+            ,use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(Order).options(eagerload(Order.user)).limit(10),
+            "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, orders.address_id AS "
+            "orders_address_id, orders.description AS orders_description, orders.isopen AS orders_isopen, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name FROM orders LEFT OUTER JOIN users AS "
+            "users_1 ON users_1.id = orders.user_id  LIMIT 10"
+            ,use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(Order).options(eagerload(Order.user, innerjoin=True)).limit(10),
+            "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, orders.address_id AS "
+            "orders_address_id, orders.description AS orders_description, orders.isopen AS orders_isopen, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name FROM orders JOIN users AS "
+            "users_1 ON users_1.id = orders.user_id  LIMIT 10"
+            ,use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User).options(eagerload_all("orders.address")).limit(10),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name, "
+            "addresses_1.id AS addresses_1_id, addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address, orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, orders_1.address_id AS orders_1_address_id, "
+            "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen FROM "
+            "(SELECT users.id AS users_id, users.name AS users_name FROM users  LIMIT 10) AS anon_1 "
+            "LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = orders_1.user_id LEFT OUTER JOIN "
+            "addresses AS addresses_1 ON addresses_1.id = orders_1.address_id"
+            ,use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User).options(eagerload_all("orders.items"), eagerload("orders.address")),
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS items_1_id, "
+            "items_1.description AS items_1_description, addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, addresses_1.email_address AS "
+            "addresses_1_email_address, orders_1.id AS orders_1_id, orders_1.user_id AS "
+            "orders_1_user_id, orders_1.address_id AS orders_1_address_id, orders_1.description "
+            "AS orders_1_description, orders_1.isopen AS orders_1_isopen FROM users LEFT OUTER JOIN "
+            "orders AS orders_1 ON users.id = orders_1.user_id LEFT OUTER JOIN order_items AS "
+            "order_items_1 ON orders_1.id = order_items_1.order_id LEFT OUTER JOIN items AS "
+            "items_1 ON items_1.id = order_items_1.item_id LEFT OUTER JOIN addresses AS "
+            "addresses_1 ON addresses_1.id = orders_1.address_id"
+            ,use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User).options(eagerload("orders"), eagerload("orders.address", innerjoin=True)).limit(10),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name, "
+            "addresses_1.id AS addresses_1_id, addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address, orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, orders_1.address_id AS orders_1_address_id, "
+            "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users "
+            " LIMIT 10) AS anon_1 LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = "
+            "orders_1.user_id JOIN addresses AS addresses_1 ON addresses_1.id = orders_1.address_id"
+            ,use_default_dialect=True
+        )
+        
     @testing.resolve_artifact_names
     def test_one_to_many_scalar(self):
         mapper(User, users, properties = dict(

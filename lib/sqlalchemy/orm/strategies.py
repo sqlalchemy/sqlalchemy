@@ -626,7 +626,7 @@ class EagerLoader(AbstractRelationLoader):
     def setup_query(self, context, entity, path, adapter, column_collection=None, parentmapper=None, **kwargs):
         """Add a left outer join to the statement thats being constructed."""
 
-        if not context.enable_eagerloads:
+        if not context.query._enable_eagerloads:
             return
             
         path = path + (self.key,)
@@ -644,64 +644,77 @@ class EagerLoader(AbstractRelationLoader):
             add_to_collection = context.primary_columns
             
         else:
-            clauses = self._create_eager_join(context, entity, path, adapter, parentmapper)
-            if not clauses:
-                return
+            # check for join_depth or basic recursion,
+            # if the current path was not explicitly stated as 
+            # a desired "loaderstrategy" (i.e. via query.options())
+            if ("loaderstrategy", path) not in context.attributes:
+                if self.join_depth:
+                    if len(path) / 2 > self.join_depth:
+                        return
+                else:
+                    if self.mapper.base_mapper in path:
+                        return
 
-            context.attributes[("eager_row_processor", path)] = clauses
+            clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
+                        equivalents=self.mapper._equivalent_columns, adapt_required=True)
+
+            if self.parent_property.direction != interfaces.MANYTOONE:
+                context.multi_row_eager_loaders = True
+
+            context.create_eager_joins.append(
+                (self._create_eager_join, context, entity, path, adapter, parentmapper, clauses)
+            )
 
             add_to_collection = context.secondary_columns
-            
-        for value in self.mapper._iterate_polymorphic_properties():
-            value.setup(context, entity, path + (self.mapper.base_mapper,), clauses, parentmapper=self.mapper, column_collection=add_to_collection)
-    
-    def _create_eager_join(self, context, entity, path, adapter, parentmapper):
-        # check for join_depth or basic recursion,
-        # if the current path was not explicitly stated as 
-        # a desired "loaderstrategy" (i.e. via query.options())
-        if ("loaderstrategy", path) not in context.attributes:
-            if self.join_depth:
-                if len(path) / 2 > self.join_depth:
-                    return
-            else:
-                if self.mapper.base_mapper in path:
-                    return
+            context.attributes[("eager_row_processor", path)] = clauses
 
+        for value in self.mapper._iterate_polymorphic_properties():
+            value.setup(
+                context, 
+                entity, 
+                path + (self.mapper.base_mapper,), 
+                clauses, 
+                parentmapper=self.mapper, 
+                column_collection=add_to_collection)
+    
+    def _create_eager_join(self, context, entity, path, adapter, parentmapper, clauses):
+        
         if parentmapper is None:
             localparent = entity.mapper
         else:
             localparent = parentmapper
     
         # whether or not the Query will wrap the selectable in a subquery,
-        # and then attach eager load joins to that (i.e., in the case of LIMIT/OFFSET etc.)
-        should_nest_selectable = context.query._should_nest_selectable
-
+        # and then attach eager load joins to that (i.e., in the case of 
+        # LIMIT/OFFSET etc.)
+        should_nest_selectable = context.multi_row_eager_loaders and \
+            context.query._should_nest_selectable
+        
         entity_key = None
         if entity not in context.eager_joins and \
             not should_nest_selectable and \
             context.from_clause:
-            index, clause = sql_util.find_join_source(context.from_clause, entity.selectable)
+            index, clause = \
+                sql_util.find_join_source(context.from_clause, entity.selectable)
             if clause is not None:
                 # join to an existing FROM clause on the query.
                 # key it to its list index in the eager_joins dict.
                 # Query._compile_context will adapt as needed and append to the
                 # FROM clause of the select().
                 entity_key, default_towrap = index, clause
+
         if entity_key is None:
             entity_key, default_towrap = entity, entity.selectable
 
         towrap = context.eager_joins.setdefault(entity_key, default_towrap)
-
-        # create AliasedClauses object to build up the eager query.  
-        clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
-                    equivalents=self.mapper._equivalent_columns, adapt_required=True)
 
         join_to_left = False
         if adapter:
             if getattr(adapter, 'aliased_class', None):
                 onclause = getattr(adapter.aliased_class, self.key, self.parent_property)
             else:
-                onclause = getattr(mapperutil.AliasedClass(self.parent, adapter.selectable), self.key, self.parent_property)
+                onclause = getattr(mapperutil.AliasedClass(self.parent, adapter.selectable), 
+                                        self.key, self.parent_property)
                 
             if onclause is self.parent_property:
                 # TODO: this is a temporary hack to account for polymorphic eager loads where
@@ -709,9 +722,10 @@ class EagerLoader(AbstractRelationLoader):
                 join_to_left = True
         else:
             onclause = self.parent_property
-        
-        innerjoin = context.attributes.get(("eager_join_type", path), self.parent_property.innerjoin)
-        
+
+        innerjoin = context.attributes.get(("eager_join_type", path), 
+                                                self.parent_property.innerjoin)
+
         context.eager_joins[entity_key] = eagerjoin = mapperutil.join(
                                                         towrap, 
                                                         clauses.aliased_class, 
@@ -719,15 +733,17 @@ class EagerLoader(AbstractRelationLoader):
                                                         join_to_left=join_to_left, 
                                                         isouter=not innerjoin
                                                     )
-        
+
         # send a hint to the Query as to where it may "splice" this join
         eagerjoin.stop_on = entity.selectable
-        
-        if self.parent_property.secondary is None and context.query._should_nest_selectable and not parentmapper:
+
+        if self.parent_property.secondary is None and \
+                not parentmapper:
             # for parentclause that is the non-eager end of the join,
             # ensure all the parent cols in the primaryjoin are actually in the
-            # columns clause (i.e. are not deferred), so that aliasing applied by the Query propagates 
-            # those columns outward.  This has the effect of "undefering" those columns.
+            # columns clause (i.e. are not deferred), so that aliasing applied 
+            # by the Query propagates those columns outward.  This has the effect 
+            # of "undefering" those columns.
             for col in sql_util.find_columns(self.parent_property.primaryjoin):
                 if localparent.mapped_table.c.contains_column(col):
                     if adapter:
@@ -735,9 +751,12 @@ class EagerLoader(AbstractRelationLoader):
                     context.primary_columns.append(col)
         
         if self.parent_property.order_by:
-            context.eager_order_by += eagerjoin._target_adapter.copy_and_process(util.to_list(self.parent_property.order_by))
-            
-        return clauses
+            context.eager_order_by += \
+                            eagerjoin._target_adapter.\
+                                copy_and_process(
+                                    util.to_list(self.parent_property.order_by)
+                                )
+
         
     def _create_eager_adapter(self, context, row, adapter, path):
         if ("user_defined_eager_row_processor", path) in context.attributes:

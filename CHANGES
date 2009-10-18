@@ -17,30 +17,54 @@ CHANGES
     3.1, Jython2.5.
     
 - orm
-  - the 'expire' option on query.update() has been renamed to
-    'fetch', thus matching that of query.delete()
+  - Changes to query.update() and query.delete():
+      - the 'expire' option on query.update() has been renamed to
+        'fetch', thus matching that of query.delete()
 
-  - query.update() and query.delete() both default to
-    'evaluate' for the synchronize strategy.
+      - query.update() and query.delete() both default to
+        'evaluate' for the synchronize strategy.
 
-  - the 'synchronize' strategy for update() and delete() raises
-    an error on failure. There is no implicit fallback onto
-    "fetch". Failure of evaluation is based on the structure of
-    criteria, so success/failure is deterministic based on code
-    structure.
+      - the 'synchronize' strategy for update() and delete()
+        raises an error on failure. There is no implicit fallback
+        onto "fetch". Failure of evaluation is based on the
+        structure of criteria, so success/failure is deterministic
+        based on code structure.
 
+  - Enhancements on many-to-one relations:
+      - many-to-one relations now fire off a lazyload in fewer
+        cases, including in most cases will not fetch the "old"
+        value when a new one is replaced.
+
+      - many-to-one relation to a joined-table subclass now uses
+        get() for a simple load (known as the "use_get"
+        condition), i.e. Related->Sub(Base), without the need to
+        redefine the primaryjoin condition in terms of the base
+        table. [ticket:1186]
+
+      - specifying a foreign key with a declarative column, i.e.
+        ForeignKey(MyRelatedClass.id) doesn't break the "use_get"
+        condition from taking place [ticket:1492]
+
+      - relation(), eagerload(), and eagerload_all() now feature
+        an option called "innerjoin". Specify `True` or `False` to
+        control whether an eager join is constructed as an INNER
+        or OUTER join. Default is `False` as always. The mapper
+        options will override whichever setting is specified on
+        relation(). Should generally be set for many-to-one, not
+        nullable foreign key relations to allow improved join
+        performance. [ticket:1544]
+
+      - the behavior of eagerloading such that the main query is
+        wrapped in a subquery when LIMIT/OFFSET are present now
+        makes an exception for the case when all eager loads are
+        many-to-one joins. In those cases, the eager joins are
+        against the parent table directly along with the
+        limit/offset without the extra overhead of a subquery,
+        since a many-to-one join does not add rows to the result.
+      
   - the "named tuple" objects returned when iterating a
     Query() are now pickleable.
 
-  - added a flag to relation(), eagerload(), and eagerload_all()
-    called 'innerjoin'.  Specify `True` or `False` to control
-    whether an eager join is constructed as an INNER or OUTER
-    join.   Default is `False` as always.   The mapper options
-    will override whichever setting is specified on relation().
-    Should generally be set for many-to-one, not nullable
-    foreign key relations to allow improved join performance.
-    [ticket:1544]
-    
   - mapping to a select() construct now requires that you 
     make an alias() out of it distinctly.   This to eliminate
     confusion over such issues as [ticket:1542]
@@ -68,10 +92,6 @@ CHANGES
     None is when comparing an object/collection-referencing
     attribute within query.filter(), filter_by(), etc.
     [ticket:1415]
-    
-  - many-to-one relations now fire off a lazyload in fewer
-    cases, including in most cases will not fetch the "old"
-    value when a new one is replaced.
 
   - added "make_transient()" helper function which transforms a
     persistent/ detached instance into a transient one (i.e.
@@ -84,16 +104,6 @@ CHANGES
     columns will be considered an identity.  The need for this
     scenario typically only occurs when mapping to an outer join.
     [ticket:1339]
-    
-  - many-to-one "lazyload" fixes:
-      - many-to-one relation to a joined-table subclass now
-        uses get() for a simple load (known as the "use_get"
-        condition), i.e. Related->Sub(Base), without the need
-        to redefine the primaryjoin condition in terms of the
-        base table. [ticket:1186]
-      - specifying a foreign key with a declarative column,
-        i.e. ForeignKey(MyRelatedClass.id) doesn't break the
-        "use_get" condition from taking place [ticket:1492]
 
    - the mechanics of "backref" have been fully merged into the
      finer grained "back_populates" system, and take place entirely
