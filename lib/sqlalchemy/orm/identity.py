@@ -102,7 +102,8 @@ class WeakInstanceDict(IdentityMap):
                 return False
         except KeyError:
             return False
-        return o is not None
+        else:
+            return o is not None
     
     def contains_state(self, state):
         return dict.get(self, state.key) is state

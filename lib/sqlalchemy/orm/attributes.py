@@ -1200,10 +1200,11 @@ class _ClassInstrumentationAdapter(ClassManager):
     def has_state(self, instance):
         try:
             state = self._get_state(instance)
-            return True
         except exc.NO_STATE:
             return False
-
+        else:
+            return True
+            
     def state_getter(self):
         return self._get_state
 
