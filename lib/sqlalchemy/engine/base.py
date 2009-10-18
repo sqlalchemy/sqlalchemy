@@ -880,7 +880,9 @@ class Connection(Connectable):
             raise
 
     def _rollback_impl(self):
-        if not self.closed and not self.invalidated and self.__connection.is_valid:
+        # use getattr() for is_valid to support exceptions raised in dialect initializer, 
+        # where we do not yet have the pool wrappers plugged in
+        if not self.closed and not self.invalidated and getattr(self.__connection, 'is_valid', False):
             if self.engine._should_log_info:
                 self.engine.logger.info("ROLLBACK")
             try:

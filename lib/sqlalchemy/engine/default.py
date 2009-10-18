@@ -130,6 +130,11 @@ class DefaultDialect(base.Dialect):
     def connect(self, *cargs, **cparams):
         return self.dbapi.connect(*cargs, **cparams)
 
+    def create_connect_args(self, url):
+        opts = url.translate_connect_args()
+        opts.update(url.query)
+        return [[], opts]
+
     def do_begin(self, connection):
         """Implementations might want to put logic here for turning
         autocommit on/off, etc.
@@ -239,7 +244,6 @@ class DefaultExecutionContext(base.ExecutionContext):
             if self.isinsert or self.isupdate:
                 self.__process_defaults()
             self.parameters = self.__convert_compiled_params(self.compiled_parameters)
-
         elif statement is not None:
             # plain text statement
             self.result_map = self.compiled = None

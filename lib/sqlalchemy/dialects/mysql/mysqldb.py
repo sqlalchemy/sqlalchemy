@@ -139,9 +139,6 @@ class MySQL_mysqldb(MySQLDialect):
             opts['client_flag'] = client_flag
         return [[], opts]
     
-    def do_ping(self, connection):
-        connection.ping()
-
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []
