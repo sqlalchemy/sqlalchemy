@@ -268,6 +268,16 @@ def relation(argument, secondary=None, **kwargs):
       ForeignKey's are present in the join condition, or to override
       the table-defined foreign keys.
 
+    :param innerjoin=False:
+      when ``True``, eager loads will use an inner join to join
+      against related tables instead of an outer join.  The purpose
+      of this option is strictly one of performance, as inner joins
+      generally perform better than outer joins.  This flag can
+      be set to ``True`` when the relation references an object
+      via many-to-one using local foreign keys that are not nullable,
+      or when the reference is one-to-one or a collection that is 
+      guaranteed to have one or at least one entry.
+      
     :param join_depth:
       when non-``None``, an integer value indicating how many levels
       deep eagerload joins should be constructed on a self-referring
@@ -849,31 +859,68 @@ def extension(ext):
     return ExtensionOption(ext)
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
-def eagerload(*keys):
+def eagerload(*keys, **kw):
     """Return a ``MapperOption`` that will convert the property of the given
     name into an eager load.
 
     Used with ``query.options()``.
 
+    examples::
+    
+        # eagerload the "orders" colleciton on "User"
+        query(User).options(eagerload(User.orders))
+        
+        # eagerload the "keywords" collection on each "Item",
+        # but not the "items" collection on "Order" - those 
+        # remain lazily loaded.
+        query(Order).options(eagerload(Order.items, Item.keywords))
+
+        # to eagerload across both, use eagerload_all()
+        query(Order).options(eagerload_all(Order.items, Item.keywords))
+
+    The keyword arguments accept a flag `innerjoin=True|False` which will 
+    override the value of the `innerjoin` flag specified on the relation().
+    
     """
-    return strategies.EagerLazyOption(keys, lazy=False)
+    innerjoin = kw.pop('innerjoin', None)
+    if innerjoin is not None:
+        return (
+             strategies.EagerLazyOption(keys, lazy=False), 
+             strategies.EagerJoinOption(keys, innerjoin)
+         )
+    else:
+        return strategies.EagerLazyOption(keys, lazy=False)
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
-def eagerload_all(*keys):
+def eagerload_all(*keys, **kw):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path into an eager load.
 
-    For example, this::
+    Used with ``query.options()``.
+
+    For example::
 
         query.options(eagerload_all('orders.items.keywords'))...
 
     will set all of 'orders', 'orders.items', and 'orders.items.keywords' to
     load in one eager load.
 
-    Used with ``query.options()``.
+    Individual descriptors are accepted as arguments as well::
+    
+        query.options(eagerload_all(User.orders, Order.items, Item.keywords))
+
+    The keyword arguments accept a flag `innerjoin=True|False` which will 
+    override the value of the `innerjoin` flag specified on the relation().
 
     """
-    return strategies.EagerLazyOption(keys, lazy=False, chained=True)
+    innerjoin = kw.pop('innerjoin', None)
+    if innerjoin is not None:
+        return (
+            strategies.EagerLazyOption(keys, lazy=False, chained=True), 
+            strategies.EagerJoinOption(keys, innerjoin, chained=True)
+        )
+    else:
+        return strategies.EagerLazyOption(keys, lazy=False, chained=True)
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def lazyload(*keys):

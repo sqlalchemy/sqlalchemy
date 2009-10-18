@@ -357,7 +357,7 @@ class RelationProperty(StrategizedProperty):
         passive_updates=True, remote_side=None,
         enable_typechecks=True, join_depth=None,
         comparator_factory=None,
-        single_parent=False,
+        single_parent=False, innerjoin=False,
         strategy_class=None, _local_remote_pairs=None, query_class=None):
 
         self.uselist = uselist
@@ -377,6 +377,7 @@ class RelationProperty(StrategizedProperty):
         self.remote_side = remote_side
         self.enable_typechecks = enable_typechecks
         self.query_class = query_class
+        self.innerjoin = innerjoin
 
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs

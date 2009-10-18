@@ -32,6 +32,15 @@ CHANGES
   - the "named tuple" objects returned when iterating a
     Query() are now pickleable.
 
+  - added a flag to relation(), eagerload(), and eagerload_all()
+    called 'innerjoin'.  Specify `True` or `False` to control
+    whether an eager join is constructed as an INNER or OUTER
+    join.   Default is `False` as always.   The mapper options
+    will override whichever setting is specified on relation().
+    Should generally be set for many-to-one, not nullable
+    foreign key relations to allow improved join performance.
+    [ticket:1544]
+    
   - mapping to a select() construct now requires that you 
     make an alias() out of it distinctly.   This to eliminate
     confusion over such issues as [ticket:1542]

@@ -676,16 +676,10 @@ class EagerLoader(AbstractRelationLoader):
         # and then attach eager load joins to that (i.e., in the case of LIMIT/OFFSET etc.)
         should_nest_selectable = context.query._should_nest_selectable
 
-        if entity in context.eager_joins:
-            entity_key, default_towrap = entity, entity.selectable
-
-        elif should_nest_selectable or not context.from_clause:
-            # if no from_clause, or a subquery is going to be generated, 
-            # store eager joins per _MappedEntity; Query._compile_context will 
-            # add them as separate selectables to the select(), or splice them together
-            # after the subquery is generated
-            entity_key, default_towrap = entity, entity.selectable
-        else:
+        entity_key = None
+        if entity not in context.eager_joins and \
+            not should_nest_selectable and \
+            context.from_clause:
             index, clause = sql_util.find_join_source(context.from_clause, entity.selectable)
             if clause is not None:
                 # join to an existing FROM clause on the query.
@@ -693,11 +687,9 @@ class EagerLoader(AbstractRelationLoader):
                 # Query._compile_context will adapt as needed and append to the
                 # FROM clause of the select().
                 entity_key, default_towrap = index, clause
-            else:
-                # if no from_clause to join to,
-                # store eager joins per _MappedEntity
-                entity_key, default_towrap = entity, entity.selectable
-                
+        if entity_key is None:
+            entity_key, default_towrap = entity, entity.selectable
+
         towrap = context.eager_joins.setdefault(entity_key, default_towrap)
 
         # create AliasedClauses object to build up the eager query.  
@@ -717,8 +709,16 @@ class EagerLoader(AbstractRelationLoader):
                 join_to_left = True
         else:
             onclause = self.parent_property
-            
-        context.eager_joins[entity_key] = eagerjoin = mapperutil.outerjoin(towrap, clauses.aliased_class, onclause, join_to_left=join_to_left)
+        
+        innerjoin = context.attributes.get(("eager_join_type", path), self.parent_property.innerjoin)
+        
+        context.eager_joins[entity_key] = eagerjoin = mapperutil.join(
+                                                        towrap, 
+                                                        clauses.aliased_class, 
+                                                        onclause, 
+                                                        join_to_left=join_to_left, 
+                                                        isouter=not innerjoin
+                                                    )
         
         # send a hint to the Query as to where it may "splice" this join
         eagerjoin.stop_on = entity.selectable
@@ -836,6 +836,23 @@ class EagerLazyOption(StrategizedOption):
         elif self.lazy is None:
             return NoLoader
 
+class EagerJoinOption(PropertyOption):
+    
+    def __init__(self, key, innerjoin, chained=False):
+        super(EagerJoinOption, self).__init__(key)
+        self.innerjoin = innerjoin
+        self.chained = chained
+        
+    def is_chained(self):
+        return self.chained
+
+    def process_query_property(self, query, paths, mappers):
+        if self.is_chained():
+            for path in paths:
+                query._attributes[("eager_join_type", path)] = self.innerjoin
+        else:
+            query._attributes[("eager_join_type", paths[-1])] = self.innerjoin
+        
 class LoadEagerFromAliasOption(PropertyOption):
     
     def __init__(self, key, alias=None):

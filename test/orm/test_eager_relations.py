@@ -3,7 +3,7 @@
 from sqlalchemy.test.testing import eq_, is_, is_not_
 import sqlalchemy as sa
 from sqlalchemy.test import testing
-from sqlalchemy.orm import eagerload, deferred, undefer
+from sqlalchemy.orm import eagerload, deferred, undefer, eagerload_all, backref
 from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, func
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session, lazyload, aliased
@@ -12,7 +12,7 @@ from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
 import datetime
 
-class EagerTest(_fixtures.FixtureTest):
+class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_inserts = 'once'
     run_deletes = None
 
@@ -725,6 +725,84 @@ class EagerTest(_fixtures.FixtureTest):
             Address.user_id==User.id).order_by(User.id)
         eq_(self.static.user_address_result[1:2], l.all())
 
+    @testing.resolve_artifact_names
+    def test_inner_join(self):
+        mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy=False, innerjoin=True, order_by=addresses.c.id)
+        ))
+        sess = create_session()
+        eq_(
+            [User(id=7, addresses=[ Address(id=1) ]),
+            User(id=8, 
+                addresses=[ Address(id=2, email_address='ed@wood.com'), 
+                            Address(id=3, email_address='ed@bettyboop.com'), 
+                            Address(id=4, email_address='ed@lala.com'), ]),
+            User(id=9, addresses=[ Address(id=5) ])]
+            ,sess.query(User).all()
+        )
+        self.assert_compile(sess.query(User), 
+                "SELECT users.id AS users_id, users.name AS users_name, "
+                "addresses_1.id AS addresses_1_id, addresses_1.user_id AS addresses_1_user_id, "
+                "addresses_1.email_address AS addresses_1_email_address FROM users JOIN "
+                "addresses AS addresses_1 ON users.id = addresses_1.user_id ORDER BY addresses_1.id"
+        , use_default_dialect=True)
+
+    @testing.resolve_artifact_names
+    def test_inner_join_options(self):
+        mapper(User, users, properties = dict(
+            orders =relation(Order, backref=backref('user', innerjoin=True))
+        ))
+        mapper(Order, orders, properties=dict(
+            items=relation(Item, secondary=order_items)
+        ))
+        mapper(Item, items)
+        sess = create_session()
+        self.assert_compile(sess.query(User).options(eagerload(User.orders, innerjoin=True)), 
+            "SELECT users.id AS users_id, users.name AS users_name, orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, orders_1.address_id AS orders_1_address_id, "
+            "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
+            "FROM users JOIN orders AS orders_1 ON users.id = orders_1.user_id"
+        , use_default_dialect=True)
+
+        self.assert_compile(sess.query(User).options(eagerload_all(User.orders, Order.items, innerjoin=True)), 
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS items_1_id, "
+            "items_1.description AS items_1_description, orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, orders_1.address_id AS orders_1_address_id, "
+            "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
+            "FROM users JOIN orders AS orders_1 ON users.id = orders_1.user_id JOIN order_items AS "
+            "order_items_1 ON orders_1.id = order_items_1.order_id JOIN items AS items_1 ON "
+            "items_1.id = order_items_1.item_id"
+        , use_default_dialect=True)
+        
+        def go():
+            eq_(
+                sess.query(User).options(
+                    eagerload(User.orders, innerjoin=True), 
+                    eagerload(User.orders, Order.items, innerjoin=True)).all(),
+                    
+                [User(id=7, 
+                    orders=[ 
+                        Order(id=1, items=[ Item(id=1), Item(id=2), Item(id=3)]), 
+                        Order(id=3, items=[ Item(id=3), Item(id=4), Item(id=5)]), 
+                        Order(id=5, items=[Item(id=5)])]),
+                User(id=9, orders=[
+                    Order(id=2, items=[ Item(id=1), Item(id=2), Item(id=3)]), 
+                    Order(id=4, items=[ Item(id=1), Item(id=5)])])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+        
+        # test that default innerjoin setting is used for options
+        self.assert_compile(
+            sess.query(Order).options(eagerload(Order.user)).filter(Order.description == 'foo'),
+            "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, orders.address_id AS "
+            "orders_address_id, orders.description AS orders_description, orders.isopen AS "
+            "orders_isopen, users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM orders JOIN users AS users_1 ON users_1.id = orders.user_id "
+            "WHERE orders.description = :description_1",
+            use_default_dialect=True
+        )
+        
 class AddEntityTest(_fixtures.FixtureTest):
     run_inserts = 'once'
     run_deletes = None
