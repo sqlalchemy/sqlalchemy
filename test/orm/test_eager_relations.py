@@ -10,6 +10,7 @@ from sqlalchemy.orm import mapper, relation, create_session, lazyload, aliased
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
+from sqlalchemy.util import OrderedDict as odict
 import datetime
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
@@ -576,13 +577,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     def test_manytoone_limit(self):
         """test that the subquery wrapping only occurs with limit/offset and m2m or o2m joins present."""
         
-        mapper(User, users, properties={
-            'orders':relation(Order, backref='user')
-        })
-        mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, backref='orders'),
-            'address':relation(Address)
-        })
+        mapper(User, users, properties=odict(
+            orders=relation(Order, backref='user')
+        ))
+        mapper(Order, orders, properties=odict(
+            items=relation(Item, secondary=order_items, backref='orders'),
+            address=relation(Address)
+        ))
         mapper(Address, addresses)
         mapper(Item, items)
         
