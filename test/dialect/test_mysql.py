@@ -16,6 +16,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
     __only_on__ = 'mysql'
 
+    @testing.uses_deprecated('Manually quoting ENUM value literals')
     def test_basic(self):
         meta1 = MetaData(testing.db)
         table = Table(
@@ -531,6 +532,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
+    @testing.uses_deprecated('Manually quoting ENUM value literals')
     def test_enum(self):
         """Exercise the ENUM type."""
 
@@ -611,6 +613,7 @@ class TypesTest(TestBase, AssertsExecutionResults):
         enum_table.drop()
 
     @testing.exclude('mysql', '<', (4,), "3.23 can't handle an ENUM of ''")
+    @testing.uses_deprecated('Manually quoting ENUM value literals')
     def test_enum_parse(self):
         """More exercises for the ENUM type."""
 
@@ -713,6 +716,7 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
 
     @testing.exclude('mysql', '<', (5, 0, 0), 'early types are squirrely')
     @testing.uses_deprecated('Using String type with no length')
+    @testing.uses_deprecated('Manually quoting ENUM value literals')
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
         specs = [( String(1), mysql.MSString(1), ),

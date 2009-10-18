@@ -941,8 +941,8 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         q5 = s.query(User, literal("y"))
         q6 = q4.union(q5)
         
-        for q in (q3, q6):
-            eq_(q.order_by(User.id).all(),
+        for q in (q3.order_by(User.id, "anon_1_anon_2"), q6.order_by(User.id, "foo")):
+            eq_(q.all(),
                 [
                     (User(id=7, name=u'jack'), u'x'), 
                     (User(id=7, name=u'jack'), u'y'), 
