@@ -49,20 +49,25 @@ all remaining cursor/connection resources.
 RETURNING support
 ~~~~~~~~~~~~~~~~~
 
-Firebird 2.0 supports returning a result set from inserts, and 2.1 extends
-that to deletes and updates.
+Firebird 2.0 supports returning a result set from inserts, and 2.1
+extends that to deletes and updates. This is generically exposed by
+the SQLAlchemy ``returning()`` method, such as::
 
-To use this pass the column/expression list to the ``firebird_returning``
-parameter when creating the queries::
+    # INSERT..RETURNING
+    result = table.insert().returning(table.c.col1, table.c.col2).\
+                   values(name='foo')
+    print result.fetchall()
 
-  raises = tbl.update(empl.c.sales > 100, values=dict(salary=empl.c.salary * 1.1),
-                      firebird_returning=[empl.c.id, empl.c.salary]).execute().fetchall()
+    # UPDATE..RETURNING
+    raises = empl.update().returning(empl.c.id, empl.c.salary).\
+                  where(empl.c.sales>100).\
+                  values(dict(salary=empl.c.salary * 1.1))
+    print raises.fetchall()
 
 
 .. _dialects: http://mc-computing.com/Databases/Firebird/SQL_Dialect.html
 
 """
-
 
 import datetime, decimal, re
 
@@ -177,8 +182,6 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
         return "BLOB SUB_TYPE 0"
 
 
-
-
 class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosincrasies"""
 
@@ -291,13 +294,15 @@ class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
     def __init__(self, dialect):
         super(FBIdentifierPreparer, self).__init__(dialect, omit_schema=True)
 
+
 class FBExecutionContext(default.DefaultExecutionContext):
     def fire_sequence(self, seq):
         """Get the next value from the sequence using ``gen_id()``."""
 
         return self._execute_scalar("SELECT gen_id(%s, 1) FROM rdb$database" % \
             self.dialect.identifier_preparer.format_sequence(seq))
-    
+
+
 class FBDialect(default.DefaultDialect):
     """Firebird dialect"""
 
@@ -318,7 +323,7 @@ class FBDialect(default.DefaultDialect):
     preparer = FBIdentifierPreparer
     type_compiler = FBTypeCompiler
     execution_ctx_cls = FBExecutionContext
-    
+
     colspecs = colspecs
     ischema_names = ischema_names
 
@@ -491,8 +496,8 @@ class FBDialect(default.DefaultDialect):
             if row is None:
                 break
             name = self.normalize_name(row['fname'])
-            # get the data type
 
+            # get the data type
             colspec = row['ftype'].rstrip()
             coltype = self.ischema_names.get(colspec)
             if coltype is None:
