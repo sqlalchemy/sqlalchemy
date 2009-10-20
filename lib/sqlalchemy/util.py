@@ -1124,14 +1124,7 @@ class ScopedRegistry(object):
 
     scopefunc
       a callable that will return a key to store/retrieve an object.
-      If None, ScopedRegistry uses a threading.local object instead.
-
     """
-    def __new__(cls, createfunc, scopefunc=None):
-        if not scopefunc:
-            return object.__new__(_TLocalRegistry)
-        else:
-            return object.__new__(cls)
 
     def __init__(self, createfunc, scopefunc):
         self.createfunc = createfunc
@@ -1157,8 +1150,8 @@ class ScopedRegistry(object):
         except KeyError:
             pass
 
-class _TLocalRegistry(ScopedRegistry):
-    def __init__(self, createfunc, scopefunc=None):
+class ThreadLocalRegistry(ScopedRegistry):
+    def __init__(self, createfunc):
         self.createfunc = createfunc
         self.registry = threading.local()
 
