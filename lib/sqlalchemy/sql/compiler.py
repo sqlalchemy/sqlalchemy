@@ -584,16 +584,16 @@ class SQLCompiler(engine.Compiled):
             column_clause_args = {}
 
         # the actual list of columns to print in the SELECT column list.
-        inner_columns = util.unique_list(
+        inner_columns = [
             c for c in [
                 self.process(
                     self.label_select_column(select, co, asfrom=asfrom), 
                     within_columns_clause=True,
                     **column_clause_args) 
-                for co in select.inner_columns
+                for co in util.unique_list(select.inner_columns)
             ]
             if c is not None
-        )
+        ]
         
         text = "SELECT "  # we're off to a good start !
         if select._prefixes:

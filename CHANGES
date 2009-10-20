@@ -584,6 +584,13 @@ CHANGES
     - Fixed the "numeric" paramstyle, which apparently is the
       default paramstyle used by Informixdb.
       
+    - Repeat expressions in the columns clause of a select
+      are deduped based on the identity of each clause element,
+      not the actual string.  This allows positional 
+      elements to render correctly even if they all render
+      identically, such as "qmark" style bind parameters.
+      [ticket:1574]
+      
 - postgresql
     - Added support for reflecting the DOUBLE PRECISION type,
       via a new postgres.PGDoublePrecision object.  
