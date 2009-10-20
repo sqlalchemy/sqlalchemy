@@ -5,7 +5,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy.util import ScopedRegistry, to_list, get_cls_kwargs, deprecated
+from sqlalchemy.util import ScopedRegistry, ThreadLocalRegistry, \
+                            to_list, get_cls_kwargs, deprecated
 from sqlalchemy.orm import (
     EXT_CONTINUE, MapperExtension, class_mapper, object_session
     )
@@ -29,7 +30,10 @@ class ScopedSession(object):
 
     def __init__(self, session_factory, scopefunc=None):
         self.session_factory = session_factory
-        self.registry = ScopedRegistry(session_factory, scopefunc)
+        if scopefunc:
+            self.registry = ScopedRegistry(session_factory, scopefunc)
+        else:
+            self.registry = ThreadLocalRegistry(session_factory)
         self.extension = _ScopedExt(self)
 
     def __call__(self, **kwargs):
