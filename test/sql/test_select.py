@@ -152,6 +152,36 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             select([cast("data", Integer)], use_labels=True),      # this will work with plain Integer in 0.6
             "SELECT CAST(:param_1 AS INTEGER) AS anon_1"
         )
+    
+    def test_paramstyles(self):
+        stmt = text("select :foo, :bar, :bat from sometable")
+        
+        self.assert_compile(
+            stmt,
+            "select ?, ?, ? from sometable"
+            , dialect=default.DefaultDialect(paramstyle='qmark')
+        )
+        self.assert_compile(
+            stmt,
+            "select :foo, :bar, :bat from sometable"
+            , dialect=default.DefaultDialect(paramstyle='named')
+        )
+        self.assert_compile(
+            stmt,
+            "select %s, %s, %s from sometable"
+            , dialect=default.DefaultDialect(paramstyle='format')
+        )
+        self.assert_compile(
+            stmt,
+            "select :1, :2, :3 from sometable"
+            , dialect=default.DefaultDialect(paramstyle='numeric')
+        )
+        self.assert_compile(
+            stmt,
+            "select %(foo)s, %(bar)s, %(bat)s from sometable"
+            , dialect=default.DefaultDialect(paramstyle='pyformat')
+        )
+        
         
     def test_nested_uselabels(self):
         """test nested anonymous label generation.  this

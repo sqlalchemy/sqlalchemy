@@ -56,7 +56,7 @@ BIND_TEMPLATES = {
     'pyformat':"%%(%(name)s)s",
     'qmark':"?",
     'format':"%%s",
-    'numeric':"%(position)s",
+    'numeric':":%(position)s",
     'named':":%(name)s"
 }
 

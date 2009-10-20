@@ -580,6 +580,16 @@ CHANGES
       by contains_eager() out of individual instance states.
       [ticket:1553]
 
+- sql
+    - Fixed the "numeric" paramstyle, which apparently is the
+      default paramstyle used by Informixdb.
+      
+- postgresql
+    - Added support for reflecting the DOUBLE PRECISION type,
+      via a new postgres.PGDoublePrecision object.  
+      This is postgresql.DOUBLE_PRECISION in 0.6.
+      [ticket:1085]
+
 - mssql
     - Changed the name of TrustedConnection to
       Trusted_Connection when constructing pyodbc connect
