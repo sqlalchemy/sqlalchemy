@@ -32,14 +32,14 @@ that when an :func:`~sqlalchemy.sql.expression.insert()` construct is executed u
 "executemany" semantics, the sequence is not pre-executed and normal PG SERIAL behavior
 is used.
 
-PostgreSQL 8.3 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy supports 
+PostgreSQL 8.2 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy supports 
 as well.  A future release of SQLA will use this feature by default in lieu of 
 sequence pre-execution in order to retrieve new primary key values, when available.
 
 INSERT/UPDATE...RETURNING
 -------------------------
 
-The dialect supports PG 8.3's ``INSERT..RETURNING`` and ``UPDATE..RETURNING`` syntaxes, 
+The dialect supports PG 8.2's ``INSERT..RETURNING``, ``UPDATE..RETURNING`` and ``DELETE..RETURNING`` syntaxes, 
 but must be explicitly enabled on a per-statement basis::
 
     # INSERT..RETURNING
@@ -50,6 +50,11 @@ but must be explicitly enabled on a per-statement basis::
     # UPDATE..RETURNING
     result = table.update().returning(table.c.col1, table.c.col2).\\
         where(table.c.name=='foo').values(name='bar')
+    print result.fetchall()
+
+    # DELETE..RETURNING
+    result = table.delete().returning(table.c.col1, table.c.col2).\\
+        where(table.c.name=='foo')
     print result.fetchall()
 
 Indexes
@@ -468,7 +473,7 @@ class PGDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         super(PGDialect, self).initialize(connection)
-        self.implicit_returning = self.server_version_info > (8, 3) and \
+        self.implicit_returning = self.server_version_info > (8, 2) and \
                                         self.__dict__.get('implicit_returning', True)
         
     def visit_pool(self, pool):

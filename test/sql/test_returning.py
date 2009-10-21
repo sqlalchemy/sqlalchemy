@@ -36,7 +36,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         table.drop()
     
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_column_targeting(self):
         result = table.insert().returning(table.c.id, table.c.full).execute({'persons': 1, 'full': False})
         
@@ -53,7 +53,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
     
     @testing.fails_on('firebird', "fb can't handle returning x AS y")
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_labeling(self):
         result = table.insert().values(persons=6).\
                             returning(table.c.persons.label('lala')).execute()
@@ -63,7 +63,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
     @testing.fails_on('firebird', "fb/kintersbasdb can't handle the bind params")
     @testing.fails_on('oracle+zxjdbc', "JDBC driver bug")
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_anon_expressions(self):
         result = table.insert().values(goofy="someOTHERgoofy").\
                             returning(func.lower(table.c.goofy, type_=GoofyType)).execute()
@@ -76,7 +76,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         assert row[0] == 30
         
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_update_returning(self):
         table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
 
@@ -87,7 +87,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         eq_(result2.fetchall(), [(1,True),(2,False)])
 
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_insert_returning(self):
         result = table.insert().returning(table.c.id).execute({'persons': 1, 'full': False})
 
@@ -117,7 +117,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
     
         
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     @testing.fails_on_everything_except('postgresql', 'firebird')
     def test_literal_returning(self):
         if testing.against("postgresql"):
@@ -130,7 +130,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         eq_([dict(row) for row in result4], [{'persons': 10}])
 
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_delete_returning(self):
         table.insert().execute([{'persons': 5, 'full': False}, {'persons': 3, 'full': False}])
 
@@ -180,7 +180,7 @@ class KeyReturningTest(TestBase, AssertsExecutionResults):
         table.drop()
 
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
-    @testing.exclude('postgresql', '<', (8, 2), '8.3+ feature')
+    @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_insert(self):
         result = table.insert().returning(table.c.foo_id).execute(data='somedata')
         row = result.first()
