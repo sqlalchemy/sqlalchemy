@@ -76,9 +76,7 @@ def find_columns(clause):
     """locate Column objects within the given expression."""
     
     cols = util.column_set()
-    def visit_column(col):
-        cols.add(col)
-    visitors.traverse(clause, {}, {'column':visit_column})
+    visitors.traverse(clause, {}, {'column':cols.add})
     return cols
 
 def join_condition(a, b, ignore_nonexistent_tables=False):
@@ -327,30 +325,43 @@ def reduce_columns(columns, *clauses, **kw):
 
     return expression.ColumnSet(columns.difference(omit))
 
-def criterion_as_pairs(expression, consider_as_foreign_keys=None, consider_as_referenced_keys=None, any_operator=False):
+def criterion_as_pairs(expression, consider_as_foreign_keys=None, 
+                        consider_as_referenced_keys=None, any_operator=False):
     """traverse an expression and locate binary criterion pairs."""
     
     if consider_as_foreign_keys and consider_as_referenced_keys:
-        raise exc.ArgumentError("Can only specify one of 'consider_as_foreign_keys' or 'consider_as_referenced_keys'")
+        raise exc.ArgumentError("Can only specify one of "
+                                "'consider_as_foreign_keys' or "
+                                "'consider_as_referenced_keys'")
         
     def visit_binary(binary):
         if not any_operator and binary.operator is not operators.eq:
             return
-        if not isinstance(binary.left, sql.ColumnElement) or not isinstance(binary.right, sql.ColumnElement):
+        if not isinstance(binary.left, sql.ColumnElement) or \
+                    not isinstance(binary.right, sql.ColumnElement):
             return
 
         if consider_as_foreign_keys:
-            if binary.left in consider_as_foreign_keys and (binary.right is binary.left or binary.right not in consider_as_foreign_keys):
+            if binary.left in consider_as_foreign_keys and \
+                        (binary.right is binary.left or 
+                        binary.right not in consider_as_foreign_keys):
                 pairs.append((binary.right, binary.left))
-            elif binary.right in consider_as_foreign_keys and (binary.left is binary.right or binary.left not in consider_as_foreign_keys):
+            elif binary.right in consider_as_foreign_keys and \
+                        (binary.left is binary.right or 
+                        binary.left not in consider_as_foreign_keys):
                 pairs.append((binary.left, binary.right))
         elif consider_as_referenced_keys:
-            if binary.left in consider_as_referenced_keys and (binary.right is binary.left or binary.right not in consider_as_referenced_keys):
+            if binary.left in consider_as_referenced_keys and \
+                        (binary.right is binary.left or 
+                        binary.right not in consider_as_referenced_keys):
                 pairs.append((binary.left, binary.right))
-            elif binary.right in consider_as_referenced_keys and (binary.left is binary.right or binary.left not in consider_as_referenced_keys):
+            elif binary.right in consider_as_referenced_keys and \
+                        (binary.left is binary.right or 
+                        binary.left not in consider_as_referenced_keys):
                 pairs.append((binary.right, binary.left))
         else:
-            if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column):
+            if isinstance(binary.left, schema.Column) and \
+                        isinstance(binary.right, schema.Column):
                 if binary.left.references(binary.right):
                     pairs.append((binary.right, binary.left))
                 elif binary.right.references(binary.left):
