@@ -802,22 +802,43 @@ class SchemaTest(TestBase):
         finally:
             metadata.drop_all()
 
-
 class HasSequenceTest(TestBase):
-    @classmethod
-    def setup_class(cls):
-        global metadata, users
+
+    @testing.requires.sequences
+    def test_has_sequence(self):
         metadata = MetaData()
         users = Table('users', metadata,
                       Column('user_id', sa.Integer, sa.Sequence('user_id_seq'), primary_key=True),
                       Column('user_name', sa.String(40)),
                       )
-
-    @testing.requires.sequences
-    def test_hassequence(self):
         metadata.create_all(bind=testing.db)
+        try:
+            eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)
+        finally:
+            metadata.drop_all(bind=testing.db)
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), False)
+
+    
+    @testing.requires.sequences
+    def test_has_sequence_schema(self):
+        # this test will probably fail on oracle , firebird since they don't have 
+        # the "alt_schema" thing going on.  this is all cleared up in 0.6.
+        
+        test_schema = "alt_schema"
+        s1 = sa.Sequence('user_id_seq', schema=test_schema)
+        s2 = sa.Sequence('user_id_seq')
+        
+        # this is good for PG, oracle, and firebird version 2.  In 0.6
+        # we use the CreateSequence/DropSequence construct
+        testing.db.execute("create sequence %s.user_id_seq" % test_schema)
+        testing.db.execute("create sequence user_id_seq")
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq', schema=test_schema), True)
         eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)
-        metadata.drop_all(bind=testing.db)
+        testing.db.execute("drop sequence %s.user_id_seq" % test_schema)
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq', schema=test_schema), False)
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)
+        testing.db.execute("drop sequence user_id_seq")
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq', schema=test_schema), False)
         eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), False)
 
 
