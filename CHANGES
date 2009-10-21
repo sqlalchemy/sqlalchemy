@@ -597,6 +597,10 @@ CHANGES
       This is postgresql.DOUBLE_PRECISION in 0.6.
       [ticket:1085]
 
+    - Corrected the "has_sequence" query to take current schema,
+      or explicit sequence-stated schema, into account.
+      [ticket:1576]
+
 - mssql
     - Changed the name of TrustedConnection to
       Trusted_Connection when constructing pyodbc connect

@@ -66,7 +66,7 @@ class SchemaGenerator(DDLBase):
             if ((not self.dialect.sequences_optional or
                  not sequence.optional) and
                 (not self.checkfirst or
-                 not self.dialect.has_sequence(self.connection, sequence.name))):
+                 not self.dialect.has_sequence(self.connection, sequence.name, schema=sequence.schema))):
                 self.connection.execute(schema.CreateSequence(sequence))
 
     def visit_index(self, index):
@@ -124,5 +124,5 @@ class SchemaDropper(DDLBase):
             if ((not self.dialect.sequences_optional or
                  not sequence.optional) and
                 (not self.checkfirst or
-                 self.dialect.has_sequence(self.connection, sequence.name))):
+                 self.dialect.has_sequence(self.connection, sequence.name, schema=sequence.schema))):
                 self.connection.execute(schema.DropSequence(sequence))

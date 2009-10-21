@@ -378,7 +378,7 @@ class FBDialect(default.DefaultDialect):
         c = connection.execute(tblqry, [self.denormalize_name(table_name)])
         return c.first() is not None
 
-    def has_sequence(self, connection, sequence_name):
+    def has_sequence(self, connection, sequence_name, schema=None):
         """Return ``True`` if the given sequence (generator) exists."""
 
         genqry = """

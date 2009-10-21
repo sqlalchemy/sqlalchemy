@@ -869,22 +869,38 @@ class SchemaTest(TestBase):
 
 
 class HasSequenceTest(TestBase):
-    @classmethod
-    def setup_class(cls):
-        global metadata, users
+
+    @testing.requires.sequences
+    def test_has_sequence(self):
         metadata = MetaData()
         users = Table('users', metadata,
                       Column('user_id', sa.Integer, sa.Sequence('user_id_seq'), primary_key=True),
                       Column('user_name', sa.String(40)),
                       )
-
-    @testing.requires.sequences
-    def test_hassequence(self):
         metadata.create_all(bind=testing.db)
-        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)
-        metadata.drop_all(bind=testing.db)
+        try:
+            eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)
+        finally:
+            metadata.drop_all(bind=testing.db)
         eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), False)
 
+    @testing.requires.schemas
+    @testing.requires.sequences
+    def test_has_sequence_schema(self):
+        test_schema = get_schema()
+        s1 = sa.Sequence('user_id_seq', schema=test_schema)
+        s2 = sa.Sequence('user_id_seq')
+        testing.db.execute(schema.CreateSequence(s1))
+        testing.db.execute(schema.CreateSequence(s2))
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq', schema=test_schema), True)
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)
+        testing.db.execute(schema.DropSequence(s1))
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq', schema=test_schema), False)
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), True)
+        testing.db.execute(schema.DropSequence(s2))
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq', schema=test_schema), False)
+        eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'), False)
+        
 # Tests related to engine.reflection
 
 def get_schema():
