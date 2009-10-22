@@ -519,6 +519,11 @@ CHANGES
       case, so there's no point in having a flag.
     - using new dialect.initialize() feature to set up
       version-dependent behavior.
+    - removed references to sequence which is no longer used.
+      implicit identities in mssql work the same as implicit
+      sequences on any other dialects. Explicit sequences are
+      enabled through the use of "default=Sequence()". See
+      the MSSQL dialect documentation for more information.
 
 - types
     - The construction of types within dialects has been totally

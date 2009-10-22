@@ -300,7 +300,7 @@ class Inspector(object):
                 colargs.append(sa_schema.DefaultClause(sql.text(col_d['default'])))
                 
             if 'sequence' in col_d:
-                # TODO: whos using this ?
+                # TODO: mssql, maxdb and sybase are using this.
                 seq = col_d['sequence']
                 sequence = sa_schema.Sequence(seq['name'], 1, 1)
                 if 'start' in seq:

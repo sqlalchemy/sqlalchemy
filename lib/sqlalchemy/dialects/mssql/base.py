@@ -138,6 +138,9 @@ would yield::
 Note that the ``start`` and ``increment`` values for sequences are
 optional and will default to 1,1.
 
+Implicit ``autoincrement`` behavior works the same in MSSQL as it
+does in other dialects and results in an ``IDENTITY`` column.
+
 * Support for ``SET IDENTITY_INSERT ON`` mode (automagic on / off for
   ``INSERT`` s)
 
@@ -1082,7 +1085,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if seq_col is column:
-            sequence = getattr(column, 'sequence', None)
+            sequence = isinstance(column.default, sa_schema.Sequence) and column.default
             if sequence:
                 start, increment = sequence.start or 1, sequence.increment or 1
             else:

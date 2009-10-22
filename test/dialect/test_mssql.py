@@ -322,8 +322,9 @@ class ReflectionTest(TestBase, ComparesTables):
         meta2 = MetaData(testing.db)
         try:
             table2 = Table('identity_test', meta2, autoload=True)
-            assert table2.c['col1'].sequence.start == 2
-            assert table2.c['col1'].sequence.increment == 3
+            sequence = isinstance(table2.c['col1'].default, schema.Sequence) and table2.c['col1'].default
+            assert sequence.start == 2
+            assert sequence.increment == 3
         finally:
             table.drop()
 
@@ -799,7 +800,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
             (types.Time, [], {},
              'DATETIME', ['<', (10,)], mssql.MSDateTime),
             (mssql.MSTime, [], {},
-             'DATETIME', ['<', (10,)], mssql.MSDateTime),
+             'TIME', ['>=', (10,)]),
 
             (mssql.MSSmallDateTime, [], {},
              'SMALLDATETIME', []),

@@ -50,6 +50,11 @@ intersesting:
 
 RUNNING INDIVIDUAL TESTS
 -------------------------
+Any directory of test modules can be run at once by specifying the directory
+path:
+
+    $ nosetest test/dialect
+
 Any test module can be run directly by specifying its module name:
 
     $ nosetests test.orm.test_mapper
