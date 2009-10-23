@@ -591,6 +591,13 @@ CHANGES
       by contains_eager() out of individual instance states.
       [ticket:1553]
 
+    - Mutable collection passed to the "extension" attribute
+      of relation(), column_property() etc. will not be mutated
+      or shared among multiple instrumentation calls, preventing
+      duplicate extensions, such as backref populators,
+      from being inserted into the list.
+      [ticket:1585]
+      
 - sql
     - Fixed the "numeric" paramstyle, which apparently is the
       default paramstyle used by Informixdb.

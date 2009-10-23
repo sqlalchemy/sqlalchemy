@@ -7,7 +7,7 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.engine import default
 from sqlalchemy.orm import mapper, relation, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
-from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relation, dynamic_loader, comparable_property
+from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relation, dynamic_loader, comparable_property,AttributeExtension
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
@@ -254,6 +254,28 @@ class MapperTest(_fixtures.FixtureTest):
         compile_mappers()
         mapper(Foo, addresses, inherits=User)
         assert getattr(Foo().__class__, 'name').impl is not None
+
+    @testing.resolve_artifact_names
+    def test_extension_collection_frozen(self):
+        class Foo(User):pass
+        m = mapper(User, users)
+        mapper(Order, orders)
+        compile_mappers()
+        mapper(Foo, addresses, inherits=User)
+        ext_list = [AttributeExtension()]
+        m.add_property('somename', column_property(users.c.name, extension=ext_list))
+        m.add_property('orders', relation(Order, extension=ext_list, backref='user'))
+        assert len(ext_list) == 1
+
+        assert Foo.orders.impl.extensions is User.orders.impl.extensions
+        assert Foo.orders.impl.extensions is not ext_list
+        
+        compile_mappers()
+        assert len(User.somename.impl.extensions) == 1
+        assert len(Foo.somename.impl.extensions) == 1
+        assert len(Foo.orders.impl.extensions) == 3
+        assert len(User.orders.impl.extensions) == 3
+        
 
     @testing.resolve_artifact_names
     def test_compile_on_get_props_1(self):

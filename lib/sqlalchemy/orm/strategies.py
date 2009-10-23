@@ -32,7 +32,7 @@ def _register_attribute(strategy, mapper, useobject,
 ):
 
     prop = strategy.parent_property
-    attribute_ext = util.to_list(prop.extension) or []
+    attribute_ext = list(util.to_list(prop.extension, default=[]))
         
     if useobject and prop.single_parent:
         attribute_ext.insert(0, _SingleParentValidator(prop))
