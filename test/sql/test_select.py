@@ -1574,7 +1574,35 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
         s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
         u = table1.delete(table1.c.name==s)
         self.assert_compile(u, "DELETE FROM mytable WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid)")
+    
+    def test_binds_that_match_columns(self):
+        """test bind params named after column names replace the normal SET/VALUES generation."""
+        
+        t = table('foo', column('x'), column('y'))
 
+        u = t.update().where(t.c.x==bindparam('x'))
+        
+        self.assert_compile(u, "UPDATE foo SET y=:y WHERE foo.x = :x")
+        self.assert_compile(u, "UPDATE foo SET  WHERE foo.x = :x", params={})
+        self.assert_compile(u.values(x=7), "UPDATE foo SET x=:x WHERE foo.x = :x")
+        self.assert_compile(u.values(y=7), "UPDATE foo SET y=:y WHERE foo.x = :x")
+        self.assert_compile(u.values(x=7), "UPDATE foo SET x=:x, y=:y WHERE foo.x = :x", params={'x':1, 'y':2})
+        self.assert_compile(u, "UPDATE foo SET y=:y WHERE foo.x = :x", params={'x':1, 'y':2})
+        
+        self.assert_compile(u.values(x=3 + bindparam('x')), "UPDATE foo SET x=(:param_1 + :x) WHERE foo.x = :x")
+        self.assert_compile(u.values(x=3 + bindparam('x')), "UPDATE foo SET x=(:param_1 + :x) WHERE foo.x = :x", params={'x':1})
+        self.assert_compile(u.values(x=3 + bindparam('x')), "UPDATE foo SET x=(:param_1 + :x), y=:y WHERE foo.x = :x", params={'x':1, 'y':2})
+
+        i = t.insert().values(x=3 + bindparam('x'))
+        self.assert_compile(i, "INSERT INTO foo (x) VALUES ((:param_1 + :x))")
+        self.assert_compile(i, "INSERT INTO foo (x, y) VALUES ((:param_1 + :x), :y)", params={'x':1, 'y':2})
+
+        i = t.insert().values(x=3 + bindparam('x2'))
+        self.assert_compile(i, "INSERT INTO foo (x) VALUES ((:param_1 + :x2))")
+        self.assert_compile(i, "INSERT INTO foo (x) VALUES ((:param_1 + :x2))", params={})
+        self.assert_compile(i, "INSERT INTO foo (x, y) VALUES ((:param_1 + :x2), :y)", params={'x':1, 'y':2})
+        self.assert_compile(i, "INSERT INTO foo (x, y) VALUES ((:param_1 + :x2), :y)", params={'x2':1, 'y':2})
+        
 class InlineDefaultTest(TestBase, AssertsCompiledSQL):
     def test_insert(self):
         m = MetaData()

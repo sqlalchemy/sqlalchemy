@@ -465,13 +465,13 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
     
     reserved_words = set([x.lower() for x in RESERVED_WORDS])
-    illegal_initial_characters = re.compile(r'[0-9_$]')
+    illegal_initial_characters = set(xrange(0, 10)).union(["_", "$"])
 
     def _bindparam_requires_quotes(self, value):
         """Return True if the given identifier requires quoting."""
         lc_value = value.lower()
         return (lc_value in self.reserved_words
-                or self.illegal_initial_characters.match(value[0])
+                or value[0] in self.illegal_initial_characters
                 or not self.legal_characters.match(unicode(value))
                 )
     

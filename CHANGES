@@ -191,6 +191,12 @@ CHANGES
       performed). This occurs if no end-user returning() was
       specified.
 
+    - insert() and update() constructs can now embed bindparam()
+      objects using names that match the keys of columns.  These
+      bind parameters will circumvent the usual route to those 
+      keys showing up in the VALUES or SET clause of the generated
+      SQL. [ticket:1579]
+      
     - Databases which rely upon postfetch of "last inserted id"
       to get at a generated sequence value (i.e. MySQL, MS-SQL)
       now work correctly when there is a composite primary key
