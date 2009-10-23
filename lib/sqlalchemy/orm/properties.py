@@ -1019,7 +1019,7 @@ class RelationProperty(StrategizedProperty):
         # primary property handler, set up class attributes
         if self.is_primary():
             if self.back_populates:
-                self.extension = util.to_list(self.extension) or []
+                self.extension = list(util.to_list(self.extension, default=[]))
                 self.extension.append(attributes.GenericBackrefExtension(self.back_populates))
                 self._add_reverse_property(self.back_populates)
             
