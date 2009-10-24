@@ -29,11 +29,11 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
     def teardown(self):
         metadata.drop_all()
         
-    @profiling.function_call_count(14416)
+    @profiling.function_call_count(14416, versions={'2.4':13214})
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
-    @profiling.function_call_count(44406)
+    @profiling.function_call_count(44406, versions={'2.4':33224})
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
