@@ -2,7 +2,7 @@ from sqlalchemy.test.testing import eq_
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util
-from sqlalchemy.engine import default
+from sqlalchemy.engine import default, base
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_, assert_raises_message, assert_raises
 from sqlalchemy.test.schema import Table, Column
@@ -608,6 +608,23 @@ class QueryTest(TestBase):
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
         r = users.outerjoin(addresses).select().execute().first()
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: r['user_id']
+        )
+
+        r = util.pickle.loads(util.pickle.dumps(r))
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Ambiguous column name",
+            lambda: r['user_id']
+        )
+        
+        result = users.outerjoin(addresses).select().execute()
+        result = base.BufferedColumnResultProxy(result.context)
+        r = result.first()
+        assert isinstance(r, base.BufferedColumnRow)
         assert_raises_message(
             exc.InvalidRequestError,
             "Ambiguous column name",

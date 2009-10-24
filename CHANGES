@@ -239,6 +239,13 @@ CHANGES
   - RowProxy objects are now pickleable, i.e. the object returned
     by result.fetchone(), result.fetchall() etc.
 
+  - ResultProxy internals have been overhauled to greatly reduce
+    method call counts when fetching columns that have no 
+    type-level processing applied.   Provides a 100% speed
+    improvement when fetching large result sets with no unicode
+    conversion.  Many thanks to Elixir's Gaëtan de Menten
+    for this dramatic improvement !  [ticket:1586]
+    
   - setting echo=False on create_engine() now sets the loglevel
     to WARN instead of NOTSET.  This so that logging can be
     disabled for a particular engine even if logging
