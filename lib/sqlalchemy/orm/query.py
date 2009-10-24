@@ -1311,11 +1311,14 @@ class Query(object):
         return self._execute_and_instances(context)
 
     def _execute_and_instances(self, querycontext):
-        result = self.session.execute(querycontext.statement, params=self._params, mapper=self._mapper_zero_or_none())
+        result = self.session.execute(
+                        querycontext.statement, params=self._params,
+                        mapper=self._mapper_zero_or_none())
         return self.instances(result, querycontext)
 
     def instances(self, cursor, __context=None):
-        """Given a ResultProxy cursor as returned by connection.execute(), return an ORM result as an iterator.
+        """Given a ResultProxy cursor as returned by connection.execute(),
+          return an ORM result as an iterator.
 
         e.g.::
 
@@ -1342,9 +1345,14 @@ class Query(object):
         else:
             filter = None
 
-        custom_rows = single_entity and 'append_result' in self._entities[0].extension
+        custom_rows = single_entity and \
+                        'append_result' in self._entities[0].extension
 
-        (process, labels) = zip(*[query_entity.row_processor(self, context, custom_rows) for query_entity in self._entities])
+        (process, labels) = \
+                    zip(*[
+                        query_entity.row_processor(self, context, custom_rows)
+                        for query_entity in self._entities
+                    ])
 
         if not single_entity:
             labels = [l for l in labels if l]
@@ -1363,18 +1371,21 @@ class Query(object):
             if custom_rows:
                 rows = []
                 for row in fetch:
-                    process[0](context, row, rows)
+                    process[0](row, rows)
             elif single_entity:
-                rows = [process[0](context, row) for row in fetch]
+                rows = [process[0](row, None) for row in fetch]
             else:
-                rows = [util.NamedTuple(labels, (proc(context, row) for proc in process))
+                rows = [util.NamedTuple(labels, 
+                        (proc(row, None) for proc in process))
                         for row in fetch]
 
             if filter:
                 rows = filter(rows)
 
-            if context.refresh_state and self._only_load_props and context.refresh_state in context.progress:
-                context.refresh_state.commit(context.refresh_state.dict, self._only_load_props)
+            if context.refresh_state and self._only_load_props \
+                        and context.refresh_state in context.progress:
+                context.refresh_state.commit(
+                        context.refresh_state.dict, self._only_load_props)
                 context.progress.pop(context.refresh_state)
 
             session._finalize_loaded(context.progress)
@@ -1388,9 +1399,11 @@ class Query(object):
             if not self._yield_per:
                 break
 
-    def _get(self, key=None, ident=None, refresh_state=None, lockmode=None, only_load_props=None, passive=None):
+    def _get(self, key=None, ident=None, refresh_state=None, lockmode=None,
+                                        only_load_props=None, passive=None):
         lockmode = lockmode or self._lockmode
-        if not self._populate_existing and not refresh_state and not self._mapper_zero().always_refresh and lockmode is None:
+        if not self._populate_existing and not refresh_state and \
+                not self._mapper_zero().always_refresh and lockmode is None:
             instance = self.session.identity_map.get(key)
             if instance:
                 state = attributes.instance_state(instance)
@@ -1431,8 +1444,11 @@ class Query(object):
                 try:
                     params[_get_params[primary_key].key] = ident[i]
                 except IndexError:
-                    raise sa_exc.InvalidRequestError("Could not find enough values to formulate primary key for "
-                        "query.get(); primary key columns are %s" % ', '.join("'%s'" % c for c in mapper.primary_key))
+                    raise sa_exc.InvalidRequestError(
+                        "Could not find enough values to formulate primary "
+                        "key for query.get(); primary key columns are %s" %
+                        ','.join("'%s'" % c for c in mapper.primary_key))
+                        
             q._params = params
 
         if lockmode is not None:
@@ -1520,55 +1536,65 @@ class Query(object):
                 nested_cols = [col]
             else:
                 nested_cols = list(nested_cols)
-            s = sql.select(nested_cols, whereclause, from_obj=from_obj, use_labels=True, **self._select_args)
+            s = sql.select(nested_cols, whereclause, 
+                        from_obj=from_obj, use_labels=True,
+                        **self._select_args)
             s = s.alias()
-            s = sql.select([func(s.corresponding_column(col) or col)]).select_from(s)
+            s = sql.select(
+                [func(s.corresponding_column(col) or col)]).select_from(s)
         else:
-            s = sql.select([func(col)], whereclause, from_obj=from_obj, **self._select_args)
+            s = sql.select([func(col)], whereclause, from_obj=from_obj,
+            **self._select_args)
 
         if self._autoflush and not self._populate_existing:
             self.session._autoflush()
-        return self.session.scalar(s, params=self._params, mapper=self._mapper_zero())
+        return self.session.scalar(s, params=self._params,
+            mapper=self._mapper_zero())
 
     def delete(self, synchronize_session='evaluate'):
         """Perform a bulk delete query.
 
         Deletes rows matched by this query from the database.
 
-        :param synchronize_session: chooses the strategy for the removal of matched
-            objects from the session. Valid values are:
+        :param synchronize_session: chooses the strategy for the removal of
+        matched objects from the session. Valid values are:
 
             False
-              don't synchronize the session. This option is the most efficient and is reliable
-              once the session is expired, which typically occurs after a commit(), or explicitly
-              using expire_all().  Before the expiration, objects may still remain in the session 
-              which were in fact deleted which can lead to confusing results if they are accessed 
-              via get() or already loaded collections.
+              don't synchronize the session. This option is the most efficient
+              and is reliable once the session is expired, which typically
+              occurs after a commit(), or explicitly using expire_all().
+              Before the expiration, objects may still remain in the session
+              which were in fact deleted which can lead to confusing results
+              if they are accessed via get() or already loaded collections.
 
             'fetch'
-              performs a select query before the delete to find objects that are matched
-              by the delete query and need to be removed from the session. Matched objects
-              are removed from the session.
+              performs a select query before the delete to find objects that
+              are matched by the delete query and need to be removed from the
+              session. Matched objects are removed from the session.
 
             'evaluate'
-              experimental feature. Tries to evaluate the querys criteria in Python
-              straight on the objects in the session. If evaluation of the criteria isn't
-              implemented, the 'fetch' strategy will be used as a fallback.
-
-              The expression evaluator currently doesn't account for differing string
-              collations between the database and Python.
+              experimental feature. Tries to evaluate the querys criteria in
+              Python straight on the objects in the session. If evaluation of
+              the criteria isn't implemented, the 'fetch' strategy will be
+              used as a fallback.
+              
+               The expression evaluator currently doesn't account for
+              differing string collations between the database and Python.
 
         Returns the number of rows deleted, excluding any cascades.
 
-        The method does *not* offer in-Python cascading of relations - it is assumed that
-        ON DELETE CASCADE is configured for any foreign key references which require it.
-        The Session needs to be expired (occurs automatically after commit(), or call expire_all())
-        in order for the state of dependent objects subject to delete or delete-orphan cascade to be
-        correctly represented.
+        The method does *not* offer in-Python cascading of relations - it is
+        assumed that ON DELETE CASCADE is configured for any foreign key
+        references which require it. The Session needs to be expired (occurs
+        automatically after commit(), or call expire_all()) in order for the
+        state of dependent objects subject to delete or delete-orphan cascade
+        to be correctly represented.
 
-        Also, the ``before_delete()`` and ``after_delete()`` :class:`~sqlalchemy.orm.interfaces.MapperExtension`
-        methods are not called from this method.  For a delete hook here, use the
-        ``after_bulk_delete()`` :class:`~sqlalchemy.orm.interfaces.MapperExtension` method.
+        Also, the ``before_delete()`` and ``after_delete()``
+        :class:`~sqlalchemy.orm.interfaces.MapperExtension` methods are not
+        called from this method. For a delete hook here, use the
+        ``after_bulk_delete()``
+        :class:`~sqlalchemy.orm.interfaces.MapperExtension` method.
 
         """
         #TODO: lots of duplication and ifs - probably needs to be refactored to strategies
@@ -1993,19 +2019,12 @@ class _MapperEntity(_QueryEntity):
             _instance = self.mapper._instance_processor(context, (self.path_entity,), adapter,
                              polymorphic_discriminator=self._polymorphic_discriminator)
 
-        if custom_rows:
-            def main(context, row, result):
-                _instance(row, result)
-        else:
-            def main(context, row):
-                return _instance(row, None)
-
         if self.is_aliased_class:
             entname = self.entity._sa_label_name
         else:
             entname = self.mapper.class_.__name__
-
-        return main, entname
+        
+        return _instance, entname
 
     def setup_context(self, query, context):
         adapter = self._get_entity_clauses(query, context)
@@ -2124,7 +2143,7 @@ class _ColumnEntity(_QueryEntity):
         if context.adapter:
             column = context.adapter.columns[column]
 
-        def proc(context, row):
+        def proc(row, result):
             return row[column]
 
         return (proc, self._result_label)
