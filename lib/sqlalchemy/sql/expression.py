@@ -1187,43 +1187,32 @@ class ClauseElement(Visitable):
         """Compile this SQL expression.
 
         The return value is a :class:`~sqlalchemy.engine.Compiled` object.
-        Calling `str()` or `unicode()` on the returned value will yield a string
-        representation of the result. The :class:`~sqlalchemy.engine.Compiled`
-        object also can return a dictionary of bind parameter names and values
-        using the `params` accessor.
+        Calling ``str()`` or ``unicode()`` on the returned value will yield a
+        string representation of the result. The
+        :class:`~sqlalchemy.engine.Compiled` object also can return a
+        dictionary of bind parameter names and values
+        using the ``params`` accessor.
 
         :param bind: An ``Engine`` or ``Connection`` from which a
-          ``Compiled`` will be acquired.  This argument
-          takes precedence over this ``ClauseElement``'s
-          bound engine, if any.
+            ``Compiled`` will be acquired. This argument takes precedence over
+            this ``ClauseElement``'s bound engine, if any.
+
+        :param column_keys: Used for INSERT and UPDATE statements, a list of
+            column names which should be present in the VALUES clause of the
+            compiled statement. If ``None``, all columns from the target table
+            object are rendered.
 
         :param dialect: A ``Dialect`` instance frmo which a ``Compiled``
-          will be acquired.  This argument takes precedence
-          over the `bind` argument as well as this
-          ``ClauseElement``'s bound engine, if any.
+            will be acquired. This argument takes precedence over the `bind`
+            argument as well as this ``ClauseElement``'s bound engine, if any.
 
-        \**kw
-        
-          Keyword arguments are passed along to the compiler, 
-          which can affect the string produced.
-          
-          Keywords for a statement compiler are:
-        
-          column_keys
-            Used for INSERT and UPDATE statements, a list of
-            column names which should be present in the VALUES clause
-            of the compiled statement.  If ``None``, all columns
-            from the target table object are rendered.
-
-          inline
-            Used for INSERT statements, for a dialect which does
-            not support inline retrieval of newly generated
-            primary key columns, will force the expression used
-            to create the new primary key value to be rendered
-            inline within the INSERT statement's VALUES clause.
-            This typically refers to Sequence execution but
-            may also refer to any server-side default generation
-            function associated with a primary key `Column`.
+        :param inline: Used for INSERT statements, for a dialect which does
+            not support inline retrieval of newly generated primary key
+            columns, will force the expression used to create the new primary
+            key value to be rendered inline within the INSERT statement's
+            VALUES clause. This typically refers to Sequence execution but may
+            also refer to any server-side default generation function
+            associated with a primary key `Column`.
 
         """
         
@@ -3114,6 +3103,8 @@ class TableClause(_Immutable, FromClause):
             return []
 
     def count(self, whereclause=None, **params):
+        """return a SELECT COUNT generated against this ``TableClause``."""
+        
         if self.primary_key:
             col = list(self.primary_key)[0]
         else:

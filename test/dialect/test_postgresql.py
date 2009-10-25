@@ -1,3 +1,4 @@
+# coding: utf-8
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.test import  engines
 import datetime
@@ -104,7 +105,144 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 "SELECT EXTRACT(%s FROM t.col1::timestamp) AS anon_1 "
                 "FROM t" % field)
 
+class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+    __only_on__ = 'postgresql'
+    __dialect__ = postgresql.dialect()
+    
+    def test_compile(self):
+        e1 = Enum('x', 'y', 'z', name="somename")
+        e2 = Enum('x', 'y', 'z', name="somename", schema='someschema')
+        
+        self.assert_compile(
+            postgresql.CreateEnumType(e1), 
+            "CREATE TYPE somename AS ENUM ('x','y','z')"
+        )
 
+        self.assert_compile(
+            postgresql.CreateEnumType(e2), 
+            "CREATE TYPE someschema.somename AS ENUM ('x','y','z')"
+        )
+
+        self.assert_compile(
+            postgresql.DropEnumType(e1), 
+            "DROP TYPE somename"
+        )
+
+        self.assert_compile(
+            postgresql.DropEnumType(e2), 
+            "DROP TYPE someschema.somename"
+        )
+        
+    def test_create_table(self):
+        metadata = MetaData(testing.db)
+        t1 = Table('table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('value', Enum('one', 'two', 'three', name='onetwothreetype'))
+        )
+        t1.create()
+        t1.create(checkfirst=True) # check the create
+        try:
+            t1.insert().execute(value='two')
+            t1.insert().execute(value='three')
+            t1.insert().execute(value='three')
+            eq_(t1.select().order_by(t1.c.id).execute().fetchall(), 
+                [(1, 'two'), (2, 'three'), (3, 'three')]
+            )
+        finally:
+            metadata.drop_all()
+            metadata.drop_all()
+    
+    def test_name_required(self):
+        metadata = MetaData(testing.db)
+        etype = Enum('four', 'five', 'six', metadata=metadata)
+        assert_raises(exc.ArgumentError, etype.create)
+        assert_raises(exc.ArgumentError, etype.compile, dialect=postgresql.dialect())
+    
+    def test_unicode_labels(self):
+        metadata = MetaData(testing.db)
+        t1 = Table('table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('value', Enum(u'réveillé', u'drôle', u'S’il', name='onetwothreetype'))
+        )
+        metadata.create_all()
+        try:
+            t1.insert().execute(value=u'drôle')
+            t1.insert().execute(value=u'réveillé')
+            t1.insert().execute(value=u'S’il')
+            eq_(t1.select().order_by(t1.c.id).execute().fetchall(), 
+                [(1, u'drôle'), (2, u'réveillé'), (3, u'S’il')]
+            )
+            
+            m2 = MetaData(testing.db)
+            t2 = Table('table', m2, autoload=True)
+            assert t2.c.value.type.enums == (u'réveillé', u'drôle', u'S’il')
+            
+        finally:
+            metadata.drop_all()
+        
+    def test_standalone_enum(self):
+        metadata = MetaData(testing.db)
+        etype = Enum('four', 'five', 'six', name='fourfivesixtype', metadata=metadata)
+        etype.create()
+        try:
+            assert testing.db.dialect.has_type(testing.db, 'fourfivesixtype')
+        finally:
+            etype.drop()
+            assert not testing.db.dialect.has_type(testing.db, 'fourfivesixtype')
+    
+        metadata.create_all()
+        try:
+            assert testing.db.dialect.has_type(testing.db, 'fourfivesixtype')
+        finally:
+            metadata.drop_all()
+            assert not testing.db.dialect.has_type(testing.db, 'fourfivesixtype')
+    
+    def test_reflection(self):
+        metadata = MetaData(testing.db)
+        etype = Enum('four', 'five', 'six', name='fourfivesixtype', metadata=metadata)
+        t1 = Table('table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('value', Enum('one', 'two', 'three', name='onetwothreetype')),
+            Column('value2', etype)
+        )
+        metadata.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('table', m2, autoload=True)
+            assert t2.c.value.type.enums == ('one', 'two', 'three')
+            assert t2.c.value.type.name == 'onetwothreetype'
+            assert t2.c.value2.type.enums == ('four', 'five', 'six')
+            assert t2.c.value2.type.name == 'fourfivesixtype'
+        finally:
+            metadata.drop_all()
+
+    def test_schema_reflection(self):
+        metadata = MetaData(testing.db)
+        etype = Enum('four', 'five', 'six', 
+                        name='fourfivesixtype', 
+                        schema='test_schema', 
+                        metadata=metadata)
+        t1 = Table('table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('value', Enum('one', 'two', 'three', 
+                                name='onetwothreetype', schema='test_schema')),
+            Column('value2', etype)
+        )
+        metadata.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('table', m2, autoload=True)
+            assert t2.c.value.type.enums == ('one', 'two', 'three')
+            assert t2.c.value.type.name == 'onetwothreetype'
+            assert t2.c.value2.type.enums == ('four', 'five', 'six')
+            assert t2.c.value2.type.name == 'fourfivesixtype'
+            assert t2.c.value2.type.schema == 'test_schema'
+        finally:
+            metadata.drop_all()
+        
+        
+        
+        
 class InsertTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
 

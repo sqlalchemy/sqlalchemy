@@ -12,14 +12,13 @@ For more information see the SQLAlchemy documentation on types.
 
 """
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
-            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text', 'FLOAT',
-            'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB',
-            'BOOLEAN', 'SMALLINT', 'INTEGER', 'DATE', 'TIME',
-            'String', 'Integer', 'SmallInteger', 'BigInteger', 
-            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary',
-            'Boolean', 'Unicode', 'MutableType', 'Concatenable', 'UnicodeText', 'PickleType', 'Interval',
-            'type_map'
-            ]
+            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text',
+            'FLOAT', 'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB',
+            'BLOB', 'BOOLEAN', 'SMALLINT', 'INTEGER', 'DATE', 'TIME',
+            'String', 'Integer', 'SmallInteger', 'BigInteger', 'Numeric',
+            'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean',
+            'Unicode', 'MutableType', 'Concatenable', 'UnicodeText',
+            'PickleType', 'Interval', 'type_map', 'Enum' ]
 
 import inspect
 import datetime as dt
@@ -794,6 +793,147 @@ class Binary(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.BINARY
 
+class SchemaType(object):
+    """Mark a type as possibly requiring schema-level DDL for usage."""
+    
+    def __init__(self, **kw):
+        self.name = kw.pop('name', None)
+        self.quote = kw.pop('quote', None)
+        self.schema = kw.pop('schema', None)
+        self.metadata = kw.pop('metadata', None)
+        if self.metadata:
+            self.metadata.append_ddl_listener('before-create',
+                                                self._on_metadata_create)
+            self.metadata.append_ddl_listener('after-drop',
+                                                self._on_metadata_drop)
+            
+    def _set_parent(self, column):
+        column._on_table_attach(self._set_table)
+
+    def _set_table(self, table):
+        table.append_ddl_listener('before-create', self._on_table_create)
+        table.append_ddl_listener('after-drop', self._on_table_drop)
+        if self.metadata is None:
+            table.metadata.append_ddl_listener('before-create',
+                                                self._on_metadata_create)
+            table.metadata.append_ddl_listener('after-drop',
+                                                self._on_metadata_drop)
+
+    
+    @property
+    def bind(self):
+        return self.metadata and self.metadata.bind or None
+        
+    def create(self, bind=None, checkfirst=False):
+        from sqlalchemy.schema import _bind_or_error
+        if bind is None:
+            bind = _bind_or_error(self)
+        t = self.dialect_impl(bind.dialect)
+        if t is not self:
+            t.create(bind=bind, checkfirst=checkfirst)
+
+    def drop(self, bind=None, checkfirst=False):
+        from sqlalchemy.schema import _bind_or_error
+        if bind is None:
+            bind = _bind_or_error(self)
+        t = self.dialect_impl(bind.dialect)
+        if t is not self:
+            t.drop(bind=bind, checkfirst=checkfirst)
+        
+    def _on_table_create(self, event, target, bind, **kw):
+        t = self.dialect_impl(bind.dialect)
+        if t is not self:
+            t._on_table_create(event, target, bind, **kw)
+
+    def _on_table_drop(self, event, target, bind, **kw):
+        t = self.dialect_impl(bind.dialect)
+        if t is not self:
+            t._on_table_drop(event, target, bind, **kw)
+
+    def _on_metadata_create(self, event, target, bind, **kw):
+        t = self.dialect_impl(bind.dialect)
+        if t is not self:
+            t._on_metadata_create(event, target, bind, **kw)
+
+    def _on_metadata_drop(self, event, target, bind, **kw):
+        t = self.dialect_impl(bind.dialect)
+        if t is not self:
+            t._on_metadata_drop(event, target, bind, **kw)
+    
+class Enum(String, SchemaType):
+    """Generic Enum Type.
+    
+    Currently supported on MySQL and Postgresql, the Enum type
+    provides a set of possible string values which the column is constrained
+    towards.
+    
+    Keyword arguments which don't apply to a specific backend are ignored
+    by that backend.
+    
+    :param \*enums: string or unicode enumeration labels. If unicode labels
+        are present, the `convert_unicode` flag is auto-enabled.
+    
+    :param assert_unicode: Enable unicode asserts for bind parameter values.
+        This flag is equivalent to that of ``String``.
+
+    :param convert_unicode: Enable unicode-aware bind parameter and result-set
+        processing for this Enum's data. This is set automatically based on
+        the presence of unicode label strings.
+
+    :param metadata: Associate this type directly with a ``MetaData`` object.
+        For types that exist on the target database as an independent schema
+        construct (Postgresql), this type will be created and dropped within
+        ``create_all()`` and ``drop_all()`` operations. If the type is not
+        associated with any ``MetaData`` object, it will associate itself with
+        each ``Table`` in which it is used, and will be created when any of
+        those individual tables are created, after a check is performed for
+        it's existence. The type is only dropped when ``drop_all()`` is called
+        for that ``Table`` object's metadata, however.
+    
+    :param name: The name of this type. This is required for Postgresql and
+        any future supported database which requires an explicitly named type,
+        or an explicitly named constraint in order to generate the type and/or
+        a table that uses it.
+    
+    :param schema: Schemaname of this type. For types that exist on the target
+        database as an independent schema construct (Postgresql), this
+        parameter specifies the named schema in which the type is present.
+    
+    :param quote: Force quoting to be on or off on the type's name. If left as
+        the default of `None`, the usual schema-level "case
+        sensitive"/"reserved name" rules are used to determine if this type's
+        name should be quoted.
+    
+    """
+    __visit_name__ = 'enum'
+    
+    def __init__(self, *enums, **kw):
+        self.enums = enums
+        convert_unicode= kw.pop('convert_unicode', None)
+        assert_unicode = kw.pop('assert_unicode', None)
+        if convert_unicode is None:
+            for e in enums:
+                if isinstance(e, unicode):
+                    convert_unicode = True
+                    break
+            else:
+                convert_unicode = False
+        
+        String.__init__(self, 
+                        convert_unicode=convert_unicode, 
+                        assert_unicode=assert_unicode
+                        )
+        SchemaType.__init__(self, **kw)
+        
+    def adapt(self, impltype):
+        return impltype(*self.enums, 
+                        name=self.name, 
+                        quote=self.quote, 
+                        schema=self.schema, 
+                        metadata=self.metadata,
+                        convert_unicode=self.convert_unicode,
+                        assert_unicode=self.assert_unicode
+                        )
 
 class PickleType(MutableType, TypeDecorator):
     """Holds Python objects.

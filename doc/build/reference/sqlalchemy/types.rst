@@ -38,51 +38,58 @@ database column type available on the target database when issuing a
 type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see `SQL
 Standard Types`_ and the other sections of this chapter.
 
-.. autoclass:: String
+.. autoclass:: Binary
    :show-inheritance:
 
-.. autoclass:: Unicode
+.. autoclass:: Boolean
+  :show-inheritance:
+
+.. autoclass:: Date
+ :show-inheritance:
+
+.. autoclass:: DateTime
+   :show-inheritance:
+
+.. autoclass:: Enum
+  :show-inheritance:
+
+.. autoclass:: Float
+  :show-inheritance:
+
+.. autoclass:: Integer
+  :show-inheritance:
+
+.. autoclass:: Interval
+ :show-inheritance:
+
+.. autoclass:: Numeric
+  :show-inheritance:
+
+.. autoclass:: PickleType
+ :show-inheritance:
+
+.. autoclass:: SchemaType
+  :show-inheritance:
+  :members:
+  :undoc-members:
+
+.. autoclass:: SmallInteger
+ :show-inheritance:
+
+.. autoclass:: String
    :show-inheritance:
 
 .. autoclass:: Text
    :show-inheritance:
 
+.. autoclass:: Time
+  :show-inheritance:
+
+.. autoclass:: Unicode
+  :show-inheritance:
+
 .. autoclass:: UnicodeText
    :show-inheritance:
-
-.. autoclass:: Integer
-   :show-inheritance:
-
-.. autoclass:: SmallInteger
-   :show-inheritance:
-
-.. autoclass:: Numeric
-   :show-inheritance:
-
-.. autoclass:: Float
-   :show-inheritance:
-
-.. autoclass:: DateTime
-   :show-inheritance:
-
-.. autoclass:: Date
-   :show-inheritance:
-
-.. autoclass:: Time
-   :show-inheritance:
-
-.. autoclass:: Interval
-   :show-inheritance:
-
-.. autoclass:: Boolean
-   :show-inheritance:
-
-.. autoclass:: Binary
-   :show-inheritance:
-
-.. autoclass:: PickleType
-   :show-inheritance:
-
 
 SQL Standard Types
 ------------------
@@ -91,56 +98,56 @@ The SQL standard types always create database column types of the same
 name when ``CREATE TABLE`` is issued.  Some types may not be supported
 on all databases.
 
-.. autoclass:: INT
-   :show-inheritance:
-
-.. autoclass:: sqlalchemy.types.INTEGER
-   :show-inheritance:
-
-.. autoclass:: CHAR
-   :show-inheritance:
-
-.. autoclass:: VARCHAR
-   :show-inheritance:
-
-.. autoclass:: NCHAR
-   :show-inheritance:
-
-.. autoclass:: TEXT
-   :show-inheritance:
-
-.. autoclass:: FLOAT
-   :show-inheritance:
-
-.. autoclass:: NUMERIC
-   :show-inheritance:
-
-.. autoclass:: DECIMAL
-   :show-inheritance:
-
-.. autoclass:: TIMESTAMP
-   :show-inheritance:
-
-.. autoclass:: DATETIME
-   :show-inheritance:
-
-.. autoclass:: CLOB
-   :show-inheritance:
-
 .. autoclass:: BLOB
-   :show-inheritance:
+  :show-inheritance:
 
 .. autoclass:: BOOLEAN
-   :show-inheritance:
+  :show-inheritance:
 
-.. autoclass:: SMALLINT
-   :show-inheritance:
+.. autoclass:: CHAR
+  :show-inheritance:
+
+.. autoclass:: CLOB
+  :show-inheritance:
 
 .. autoclass:: DATE
-   :show-inheritance:
+  :show-inheritance:
+
+.. autoclass:: DATETIME
+  :show-inheritance:
+
+.. autoclass:: DECIMAL
+  :show-inheritance:
+
+.. autoclass:: FLOAT
+  :show-inheritance:
+
+.. autoclass:: INT
+  :show-inheritance:
+
+.. autoclass:: sqlalchemy.types.INTEGER
+  :show-inheritance:
+
+.. autoclass:: NCHAR
+  :show-inheritance:
+
+.. autoclass:: NUMERIC
+  :show-inheritance:
+
+.. autoclass:: SMALLINT
+  :show-inheritance:
+
+.. autoclass:: TEXT
+  :show-inheritance:
 
 .. autoclass:: TIME
-   :show-inheritance:
+  :show-inheritance:
+
+.. autoclass:: TIMESTAMP
+  :show-inheritance:
+
+.. autoclass:: VARCHAR
+  :show-inheritance:
 
 
 Vendor-Specific Types
@@ -196,8 +203,6 @@ such as `collation` and `charset`::
         Column('col1', VARCHAR(200, collation='binary')),
         Column('col2', TEXT(charset='latin1'))
     )
-    
-
 
 Custom Types
 ------------

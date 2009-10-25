@@ -422,7 +422,14 @@ CHANGES
              the older "postgres_returning" and
              "postgres_where" names still work with a
              deprecation warning.
-
+    
+    - Added new ENUM type, which exists as a schema-level
+      construct and extends the generic Enum type.  Automatically
+      associates itself with tables and their parent metadata
+      to issue the appropriate CREATE TYPE/DROP TYPE 
+      commands as needed, supports unicode labels, supports
+      reflection.  [ticket:1511]
+      
     - using new dialect.initialize() feature to set up
       version-dependent behavior.
 
@@ -458,6 +465,10 @@ CHANGES
       
     - the "quoting='quoted'" argument to MSEnum/ENUM is deprecated.
       It's best to rely upon the automatic quoting.
+      
+    - ENUM now subclasses the new generic Enum type, and also handles
+      unicode values implicitly, if the given labelnames are unicode
+      objects.
       
 - oracle
     - unit tests pass 100% with cx_oracle !
@@ -560,6 +571,15 @@ CHANGES
       the dialect itself if the type is not a standard SQL 
       type.  This means reflection now returns more accurate
       information about reflected types.  
+    
+    - Added a new Enum generic type, currently supported on
+      Postgresql and MySQL.  Enum is a schema-aware object
+      to support databases which require specific DDL in 
+      order to use enum or equivalent; in the case of PG
+      it handles the details of `CREATE TYPE`, and on 
+      other databases without native enum support can 
+      support generation of CHECK constraints.
+      [ticket:1109] [ticket:1511]
       
     - PickleType now uses == for comparison of values when
       mutable=True, unless the "comparator" argument with a

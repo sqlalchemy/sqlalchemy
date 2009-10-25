@@ -12,7 +12,6 @@ Tables and Columns
 
 .. autoclass:: Column
     :members:
-    :inherited-members:
     :undoc-members:
     :show-inheritance:
 
@@ -23,7 +22,6 @@ Tables and Columns
 
 .. autoclass:: Table
     :members:
-    :inherited-members:
     :undoc-members:
     :show-inheritance:
 

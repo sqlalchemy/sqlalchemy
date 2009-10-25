@@ -177,8 +177,29 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         return process
 PGArray = ARRAY
 
+class ENUM(sqltypes.Enum):
+
+    def create(self, bind=None, checkfirst=True):
+        if not checkfirst or not bind.dialect.has_type(bind, self.name, schema=self.schema):
+            bind.execute(CreateEnumType(self))
+
+    def drop(self, bind=None, checkfirst=True):
+        if not checkfirst or bind.dialect.has_type(bind, self.name, schema=self.schema):
+            bind.execute(DropEnumType(self))
+        
+    def _on_table_create(self, event, target, bind, **kw):
+        self.create(bind=bind, checkfirst=True)
+
+    def _on_metadata_create(self, event, target, bind, **kw):
+        if self.metadata is not None:
+            self.create(bind=bind, checkfirst=True)
+
+    def _on_metadata_drop(self, event, target, bind, **kw):
+        self.drop(bind=bind, checkfirst=True)
+
 colspecs = {
-    sqltypes.Interval:INTERVAL
+    sqltypes.Interval:INTERVAL,
+    sqltypes.Enum:ENUM,
 }
 
 ischema_names = {
@@ -309,6 +330,22 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_drop_sequence(self, drop):
         return "DROP SEQUENCE %s" % self.preparer.format_sequence(drop.element)
         
+    
+    def visit_create_enum_type(self, create):
+        type_ = create.element
+        
+        return "CREATE TYPE %s AS ENUM (%s)" % (
+            self.preparer.format_type(type_),
+            ",".join("'%s'" % e for e in type_.enums)
+        )
+
+    def visit_drop_enum_type(self, drop):
+        type_ = drop.element
+
+        return "DROP TYPE %s" % (
+            self.preparer.format_type(type_)
+        )
+        
     def visit_create_index(self, create):
         preparer = self.preparer
         index = create.element
@@ -361,6 +398,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_datetime(self, type_):
         return self.visit_TIMESTAMP(type_)
+    
+    def visit_enum(self, type_):
+        return self.visit_ENUM(type_)
+        
+    def visit_ENUM(self, type_):
+        return self.dialect.identifier_preparer.format_type(type_)
         
     def visit_TIMESTAMP(self, type_):
         return "TIMESTAMP " + (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
@@ -396,6 +439,14 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
             value = value[1:-1].replace(self.escape_to_quote, self.escape_quote)
         return value
 
+    def format_type(self, type_, use_schema=True):
+        if not type_.name:
+            raise exc.ArgumentError("Postgresql ENUM type requires a name.")
+        
+        name = self.quote(type_.name, type_.quote)
+        if not self.omit_schema and use_schema and type_.schema is not None:
+            name = self.quote_schema(type_.schema, type_.quote) + "." + name
+        return name
         
 class PGInspector(reflection.Inspector):
 
@@ -407,8 +458,12 @@ class PGInspector(reflection.Inspector):
 
         return self.dialect.get_table_oid(self.conn, table_name, schema,
                                           info_cache=self.info_cache)
-    
 
+class CreateEnumType(schema._CreateDropBase):
+  __visit_name__ = "create_enum_type"
+
+class DropEnumType(schema._CreateDropBase):
+  __visit_name__ = "drop_enum_type"
 
 class PGExecutionContext(default.DefaultExecutionContext):
     def fire_sequence(self, seq):
@@ -530,15 +585,19 @@ class PGDialect(default.DefaultDialect):
         if schema is None:
             cursor = connection.execute(
                 sql.text("select relname from pg_class c join pg_namespace n on "
-                    "n.oid=c.relnamespace where n.nspname=current_schema() and lower(relname)=:name",
-                    bindparams=[sql.bindparam('name', unicode(table_name.lower()), type_=sqltypes.Unicode)]
+                    "n.oid=c.relnamespace where n.nspname=current_schema() and "
+                    "lower(relname)=:name",
+                    bindparams=[
+                            sql.bindparam('name', unicode(table_name.lower()),
+                            type_=sqltypes.Unicode)]
                 )
             )
         else:
             cursor = connection.execute(
                 sql.text("select relname from pg_class c join pg_namespace n on "
                         "n.oid=c.relnamespace where n.nspname=:schema and lower(relname)=:name",
-                    bindparams=[sql.bindparam('name', unicode(table_name.lower()), type_=sqltypes.Unicode),
+                    bindparams=[
+                        sql.bindparam('name', unicode(table_name.lower()), type_=sqltypes.Unicode),
                         sql.bindparam('schema', unicode(schema), type_=sqltypes.Unicode)] 
                 )
             )
@@ -548,27 +607,62 @@ class PGDialect(default.DefaultDialect):
         if schema is None:
             cursor = connection.execute(
                         sql.text("SELECT relname FROM pg_class c join pg_namespace n on "
-                            "n.oid=c.relnamespace where relkind='S' and n.nspname=current_schema() and lower(relname)=:name",
-                            bindparams=[sql.bindparam('name', unicode(sequence_name.lower()), type_=sqltypes.Unicode)] 
+                            "n.oid=c.relnamespace where relkind='S' and n.nspname=current_schema()"
+                            " and lower(relname)=:name",
+                            bindparams=[
+                                sql.bindparam('name', unicode(sequence_name.lower()),
+                                type_=sqltypes.Unicode)
+                            ] 
                         )
                     )
         else:
             cursor = connection.execute(
-                        sql.text("SELECT relname FROM pg_class c join pg_namespace n on "
-                            "n.oid=c.relnamespace where relkind='S' and n.nspname=:schema and lower(relname)=:name",
-                            bindparams=[sql.bindparam('name', unicode(sequence_name.lower()), type_=sqltypes.Unicode),
-                                sql.bindparam('schema', unicode(schema), type_=sqltypes.Unicode)] 
-                        )
+                    sql.text("SELECT relname FROM pg_class c join pg_namespace n on "
+                        "n.oid=c.relnamespace where relkind='S' and n.nspname=:schema and "
+                        "lower(relname)=:name",
+                        bindparams=[
+                            sql.bindparam('name', unicode(sequence_name.lower()),
+                             type_=sqltypes.Unicode),
+                            sql.bindparam('schema', unicode(schema), type_=sqltypes.Unicode)
+                        ]
                     )
+                )
 
         return bool(cursor.first())
 
+    def has_type(self, connection, type_name, schema=None):
+        bindparams = [
+            sql.bindparam('typname',
+                unicode(type_name), type_=sqltypes.Unicode),
+            sql.bindparam('nspname',
+                unicode(schema), type_=sqltypes.Unicode),
+            ]
+        if schema is not None:
+            query = """
+            SELECT EXISTS (
+                SELECT * FROM pg_catalog.pg_type t, pg_catalog.pg_namespace n
+                WHERE t.typnamespace = n.oid
+                AND t.typname = :typname
+                AND n.nspname = :nspname
+                )
+                """
+        else:
+            query = """
+            SELECT EXISTS (
+                SELECT * FROM pg_catalog.pg_type t
+                WHERE t.typname = :typname
+                AND pg_type_is_visible(t.oid)
+                )
+                """
+        cursor = connection.execute(sql.text(query, bindparams=bindparams))
+        return bool(cursor.scalar())
+
     def table_names(self, connection, schema):
         result = connection.execute(
-            sql.text(u"""SELECT relname
-                FROM pg_class c
-                WHERE relkind = 'r'
-                AND '%s' = (select nspname from pg_namespace n where n.oid = c.relnamespace)""" % schema,
+            sql.text(u"SELECT relname FROM pg_class c "
+                "WHERE relkind = 'r' "
+                "AND '%s' = (select nspname from pg_namespace n where n.oid = c.relnamespace) " %
+                 schema,
                 typemap = {'relname':sqltypes.Unicode}
             )
         )
@@ -710,6 +804,8 @@ class PGDialect(default.DefaultDialect):
         c = connection.execute(s, table_oid=table_oid)
         rows = c.fetchall()
         domains = self._load_domains(connection)
+        enums = self._load_enums(connection)
+        
         # format columns
         columns = []
         for name, format_type, default, notnull, attnum, table_oid in rows:
@@ -748,18 +844,26 @@ class PGDialect(default.DefaultDialect):
                 kwargs['timezone'] = False
             if attype in self.ischema_names:
                 coltype = self.ischema_names[attype]
-            else:
-                if attype in domains:
-                    domain = domains[attype]
-                    if domain['attype'] in self.ischema_names:
-                        # A table can't override whether the domain is nullable.
-                        nullable = domain['nullable']
-                        if domain['default'] and not default:
-                            # It can, however, override the default value, but can't set it to null.
-                            default = domain['default']
-                        coltype = self.ischema_names[domain['attype']]
+            elif attype in enums:
+                enum = enums[attype]
+                coltype = ENUM
+                if "." in attype:
+                    kwargs['schema'], kwargs['name'] = attype.split('.')
                 else:
-                    coltype = None
+                    kwargs['name'] = attype
+                args = tuple(enum['labels'])
+            elif attype in domains:
+                domain = domains[attype]
+                if domain['attype'] in self.ischema_names:
+                    # A table can't override whether the domain is nullable.
+                    nullable = domain['nullable']
+                    if domain['default'] and not default:
+                        # It can, however, override the default value, but can't set it to null.
+                        default = domain['default']
+                    coltype = self.ischema_names[domain['attype']]
+            else:
+                coltype = None
+                
             if coltype:
                 coltype = coltype(*args, **kwargs)
                 if is_array:
@@ -883,6 +987,45 @@ class PGDialect(default.DefaultDialect):
             index_d['unique'] = unique
         return indexes
 
+    def _load_enums(self, connection):
+        ## Load data types for enums:
+        SQL_ENUMS = """
+            SELECT t.typname as "name",
+                   -- t.typdefault as "default", -- no enum defaults in 8.4 at least
+                   pg_catalog.pg_type_is_visible(t.oid) as "visible",
+                   n.nspname as "schema",
+                   e.enumlabel as "label"
+            FROM pg_catalog.pg_type t
+                 LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+                 LEFT JOIN pg_catalog.pg_constraint r ON t.oid = r.contypid
+                 LEFT JOIN pg_catalog.pg_enum e ON t.oid = e.enumtypid
+            WHERE t.typtype = 'e'
+            ORDER BY "name", e.oid -- e.oid gives us label order
+        """
+
+        s = sql.text(SQL_ENUMS, typemap={'attname':sqltypes.Unicode, 'label':sqltypes.Unicode})
+        c = connection.execute(s)
+
+        enums = {}
+        for enum in c.fetchall():
+            if enum['visible']:
+                # 'visible' just means whether or not the enum is in a
+                # schema that's on the search path -- or not overriden by
+                # a schema with higher presedence. If it's not visible,
+                # it will be prefixed with the schema-name when it's used.
+                name = enum['name']
+            else:
+                name = "%s.%s" % (enum['schema'], enum['name'])
+
+            if name in enums:
+                enums[name]['labels'].append(enum['label'])
+            else:
+                enums[name] = {
+                        'labels': [enum['label']],
+                        }
+
+        return enums
+
     def _load_domains(self, connection):
         ## Load data types for domains:
         SQL_DOMAINS = """
@@ -914,7 +1057,11 @@ class PGDialect(default.DefaultDialect):
             else:
                 name = "%s.%s" % (domain['schema'], domain['name'])
 
-            domains[name] = {'attype':attype, 'nullable': domain['nullable'], 'default': domain['default']}
+            domains[name] = {
+                    'attype':attype, 
+                    'nullable': domain['nullable'], 
+                    'default': domain['default']
+                }
 
         return domains
 

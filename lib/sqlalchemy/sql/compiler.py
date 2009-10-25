@@ -1246,6 +1246,9 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_unicode_text(self, type_): 
         return self.visit_TEXT(type_)
     
+    def visit_enum(self, type_):
+        raise NotImplementedError("Enum not supported generically")
+        
     def visit_null(self, type_):
         raise NotImplementedError("Can't generate DDL for the null type")
         
@@ -1264,7 +1267,8 @@ class IdentifierPreparer(object):
 
     illegal_initial_characters = ILLEGAL_INITIAL_CHARACTERS
 
-    def __init__(self, dialect, initial_quote='"', final_quote=None, escape_quote='"', omit_schema=False):
+    def __init__(self, dialect, initial_quote='"', 
+                    final_quote=None, escape_quote='"', omit_schema=False):
         """Construct a new ``IdentifierPreparer`` object.
 
         initial_quote

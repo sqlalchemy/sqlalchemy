@@ -641,6 +641,9 @@ class Column(SchemaItem, expression.ColumnClause):
         self.foreign_keys = util.OrderedSet()
         self._table_events = set()
         
+        if isinstance(self.type, types.SchemaType):
+            self.type._set_parent(self)
+            
         if self.default is not None:
             if isinstance(self.default, (ColumnDefault, Sequence)):
                 args.append(self.default)
@@ -651,8 +654,10 @@ class Column(SchemaItem, expression.ColumnClause):
                 args.append(self.server_default)
             else:
                 args.append(DefaultClause(self.server_default))
+                
         if self.onupdate is not None:
             args.append(ColumnDefault(self.onupdate, for_update=True))
+            
         if self.server_onupdate is not None:
             if isinstance(self.server_onupdate, FetchedValue):
                 args.append(self.server_default)

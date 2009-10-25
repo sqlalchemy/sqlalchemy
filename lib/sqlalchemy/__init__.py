@@ -60,6 +60,7 @@ from sqlalchemy.types import (
     DECIMAL,
     Date,
     DateTime,
+    Enum,
     FLOAT,
     Float,
     INT,

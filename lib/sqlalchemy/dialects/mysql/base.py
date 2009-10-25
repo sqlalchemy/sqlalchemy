@@ -876,7 +876,7 @@ class LONGBLOB(_BinaryType):
 
     __visit_name__ = 'LONGBLOB'
 
-class ENUM(_StringType):
+class ENUM(sqltypes.Enum, _StringType):
     """MySQL ENUM type."""
 
     __visit_name__ = 'ENUM'
@@ -955,20 +955,27 @@ class ENUM(_StringType):
                 'Manually quoting ENUM value literals is deprecated.  Supply '
                 'unquoted values and use the quoting= option in cases of '
                 'ambiguity.')
-            strip_enums = []
-            for a in enums:
-                if a[0:1] == '"' or a[0:1] == "'":
-                    # strip enclosing quotes and unquote interior
-                    a = a[1:-1].replace(a[0] * 2, a[0])
-                strip_enums.append(a)
-            self.enums = strip_enums
-        else:
-            self.enums = list(enums)
+            enums = self._strip_enums(enums)
 
         self.strict = kw.pop('strict', False)
-        length = max([len(v) for v in self.enums] + [0])
-        super(ENUM, self).__init__(length=length, **kw)
-
+        length = max([len(v) for v in enums] + [0])
+        kw.pop('metadata', None)
+        kw.pop('schema', None)
+        kw.pop('name', None)
+        kw.pop('quote', None)
+        _StringType.__init__(self, length=length, **kw)
+        sqltypes.Enum.__init__(self, *enums)
+    
+    @classmethod
+    def _strip_enums(cls, enums):
+        strip_enums = []
+        for a in enums:
+            if a[0:1] == '"' or a[0:1] == "'":
+                # strip enclosing quotes and unquote interior
+                a = a[1:-1].replace(a[0] * 2, a[0])
+            strip_enums.append(a)
+        return strip_enums
+        
     def bind_processor(self, dialect):
         super_convert = super(ENUM, self).bind_processor(dialect)
         def process(value):
@@ -1133,6 +1140,7 @@ colspecs = {
     sqltypes.Binary: _BinaryType,
     sqltypes.Boolean: _MSBoolean,
     sqltypes.Time: _MSTime,
+    sqltypes.Enum: ENUM,
 }
 
 # Everything 3.23 through 5.1 excepting OpenGIS types.
@@ -1566,7 +1574,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     
     def visit_binary(self, type_):
         return self.visit_BLOB(type_)
-        
+    
+    def visit_enum(self, type_):
+        return self.visit_ENUM(type_)
+    
     def visit_BINARY(self, type_):
         if type_.length:
             return "BINARY(%d)" % type_.length
@@ -2249,7 +2260,7 @@ class MySQLTableDefinitionParser(object):
                 type_kw[kw] = spec[kw]
 
         if type_ == 'enum':
-            type_kw['quoting'] = 'quoted'
+            type_args = ENUM._strip_enums(type_args)
 
         type_instance = col_type(*type_args, **type_kw)
 
