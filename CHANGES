@@ -658,6 +658,11 @@ CHANGES
       the column will be propagated down to 
       subclasses. [ticket:1570]  This is the reverse
       situation as that of [ticket:1523], fixed in 0.5.6.
+
+    - Fixed a slight inaccuracy in the sharding example.
+      Comparing equivalence of columns in the ORM is best 
+      accomplished using col1.shares_lineage(col2).
+      [ticket:1491]
       
 0.5.6
 =====

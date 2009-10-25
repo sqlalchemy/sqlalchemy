@@ -134,7 +134,13 @@ def query_chooser(query):
     # and convert to shard ids
     class FindContinent(sql.ClauseVisitor):
         def visit_binary(self, binary):
-            if binary.left is weather_locations.c.continent:
+            # "shares_lineage()" returns True if both columns refer to the same
+            # statement column, adjusting for any annotations present.
+            # (an annotation is an internal clone of a Column object
+            # and occur when using ORM-mapped attributes like 
+            # "WeatherLocation.continent"). A simpler comparison, though less accurate, 
+            # would be "binary.left.key == 'continent'".
+            if binary.left.shares_lineage(weather_locations.c.continent):
                 if binary.operator == operators.eq:
                     ids.append(shard_lookup[binary.right.value])
                 elif binary.operator == operators.in_op:
