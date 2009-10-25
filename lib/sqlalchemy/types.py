@@ -24,7 +24,10 @@ import inspect
 import datetime as dt
 from decimal import Decimal as _python_Decimal
 
-from sqlalchemy import exc
+from sqlalchemy import exc, schema
+from sqlalchemy.sql import expression
+import sys
+schema.types = expression.sqltypes =sys.modules['sqlalchemy.types']
 from sqlalchemy.util import pickle
 from sqlalchemy.sql.visitors import Visitable
 import sqlalchemy.util as util
@@ -809,8 +812,8 @@ class SchemaType(object):
             
     def _set_parent(self, column):
         column._on_table_attach(self._set_table)
-
-    def _set_table(self, table):
+        
+    def _set_table(self, table, column):
         table.append_ddl_listener('before-create', self._on_table_create)
         table.append_ddl_listener('after-drop', self._on_table_drop)
         if self.metadata is None:
@@ -863,9 +866,11 @@ class SchemaType(object):
 class Enum(String, SchemaType):
     """Generic Enum Type.
     
-    Currently supported on MySQL and Postgresql, the Enum type
-    provides a set of possible string values which the column is constrained
-    towards.
+    The Enum type provides a set of possible string values which the 
+    column is constrained towards.
+    
+    By default, uses the backend's native ENUM type if available, 
+    else uses VARCHAR + a CHECK constraint.
     
     Keyword arguments which don't apply to a specific backend are ignored
     by that backend.
@@ -895,6 +900,10 @@ class Enum(String, SchemaType):
         or an explicitly named constraint in order to generate the type and/or
         a table that uses it.
     
+    :param native_enum: Use the database's native ENUM type when available.
+        Defaults to True.  When False, uses VARCHAR + check constraint
+        for all backends.
+    
     :param schema: Schemaname of this type. For types that exist on the target
         database as an independent schema construct (Postgresql), this
         parameter specifies the named schema in which the type is present.
@@ -909,6 +918,7 @@ class Enum(String, SchemaType):
     
     def __init__(self, *enums, **kw):
         self.enums = enums
+        self.native_enum = kw.pop('native_enum', True)
         convert_unicode= kw.pop('convert_unicode', None)
         assert_unicode = kw.pop('assert_unicode', None)
         if convert_unicode is None:
@@ -919,11 +929,27 @@ class Enum(String, SchemaType):
             else:
                 convert_unicode = False
         
+        if self.enums:
+            length =max(len(x) for x in self.enums)
+        else:
+            length = 0
         String.__init__(self, 
+                        length =length,
                         convert_unicode=convert_unicode, 
                         assert_unicode=assert_unicode
                         )
         SchemaType.__init__(self, **kw)
+    
+    def _set_table(self, table, column):
+        if self.native_enum:
+            SchemaType._set_table(self, table, column)
+            
+        # this constraint DDL object is conditionally
+        # compiled by MySQL, Postgresql based on
+        # the native_enum flag.
+        table.append_constraint(
+            EnumConstraint(self, column)
+        )
         
     def adapt(self, impltype):
         return impltype(name=self.name, 
@@ -935,6 +961,14 @@ class Enum(String, SchemaType):
                         *self.enums
                         )
 
+class EnumConstraint(schema.CheckConstraint):
+    __visit_name__ = 'enum_constraint'
+    
+    def __init__(self, type_, column, **kw):
+        super(EnumConstraint, self).__init__('', name=type_.name, **kw)
+        self.type = type_
+        self.column = column
+    
 class PickleType(MutableType, TypeDecorator):
     """Holds Python objects.
 

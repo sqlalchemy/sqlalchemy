@@ -1351,6 +1351,12 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         return ' '.join(colspec)
 
+    def visit_enum_constraint(self, constraint):
+        if not constraint.type.native_enum:
+            return super(MySQLDDLCompiler, self).visit_enum_constraint(constraint)
+        else:
+            return None
+
     def post_create_table(self, table):
         """Build table-level CREATE options like ENGINE and COLLATE."""
 
@@ -1576,7 +1582,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_BLOB(type_)
     
     def visit_enum(self, type_):
-        return self.visit_ENUM(type_)
+        if not type_.native_enum:
+            return super(MySQLTypeCompiler, self).visit_enum(type_)
+        else:
+            return self.visit_ENUM(type_)
     
     def visit_BINARY(self, type_):
         if type_.length:

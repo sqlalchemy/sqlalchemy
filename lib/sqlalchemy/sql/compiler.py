@@ -964,7 +964,10 @@ class DDLCompiler(engine.Compiled):
         for column in table.columns:
             text += separator
             separator = ", \n"
-            text += "\t" + self.get_column_specification(column, first_pk=column.primary_key and not first_pk)
+            text += "\t" + self.get_column_specification(
+                                            column, 
+                                            first_pk=column.primary_key and not first_pk
+                                        )
             if column.primary_key:
                 first_pk = True
             const = " ".join(self.process(constraint) for constraint in column.constraints)
@@ -976,15 +979,18 @@ class DDLCompiler(engine.Compiled):
         if table.primary_key:
             text += ", \n\t" + self.process(table.primary_key)
         
-        const = ", \n\t".join(
-                        self.process(constraint) for constraint in table.constraints 
+        const = ", \n\t".join(p for p in 
+                        (self.process(constraint) for constraint in table.constraints 
                         if constraint is not table.primary_key
                         and constraint.inline_ddl
-                        and (not self.dialect.supports_alter or not getattr(constraint, 'use_alter', False))
+                        and (
+                            not self.dialect.supports_alter or 
+                            not getattr(constraint, 'use_alter', False)
+                        )) if p is not None
                 )
         if const:
             text += ", \n\t" + const
-
+        
         text += "\n)%s\n\n" % self.post_create_table(table)
         return text
         
@@ -1121,6 +1127,17 @@ class DDLCompiler(engine.Compiled):
         text += self.define_constraint_deferrability(constraint)
         return text
 
+    def visit_enum_constraint(self, constraint):
+        text = ""
+        if constraint.name is not None:
+            text += "CONSTRAINT %s " % \
+                        self.preparer.format_constraint(constraint)
+        text += " CHECK (%s IN (%s))" % (
+                    self.preparer.format_column(constraint.column),
+                    ",".join("'%s'" % x for x in constraint.type.enums)
+                )
+        return text
+
     def define_constraint_cascades(self, constraint):
         text = ""
         if constraint.ondelete is not None:
@@ -1247,7 +1264,7 @@ class GenericTypeCompiler(engine.TypeCompiler):
         return self.visit_TEXT(type_)
     
     def visit_enum(self, type_):
-        raise NotImplementedError("Enum not supported generically")
+        return self.visit_VARCHAR(type_)
         
     def visit_null(self, type_):
         raise NotImplementedError("Can't generate DDL for the null type")

@@ -236,7 +236,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec += " NOT NULL"
         return colspec
-
+    
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
     def visit_binary(self, type_):
         return self.visit_BLOB(type_)

@@ -7,18 +7,19 @@ import sets
 # end Py2K
 
 from sqlalchemy import *
-from sqlalchemy import sql, exc
+from sqlalchemy import sql, exc, schema
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test import *
 from sqlalchemy.test.engines import utf8_engine
 
 
-class TypesTest(TestBase, AssertsExecutionResults):
+class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"
 
     __only_on__ = 'mysql'
-
+    __dialect__ = mysql.dialect()
+    
     @testing.uses_deprecated('Manually quoting ENUM value literals')
     def test_basic(self):
         meta1 = MetaData(testing.db)
@@ -643,6 +644,23 @@ class TypesTest(TestBase, AssertsExecutionResults):
         finally:
             metadata.drop_all()
         
+    def test_enum_compile(self):
+        e1 = Enum('x', 'y', 'z', name="somename")
+        t1 = Table('sometable', MetaData(), Column('somecolumn', e1))
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE sometable (somecolumn ENUM('x','y','z'))"
+        )
+        t1 = Table('sometable', MetaData(), 
+                    Column('somecolumn', Enum('x', 'y', 'z', native_enum=False))
+                )
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE sometable ("
+            "somecolumn VARCHAR(1), "
+            " CHECK (somecolumn IN ('x','y','z'))"
+            ")"
+        )
         
     @testing.exclude('mysql', '<', (4,), "3.23 can't handle an ENUM of ''")
     @testing.uses_deprecated('Manually quoting ENUM value literals')

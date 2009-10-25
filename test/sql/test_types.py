@@ -329,6 +329,87 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         
         assert uni(unicodedata) == unicodedata.encode('utf-8')
 
+class EnumTest(TestBase):
+    @classmethod
+    def setup_class(cls):
+        global enum_table, non_native_enum_table, metadata
+        metadata = MetaData(testing.db)
+        enum_table = Table('enum_table', metadata,
+            Column("id", Integer, primary_key=True),
+            Column('someenum', Enum('one','two','three', name='myenum'))
+        )
+
+        non_native_enum_table = Table('non_native_enum_table', metadata,
+            Column("id", Integer, primary_key=True),
+            Column('someenum', Enum('one','two','three', native_enum=False)),
+        )
+
+        metadata.create_all()
+    
+    def teardown(self):
+        enum_table.delete().execute()
+        non_native_enum_table.delete().execute()
+        
+    @classmethod
+    def teardown_class(cls):
+        metadata.drop_all()
+
+    @testing.fails_on('postgresql+zxjdbc', 
+                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
+                        'but expression is of type character varying')
+    @testing.fails_on('postgresql+pg8000', 
+                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
+                        'but expression is of type text')
+    def test_round_trip(self):
+        enum_table.insert().execute([
+            {'id':1, 'someenum':'two'},
+            {'id':2, 'someenum':'two'},
+            {'id':3, 'someenum':'one'},
+        ])
+        
+        eq_(
+            enum_table.select().order_by(enum_table.c.id).execute().fetchall(), 
+            [
+                (1, 'two'),
+                (2, 'two'),
+                (3, 'one'),
+            ]
+        )
+
+    def test_non_native_round_trip(self):
+        non_native_enum_table.insert().execute([
+            {'id':1, 'someenum':'two'},
+            {'id':2, 'someenum':'two'},
+            {'id':3, 'someenum':'one'},
+        ])
+
+        eq_(
+            non_native_enum_table.select().
+                    order_by(non_native_enum_table.c.id).execute().fetchall(), 
+            [
+                (1, 'two'),
+                (2, 'two'),
+                (3, 'one'),
+            ]
+        )
+
+    @testing.fails_on('postgresql+zxjdbc', 
+                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
+                        'but expression is of type character varying')
+    @testing.fails_on('mysql', "MySQL seems to issue a 'data truncated' warning.")
+    def test_constraint(self):
+        assert_raises(exc.DBAPIError, 
+            enum_table.insert().execute,
+            {'id':4, 'someenum':'four'}
+        )
+
+    @testing.fails_on('mysql', "the CHECK constraint doesn't raise an exception for unknown reason")
+    def test_non_native_constraint(self):
+        assert_raises(exc.DBAPIError, 
+            non_native_enum_table.insert().execute,
+            {'id':4, 'someenum':'four'}
+        )
+        
 class BinaryTest(TestBase, AssertsExecutionResults):
     __excluded_on__ = (
         ('mysql', '<', (4, 1, 1)),  # screwy varbinary types

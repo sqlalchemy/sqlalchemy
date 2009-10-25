@@ -583,13 +583,12 @@ CHANGES
       type.  This means reflection now returns more accurate
       information about reflected types.  
     
-    - Added a new Enum generic type, currently supported on
-      Postgresql and MySQL.  Enum is a schema-aware object
-      to support databases which require specific DDL in 
-      order to use enum or equivalent; in the case of PG
-      it handles the details of `CREATE TYPE`, and on 
-      other databases without native enum support can 
-      support generation of CHECK constraints.
+    - Added a new Enum generic type. Enum is a schema-aware object
+      to support databases which require specific DDL in order to
+      use enum or equivalent; in the case of PG it handles the
+      details of `CREATE TYPE`, and on other databases without
+      native enum support will by generate VARCHAR + an inline CHECK
+      constraint to enforce the enum.
       [ticket:1109] [ticket:1511]
       
     - PickleType now uses == for comparison of values when

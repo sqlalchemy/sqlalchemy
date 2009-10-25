@@ -28,7 +28,7 @@ expressions.
 
 """
 import re, inspect
-from sqlalchemy import types, exc, util, dialects
+from sqlalchemy import exc, util, dialects
 from sqlalchemy.sql import expression, visitors
 
 URL = None
@@ -765,12 +765,12 @@ class Column(SchemaItem, expression.ColumnClause):
             table.append_constraint(UniqueConstraint(self.key))
 
         for fn in self._table_events:
-            fn(table)
+            fn(table, self)
         del self._table_events
     
     def _on_table_attach(self, fn):
         if self.table is not None:
-            fn(self.table)
+            fn(self.table, self)
         else:
             self._table_events.add(fn)
             
@@ -819,7 +819,7 @@ class Column(SchemaItem, expression.ColumnClause):
         if self.primary_key:
             selectable.primary_key.add(c)
         for fn in c._table_events:
-            fn(selectable)
+            fn(selectable, c)
         del c._table_events
         return c
 
@@ -1032,7 +1032,7 @@ class ForeignKey(SchemaItem):
         self.parent.foreign_keys.add(self)
         self.parent._on_table_attach(self._set_table)
     
-    def _set_table(self, table):
+    def _set_table(self, table, column):
         if self.constraint is None and isinstance(table, Table):
             self.constraint = ForeignKeyConstraint(
                 [], [], use_alter=self.use_alter, name=self.name,
@@ -1181,11 +1181,9 @@ class Sequence(DefaultGenerator):
 
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
-#        column.sequence = self
-        
         column._on_table_attach(self._set_table)
     
-    def _set_table(self, table):
+    def _set_table(self, table, column):
         self.metadata = table.metadata
         
     @property

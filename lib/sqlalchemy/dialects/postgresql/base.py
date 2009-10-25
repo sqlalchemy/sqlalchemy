@@ -330,7 +330,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_drop_sequence(self, drop):
         return "DROP SEQUENCE %s" % self.preparer.format_sequence(drop.element)
         
-    
+    def visit_enum_constraint(self, constraint):
+        if not constraint.type.native_enum:
+            return super(PGDDLCompiler, self).visit_enum_constraint(constraint)
+            
     def visit_create_enum_type(self, create):
         type_ = create.element
         
@@ -400,7 +403,10 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_TIMESTAMP(type_)
     
     def visit_enum(self, type_):
-        return self.visit_ENUM(type_)
+        if not type_.native_enum:
+            return super(PGTypeCompiler, self).visit_enum(type_)
+        else:
+            return self.visit_ENUM(type_)
         
     def visit_ENUM(self, type_):
         return self.dialect.identifier_preparer.format_type(type_)

@@ -251,13 +251,18 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
                 for bind, name in self.compiled.bind_names.iteritems():
                     if name in self.out_parameters:
                         type = bind.type
-                        result_processor = type.dialect_impl(self.dialect).result_processor(self.dialect)
+                        result_processor = type.dialect_impl(self.dialect).\
+                                                    result_processor(self.dialect)
                         if result_processor is not None:
-                            out_parameters[name] = result_processor(self.out_parameters[name].getvalue())
+                            out_parameters[name] = \
+                                    result_processor(self.out_parameters[name].getvalue())
                         else:
                             out_parameters[name] = self.out_parameters[name].getvalue()
             else:
-                result.out_parameters = dict((k, v.getvalue()) for k, v in self.out_parameters.items())
+                result.out_parameters = dict(
+                                            (k, v.getvalue()) 
+                                            for k, v in self.out_parameters.items()
+                                        )
 
         return result
 

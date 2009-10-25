@@ -29,12 +29,12 @@ to stay the same in future releases.
 import itertools, re
 from operator import attrgetter
 
-from sqlalchemy import util, exc, types as sqltypes
+from sqlalchemy import util, exc #, types as sqltypes
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import Visitable, cloned_traverse
 import operator
 
-functions, schema, sql_util = None, None, None
+functions, schema, sql_util, sqltypes = None, None, None, None
 DefaultDialect, ClauseAdapter, Annotated = None, None, None
 
 __all__ = [
@@ -3071,7 +3071,7 @@ class TableClause(_Immutable, FromClause):
     __visit_name__ = 'table'
 
     named_with_column = True
-
+    
     def __init__(self, name, *columns):
         super(TableClause, self).__init__()
         self.name = self.fullname = name
