@@ -926,13 +926,13 @@ class Enum(String, SchemaType):
         SchemaType.__init__(self, **kw)
         
     def adapt(self, impltype):
-        return impltype(*self.enums, 
-                        name=self.name, 
+        return impltype(name=self.name, 
                         quote=self.quote, 
                         schema=self.schema, 
                         metadata=self.metadata,
                         convert_unicode=self.convert_unicode,
-                        assert_unicode=self.assert_unicode
+                        assert_unicode=self.assert_unicode,
+                        *self.enums
                         )
 
 class PickleType(MutableType, TypeDecorator):
