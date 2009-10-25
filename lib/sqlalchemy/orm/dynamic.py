@@ -13,9 +13,9 @@ basic add/delete mutation.
 
 from sqlalchemy import log, util
 import sqlalchemy.exceptions as sa_exc
-
+from sqlalchemy.sql import operators
 from sqlalchemy.orm import (
-    attributes, object_session, util as mapperutil, strategies,
+    attributes, object_session, util as mapperutil, strategies, object_mapper
     )
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import _state_has_identity, has_identity
@@ -172,8 +172,19 @@ class AppenderMixin(object):
 
     def __init__(self, attr, state):
         Query.__init__(self, attr.target_mapper, None)
-        self.instance = state.obj()
+        self.instance = instance = state.obj()
         self.attr = attr
+
+        mapper = object_mapper(instance)
+        prop = mapper.get_property(self.attr.key, resolve_synonyms=True)
+        self._criterion = prop.compare(
+                            operators.eq, 
+                            instance, 
+                            value_is_parent=True, 
+                            alias_secondary=False)
+
+        if self.attr.order_by:
+            self._order_by = self.attr.order_by
 
     def __session(self):
         sess = object_session(self.instance)
@@ -233,17 +244,21 @@ class AppenderMixin(object):
             query = self.query_class(self.attr.target_mapper, session=sess)
         else:
             query = sess.query(self.attr.target_mapper)
-        query = query.with_parent(instance, self.attr.key)
-
-        if self.attr.order_by:
-            query = query.order_by(*self.attr.order_by)
+        
+        query._criterion = self._criterion
+        query._order_by = self._order_by
+        
         return query
 
     def append(self, item):
-        self.attr.append(attributes.instance_state(self.instance), attributes.instance_dict(self.instance), item, None)
+        self.attr.append(
+            attributes.instance_state(self.instance), 
+            attributes.instance_dict(self.instance), item, None)
 
     def remove(self, item):
-        self.attr.remove(attributes.instance_state(self.instance), attributes.instance_dict(self.instance), item, None)
+        self.attr.remove(
+            attributes.instance_state(self.instance), 
+            attributes.instance_dict(self.instance), item, None)
 
 
 class AppenderQuery(AppenderMixin, Query):

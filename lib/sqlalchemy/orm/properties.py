@@ -595,23 +595,30 @@ class RelationProperty(StrategizedProperty):
             self.prop.parent.compile()
             return self.prop
 
-    def compare(self, op, value, value_is_parent=False):
+    def compare(self, op, value, value_is_parent=False, alias_secondary=True):
         if op == operators.eq:
             if value is None:
                 if self.uselist:
                     return ~sql.exists([1], self.primaryjoin)
                 else:
-                    return self._optimized_compare(None, value_is_parent=value_is_parent)
+                    return self._optimized_compare(None, 
+                                    value_is_parent=value_is_parent,
+                                    alias_secondary=alias_secondary)
             else:
-                return self._optimized_compare(value, value_is_parent=value_is_parent)
+                    return self._optimized_compare(value, 
+                                    value_is_parent=value_is_parent,
+                                    alias_secondary=alias_secondary)
         else:
             return op(self.comparator, value)
 
-    def _optimized_compare(self, value, value_is_parent=False, adapt_source=None):
+    def _optimized_compare(self, value, value_is_parent=False, 
+                                    adapt_source=None, alias_secondary=True):
         if value is not None:
             value = attributes.instance_state(value)
         return self._get_strategy(strategies.LazyLoader).\
-                lazy_clause(value, reverse_direction=not value_is_parent, alias_secondary=True, adapt_source=adapt_source)
+                lazy_clause(value, 
+                            reverse_direction=not value_is_parent, 
+                            alias_secondary=alias_secondary, adapt_source=adapt_source)
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key

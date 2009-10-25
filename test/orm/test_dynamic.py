@@ -6,12 +6,12 @@ from sqlalchemy import Integer, String, ForeignKey, desc, select, func
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session, Query, attributes
 from sqlalchemy.orm.dynamic import AppenderMixin
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
 
 
-class DynamicTest(_fixtures.FixtureTest):
+class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_basic(self):
         mapper(User, users, properties={
@@ -27,13 +27,36 @@ class DynamicTest(_fixtures.FixtureTest):
         eq_(self.static.user_address_result, q.all())
 
     @testing.resolve_artifact_names
+    def test_statement(self):
+        """test that the .statement accessor returns the actual statement that
+        would render, without any _clones called."""
+        
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session()
+        q = sess.query(User)
+
+        u = q.filter(User.id==7).first()
+        self.assert_compile(
+            u.addresses.statement, 
+            "SELECT addresses.id, addresses.user_id, addresses.email_address FROM "
+            "addresses WHERE :param_1 = addresses.user_id",
+            use_default_dialect=True
+        )
+        
+    @testing.resolve_artifact_names
     def test_order_by(self):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
         sess = create_session()
         u = sess.query(User).get(8)
-        eq_(list(u.addresses.order_by(desc(Address.email_address))), [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@bettyboop.com')])
+        eq_(
+            list(u.addresses.order_by(desc(Address.email_address))),
+             [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), 
+              Address(email_address=u'ed@bettyboop.com')]
+            )
 
     @testing.resolve_artifact_names
     def test_configured_order_by(self):
@@ -117,6 +140,34 @@ class DynamicTest(_fixtures.FixtureTest):
         assert o1 in i1.orders.all()
         assert i1 in o1.items.all()
 
+    @testing.resolve_artifact_names
+    def test_association_nonaliased(self):
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items, 
+                                lazy="dynamic", 
+                                order_by=order_items.c.item_id)
+        })
+        mapper(Item, items)
+
+        sess = create_session()
+        o = sess.query(Order).first()
+
+        self.assert_compile(
+            o.items,
+            "SELECT items.id AS items_id, items.description AS items_description FROM items,"
+            " order_items WHERE :param_1 = order_items.order_id AND items.id = order_items.item_id"
+            " ORDER BY order_items.item_id",
+            use_default_dialect=True
+        )
+
+        # filter criterion against the secondary table 
+        # works
+        eq_(
+            o.items.filter(order_items.c.item_id==2).all(),
+            [Item(id=2)]
+        )
+        
+        
     @testing.resolve_artifact_names
     def test_transient_detached(self):
         mapper(User, users, properties={
@@ -458,11 +509,8 @@ class SessionTest(_fixtures.FixtureTest):
         sess.delete(u)
         sess.close()
 
-
-def _create_backref_test(autoflush, saveuser):
-
     @testing.resolve_artifact_names
-    def test_backref(self):
+    def _backref_test(self, autoflush, saveuser):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user')
         })
@@ -494,14 +542,17 @@ def _create_backref_test(autoflush, saveuser):
             sess.flush()
         eq_(list(u.addresses), [])
 
-    test_backref = function_named(
-        test_backref, "test%s%s" % ((autoflush and "_autoflush" or ""),
-                                    (saveuser and "_saveuser" or "_savead")))
-    setattr(SessionTest, test_backref.__name__, test_backref)
+    def test_backref_autoflush_saveuser(self):
+        self._backref_test(True, True)
 
-for autoflush in (False, True):
-    for saveuser in (False, True):
-        _create_backref_test(autoflush, saveuser)
+    def test_backref_autoflush_savead(self):
+        self._backref_test(True, False)
+
+    def test_backref_saveuser(self):
+        self._backref_test(False, True)
+
+    def test_backref_savead(self):
+        self._backref_test(False, False)
 
 class DontDereferenceTest(_base.MappedTest):
     @classmethod

@@ -61,7 +61,18 @@ CHANGES
         against the parent table directly along with the
         limit/offset without the extra overhead of a subquery,
         since a many-to-one join does not add rows to the result.
-      
+
+  - Using a "dynamic" loader with a "secondary" table now produces
+    a query where the "secondary" table is *not* aliased.  This
+    allows the secondary Table object to be used in the "order_by"
+    attribute of the relation(), and also allows it to be used
+    in filter criterion against the dynamic relation.
+    [ticket:1531]
+
+  - a "dynamic" loader sets up its query criterion at construction
+    time so that the actual query is returned from non-cloning
+    accessors like "statement".
+    
   - the "named tuple" objects returned when iterating a
     Query() are now pickleable.
 
