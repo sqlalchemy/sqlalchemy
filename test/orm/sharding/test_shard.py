@@ -83,7 +83,7 @@ class ShardTest(TestBase):
 
             class FindContinent(sql.ClauseVisitor):
                 def visit_binary(self, binary):
-                    if binary.left is weather_locations.c.continent:
+                    if binary.left.shares_lineage(weather_locations.c.continent):
                         if binary.operator == operators.eq:
                             ids.append(shard_lookup[binary.right.value])
                         elif binary.operator == operators.in_op:
