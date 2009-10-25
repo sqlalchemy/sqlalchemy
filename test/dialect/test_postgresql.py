@@ -132,7 +132,13 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             postgresql.DropEnumType(e2), 
             "DROP TYPE someschema.somename"
         )
-        
+    
+    @testing.fails_on('postgresql+zxjdbc', 
+                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
+                        'but expression is of type character varying')
+    @testing.fails_on('postgresql+pg8000', 
+                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
+                        'but expression is of type text')
     def test_create_table(self):
         metadata = MetaData(testing.db)
         t1 = Table('table', metadata,
@@ -158,6 +164,12 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert_raises(exc.ArgumentError, etype.create)
         assert_raises(exc.ArgumentError, etype.compile, dialect=postgresql.dialect())
     
+    @testing.fails_on('postgresql+zxjdbc', 
+                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
+                        'but expression is of type character varying')
+    @testing.fails_on('postgresql+pg8000', 
+                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
+                        'but expression is of type text')
     def test_unicode_labels(self):
         metadata = MetaData(testing.db)
         t1 = Table('table', metadata,
