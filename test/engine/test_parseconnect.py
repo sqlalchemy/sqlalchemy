@@ -112,7 +112,7 @@ pool_timeout=10
             'sqlalchemy.echo':'true'
         }
 
-        e = engine_from_config(config, module=dbapi)
+        e = engine_from_config(config, module=dbapi, _initialize=False)
         assert e.pool._recycle == 50
         assert e.url == url.make_url('postgresql://scott:tiger@somehost/test?fooz=somevalue')
         assert e.echo is True
@@ -176,11 +176,15 @@ pool_timeout=10
         assert e.pool._recycle == 50
 
         # these args work for QueuePool
-        e = create_engine('postgresql://', max_overflow=8, pool_timeout=60, poolclass=tsa.pool.QueuePool, module=mock_dbapi)
+        e = create_engine('postgresql://', 
+                            max_overflow=8, pool_timeout=60, 
+                            poolclass=tsa.pool.QueuePool, module=mock_dbapi, 
+                            _initialize=False)
 
         # but not SingletonThreadPool
         assert_raises(TypeError, create_engine, 'sqlite://', max_overflow=8, pool_timeout=60,
-                      poolclass=tsa.pool.SingletonThreadPool, module=mock_sqlite_dbapi)
+                      poolclass=tsa.pool.SingletonThreadPool, module=mock_sqlite_dbapi,
+                      _initialize=False)
 
 class MockDBAPI(object):
     def __init__(self, **kwargs):

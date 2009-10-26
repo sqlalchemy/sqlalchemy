@@ -262,8 +262,8 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             (
                 ('postgresql','psycopg2'),
                 ('postgresql','pg8000'),
-                ('postgresql','zxjdbc'),
-                ('mysql','zxjdbc'),
+                #('postgresql','zxjdbc'), # really ? why not pg
+                ('mysql','zxjdbc'),  # but then yes for Mysql ?
                 ('sqlite','pysqlite'),
             ))
         
