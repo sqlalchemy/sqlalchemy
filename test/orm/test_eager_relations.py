@@ -847,10 +847,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_inner_join_options(self):
         mapper(User, users, properties = dict(
-            orders =relation(Order, backref=backref('user', innerjoin=True))
+            orders =relation(Order, backref=backref('user', innerjoin=True), order_by=orders.c.id)
         ))
         mapper(Order, orders, properties=dict(
-            items=relation(Item, secondary=order_items)
+            items=relation(Item, secondary=order_items, order_by=items.c.id)
         ))
         mapper(Item, items)
         sess = create_session()
@@ -858,7 +858,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name, orders_1.id AS orders_1_id, "
             "orders_1.user_id AS orders_1_user_id, orders_1.address_id AS orders_1_address_id, "
             "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
-            "FROM users JOIN orders AS orders_1 ON users.id = orders_1.user_id"
+            "FROM users JOIN orders AS orders_1 ON users.id = orders_1.user_id ORDER BY orders_1.id"
         , use_default_dialect=True)
 
         self.assert_compile(sess.query(User).options(eagerload_all(User.orders, Order.items, innerjoin=True)), 
@@ -868,14 +868,15 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
             "FROM users JOIN orders AS orders_1 ON users.id = orders_1.user_id JOIN order_items AS "
             "order_items_1 ON orders_1.id = order_items_1.order_id JOIN items AS items_1 ON "
-            "items_1.id = order_items_1.item_id"
+            "items_1.id = order_items_1.item_id ORDER BY orders_1.id, items_1.id"
         , use_default_dialect=True)
         
         def go():
             eq_(
                 sess.query(User).options(
                     eagerload(User.orders, innerjoin=True), 
-                    eagerload(User.orders, Order.items, innerjoin=True)).all(),
+                    eagerload(User.orders, Order.items, innerjoin=True)).
+                    order_by(User.id).all(),
                     
                 [User(id=7, 
                     orders=[ 

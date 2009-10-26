@@ -886,6 +886,7 @@ class HasSequenceTest(TestBase):
 
     @testing.requires.schemas
     @testing.requires.sequences
+    @testing.fails_on('oracle', "the 'scott' schema is the same as the default schema")
     def test_has_sequence_schema(self):
         test_schema = get_schema()
         s1 = sa.Sequence('user_id_seq', schema=test_schema)
@@ -904,6 +905,7 @@ class HasSequenceTest(TestBase):
 # Tests related to engine.reflection
 
 def get_schema():
+    # TODO: how to get multiple schemas in use on Oracle XE ?
     if testing.against('oracle'):
         return 'scott'
     return 'test_schema'

@@ -64,7 +64,7 @@ def Column(*args, **kw):
     if 'test_needs_autoincrement' in test_opts and \
         kw.get('primary_key', False) and \
         testing.against('firebird', 'oracle'):
-        def add_seq(tbl):
+        def add_seq(tbl, c):
             col._init_items(
                 schema.Sequence(_truncate_name(testing.db.dialect, tbl.name + '_' + col.name + '_seq'), optional=True)
             )
