@@ -36,6 +36,7 @@ class ZooMarkTest(TestBase):
         creator = testing.db.pool._creator
         recorder = lambda: dbapi_session.recorder(creator())
         engine = engines.testing_engine(options={'creator':recorder})
+        engine.dialect._unwrap_connection = engines.unwrap_connection
         metadata = MetaData(engine)
         session = sessionmaker()()
 
@@ -282,6 +283,7 @@ class ZooMarkTest(TestBase):
 
         player = lambda: dbapi_session.player()
         engine = create_engine('postgresql:///', creator=player)
+        engine.dialect._unwrap_connection = engines.unwrap_connection
         metadata = MetaData(engine)
         session = sessionmaker()()
 
@@ -305,7 +307,7 @@ class ZooMarkTest(TestBase):
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
-    @profiling.function_call_count(1331)
+    @profiling.function_call_count(1240)
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 

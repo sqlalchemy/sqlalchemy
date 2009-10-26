@@ -42,6 +42,7 @@ class DefaultDialect(base.Dialect):
     # Py2K
     supports_unicode_statements = False
     supports_unicode_binds = False
+    returns_unicode_strings = False
     # end Py2K
 
     name = 'default'
@@ -97,12 +98,32 @@ class DefaultDialect(base.Dialect):
         ## work around dialects that might change these values
         #self.supports_unicode_statements = True
         #self.supports_unicode_binds = True
+        #self.returns_unicode_strings = True
 
     def initialize(self, connection):
         if hasattr(self, '_get_server_version_info'):
             self.server_version_info = self._get_server_version_info(connection)
         if hasattr(self, '_get_default_schema_name'):
             self.default_schema_name = self._get_default_schema_name(connection)
+        # Py2K
+        self.returns_unicode_strings = self._check_unicode_returns(connection)
+        # end Py2K
+    
+    def _check_unicode_returns(self, connection):
+        cursor = connection.connection.cursor()
+        cursor.execute(
+            str(
+                expression.select( 
+                [expression.cast(
+                    expression.literal_column("'test unicode returns'"),sqltypes.VARCHAR(60))
+                ]).compile(dialect=self)
+            )
+        )
+        
+        row = cursor.fetchone()
+        result = isinstance(row[0], unicode)
+        cursor.close()
+        return result
         
     @classmethod
     def type_descriptor(cls, typeobj):

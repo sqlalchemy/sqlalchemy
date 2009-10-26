@@ -480,9 +480,19 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             m2 = MetaData(testing.db)
             t2 = Table('t', m2, autoload=True)
             assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
+
+            # nvarchar returns unicode natively.  cx_oracle
+            # _OracleNVarChar type should be at play
+            # here.
+            assert isinstance(
+                        t2.c.data.type.dialect_impl(testing.db.dialect), 
+                        cx_oracle._OracleNVarChar)
+
             data = u'm’a réveillé.'
             t2.insert().execute(data=data)
-            eq_(t2.select().execute().first()['data'], data)
+            res = t2.select().execute().first()['data']
+            eq_(res, data)
+            assert isinstance(res, unicode)
         finally:
             metadata.drop_all()
         

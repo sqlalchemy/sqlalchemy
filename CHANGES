@@ -434,6 +434,13 @@ CHANGES
              "postgres_where" names still work with a
              deprecation warning.
     
+    - The psycopg2 dialect now uses psycopg2's "unicode extension"
+      on all new connections, which allows all String/Text/etc.
+      types to skip the need to post-process bytestrings into
+      unicode (an expensive step due to its volume).  Other 
+      dialects which return unicode natively (pg8000, zxjdbc)
+      also skip unicode post-processing.
+      
     - Added new ENUM type, which exists as a schema-level
       construct and extends the generic Enum type.  Automatically
       associates itself with tables and their parent metadata
@@ -576,6 +583,16 @@ CHANGES
       parameters. In particular, Numeric, Float, NUMERIC,
       FLOAT, DECIMAL don't generate any length or scale unless
       specified.
+    
+    - String/Text/Unicode types now skip the unicode() check
+      on each result column value if the dialect has 
+      detected the DBAPI as returning Python unicode objects
+      natively.  This check is issued on first connect
+      using "SELECT CAST 'some text' AS VARCHAR(10)" or
+      equivalent, then checking if the returned object
+      is a Python unicode.   This allows vast performance
+      increases for native-unicode DBAPIs, including
+      pysqlite/sqlite3, psycopg2, and pg8000.
       
     - Reflection of types now returns the exact UPPERCASE
       type within types.py, or the UPPERCASE type within

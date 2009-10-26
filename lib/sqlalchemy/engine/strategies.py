@@ -129,15 +129,12 @@ class DefaultEngineStrategy(EngineStrategy):
         engine = engineclass(pool, dialect, u, **engine_args)
 
         if _initialize:
-            # some unit tests pass through _initialize=False
-            # to help mock engines work
-            class OnInit(object):
-                def first_connect(self, conn, rec):
-                    c = base.Connection(engine, connection=conn)
-                    dialect.initialize(c)
-            pool._on_first_connect.insert(0, OnInit())
+            dialect.visit_pool(pool)
 
-        dialect.visit_pool(pool)
+            def first_connect(conn, rec):
+                c = base.Connection(engine, connection=conn)
+                dialect.initialize(c)
+            pool.add_listener({'first_connect':first_connect})
 
         return engine
 

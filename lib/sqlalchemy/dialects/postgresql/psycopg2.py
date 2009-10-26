@@ -23,7 +23,8 @@ psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.cre
   on the server and only retrieved as needed.    SQLAlchemy's :class:`~sqlalchemy.engine.base.ResultProxy`
   uses special row-buffering behavior when this feature is enabled, such that groups of 100 rows 
   at a time are fetched over the wire to reduce conversational overhead.
-
+* *use_native_unicode* - Enable the usage of Psycopg2 "native unicode" mode per connection.  True  
+  by default.
 * *isolation_level* - Sets the transaction isolation level for each transaction
   within the engine. Valid isolation levels are `READ_COMMITTED`,
   `READ_UNCOMMITTED`, `REPEATABLE_READ`, and `SERIALIZABLE`.
@@ -42,7 +43,9 @@ from sqlalchemy.engine import base, default
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, PGIdentifierPreparer, PGExecutionContext
+from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, \
+                                            PGIdentifierPreparer, PGExecutionContext, \
+                                            ENUM, ARRAY
 
 class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -60,6 +63,21 @@ class _PGNumeric(sqltypes.Numeric):
             return process
 
 
+class _PGEnum(ENUM):
+    def __init__(self, *arg, **kw):
+        super(_PGEnum, self).__init__(*arg, **kw)
+        if self.convert_unicode:
+            self.convert_unicode = "force"
+
+class _PGArray(ARRAY):
+    def __init__(self, *arg, **kw):
+        super(_PGArray, self).__init__(*arg, **kw)
+        # FIXME: this check won't work for setups that
+        # have convert_unicode only on their create_engine().
+        if isinstance(self.item_type, sqltypes.String) and \
+                    self.item_type.convert_unicode:
+            self.item_type.convert_unicode = "force"
+    
 # TODO: filter out 'FOR UPDATE' statements
 SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
@@ -108,7 +126,6 @@ class PostgreSQL_psycopg2IdentifierPreparer(PGIdentifierPreparer):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace('%', '%%')
 
-
 class PostgreSQL_psycopg2(PGDialect):
     driver = 'psycopg2'
     supports_unicode_statements = False
@@ -123,18 +140,36 @@ class PostgreSQL_psycopg2(PGDialect):
         {
             sqltypes.Numeric : _PGNumeric,
             sqltypes.Float: sqltypes.Float,  # prevents _PGNumeric from being used
+            ENUM : _PGEnum, # needs force_unicode
+            sqltypes.Enum : _PGEnum, # needs force_unicode
+            ARRAY : _PGArray, # needs force_unicode
         }
     )
 
-    def __init__(self, server_side_cursors=False, **kwargs):
+    def __init__(self, server_side_cursors=False, use_native_unicode=True, **kwargs):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
+        self.use_native_unicode = use_native_unicode
 
     @classmethod
     def dbapi(cls):
         psycopg = __import__('psycopg2')
         return psycopg
-
+    
+    _unwrap_connection = None
+    
+    def visit_pool(self, pool):
+        if self.dbapi and self.use_native_unicode:
+            extensions = __import__('psycopg2.extensions').extensions
+            def connect(conn, rec):
+                if self._unwrap_connection:
+                    conn = self._unwrap_connection(conn)
+                    if conn is None:
+                        return
+                extensions.register_type(extensions.UNICODE, conn)
+            pool.add_listener({'first_connect': connect, 'connect':connect})
+        super(PostgreSQL_psycopg2, self).visit_pool(pool)
+        
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
         if 'port' in opts:

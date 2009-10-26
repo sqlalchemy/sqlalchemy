@@ -139,11 +139,19 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         return self.mutable
 
     def dialect_impl(self, dialect, **kwargs):
-        impl = self.__class__.__new__(self.__class__)
-        impl.__dict__.update(self.__dict__)
+        impl = super(ARRAY, self).dialect_impl(dialect, **kwargs)
+        if impl is self:
+            impl = self.__class__.__new__(self.__class__)
+            impl.__dict__.update(self.__dict__)
         impl.item_type = self.item_type.dialect_impl(dialect)
         return impl
-
+    
+    def adapt(self, impltype):
+        return impltype(
+            self.item_type,
+            mutable=self.mutable
+        )
+        
     def bind_processor(self, dialect):
         item_proc = self.item_type.bind_processor(dialect)
         def process(value):

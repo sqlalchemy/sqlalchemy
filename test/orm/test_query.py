@@ -2490,6 +2490,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             eq_(results, [(User(name='jack'), 'jack')])
         self.assert_sql_count(testing.db, go, 1)
     
+    @testing.fails_on('postgresql+pg8000', "'type oid 705 not mapped to py type' (due to literal)")
     def test_self_referential(self):
     
         sess = create_session()
@@ -2521,7 +2522,8 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         
         
         # ensure column expressions are taken from inside the subquery, not restated at the top
-        q = sess.query(Order.id, Order.description, literal_column("'q'").label('foo')).filter(Order.description == u'order 3').from_self()
+        q = sess.query(Order.id, Order.description, literal_column("'q'").label('foo')).\
+            filter(Order.description == u'order 3').from_self()
         self.assert_compile(q, 
             "SELECT anon_1.orders_id AS anon_1_orders_id, anon_1.orders_description AS anon_1_orders_description, "
             "anon_1.foo AS anon_1_foo FROM (SELECT orders.id AS orders_id, orders.description AS orders_description, "

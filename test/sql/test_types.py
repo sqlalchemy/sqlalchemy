@@ -253,7 +253,20 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
     @engines.close_first
     def teardown(self):
         unicode_table.delete().execute()
-
+    
+    def test_native_unicode(self):
+        """assert expected values for 'native unicode' mode"""
+        
+        assert testing.db.dialect.returns_unicode_strings == \
+            ((testing.db.name, testing.db.driver) in \
+            (
+                ('postgresql','psycopg2'),
+                ('postgresql','pg8000'),
+                ('postgresql','zxjdbc'),
+                ('mysql','zxjdbc'),
+                ('sqlite','pysqlite'),
+            ))
+        
     def test_round_trip(self):
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand une drôle de petit voix m’a réveillé. Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
         
@@ -393,10 +406,7 @@ class EnumTest(TestBase):
             ]
         )
 
-    @testing.fails_on('postgresql+zxjdbc', 
-                        'zxjdbc fails on ENUM: column "XXX" is of type XXX '
-                        'but expression is of type character varying')
-    @testing.fails_on('mysql', "MySQL seems to issue a 'data truncated' warning.")
+    @testing.fails_on('mysql+mysqldb', "MySQL seems to issue a 'data truncated' warning.")
     def test_constraint(self):
         assert_raises(exc.DBAPIError, 
             enum_table.insert().execute,

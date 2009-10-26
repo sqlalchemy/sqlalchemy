@@ -145,7 +145,14 @@ class _LOBMixin(object):
 class _OracleChar(sqltypes.CHAR):
     def get_dbapi_type(self, dbapi):
         return dbapi.FIXED_CHAR
-    
+
+class _OracleNVarChar(sqltypes.NVARCHAR):
+    def result_processor(self, dialect):
+        if dialect._cx_oracle_native_nvarchar:
+            return None
+        else:
+            return sqltypes.NVARCHAR.result_processor(self, dialect)
+        
 class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
@@ -187,7 +194,7 @@ colspecs = {
                                         # it would be nice if we could not use it otherwise.
     oracle.NUMBER : oracle.NUMBER, # don't let this get converted
     oracle.RAW: _OracleRaw,
-    
+    sqltypes.NVARCHAR : _OracleNVarChar,
 }
 
 class Oracle_cx_oracleCompiler(OracleCompiler):
@@ -313,7 +320,8 @@ class Oracle_cx_oracle(OracleDialect):
         if hasattr(self.dbapi, 'version'):
             cx_oracle_ver = vers(self.dbapi.version)
             self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
-        
+            self._cx_oracle_native_nvarchar = cx_oracle_ver >= (5, 0)
+            
         if self.dbapi is None or not self.auto_convert_lobs or not 'CLOB' in self.dbapi.__dict__:
             self.dbapi_type_map = {}
             self.ORACLE_BINARY_TYPES = []

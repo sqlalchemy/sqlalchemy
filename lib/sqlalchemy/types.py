@@ -435,7 +435,7 @@ class String(Concatenable, TypeEngine):
         :param convert_unicode: defaults to False.  If True, convert
           ``unicode`` data sent to the database to a ``str``
           bytestring, and convert bytestrings coming back from the
-          database into ``unicode``.
+          database into ``unicode``.   
 
           Bytestrings are encoded using the dialect's
           :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which
@@ -443,6 +443,12 @@ class String(Concatenable, TypeEngine):
 
           If False, may be overridden by
           :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
+          
+          If the dialect has been detected as returning unicode 
+          strings from a VARCHAR result column, no unicode translation
+          will be done on results.   To force unicode translation
+          for individual types regardless of dialect setting,
+          set convert_unicode='force'.
 
         :param assert_unicode:
 
@@ -458,7 +464,7 @@ class String(Concatenable, TypeEngine):
         self.length = length
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
-
+        
     def adapt(self, impltype):
         return impltype(
                     length=self.length,
@@ -503,7 +509,8 @@ class String(Concatenable, TypeEngine):
             return None
 
     def result_processor(self, dialect):
-        if self.convert_unicode or dialect.convert_unicode:
+        if (not dialect.returns_unicode_strings or self.convert_unicode == 'force') \
+            and (self.convert_unicode or dialect.convert_unicode):
             def process(value):
                 if value is not None and not isinstance(value, unicode):
                     return value.decode(dialect.encoding)

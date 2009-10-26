@@ -287,3 +287,11 @@ class ReplayableSession(object):
                 raise AttributeError(key)
             else:
                 return result
+
+def unwrap_connection(conn):
+    if conn.__class__.__name__ == 'Recorder':
+        return conn._subject
+    elif conn.__class__.__name__ == 'Player':
+        return None
+    else:
+        return conn

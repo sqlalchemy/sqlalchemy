@@ -33,7 +33,9 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
-    @profiling.function_call_count(44406, versions={'2.4':33224})
+    # sqlite3 returns native unicode.  so shouldn't be an
+    # increase here.
+    @profiling.function_call_count(14396, versions={'2.4':13214})
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 

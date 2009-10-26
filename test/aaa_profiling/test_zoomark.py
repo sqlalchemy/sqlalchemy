@@ -14,6 +14,7 @@ ITERATIONS = 1
 dbapi_session = engines.ReplayableSession()
 metadata = None
 
+    
 class ZooMarkTest(TestBase):
     """Runs the ZooMark and squawks if method counts vary from the norm.
 
@@ -33,8 +34,10 @@ class ZooMarkTest(TestBase):
         global metadata
 
         creator = testing.db.pool._creator
+        
         recorder = lambda: dbapi_session.recorder(creator())
         engine = engines.testing_engine(options={'creator':recorder})
+        engine.dialect._unwrap_connection = engines.unwrap_connection
         metadata = MetaData(engine)
 
     def test_baseline_1_create_tables(self):
@@ -317,9 +320,10 @@ class ZooMarkTest(TestBase):
 
         player = lambda: dbapi_session.player()
         engine = create_engine('postgresql:///', creator=player)
+        engine.dialect._unwrap_connection = engines.unwrap_connection
         metadata = MetaData(engine)
 
-    @profiling.function_call_count(2991, {'2.4': 1796})
+    @profiling.function_call_count(3178, {'2.4': 1796})
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
@@ -335,11 +339,11 @@ class ZooMarkTest(TestBase):
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
-    @profiling.function_call_count(14752, {'2.4': 8434})
+    @profiling.function_call_count(13341, {'2.4': 8434})
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
-    @profiling.function_call_count(1347, {'2.4': 901})
+    @profiling.function_call_count(1241, {'2.4': 901})
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 
@@ -347,7 +351,7 @@ class ZooMarkTest(TestBase):
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
 
-    @profiling.function_call_count(2994, {'2.4': 1844})
+    @profiling.function_call_count(2641, {'2.4': 1844})
     def test_profile_7_multiview(self):
         self.test_baseline_7_multiview()
 

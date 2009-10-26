@@ -3,7 +3,7 @@ from sqlalchemy import pool, interfaces, create_engine, select
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing
 from sqlalchemy.test.util import gc_collect, lazy_gc
-
+from sqlalchemy.test.testing import eq_
 
 mcid = 1
 class MockDBAPI(object):
@@ -179,10 +179,10 @@ class PoolTest(PoolTestBase):
                 self.checked_out = []
                 self.checked_in = []
             def assert_total(innerself, conn, fconn, cout, cin):
-                self.assert_(len(innerself.connected) == conn)
-                self.assert_(len(innerself.first_connected) == fconn)
-                self.assert_(len(innerself.checked_out) == cout)
-                self.assert_(len(innerself.checked_in) == cin)
+                eq_(len(innerself.connected), conn)
+                eq_(len(innerself.first_connected), fconn)
+                eq_(len(innerself.checked_out), cout)
+                eq_(len(innerself.checked_in), cin)
             def assert_in(innerself, item, in_conn, in_fconn, in_cout, in_cin):
                 self.assert_((item in innerself.connected) == in_conn)
                 self.assert_((item in innerself.first_connected) == in_fconn)
@@ -326,6 +326,19 @@ class PoolTest(PoolTestBase):
         del c
         snoop.assert_total(2, 0, 2, 1)
 
+        # recreated
+        p = p.recreate()
+        snoop.clear()
+
+        c = p.connect()
+        snoop.assert_total(1, 1, 1, 0)
+        c.close()
+        snoop.assert_total(1, 1, 1, 1)
+        c = p.connect()
+        snoop.assert_total(1, 1, 2, 1)
+        c.close()
+        snoop.assert_total(1, 1, 2, 2)
+        
     def test_listeners_callables(self):
         dbapi = MockDBAPI()
 
