@@ -262,10 +262,14 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             (
                 ('postgresql','psycopg2'),
                 ('postgresql','pg8000'),
-                #('postgresql','zxjdbc'), # really ? why not pg
-                ('mysql','zxjdbc'),  # but then yes for Mysql ?
+                ('postgresql','zxjdbc'),
+                ('mysql','zxjdbc'),  
                 ('sqlite','pysqlite'),
-            ))
+            )), \
+            "name: %s driver %s returns_unicode_strings=%s" % \
+                                        (testing.db.name, 
+                                         testing.db.driver, 
+                                         testing.db.dialect.returns_unicode_strings)
         
     def test_round_trip(self):
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand une drôle de petit voix m’a réveillé. Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
