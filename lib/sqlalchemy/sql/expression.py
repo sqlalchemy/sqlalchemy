@@ -437,7 +437,8 @@ def case(whens, value=None, else_=None):
     The expressions used for THEN and ELSE,
     when specified as strings, will be interpreted
     as bound values. To specify textual SQL expressions
-    for these, use the text(<string>) construct.
+    for these, use the literal_column(<string>) or 
+    text(<string>) construct. 
 
     The expressions used for the WHEN criterion
     may only be literal strings when "value" is
@@ -456,6 +457,15 @@ def case(whens, value=None, else_=None):
               'engineer': emp.c.salary * 1.1,
               'manager':  emp.c.salary * 3,
           })
+
+    Using ``literal_column()``, to allow for databases that
+    do not support bind parameters in the `then` clause.  The type
+    can be specified which determines the type of the `case()` construct
+    overall::
+    
+        case([(orderline.c.qty > 100, literal_column("'greaterthan100'", String)),
+              (orderline.c.qty > 10, literal_column("'greaterthan10'", String))
+            ], else_=literal_column("'lethan10'", String))
 
     """
     
