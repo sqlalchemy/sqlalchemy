@@ -285,29 +285,29 @@ class TypeDecorator(AbstractType):
 
     def bind_processor(self, dialect):
         if self.__class__.process_bind_param.func_code is not TypeDecorator.process_bind_param.func_code:
+            process_param = self.process_bind_param
             impl_processor = self.impl.bind_processor(dialect)
             if impl_processor:
                 def process(value):
-                    return impl_processor(self.process_bind_param(value, dialect))
-                return process
+                    return impl_processor(process_param(value, dialect))
             else:
                 def process(value):
-                    return self.process_bind_param(value, dialect)
-                return process
+                    return process_param(value, dialect)
+            return process
         else:
             return self.impl.bind_processor(dialect)
 
     def result_processor(self, dialect):
         if self.__class__.process_result_value.func_code is not TypeDecorator.process_result_value.func_code:
+            process_value = self.process_result_value
             impl_processor = self.impl.result_processor(dialect)
             if impl_processor:
                 def process(value):
-                    return self.process_result_value(impl_processor(value), dialect)
-                return process
+                    return process_value(impl_processor(value), dialect)
             else:
                 def process(value):
-                    return self.process_result_value(value, dialect)
-                return process
+                    return process_value(value, dialect)
+            return process
         else:
             return self.impl.result_processor(dialect)
 
@@ -788,13 +788,20 @@ class Binary(TypeEngine):
         return process
 
     def result_processor(self, dialect):
-        def process(value):
-            if value is not None:
-                if util.jython and isinstance(value, array.array):
-                    return value.tostring()
-                return str(value)
-            else:
-                return None
+        if util.jython:
+            def process(value):
+                if value is not None:
+                    if isinstance(value, array.array):
+                        return value.tostring()
+                    return str(value)
+                else:
+                    return None
+        else:
+            def process(value):
+                if value is not None:
+                    return str(value)
+                else:
+                    return None
         return process
 
     def adapt(self, impltype):
@@ -1016,21 +1023,17 @@ class PickleType(MutableType, TypeDecorator):
         super(PickleType, self).__init__()
 
     def process_bind_param(self, value, dialect):
-        dumps = self.pickler.dumps
-        protocol = self.protocol
         if value is None:
             return None
+        dumps = self.pickler.dumps
+        protocol = self.protocol
         return dumps(value, protocol)
 
     def process_result_value(self, value, dialect):
-        loads = self.pickler.loads
         if value is None:
             return None
-        # Py3K
-        #return loads(value)
-        # Py2K
-        return loads(str(value))
-        # end Py2K
+        loads = self.pickler.loads
+        return loads(value)
 
     def copy_value(self, value):
         if self.mutable:
