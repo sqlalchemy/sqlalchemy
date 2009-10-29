@@ -1072,16 +1072,17 @@ class Interval(TypeDecorator):
     """
 
     impl = DateTime
+    epoch = dt.datetime.utcfromtimestamp(0)
 
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        return dt.datetime.utcfromtimestamp(0) + value
+        return self.epoch + value
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        return value - dt.datetime.utcfromtimestamp(0)
+        return value - self.epoch
 
 class FLOAT(Float):
     """The SQL FLOAT type."""
