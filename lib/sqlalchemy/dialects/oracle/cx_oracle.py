@@ -78,7 +78,7 @@ from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, RESER
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.engine import base
 from sqlalchemy import types as sqltypes, util
-import datetime
+from datetime import datetime
 
 class _OracleDate(sqltypes.Date):
     def bind_processor(self, dialect):
@@ -86,7 +86,7 @@ class _OracleDate(sqltypes.Date):
 
     def result_processor(self, dialect):
         def process(value):
-            if not isinstance(value, datetime.datetime):
+            if not isinstance(value, datetime):
                 return value
             else:
                 return value.date()
@@ -95,11 +95,11 @@ class _OracleDate(sqltypes.Date):
 class _OracleDateTime(sqltypes.DateTime):
     def result_processor(self, dialect):
         def process(value):
-            if value is None or isinstance(value, datetime.datetime):
+            if value is None or isinstance(value, datetime):
                 return value
             else:
                 # convert cx_oracle datetime object returned pre-python 2.4
-                return datetime.datetime(value.year, value.month,
+                return datetime(value.year, value.month,
                     value.day,value.hour, value.minute, value.second)
         return process
 
@@ -112,11 +112,11 @@ class _OracleDateTime(sqltypes.DateTime):
 class _OracleTimestamp(sqltypes.TIMESTAMP):
     def result_processor(self, dialect):
         def process(value):
-            if value is None or isinstance(value, datetime.datetime):
+            if value is None or isinstance(value, datetime):
                 return value
             else:
                 # convert cx_oracle datetime object returned pre-python 2.4
-                return datetime.datetime(value.year, value.month,
+                return datetime(value.year, value.month,
                     value.day,value.hour, value.minute, value.second)
         return process
 
@@ -129,15 +129,16 @@ class _LOBMixin(object):
             
         super_process = super(_LOBMixin, self).result_processor(dialect)
         lob = dialect.dbapi.LOB
-        def process(value):
-            if isinstance(value, lob):
-                if super_process:
+        if super_process:
+            def process(value):
+                if isinstance(value, lob):
                     return super_process(value.read())
                 else:
-                    return value.read()
-            else:
-                if super_process:
                     return super_process(value)
+        else:
+            def process(value):
+                if isinstance(value, lob):
+                    return value.read()
                 else:
                     return value
         return process
