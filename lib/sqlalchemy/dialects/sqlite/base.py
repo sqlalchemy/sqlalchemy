@@ -71,6 +71,8 @@ class _DateTimeMixin(object):
 
     def _result_processor(self, fn, regexp):
         rmatch = regexp.match
+        # Even on python2.6 datetime.strptime is both slower than this code
+        # and it does not support microseconds.
         def process(value):
             if value is not None:
                 return fn(*[int(x or 0) for x in rmatch(value).groups()])
