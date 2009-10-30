@@ -70,9 +70,10 @@ class _DateTimeMixin(object):
         return process
 
     def _result_processor(self, fn, regexp):
+        rmatch = regexp.match
         def process(value):
             if value is not None:
-                return fn(*[int(x or 0) for x in regexp.match(value).groups()])
+                return fn(*[int(x or 0) for x in rmatch(value).groups()])
             else:
                 return None
         return process
