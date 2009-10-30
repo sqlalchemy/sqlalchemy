@@ -553,7 +553,7 @@ class BIT(sqltypes.TypeEngine):
                 v = 0L
                 for i in map(ord, value):
                     v = v << 8 | i
-                value = v
+                return v
             return value
         return process
 
@@ -563,10 +563,13 @@ class _MSTime(sqltypes.Time):
     __visit_name__ = 'TIME'
 
     def result_processor(self, dialect):
+        time = datetime.time
         def process(value):
             # convert from a timedelta value
             if value is not None:
-                return datetime.time(value.seconds/60/60, value.seconds/60%60, value.seconds - (value.seconds/60*60))
+                seconds = value.seconds
+                minutes = seconds / 60
+                return time(minutes / 60, minutes % 60, seconds - minutes * 60)
             else:
                 return None
         return process
