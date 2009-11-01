@@ -574,7 +574,8 @@ class ComparesTables(object):
             eq_(c.primary_key, reflected_c.primary_key)
             eq_(c.nullable, reflected_c.nullable)
             if strict_types:
-                assert type(reflected_c.type) is type(c.type), "Type '%s' doesn't correspond to type '%s'" % (reflected_c.type, c.type)
+                assert type(reflected_c.type) is type(c.type), \
+                    "Type '%s' doesn't correspond to type '%s'" % (reflected_c.type, c.type)
             else:
                 assert len(
                     set(type(reflected_c.type).__mro__).difference(base_mro).intersection(

@@ -934,6 +934,16 @@ class SpecialTypesTest(TestBase, ComparesTables):
     def setup_class(cls):
         global metadata, table
         metadata = MetaData(testing.db)
+
+        # create these types so that we can issue
+        # special SQL92 INTERVAL syntax
+        class y2m(postgres.PGInterval):
+            def get_col_spec(self):
+                return "INTERVAL YEAR TO MONTH"
+
+        class d2s(postgres.PGInterval):
+            def get_col_spec(self):
+                return "INTERVAL DAY TO SECOND"
         
         table = Table('sometable', metadata,
             Column('id', postgres.PGUuid, primary_key=True),
@@ -941,10 +951,18 @@ class SpecialTypesTest(TestBase, ComparesTables):
             Column('addr', postgres.PGInet),
             Column('addr2', postgres.PGMacAddr),
             Column('addr3', postgres.PGCidr),
-            Column('doubleprec', postgres.PGDoublePrecision)
+            Column('doubleprec', postgres.PGDoublePrecision),
+            Column('plain_interval', postgres.PGInterval),
+            Column('year_interval', y2m()),
+            Column('month_interval', d2s()),
         )
         
         metadata.create_all()
+
+        # cheat so that the "strict type check"
+        # works
+        table.c.year_interval.type = postgres.PGInterval()
+        table.c.month_interval.type = postgres.PGInterval()
     
     @classmethod
     def teardown_class(cls):
@@ -955,7 +973,6 @@ class SpecialTypesTest(TestBase, ComparesTables):
         t = Table('sometable', m, autoload=True)
         
         self.assert_tables_equal(table, t, strict_types=True)
-        
 
 class MatchTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'postgres'

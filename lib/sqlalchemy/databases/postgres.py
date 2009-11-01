@@ -310,6 +310,8 @@ ischema_names = {
     'bytea' : PGBinary,
     'boolean' : PGBoolean,
     'interval':PGInterval,
+    'interval year to month':PGInterval,
+    'interval day to second':PGInterval,
 }
 
 # TODO: filter out 'FOR UPDATE' statements
@@ -543,10 +545,10 @@ class PGDialect(default.DefaultDialect):
                 else:
                     numericprec, numericscale = charlen.split(',')
                 charlen = False
-            if attype == 'double precision':
+            elif attype == 'double precision':
                 numericprec, numericscale = (True, False)
                 charlen = False
-            if attype == 'integer':
+            elif attype == 'integer':
                 numericprec, numericscale = (32, 0)
                 charlen = False
 
