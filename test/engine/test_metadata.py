@@ -19,7 +19,22 @@ class MetaDataTest(TestBase, ComparesTables):
         finally:
             metadata.drop_all()
 
-
+    def test_metadata_contains(self):
+        metadata = MetaData()
+        t1 = Table('t1', metadata, Column('x', Integer))
+        t2 = Table('t2', metadata, Column('x', Integer), schema='foo')
+        t3 = Table('t2', MetaData(), Column('x', Integer))
+        t4 = Table('t1', MetaData(), Column('x', Integer), schema='foo')
+        
+        assert "t1" in metadata
+        assert "foo.t2" in metadata
+        assert "t2" not in metadata
+        assert "foo.t1" not in metadata
+        assert t1 in metadata
+        assert t2 in metadata
+        assert t3 not in metadata
+        assert t4 not in metadata
+        
     def test_dupe_tables(self):
         metadata = MetaData()
         t1 = Table('table1', metadata, Column('col1', Integer, primary_key=True),

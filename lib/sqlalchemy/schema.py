@@ -1662,8 +1662,10 @@ class MetaData(SchemaItem):
     def __repr__(self):
         return 'MetaData(%r)' % self.bind
 
-    def __contains__(self, key):
-        return key in self.tables
+    def __contains__(self, table_or_key):
+        if not isinstance(table_or_key, basestring):
+            table_or_key = table_or_key.key
+        return table_or_key in self.tables
 
     def __getstate__(self):
         return {'tables': self.tables}

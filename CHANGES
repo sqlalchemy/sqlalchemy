@@ -268,6 +268,11 @@ CHANGES
         result.inserted_primary_key
             
 - schema
+    - the `__contains__()` method of `MetaData` now accepts
+      strings or `Table` objects as arguments.  If given
+      a `Table`, the argument is converted to `table.key` first,
+      i.e. "[schemaname.]<tablename>" [ticket:1541]
+      
     - deprecated MetaData.connect() and
       ThreadLocalMetaData.connect() have been removed - send
       the "bind" attribute to bind a metadata.
