@@ -725,12 +725,14 @@ class OracleDialect(default.DefaultDialect):
         indexes = []
         q = sql.text("""
         SELECT a.index_name, a.column_name, b.uniqueness
-        FROM ALL_IND_COLUMNS%(dblink)s a
-        INNER JOIN ALL_INDEXES%(dblink)s b
-            ON a.index_name = b.index_name
+        FROM ALL_IND_COLUMNS%(dblink)s a, 
+        ALL_INDEXES%(dblink)s b 
+        WHERE
+            a.index_name = b.index_name
             AND a.table_owner = b.table_owner
             AND a.table_name = b.table_name
-        WHERE a.table_name = :table_name
+        
+        AND a.table_name = :table_name
         AND a.table_owner = :schema
         ORDER BY a.index_name, a.column_position""" % {'dblink': dblink})
         rp = connection.execute(q, table_name=self.denormalize_name(table_name),
@@ -742,6 +744,8 @@ class OracleDialect(default.DefaultDialect):
                                       dblink=dblink,
                                       info_cache=kw.get('info_cache'))
         uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
+        
+        oracle_sys_col = re.compile(r'SYS_NC\d+\$', re.IGNORECASE)
         for rset in rp:
             # don't include the primary key columns
             if rset.column_name in [s.upper() for s in pkeys]:
@@ -750,7 +754,11 @@ class OracleDialect(default.DefaultDialect):
                 index = dict(name=self.normalize_name(rset.index_name), column_names=[])
                 indexes.append(index)
             index['unique'] = uniqueness.get(rset.uniqueness, False)
-            index['column_names'].append(self.normalize_name(rset.column_name))
+
+            # filter out Oracle SYS_NC names.  could also do an outer join
+            # to the all_tab_columns table and check for real col names there.
+            if not oracle_sys_col.match(rset.column_name):
+                index['column_names'].append(self.normalize_name(rset.column_name))
             last_index_name = rset.index_name
         return indexes
 

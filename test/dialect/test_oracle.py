@@ -560,6 +560,22 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
         result = eng.execute(binary_table.select()).fetchall()
         eq_(result, [(i, stream) for i in range(1, 11)])
 
+class UnsupportedIndexReflectTest(TestBase):
+    def setup(self):
+        global metadata
+        metadata = MetaData(testing.db)
+        t1 = Table('test_index_reflect', metadata, Column('data', String(20), primary_key=True))
+        metadata.create_all()
+    
+    def teardown(self):
+        metadata.drop_all()
+        
+    def test_reflect_functional_index(self):
+        testing.db.execute("CREATE INDEX DATA_IDX ON TEST_INDEX_REFLECT (UPPER(DATA))")
+        m2 = MetaData(testing.db)
+        t2 = Table('test_index_reflect', m2, autoload=True)
+        
+        
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
         seq = Sequence("my_seq_no_schema")
