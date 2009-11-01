@@ -224,7 +224,10 @@ class TypeDecorator(AbstractType):
             raise AssertionError("TypeDecorator implementations require a class-level "
                         "variable 'impl' which refers to the class of type being decorated")
         self.impl = self.__class__.impl(*args, **kwargs)
-
+    
+    def adapt(self, cls):
+        return cls()
+        
     def dialect_impl(self, dialect):
         try:
             return self._impl_dict[dialect.__class__]
