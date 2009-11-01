@@ -639,7 +639,8 @@ class ComparesTables(object):
             eq_(c.nullable, reflected_c.nullable)
             
             if strict_types:
-                assert type(reflected_c.type) is type(c.type), "Type '%s' doesn't correspond to type '%s'" % (reflected_c.type, c.type)
+                assert type(reflected_c.type) is type(c.type), \
+                    "Type '%s' doesn't correspond to type '%s'" % (reflected_c.type, c.type)
             else:
                 self.assert_types_base(reflected_c, c)
 

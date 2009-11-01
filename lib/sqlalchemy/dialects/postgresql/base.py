@@ -105,6 +105,12 @@ PGMacAddr = MACADDR
 
 class INTERVAL(sqltypes.TypeEngine):
     __visit_name__ = 'INTERVAL'
+    def __init__(self, precision=None):
+        self.precision = precision
+    
+    def adapt(self, impltype):
+        return impltype(self.precision)
+        
 PGInterval = INTERVAL
 
 class BIT(sqltypes.TypeEngine):
@@ -238,6 +244,8 @@ ischema_names = {
     'bytea' : BYTEA,
     'boolean' : BOOLEAN,
     'interval':INTERVAL,
+    'interval year to month':INTERVAL,
+    'interval day to second':INTERVAL,
 }
 
 
@@ -426,7 +434,10 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return "TIME " + (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
 
     def visit_INTERVAL(self, type_):
-        return "INTERVAL"
+        if type_.precision is not None:
+            return "INTERVAL(%d)" % type_.precision
+        else:
+            return "INTERVAL"
 
     def visit_BIT(self, type_):
         return "BIT"
@@ -839,10 +850,10 @@ class PGDialect(default.DefaultDialect):
                 else:
                     numericprec, numericscale = charlen.split(',')
                 charlen = False
-            if attype == 'double precision':
+            elif attype == 'double precision':
                 numericprec, numericscale = (53, False)
                 charlen = False
-            if attype == 'integer':
+            elif attype == 'integer':
                 numericprec, numericscale = (32, 0)
                 charlen = False
             args = []

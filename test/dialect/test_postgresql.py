@@ -4,7 +4,7 @@ from sqlalchemy.test import  engines
 import datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy import exc, schema
+from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.engine.strategies import MockEngineStrategy
 from sqlalchemy.test import *
@@ -1320,17 +1320,35 @@ class SpecialTypesTest(TestBase, ComparesTables):
         global metadata, table
         metadata = MetaData(testing.db)
         
+        # create these types so that we can issue
+        # special SQL92 INTERVAL syntax
+        class y2m(types.UserDefinedType, postgresql.INTERVAL):
+            def get_col_spec(self):
+                return "INTERVAL YEAR TO MONTH"
+
+        class d2s(types.UserDefinedType, postgresql.INTERVAL):
+            def get_col_spec(self):
+                return "INTERVAL DAY TO SECOND"
+            
         table = Table('sometable', metadata,
             Column('id', postgresql.PGUuid, primary_key=True),
             Column('flag', postgresql.PGBit),
             Column('addr', postgresql.PGInet),
             Column('addr2', postgresql.PGMacAddr),
             Column('addr3', postgresql.PGCidr),
-            Column('doubleprec', postgresql.DOUBLE_PRECISION)
-            
+            Column('doubleprec', postgresql.DOUBLE_PRECISION),
+            Column('plain_interval', postgresql.INTERVAL),
+            Column('year_interval', y2m()),
+            Column('month_interval', d2s()),
+            Column('precision_interval', postgresql.INTERVAL(precision=3))
         )
         
         metadata.create_all()
+        
+        # cheat so that the "strict type check"
+        # works
+        table.c.year_interval.type = postgresql.INTERVAL()
+        table.c.month_interval.type = postgresql.INTERVAL()
     
     @classmethod
     def teardown_class(cls):
@@ -1341,7 +1359,8 @@ class SpecialTypesTest(TestBase, ComparesTables):
         t = Table('sometable', m, autoload=True)
         
         self.assert_tables_equal(table, t, strict_types=True)
-        
+        assert t.c.plain_interval.type.precision is None
+        assert t.c.precision_interval.type.precision == 3
 
 class MatchTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'postgresql'

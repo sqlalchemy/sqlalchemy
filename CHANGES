@@ -452,7 +452,10 @@ CHANGES
       to issue the appropriate CREATE TYPE/DROP TYPE 
       commands as needed, supports unicode labels, supports
       reflection.  [ticket:1511]
-      
+    
+    - INTERVAL supports an optional "precision" argument 
+      corresponding to the argument that PG accepts.
+
     - using new dialect.initialize() feature to set up
       version-dependent behavior.
 
@@ -673,6 +676,10 @@ CHANGES
       via a new postgres.PGDoublePrecision object.  
       This is postgresql.DOUBLE_PRECISION in 0.6.
       [ticket:1085]
+
+    - Added support for reflecting the INTERVAL YEAR TO MONTH
+      and INTERVAL DAY TO SECOND syntaxes of the INTERVAL 
+      type.  [ticket:460]
 
     - Corrected the "has_sequence" query to take current schema,
       or explicit sequence-stated schema, into account.
