@@ -74,6 +74,8 @@ SVN version:
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
         "Topic :: Database :: Front-Ends",
+        "Operating System :: OS Independent",
         ]
       )
