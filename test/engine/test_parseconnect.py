@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from sqlalchemy.test.testing import assert_raises, assert_raises_message, eq_
 import ConfigParser
 import StringIO
 import sqlalchemy.engine.url as url
@@ -36,6 +36,14 @@ class ParseConnectTest(TestBase):
             assert u.host == 'hostspec' or u.host == '127.0.0.1' or (not u.host)
             assert str(u) == text
 
+class DialectImportTest(TestBase):
+    def test_import_base_dialects(self):
+        for name in ('mysql', 'firebird', 'postgresql', 'sqlite', 'oracle', 'mssql'):
+            exec("from sqlalchemy.dialects import %s\n"
+                "dialect = %s.dialect()"
+             % (name, name))
+            eq_(dialect.name, name)
+    
 class CreateEngineTest(TestBase):
     """test that create_engine arguments of different types get propagated properly"""
     def test_connect_query(self):
