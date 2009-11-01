@@ -1,13 +1,12 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 import StringIO, unicodedata
-import sqlalchemy as sa
 from sqlalchemy import types as sql_types
 from sqlalchemy import schema
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import MetaData
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-import sqlalchemy as tsa
+import sqlalchemy as sa
 from sqlalchemy.test import TestBase, ComparesTables, testing, engines
 
 create_inspector = Inspector.from_engine
@@ -85,7 +84,11 @@ class ReflectionTest(TestBase, ComparesTables):
             
         finally:
             meta.drop_all()
-            
+    
+    def test_nonexistent(self):
+        meta = MetaData(testing.db)
+        assert_raises(sa.exc.NoSuchTableError, Table, "nonexistent", meta, autoload=True)
+        
     def test_include_columns(self):
         meta = MetaData(testing.db)
         foo = Table('foo', meta, *[Column(n, sa.String(30))
@@ -179,7 +182,7 @@ class ReflectionTest(TestBase, ComparesTables):
         testing.db.dialect.ischema_names = {}
         try:
             m2 = MetaData(testing.db)
-            assert_raises(tsa.exc.SAWarning, Table, "test", m2, autoload=True)
+            assert_raises(sa.exc.SAWarning, Table, "test", m2, autoload=True)
 
             @testing.emits_warning('Did not recognize type')
             def warns():
@@ -358,7 +361,7 @@ class ReflectionTest(TestBase, ComparesTables):
             a2 = Table('a', m2, include_columns=['z'], autoload=True)
             b2 = Table('b', m2, autoload=True)
             
-            assert_raises(tsa.exc.NoReferencedColumnError, a2.join, b2)
+            assert_raises(sa.exc.NoReferencedColumnError, a2.join, b2)
         finally:
             meta.drop_all()
         
@@ -438,7 +441,7 @@ class ReflectionTest(TestBase, ComparesTables):
             try:
                 users = Table('users', meta2, Column('name', sa.Unicode), autoload=True)
                 assert False
-            except tsa.exc.InvalidRequestError, err:
+            except sa.exc.InvalidRequestError, err:
                 assert str(err) == "Table 'users' is already defined for this MetaData instance.  Specify 'useexisting=True' to redefine options and columns on an existing Table object."
 
             users = Table('users', meta2, Column('name', sa.Unicode), autoload=True, useexisting=True)
@@ -481,7 +484,9 @@ class ReflectionTest(TestBase, ComparesTables):
             Column('slot', sa.String(128)),
             )
             
-        assert_raises_message(tsa.exc.InvalidRequestError, "Could not find table 'pkgs' with which to generate a foreign key", metadata.create_all)
+        assert_raises_message(sa.exc.InvalidRequestError, 
+                            "Could not find table 'pkgs' with which to generate a foreign key",
+                             metadata.create_all)
 
     def test_composite_pks(self):
         """test reflection of a composite primary key"""
@@ -620,7 +625,7 @@ class ReflectionTest(TestBase, ComparesTables):
             try:
                 m4.reflect(only=['rt_a', 'rt_f'])
                 self.assert_(False)
-            except tsa.exc.InvalidRequestError, e:
+            except sa.exc.InvalidRequestError, e:
                 self.assert_(e.args[0].endswith('(rt_f)'))
 
             m5 = MetaData(testing.db)
@@ -637,7 +642,7 @@ class ReflectionTest(TestBase, ComparesTables):
             try:
                 m8 = MetaData(reflect=True)
                 self.assert_(False)
-            except tsa.exc.ArgumentError, e:
+            except sa.exc.ArgumentError, e:
                 self.assert_(
                     e.args[0] ==
                     "A bind must be supplied in conjunction with reflect=True")
