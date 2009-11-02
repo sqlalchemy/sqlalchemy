@@ -561,6 +561,8 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
         eq_(result, [(i, stream) for i in range(1, 11)])
 
 class UnsupportedIndexReflectTest(TestBase):
+    __only_on__ = 'oracle'
+    
     def setup(self):
         global metadata
         metadata = MetaData(testing.db)
