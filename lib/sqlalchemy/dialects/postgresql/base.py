@@ -602,7 +602,7 @@ class PGDialect(default.DefaultDialect):
         resultset = connection.execute(sql.text("SELECT gid FROM pg_prepared_xacts"))
         return [row[0] for row in resultset]
 
-    def get_default_schema_name(self, connection):
+    def _get_default_schema_name(self, connection):
         return connection.scalar("select current_schema()")
 
     def has_table(self, connection, table_name, schema=None):
@@ -761,7 +761,7 @@ class PGDialect(default.DefaultDialect):
         if schema is not None:
             current_schema = schema
         else:
-            current_schema = self.get_default_schema_name(connection)
+            current_schema = self.default_schema_name
         table_names = self.table_names(connection, current_schema)
         return table_names
 
@@ -770,7 +770,7 @@ class PGDialect(default.DefaultDialect):
         if schema is not None:
             current_schema = schema
         else:
-            current_schema = self.get_default_schema_name(connection)
+            current_schema = self.default_schema_name
         s = """
         SELECT relname
         FROM pg_class c
@@ -789,7 +789,7 @@ class PGDialect(default.DefaultDialect):
         if schema is not None:
             current_schema = schema
         else:
-            current_schema = self.get_default_schema_name(connection)
+            current_schema = self.default_schema_name
         s = """
         SELECT definition FROM pg_views
         WHERE schemaname = :schema
@@ -953,7 +953,7 @@ class PGDialect(default.DefaultDialect):
             constrained_columns = [preparer._unquote_identifier(x) for x in re.split(r'\s*,\s*', constrained_columns)]
             if referred_schema:
                 referred_schema = preparer._unquote_identifier(referred_schema)
-            elif schema is not None and schema == self.get_default_schema_name(connection):
+            elif schema is not None and schema == self.default_schema_name:
                 # no schema (i.e. its the default schema), and the table we're
                 # reflecting has the default schema explicit, then use that.
                 # i.e. try to use the user's conventions

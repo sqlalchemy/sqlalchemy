@@ -844,14 +844,9 @@ class MaxDBDialect(default.DefaultDialect):
         # COMMIT/ROLLBACK so omitting it should be relatively ok.
         pass
 
-    def get_default_schema_name(self, connection):
-        try:
-            return self._default_schema_name
-        except AttributeError:
-            name = self.identifier_preparer._normalize_name(
+    def _get_default_schema_name(self, connection):
+        return self.identifier_preparer._normalize_name(
                 connection.execute('SELECT CURRENT_SCHEMA FROM DUAL').scalar())
-            self._default_schema_name = name
-            return name
 
     def has_table(self, connection, table_name, schema=None):
         denormalize = self.identifier_preparer._denormalize_name

@@ -65,11 +65,14 @@ class Dialect(object):
 
     server_version_info
       a tuple containing a version number for the DB backend in use.
-      This value is only available for supporting dialects, and only for
-      a dialect that's been associated with a connection pool via
-      create_engine() or otherwise had its ``initialize()`` method called
-      with a conneciton.
-
+      This value is only available for supporting dialects, and is
+      typically populated during the initial connection to the database.
+    
+    default_schema_name
+     the name of the default schema.  This value is only available for
+     supporting dialects, and is typically populated during the
+     initial connection to the database.
+     
     execution_ctx_cls
       a :class:`ExecutionContext` class used to handle statement execution
 
@@ -327,10 +330,23 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_default_schema_name(self, connection):
-        """Return the string name of the currently selected schema given a :class:`~sqlalchemy.engine.Connection`.
+    def _get_server_version_info(self, connection):
+        """Retrieve the server version info from the given connection.
         
-        DEPRECATED.  moving this towards dialect.default_schema_name (not complete).
+        This is used by the default implementation to populate the
+        "server_version_info" attribute and is called exactly
+        once upon first connect.
+        
+        """
+
+        raise NotImplementedError()
+        
+    def _get_default_schema_name(self, connection):
+        """Return the string name of the currently selected schema from the given connection.
+
+        This is used by the default implementation to populate the
+        "default_schema_name" attribute and is called exactly
+        once upon first connect.
         
         """
 
@@ -1427,7 +1443,7 @@ class Engine(Connectable):
             conn = connection
         if not schema:
             try:
-                schema =  self.dialect.get_default_schema_name(conn)
+                schema =  self.dialect.default_schema_name
             except NotImplementedError:
                 pass
         try:

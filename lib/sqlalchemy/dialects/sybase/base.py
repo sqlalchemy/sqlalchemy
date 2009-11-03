@@ -348,7 +348,8 @@ class SybaseDialect(default.DefaultDialect):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    def get_default_schema_name(self, connection):
+    def _get_default_schema_name(self, connection):
+        # TODO
         return self.schema_name
 
     def table_names(self, connection, schema):
@@ -370,7 +371,7 @@ class SybaseDialect(default.DefaultDialect):
         if table.schema is not None:
             current_schema = table.schema
         else:
-            current_schema = self.get_default_schema_name(connection)
+            current_schema = self.default_schema_name
 
         s = sql.select([columns, domains], tables.c.table_name==table.name, from_obj=[columns.join(tables).join(domains)], order_by=[columns.c.column_id])
 

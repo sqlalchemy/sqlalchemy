@@ -266,6 +266,8 @@ CHANGES
   - deprecated or removed
       * result.last_inserted_ids() is deprecated.  Use 
         result.inserted_primary_key
+      * dialect.get_default_schema_name(connection) is now
+        public via dialect.default_schema_name.
             
 - schema
     - the `__contains__()` method of `MetaData` now accepts

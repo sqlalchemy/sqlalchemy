@@ -1740,7 +1740,7 @@ class MySQLDialect(default.DefaultDialect):
     def _extract_error_code(self, exception):
         raise NotImplementedError()
     
-    def get_default_schema_name(self, connection):
+    def _get_default_schema_name(self, connection):
         return connection.execute('SELECT DATABASE()').scalar()
 
     def table_names(self, connection, schema):
@@ -1801,7 +1801,7 @@ class MySQLDialect(default.DefaultDialect):
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         if schema is None:
-            schema = self.get_default_schema_name(connection)
+            schema = self.default_schema_name
         if self.server_version_info < (5, 0, 2):
             return self.table_names(connection, schema)
         charset = self._connection_charset
@@ -1817,7 +1817,7 @@ class MySQLDialect(default.DefaultDialect):
         if self.server_version_info < (5, 0, 2):
             raise NotImplementedError
         if schema is None:
-            schema = self.get_default_schema_name(connection)
+            schema = self.default_schema_name
         if self.server_version_info < (5, 0, 2):
             return self.table_names(connection, schema)
         charset = self._connection_charset
@@ -1863,7 +1863,7 @@ class MySQLDialect(default.DefaultDialect):
             if not ref_schema:
                 if default_schema is None:
                     default_schema = \
-                        connection.dialect.get_default_schema_name(connection)
+                        connection.dialect.default_schema_name
                 if schema == default_schema:
                     ref_schema = schema
 

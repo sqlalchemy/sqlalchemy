@@ -1167,9 +1167,6 @@ class MSDialect(default.DefaultDialect):
         if self.server_version_info >= MS_2005_VERSION and 'implicit_returning' not in self.__dict__:
             self.implicit_returning = True
         
-    def get_default_schema_name(self, connection):
-        return self.default_schema_name
-        
     def _get_default_schema_name(self, connection):
         user_name = connection.scalar("SELECT user_name() as user_name;")
         if user_name is not None:

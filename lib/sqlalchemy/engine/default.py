@@ -101,10 +101,15 @@ class DefaultDialect(base.Dialect):
         #self.returns_unicode_strings = True
 
     def initialize(self, connection):
-        if hasattr(self, '_get_server_version_info'):
+        try:
             self.server_version_info = self._get_server_version_info(connection)
-        if hasattr(self, '_get_default_schema_name'):
+        except NotImplementedError:
+            self.server_version_info = None
+        try:
             self.default_schema_name = self._get_default_schema_name(connection)
+        except NotImplementedError:
+            self.default_schema_name = None
+
         # Py2K
         self.returns_unicode_strings = self._check_unicode_returns(connection)
         # end Py2K

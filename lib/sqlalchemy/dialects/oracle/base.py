@@ -535,7 +535,7 @@ class OracleDialect(default.DefaultDialect):
 
     def has_table(self, connection, table_name, schema=None):
         if not schema:
-            schema = self.get_default_schema_name(connection)
+            schema = self.default_schema_name
         cursor = connection.execute(
             sql.text("SELECT table_name FROM all_tables "
                      "WHERE table_name = :name AND owner = :schema_name"),
@@ -544,7 +544,7 @@ class OracleDialect(default.DefaultDialect):
 
     def has_sequence(self, connection, sequence_name, schema=None):
         if not schema:
-            schema = self.get_default_schema_name(connection)
+            schema = self.default_schema_name
         cursor = connection.execute(
             sql.text("SELECT sequence_name FROM all_sequences "
                      "WHERE sequence_name = :name AND sequence_owner = :schema_name"),
@@ -568,7 +568,7 @@ class OracleDialect(default.DefaultDialect):
         else:
             return name.encode(self.encoding)
 
-    def get_default_schema_name(self, connection):
+    def _get_default_schema_name(self, connection):
         return self.normalize_name(connection.execute('SELECT USER FROM DUAL').scalar())
 
     def table_names(self, connection, schema):
@@ -638,7 +638,7 @@ class OracleDialect(default.DefaultDialect):
         if not dblink:
             dblink = ''
         if not owner:
-            owner = self.denormalize_name(schema or self.get_default_schema_name(connection))
+            owner = self.denormalize_name(schema or self.default_schema_name)
         return (actual_name, owner, dblink, synonym)
 
     @reflection.cache
@@ -649,12 +649,12 @@ class OracleDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
-        schema = self.denormalize_name(schema or self.get_default_schema_name(connection))
+        schema = self.denormalize_name(schema or self.default_schema_name)
         return self.table_names(connection, schema)
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
-        schema = self.denormalize_name(schema or self.get_default_schema_name(connection))
+        schema = self.denormalize_name(schema or self.default_schema_name)
         s = sql.text("SELECT view_name FROM all_views WHERE owner = :owner")
         cursor = connection.execute(s, owner=self.denormalize_name(schema))
         return [self.normalize_name(row[0]) for row in cursor]
