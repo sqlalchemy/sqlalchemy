@@ -1783,7 +1783,7 @@ class MySQLDialect(default.DefaultDialect):
                 rs.close()
     
     def initialize(self, connection):
-        self.server_version_info = self._get_server_version_info(connection)
+        default.DefaultDialect.initialize(self, connection)
         self._connection_charset = self._detect_charset(connection)
         self._server_casing = self._detect_casing(connection)
         self._server_collations = self._detect_collations(connection)

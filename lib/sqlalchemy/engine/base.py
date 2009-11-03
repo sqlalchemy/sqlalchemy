@@ -1442,10 +1442,7 @@ class Engine(Connectable):
         else:
             conn = connection
         if not schema:
-            try:
-                schema =  self.dialect.default_schema_name
-            except NotImplementedError:
-                pass
+            schema =  self.dialect.default_schema_name
         try:
             return self.dialect.table_names(conn, schema)
         finally:
