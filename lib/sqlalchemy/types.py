@@ -1025,18 +1025,36 @@ class PickleType(MutableType, TypeDecorator):
         self.comparator = comparator
         super(PickleType, self).__init__()
 
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return None
+    def bind_processor(self, dialect):
+        impl_processor = self.impl.bind_processor(dialect)
         dumps = self.pickler.dumps
         protocol = self.protocol
-        return dumps(value, protocol)
+        if impl_processor:
+            def process(value):
+                if value is None:
+                    return impl_processor(None)
+                return impl_processor(dumps(value, protocol))
+        else:
+            def process(value):
+                if value is None:
+                    return None
+                return dumps(value, protocol)
+        return process
 
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return None
+    def result_processor(self, dialect):
+        impl_processor = self.impl.result_processor(dialect)
         loads = self.pickler.loads
-        return loads(value)
+        if impl_processor:
+            def process(value):
+                if value is None:
+                    return impl_processor(None)
+                return loads(impl_processor(value))
+        else:
+            def process(value):
+                if value is None:
+                    return None
+                return loads(value)
+        return process
 
     def copy_value(self, value):
         if self.mutable:
