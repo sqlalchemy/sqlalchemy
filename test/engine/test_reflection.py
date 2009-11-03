@@ -837,18 +837,16 @@ class SchemaTest(TestBase):
     def test_explicit_default_schema(self):
         engine = testing.db
 
-        if testing.against('mysql+mysqldb'):
-            schema = testing.db.url.database
-        elif testing.against('postgresql'):
-            schema = 'public'
-        elif testing.against('sqlite'):
+        if testing.against('sqlite'):
             # Works for CREATE TABLE main.foo, SELECT FROM main.foo, etc.,
             # but fails on:
             #   FOREIGN KEY(col2) REFERENCES main.table1 (col1)
             schema = 'main'
         else:
-            schema = engine.dialect.get_default_schema_name(engine.connect())
+            schema = engine.dialect.default_schema_name
 
+        assert bool(schema)
+        
         metadata = MetaData(engine)
         table1 = Table('table1', metadata,
                        Column('col1', sa.Integer, primary_key=True),
