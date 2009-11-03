@@ -743,6 +743,28 @@ class M2MCascadeTest(_base.MappedTest):
         assert a.count().scalar() == 1
 
     @testing.resolve_artifact_names
+    def test_delete_orphan_dynamic(self):
+        mapper(A, a, properties={
+            # if no backref here, delete-orphan failed until [ticket:427] was
+            # fixed
+            'bs': relation(B, secondary=atob, 
+                    cascade="all, delete-orphan", single_parent=True,lazy="dynamic")
+        })
+        mapper(B, b)
+
+        sess = create_session()
+        b1 = B(data='b1')
+        a1 = A(data='a1', bs=[b1])
+        sess.add(a1)
+        sess.flush()
+
+        a1.bs.remove(b1)
+        sess.flush()
+        assert atob.count().scalar() ==0
+        assert b.count().scalar() == 0
+        assert a.count().scalar() == 1
+
+    @testing.resolve_artifact_names
     def test_delete_orphan_cascades(self):
         mapper(A, a, properties={
             # if no backref here, delete-orphan failed until [ticket:427] was
