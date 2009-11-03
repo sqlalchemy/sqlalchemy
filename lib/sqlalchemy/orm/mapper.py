@@ -1628,7 +1628,7 @@ class Mapper(object):
 
             if polymorphic_on is not None:
                 discriminator = row[polymorphic_on]
-                if discriminator is not None:
+                if discriminator is not None or None in polymorphic_instances:
                     _instance = polymorphic_instances[discriminator]
                     if _instance:
                         return _instance(row, result)

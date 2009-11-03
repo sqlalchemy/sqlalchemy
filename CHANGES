@@ -659,6 +659,9 @@ CHANGES
       duplicate extensions, such as backref populators,
       from being inserted into the list.
       [ticket:1585]
+
+    - Fixed the call to get_committed_value() on CompositeProperty.
+      [ticket:1504]
       
 - sql
     - Fixed the "numeric" paramstyle, which apparently is the

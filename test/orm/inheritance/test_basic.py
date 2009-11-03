@@ -101,6 +101,19 @@ class FalseDiscriminatorTest(_base.MappedTest):
         assert d1.type is False
         sess.expunge_all()
         assert sess.query(Ding).one() is not None
+
+    def test_none_on_sub(self):
+        class Ding(object):pass
+        class Bat(Ding):pass
+        mapper(Ding, t1, polymorphic_on=t1.c.type, polymorphic_identity=False)
+        mapper(Bat, inherits=Ding, polymorphic_identity=True)
+        sess = create_session()
+        d1 = Ding()
+        sess.add(d1)
+        sess.flush()
+        assert d1.type is False
+        sess.expunge_all()
+        assert sess.query(Ding).one() is not None
         
 class PolymorphicSynonymTest(_base.MappedTest):
     @classmethod
