@@ -1031,14 +1031,14 @@ class PickleType(MutableType, TypeDecorator):
         protocol = self.protocol
         if impl_processor:
             def process(value):
-                if value is None:
-                    return impl_processor(None)
-                return impl_processor(dumps(value, protocol))
+                if value is not None:
+                    value = dumps(value, protocol)
+                return impl_processor(value)
         else:
             def process(value):
-                if value is None:
-                    return None
-                return dumps(value, protocol)
+                if value is not None:
+                    value = dumps(value, protocol)
+                return value
         return process
 
     def result_processor(self, dialect):
@@ -1046,9 +1046,10 @@ class PickleType(MutableType, TypeDecorator):
         loads = self.pickler.loads
         if impl_processor:
             def process(value):
+                value = impl_processor(value)
                 if value is None:
-                    return impl_processor(None)
-                return loads(impl_processor(value))
+                    return None
+                return loads(value)
         else:
             def process(value):
                 if value is None:
@@ -1095,15 +1096,36 @@ class Interval(TypeDecorator):
     impl = DateTime
     epoch = dt.datetime.utcfromtimestamp(0)
 
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        return self.epoch + value
+    def bind_processor(self, dialect):
+        impl_processor = self.impl.bind_processor(dialect)
+        epoch = self.epoch
+        if impl_processor:
+            def process(value):
+                if value is not None:
+                    value = epoch + value
+                return impl_processor(value)
+        else:
+            def process(value):
+                if value is not None:
+                    value = epoch + value
+                return value
+        return process
 
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return value - self.epoch
+    def result_processor(self, dialect):
+        impl_processor = self.impl.result_processor(dialect)
+        epoch = self.epoch
+        if impl_processor:
+            def process(value):
+                value = impl_processor(value)
+                if value is None: 
+                    return None
+                return value - epoch
+        else:
+            def process(value):
+                if value is None:
+                    return None
+                return value - epoch
+        return process
 
 class FLOAT(Float):
     """The SQL FLOAT type."""
