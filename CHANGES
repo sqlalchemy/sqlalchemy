@@ -263,6 +263,12 @@ CHANGES
     for "sqlalchemy.engine" is enabled overall.  Note that the
     default setting of "echo" is `None`. [ticket:1554]
   
+  - Connection pool logging now uses both INFO and DEBUG
+    log levels for logging.  INFO is for major events such
+    as invalidated connections, DEBUG for all the acquire/return
+    logging.  `echo_pool` can be False, None, True or "debug"
+    the same way as `echo` works.
+    
   - deprecated or removed
       * result.last_inserted_ids() is deprecated.  Use 
         result.inserted_primary_key
