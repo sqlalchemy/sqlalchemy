@@ -441,12 +441,6 @@ class OracleCompiler(compiler.SQLCompiler):
 
 class OracleDDLCompiler(compiler.DDLCompiler):
 
-    def visit_create_sequence(self, create):
-        return "CREATE SEQUENCE %s" % self.preparer.format_sequence(create.element)
-
-    def visit_drop_sequence(self, drop):
-        return "DROP SEQUENCE %s" % self.preparer.format_sequence(drop.element)
-
     def define_constraint_cascades(self, constraint):
         text = ""
         if constraint.ondelete is not None:

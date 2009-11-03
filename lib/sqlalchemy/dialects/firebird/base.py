@@ -271,7 +271,14 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
 
     def visit_create_sequence(self, create):
         """Generate a ``CREATE GENERATOR`` statement for the sequence."""
-
+        
+        # no syntax for these
+        # http://www.firebirdsql.org/manual/generatorguide-sqlsyntax.html
+        if create.element.start is not None:
+            raise NotImplemented("Firebird SEQUENCE doesn't support START WITH")
+        if create.element.increment is not None:
+            raise NotImplemented("Firebird SEQUENCE doesn't support INCREMENT BY")
+            
         if self.dialect._version_two:
             return "CREATE SEQUENCE %s" % self.preparer.format_sequence(create.element)
         else:

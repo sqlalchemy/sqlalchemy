@@ -1024,7 +1024,18 @@ class DDLCompiler(engine.Compiled):
             self.preparer.format_table(create.element.table),
             self.process(create.element)
         )
+
+    def visit_create_sequence(self, create):
+        text = "CREATE SEQUENCE %s" % self.preparer.format_sequence(create.element)
+        if create.element.increment is not None:
+            text += " INCREMENT BY %d" % create.element.increment
+        if create.element.start is not None:
+            text += " START WITH %d" % create.element.start
+        return text
         
+    def visit_drop_sequence(self, drop):
+        return "DROP SEQUENCE %s" % self.preparer.format_sequence(drop.element)
+
     def visit_drop_constraint(self, drop):
         preparer = self.preparer
         return "ALTER TABLE %s DROP CONSTRAINT %s%s" % (

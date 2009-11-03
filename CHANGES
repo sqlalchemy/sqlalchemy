@@ -303,7 +303,12 @@ CHANGES
         - PrimaryKeyConstraint.remove()
       These should be constructed declaratively (i.e. in one
       construction).
-
+    
+    - The "start" and "increment" attributes on Sequence now
+      generate "START WITH" and "INCREMENT BY" by default,
+      on Oracle and Postgresql.  Firebird doesn't support
+      these keywords right now.  [ticket:1545]
+      
     - UniqueConstraint, Index, PrimaryKeyConstraint all accept
       lists of column names or column objects as arguments.
 

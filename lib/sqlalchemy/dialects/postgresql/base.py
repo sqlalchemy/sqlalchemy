@@ -340,12 +340,6 @@ class PGDDLCompiler(compiler.DDLCompiler):
             colspec += " NOT NULL"
         return colspec
 
-    def visit_create_sequence(self, create):
-        return "CREATE SEQUENCE %s" % self.preparer.format_sequence(create.element)
-            
-    def visit_drop_sequence(self, drop):
-        return "DROP SEQUENCE %s" % self.preparer.format_sequence(drop.element)
-        
     def visit_enum_constraint(self, constraint):
         if not constraint.type.native_enum:
             return super(PGDDLCompiler, self).visit_enum_constraint(constraint)
