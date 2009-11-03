@@ -161,7 +161,8 @@ class CompositeProperty(ColumnProperty):
         return self.get_col_value(column, obj)
 
     def getcommitted(self, state, column, passive=False):
-        obj = state.get_impl(self.key).get_committed_value(state, passive=passive)
+        # TODO: no coverage here
+        obj = state.get_impl(self.key).get_committed_value(state, state.dict, passive=passive)
         return self.get_col_value(column, obj)
 
     def setattr(self, state, value, column):
