@@ -1375,8 +1375,8 @@ class Query(object):
             elif single_entity:
                 rows = [process[0](row, None) for row in fetch]
             else:
-                rows = [util.NamedTuple(labels, 
-                        (proc(row, None) for proc in process))
+                rows = [util.NamedTuple(labels,
+                                        [proc(row, None) for proc in process])
                         for row in fetch]
 
             if filter:
