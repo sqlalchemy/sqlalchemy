@@ -1148,6 +1148,17 @@ class JoinTest(QueryTest):
             []
         )
     
+    def test_join_nonmapped_column(self):
+        """test that the search for a 'left' doesn't trip on non-mapped cols"""
+        sess = create_session()
+        
+        # intentionally join() with a non-existent "left" side
+        q = sess.query(User.id, literal_column('foo')).join(Order.user)
+        eq_(
+            str(q.statement.apply_labels().compile(dialect=default.DefaultDialect())),
+            "SELECT users.id AS users_id, foo \nFROM orders JOIN users ON users.id = orders.user_id"
+        ) 
+        
     def test_backwards_join(self):
         # a more controversial feature.  join from
         # User->Address, but the onclause is Address.user.
