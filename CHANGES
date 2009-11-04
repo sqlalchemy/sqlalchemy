@@ -675,6 +675,10 @@ CHANGES
     
     - Fixed the call to get_committed_value() on CompositeProperty.
       [ticket:1504]
+
+    - Fixed bug where Query would crash if a join() with no clear
+      "left" side were called when a non-mapped column entity
+      appeared in the columns list. [ticket:1602]
       
 - sql
     - Fixed the "numeric" paramstyle, which apparently is the

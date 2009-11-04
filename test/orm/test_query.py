@@ -1375,9 +1375,6 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
         
 class JoinTest(QueryTest, AssertsCompiledSQL):
     
-    def test_foo(self):
-        sess = create_session()
-    
     def test_single_name(self):
         sess = create_session()
 
@@ -1553,6 +1550,19 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             []
         )
     
+    def test_join_nonmapped_column(self):
+        """test that the search for a 'left' doesn't trip on non-mapped cols"""
+        sess = create_session()
+        
+        # intentionally join() with a non-existent "left" side
+        self.assert_compile(
+            sess.query(User.id, literal_column('foo')).join(Order.user),
+            "SELECT users.id AS users_id, foo FROM orders JOIN users ON users.id = orders.user_id"
+            , use_default_dialect=True
+        )
+        
+        
+        
     def test_backwards_join(self):
         # a more controversial feature.  join from
         # User->Address, but the onclause is Address.user.
