@@ -1583,7 +1583,7 @@ class Mapper(object):
 
         identity_class = self._identity_class
         def identity_key(row):
-            return (identity_class, tuple(row[column] for column in pk_cols))
+            return (identity_class, tuple([row[column] for column in pk_cols]))
 
         new_populators = []
         existing_populators = []
