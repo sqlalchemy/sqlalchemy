@@ -1086,7 +1086,7 @@ class TwoPhaseTransaction(Transaction):
     def _do_rollback(self):
         self.connection._rollback_twophase_impl(self.xid, self._is_prepared)
 
-    def commit(self):
+    def _do_commit(self):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
 class Engine(Connectable):
