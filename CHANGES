@@ -681,6 +681,10 @@ CHANGES
       appeared in the columns list. [ticket:1602]
       
 - sql
+    - Fixed bug in two-phase transaction whereby commit() method
+      didn't set the full state which allows subsequent close()
+      call to succeed. [ticket:1603]
+      
     - Fixed the "numeric" paramstyle, which apparently is the
       default paramstyle used by Informixdb.
       

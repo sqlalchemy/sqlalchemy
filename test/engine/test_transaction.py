@@ -226,6 +226,7 @@ class TransactionTest(TestBase):
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=2, user_name='user2')
         transaction.commit()
+        transaction.close()
 
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=3, user_name='user3')
@@ -235,7 +236,8 @@ class TransactionTest(TestBase):
         connection.execute(users.insert(), user_id=4, user_name='user4')
         transaction.prepare()
         transaction.rollback()
-
+        transaction.close()
+        
         eq_(
             connection.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
             [(1,),(2,)]

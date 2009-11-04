@@ -1204,7 +1204,6 @@ class Transaction(object):
         This is used to cancel a Transaction without affecting the scope of
         an enclosing transaction.
         """
-
         if not self._parent.is_active:
             return
         if self._parent is self:
@@ -1278,7 +1277,7 @@ class TwoPhaseTransaction(Transaction):
     def _do_rollback(self):
         self.connection._rollback_twophase_impl(self.xid, self._is_prepared)
 
-    def commit(self):
+    def _do_commit(self):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
 
