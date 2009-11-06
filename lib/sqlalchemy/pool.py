@@ -431,15 +431,15 @@ class _ConnectionFairy(object):
         self._connection_record = None
 
 class _CursorFairy(object):
-    __slots__ = '__parent', 'cursor', 'execute'
+    __slots__ = '_parent', 'cursor', 'execute'
 
     def __init__(self, parent, cursor):
-        self.__parent = parent
+        self._parent = parent
         self.cursor = cursor
         self.execute = cursor.execute
         
     def invalidate(self, e=None):
-        self.__parent.invalidate(e=e)
+        self._parent.invalidate(e=e)
 
     def close(self):
         try:
@@ -453,7 +453,13 @@ class _CursorFairy(object):
 
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
-
+    
+    def __setattr__(self, key, value):
+        if key in self.__slots__:
+            object.__setattr__(self, key, value)
+        else:
+            setattr(self.cursor, key, value)
+            
     def __getattr__(self, key):
         return getattr(self.cursor, key)
 

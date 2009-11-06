@@ -234,7 +234,7 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
     def create_cursor(self):
         c = self._connection.connection.cursor()
         if self.dialect.arraysize:
-            c.cursor.arraysize = self.dialect.arraysize
+            c.arraysize = self.dialect.arraysize
         return c
 
     def get_result_proxy(self):

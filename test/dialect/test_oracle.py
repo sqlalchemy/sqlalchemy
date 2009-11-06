@@ -243,7 +243,7 @@ class MultiSchemaTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
     def test_create_same_names_explicit_schema(self):
-        schema = testing.db.dialect.get_default_schema_name(testing.db.connect())
+        schema = testing.db.dialect.default_schema_name
         meta = MetaData(testing.db)
         parent = Table('parent', meta, 
             Column('pid', Integer, primary_key=True),
