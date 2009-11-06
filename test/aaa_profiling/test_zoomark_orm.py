@@ -303,7 +303,7 @@ class ZooMarkTest(TestBase):
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
-    @profiling.function_call_count(23861)
+    @profiling.function_call_count(22510)
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 

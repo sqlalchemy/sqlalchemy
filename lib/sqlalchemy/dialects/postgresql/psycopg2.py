@@ -150,7 +150,8 @@ class PostgreSQL_psycopg2(PGDialect):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
-
+        self.supports_unicode_binds = use_native_unicode
+        
     @classmethod
     def dbapi(cls):
         psycopg = __import__('psycopg2')
