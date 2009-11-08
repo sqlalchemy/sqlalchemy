@@ -4,7 +4,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, assert_raises
+from sqlalchemy.test.testing import eq_, ne_, assert_raises
 from test.orm import _base
 from sqlalchemy.test.util import gc_collect
 from sqlalchemy.util import cmp, jython
@@ -221,6 +221,103 @@ class AttributesTest(_base.ORMTest):
         u.addresses.append(a)
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.addresses[0].email_address == 'lala@123.com' and u.addresses[1].email_address == 'foo@bar.com')
     
+    def test_extension_commit_attr(self):
+        """test that an extension which commits attribute history
+        maintains the end-result history.
+        
+        This won't work in conjunction with some unitofwork extensions.
+        
+        """
+        
+        class Foo(_base.ComparableEntity):
+            pass
+        class Bar(_base.ComparableEntity):
+            pass
+        
+        class ReceiveEvents(AttributeExtension):
+            def __init__(self, key):
+                self.key = key
+                
+            def append(self, state, child, initiator):
+                if commit:
+                    state.commit_all(state.dict)
+                return child
+
+            def remove(self, state, child, initiator):
+                if commit:
+                    state.commit_all(state.dict)
+                return child
+
+            def set(self, state, child, oldchild, initiator):
+                if commit:
+                    state.commit_all(state.dict)
+                return child
+
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+
+        b1, b2, b3, b4 = Bar(id='b1'), Bar(id='b2'), Bar(id='b3'), Bar(id='b4')
+        
+        def loadcollection(**kw):
+            if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
+                return attributes.PASSIVE_NO_RESULT
+            return [b1, b2]
+        
+        def loadscalar(**kw):
+            if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
+                return attributes.PASSIVE_NO_RESULT
+            return b2
+            
+        attributes.register_attribute(Foo, 'bars', 
+                               uselist=True, 
+                               useobject=True, 
+                               callable_=lambda o:loadcollection,
+                               extension=[ReceiveEvents('bars')])
+                               
+        attributes.register_attribute(Foo, 'bar', 
+                              uselist=False, 
+                              useobject=True, 
+                              callable_=lambda o:loadscalar,
+                              extension=[ReceiveEvents('bar')])
+                              
+        attributes.register_attribute(Foo, 'scalar', 
+                            uselist=False, 
+                            useobject=False, extension=[ReceiveEvents('scalar')])
+        
+            
+        def create_hist():
+            def hist(key, shouldmatch, fn, *arg):
+                attributes.instance_state(f1).commit_all(attributes.instance_dict(f1))
+                fn(*arg)
+                histories.append((shouldmatch, attributes.get_history(f1, key)))
+
+            f1 = Foo()
+            hist('bars', True, f1.bars.append, b3)
+            hist('bars', True, f1.bars.append, b4)
+            hist('bars', False, f1.bars.remove, b2)
+            hist('bar', True, setattr, f1, 'bar', b3)
+            hist('bar', True, setattr, f1, 'bar', None)
+            hist('bar', True, setattr, f1, 'bar', b4)
+            hist('scalar', True, setattr, f1, 'scalar', 5)
+            hist('scalar', True, setattr, f1, 'scalar', None)
+            hist('scalar', True, setattr, f1, 'scalar', 4)
+        
+        histories = []
+        commit = False
+        create_hist()
+        without_commit = list(histories)
+        histories[:] = []
+        commit = True
+        create_hist()
+        with_commit = histories
+        for without, with_ in zip(without_commit, with_commit):
+            shouldmatch, woc = without
+            shouldmatch, wic = with_
+            if shouldmatch:
+                eq_(woc, wic)
+            else:
+                ne_(woc, wic)
+        
     def test_extension_lazyload_assertion(self):
         class Foo(_base.BasicEntity):
             pass

@@ -431,10 +431,9 @@ class ScalarAttributeImpl(AttributeImpl):
         else:
             old = dict_.get(self.key, NO_VALUE)
 
-        state.modified_event(dict_, self, False, old)
-
         if self.extensions:
             self.fire_remove_event(state, dict_, old, None)
+        state.modified_event(dict_, self, False, old)
         del dict_[self.key]
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
@@ -450,10 +449,9 @@ class ScalarAttributeImpl(AttributeImpl):
         else:
             old = dict_.get(self.key, NO_VALUE)
 
-        state.modified_event(dict_, self, False, old)
-
         if self.extensions:
             value = self.fire_replace_event(state, dict_, value, old, initiator)
+        state.modified_event(dict_, self, False, old)
         dict_[self.key] = value
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
@@ -520,14 +518,12 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         if initiator is self:
             return
 
-        state.modified_event(dict_, self, True, NEVER_SET)
-        
         if self.extensions:
             old = self.get(state, dict_)
             value = self.fire_replace_event(state, dict_, value, old, initiator)
-            dict_[self.key] = value
-        else:
-            dict_[self.key] = value
+
+        state.modified_event(dict_, self, True, NEVER_SET)
+        dict_[self.key] = value
         state.mutable_dict[self.key] = value
 
 
@@ -584,23 +580,23 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         dict_[self.key] = value
 
     def fire_remove_event(self, state, dict_, value, initiator):
-        state.modified_event(dict_, self, False, value)
-
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), False)
 
         for ext in self.extensions:
             ext.remove(state, value, initiator or self)
 
-    def fire_replace_event(self, state, dict_, value, previous, initiator):
-        state.modified_event(dict_, self, False, previous)
+        state.modified_event(dict_, self, False, value)
 
+    def fire_replace_event(self, state, dict_, value, previous, initiator):
         if self.trackparent:
             if previous is not value and previous not in (None, PASSIVE_NO_RESULT):
                 self.sethasparent(instance_state(previous), False)
 
         for ext in self.extensions:
             value = ext.set(state, value, previous, initiator or self)
+
+        state.modified_event(dict_, self, False, previous)
 
         if self.trackparent:
             if value is not None:
@@ -649,10 +645,10 @@ class CollectionAttributeImpl(AttributeImpl):
             return History.from_attribute(self, state, current)
 
     def fire_append_event(self, state, dict_, value, initiator):
-        state.modified_event(dict_, self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
-
         for ext in self.extensions:
             value = ext.append(state, value, initiator or self)
+
+        state.modified_event(dict_, self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
 
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), True)
@@ -663,13 +659,13 @@ class CollectionAttributeImpl(AttributeImpl):
         state.modified_event(dict_, self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
 
     def fire_remove_event(self, state, dict_, value, initiator):
-        state.modified_event(dict_, self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
-
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), False)
 
         for ext in self.extensions:
             ext.remove(state, value, initiator or self)
+
+        state.modified_event(dict_, self, True, NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
 
     def delete(self, state, dict_):
         if self.key not in dict_:
