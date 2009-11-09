@@ -1,6 +1,8 @@
+#!coding:utf-8
+
 from sqlalchemy.ext import sqlsoup
 from sqlalchemy.test.testing import TestBase, eq_, assert_raises
-from sqlalchemy import create_engine, or_, desc, select, func, exc
+from sqlalchemy import create_engine, or_, desc, select, func, exc, Table
 import datetime
 
 class SQLSoupTest(TestBase):
@@ -121,6 +123,25 @@ class SQLSoupTest(TestBase):
                 password=u'basepair',classname=None,admin=1)
         )
         
+    def test_map_table(self):
+        db = sqlsoup.SqlSoup(engine)
+        users = Table('users', db._metadata, autoload=True)
+        MappedUsers = db.map(users)
+        
+        users = MappedUsers.order_by(db.users.name).all()
+        eq_(
+            users,
+            [
+                MappedUsers(
+                    name=u'Bhargan Basepair',
+                    email=u'basepair@example.edu',
+                    password=u'basepair',classname=None,admin=1),
+                MappedUsers(
+                    name=u'Joe Student',
+                    email=u'student@example.edu',
+                    password=u'student',classname=None,admin=0),
+            ]
+        )
         
     def test_mapped_join(self):
         db = sqlsoup.SqlSoup(engine)
@@ -279,7 +300,7 @@ class SQLSoupTest(TestBase):
         db.flush()
         eq_(db.loans.count(), 1)
     
-_ddl = """
+_ddl = u"""
 CREATE TABLE books (
     id                   integer PRIMARY KEY, -- auto-increments in sqlite
     title                text NOT NULL,
@@ -301,7 +322,6 @@ CREATE TABLE loans (
         ON DELETE SET NULL ON UPDATE CASCADE,
     loan_date            datetime DEFAULT current_timestamp
 );
-
 
 CREATE TABLE nopk (
     i                    int
