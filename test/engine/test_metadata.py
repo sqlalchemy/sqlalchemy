@@ -1,6 +1,7 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import pickle
-from sqlalchemy import Integer, String, UniqueConstraint, CheckConstraint, ForeignKey, MetaData, Sequence
+from sqlalchemy import Integer, String, UniqueConstraint, CheckConstraint,\
+                        ForeignKey, MetaData, Sequence, ForeignKeyConstraint
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import schema
 import sqlalchemy as tsa
@@ -53,6 +54,28 @@ class MetaDataTest(TestBase, ComparesTables):
         finally:
             metadata.drop_all()
     
+    def test_fk_copy(self):
+        c1 = Column('foo', Integer)
+        c2 = Column('bar', Integer)
+        m = MetaData()
+        t1 = Table('t', m, c1, c2)
+        
+        kw = dict(onupdate="X", 
+                        ondelete="Y", use_alter=True, name='f1',
+                        deferrable="Z", initially="Q", link_to_name=True)
+                        
+        fk1 = ForeignKey(c1, **kw) 
+        fk2 = ForeignKeyConstraint((c1,), (c2,), **kw)
+        
+        t1.append_constraint(fk2)
+        fk1c = fk1.copy()
+        fk2c = fk2.copy()
+        
+        for k in kw:
+            eq_(getattr(fk1c, k), kw[k])
+            eq_(getattr(fk2c, k), kw[k])
+        
+        
     @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_to_metadata(self):
         meta = MetaData()
@@ -69,7 +92,9 @@ class MetaDataTest(TestBase, ComparesTables):
 
         table2 = Table('othertable', meta,
             Column('id', Integer, Sequence('foo_seq'), primary_key=True),
-            Column('myid', Integer, ForeignKey('mytable.myid')),
+            Column('myid', Integer, 
+                        ForeignKey('mytable.myid'),
+                    ),
             test_needs_fk=True,
             )
 

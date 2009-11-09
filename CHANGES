@@ -323,6 +323,7 @@ CHANGES
         - Column.bind       (get via column.table.bind)
         - Column.metadata   (get via column.table.metadata)
         - Column.sequence   (use column.default)
+        - ForeignKey(constraint=some_parent) (is now private _constraint)
         
     - The use_alter flag on ForeignKey is now a shortcut option
       for operations that can be hand-constructed using the
@@ -332,7 +333,10 @@ CHANGES
       ALTER for foreign keys. This has no effect on SQLite's
       behavior since SQLite does not actually honor FOREIGN KEY
       constraints.
-
+    
+    - ForeignKey and ForeignKeyConstraint objects now correctly
+      copy() all their public keyword arguments.  [ticket:1605]
+      
 - Reflection/Inspection
     - Table reflection has been expanded and generalized into 
       a new API called "sqlalchemy.engine.reflection.Inspector".

@@ -840,61 +840,64 @@ class ForeignKey(SchemaItem):
             Column("remote_id", ForeignKey("main_table.id"))
         )
 
-    For a composite (multiple column) FOREIGN KEY, use a :class:`ForeignKeyConstraint`
-    object specified at the level of the :class:`Table`.
+    For a composite (multiple column) FOREIGN KEY, use a
+    :class:`ForeignKeyConstraint` object specified at the level of the
+    :class:`Table`.
     
-    Further examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
+    Further examples of foreign key configuration are in
+    :ref:`metadata_foreignkeys`.
 
     """
 
     __visit_name__ = 'foreign_key'
 
-    def __init__(self, column, constraint=None, use_alter=False, name=None, onupdate=None, 
-                    ondelete=None, deferrable=None, initially=None, link_to_name=False):
+    def __init__(self, column, _constraint=None, use_alter=False, name=None,
+                    onupdate=None, ondelete=None, deferrable=None,
+                    initially=None, link_to_name=False):
         """
         Construct a column-level FOREIGN KEY.  
         
-        The :class:`ForeignKey` object when constructed generates a :class:`ForeignKeyConstraint`
-        which is associated with the parent :class:`Table` object's collection of constraints.
+        The :class:`ForeignKey` object when constructed generates a
+        :class:`ForeignKeyConstraint` which is associated with the parent
+        :class:`Table` object's collection of constraints.
 
-        :param column: A single target column for the key relationship.  A :class:`Column`
-          object or a column name as a string: ``tablename.columnkey`` or
-          ``schema.tablename.columnkey``.  ``columnkey`` is the ``key`` which has been assigned
-          to the column (defaults to the column name itself), unless ``link_to_name`` is ``True``
-          in which case the rendered name of the column is used.
+        :param column: A single target column for the key relationship. A
+        :class:`Column` object or a column name as a string:
+        ``tablename.columnkey`` or ``schema.tablename.columnkey``.
+        ``columnkey`` is the ``key`` which has been assigned to the column
+        (defaults to the column name itself), unless ``link_to_name`` is
+        ``True`` in which case the rendered name of the column is used.
 
-        :param constraint: Optional.  A parent :class:`ForeignKeyConstraint` object.  If not
-          supplied, a :class:`ForeignKeyConstraint` will be automatically created
-          and added to the parent table.
+        :param name: Optional string. An in-database name for the key if
+        `constraint` is not provided.
 
-        :param name: Optional string.  An in-database name for the key if `constraint` is
-          not provided.
+        :param onupdate: Optional string. If set, emit ON UPDATE <value> when
+        issuing DDL for this constraint. Typical values include CASCADE,
+        DELETE and RESTRICT.
 
-        :param onupdate: Optional string.  If set, emit ON UPDATE <value> when issuing DDL
-          for this constraint.  Typical values include CASCADE, DELETE and
-          RESTRICT.
+        :param ondelete: Optional string. If set, emit ON DELETE <value> when
+        issuing DDL for this constraint. Typical values include CASCADE,
+        DELETE and RESTRICT.
 
-        :param ondelete: Optional string.  If set, emit ON DELETE <value> when issuing DDL
-          for this constraint.  Typical values include CASCADE, DELETE and
-          RESTRICT.
+        :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
+        DEFERRABLE when issuing DDL for this constraint.
 
-        :param deferrable: Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
-          issuing DDL for this constraint.
-
-        :param initially: Optional string.  If set, emit INITIALLY <value> when issuing DDL
-          for this constraint.
+        :param initially: Optional string. If set, emit INITIALLY <value> when
+        issuing DDL for this constraint.
         
-        :param link_to_name: if True, the string name given in ``column`` is the rendered
-          name of the referenced column, not its locally assigned ``key``.
+        :param link_to_name: if True, the string name given in ``column`` is
+        the rendered name of the referenced column, not its locally assigned
+        ``key``.
           
-        :param use_alter: passed to the underlying :class:`ForeignKeyConstraint` to indicate the
-          constraint should be generated/dropped externally from the CREATE TABLE/
-          DROP TABLE statement.  See that classes' constructor for details.
+        :param use_alter: passed to the underlying
+        :class:`ForeignKeyConstraint` to indicate the constraint should be
+        generated/dropped externally from the CREATE TABLE/ DROP TABLE
+        statement. See that classes' constructor for details.
         
         """
 
         self._colspec = column
-        self.constraint = constraint
+        self.constraint = _constraint
         self.use_alter = use_alter
         self.name = name
         self.onupdate = onupdate
@@ -909,7 +912,16 @@ class ForeignKey(SchemaItem):
     def copy(self, schema=None):
         """Produce a copy of this ForeignKey object."""
 
-        return ForeignKey(self._get_colspec(schema=schema))
+        return ForeignKey(
+                self._get_colspec(schema=schema),
+                use_alter=self.use_alter,
+                name=self.name,
+                onupdate=self.onupdate,
+                ondelete=self.ondelete,
+                deferrable=self.deferrable,
+                initially=self.initially,
+                link_to_name=self.link_to_name
+                )
 
     def _get_colspec(self, schema=None):
         if schema:
@@ -1394,52 +1406,56 @@ class ForeignKeyConstraint(Constraint):
 
     Defines a single column or composite FOREIGN KEY ... REFERENCES
     constraint. For a no-frills, single column foreign key, adding a
-    :class:`ForeignKey` to the definition of a :class:`Column` is a shorthand equivalent
-    for an unnamed, single column :class:`ForeignKeyConstraint`.
+    :class:`ForeignKey` to the definition of a :class:`Column` is a shorthand
+    equivalent for an unnamed, single column :class:`ForeignKeyConstraint`.
     
     Examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
     
     """
     __visit_name__ = 'foreign_key_constraint'
 
-    def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, 
-                    deferrable=None, initially=None, use_alter=False, link_to_name=False, table=None):
+    def __init__(self, columns, refcolumns, name=None, onupdate=None,
+            ondelete=None, deferrable=None, initially=None, use_alter=False,
+            link_to_name=False, table=None):
         """Construct a composite-capable FOREIGN KEY.
 
-        :param columns: A sequence of local column names.  The named columns must be defined
-          and present in the parent Table.  The names should match the ``key`` given 
-          to each column (defaults to the name) unless ``link_to_name`` is True.
+        :param columns: A sequence of local column names. The named columns
+        must be defined and present in the parent Table. The names should
+        match the ``key`` given to each column (defaults to the name) unless
+        ``link_to_name`` is True.
 
-        :param refcolumns: A sequence of foreign column names or Column objects.  The columns
-          must all be located within the same Table.
+        :param refcolumns: A sequence of foreign column names or Column
+        objects. The columns must all be located within the same Table.
 
         :param name: Optional, the in-database name of the key.
 
-        :param onupdate: Optional string.  If set, emit ON UPDATE <value> when issuing DDL
-          for this constraint.  Typical values include CASCADE, DELETE and
-          RESTRICT.
+        :param onupdate: Optional string. If set, emit ON UPDATE <value> when
+        issuing DDL for this constraint. Typical values include CASCADE,
+        DELETE and RESTRICT.
 
-        :param ondelete: Optional string.  If set, emit ON DELETE <value> when issuing DDL
-          for this constraint.  Typical values include CASCADE, DELETE and
-          RESTRICT.
+        :param ondelete: Optional string. If set, emit ON DELETE <value> when
+        issuing DDL for this constraint. Typical values include CASCADE,
+        DELETE and RESTRICT.
 
-        :param deferrable: Optional bool.  If set, emit DEFERRABLE or NOT DEFERRABLE when
-          issuing DDL for this constraint.
+        :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
+        DEFERRABLE when issuing DDL for this constraint.
 
-        :param initially: Optional string.  If set, emit INITIALLY <value> when issuing DDL
-          for this constraint.
+        :param initially: Optional string. If set, emit INITIALLY <value> when
+        issuing DDL for this constraint.
 
-        :param link_to_name: if True, the string name given in ``column`` is the rendered
-          name of the referenced column, not its locally assigned ``key``.
+        :param link_to_name: if True, the string name given in ``column`` is
+        the rendered name of the referenced column, not its locally assigned
+        ``key``.
 
-        :param use_alter: If True, do not emit the DDL for this constraint
-          as part of the CREATE TABLE definition.  Instead, generate it via an 
-          ALTER TABLE statement issued after the full collection of tables have been 
-          created, and drop it via an ALTER TABLE statement before the full collection 
-          of tables are dropped.   This is shorthand for the usage of 
-          :class:`AddConstraint` and :class:`DropConstraint` applied as "after-create"
-          and "before-drop" events on the MetaData object.   This is normally used to
-          generate/drop constraints on objects that are mutually dependent on each other.
+        :param use_alter: If True, do not emit the DDL for this constraint as
+        part of the CREATE TABLE definition. Instead, generate it via an ALTER
+        TABLE statement issued after the full collection of tables have been
+        created, and drop it via an ALTER TABLE statement before the full
+        collection of tables are dropped. This is shorthand for the usage of
+        :class:`AddConstraint` and :class:`DropConstraint` applied as
+        "after-create" and "before-drop" events on the MetaData object. This
+        is normally used to generate/drop constraints on objects that are
+        mutually dependent on each other.
           
         """
         super(ForeignKeyConstraint, self).__init__(name, deferrable, initially)
@@ -1455,7 +1471,7 @@ class ForeignKeyConstraint(Constraint):
         for col, refcol in zip(columns, refcolumns):
             self._elements[col] = ForeignKey(
                     refcol, 
-                    constraint=self, 
+                    _constraint=self, 
                     name=self.name, 
                     onupdate=self.onupdate, 
                     ondelete=self.ondelete, 
@@ -1494,7 +1510,10 @@ class ForeignKeyConstraint(Constraint):
                     name=self.name, 
                     onupdate=self.onupdate, 
                     ondelete=self.ondelete, 
-                    use_alter=self.use_alter
+                    use_alter=self.use_alter,
+                    deferrable=self.deferrable,
+                    initially=self.initially,
+                    link_to_name=self.link_to_name
                 )
 
 class PrimaryKeyConstraint(ColumnCollectionConstraint):
