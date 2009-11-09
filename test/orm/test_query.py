@@ -90,7 +90,25 @@ class GetTest(QueryTest):
         assert one_two.k == 3
         q = s.query(CompositePk)
         assert_raises(sa_exc.InvalidRequestError, q.get, 7)        
+    
+    def test_get_null_pk(self):
+        """test that a mapping which can have None in a 
+        PK (i.e. map to an outerjoin) works with get()."""
         
+        s = users.outerjoin(addresses)
+        
+        class UserThing(_base.ComparableEntity):
+            pass
+            
+        mapper(UserThing, s, properties={
+            'id':(users.c.id, addresses.c.user_id),
+            'address_id':addresses.c.id,
+        })
+        sess = create_session()
+        u10 = sess.query(UserThing).get((10, None))
+        eq_(u10,
+            UserThing(id=10)
+        )
 
     def test_no_criterion(self):
         """test that get()/load() does not use preexisting filter/etc. criterion"""

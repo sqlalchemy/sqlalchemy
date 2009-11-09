@@ -1402,6 +1402,7 @@ class Query(object):
     def _get(self, key=None, ident=None, refresh_state=None, lockmode=None,
                                         only_load_props=None, passive=None):
         lockmode = lockmode or self._lockmode
+        
         if not self._populate_existing and not refresh_state and \
                 not self._mapper_zero().always_refresh and lockmode is None:
             instance = self.session.identity_map.get(key)
@@ -1436,7 +1437,17 @@ class Query(object):
             mapper = q._mapper_zero()
             params = {}
             (_get_clause, _get_params) = mapper._get_clause
-
+            
+            # None present in ident - turn those comparisons
+            # into "IS NULL"
+            if None in ident:
+                nones = set([
+                            _get_params[col].key for col, value in
+                             zip(mapper.primary_key, ident) if value is None
+                            ])
+                _get_clause = sql_util.adapt_criterion_to_null(
+                                                _get_clause, nones)
+                
             _get_clause = q._adapt_clause(_get_clause, True, False)
             q._criterion = _get_clause
 

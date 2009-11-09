@@ -79,6 +79,24 @@ def find_columns(clause):
     visitors.traverse(clause, {}, {'column':cols.add})
     return cols
 
+def adapt_criterion_to_null(crit, nulls):
+    """given criterion containing bind params, convert selected elements to IS NULL."""
+
+    def visit_binary(binary):
+        if isinstance(binary.left, expression._BindParamClause) and binary.left.key in nulls:
+            # reverse order if the NULL is on the left side
+            binary.left = binary.right
+            binary.right = expression.null()
+            binary.operator = operators.is_
+            binary.negate = operators.isnot
+        elif isinstance(binary.right, expression._BindParamClause) and binary.right.key in nulls:
+            binary.right = expression.null()
+            binary.operator = operators.is_
+            binary.negate = operators.isnot
+
+    return visitors.cloned_traverse(crit, {}, {'binary':visit_binary})
+    
+    
 def join_condition(a, b, ignore_nonexistent_tables=False):
     """create a join condition between two tables.
     

@@ -86,6 +86,10 @@ CHANGES
   - query.select_from() accepts multiple clauses to produce 
     multiple comma separated entries within the FROM clause.
     Useful when selecting from multiple-homed join() clauses.
+
+  - query.get() can be used with a mapping to an outer join
+    where one or more of the primary key values are None.
+    [ticket:1135]
     
   - query.from_self(), query.union(), others which do a 
     "SELECT * from (SELECT...)" type of nesting will do

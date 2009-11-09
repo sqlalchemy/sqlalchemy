@@ -412,8 +412,12 @@ class LazyLoader(AbstractRelationLoader):
         else:
             (criterion, bind_to_col, rev) = LazyLoader._create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
 
+        if reverse_direction:
+            mapper = self.parent_property.mapper
+        else:
+            mapper = self.parent_property.parent
+
         def visit_bindparam(bindparam):
-            mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
             if bindparam.key in bind_to_col:
                 # use the "committed" (database) version to get query column values
                 # also its a deferred value; so that when used by Query, the committed value is used
@@ -435,20 +439,8 @@ class LazyLoader(AbstractRelationLoader):
         else:
             (criterion, bind_to_col, rev) = LazyLoader._create_lazy_clause(self.parent_property, reverse_direction=reverse_direction)
 
-        def visit_binary(binary):
-            mapper = reverse_direction and self.parent_property.mapper or self.parent_property.parent
-            if isinstance(binary.left, expression._BindParamClause) and binary.left.key in bind_to_col:
-                # reverse order if the NULL is on the left side
-                binary.left = binary.right
-                binary.right = expression.null()
-                binary.operator = operators.is_
-                binary.negate = operators.isnot
-            elif isinstance(binary.right, expression._BindParamClause) and binary.right.key in bind_to_col:
-                binary.right = expression.null()
-                binary.operator = operators.is_
-                binary.negate = operators.isnot
+        criterion = sql_util.adapt_criterion_to_null(criterion, bind_to_col)
 
-        criterion = visitors.cloned_traverse(criterion, {}, {'binary':visit_binary})
         if adapt_source:
             criterion = adapt_source(criterion)
         return criterion
