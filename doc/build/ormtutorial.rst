@@ -316,6 +316,8 @@ issuing a SELECT illustrates the changes made to the database:
     ['ed', 'fakeuser']
     {stop}[<User('ed','Ed Jones', 'f8s7ccs')>]
 
+.. _ormtutorial_querying:
+
 Querying
 ========
 

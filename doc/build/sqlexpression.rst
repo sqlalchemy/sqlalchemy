@@ -477,9 +477,10 @@ So with all of this vocabulary, let's select all users who have an email address
 
 Once again, SQLAlchemy figured out the FROM clause for our statement.  In fact it will determine the FROM clause based on all of its other bits; the columns clause, the where clause, and also some other elements which we haven't covered yet, which include ORDER BY, GROUP BY, and HAVING. 
 
+.. _sqlexpression_text:
+
 Using Text 
 ===========
-
 
 Our last example really became a handful to type.  Going from what one understands to be a textual SQL expression into a Python construct which groups components together in a programmatic style can be hard.  That's why SQLAlchemy lets you just use strings too.  The ``text()`` construct represents any textual statement.  To use bind parameters with ``text()``, always use the named colon format.  Such as below, we create a ``text()`` and execute it, feeding in the bind parameters to the ``execute()`` method:
 

@@ -646,7 +646,22 @@ CHANGES
     
     - Added a generic BigInteger type, compiles to 
       BIGINT or NUMBER(19). [ticket:1125]
-      
+
+-ext
+    - sqlsoup has been overhauled to explicitly support an 0.5 style
+      session, using autocommit=False, autoflush=True. Default
+      behavior of SQLSoup now requires the usual usage of commit()
+      and rollback(), which have been added to its interface. An
+      explcit Session or scoped_session can be passed to the
+      constructor, allowing these arguments to be overridden.
+
+    - sqlsoup db.<sometable>.update() and delete() now call
+      query(cls).update() and delete(), respectively.
+    
+    - sqlsoup now has execute() and connection(), which call upon
+      the Session methods of those names, ensuring that the bind is
+      in terms of the SqlSoup object's bind.
+    
 0.5.7
 =====
 - orm

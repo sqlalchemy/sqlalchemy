@@ -2,17 +2,11 @@
 Introduction
 ============
 
-SqlSoup provides a convenient way to access database tables without
-having to declare table or mapper classes ahead of time.
+SqlSoup provides a convenient way to access existing database tables without
+having to declare table or mapper classes ahead of time.  It is built on top of the SQLAlchemy ORM and provides a super-minimalistic interface to an existing database.   
 
 Suppose we have a database with users, books, and loans tables
-(corresponding to the PyWebOff dataset, if you're curious).  For
-testing purposes, we'll create this db as follows::
-
-    >>> from sqlalchemy import create_engine
-    >>> e = create_engine('sqlite:///:memory:')
-    >>> for sql in _testsql: e.execute(sql) #doctest: +ELLIPSIS
-    <...
+(corresponding to the PyWebOff dataset, if you're curious).  
 
 Creating a SqlSoup gateway is just like creating an SQLAlchemy
 engine::
@@ -20,15 +14,14 @@ engine::
     >>> from sqlalchemy.ext.sqlsoup import SqlSoup
     >>> db = SqlSoup('sqlite:///:memory:')
 
-or, you can re-use an existing metadata or engine::
+or, you can re-use an existing engine::
 
-    >>> db = SqlSoup(MetaData(e))
+    >>> db = SqlSoup(engine)
 
 You can optionally specify a schema within the database for your
 SqlSoup::
 
-    # >>> db.schema = myschemaname
-
+    >>> db.schema = myschemaname
 
 Loading objects
 ===============
@@ -84,10 +77,7 @@ Full query documentation
 ------------------------
 
 Get, filter, filter_by, order_by, limit, and the rest of the
-query methods are explained in detail in the `SQLAlchemy documentation`__.
-
-__ http://www.sqlalchemy.org/docs/05/ormtutorial.html#datamapping_querying
-
+query methods are explained in detail in :ref:`ormtutorial_querying`.
 
 Modifying objects
 =================
@@ -96,11 +86,11 @@ Modifying objects is intuitive::
 
     >>> user = _
     >>> user.email = 'basepair+nospam@example.edu'
-    >>> db.flush()
+    >>> db.commit()
 
 (SqlSoup leverages the sophisticated SQLAlchemy unit-of-work code, so
 multiple updates to a single object will be turned into a single
-``UPDATE`` statement when you flush.)
+``UPDATE`` statement when you commit.)
 
 To finish covering the basics, let's insert a new loan, then delete
 it::
@@ -108,11 +98,10 @@ it::
     >>> book_id = db.books.filter_by(title='Regional Variation in Moss').first().id
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name=u'Bhargan Basepair',loan_date=None)
-    >>> db.flush()
 
     >>> loan = db.loans.filter_by(book_id=2, user_name='Bhargan Basepair').one()
     >>> db.delete(loan)
-    >>> db.flush()
+    >>> db.commit()
 
 You can also delete rows that have not been loaded as objects. Let's
 do our insert/delete cycle once more, this time using the loans
@@ -125,7 +114,6 @@ to the select methods.
 
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name=u'Bhargan Basepair',loan_date=None)
-    >>> db.flush()
     >>> db.loans.delete(db.loans.book_id==2)
 
 You can similarly update multiple rows at once. This will change the
@@ -203,23 +191,47 @@ relate can take any options that the relation function accepts in normal mapper 
     >>> del db._cache['users']
     >>> db.users.relate('loans', db.loans, order_by=db.loans.loan_date, cascade='all, delete-orphan')
 
-
 Advanced Use
 ============
 
-Accessing the Session
----------------------
+Sessions, Transations and Application Integration
+-------------------------------------------------
+
+**Note:** please read and understand this section thoroughly before using SqlSoup in any web application.
 
 SqlSoup uses a ScopedSession to provide thread-local sessions.  You
 can get a reference to the current one like this::
 
-    >>> from sqlalchemy.ext.sqlsoup import Session
-    >>> session = Session()
+    >>> session = db.session
 
-Now you have access to all the standard session-based SA features,
-such as transactions.  (SqlSoup's ``flush()`` is normally
-transactionalized, but you can perform manual transaction management
-if you need a transaction to span multiple flushes.)
+The default session is available at the module level in SQLSoup, via::
+
+    >>> from sqlalchemy.ext.sqlsoup import Session
+    
+The configuration of this session is ``autoflush=True``, ``autocommit=False``.
+This means when you work with the SqlSoup object, you need to call ``db.commit()``
+in order to have changes persisted.   You may also call ``db.rollback()`` to
+roll things back.
+
+Since the SqlSoup object's Session automatically enters into a transaction as soon 
+as it's used, it is *essential* that you call ``commit()`` or ``rollback()``
+on it when the work within a thread completes.  This means all the guidelines
+for web application integration at :ref:`session_lifespan` must be followed.
+
+The SqlSoup object can have any session or scoped session configured onto it.
+This is of key importance when integrating with existing code or frameworks
+such as Pylons.   If your application already has a ``Session`` configured,
+pass it to your SqlSoup object::
+
+    >>> from myapplication import Session
+    >>> db = SqlSoup(session=Session)
+
+If the ``Session`` is configured with ``autocommit=True``, use ``flush()`` 
+instead of ``commit()`` to persist changes - in this case, the ``Session``
+closes out its transaction immediately and no external management is needed.  ``rollback()`` is also not available.  Configuring a new SQLSoup object in "autocommit" mode looks like::
+
+    >>> from sqlalchemy.orm import scoped_session, sessionmaker
+    >>> db = SqlSoup('sqlite://', session=scoped_session(sessionmaker(autoflush=False, expire_on_commit=False, autocommit=True)))
 
 
 Mapping arbitrary Selectables
@@ -260,21 +272,21 @@ Python is flexible like that!
 Raw SQL
 -------
 
-SqlSoup works fine with SQLAlchemy's `text block support`__.
+SqlSoup works fine with SQLAlchemy's text construct, described in :ref:`sqlexpression_text`. 
+You can also execute textual SQL directly using the `execute()` method,
+which corresponds to the `execute()` method on the underlying `Session`.
+Expressions here are expressed like ``text()`` constructs, using named parameters
+with colons::
 
-__ http://www.sqlalchemy.org/docs/04/sqlexpression.html#sql_text
-
-You can also access the SqlSoup's `engine` attribute to compose SQL
-directly.  The engine's ``execute`` method corresponds to the one of a
-DBAPI cursor, and returns a ``ResultProxy`` that has ``fetch`` methods
-you would also see on a cursor::
-
-    >>> rp = db.bind.execute('select name, email from users order by name')
+    >>> rp = db.execute('select name, email from users where name like :name order by name', name='%Bhargan%')
     >>> for name, email in rp.fetchall(): print name, email
     Bhargan Basepair basepair+nospam@example.edu
-    Joe Student student@example.edu
 
-You can also pass this engine object to other SQLAlchemy constructs.
+Or you can get at the current transaction's connection using `connection()`.  This is the 
+raw connection object which can accept any sort of SQL expression or raw SQL string passed to the database::
+
+    >>> conn = db.connection()
+    >>> conn.execute("'select name, email from users where name like ? order by name'", '%Bhargan%')
 
 
 Dynamic table names
@@ -290,95 +302,19 @@ entity() also takes an optional schema argument.  If none is specified, the
 default schema is used.
 
 
-Extra tests
-===========
-
-Boring tests here.  Nothing of real expository value.
-
-::
-
-    >>> db.users.filter_by(classname=None).order_by(db.users.name).all()
-    [MappedUsers(name=u'Bhargan Basepair',email=u'basepair+nospam@example.edu',password=u'basepair',classname=None,admin=1), MappedUsers(name=u'Joe Student',email=u'student@example.edu',password=u'student',classname=None,admin=0)]
-
-    >>> db.nopk
-    Traceback (most recent call last):
-    ...
-    PKNotFoundError: table 'nopk' does not have a primary key defined [columns: i]
-
-    >>> db.nosuchtable
-    Traceback (most recent call last):
-    ...
-    NoSuchTableError: nosuchtable
-
-    >>> years_with_count.insert(published_year='2007', n=1)
-    Traceback (most recent call last):
-    ...
-    InvalidRequestError: SQLSoup can only modify mapped Tables (found: Alias)
-
-    [tests clear()]
-    >>> db.loans.count()
-    1
-    >>> _ = db.loans.insert(book_id=1, user_name='Bhargan Basepair')
-    >>> db.expunge_all()
-    >>> db.flush()
-    >>> db.loans.count()
-    1
 """
 
 from sqlalchemy import Table, MetaData, join
 from sqlalchemy import schema, sql
-from sqlalchemy.orm import scoped_session, sessionmaker, mapper, class_mapper, relation
-from sqlalchemy.exceptions import SQLAlchemyError, InvalidRequestError
+from sqlalchemy.engine.base import Engine
+from sqlalchemy.orm import scoped_session, sessionmaker, mapper, class_mapper, relation, session
+from sqlalchemy.exceptions import SQLAlchemyError, InvalidRequestError, ArgumentError
 from sqlalchemy.sql import expression
 
-_testsql = """
-CREATE TABLE books (
-    id                   integer PRIMARY KEY, -- auto-increments in sqlite
-    title                text NOT NULL,
-    published_year       char(4) NOT NULL,
-    authors              text NOT NULL
-);
-
-CREATE TABLE users (
-    name                 varchar(32) PRIMARY KEY,
-    email                varchar(128) NOT NULL,
-    password             varchar(128) NOT NULL,
-    classname            text,
-    admin                int NOT NULL -- 0 = false
-);
-
-CREATE TABLE loans (
-    book_id              int PRIMARY KEY REFERENCES books(id),
-    user_name            varchar(32) references users(name)
-        ON DELETE SET NULL ON UPDATE CASCADE,
-    loan_date            datetime DEFAULT current_timestamp
-);
-
-insert into users(name, email, password, admin)
-values('Bhargan Basepair', 'basepair@example.edu', 'basepair', 1);
-insert into users(name, email, password, admin)
-values('Joe Student', 'student@example.edu', 'student', 0);
-
-insert into books(title, published_year, authors)
-values('Mustards I Have Known', '1989', 'Jones');
-insert into books(title, published_year, authors)
-values('Regional Variation in Moss', '1971', 'Flim and Flam');
-
-insert into loans(book_id, user_name, loan_date)
-values (
-    (select min(id) from books),
-    (select name from users where name like 'Joe%'),
-    '2006-07-12 0:0:0')
-;
-
-CREATE TABLE nopk (
-    i                    int
-);
-""".split(';')
 
 __all__ = ['PKNotFoundError', 'SqlSoup']
 
-Session = scoped_session(sessionmaker(autoflush=True))
+Session = scoped_session(sessionmaker(autoflush=True, autocommit=False))
 
 class PKNotFoundError(SQLAlchemyError):
     pass
@@ -392,12 +328,6 @@ def _ddl_error(cls):
 # we want to pass db.users.select through to users._mapper.select
 class SelectableClassType(type):
     def insert(cls, **kwargs):
-        _ddl_error(cls)
-
-    def delete(cls, *args, **kwargs):
-        _ddl_error(cls)
-
-    def update(cls, whereclause=None, values=None, **kwargs):
         _ddl_error(cls)
 
     def __clause_element__(cls):
@@ -414,12 +344,6 @@ class TableClassType(SelectableClassType):
         o = cls()
         o.__dict__.update(kwargs)
         return o
-
-    def delete(cls, *args, **kwargs):
-        cls._table.delete(*args, **kwargs).execute()
-
-    def update(cls, whereclause=None, values=None, **kwargs):
-        cls._table.update(whereclause, values).execute(**kwargs)
 
     def relate(cls, propname, *args, **kwargs):
         class_mapper(cls)._configure_property(propname, relation(*args, **kwargs))
@@ -479,7 +403,6 @@ def class_for_table(selectable, **mapper_kwargs):
     mappr = mapper(klass,
                    selectable,
                    extension=Session.extension,
-                   allow_null_pks=_is_outer_join(selectable),
                    **mapper_kwargs)
                    
     for k in mappr.iterate_properties:
@@ -488,26 +411,26 @@ def class_for_table(selectable, **mapper_kwargs):
     klass._query = Session.query_property()
     return klass
 
-class SqlSoup:
-    def __init__(self, *args, **kwargs):
+class SqlSoup(object):
+    def __init__(self, engine_or_metadata, **kw):
         """Initialize a new ``SqlSoup``.
 
         `args` may either be an ``SQLEngine`` or a set of arguments
         suitable for passing to ``create_engine``.
         """
-
-        # meh, sometimes having method overloading instead of kwargs would be easier
-        if isinstance(args[0], MetaData):
-            args = list(args)
-            metadata = args.pop(0)
-            if args or kwargs:
-                raise ArgumentError('Extra arguments not allowed when metadata is given')
+        
+        self.session = kw.pop('session', Session)
+        
+        if isinstance(engine_or_metadata, MetaData):
+            self._metadata = engine_or_metadata
+        elif isinstance(engine_or_metadata, (basestring, Engine)):
+            self._metadata = MetaData(engine_or_metadata)
         else:
-            metadata = MetaData(*args, **kwargs)
-        self._metadata = metadata
+            raise ArgumentError("invalid engine or metadata argument %r" % engine_or_metadata)
+            
         self._cache = {}
         self.schema = None
-
+        
     def engine(self):
         return self._metadata.bind
 
@@ -515,16 +438,38 @@ class SqlSoup:
     bind = engine
 
     def delete(self, *args, **kwargs):
-        Session.delete(*args, **kwargs)
-
+        self.session.delete(*args, **kwargs)
+    
+    def execute(self, stmt, **params):
+        return self.session.execute(sql.text(stmt, bind=self.bind), **params)
+    
+    @property
+    def _underlying_session(self):
+        if isinstance(self.session, session.Session):
+            return self.session
+        else:
+            return self.session()
+            
+    def connection(self):
+        return self._underlying_session._connection_for_bind(self.bind)
+        
     def flush(self):
-        Session.flush()
-
+        self.session.flush()
+    
+    def rollback(self):
+        self.session.rollback()
+        
+    def commit(self):
+        self.session.commit()
+        
     def clear(self):
-        Session.expunge_all()
-
+        self.session.expunge_all()
+    
+    def expunge(self, *args, **kw):
+        self.session.expunge(*args, **kw)
+        
     def expunge_all(self):
-        Session.expunge_all()
+        self.session.expunge_all()
 
     def map(self, selectable, **kwargs):
         try:
@@ -536,7 +481,10 @@ class SqlSoup:
 
     def with_labels(self, item):
         # TODO give meaningful aliases
-        return self.map(expression._clause_element_as_expr(item).select(use_labels=True).alias('foo'))
+        return self.map(
+                    expression._clause_element_as_expr(item).
+                            select(use_labels=True).
+                            alias('foo'))
 
     def join(self, *args, **kwargs):
         j = join(*args, **kwargs)
@@ -546,13 +494,9 @@ class SqlSoup:
         try:
             t = self._cache[attr]
         except KeyError, ke:
-            table = Table(attr, self._metadata, autoload=True, schema=schema or self.schema)
+            table = Table(attr, self._metadata, autoload=True, autoload_with=self.bind, schema=schema or self.schema)
             if not table.primary_key.columns:
-                # Py3K
-                #raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys()))) from ke
-                # Py2K
                 raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys())))
-                # end Py2K
             if table.columns:
                 t = class_for_table(table)
             else:
@@ -566,8 +510,3 @@ class SqlSoup:
     def __repr__(self):
         return 'SqlSoup(%r)' % self._metadata
 
-if __name__ == '__main__':
-    import logging
-    logging.basicConfig()
-    import doctest
-    doctest.testmod()

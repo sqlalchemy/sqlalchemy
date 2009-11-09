@@ -58,10 +58,6 @@ Internals
     :members:
     :show-inheritance:
 
-.. autoclass:: DefaultRunner
-    :members:
-    :show-inheritance:
-    
 .. autoclass:: ExecutionContext
     :members:
 

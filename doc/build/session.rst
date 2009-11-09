@@ -606,6 +606,8 @@ The contextual session may be disposed of by calling ``Session.remove()``::
 
 After ``remove()`` is called, the next operation with the contextual session will start a new ``Session`` for the current thread.
 
+.. _session_lifespan:
+
 Lifespan of a Contextual Session 
 --------------------------------
 

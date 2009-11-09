@@ -696,9 +696,9 @@ class Session(object):
           Optional, any ``ClauseElement``
 
         """
-        return self.__connection(self.get_bind(mapper, clause))
+        return self._connection_for_bind(self.get_bind(mapper, clause))
 
-    def __connection(self, engine, **kwargs):
+    def _connection_for_bind(self, engine, **kwargs):
         if self.transaction is not None:
             return self.transaction._connection_for_bind(engine)
         else:
@@ -735,7 +735,7 @@ class Session(object):
 
         engine = self.get_bind(mapper, clause=clause, **kw)
 
-        return self.__connection(engine, close_with_result=True).execute(
+        return self._connection_for_bind(engine, close_with_result=True).execute(
             clause, params or {})
 
     def scalar(self, clause, params=None, mapper=None, **kw):
