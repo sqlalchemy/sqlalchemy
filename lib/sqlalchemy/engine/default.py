@@ -256,8 +256,8 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isupdate = compiled.isupdate
             self.isdelete = compiled.isdelete
             self.should_autocommit = compiled.statement._autocommit
-            if isinstance(compiled.statement, expression._TextClause):
-                self.should_autocommit = self.should_autocommit or self.should_autocommit_text(self.statement)
+            if self.should_autocommit is expression.PARSE_AUTOCOMMIT:
+                self.should_autocommit = self.should_autocommit_text(self.statement)
 
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]

@@ -49,7 +49,7 @@ __all__ = [
     'literal_column', 'not_', 'null', 'or_', 'outparam', 'outerjoin', 'select',
     'subquery', 'table', 'text', 'union', 'union_all', 'update', ]
 
-
+PARSE_AUTOCOMMIT = util._symbol('PARSE_AUTOCOMMIT')
 
 def desc(column):
     """Return a descending ``ORDER BY`` clause element.
@@ -2189,7 +2189,7 @@ class _TextClause(ClauseElement):
     _hide_froms = []
 
     def __init__(self, text = "", bind=None, 
-                    bindparams=None, typemap=None, autocommit=False):
+                    bindparams=None, typemap=None, autocommit=PARSE_AUTOCOMMIT):
         self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
