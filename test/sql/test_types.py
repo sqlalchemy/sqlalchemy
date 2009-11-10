@@ -204,10 +204,9 @@ class ColumnsTest(TestBase, AssertsExecutionResults):
                           }
 
         db = testing.db
-        if testing.against('oracle'):
-            expectedResults['float_column'] = 'float_column FLOAT'
-
-        if testing.against('sqlite'):
+        if testing.against('oracle') or \
+            testing.against('sqlite') or \
+            testing.against('firebird'):
             expectedResults['float_column'] = 'float_column FLOAT'
             
         if testing.against('maxdb'):
@@ -229,8 +228,10 @@ class ColumnsTest(TestBase, AssertsExecutionResults):
         for aCol in testTable.c:
             eq_(
                 expectedResults[aCol.name],
-                db.dialect.ddl_compiler(db.dialect, schema.CreateTable(testTable)).\
-                  get_column_specification(aCol))
+                db.dialect.ddl_compiler(
+                            db.dialect, schema.CreateTable(testTable)).
+                            get_column_specification(aCol)
+            )
 
 class UnicodeTest(TestBase, AssertsExecutionResults):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
