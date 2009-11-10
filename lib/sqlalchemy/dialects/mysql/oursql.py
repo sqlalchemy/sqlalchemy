@@ -50,10 +50,8 @@ class _oursqlNumeric(NUMERIC):
 class _oursqlBIT(BIT):
     def result_processor(self, dialect):
         """oursql already converts mysql bits, so."""
-        def process(value):
-            return value
-        return process
 
+        return None
 
 class MySQL_oursql(MySQLDialect):
     driver = 'oursql'
@@ -77,7 +75,8 @@ class MySQL_oursql(MySQLDialect):
 
     def do_execute(self, cursor, statement, parameters, context=None):
         """Provide an implementation of *cursor.execute(statement, parameters)*."""
-        if isinstance(statement, _PlainQuery):
+        
+        if context and not context.compiled and isinstance(context.statement, _PlainQuery):
             cursor.execute(statement, plain_query=True)
         else:
             cursor.execute(statement, parameters)
