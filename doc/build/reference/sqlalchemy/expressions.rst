@@ -146,6 +146,14 @@ Classes
    :members: where
    :show-inheritance:
 
+.. autoclass:: FunctionElement
+   :members:
+   :show-inheritance:
+
+.. autoclass:: Function
+   :members:
+   :show-inheritance:
+   
 .. autoclass:: FromClause
    :members:
    :show-inheritance:

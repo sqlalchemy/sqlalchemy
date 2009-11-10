@@ -834,7 +834,8 @@ class Column(SchemaItem, expression.ColumnClause):
 class ForeignKey(SchemaItem):
     """Defines a column-level FOREIGN KEY constraint between two columns.
 
-    ``ForeignKey`` is specified as an argument to a :class:`Column` object, e.g.::
+    ``ForeignKey`` is specified as an argument to a :class:`Column` object,
+    e.g.::
     
         t = Table("remote_table", metadata, 
             Column("remote_id", ForeignKey("main_table.id"))
@@ -862,37 +863,37 @@ class ForeignKey(SchemaItem):
         :class:`Table` object's collection of constraints.
 
         :param column: A single target column for the key relationship. A
-        :class:`Column` object or a column name as a string:
-        ``tablename.columnkey`` or ``schema.tablename.columnkey``.
-        ``columnkey`` is the ``key`` which has been assigned to the column
-        (defaults to the column name itself), unless ``link_to_name`` is
-        ``True`` in which case the rendered name of the column is used.
+            :class:`Column` object or a column name as a string:
+            ``tablename.columnkey`` or ``schema.tablename.columnkey``.
+            ``columnkey`` is the ``key`` which has been assigned to the column
+            (defaults to the column name itself), unless ``link_to_name`` is
+            ``True`` in which case the rendered name of the column is used.
 
         :param name: Optional string. An in-database name for the key if
-        `constraint` is not provided.
+            `constraint` is not provided.
 
         :param onupdate: Optional string. If set, emit ON UPDATE <value> when
-        issuing DDL for this constraint. Typical values include CASCADE,
-        DELETE and RESTRICT.
+            issuing DDL for this constraint. Typical values include CASCADE,
+            DELETE and RESTRICT.
 
         :param ondelete: Optional string. If set, emit ON DELETE <value> when
-        issuing DDL for this constraint. Typical values include CASCADE,
-        DELETE and RESTRICT.
+            issuing DDL for this constraint. Typical values include CASCADE,
+            DELETE and RESTRICT.
 
         :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
-        DEFERRABLE when issuing DDL for this constraint.
+            DEFERRABLE when issuing DDL for this constraint.
 
         :param initially: Optional string. If set, emit INITIALLY <value> when
-        issuing DDL for this constraint.
+            issuing DDL for this constraint.
         
         :param link_to_name: if True, the string name given in ``column`` is
-        the rendered name of the referenced column, not its locally assigned
-        ``key``.
+            the rendered name of the referenced column, not its locally
+            assigned ``key``.
           
         :param use_alter: passed to the underlying
-        :class:`ForeignKeyConstraint` to indicate the constraint should be
-        generated/dropped externally from the CREATE TABLE/ DROP TABLE
-        statement. See that classes' constructor for details.
+            :class:`ForeignKeyConstraint` to indicate the constraint should be
+            generated/dropped externally from the CREATE TABLE/ DROP TABLE
+            statement. See that classes' constructor for details.
         
         """
 
@@ -1420,42 +1421,42 @@ class ForeignKeyConstraint(Constraint):
         """Construct a composite-capable FOREIGN KEY.
 
         :param columns: A sequence of local column names. The named columns
-        must be defined and present in the parent Table. The names should
-        match the ``key`` given to each column (defaults to the name) unless
-        ``link_to_name`` is True.
+          must be defined and present in the parent Table. The names should
+          match the ``key`` given to each column (defaults to the name) unless
+          ``link_to_name`` is True.
 
         :param refcolumns: A sequence of foreign column names or Column
-        objects. The columns must all be located within the same Table.
+          objects. The columns must all be located within the same Table.
 
         :param name: Optional, the in-database name of the key.
 
         :param onupdate: Optional string. If set, emit ON UPDATE <value> when
-        issuing DDL for this constraint. Typical values include CASCADE,
-        DELETE and RESTRICT.
+          issuing DDL for this constraint. Typical values include CASCADE,
+          DELETE and RESTRICT.
 
         :param ondelete: Optional string. If set, emit ON DELETE <value> when
-        issuing DDL for this constraint. Typical values include CASCADE,
-        DELETE and RESTRICT.
+          issuing DDL for this constraint. Typical values include CASCADE,
+          DELETE and RESTRICT.
 
         :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
-        DEFERRABLE when issuing DDL for this constraint.
+          DEFERRABLE when issuing DDL for this constraint.
 
         :param initially: Optional string. If set, emit INITIALLY <value> when
-        issuing DDL for this constraint.
+          issuing DDL for this constraint.
 
         :param link_to_name: if True, the string name given in ``column`` is
-        the rendered name of the referenced column, not its locally assigned
-        ``key``.
+          the rendered name of the referenced column, not its locally assigned
+          ``key``.
 
         :param use_alter: If True, do not emit the DDL for this constraint as
-        part of the CREATE TABLE definition. Instead, generate it via an ALTER
-        TABLE statement issued after the full collection of tables have been
-        created, and drop it via an ALTER TABLE statement before the full
-        collection of tables are dropped. This is shorthand for the usage of
-        :class:`AddConstraint` and :class:`DropConstraint` applied as
-        "after-create" and "before-drop" events on the MetaData object. This
-        is normally used to generate/drop constraints on objects that are
-        mutually dependent on each other.
+          part of the CREATE TABLE definition. Instead, generate it via an
+          ALTER TABLE statement issued after the full collection of tables
+          have been created, and drop it via an ALTER TABLE statement before
+          the full collection of tables are dropped. This is shorthand for the
+          usage of :class:`AddConstraint` and :class:`DropConstraint` applied
+          as "after-create" and "before-drop" events on the MetaData object.
+          This is normally used to generate/drop constraints on objects that
+          are mutually dependent on each other.
           
         """
         super(ForeignKeyConstraint, self).__init__(name, deferrable, initially)

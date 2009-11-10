@@ -1,6 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy.types import TypeEngine
-from sqlalchemy.sql.expression import ClauseElement, ColumnClause
+from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
+                                    FunctionElement
 from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import table, column
@@ -151,3 +152,30 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             "DROP THINGY",
         )
 
+    def test_functions(self):
+        from sqlalchemy.dialects.postgresql import base as postgresql
+        
+        class MyUtcFunction(FunctionElement):
+            pass
+            
+        @compiles(MyUtcFunction)
+        def visit_myfunc(element, compiler, **kw):
+            return "utcnow()"
+            
+        @compiles(MyUtcFunction, 'postgresql')
+        def visit_myfunc(element, compiler, **kw):
+            return "timezone('utc', current_timestamp)"
+            
+        self.assert_compile(
+            MyUtcFunction(),
+            "utcnow()",
+            use_default_dialect=True
+        )
+        self.assert_compile(
+            MyUtcFunction(),
+            "timezone('utc', current_timestamp)",
+            dialect=postgresql.dialect()
+        )
+            
+        
+        

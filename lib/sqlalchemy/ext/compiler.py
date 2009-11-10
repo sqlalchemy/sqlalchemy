@@ -16,10 +16,10 @@ subclasses and one or more callables defining its compilation::
     def compile_mycolumn(element, compiler, **kw):
         return "[%s]" % element.name
         
-Above, ``MyColumn`` extends :class:`~sqlalchemy.sql.expression.ColumnClause`, the
-base expression element for column objects.  The ``compiles`` decorator registers
-itself with the ``MyColumn`` class so that it is invoked when the object 
-is compiled to a string::
+Above, ``MyColumn`` extends :class:`~sqlalchemy.sql.expression.ColumnClause`,
+the base expression element for named column objects. The ``compiles``
+decorator registers itself with the ``MyColumn`` class so that it is invoked
+when the object is compiled to a string::
 
     from sqlalchemy import select
     
@@ -30,8 +30,8 @@ Produces::
 
     SELECT [x], [y]
 
-Compilers can also be made dialect-specific.  The appropriate compiler will be invoked
-for the dialect in use::
+Compilers can also be made dialect-specific. The appropriate compiler will be
+invoked for the dialect in use::
 
     from sqlalchemy.schema import DDLElement
 
@@ -51,11 +51,12 @@ for the dialect in use::
 
 The second ``visit_alter_table`` will be invoked when any ``postgresql`` dialect is used.
 
-The ``compiler`` argument is the :class:`~sqlalchemy.engine.base.Compiled` object
-in use.  This object can be inspected for any information about the in-progress 
-compilation, including ``compiler.dialect``, ``compiler.statement`` etc.
-The :class:`~sqlalchemy.sql.compiler.SQLCompiler` and :class:`~sqlalchemy.sql.compiler.DDLCompiler`
-both include a ``process()`` method which can be used for compilation of embedded attributes::
+The ``compiler`` argument is the :class:`~sqlalchemy.engine.base.Compiled`
+object in use. This object can be inspected for any information about the
+in-progress compilation, including ``compiler.dialect``,
+``compiler.statement`` etc. The :class:`~sqlalchemy.sql.compiler.SQLCompiler`
+and :class:`~sqlalchemy.sql.compiler.DDLCompiler` both include a ``process()``
+method which can be used for compilation of embedded attributes::
 
     class InsertFromSelect(ClauseElement):
         def __init__(self, table, select):
@@ -75,6 +76,36 @@ both include a ``process()`` method which can be used for compilation of embedde
 Produces::
 
     "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z FROM mytable WHERE mytable.x > :x_1)"
+
+Subclassing Guidelines
+======================
+
+A big part of using the compiler extension is subclassing SQLAlchemy expression constructs.  To make this easier, the expression and schema packages feature a set of "bases" intended for common tasks.  A synopsis is as follows:
+
+* :class:`~sqlalchemy.sql.expression.ClauseElement` - This is the root
+  expression class. Any SQL expression can be derived from this base, and is
+  probably the best choice for longer constructs such as specialized INSERT
+  statements.
+ 
+* :class:`~sqlalchemy.sql.expression.ColumnElement` - The root of all
+  "column-like" elements. Anything that you'd place in the "columns" clause of
+  a SELECT statement (as well as order by and group by) can derive from this -
+  the object will automatically have Python "comparison" behavior.
+ 
+* :class:`~sqlalchemy.sql.expression.FunctionElement` - This is a hybrid of a
+  ``ColumnElement`` and a "from clause" like object, and represents a SQL
+  function or stored procedure type of call. Since most databases support
+  statements along the line of "SELECT FROM <some function>"
+  ``FunctionElement`` adds in the ability to be used in the FROM clause of a
+  ``select()`` construct.
+ 
+* :class:`~sqlalchemy.schema.DDLElement` - The root of all DDL expressions,
+  like CREATE TABLE, ALTER TABLE, etc. Compilation of ``DDLElement``
+  subclasses is issued by a ``DDLCompiler`` instead of a ``SQLCompiler``.
+  ``DDLElement`` also features ``Table`` and ``MetaData`` event hooks via the
+  ``execute_at()`` method, allowing the construct to be invoked during CREATE
+  TABLE and DROP TABLE sequences.
+ 
 
 
 """

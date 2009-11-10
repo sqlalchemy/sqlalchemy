@@ -647,29 +647,25 @@ def alias(selectable, alias=None):
 def literal(value, type_=None):
     """Return a literal clause, bound to a bind parameter.
 
-    Literal clauses are created automatically when non-
-    ``ClauseElement`` objects (such as strings, ints, dates, etc.) are
-    used in a comparison operation with a
-    :class:`~sqlalchemy.sql.expression._CompareMixin` subclass, such as a ``Column``
-    object.  Use this function to force the generation of a literal
-    clause, which will be created as a
+    Literal clauses are created automatically when non- ``ClauseElement``
+    objects (such as strings, ints, dates, etc.) are used in a comparison
+    operation with a :class:`~sqlalchemy.sql.expression._CompareMixin`
+    subclass, such as a ``Column`` object. Use this function to force the
+    generation of a literal clause, which will be created as a
     :class:`~sqlalchemy.sql.expression._BindParamClause` with a bound value.
 
-    value
-      the value to be bound.  Can be any Python object supported by
-      the underlying DB-API, or is translatable via the given type
-      argument.
+    :param value: the value to be bound. Can be any Python object supported by
+        the underlying DB-API, or is translatable via the given type argument.
 
-    type\_
-      an optional :class:`~sqlalchemy.types.TypeEngine` which will provide
-      bind-parameter translation for this literal.
+    :param type\_: an optional :class:`~sqlalchemy.types.TypeEngine` which
+        will provide bind-parameter translation for this literal.
 
     """
     return _BindParamClause(None, value, type_=type_, unique=True)
 
 def label(name, obj):
-    """Return a :class:`~sqlalchemy.sql.expression._Label` object for the given
-    :class:`~sqlalchemy.sql.expression.ColumnElement`.
+    """Return a :class:`~sqlalchemy.sql.expression._Label` object for the
+    given :class:`~sqlalchemy.sql.expression.ColumnElement`.
 
     A label changes the name of an element in the columns clause of a
     ``SELECT`` statement, typically via the ``AS`` SQL keyword.
@@ -692,8 +688,8 @@ def column(text, type_=None):
 
     The object returned is an instance of
     :class:`~sqlalchemy.sql.expression.ColumnClause`, which represents the
-    "syntactical" portion of the schema-level :class:`~sqlalchemy.schema.Column`
-    object.
+    "syntactical" portion of the schema-level
+    :class:`~sqlalchemy.schema.Column` object.
 
     text
       the name of the column.  Quoting rules will be applied to the
@@ -767,8 +763,8 @@ def bindparam(key, value=None, type_=None, unique=False, required=False):
         return _BindParamClause(key, value, type_=type_, unique=unique, required=required)
 
 def outparam(key, type_=None):
-    """Create an 'OUT' parameter for usage in functions (stored procedures), for
-    databases which support them.
+    """Create an 'OUT' parameter for usage in functions (stored procedures),
+    for databases which support them.
 
     The ``outparam`` can be used like a regular function parameter.
     The "output" value will be available from the
@@ -2031,8 +2027,12 @@ class FromClause(Selectable):
         return self._foreign_keys
 
     columns = property(attrgetter('_columns'), doc=_columns.__doc__)
-    primary_key = property(attrgetter('_primary_key'), doc=_primary_key.__doc__)
-    foreign_keys = property(attrgetter('_foreign_keys'), doc=_foreign_keys.__doc__)
+    primary_key = property(
+                    attrgetter('_primary_key'), 
+                    doc=_primary_key.__doc__)
+    foreign_keys = property(
+                    attrgetter('_foreign_keys'), 
+                    doc=_foreign_keys.__doc__)
 
     # synonyms for 'columns'
     c = _select_iterable = property(attrgetter('columns'), doc=_columns.__doc__)
@@ -2378,22 +2378,17 @@ class _Case(ColumnElement):
     def _from_objects(self):
         return list(itertools.chain(*[x._from_objects for x in self.get_children()]))
 
-class Function(ColumnElement, FromClause):
-    """Describe a SQL function."""
+class FunctionElement(ColumnElement, FromClause):
+    """Base for SQL function-oriented constructs."""
 
-    __visit_name__ = 'function'
-
-    def __init__(self, name, *clauses, **kwargs):
-        self.packagenames = kwargs.get('packagenames', None) or []
-        self.name = name
+    def __init__(self, *clauses, **kwargs):
         self._bind = kwargs.get('bind', None)
         args = [_literal_as_binds(c, self.name) for c in clauses]
-        self.clause_expr = ClauseList(operator=operators.comma_op, group_contents=True, *args).self_group()
+        self.clause_expr = ClauseList(
+                                operator=operators.comma_op,
+                                 group_contents=True, *args).\
+                                 self_group()
         self.type = sqltypes.to_instance(kwargs.get('type_', None))
-
-    @property
-    def key(self):
-        return self.name
 
     @property
     def columns(self):
@@ -2402,7 +2397,7 @@ class Function(ColumnElement, FromClause):
     @util.memoized_property
     def clauses(self):
         return self.clause_expr.element
-        
+
     @property
     def _from_objects(self):
         return self.clauses._from_objects
@@ -2414,9 +2409,6 @@ class Function(ColumnElement, FromClause):
         self.clause_expr = clone(self.clause_expr)
         self._reset_exported()
         util.reset_memoized(self, 'clauses')
-        
-    def _bind_param(self, obj):
-        return _BindParamClause(self.name, obj, type_=self.type, unique=True)
 
     def select(self):
         return select([self])
@@ -2429,6 +2421,23 @@ class Function(ColumnElement, FromClause):
 
     def _compare_type(self, obj):
         return self.type
+
+    def _bind_param(self, obj):
+        return _BindParamClause(None, obj, type_=self.type, unique=True)
+
+    
+class Function(FunctionElement):
+    """Describe a named SQL function."""
+
+    __visit_name__ = 'function'
+
+    def __init__(self, name, *clauses, **kw):
+        self.packagenames = kw.pop('packagenames', None) or []
+        self.name = name
+        FunctionElement.__init__(self, *clauses, **kw)
+
+    def _bind_param(self, obj):
+        return _BindParamClause(self.name, obj, type_=self.type, unique=True)
 
 
 class _Cast(ColumnElement):
@@ -2837,10 +2846,6 @@ class _Grouping(ColumnElement):
         self.type = getattr(element, 'type', None)
 
     @property
-    def key(self):
-        return self.element.key
-
-    @property
     def _label(self):
         return getattr(self.element, '_label', None) or self.anon_label
 
@@ -3178,11 +3183,11 @@ class _SelectBaseMixin(object):
         self._group_by_clause = ClauseList(*util.to_list(group_by) or [])
 
     def as_scalar(self):
-        """return a 'scalar' representation of this selectable, which can be used
-        as a column expression.
+        """return a 'scalar' representation of this selectable, which can be
+        used as a column expression.
 
-        Typically, a select statement which has only one column in its columns clause
-        is eligible to be used as a scalar expression.
+        Typically, a select statement which has only one column in its columns
+        clause is eligible to be used as a scalar expression.
 
         The returned object is an instance of 
         :class:`~sqlalchemy.sql.expression._ScalarSelect`.
@@ -3194,17 +3199,18 @@ class _SelectBaseMixin(object):
     def apply_labels(self):
         """return a new selectable with the 'use_labels' flag set to True.
 
-        This will result in column expressions being generated using labels against their
-        table name, such as "SELECT somecolumn AS tablename_somecolumn". This allows
-        selectables which contain multiple FROM clauses to produce a unique set of column
-        names regardless of name conflicts among the individual FROM clauses.
+        This will result in column expressions being generated using labels
+        against their table name, such as "SELECT somecolumn AS
+        tablename_somecolumn". This allows selectables which contain multiple
+        FROM clauses to produce a unique set of column names regardless of
+        name conflicts among the individual FROM clauses.
 
         """
         self.use_labels = True
 
     def label(self, name):
-        """return a 'scalar' representation of this selectable, embedded as a subquery
-        with a label.
+        """return a 'scalar' representation of this selectable, embedded as a
+        subquery with a label.
 
         See also ``as_scalar()``.
 
