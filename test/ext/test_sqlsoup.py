@@ -2,10 +2,13 @@
 
 from sqlalchemy.ext import sqlsoup
 from sqlalchemy.test.testing import TestBase, eq_, assert_raises
-from sqlalchemy import create_engine, or_, desc, select, func, exc, Table
+from sqlalchemy import create_engine, or_, desc, select, func, exc, Table,\
+                        util
 import datetime
 
 class SQLSoupTest(TestBase):
+    __skip_if__ = (lambda: util.jython,)
+    
     @classmethod
     def setup_class(cls):
         global engine
