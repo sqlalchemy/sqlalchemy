@@ -434,6 +434,9 @@ CHANGES
       object is passed in.
 
 - postgresql
+    - New dialects: pg8000, zxjdbc, and pypostgresql
+      on py3k.
+      
     - The "postgres" dialect is now named "postgresql" !
       Connection strings look like:
 
@@ -497,6 +500,10 @@ CHANGES
       used for such statements.)
       
 - mysql
+    - New dialects: oursql, a new native dialect, 
+      MySQL Connector/Python, a native Python port of MySQLdb,
+      and of course zxjdbc on Jython.
+      
     - all the _detect_XXX() functions now run once underneath
       dialect.initialize()
 

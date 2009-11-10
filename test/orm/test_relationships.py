@@ -603,7 +603,7 @@ class RelationTest5(_base.MappedTest):
                    lineItems=relation(LineItem,
                        lazy=True,
                        cascade='all, delete-orphan',
-                       order_by=sa.asc(items.c.type),
+                       order_by=sa.asc(items.c.id),
                        primaryjoin=sa.and_(
                          container_select.c.policyNum==items.c.policyNum,
                          container_select.c.policyEffDate==items.c.policyEffDate,
@@ -630,7 +630,7 @@ class RelationTest5(_base.MappedTest):
         assert con.policyNum == newcon.policyNum
         assert len(newcon.lineItems) == 10
         for old, new in zip(con.lineItems, newcon.lineItems):
-            assert old.id == new.id
+            eq_(old.id, new.id)
 
 class RelationTest6(_base.MappedTest):
     """test a relation with a non-column entity in the primary join, 

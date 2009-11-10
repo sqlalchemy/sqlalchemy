@@ -263,8 +263,9 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             (
                 ('postgresql','psycopg2'),
                 ('postgresql','pg8000'),
-                ('postgresql','zxjdbc'),
-                ('mysql','zxjdbc'),  
+                ('postgresql','zxjdbc'),  
+                ('mysql','oursql'),
+                ('mysql','zxjdbc'),
                 ('sqlite','pysqlite'),
             )), \
             "name: %s driver %s returns_unicode_strings=%s" % \

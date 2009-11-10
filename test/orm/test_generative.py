@@ -80,7 +80,7 @@ class GenerativeQueryTest(_base.MappedTest):
         
     @testing.resolve_artifact_names
     def test_aggregate_1(self):
-        if (testing.against('mysql') and not testing.against('+zxjdbc') and
+        if (testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma')):
             return
 

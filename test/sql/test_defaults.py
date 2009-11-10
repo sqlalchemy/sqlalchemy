@@ -285,7 +285,7 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_insertmany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testing.against('mysql') and not testing.against('+zxjdbc') and
+        if (testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
@@ -319,7 +319,7 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_updatemany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testing.against('mysql') and not testing.against('+zxjdbc') and
+        if (testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 

@@ -595,7 +595,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         # This is known to fail with MySQLDB 1.2.2 beta versions
         # which return these as sets.Set(['a']), sets.Set(['b'])
         # (even on Pythons with __builtin__.set)
-        if (not testing.against('+zxjdbc') and
+        if (testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and
             testing.db.dialect.dbapi.version_info >= (1, 2, 2)):
             # these mysqldb seem to always uses 'sets', even on later pythons
