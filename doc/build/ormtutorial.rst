@@ -449,9 +449,21 @@ Here's a rundown of some of the most common operators used in ``filter()``:
 
     query.filter(User.name.in_(['ed', 'wendy', 'jack']))
 
+    # works with query objects too:
+    
+    query.filter(User.name.in_(session.query(User.name).filter(User.name.like('%ed%'))))
+    
+* NOT IN::
+
+    query.filter(~User.name.in_(['ed', 'wendy', 'jack']))
+
 * IS NULL::
 
     filter(User.name == None)
+
+* IS NOT NULL::
+
+    filter(User.name != None)
 
 * AND::
 
