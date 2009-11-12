@@ -338,11 +338,10 @@ class PoolTest(PoolTestBase):
         snoop.assert_total(1, 1, 2, 1)
         c.close()
         snoop.assert_total(1, 1, 2, 2)
-        
+    
     def test_listeners_callables(self):
         dbapi = MockDBAPI()
 
-        counts = [0, 0, 0]
         def connect(dbapi_con, con_record):
             counts[0] += 1
         def checkout(dbapi_con, con_record, con_proxy):
@@ -355,46 +354,48 @@ class PoolTest(PoolTestBase):
         i_checkout = dict(checkout=checkout)
         i_checkin = dict(checkin=checkin)
 
-        def _pool(**kw):
-            return pool.QueuePool(creator=lambda: dbapi.connect('foo.db'),
-                                  use_threadlocal=False, **kw)
+        for cls in (pool.QueuePool, pool.StaticPool):
+            counts = [0, 0, 0]
+            def _pool(**kw):
+                return cls(creator=lambda: dbapi.connect('foo.db'),
+                                      use_threadlocal=False, **kw)
 
-        def assert_listeners(p, total, conn, cout, cin):
-            for instance in (p, p.recreate()):
-                self.assert_(len(instance.listeners) == total)
-                self.assert_(len(instance._on_connect) == conn)
-                self.assert_(len(instance._on_checkout) == cout)
-                self.assert_(len(instance._on_checkin) == cin)
+            def assert_listeners(p, total, conn, cout, cin):
+                for instance in (p, p.recreate()):
+                    self.assert_(len(instance.listeners) == total)
+                    self.assert_(len(instance._on_connect) == conn)
+                    self.assert_(len(instance._on_checkout) == cout)
+                    self.assert_(len(instance._on_checkin) == cin)
 
-        p = _pool()
-        assert_listeners(p, 0, 0, 0, 0)
+            p = _pool()
+            assert_listeners(p, 0, 0, 0, 0)
 
-        p.add_listener(i_all)
-        assert_listeners(p, 1, 1, 1, 1)
+            p.add_listener(i_all)
+            assert_listeners(p, 1, 1, 1, 1)
 
-        p.add_listener(i_connect)
-        assert_listeners(p, 2, 2, 1, 1)
+            p.add_listener(i_connect)
+            assert_listeners(p, 2, 2, 1, 1)
 
-        p.add_listener(i_checkout)
-        assert_listeners(p, 3, 2, 2, 1)
+            p.add_listener(i_checkout)
+            assert_listeners(p, 3, 2, 2, 1)
 
-        p.add_listener(i_checkin)
-        assert_listeners(p, 4, 2, 2, 2)
-        del p
+            p.add_listener(i_checkin)
+            assert_listeners(p, 4, 2, 2, 2)
+            del p
 
-        p = _pool(listeners=[i_all])
-        assert_listeners(p, 1, 1, 1, 1)
+            p = _pool(listeners=[i_all])
+            assert_listeners(p, 1, 1, 1, 1)
 
-        c = p.connect()
-        assert counts == [1, 1, 0]
-        c.close()
-        assert counts == [1, 1, 1]
+            c = p.connect()
+            assert counts == [1, 1, 0]
+            c.close()
+            assert counts == [1, 1, 1]
 
-        c = p.connect()
-        assert counts == [1, 2, 1]
-        p.add_listener(i_checkin)
-        c.close()
-        assert counts == [1, 2, 3]
+            c = p.connect()
+            assert counts == [1, 2, 1]
+            p.add_listener(i_checkin)
+            c.close()
+            assert counts == [1, 2, 3]
 
     def test_listener_after_oninit(self):
         """Test that listeners are called after OnInit is removed"""

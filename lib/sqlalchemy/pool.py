@@ -20,7 +20,7 @@ import weakref, time, threading
 
 from sqlalchemy import exc, log
 from sqlalchemy import queue as sqla_queue
-from sqlalchemy.util import threading, pickle, as_interface
+from sqlalchemy.util import threading, pickle, as_interface, memoized_property
 
 proxies = {}
 
@@ -764,8 +764,10 @@ class StaticPool(Pool):
         """
         Pool.__init__(self, creator, **params)
         self._conn = creator()
-        self.connection = _ConnectionRecord(self)
-        self.connection = None
+    
+    @memoized_property
+    def connection(self):
+        return _ConnectionRecord(self)
         
     def status(self):
         return "StaticPool"
