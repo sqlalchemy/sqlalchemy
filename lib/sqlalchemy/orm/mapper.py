@@ -1165,7 +1165,10 @@ class Mapper(object):
 
         cond = sql.and_(*allconds)
 
-        return sql.select([props[key].columns[0] for key in attribute_names], cond, use_labels=True)
+        cols = []
+        for key in attribute_names:
+            cols.extend(props[key].columns)
+        return sql.select(cols, cond, use_labels=True)
 
     def cascade_iterator(self, type_, state, halt_on=None):
         """Iterate each element and its mapper in an object graph,

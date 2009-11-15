@@ -719,6 +719,11 @@ CHANGES
     - Fixed bug where Query would crash if a join() with no clear
       "left" side were called when a non-mapped column entity
       appeared in the columns list. [ticket:1602]
+    
+    - Fixed bug whereby composite columns wouldn't load properly
+      when configured on a joined-table subclass, introduced in
+      version 0.5.6 as a result of the fix for [ticket:1480].
+      [ticket:1616] thx to Scott Torborg.
       
 - sql
     - Fixed bug in two-phase transaction whereby commit() method
