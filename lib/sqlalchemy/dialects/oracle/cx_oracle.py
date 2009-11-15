@@ -124,20 +124,18 @@ class _LOBMixin(object):
     def result_processor(self, dialect, coltype):
         if not dialect.auto_convert_lobs:
             # return the cx_oracle.LOB directly.
-            # don't even call super.result_processor here.
             return None
             
         super_process = super(_LOBMixin, self).result_processor(dialect, coltype)
-        lob = dialect.dbapi.LOB
         if super_process:
             def process(value):
-                if isinstance(value, lob):
+                if value is not None:
                     return super_process(value.read())
                 else:
                     return super_process(value)
         else:
             def process(value):
-                if isinstance(value, lob):
+                if value is not None:
                     return value.read()
                 else:
                     return value
@@ -158,9 +156,24 @@ class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
 
-class _OracleUnicodeText(_LOBMixin, sqltypes.UnicodeText):
+class _OracleUnicodeText(sqltypes.UnicodeText):
     def get_dbapi_type(self, dbapi):
         return dbapi.NCLOB
+
+    def result_processor(self, dialect, coltype):
+        if not dialect.auto_convert_lobs:
+            # return the cx_oracle.LOB directly.
+            return None
+
+        if dialect._cx_oracle_native_nvarchar:
+            def process(value):
+                if value is not None:
+                    return value.read()
+                else:
+                    return value
+            return process
+        else:
+            return super(_OracleUnicodeText, self).result_processor(dialect, coltype)
 
 class _OracleInteger(sqltypes.Integer):
     def result_processor(self, dialect, coltype):
@@ -178,7 +191,7 @@ class _OracleBinary(_LOBMixin, sqltypes.Binary):
         return None
 
 
-class _OracleRaw(_LOBMixin, oracle.RAW):
+class _OracleRaw(oracle.RAW):
     pass
 
 
@@ -195,6 +208,7 @@ colspecs = {
                                         # it would be nice if we could not use it otherwise.
     oracle.NUMBER : oracle.NUMBER, # don't let this get converted
     oracle.RAW: _OracleRaw,
+    sqltypes.Unicode: _OracleNVarChar,
     sqltypes.NVARCHAR : _OracleNVarChar,
 }
 
@@ -266,7 +280,7 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
                                                     dbapi_type)
                         if result_processor is not None:
                             out_parameters[name] = \
-                                    result_processor(self.out_parameters[name].getvalue(), dbapi_type)
+                                    result_processor(self.out_parameters[name].getvalue())
                         else:
                             out_parameters[name] = self.out_parameters[name].getvalue()
             else:

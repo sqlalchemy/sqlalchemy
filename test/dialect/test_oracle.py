@@ -389,7 +389,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             (Unicode(), Unicode),
             (Text(), cx_oracle._OracleText),
             (UnicodeText(), cx_oracle._OracleUnicodeText),
-            (NCHAR(), NCHAR),
+            (NCHAR(), cx_oracle._OracleNVarChar),
             (oracle.RAW(50), cx_oracle._OracleRaw),
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))

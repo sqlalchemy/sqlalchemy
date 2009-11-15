@@ -522,10 +522,16 @@ class String(Concatenable, TypeEngine):
             return None
 
     def result_processor(self, dialect, coltype):
-        if (not dialect.returns_unicode_strings or self.convert_unicode == 'force') \
-            and (self.convert_unicode or dialect.convert_unicode):
+        wants_unicode = self.convert_unicode or dialect.convert_unicode
+        needs_convert = wants_unicode and \
+                        (not dialect.returns_unicode_strings or 
+                        self.convert_unicode == 'force')
+        
+        if needs_convert:
+            # note we *assume* that we do not have a unicode object
+            # here, instead of an expensive isinstance() check.
             def process(value):
-                if value is not None and not isinstance(value, unicode):
+                if value is not None:
                     return value.decode(dialect.encoding)
                 else:
                     return value
