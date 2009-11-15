@@ -974,7 +974,7 @@ class OptimizedLoadTest(_base.MappedTest):
     
     @classmethod
     def define_tables(cls, metadata):
-        global base, sub
+        global base, sub, with_comp
         base = Table('base', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(50)),
@@ -983,6 +983,11 @@ class OptimizedLoadTest(_base.MappedTest):
         sub = Table('sub', metadata, 
             Column('id', Integer, ForeignKey('base.id'), primary_key=True),
             Column('sub', String(50))
+        )
+        with_comp = Table('with_comp', metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('a', String(10)),
+            Column('b', String(10))
         )
     
     def test_optimized_passes(self):
@@ -1057,6 +1062,35 @@ class OptimizedLoadTest(_base.MappedTest):
                 Sub(data='s3data', sub='s3sub', concat='s3data|s3sub')
             ]
         )
+
+    def test_composite_column_joined(self):
+        class Base(_base.ComparableEntity):
+            pass
+        class WithComp(Base):
+            pass
+        class Comp(object):
+            def __init__(self, a, b):
+                self.a = a
+                self.b = b
+            def __composite_values__(self):
+                return self.a, self.b
+            def __eq__(self, other):
+                return (self.a == other.a) and (self.b == other.b)
+        mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='base')
+        mapper(WithComp, with_comp, inherits=Base, polymorphic_identity='wc', properties={
+            'comp': composite(Comp, with_comp.c.a, with_comp.c.b)
+        })
+        sess = sessionmaker()()
+        s1 = WithComp(data='s1data', comp=Comp('ham', 'cheese'))
+        s2 = WithComp(data='s2data', comp=Comp('bacon', 'eggs'))
+        sess.add_all([s1, s2])
+        sess.commit()
+        sess.expunge_all()
+        s1test, s2test = sess.query(Base).order_by(Base.id).all()
+        assert s1test.comp
+        assert s2test.comp
+        eq_(s1test.comp, Comp('ham', 'cheese'))
+        eq_(s2test.comp, Comp('bacon', 'eggs'))
         
         
 class PKDiscriminatorTest(_base.MappedTest):
