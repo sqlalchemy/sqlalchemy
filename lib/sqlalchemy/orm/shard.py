@@ -115,13 +115,3 @@ class ShardedQuery(Query):
             else:
                 return None
     
-    def load(self, ident, **kwargs):
-        if self._shard_id is not None:
-            return super(ShardedQuery, self).load(ident)
-        else:
-            for shard_id in self.id_chooser(self, ident):
-                o = self.set_shard(shard_id).load(ident, raiseerr=False, **kwargs)
-                if o is not None:
-                    return o
-            else:
-                raise sa_exc.InvalidRequestError("No instance found for identity %s" % repr(ident))
