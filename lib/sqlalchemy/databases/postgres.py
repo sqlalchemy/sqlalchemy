@@ -821,8 +821,8 @@ class PGCompiler(compiler.DefaultCompiler):
 
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)
-        return "EXTRACT(%s FROM %s::timestamp)" % (
-            field, self.process(extract.expr))
+        return "EXTRACT(%s FROM %s)" % (
+            field, self.process(extract.expr.op('::')(sql.literal_column('timestamp'))))
 
 
 class PGSchemaGenerator(compiler.SchemaGenerator):

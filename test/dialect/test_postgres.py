@@ -66,9 +66,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         for field in 'year', 'month', 'day':
             self.assert_compile(
                 select([extract(field, t.c.col1)]),
-                "SELECT EXTRACT(%s FROM t.col1::timestamp) AS anon_1 "
+                "SELECT EXTRACT(%s FROM t.col1 :: timestamp) AS anon_1 "
                 "FROM t" % field)
 
+        for field in 'year', 'month', 'day':
+            self.assert_compile(
+                select([extract(field, func.timestamp() - datetime.timedelta(days =5))]),
+                "SELECT EXTRACT(%s FROM (timestamp() - %%(timestamp_1)s) :: timestamp) AS anon_1"
+                 % field)
 
 class ReturningTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgres'
@@ -507,7 +512,18 @@ class MiscTest(TestBase, AssertsExecutionResults):
             self.assert_((subject.c['id$']==referer.c.ref).compare(subject.join(referer).onclause))
         finally:
             meta1.drop_all()
-
+    
+    def test_extract(self):
+        for field, exp in (
+                    ('year', 2009),
+                    ('month', 11),
+                    ('day', 10),
+            ):
+            r = testing.db.execute(
+                select([extract(field, datetime.datetime(2009, 11, 15, 12, 15, 35) - datetime.timedelta(days =5))])
+            ).scalar()
+            eq_(r, exp)
+            
     def test_checksfor_sequence(self):
         meta1 = MetaData(testing.db)
         t = Table('mytable', meta1,
