@@ -766,6 +766,9 @@ CHANGES
       Comparing equivalence of columns in the ORM is best 
       accomplished using col1.shares_lineage(col2).
       [ticket:1491]
+    
+    - Removed unused `load()` method from ShardedQuery.
+      [ticket:1606]
       
 0.5.6
 =====
