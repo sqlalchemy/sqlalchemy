@@ -749,6 +749,11 @@ CHANGES
       or explicit sequence-stated schema, into account.
       [ticket:1576]
 
+    - Fixed the behavior of extract() to apply operator
+      precedence rules to the "::" operator when applying
+      the "timestamp" cast - ensures proper parenthesization.  
+      [ticket:1611]
+
 - mssql
     - Changed the name of TrustedConnection to
       Trusted_Connection when constructing pyodbc connect

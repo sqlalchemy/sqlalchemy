@@ -314,8 +314,8 @@ class PGCompiler(compiler.SQLCompiler):
 
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)
-        return "EXTRACT(%s FROM %s::timestamp)" % (
-            field, self.process(extract.expr))
+        return "EXTRACT(%s FROM %s)" % (
+            field, self.process(extract.expr.op('::')(sql.literal_column('timestamp'))))
 
 class PGDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
