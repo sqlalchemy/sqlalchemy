@@ -3,7 +3,7 @@ from sqlalchemy.dialects.mssql.base import MSDateTime, MSDialect
 import sys
 
 class MSDateTime_adodbapi(MSDateTime):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             # adodbapi will return datetimes with empty time values as datetime.date() objects.
             # Promote them back to full datetime.datetime()

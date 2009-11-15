@@ -546,7 +546,7 @@ class BIT(sqltypes.TypeEngine):
         """
         self.length = length
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         """Convert a MySQL's 64 bit, variable length binary string to a long."""
         def process(value):
             if value is not None:
@@ -562,7 +562,7 @@ class _MSTime(sqltypes.Time):
 
     __visit_name__ = 'TIME'
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         time = datetime.time
         def process(value):
             # convert from a timedelta value
@@ -1042,7 +1042,7 @@ class SET(_StringType):
         length = max([len(v) for v in strip_values] + [0])
         super(SET, self).__init__(length=length, **kw)
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             # The good news:
             #   No ',' quoting issues- commas aren't allowed in SET values
@@ -1085,7 +1085,7 @@ class _MSBoolean(sqltypes.Boolean):
 
     __visit_name__ = 'BOOLEAN'
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

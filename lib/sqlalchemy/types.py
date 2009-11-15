@@ -47,12 +47,22 @@ class AbstractType(Visitable):
         return value
 
     def bind_processor(self, dialect):
-        """Defines a bind parameter processing function."""
+        """Defines a bind parameter processing function.
+        
+        :param dialect: Dialect instance in use.
+
+        """
 
         return None
 
-    def result_processor(self, dialect):
-        """Defines a result-column processing function."""
+    def result_processor(self, dialect, coltype):
+        """Defines a result-column processing function.
+        
+        :param dialect: Dialect instance in use.
+
+        :param coltype: DBAPI coltype argument received in cursor.description.
+        
+        """
 
         return None
 
@@ -126,7 +136,7 @@ class TypeEngine(AbstractType):
         """
         return None
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         """Return a conversion function for processing result row values.
 
         Returns a callable which will receive a result row column
@@ -162,7 +172,7 @@ class UserDefinedType(TypeEngine):
                   return value
               return process
 
-          def result_processor(self, dialect):
+          def result_processor(self, dialect, coltype):
               def process(value):
                   return value
               return process
@@ -300,10 +310,10 @@ class TypeDecorator(AbstractType):
         else:
             return self.impl.bind_processor(dialect)
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if self.__class__.process_result_value.func_code is not TypeDecorator.process_result_value.func_code:
             process_value = self.process_result_value
-            impl_processor = self.impl.result_processor(dialect)
+            impl_processor = self.impl.result_processor(dialect, coltype)
             if impl_processor:
                 def process(value):
                     return process_value(impl_processor(value), dialect)
@@ -312,7 +322,7 @@ class TypeDecorator(AbstractType):
                     return process_value(value, dialect)
             return process
         else:
-            return self.impl.result_processor(dialect)
+            return self.impl.result_processor(dialect, coltype)
 
     def copy(self):
         instance = self.__class__.__new__(self.__class__)
@@ -511,7 +521,7 @@ class String(Concatenable, TypeEngine):
         else:
             return None
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if (not dialect.returns_unicode_strings or self.convert_unicode == 'force') \
             and (self.convert_unicode or dialect.convert_unicode):
             def process(value):
@@ -666,7 +676,10 @@ class Numeric(TypeEngine):
         self.asdecimal = asdecimal
 
     def adapt(self, impltype):
-        return impltype(precision=self.precision, scale=self.scale, asdecimal=self.asdecimal)
+        return impltype(
+                precision=self.precision, 
+                scale=self.scale, 
+                asdecimal=self.asdecimal)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
@@ -679,7 +692,7 @@ class Numeric(TypeEngine):
                 return value
         return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if self.asdecimal:
             def process(value):
                 if value is not None:
@@ -790,7 +803,7 @@ class Binary(TypeEngine):
                 return None
         return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if util.jython:
             def process(value):
                 if value is not None:
@@ -1041,8 +1054,8 @@ class PickleType(MutableType, TypeDecorator):
                 return value
         return process
 
-    def result_processor(self, dialect):
-        impl_processor = self.impl.result_processor(dialect)
+    def result_processor(self, dialect, coltype):
+        impl_processor = self.impl.result_processor(dialect, coltype)
         loads = self.pickler.loads
         if impl_processor:
             def process(value):
@@ -1111,8 +1124,8 @@ class Interval(TypeDecorator):
                 return value
         return process
 
-    def result_processor(self, dialect):
-        impl_processor = self.impl.result_processor(dialect)
+    def result_processor(self, dialect, coltype):
+        impl_processor = self.impl.result_processor(dialect, coltype)
         epoch = self.epoch
         if impl_processor:
             def process(value):

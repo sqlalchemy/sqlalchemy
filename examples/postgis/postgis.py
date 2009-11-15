@@ -101,7 +101,7 @@ class Geometry(TypeEngine):
                 return value
         return process
         
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is not None:
                 return PersistentGisElement(value)

@@ -409,7 +409,17 @@ CHANGES
 
     - cached TypeEngine classes are cached per-dialect class 
       instead of per-dialect.
-
+    
+    - new UserDefinedType should be used as a base class for
+      new types, which preserves the 0.5 behavior of 
+      get_col_spec().
+      
+    - The result_processor() method of all type classes now 
+      accepts a second argument "coltype", which is the DBAPI
+      type argument from cursor.description.  This argument
+      can help some types decide on the most efficient processing
+      of result values.
+      
     - Deprecated Dialect.get_params() removed.
 
     - Dialect.get_rowcount() has been renamed to a descriptor

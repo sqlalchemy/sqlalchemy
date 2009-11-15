@@ -174,8 +174,8 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
             return [convert_item(item) for item in value]
         return process
 
-    def result_processor(self, dialect):
-        item_proc = self.item_type.result_processor(dialect)
+    def result_processor(self, dialect, coltype):
+        item_proc = self.item_type.result_processor(dialect, coltype)
         def process(value):
             if value is None:
                 return value

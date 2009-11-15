@@ -41,7 +41,7 @@ class InfoTime(sqltypes.Time):
             return value
         return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.time()
@@ -51,7 +51,7 @@ class InfoTime(sqltypes.Time):
 
 
 class InfoBoolean(sqltypes.Boolean):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

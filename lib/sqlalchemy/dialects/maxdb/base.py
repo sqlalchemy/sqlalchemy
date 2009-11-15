@@ -83,7 +83,7 @@ class _StringType(sqltypes.String):
                     return value
             return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             while True:
                 if value is None:
@@ -169,7 +169,7 @@ class MaxTimestamp(sqltypes.DateTime):
                     dialect.datetimeformat,))
         return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None
@@ -209,7 +209,7 @@ class MaxDate(sqltypes.Date):
                     dialect.datetimeformat,))
         return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None
@@ -243,7 +243,7 @@ class MaxTime(sqltypes.Time):
                     dialect.datetimeformat,))
         return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None
@@ -270,7 +270,7 @@ class MaxBlob(sqltypes.Binary):
                 return str(value)
         return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

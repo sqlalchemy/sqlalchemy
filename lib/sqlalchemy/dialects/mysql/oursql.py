@@ -36,7 +36,7 @@ class _PlainQuery(unicode):
 
 
 class _oursqlNumeric(NUMERIC):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if self.asdecimal:
             return
         def process(value):
@@ -48,7 +48,7 @@ class _oursqlNumeric(NUMERIC):
 
 
 class _oursqlBIT(BIT):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         """oursql already converts mysql bits, so."""
 
         return None

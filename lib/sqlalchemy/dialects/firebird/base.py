@@ -124,7 +124,7 @@ RESERVED_WORDS = set([
 
 
 class _FBBoolean(sqltypes.Boolean):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

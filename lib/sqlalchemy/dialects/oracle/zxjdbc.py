@@ -20,7 +20,7 @@ SQLException = zxJDBC = None
 
 class _ZxJDBCDate(sqltypes.Date):
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None
@@ -31,7 +31,7 @@ class _ZxJDBCDate(sqltypes.Date):
 
 class _ZxJDBCNumeric(sqltypes.Numeric):
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if self.asdecimal:
             def process(value):
                 if isinstance(value, decimal.Decimal):

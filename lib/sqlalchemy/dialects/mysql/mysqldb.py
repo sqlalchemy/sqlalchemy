@@ -48,7 +48,7 @@ class MySQL_mysqldbCompiler(MySQLCompiler):
 
 
 class _DecimalType(_NumericType):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if self.asdecimal:
             return
         def process(value):

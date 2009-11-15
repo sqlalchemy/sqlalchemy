@@ -18,7 +18,7 @@ from sqlalchemy.engine import default, base
 
 
 class AcNumeric(types.Numeric):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         return None
 
     def bind_processor(self, dialect):
@@ -86,7 +86,7 @@ class AcUnicode(types.Unicode):
     def bind_processor(self, dialect):
         return None
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         return None
 
 class AcChar(types.CHAR):
@@ -101,7 +101,7 @@ class AcBoolean(types.Boolean):
     def get_col_spec(self):
         return "YESNO"
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

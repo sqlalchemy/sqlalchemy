@@ -159,7 +159,7 @@ class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
     
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

@@ -113,7 +113,7 @@ class SybaseUniqueIdentifier(sqltypes.TypeEngine):
     __visit_name__ = "UNIQUEIDENTIFIER"
     
 class SybaseBoolean(sqltypes.Boolean):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

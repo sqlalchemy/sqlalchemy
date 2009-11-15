@@ -277,7 +277,7 @@ RESERVED_WORDS = set(
 
 
 class _MSNumeric(sqltypes.Numeric):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if self.asdecimal:
             def process(value):
                 if value is not None:
@@ -350,7 +350,7 @@ class _MSDate(sqltypes.Date):
         return process
 
     _reg = re.compile(r"(\d+)-(\d+)-(\d+)")
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.date()
@@ -377,7 +377,7 @@ class TIME(sqltypes.TIME):
         return process
 
     _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.time()
@@ -599,7 +599,7 @@ class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
     
 class _MSBoolean(sqltypes.Boolean):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

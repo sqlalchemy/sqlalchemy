@@ -84,7 +84,7 @@ class _OracleDate(sqltypes.Date):
     def bind_processor(self, dialect):
         return None
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if not isinstance(value, datetime):
                 return value
@@ -93,7 +93,7 @@ class _OracleDate(sqltypes.Date):
         return process
 
 class _OracleDateTime(sqltypes.DateTime):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None or isinstance(value, datetime):
                 return value
@@ -110,7 +110,7 @@ class _OracleDateTime(sqltypes.DateTime):
 
 # only if cx_oracle contains TIMESTAMP
 class _OracleTimestamp(sqltypes.TIMESTAMP):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None or isinstance(value, datetime):
                 return value
@@ -121,13 +121,13 @@ class _OracleTimestamp(sqltypes.TIMESTAMP):
         return process
 
 class _LOBMixin(object):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if not dialect.auto_convert_lobs:
             # return the cx_oracle.LOB directly.
             # don't even call super.result_processor here.
             return None
             
-        super_process = super(_LOBMixin, self).result_processor(dialect)
+        super_process = super(_LOBMixin, self).result_processor(dialect, coltype)
         lob = dialect.dbapi.LOB
         if super_process:
             def process(value):
@@ -148,11 +148,11 @@ class _OracleChar(sqltypes.CHAR):
         return dbapi.FIXED_CHAR
 
 class _OracleNVarChar(sqltypes.NVARCHAR):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if dialect._cx_oracle_native_nvarchar:
             return None
         else:
-            return sqltypes.NVARCHAR.result_processor(self, dialect)
+            return sqltypes.NVARCHAR.result_processor(self, dialect, coltype)
         
 class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
@@ -163,7 +163,7 @@ class _OracleUnicodeText(_LOBMixin, sqltypes.UnicodeText):
         return dbapi.NCLOB
 
 class _OracleInteger(sqltypes.Integer):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def to_int(val):
             if val is not None:
                 val = int(val)
@@ -259,11 +259,14 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
                 for bind, name in self.compiled.bind_names.iteritems():
                     if name in self.out_parameters:
                         type = bind.type
-                        result_processor = type.dialect_impl(self.dialect).\
-                                                    result_processor(self.dialect)
+                        impl_type = type.dialect_impl(self.dialect)
+                        dbapi_type = impl_type.get_dbapi_type(self.dialect.dbapi)
+                        result_processor = impl_type.\
+                                                    result_processor(self.dialect, 
+                                                    dbapi_type)
                         if result_processor is not None:
                             out_parameters[name] = \
-                                    result_processor(self.out_parameters[name].getvalue())
+                                    result_processor(self.out_parameters[name].getvalue(), dbapi_type)
                         else:
                             out_parameters[name] = self.out_parameters[name].getvalue()
             else:

@@ -2,6 +2,7 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.test import  engines
 import datetime
+import decimal
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy import exc, schema, types
@@ -10,6 +11,7 @@ from sqlalchemy.engine.strategies import MockEngineStrategy
 from sqlalchemy.test import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.test.testing import eq_
+from test.engine._base import TablesTest
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
@@ -105,6 +107,65 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 "SELECT EXTRACT(%s FROM t.col1::timestamp) AS anon_1 "
                 "FROM t" % field)
 
+class FloatCoercionTest(TablesTest, AssertsExecutionResults):
+    __only_on__ = 'postgresql'
+    __dialect__ = postgresql.dialect()
+
+    @classmethod
+    def define_tables(cls, metadata):
+        data_table = Table('data_table', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', Integer)
+        )
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def insert_data(cls):
+        data_table.insert().execute(
+            {'data':3},
+            {'data':5},
+            {'data':7},
+            {'data':2},
+            {'data':15},
+            {'data':12},
+            {'data':6},
+            {'data':478},
+            {'data':52},
+            {'data':9},
+        )
+    
+    def _round(self, x):
+        if isinstance(x, float):
+            return round(x, 9)
+        elif isinstance(x, decimal.Decimal):
+            # really ?
+            x = x.shift(decimal.Decimal(9)).to_integral() / pow(10, 9)
+        return x
+    @testing.resolve_artifact_names
+    def test_float_coercion(self):
+        for type_, result in [
+            (Numeric, decimal.Decimal('140.381230939')),
+            (Float, 140.381230939),
+            (Float(asdecimal=True), decimal.Decimal('140.381230939')),
+            (Numeric(asdecimal=False), 140.381230939),
+        ]:
+            ret = testing.db.execute(
+                select([
+                    func.stddev_pop(data_table.c.data, type_=type_)
+                ])
+            ).scalar()
+            
+            eq_(self._round(ret), result)
+
+            ret = testing.db.execute(
+                select([
+                    cast(func.stddev_pop(data_table.c.data), type_)
+                ])
+            ).scalar()
+            eq_(self._round(ret), result)
+    
+    
+        
 class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     __only_on__ = 'postgresql'
     __dialect__ = postgresql.dialect()

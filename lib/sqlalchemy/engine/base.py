@@ -1757,7 +1757,6 @@ class ResultProxy(object):
         typemap = self.dialect.dbapi_type_map
 
         for i, (colname, coltype) in enumerate(m[0:2] for m in metadata):
-
             if self.dialect.description_encoding:
                 colname = colname.decode(self.dialect.description_encoding)
 
@@ -1779,7 +1778,7 @@ class ResultProxy(object):
                 name, obj, type_ = (colname, None, typemap.get(coltype, types.NULLTYPE))
 
             processor = type_.dialect_impl(self.dialect).\
-                            result_processor(self.dialect)
+                            result_processor(self.dialect, coltype)
             
             if processor:
                 def make_colfunc(processor, index):

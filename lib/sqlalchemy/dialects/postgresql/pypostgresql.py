@@ -17,7 +17,7 @@ class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
         return None
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         if self.asdecimal:
             return None
         else:

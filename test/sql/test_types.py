@@ -100,7 +100,7 @@ class UserDefinedTest(TestBase):
                 def process(value):
                     return "BIND_IN"+ value
                 return process
-            def result_processor(self, dialect):
+            def result_processor(self, dialect, coltype):
                 def process(value):
                     return value + "BIND_OUT"
                 return process
@@ -114,8 +114,8 @@ class UserDefinedTest(TestBase):
                 def process(value):
                     return "BIND_IN"+ impl_processor(value)
                 return process
-            def result_processor(self, dialect):
-                impl_processor = super(MyDecoratedType, self).result_processor(dialect) or (lambda value:value)
+            def result_processor(self, dialect, coltype):
+                impl_processor = super(MyDecoratedType, self).result_processor(dialect, coltype) or (lambda value:value)
                 def process(value):
                     return impl_processor(value) + "BIND_OUT"
                 return process
@@ -163,8 +163,8 @@ class UserDefinedTest(TestBase):
                     return "BIND_IN"+ impl_processor(value)
                 return process
 
-            def result_processor(self, dialect):
-                impl_processor = super(MyUnicodeType, self).result_processor(dialect) or (lambda value:value)
+            def result_processor(self, dialect, coltype):
+                impl_processor = super(MyUnicodeType, self).result_processor(dialect, coltype) or (lambda value:value)
                 def process(value):
                     return impl_processor(value) + "BIND_OUT"
                 return process
@@ -528,7 +528,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
                 def process(value):
                     return value * 10
                 return process
-            def result_processor(self, dialect):
+            def result_processor(self, dialect, coltype):
                 def process(value):
                     return value / 10
                 return process

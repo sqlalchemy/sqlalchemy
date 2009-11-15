@@ -96,7 +96,7 @@ class _SLDateTime(_DateTimeMixin, sqltypes.DateTime):
                         )
 
     _reg = re.compile(r"(\d+)-(\d+)-(\d+)(?: (\d+):(\d+):(\d+)(?:\.(\d+))?)?")
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         return self._result_processor(datetime.datetime, self._reg)
 
 class _SLDate(_DateTimeMixin, sqltypes.Date):
@@ -107,7 +107,7 @@ class _SLDate(_DateTimeMixin, sqltypes.Date):
                 )
 
     _reg = re.compile(r"(\d+)-(\d+)-(\d+)")
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         return self._result_processor(datetime.date, self._reg)
 
 class _SLTime(_DateTimeMixin, sqltypes.Time):
@@ -126,7 +126,7 @@ class _SLTime(_DateTimeMixin, sqltypes.Time):
                     )
 
     _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         return self._result_processor(datetime.time, self._reg)
 
 
@@ -138,7 +138,7 @@ class _SLBoolean(sqltypes.Boolean):
             return value and 1 or 0
         return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None

@@ -43,7 +43,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
         bp = sldt.bind_processor(None)
         eq_(bp(dt), '2008-06-27 12:00:00.000125')
         
-        rp = sldt.result_processor(None)
+        rp = sldt.result_processor(None, None)
         eq_(rp(bp(dt)), dt)
         
         sldt.__legacy_microseconds__ = True

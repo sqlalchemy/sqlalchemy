@@ -23,7 +23,7 @@ from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy.dialects.mysql.base import BIT, MySQLDialect, MySQLExecutionContext
 
 class _ZxJDBCBit(BIT):
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         """Converts boolean or byte arrays from MySQL Connector/J to longs."""
         def process(value):
             if value is None:
