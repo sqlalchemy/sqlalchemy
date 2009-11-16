@@ -160,33 +160,41 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         
     def bind_processor(self, dialect):
         item_proc = self.item_type.bind_processor(dialect)
-        def process(value):
-            if value is None:
-                return value
+        if item_proc:
             def convert_item(item):
                 if isinstance(item, (list, tuple)):
                     return [convert_item(child) for child in item]
                 else:
-                    if item_proc:
-                        return item_proc(item)
-                    else:
-                        return item
+                    return item_proc(item)
+        else:
+            def convert_item(item):
+                if isinstance(item, (list, tuple)):
+                    return [convert_item(child) for child in item]
+                else:
+                    return item
+        def process(value):
+            if value is None:
+                return value
             return [convert_item(item) for item in value]
         return process
 
     def result_processor(self, dialect, coltype):
         item_proc = self.item_type.result_processor(dialect, coltype)
-        def process(value):
-            if value is None:
-                return value
+        if item_proc:
             def convert_item(item):
                 if isinstance(item, list):
                     return [convert_item(child) for child in item]
                 else:
-                    if item_proc:
-                        return item_proc(item)
-                    else:
-                        return item
+                    return item_proc(item)
+        else:
+            def convert_item(item):
+                if isinstance(item, list):
+                    return [convert_item(child) for child in item]
+                else:
+                    return item
+        def process(value):
+            if value is None:
+                return value
             return [convert_item(item) for item in value]
         return process
 PGArray = ARRAY
