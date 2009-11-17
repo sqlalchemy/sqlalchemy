@@ -258,7 +258,7 @@ CHANGES
     method call counts when fetching columns that have no 
     type-level processing applied.   Provides a 100% speed
     improvement when fetching large result sets with no unicode
-    conversion.  Many thanks to Elixir's Gaëtan de Menten
+    conversion as tuples.  Many thanks to Elixir's Gaëtan de Menten
     for this dramatic improvement !  [ticket:1586]
     
   - setting echo=False on create_engine() now sets the loglevel
@@ -582,13 +582,6 @@ CHANGES
     - using new dialect.initialize() feature to set up
       version-dependent behavior.
 
-- new dialects
-    - postgresql+pg8000
-    - postgresql+pypostgresql (partial)
-    - postgresql+zxjdbc
-    - mysql+pyodbc
-    - mysql+zxjdbc
-
 - mssql
     - MSSQL + Pyodbc + FreeTDS now works for the most part,
       with possible exceptions regarding binary data as well as
@@ -612,6 +605,28 @@ CHANGES
       sequences on any other dialects. Explicit sequences are
       enabled through the use of "default=Sequence()". See
       the MSSQL dialect documentation for more information.
+
+- sqlite
+    - DATE, TIME and DATETIME types can now take optional storage_format and
+      regexp argument. storage_format can be used to store those types using
+      a custom string format. regexp allows to use a custom regular expression
+      to match string values from the database.
+    - Time and DateTime types now use by a default a stricter regular
+      expression to match strings from the database. Use the regexp argument
+      if you are using data stored in a legacy format.
+    - __legacy_microseconds__ on SQLite Time and DateTime types is not
+      supported anymore. You should use the storage_format argument instead.
+    - Date, Time and DateTime types are now stricter in what they accept as
+      bind parameters: Date type only accepts date objects (and datetime ones,
+      because they inherit from date), Time only accepts time objects, and
+      DateTime only accepts date and datetime objects.
+
+- new dialects
+    - postgresql+pg8000
+    - postgresql+pypostgresql (partial)
+    - postgresql+zxjdbc
+    - mysql+pyodbc
+    - mysql+zxjdbc
 
 - types
     - The construction of types within dialects has been totally

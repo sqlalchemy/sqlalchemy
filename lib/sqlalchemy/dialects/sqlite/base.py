@@ -15,7 +15,7 @@ SQLite does not have built-in DATE, TIME, or DATETIME types, and pysqlite does n
 out of the box functionality for translating values between Python `datetime` objects
 and a SQLite-supported format.  SQLAlchemy's own :class:`~sqlalchemy.types.DateTime`
 and related types provide date formatting and parsing functionality when SQlite is used.
-The implementation classes are :class:`_SLDateTime`, :class:`_SLDate` and :class:`_SLTime`.
+The implementation classes are :class:`DATETIME`, :class:`DATE` and :class:`TIME`.
 These types represent dates and times as ISO formatted strings, which also nicely
 support ordering.   There's no reliance on typical "libc" internals for these functions
 so historical dates are fully supported.
@@ -59,76 +59,92 @@ class _SLFloat(_NumericMixin, sqltypes.Float):
 # or JDBC would similarly have no built in date support, so the "string" based logic
 # would apply to all implementing dialects.
 class _DateTimeMixin(object):
-    def _bind_processor(self, format, elements):
-        def process(value):
-            if not isinstance(value, (NoneType, datetime.date, datetime.datetime, datetime.time)):
-                raise TypeError("SQLite Date, Time, and DateTime types only accept Python datetime objects as input.")
-            elif value is not None:
-                return format % tuple([getattr(value, attr, 0) for attr in elements])
-            else:
-                return None
-        return process
+    _reg = None
+    _storage_format = None
 
-    def _result_processor(self, fn, regexp):
-        rmatch = regexp.match
+    def __init__(self, storage_format=None, regexp=None, **kwargs):
+        if regexp is not None:
+            self._reg = re.compile(regexp)
+        if storage_format is not None:
+            self._storage_format = storage_format
+
+    def _result_processor(self, fn):
+        rmatch = self._reg.match
         # Even on python2.6 datetime.strptime is both slower than this code
         # and it does not support microseconds.
         def process(value):
             if value is not None:
-                return fn(*[int(x or 0) for x in rmatch(value).groups()])
+                return fn(*map(int, rmatch(value).groups(0)))
             else:
                 return None
         return process
 
-class _SLDateTime(_DateTimeMixin, sqltypes.DateTime):
-    __legacy_microseconds__ = False
-
+class DATETIME(_DateTimeMixin, sqltypes.DateTime):
+    _reg = re.compile(r"(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)\.(\d+)")
+    _storage_format = "%04d-%02d-%02d %02d:%02d:%02d.%06d"
+  
     def bind_processor(self, dialect):
-        if self.__legacy_microseconds__:
-            return self._bind_processor(
-                        "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%s", 
-                        ("year", "month", "day", "hour", "minute", "second", "microsecond")
-                        )
-        else:
-            return self._bind_processor(
-                        "%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%06d", 
-                        ("year", "month", "day", "hour", "minute", "second", "microsecond")
-                        )
+        datetime_datetime = datetime.datetime
+        datetime_date = datetime.date
+        format = self._storage_format
+        def process(value):
+            if value is None:
+                return None
+            elif isinstance(value, datetime_datetime):
+                return format % (value.year, value.month, value.day,
+                                 value.hour, value.minute, value.second,
+                                 value.microsecond)
+            elif isinstance(value, datetime_date):
+                return format % (value.year, value.month, value.day,
+                                 0, 0, 0, 0)
+            else:
+                raise TypeError("SQLite DateTime type only accepts Python "
+                                "datetime and date objects as input.")
+        return process
 
-    _reg = re.compile(r"(\d+)-(\d+)-(\d+)(?: (\d+):(\d+):(\d+)(?:\.(\d+))?)?")
     def result_processor(self, dialect, coltype):
-        return self._result_processor(datetime.datetime, self._reg)
+        return self._result_processor(datetime.datetime)
 
-class _SLDate(_DateTimeMixin, sqltypes.Date):
-    def bind_processor(self, dialect):
-        return self._bind_processor(
-                        "%4.4d-%2.2d-%2.2d", 
-                        ("year", "month", "day")
-                )
-
+class DATE(_DateTimeMixin, sqltypes.Date):
     _reg = re.compile(r"(\d+)-(\d+)-(\d+)")
-    def result_processor(self, dialect, coltype):
-        return self._result_processor(datetime.date, self._reg)
-
-class _SLTime(_DateTimeMixin, sqltypes.Time):
-    __legacy_microseconds__ = False
+    _storage_format = "%04d-%02d-%02d"
 
     def bind_processor(self, dialect):
-        if self.__legacy_microseconds__:
-            return self._bind_processor(
-                            "%2.2d:%2.2d:%2.2d.%s", 
-                            ("hour", "minute", "second", "microsecond")
-                    )
-        else:
-            return self._bind_processor(
-                            "%2.2d:%2.2d:%2.2d.%06d", 
-                            ("hour", "minute", "second", "microsecond")
-                    )
-
-    _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
+        datetime_date = datetime.date
+        format = self._storage_format
+        def process(value):
+            if value is None:
+                return None
+            elif isinstance(value, datetime_date):
+                return format % (value.year, value.month, value.day)
+            else:
+                raise TypeError("SQLite Date type only accepts Python "
+                                "date objects as input.")
+        return process
+  
     def result_processor(self, dialect, coltype):
-        return self._result_processor(datetime.time, self._reg)
+        return self._result_processor(datetime.date)
 
+class TIME(_DateTimeMixin, sqltypes.Time):
+    _reg = re.compile(r"(\d+):(\d+):(\d+)\.(\d+)")
+    _storage_format = "%02d:%02d:%02d.%06d"
+
+    def bind_processor(self, dialect):
+        datetime_time = datetime.time
+        format = self._storage_format
+        def process(value):
+            if value is None:
+                return None
+            elif isinstance(value, datetime_time):
+                return format % (value.hour, value.minute, value.second,
+                                 value.microsecond)
+            else:
+                raise TypeError("SQLite Time type only accepts Python "
+                                "time objects as input.")
+        return process
+  
+    def result_processor(self, dialect, coltype):
+        return self._result_processor(datetime.time)
 
 class _SLBoolean(sqltypes.Boolean):
     def bind_processor(self, dialect):
@@ -147,11 +163,11 @@ class _SLBoolean(sqltypes.Boolean):
 
 colspecs = {
     sqltypes.Boolean: _SLBoolean,
-    sqltypes.Date: _SLDate,
-    sqltypes.DateTime: _SLDateTime,
+    sqltypes.Date: DATE,
+    sqltypes.DateTime: DATETIME,
     sqltypes.Float: _SLFloat,
     sqltypes.Numeric: _SLNumeric,
-    sqltypes.Time: _SLTime,
+    sqltypes.Time: TIME,
 }
 
 ischema_names = {
