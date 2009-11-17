@@ -80,7 +80,7 @@ class _DateTimeMixin(object):
         return process
 
 class DATETIME(_DateTimeMixin, sqltypes.DateTime):
-    _reg = re.compile(r"(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)\.(\d+)")
+    _reg = re.compile(r"(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")
     _storage_format = "%04d-%02d-%02d %02d:%02d:%02d.%06d"
   
     def bind_processor(self, dialect):
@@ -126,7 +126,7 @@ class DATE(_DateTimeMixin, sqltypes.Date):
         return self._result_processor(datetime.date)
 
 class TIME(_DateTimeMixin, sqltypes.Time):
-    _reg = re.compile(r"(\d+):(\d+):(\d+)\.(\d+)")
+    _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
     _storage_format = "%02d:%02d:%02d.%06d"
 
     def bind_processor(self, dialect):
