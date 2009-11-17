@@ -530,9 +530,10 @@ class String(Concatenable, TypeEngine):
         if needs_convert:
             # note we *assume* that we do not have a unicode object
             # here, instead of an expensive isinstance() check.
+            encoding = dialect.encoding
             def process(value):
                 if value is not None:
-                    return value.decode(dialect.encoding)
+                    return value.decode(encoding)
                 else:
                     return value
             return process
