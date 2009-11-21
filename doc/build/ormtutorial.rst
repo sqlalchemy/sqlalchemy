@@ -581,6 +581,15 @@ To use an entirely string-based statement, using ``from_statement()``; just ensu
     ['ed']
     {stop}[<User('ed','Ed Jones', 'f8s7ccs')>]
 
+You can use ``from_statement()`` to go completely "raw", using string names to identify desired columns:
+
+.. sourcecode:: python+sql
+
+    {sql}>>> session.query("id", "name", "thenumber12").from_statement("SELECT id, name, 12 as thenumber12 FROM users where name=:name").params(name='ed').all()
+    SELECT id, name, 12 as thenumber12 FROM users where name=?
+    ['ed']
+    {stop}[(1, u'ed', 12)]
+
 Counting
 --------
 
