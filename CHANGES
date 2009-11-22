@@ -513,6 +513,11 @@ CHANGES
     - New dialects: oursql, a new native dialect, 
       MySQL Connector/Python, a native Python port of MySQLdb,
       and of course zxjdbc on Jython.
+    
+    - VARCHAR/NVARCHAR will not render without a length, raises
+      an error before passing to MySQL.   Doesn't impact 
+      CAST since VARCHAR is not allowed in MySQL CAST anyway,
+      the dialect renders CHAR/NCHAR in those cases.
       
     - all the _detect_XXX() functions now run once underneath
       dialect.initialize()

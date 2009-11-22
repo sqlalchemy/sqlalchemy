@@ -7,7 +7,7 @@ import sets
 # end Py2K
 
 from sqlalchemy import *
-from sqlalchemy import sql, exc, schema
+from sqlalchemy import sql, exc, schema, types as sqltypes
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test import *
@@ -948,7 +948,20 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             select([t]).offset(10),
             "SELECT t.col1, t.col2 FROM t  LIMIT 10, 18446744073709551615"
             )
-
+    
+    def test_varchar_raise(self):
+        for type_ in (
+            String,
+            VARCHAR,
+            String(),
+            VARCHAR(),
+            NVARCHAR(),
+            Unicode,
+            Unicode(),
+        ):
+            type_ = sqltypes.to_instance(type_)
+            assert_raises(exc.InvalidRequestError, type_.compile, dialect=mysql.dialect())
+            
     def test_update_limit(self):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))
 

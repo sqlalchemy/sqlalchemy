@@ -1561,19 +1561,28 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.length:
             return self._extend_string(type_, {}, "VARCHAR(%d)" % type_.length)
         else:
-            return self._extend_string(type_, {}, "VARCHAR")
+            raise exc.InvalidRequestError("VARCHAR requires a length when rendered on MySQL")
     
     def visit_CHAR(self, type_):
-        return self._extend_string(type_, {'national':True}, "CHAR(%(length)s)" % {'length' : type_.length})
-
+        if type_.length:
+            return self._extend_string(type_, {}, "CHAR(%(length)s)" % {'length' : type_.length})
+        else:
+            return self._extend_string(type_, {}, "CHAR")
+            
     def visit_NVARCHAR(self, type_):
         # We'll actually generate the equiv. "NATIONAL VARCHAR" instead
         # of "NVARCHAR".
-        return self._extend_string(type_, {'national':True}, "VARCHAR(%(length)s)" % {'length': type_.length})
+        if type_.length:
+            return self._extend_string(type_, {'national':True}, "VARCHAR(%(length)s)" % {'length': type_.length})
+        else:
+            raise exc.InvalidRequestError("NVARCHAR requires a length when rendered on MySQL")
     
     def visit_NCHAR(self, type_):
         # We'll actually generate the equiv. "NATIONAL CHAR" instead of "NCHAR".
-        return self._extend_string(type_, {'national':True}, "CHAR(%(length)s)" % {'length': type_.length})
+        if type_.length:
+            return self._extend_string(type_, {'national':True}, "CHAR(%(length)s)" % {'length': type_.length})
+        else:
+            return self._extend_string(type_, {'national':True}, "CHAR")
     
     def visit_VARBINARY(self, type_):
         if type_.length:

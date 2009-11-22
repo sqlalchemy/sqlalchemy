@@ -42,8 +42,8 @@ class AdaptTest(TestBase):
                 (DATE, "DATE"),
                 (TIME, "TIME"),
                 (CLOB, "CLOB"),
-                (VARCHAR, "VARCHAR"),
-                (NVARCHAR, ("NVARCHAR", "NATIONAL VARCHAR")),
+                (VARCHAR(10), "VARCHAR(10)"),
+                (NVARCHAR(10), ("NVARCHAR(10)", "NATIONAL VARCHAR(10)", "NVARCHAR2(10)")),
                 (CHAR, "CHAR"),
                 (NCHAR, ("NCHAR", "NATIONAL CHAR")),
                 (BLOB, "BLOB"),
@@ -52,7 +52,7 @@ class AdaptTest(TestBase):
                 if isinstance(expected, str):
                     expected = (expected, )
                 for exp in expected:
-                    compiled = type_().compile(dialect=dialect)
+                    compiled = types.to_instance(type_).compile(dialect=dialect)
                     if exp in compiled:
                         break
                 else:
