@@ -209,6 +209,8 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         columns = [
             (mysql.MSChar, [1], {},
              'CHAR(1)'),
+             (mysql.NCHAR, [1], {},
+              'NATIONAL CHAR(1)'),
             (mysql.MSChar, [1], {'binary':True},
              'CHAR(1) BINARY'),
             (mysql.MSChar, [1], {'ascii':True},
