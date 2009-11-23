@@ -23,6 +23,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
 import inspect
 import datetime as dt
 from decimal import Decimal as _python_Decimal
+import codecs
 
 from sqlalchemy import exc, schema
 from sqlalchemy.sql import expression
@@ -530,10 +531,11 @@ class String(Concatenable, TypeEngine):
         if needs_convert:
             # note we *assume* that we do not have a unicode object
             # here, instead of an expensive isinstance() check.
-            encoding = dialect.encoding
+            decoder = codecs.getdecoder(dialect.encoding)
             def process(value):
                 if value is not None:
-                    return value.decode(encoding)
+                    # decoder returns a tuple: (value, len)
+                    return decoder(value)[0]
                 else:
                     return value
             return process
