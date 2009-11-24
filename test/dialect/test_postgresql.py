@@ -944,6 +944,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             meta1.drop_all()
 
+    @testing.fails_on('+zxdbc', "Can't infer the SQL type to use for an instance of org.python.core.PyObjectDerived.")
     def test_extract(self):
         fivedaysago = datetime.datetime.now() - datetime.timedelta(days=5)
         for field, exp in (
