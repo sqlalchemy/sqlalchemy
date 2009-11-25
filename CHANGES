@@ -99,6 +99,11 @@ CHANGES
     may break queries with literal expressions that do not have labels
     applied (i.e. literal('foo'), etc.)
     [ticket:1568]
+  
+  - relation primaryjoin and secondaryjoin now check that they
+    are column-expressions, not just clause elements.  this prohibits
+    things like FROM expressions being placed there directly.
+    [ticket:1622]
     
   - the "dont_load=True" flag on Session.merge() is deprecated
     and is now "load=False".

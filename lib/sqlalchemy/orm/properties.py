@@ -743,7 +743,7 @@ class RelationProperty(StrategizedProperty):
         for attr in ('primaryjoin', 'secondaryjoin'):
             val = getattr(self, attr)
             if val is not None:
-                util.assert_arg_type(val, sql.ClauseElement, attr)
+                util.assert_arg_type(val, sql.ColumnElement, attr)
                 setattr(self, attr, _orm_deannotate(val))
         
         if self.order_by is not False and self.order_by is not None:

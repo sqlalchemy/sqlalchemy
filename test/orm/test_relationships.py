@@ -886,7 +886,24 @@ class JoinConditionErrorTest(testing.TestBase):
             c2 = relation(C1, primaryjoin="x"=="y")
 
         assert_raises(sa.exc.ArgumentError, compile_mappers)
-        
+    
+    def test_only_column_elements(self):
+        m = MetaData()
+        t1 = Table('t1', m, 
+            Column('id', Integer, primary_key=True),
+            Column('foo_id', Integer, ForeignKey('t2.id')),
+        )
+        t2 = Table('t2', m,
+            Column('id', Integer, primary_key=True),
+            )
+        class C1(object):
+            pass
+        class C2(object):
+            pass
+
+        mapper(C1, t1, properties={'c2':relation(C2,  primaryjoin=t1.join(t2))})
+        mapper(C2, t2)
+        assert_raises(sa.exc.ArgumentError, compile_mappers)
     
     def test_fk_error_raised(self):
         m = MetaData()
