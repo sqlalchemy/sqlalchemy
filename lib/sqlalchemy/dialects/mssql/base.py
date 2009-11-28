@@ -286,8 +286,14 @@ class _MSNumeric(sqltypes.Numeric):
                     return value
             return process
         else:
+            #XXX: if the DBAPI returns a float (this is likely, given the
+            # processor when asdecimal is True), this should be a None
+            # processor instead.
             def process(value):
-                return float(value)
+                if value is not None:
+                    return float(value)
+                else:
+                    return value
             return process
 
     def bind_processor(self, dialect):

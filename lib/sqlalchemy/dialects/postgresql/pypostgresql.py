@@ -22,7 +22,7 @@ class PGNumeric(sqltypes.Numeric):
             return None
         else:
             def process(value):
-                if isinstance(value, decimal.Decimal):
+                if value is not None:
                     return float(value)
                 else:
                     return value

@@ -38,9 +38,9 @@ class _PlainQuery(unicode):
 class _oursqlNumeric(NUMERIC):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            return
+            return None
         def process(value):
-            if isinstance(value, decimal.Decimal):
+            if value is not None:
                 return float(value)
             else:
                 return value
