@@ -377,11 +377,11 @@ def relation(argument, secondary=None, **kwargs):
       use ``post_update`` to "break" the cycle.
 
     :param primaryjoin:
-      a ClauseElement that will be used as the primary join of this
-      child object against the parent object, or in a many-to-many
-      relationship the join of the primary object to the association
-      table. By default, this value is computed based on the foreign
-      key relationships of the parent and child tables (or association
+      a ColumnElement (i.e. WHERE criterion) that will be used as the primary
+      join of this child object against the parent object, or in a
+      many-to-many relationship the join of the primary object to the
+      association table. By default, this value is computed based on the
+      foreign key relationships of the parent and child tables (or association
       table).
 
     :param remote_side:
@@ -389,9 +389,9 @@ def relation(argument, secondary=None, **kwargs):
       list of columns that form the "remote side" of the relationship.
 
     :param secondaryjoin:
-      a ClauseElement that will be used as the join of an association
-      table to the child object. By default, this value is computed
-      based on the foreign key relationships of the association and
+      a ColumnElement (i.e. WHERE criterion) that will be used as the join of
+      an association table to the child object. By default, this value is
+      computed based on the foreign key relationships of the association and
       child tables.
 
     :param single_parent=(True|False):
