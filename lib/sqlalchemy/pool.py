@@ -429,7 +429,10 @@ class _CursorFairy(object):
         
     def invalidate(self, e=None):
         self.__parent.invalidate(e=e)
-
+    
+    def __iter__(self):
+        return iter(self.cursor)
+        
     def close(self):
         try:
             self.cursor.close()

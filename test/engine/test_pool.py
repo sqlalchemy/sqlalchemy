@@ -1,7 +1,8 @@
 import threading, time, gc
 from sqlalchemy import pool, interfaces
 import sqlalchemy as tsa
-from sqlalchemy.test import TestBase
+from sqlalchemy.test import TestBase, testing
+from sqlalchemy.test.testing import eq_
 
 
 mcid = 1
@@ -75,7 +76,14 @@ class PoolTest(PoolTestBase):
         self.assert_(connection.cursor() is not None)
         self.assert_(connection is not connection2)
 
-
+    def test_cursor_iterable(self):
+        conn = testing.db.raw_connection()
+        cursor = conn.cursor()
+        cursor.execute("select 1")
+        expected = [(1,)]
+        for row in cursor:
+            eq_(row, expected.pop(0))
+        
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
 
