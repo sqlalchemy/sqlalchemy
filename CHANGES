@@ -764,6 +764,10 @@ CHANGES
       elements to render correctly even if they all render
       identically, such as "qmark" style bind parameters.
       [ticket:1574]
+    
+    - The cursor associated with connection pool connections
+      (i.e. _CursorFairy) now proxies `__iter__()` to the 
+      underlying cursor correctly. [ticket:1632]
       
 - postgresql
     - Added support for reflecting the DOUBLE PRECISION type,
