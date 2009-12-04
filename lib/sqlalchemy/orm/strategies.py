@@ -195,7 +195,7 @@ log.class_logger(CompositeColumnLoader)
     
 class DeferredColumnLoader(LoaderStrategy):
     """Strategize the loading of a deferred column-based MapperProperty."""
-    
+
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         col = self.columns[0]
         if adapter:

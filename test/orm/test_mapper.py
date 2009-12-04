@@ -806,6 +806,26 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(assert_col, [('get', 'jack'), ('set', 'foo'), ('get', 'foo')])
 
     @testing.resolve_artifact_names
+    def test_synonym_map_column_conflict(self):
+        assert_raises(
+            sa.exc.ArgumentError,
+            mapper,
+            User, users, properties=util.OrderedDict([
+                ('_user_id', users.c.id),
+                ('id', synonym('_user_id', map_column=True)),
+            ])
+        )
+
+        assert_raises(
+            sa.exc.ArgumentError,
+            mapper,
+            User, users, properties=util.OrderedDict([
+                ('id', synonym('_user_id', map_column=True)),
+                ('_user_id', users.c.id),
+            ])
+        )
+
+    @testing.resolve_artifact_names
     def test_comparable(self):
         class extendedproperty(property):
             attribute = 123

@@ -616,8 +616,26 @@ class Mapper(object):
                     raise sa_exc.ArgumentError(
                         "Can't compile synonym '%s': no column on table '%s' named '%s'" 
                          % (prop.name, self.mapped_table.description, key))
-                self._configure_property(prop.name, ColumnProperty(self.mapped_table.c[key]), init=init, setparent=setparent)
-
+                elif self.mapped_table.c[key] in self._columntoproperty and \
+                        self._columntoproperty[self.mapped_table.c[key]].key == prop.name:
+                    raise sa_exc.ArgumentError(
+                                "Can't call map_column=True for synonym %r=%r, "
+                                "a ColumnProperty already exists keyed to the name %r "
+                                "for column %r" % 
+                                (key, prop.name, prop.name, key)
+                            )
+                p = ColumnProperty(self.mapped_table.c[key])
+                self._configure_property(prop.name, p, init=init, setparent=setparent)
+                p._mapped_by_synonym = key
+        
+        if key in self._props and getattr(self._props[key], '_mapped_by_synonym', False):
+            syn = self._props[key]._mapped_by_synonym
+            raise sa_exc.ArgumentError(
+                        "Can't call map_column=True for synonym %r=%r, "
+                        "a ColumnProperty already exists keyed to the name "
+                        "%r for column %r" % (syn, key, key, syn)
+                    )
+            
         self._props[key] = prop
         prop.key = key
 

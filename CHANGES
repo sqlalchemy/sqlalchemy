@@ -69,6 +69,13 @@ CHANGES
     in filter criterion against the dynamic relation.
     [ticket:1531]
 
+  - an explicit check occurs when a synonym() is used with 
+    map_column=True, when a ColumnProperty (deferred or otherwise)
+    exists separately in the properties dictionary sent to mapper
+    with the same keyname.   Instead of silently replacing 
+    the existing property (and possible options on that property), 
+    an error is raised.  [ticket:1633]
+    
   - a "dynamic" loader sets up its query criterion at construction
     time so that the actual query is returned from non-cloning
     accessors like "statement".
