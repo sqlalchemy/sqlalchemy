@@ -259,7 +259,11 @@ CHANGES
   - transaction isolation level may be specified with
     create_engine(... isolation_level="..."); available on
     postgresql and sqlite. [ticket:443]
-
+  
+  - fixed the import for entrypoint-driven dialects to 
+    not rely upon silly tb_info trick to determine import
+    error status.  [ticket:1630]
+    
   - added first() method to ResultProxy, returns first row and
     closes result set immediately.
 
