@@ -380,8 +380,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         dialect = cx_oracle.dialect()
 
         for start, test in [
-            (DateTime(), cx_oracle._OracleDateTime),
-            (TIMESTAMP(), cx_oracle._OracleTimestamp),
+            (Date(), cx_oracle._OracleDate),
             (oracle.OracleRaw(), cx_oracle._OracleRaw),
             (String(), String),
             (VARCHAR(), VARCHAR),

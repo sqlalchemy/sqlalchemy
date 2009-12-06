@@ -86,38 +86,10 @@ class _OracleDate(sqltypes.Date):
 
     def result_processor(self, dialect, coltype):
         def process(value):
-            if not isinstance(value, datetime):
-                return value
-            else:
+            if value is not None:
                 return value.date()
-        return process
-
-class _OracleDateTime(sqltypes.DateTime):
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is None or isinstance(value, datetime):
-                return value
             else:
-                # convert cx_oracle datetime object returned pre-python 2.4
-                return datetime(value.year, value.month,
-                    value.day,value.hour, value.minute, value.second)
-        return process
-
-# Note:
-# Oracle DATE == DATETIME
-# Oracle does not allow milliseconds in DATE
-# Oracle does not support TIME columns
-
-# only if cx_oracle contains TIMESTAMP
-class _OracleTimestamp(sqltypes.TIMESTAMP):
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is None or isinstance(value, datetime):
                 return value
-            else:
-                # convert cx_oracle datetime object returned pre-python 2.4
-                return datetime(value.year, value.month,
-                    value.day,value.hour, value.minute, value.second)
         return process
 
 class _LOBMixin(object):
@@ -196,13 +168,11 @@ class _OracleRaw(oracle.RAW):
 
 
 colspecs = {
-    sqltypes.DateTime : _OracleDateTime,
     sqltypes.Date : _OracleDate,
     sqltypes.Binary : _OracleBinary,
     sqltypes.Boolean : oracle._OracleBoolean,
     sqltypes.Text : _OracleText,
     sqltypes.UnicodeText : _OracleUnicodeText,
-    sqltypes.TIMESTAMP : _OracleTimestamp,
     sqltypes.CHAR : _OracleChar,
     sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
                                         # it would be nice if we could not use it otherwise.
