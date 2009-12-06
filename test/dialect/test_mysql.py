@@ -357,7 +357,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         meta = MetaData(testing.db)
         bool_table = Table('mysql_bool', meta,
                            Column('b1', BOOLEAN),
-                           Column('b2', mysql.MSBoolean),
+                           Column('b2', Boolean),
                            Column('b3', mysql.MSTinyInteger(1)),
                            Column('b4', mysql.MSTinyInteger))
 
@@ -1068,7 +1068,6 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             # testing
             (Boolean, "t.col"),
             (BOOLEAN, "t.col"),
-            (m.MSBoolean, "t.col"),
 
             (m.MSEnum, "t.col"),
             (m.MSEnum("1", "2"), "t.col"),

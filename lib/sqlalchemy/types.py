@@ -87,9 +87,11 @@ class AbstractType(Visitable):
         return False
 
     def get_dbapi_type(self, dbapi):
-        """Return the corresponding type object from the underlying DB-API, if any.
+        """Return the corresponding type object from the underlying DB-API, if
+        any.
+        
+         This can be useful for calling ``setinputsizes()``, for example.
 
-        This can be useful for calling ``setinputsizes()``, for example.
         """
         return None
 
@@ -98,6 +100,7 @@ class AbstractType(Visitable):
         translate it to a new operator based on the semantics of this type.
 
         By default, returns the operator unchanged.
+
         """
         return op
 
@@ -1101,7 +1104,7 @@ class PickleType(MutableType, TypeDecorator):
         return self.mutable
 
 
-class Boolean(TypeEngine):
+class Boolean(TypeEngine, SchemaType):
     """A bool datatype.
 
     Boolean typically uses BOOLEAN or SMALLINT on the DDL side, and on
@@ -1110,6 +1113,44 @@ class Boolean(TypeEngine):
     """
 
     __visit_name__ = 'boolean'
+
+    def __init__(self, create_constraint=True, name=None):
+        """Construct a Boolean.
+        
+        :param create_constraint: defaults to True.  If the boolean 
+        is generated as an int/smallint, also create a CHECK constraint
+        on the table that ensures 1 or 0 as a value.
+        
+        :param name: if a CHECK constraint is generated, specify
+        the name of the constraint.
+        
+        """
+        self.create_constraint = create_constraint
+        self.name = name
+        
+    def _set_table(self, table, column):
+        if not self.create_constraint:
+            return
+            
+        def should_create_constraint(compiler):
+            return not compiler.dialect.supports_native_boolean
+
+        e = schema.CheckConstraint(
+                        column.in_([0, 1]),
+                        name=self.name,
+                        _create_rule=should_create_constraint
+                    )
+        table.append_constraint(e)
+    
+    def result_processor(self, dialect, coltype):
+        if dialect.supports_native_boolean:
+            return None
+        else:
+            def process(value):
+                if value is None:
+                    return None
+                return value and True or False
+            return process
 
 class Interval(TypeDecorator):
     """A type for ``datetime.timedelta()`` objects.

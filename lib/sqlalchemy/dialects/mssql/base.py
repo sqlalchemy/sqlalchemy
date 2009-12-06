@@ -604,25 +604,6 @@ class IMAGE(sqltypes.Binary):
 class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
     
-class _MSBoolean(sqltypes.Boolean):
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is None:
-                return None
-            return value and True or False
-        return process
-
-    def bind_processor(self, dialect):
-        def process(value):
-            if value is True:
-                return 1
-            elif value is False:
-                return 0
-            elif value is None:
-                return None
-            else:
-                return value and True or False
-        return process
 
 class MONEY(sqltypes.TypeEngine):
     __visit_name__ = 'MONEY'
@@ -640,7 +621,6 @@ class SQL_VARIANT(sqltypes.TypeEngine):
 MSNumeric = _MSNumeric
 MSDateTime = _MSDateTime
 MSDate = _MSDate
-MSBoolean = _MSBoolean
 MSReal = REAL
 MSTinyInteger = TINYINT
 MSTime = TIME
@@ -667,7 +647,6 @@ colspecs = {
     sqltypes.DateTime : _MSDateTime,
     sqltypes.Date : _MSDate,
     sqltypes.Time : TIME,
-    sqltypes.Boolean : _MSBoolean,
 }
 
 ischema_names = {
@@ -1137,6 +1116,7 @@ class MSDialect(default.DefaultDialect):
     colspecs = colspecs
     ischema_names = ischema_names
     
+    supports_native_boolean = False
     supports_unicode_binds = True
     postfetch_lastrowid = True
     

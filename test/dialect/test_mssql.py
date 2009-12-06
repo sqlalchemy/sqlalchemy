@@ -921,7 +921,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
 
         columns = [
             # column type, args, kwargs, expected ddl
-            (mssql.MSBoolean, [], {},
+            (Boolean, [], {},
              'BIT'),
            ]
 

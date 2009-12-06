@@ -525,6 +525,7 @@ class PGDialect(default.DefaultDialect):
     supports_sane_rowcount = True
     
     supports_native_enum = True
+    supports_native_boolean = True
     
     supports_sequences = True
     sequences_optional = True

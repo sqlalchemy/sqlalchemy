@@ -19,7 +19,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
         meta = MetaData(testing.db)
         t = Table('bool_table', meta,
                   Column('id', Integer, primary_key=True),
-                  Column('boo', Boolean))
+                  Column('boo', Boolean(create_constraint=False)))
 
         try:
             meta.create_all()
@@ -29,12 +29,18 @@ class TestTypes(TestBase, AssertsExecutionResults):
             testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (4, '0');")
             testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (5, 1);")
             testing.db.execute("INSERT INTO bool_table (id, boo) VALUES (6, 0);")
-            assert t.select(t.c.boo).order_by(t.c.id).execute().fetchall() == [(3, True,), (5, True,)]
+            eq_(
+                t.select(t.c.boo).order_by(t.c.id).execute().fetchall(),
+                [(3, True,), (5, True,)]
+            )
         finally:
             meta.drop_all()
 
     def test_string_dates_raise(self):
-        assert_raises(TypeError, testing.db.execute, select([1]).where(bindparam("date", type_=Date)), date=str(datetime.date(2007, 10, 30)))
+        assert_raises(TypeError, 
+                        testing.db.execute, 
+                        select([1]).where(bindparam("date", type_=Date)), 
+                        date=str(datetime.date(2007, 10, 30)))
     
     def test_time_microseconds(self):
         dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)  # 125 usec

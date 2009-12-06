@@ -844,26 +844,60 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         bool_table = Table('booltest', metadata,
             Column('id', Integer, primary_key=True),
-            Column('value', Boolean))
+            Column('value', Boolean),
+            Column('unconstrained_value', Boolean(create_constraint=False)),
+            )
         bool_table.create()
+        
     @classmethod
     def teardown_class(cls):
         bool_table.drop()
-    def testbasic(self):
+    
+    def teardown(self):
+        bool_table.delete().execute()
+        
+    def test_boolean(self):
         bool_table.insert().execute(id=1, value=True)
         bool_table.insert().execute(id=2, value=False)
         bool_table.insert().execute(id=3, value=True)
         bool_table.insert().execute(id=4, value=True)
         bool_table.insert().execute(id=5, value=True)
+        bool_table.insert().execute(id=6, value=None)
 
-        res = bool_table.select(
+        res = select([bool_table.c.id, bool_table.c.value]).where(
             bool_table.c.value == True
             ).order_by(bool_table.c.id).execute().fetchall()
         eq_(res, [(1, True), (3, True), (4, True), (5, True)])
 
-        res2 = bool_table.select(bool_table.c.value == False).execute().fetchall()
+        res2 = select([bool_table.c.id, bool_table.c.value]).where(
+                    bool_table.c.value == False).execute().fetchall()
         eq_(res2, [(2, False)])
 
+        res3 = select([bool_table.c.id, bool_table.c.value]).\
+                order_by(bool_table.c.id).\
+                execute().fetchall()
+        eq_(res3, [(1, True), (2, False), 
+                    (3, True), (4, True), 
+                    (5, True), (6, None)])
+        
+        # ensure we're getting True/False, not just ints
+        assert res3[0][1] is True
+        assert res3[1][1] is False
+    
+    @testing.fails_on('mysql', 
+            "The CHECK clause is parsed but ignored by all storage engines.")
+    @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
+    def test_constraint(self):
+        assert_raises((exc.IntegrityError, exc.ProgrammingError),
+                        testing.db.execute, 
+                        "insert into booltest (id, value) values(1, 5)")
+
+    @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
+    def test_unconstrained(self):
+        testing.db.execute(
+            "insert into booltest (id, unconstrained_value) values (1, 5)")
+    
+        
 class PickleTest(TestBase):
     def test_eq_comparison(self):
         p1 = PickleType()

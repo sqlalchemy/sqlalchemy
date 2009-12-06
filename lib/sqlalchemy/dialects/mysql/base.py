@@ -167,6 +167,13 @@ available.
 
       update(..., mysql_limit=10)
 
+Boolean Types
+-------------
+
+MySQL's BOOL type is a synonym for SMALLINT, so is actually a numeric value,
+and additionally MySQL doesn't support CHECK constraints. Therefore SQLA's
+Boolean type cannot fully constrain values to just "True" and "False" the way it does for most other backends.
+
 Troubleshooting
 ---------------
 
@@ -1080,32 +1087,7 @@ class SET(_StringType):
                 return value
         return process
 
-class _MSBoolean(sqltypes.Boolean):
-    """MySQL BOOLEAN type."""
-
-    __visit_name__ = 'BOOLEAN'
-
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is None:
-                return None
-            return value and True or False
-        return process
-
-    def bind_processor(self, dialect):
-        def process(value):
-            if value is True:
-                return 1
-            elif value is False:
-                return 0
-            elif value is None:
-                return None
-            else:
-                return value and True or False
-        return process
-
 # old names
-MSBoolean = _MSBoolean
 MSTime = _MSTime
 MSSet = SET
 MSEnum = ENUM
@@ -1141,7 +1123,6 @@ colspecs = {
     sqltypes.Numeric: NUMERIC,
     sqltypes.Float: FLOAT,
     sqltypes.Binary: _BinaryType,
-    sqltypes.Boolean: _MSBoolean,
     sqltypes.Time: _MSTime,
     sqltypes.Enum: ENUM,
 }
@@ -1656,7 +1637,6 @@ class MySQLDialect(default.DefaultDialect):
     max_identifier_length = 255
     
     supports_native_enum = True
-    supports_native_boolean = True
     
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False

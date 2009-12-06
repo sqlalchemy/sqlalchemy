@@ -689,6 +689,15 @@ CHANGES
       native enum support will by generate VARCHAR + an inline CHECK
       constraint to enforce the enum.
       [ticket:1109] [ticket:1511]
+    
+    - The Boolean type, when used on a backend that doesn't 
+      have native boolean support, will generate a CHECK 
+      constraint "col IN (0, 1)" along with the int/smallint-
+      based column type.  This can be switched off if 
+      desired with create_constraint=False. 
+      Note that MySQL has no native boolean *or* CHECK constraint
+      support so this feature isn't available on that platform.
+      [ticket:1589]
       
     - PickleType now uses == for comparison of values when
       mutable=True, unless the "comparator" argument with a

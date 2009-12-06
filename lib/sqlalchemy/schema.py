@@ -519,89 +519,97 @@ class Column(SchemaItem, expression.ColumnClause):
             to generate primary key identifiers (i.e. Firebird, Postgresql, 
             Oracle).
 
-        :param default: A scalar, Python callable, or :class:`~sqlalchemy.sql.expression.ClauseElement`
-          representing the *default value* for this column, which will be
-          invoked upon insert if this column is otherwise not specified
-          in the VALUES clause of the insert.  This is a shortcut
-          to using :class:`ColumnDefault` as a positional argument.
+        :param default: A scalar, Python callable, or
+            :class:`~sqlalchemy.sql.expression.ClauseElement` representing the
+            *default value* for this column, which will be invoked upon insert
+            if this column is otherwise not specified in the VALUES clause of
+            the insert. This is a shortcut to using :class:`ColumnDefault` as
+            a positional argument.
           
-          Contrast this argument to ``server_default`` which creates a 
-          default generator on the database side.
+            Contrast this argument to ``server_default`` which creates a 
+            default generator on the database side.
         
-        :param key: An optional string identifier which will identify this ``Column`` 
-            object on the :class:`Table`.  When a key is provided, this is the
-            only identifier referencing the ``Column`` within the application,
-            including ORM attribute mapping; the ``name`` field is used only
-            when rendering SQL.
+        :param key: An optional string identifier which will identify this
+            ``Column`` object on the :class:`Table`. When a key is provided,
+            this is the only identifier referencing the ``Column`` within the
+            application, including ORM attribute mapping; the ``name`` field
+            is used only when rendering SQL.
 
         :param index: When ``True``, indicates that the column is indexed.
-          This is a shortcut for using a :class:`Index` construct on the table.
-          To specify indexes with explicit names or indexes that contain multiple 
-          columns, use the :class:`Index` construct instead.
+            This is a shortcut for using a :class:`Index` construct on the
+            table. To specify indexes with explicit names or indexes that
+            contain multiple columns, use the :class:`Index` construct
+            instead.
 
-        :param info: A dictionary which defaults to ``{}``.  A space to store application 
-          specific data. This must be a dictionary.
+        :param info: A dictionary which defaults to ``{}``. A space to store
+            application specific data. This must be a dictionary.
 
-        :param nullable: If set to the default of ``True``, indicates the column
-            will be rendered as allowing NULL, else it's rendered as NOT NULL.
-            This parameter is only used when issuing CREATE TABLE statements.
+        :param nullable: If set to the default of ``True``, indicates the 
+            column will be rendered as allowing NULL, else it's rendered as
+            NOT NULL. This parameter is only used when issuing CREATE TABLE
+            statements.
 
-        :param onupdate: A scalar, Python callable, or :class:`~sqlalchemy.sql.expression.ClauseElement`
-            representing a default value to be applied to the column within UPDATE
-            statements, which wil be invoked upon update if this column is not present
-            in the SET clause of the update.  This is a shortcut to using 
-            :class:`ColumnDefault` as a positional argument with ``for_update=True``.
+        :param onupdate: A scalar, Python callable, or
+            :class:`~sqlalchemy.sql.expression.ClauseElement` representing a
+            default value to be applied to the column within UPDATE
+            statements, which wil be invoked upon update if this column is not
+            present in the SET clause of the update. This is a shortcut to
+            using :class:`ColumnDefault` as a positional argument with
+            ``for_update=True``.
             
         :param primary_key: If ``True``, marks this column as a primary key
-            column.  Multiple columns can have this flag set to specify composite
-            primary keys.  As an alternative, the primary key of a :class:`Table` can
-            be specified via an explicit :class:`PrimaryKeyConstraint` object.
+            column. Multiple columns can have this flag set to specify
+            composite primary keys. As an alternative, the primary key of a
+            :class:`Table` can be specified via an explicit
+            :class:`PrimaryKeyConstraint` object.
 
-        :param server_default: A :class:`FetchedValue` instance, str, Unicode or
-          :func:`~sqlalchemy.sql.expression.text` construct representing 
-          the DDL DEFAULT value for the column.
+        :param server_default: A :class:`FetchedValue` instance, str, Unicode
+            or :func:`~sqlalchemy.sql.expression.text` construct representing
+            the DDL DEFAULT value for the column.
 
-          String types will be emitted as-is, surrounded by single quotes::
+            String types will be emitted as-is, surrounded by single quotes::
 
-              Column('x', Text, server_default="val")
+                Column('x', Text, server_default="val")
 
-              x TEXT DEFAULT 'val'
+                x TEXT DEFAULT 'val'
 
-          A :func:`~sqlalchemy.sql.expression.text` expression will be 
-          rendered as-is, without quotes::
+            A :func:`~sqlalchemy.sql.expression.text` expression will be
+            rendered as-is, without quotes::
 
-              Column('y', DateTime, server_default=text('NOW()'))0
+                Column('y', DateTime, server_default=text('NOW()'))0
 
-              y DATETIME DEFAULT NOW()
+                y DATETIME DEFAULT NOW()
 
-          Strings and text() will be converted into a :class:`DefaultClause`
-          object upon initialization.
+            Strings and text() will be converted into a :class:`DefaultClause`
+            object upon initialization.
           
-          Use :class:`FetchedValue` to indicate that an already-existing column will generate
-          a default value on the database side which will be available to SQLAlchemy 
-          for post-fetch after inserts.  
-          This construct does not specify any DDL and the implementation is 
-          left to the database, such as via a trigger.
+            Use :class:`FetchedValue` to indicate that an already-existing
+            column will generate a default value on the database side which
+            will be available to SQLAlchemy for post-fetch after inserts. This
+            construct does not specify any DDL and the implementation is left
+            to the database, such as via a trigger.
 
-        :param server_onupdate:   A :class:`FetchedValue` instance representing 
-            a database-side default generation function.  This indicates to 
-            SQLAlchemy that a newly generated value will be available after updates.
-            This construct does not specify any DDL and the implementation is 
-            left to the database, such as via a trigger.
+        :param server_onupdate:   A :class:`FetchedValue` instance
+             representing a database-side default generation function. This
+             indicates to SQLAlchemy that a newly generated value will be
+             available after updates. This construct does not specify any DDL
+             and the implementation is left to the database, such as via a
+             trigger.
 
-        :param quote: Force quoting of this column's name on or off, corresponding
-           to ``True`` or ``False``.  When left at its default of ``None``,
-           the column identifier will be quoted according to whether the name is
-           case sensitive (identifiers with at least one upper case character are 
-           treated as case sensitive), or if it's a reserved word.  This flag 
-           is only needed to force quoting of a reserved word which is not known
-           by the SQLAlchemy dialect.
+        :param quote: Force quoting of this column's name on or off,
+             corresponding to ``True`` or ``False``. When left at its default
+             of ``None``, the column identifier will be quoted according to
+             whether the name is case sensitive (identifiers with at least one
+             upper case character are treated as case sensitive), or if it's a
+             reserved word. This flag is only needed to force quoting of a
+             reserved word which is not known by the SQLAlchemy dialect.
 
-        :param unique: When ``True``, indicates that this column contains a unique
-            constraint, or if ``index`` is ``True`` as well, indicates that the
-            :class:`Index` should be created with the unique flag.  To specify multiple
-            columns in the constraint/index or to specify an explicit name,
-            use the :class:`UniqueConstraint` or :class:`Index` constructs explicitly.
+        :param unique: When ``True``, indicates that this column contains a
+             unique constraint, or if ``index`` is ``True`` as well, indicates
+             that the :class:`Index` should be created with the unique flag.
+             To specify multiple columns in the constraint/index or to specify
+             an explicit name, use the :class:`UniqueConstraint` or
+             :class:`Index` constructs explicitly.
 
         """
 
@@ -640,8 +648,12 @@ class Column(SchemaItem, expression.ColumnClause):
         self.constraints = set()
         self.foreign_keys = util.OrderedSet()
         self._table_events = set()
-        
-        if isinstance(self.type, types.SchemaType):
+
+        # check if this Column is proxying another column
+        if '_proxies' in kwargs:
+            self.proxies = kwargs.pop('_proxies')
+        # otherwise, add DDL-related events
+        elif isinstance(self.type, types.SchemaType):
             self.type._set_parent(self)
             
         if self.default is not None:
@@ -649,6 +661,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 args.append(self.default)
             else:
                 args.append(ColumnDefault(self.default))
+
         if self.server_default is not None:
             if isinstance(self.server_default, FetchedValue):
                 args.append(self.server_default)
@@ -812,9 +825,8 @@ class Column(SchemaItem, expression.ColumnClause):
             key = name or self.key, 
             primary_key = self.primary_key, 
             nullable = self.nullable, 
-            quote=self.quote, *fk)
+            quote=self.quote, _proxies=[self], *fk)
         c.table = selectable
-        c.proxies = [self]
         selectable.columns.add(c)
         if self.primary_key:
             selectable.primary_key.add(c)

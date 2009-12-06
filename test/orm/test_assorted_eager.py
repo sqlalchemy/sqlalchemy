@@ -21,18 +21,12 @@ class EagerTest(_base.MappedTest):
     
     @classmethod
     def define_tables(cls, metadata):
-        # determine a literal value for "false" based on the dialect
-        # FIXME: this DefaultClause setup is bogus.
-
-        dialect = testing.db.dialect
-        bp = sa.Boolean().dialect_impl(dialect).bind_processor(dialect)
-
-        if bp:
-            false = str(bp(False))
-        elif testing.against('maxdb'):
-            false = text('FALSE')
+        
+        if testing.db.dialect.supports_native_boolean:
+            false = 'false'
         else:
-            false = str(False)
+            false = "0"
+            
         cls.other_artifacts['false'] = false
 
         Table('owners', metadata ,

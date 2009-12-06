@@ -146,23 +146,7 @@ class TIME(_DateTimeMixin, sqltypes.Time):
     def result_processor(self, dialect, coltype):
         return self._result_processor(datetime.time)
 
-class _SLBoolean(sqltypes.Boolean):
-    def bind_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            return value and 1 or 0
-        return process
-
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is None:
-                return None
-            return value == 1
-        return process
-
 colspecs = {
-    sqltypes.Boolean: _SLBoolean,
     sqltypes.Date: DATE,
     sqltypes.DateTime: DATETIME,
     sqltypes.Float: _SLFloat,
