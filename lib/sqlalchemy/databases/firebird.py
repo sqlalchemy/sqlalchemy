@@ -174,7 +174,7 @@ class FBDateTime(sqltypes.DateTime):
         return process
 
 
-class FBDate(sqltypes.DateTime):
+class FBDate(sqltypes.Date):
     """Handle ``DATE`` datatype."""
 
     def get_col_spec(self):

@@ -79,7 +79,10 @@ CHANGES
       precedence rules to the "::" operator when applying
       the "timestamp" cast - ensures proper parenthesization.  
       [ticket:1611]
-      
+
+- firebird
+    - FBDate now extends Date instead of DateTime. [ticket:1573]
+    
 - mssql
     - Changed the name of TrustedConnection to 
       Trusted_Connection when constructing pyodbc connect
