@@ -836,7 +836,13 @@ class Binary(TypeEngine):
         return dbapi.BINARY
 
 class SchemaType(object):
-    """Mark a type as possibly requiring schema-level DDL for usage."""
+    """Mark a type as possibly requiring schema-level DDL for usage.
+    
+    Supports types that must be explicitly created/dropped (i.e. PG ENUM type)
+    as well as types that are complimented by table or schema level
+    constraints, triggers, and other rules.
+    
+    """
     
     def __init__(self, **kw):
         self.name = kw.pop('name', None)
@@ -867,6 +873,8 @@ class SchemaType(object):
         return self.metadata and self.metadata.bind or None
         
     def create(self, bind=None, checkfirst=False):
+        """Issue CREATE ddl for this type, if applicable."""
+        
         from sqlalchemy.schema import _bind_or_error
         if bind is None:
             bind = _bind_or_error(self)
@@ -875,6 +883,8 @@ class SchemaType(object):
             t.create(bind=bind, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=False):
+        """Issue DROP ddl for this type, if applicable."""
+
         from sqlalchemy.schema import _bind_or_error
         if bind is None:
             bind = _bind_or_error(self)
@@ -983,12 +993,16 @@ class Enum(String, SchemaType):
         if self.native_enum:
             SchemaType._set_table(self, table, column)
             
-        # this constraint DDL object is conditionally
-        # compiled by MySQL, Postgresql based on
-        # the native_enum flag.
-        table.append_constraint(
-            EnumConstraint(self, column)
-        )
+        def should_create_constraint(compiler):
+            return not self.native_enum or \
+                        not compiler.dialect.supports_native_enum
+
+        e = schema.CheckConstraint(
+                        column.in_(self.enums),
+                        name=self.name,
+                        _create_rule=should_create_constraint
+                    )
+        table.append_constraint(e)
         
     def adapt(self, impltype):
         return impltype(name=self.name, 
@@ -1000,14 +1014,6 @@ class Enum(String, SchemaType):
                         *self.enums
                         )
 
-class EnumConstraint(schema.CheckConstraint):
-    __visit_name__ = 'enum_constraint'
-    
-    def __init__(self, type_, column, **kw):
-        super(EnumConstraint, self).__init__('', name=type_.name, **kw)
-        self.type = type_
-        self.column = column
-    
 class PickleType(MutableType, TypeDecorator):
     """Holds Python objects.
 

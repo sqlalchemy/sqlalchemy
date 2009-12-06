@@ -79,6 +79,26 @@ def find_columns(clause):
     visitors.traverse(clause, {}, {'column':cols.add})
     return cols
 
+def expression_as_ddl(clause):
+    """Given a SQL expression, convert for usage in DDL, such as 
+     CREATE INDEX and CHECK CONSTRAINT.
+     
+     Converts bind params into quoted literals, column identifiers
+     into detached column constructs so that the parent table
+     identifier is not included.
+    
+    """
+    def repl(element):
+        if isinstance(element, expression._BindParamClause):
+            return expression.literal_column(repr(element.value))
+        elif isinstance(element, expression.ColumnClause) and \
+                element.table is not None:
+            return expression.column(element.name)
+        else:
+            return None
+        
+    return visitors.replacement_traverse(clause, {}, repl)
+    
 def adapt_criterion_to_null(crit, nulls):
     """given criterion containing bind params, convert selected elements to IS NULL."""
 

@@ -74,7 +74,7 @@ import re
 from sqlalchemy import schema as sa_schema
 from sqlalchemy import sql, schema, exc, util
 from sqlalchemy.engine import base, default, reflection
-from sqlalchemy.sql import compiler, expression
+from sqlalchemy.sql import compiler, expression, util as sql_util
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 
@@ -348,10 +348,6 @@ class PGDDLCompiler(compiler.DDLCompiler):
             colspec += " NOT NULL"
         return colspec
 
-    def visit_enum_constraint(self, constraint):
-        if not constraint.type.native_enum:
-            return super(PGDDLCompiler, self).visit_enum_constraint(constraint)
-            
     def visit_create_enum_type(self, create):
         type_ = create.element
         
@@ -387,11 +383,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             whereclause = None
             
         if whereclause is not None:
-            compiler = self._compile(whereclause, None)
-            # this might belong to the compiler class
-            inlined_clause = str(compiler) % dict(
-                [(key,bind.value) for key,bind in compiler.binds.iteritems()])
-            text += " WHERE " + inlined_clause
+            whereclause = sql_util.expression_as_ddl(whereclause)
+            where_compiled = self.sql_compiler.process(whereclause)
+            text += " WHERE " + where_compiled
         return text
 
 
@@ -529,6 +523,8 @@ class PGDialect(default.DefaultDialect):
     supports_alter = True
     max_identifier_length = 63
     supports_sane_rowcount = True
+    
+    supports_native_enum = True
     
     supports_sequences = True
     sequences_optional = True

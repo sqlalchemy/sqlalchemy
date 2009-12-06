@@ -148,7 +148,7 @@ class MetaDataTest(TestBase, ComparesTables):
                             break
                     else:
                         assert False
-                    assert c.sqltext=="description='hi'"
+                    assert str(c.sqltext)=="description='hi'"
 
                     for c in table_c.constraints:
                         if isinstance(c, UniqueConstraint):

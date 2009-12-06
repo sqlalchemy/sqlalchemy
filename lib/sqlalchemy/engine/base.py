@@ -135,6 +135,27 @@ class Dialect(object):
     supports_default_values
       Indicates if the construct ``INSERT INTO tablename DEFAULT
       VALUES`` is supported
+    
+    supports_sequences
+      Indicates if the dialect supports CREATE SEQUENCE or similar.
+    
+    sequences_optional
+      If True, indicates if the "optional" flag on the Sequence() construct
+      should signal to not generate a CREATE SEQUENCE. Applies only to
+      dialects that support sequences. Currently used only to allow Postgresql
+      SERIAL to be used on a column that specifies Sequence() for usage on
+      other backends.
+        
+    supports_native_enum
+      Indicates if the dialect supports a native ENUM construct.
+      This will prevent types.Enum from generating a CHECK
+      constraint when that type is used.
+
+    supports_native_boolean
+      Indicates if the dialect supports a native boolean construct.
+      This will prevent types.Boolean from generating a CHECK
+      constraint when that type is used.
+      
     """
 
     def create_connect_args(self, url):

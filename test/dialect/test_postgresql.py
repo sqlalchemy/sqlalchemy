@@ -84,19 +84,20 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (%(name)s) RETURNING mytable.myid, mytable.name", dialect=dialect)
         
     def test_create_partial_index(self):
-        tbl = Table('testtbl', MetaData(), Column('data',Integer))
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data',Integer))
         idx = Index('test_idx1', tbl.c.data, postgresql_where=and_(tbl.c.data > 5, tbl.c.data < 10))
 
         self.assert_compile(schema.CreateIndex(idx), 
-            "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgresql.dialect())
-
+            "CREATE INDEX test_idx1 ON testtbl (data) WHERE data > 5 AND data < 10", dialect=postgresql.dialect())
+            
     @testing.uses_deprecated(r".*'postgres_where' argument has been renamed.*")
     def test_old_create_partial_index(self):
         tbl = Table('testtbl', MetaData(), Column('data',Integer))
         idx = Index('test_idx1', tbl.c.data, postgres_where=and_(tbl.c.data > 5, tbl.c.data < 10))
 
         self.assert_compile(schema.CreateIndex(idx), 
-            "CREATE INDEX test_idx1 ON testtbl (data) WHERE testtbl.data > 5 AND testtbl.data < 10", dialect=postgresql.dialect())
+            "CREATE INDEX test_idx1 ON testtbl (data) WHERE data > 5 AND data < 10", dialect=postgresql.dialect())
 
     def test_extract(self):
         t = table('t', column('col1'))
@@ -214,7 +215,7 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             schema.CreateTable(t1),
             "CREATE TABLE sometable ("
             "somecolumn VARCHAR(1), "
-            " CHECK (somecolumn IN ('x','y','z'))"
+            "CHECK (somecolumn IN ('x', 'y', 'z'))"
             ")"
         )
 

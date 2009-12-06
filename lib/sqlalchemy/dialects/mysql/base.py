@@ -1354,12 +1354,6 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         return ' '.join(colspec)
 
-    def visit_enum_constraint(self, constraint):
-        if not constraint.type.native_enum:
-            return super(MySQLDDLCompiler, self).visit_enum_constraint(constraint)
-        else:
-            return None
-
     def post_create_table(self, table):
         """Build table-level CREATE options like ENGINE and COLLATE."""
 
@@ -1660,6 +1654,9 @@ class MySQLDialect(default.DefaultDialect):
     supports_alter = True
     # identifiers are 64, however aliases can be 255...
     max_identifier_length = 255
+    
+    supports_native_enum = True
+    supports_native_boolean = True
     
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False

@@ -660,7 +660,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             schema.CreateTable(t1),
             "CREATE TABLE sometable ("
             "somecolumn VARCHAR(1), "
-            " CHECK (somecolumn IN ('x','y','z'))"
+            "CHECK (somecolumn IN ('x', 'y', 'z'))"
             ")"
         )
         

@@ -36,6 +36,9 @@ class DefaultDialect(base.Dialect):
     postfetch_lastrowid = True
     implicit_returning = False
     
+    supports_native_enum = False
+    supports_native_boolean = False
+    
     # Py3K
     #supports_unicode_statements = True
     #supports_unicode_binds = True

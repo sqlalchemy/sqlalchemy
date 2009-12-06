@@ -922,6 +922,11 @@ class SQLCompiler(engine.Compiled):
 
 
 class DDLCompiler(engine.Compiled):
+    
+    @util.memoized_property
+    def sql_compiler(self):
+        return self.dialect.statement_compiler(self.dialect, self.statement)
+        
     @property
     def preparer(self):
         return self.dialect.identifier_preparer
@@ -982,7 +987,9 @@ class DDLCompiler(engine.Compiled):
         const = ", \n\t".join(p for p in 
                         (self.process(constraint) for constraint in table.constraints 
                         if constraint is not table.primary_key
-                        and constraint.inline_ddl
+                        and (
+                            constraint._create_rule is None or
+                            constraint._create_rule(self))
                         and (
                             not self.dialect.supports_alter or 
                             not getattr(constraint, 'use_alter', False)
@@ -1058,13 +1065,6 @@ class DDLCompiler(engine.Compiled):
     def post_create_table(self, table):
         return ''
 
-    def _compile(self, tocompile, parameters):
-        """compile the given string/parameters using this SchemaGenerator's dialect."""
-        
-        compiler = self.dialect.statement_compiler(self.dialect, tocompile, parameters)
-        compiler.compile()
-        return compiler
-
     def _validate_identifier(self, ident, truncate):
         if truncate:
             if len(ident) > self.dialect.max_identifier_length:
@@ -1082,7 +1082,7 @@ class DDLCompiler(engine.Compiled):
             if isinstance(column.server_default.arg, basestring):
                 return "'%s'" % column.server_default.arg
             else:
-                return unicode(self._compile(column.server_default.arg, None))
+                return self.sql_compiler.process(column.server_default.arg)
         else:
             return None
 
@@ -1091,7 +1091,8 @@ class DDLCompiler(engine.Compiled):
         if constraint.name is not None:
             text += "CONSTRAINT %s " % \
                         self.preparer.format_constraint(constraint)
-        text += " CHECK (%s)" % constraint.sqltext
+        sqltext = sql_util.expression_as_ddl(constraint.sqltext)
+        text += "CHECK (%s)" % self.sql_compiler.process(sqltext)
         text += self.define_constraint_deferrability(constraint)
         return text
 
@@ -1136,17 +1137,6 @@ class DDLCompiler(engine.Compiled):
             text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
         text += " UNIQUE (%s)" % (', '.join(self.preparer.quote(c.name, c.quote) for c in constraint))
         text += self.define_constraint_deferrability(constraint)
-        return text
-
-    def visit_enum_constraint(self, constraint):
-        text = ""
-        if constraint.name is not None:
-            text += "CONSTRAINT %s " % \
-                        self.preparer.format_constraint(constraint)
-        text += " CHECK (%s IN (%s))" % (
-                    self.preparer.format_column(constraint.column),
-                    ",".join("'%s'" % x for x in constraint.type.enums)
-                )
         return text
 
     def define_constraint_cascades(self, constraint):

@@ -319,7 +319,7 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
         constraint = CheckConstraint('a < b',name="my_test_constraint", deferrable=True,initially='DEFERRED', table=t)
         self.assert_compile(
             schema.AddConstraint(constraint),
-            "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+            "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
         )
 
         self.assert_compile(

@@ -39,18 +39,13 @@ class TestTypes(TestBase, AssertsExecutionResults):
     def test_time_microseconds(self):
         dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)  # 125 usec
         eq_(str(dt), '2008-06-27 12:00:00.000125')
-        sldt = sqlite._SLDateTime()
+        sldt = sqlite.DATETIME()
         bp = sldt.bind_processor(None)
         eq_(bp(dt), '2008-06-27 12:00:00.000125')
         
         rp = sldt.result_processor(None, None)
         eq_(rp(bp(dt)), dt)
         
-        sldt.__legacy_microseconds__ = True
-        bp = sldt.bind_processor(None)
-        eq_(bp(dt), '2008-06-27 12:00:00.125')
-        eq_(rp(bp(dt)), dt)
-
     def test_no_convert_unicode(self):
         """test no utf-8 encoding occurs"""
         
