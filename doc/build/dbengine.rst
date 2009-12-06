@@ -56,7 +56,8 @@ Recall that the ``Dialect`` is used to describe how to talk to a specific kind o
 
 Dialects included with SQLAlchemy fall under one of three categories: supported, experimental, and third party.  Supported drivers are those which work against the most common databases available in the open source world, including SQLite, PostgreSQL, MySQL, and Firebird.   Very popular commercial databases which provide easy access to test platforms are also supported, these currently include MSSQL and Oracle.   These dialects are tested frequently and the level of support should be close to 100% for each.
 
-The experimental category is for drivers against less common database platforms, or commercial platforms for which no freely available and easily usable test platform is provided.   These include Access, MaxDB, Informix, and Sybase at the time of this writing.  These are partially-functioning dialects for which the SQLAlchemy project is not able to provide regular test support.  If you're interested in supporting one of these backends, contact the mailing list.
+The experimental category is for drivers against less common database platforms, or commercial platforms for which no freely available and easily usable test platform is provided.   These include Access, MaxDB, Informix, and Sybase at the time of this writing.  These are not-yet-functioning
+or partially-functioning dialects for which the SQLAlchemy project is not able to provide regular test support.  If you're interested in supporting one of these backends, contact the mailing list.
 
 There are also third-party dialects available - currently IBM offers a DB2/Informix IDS dialect for SQLAlchemy.
 
@@ -78,7 +79,7 @@ Downloads for each DBAPI at the time of this writing are as follows:
   - MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_
   - Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
   - Sybase:   TODO
-  - MAXDB:    TODO
+  - MAXDB:    `sapdb <http://www.sapdb.org/sapdbapi.html>`_
 
 * Third Party Dialects
   - DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_

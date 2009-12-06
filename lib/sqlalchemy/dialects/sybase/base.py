@@ -339,6 +339,8 @@ class SybaseDialect(default.DefaultDialect):
     ddl_compiler = SybaseDDLCompiler
     preparer = SybaseIdentifierPreparer
 
+    ported_sqla_06 = False
+
     schema_name = "dba"
 
     def __init__(self, **params):

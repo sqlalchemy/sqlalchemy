@@ -217,6 +217,8 @@ class InformixDialect(default.DefaultDialect):
     colspecs = colspecs
     ischema_names = ischema_names
 
+    ported_sqla_06 = False
+
     def do_begin(self, connect):
         cu = connect.cursor()
         cu.execute('SET LOCK MODE TO WAIT')

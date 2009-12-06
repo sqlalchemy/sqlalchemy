@@ -805,6 +805,8 @@ class MaxDBDialect(default.DefaultDialect):
     ddl_compiler = MaxDBDDLCompiler
     execution_ctx_cls = MaxDBExecutionContext
 
+    ported_sqla_06 = False
+
     colspecs = colspecs
     ischema_names = ischema_names
     

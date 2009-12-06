@@ -70,6 +70,11 @@ class DefaultDialect(base.Dialect):
                  encoding='utf-8', paramstyle=None, dbapi=None,
                  implicit_returning=None,
                  label_length=None, **kwargs):
+                 
+        if not getattr(self, 'ported_sqla_06', True):
+            util.warn(
+                "The %s dialect is not yet ported to SQLAlchemy 0.6" % self.name)
+        
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
         self.encoding = encoding
