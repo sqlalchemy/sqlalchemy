@@ -5,6 +5,8 @@
 
 """Support for the MaxDB database.
 
+This dialect is *not* ported to SQLAlchemy 0.6.
+
 This dialect is *not* tested on SQLAlchemy 0.6.
 
 Overview

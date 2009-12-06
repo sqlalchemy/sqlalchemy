@@ -7,7 +7,9 @@
 
 """Support for the Sybase iAnywhere database.  
 
-This is not a full backend for Sybase ASE.
+This is not (yet) a full backend for Sybase ASE.
+
+This dialect is *not* ported to SQLAlchemy 0.6.
 
 This dialect is *not* tested on SQLAlchemy 0.6.
 
