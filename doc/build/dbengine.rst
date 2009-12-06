@@ -182,7 +182,7 @@ The ``execute()`` methods on both ``Engine`` and ``Connection`` can also receive
         print row['col1'], row['col2']
     connection.close()
 
-The above SQL construct is known as a ``select()``.  The full range of SQL constructs available are described in `sql`.
+The above SQL construct is known as a ``select()``.  The full range of SQL constructs available are described in :ref:`sqlexpression_toplevel`.
 
 Both ``Connection`` and ``Engine`` fulfill an interface known as ``Connectable`` which specifies common functionality between the two objects, namely being able to call ``connect()`` to return a ``Connection`` object (``Connection`` just returns itself), and being able to call ``execute()`` to get a result set.   Following this, most SQLAlchemy functions and objects which accept an ``Engine`` as a parameter or attribute with which to execute SQL will also accept a ``Connection``.  As of SQLAlchemy 0.3.9, this argument is named ``bind``::
 
@@ -253,7 +253,7 @@ The ``Transaction`` object also handles "nested" behavior by keeping track of th
 
 Above, ``method_a`` is called first, which calls ``connection.begin()``.  Then it calls ``method_b``. When ``method_b`` calls ``connection.begin()``, it just increments a counter that is decremented when it calls ``commit()``.  If either ``method_a`` or ``method_b`` calls ``rollback()``, the whole transaction is rolled back.  The transaction is not committed until ``method_a`` calls the ``commit()`` method.  This "nesting" behavior allows the creation of functions which "guarantee" that a transaction will be used if one was not already available, but will automatically participate in an enclosing transaction if one exists.
 
-Note that SQLAlchemy's Object Relational Mapper also provides a way to control transaction scope at a higher level; this is described in `unitofwork_transaction`.
+Note that SQLAlchemy's Object Relational Mapper also provides a way to control transaction scope at a higher level; this is described in :ref:`unitofwork_transaction`.
 
 .. index::
    single: thread safety; transactions
@@ -274,12 +274,14 @@ The above transaction example illustrates how to use ``Transaction`` so that sev
     conn = engine.connect()
     conn.execute("INSERT INTO users VALUES (1, 'john')")  # autocommits
 
+.. _dbengine_implicit:
+
 Connectionless Execution, Implicit Execution 
 =============================================
 
-Recall from the first section we mentioned executing with and without a ``Connection``.  ``Connectionless`` execution refers to calling the ``execute()`` method on an object which is not a ``Connection``, which could be on the ``Engine`` itself, or could be a constructed SQL object.  When we say "implicit", we mean that we are calling the ``execute()`` method on an object which is neither a ``Connection`` nor an ``Engine`` object; this can only be used with constructed SQL objects which have their own ``execute()`` method, and can be "bound" to an ``Engine``.  A description of "constructed SQL objects" may be found in `sql`.
+Recall from the first section we mentioned executing with and without a ``Connection``.  ``Connectionless`` execution refers to calling the ``execute()`` method on an object which is not a ``Connection``, which could be on the ``Engine`` itself, or could be a constructed SQL object.  When we say "implicit", we mean that we are calling the ``execute()`` method on an object which is neither a ``Connection`` nor an ``Engine`` object; this can only be used with constructed SQL objects which have their own ``execute()`` method, and can be "bound" to an ``Engine``.  A description of "constructed SQL objects" may be found in :ref:`sqlexpression_toplevel`.
 
-A summary of all three methods follows below.  First, assume the usage of the following ``MetaData`` and ``Table`` objects; while we haven't yet introduced these concepts, for now you only need to know that we are representing a database table, and are creating an "executable" SQL construct which issues a statement to the database.  These objects are described in `metadata`.
+A summary of all three methods follows below.  First, assume the usage of the following ``MetaData`` and ``Table`` objects; while we haven't yet introduced these concepts, for now you only need to know that we are representing a database table, and are creating an "executable" SQL construct which issues a statement to the database.  These objects are described in :ref:`metadata_toplevel`.
 
 .. sourcecode:: python+sql
 
@@ -310,7 +312,7 @@ Explicit, connectionless execution delivers the expression to the ``execute()`` 
         # ....
     result.close()
 
-Implicit execution is also connectionless, and calls the ``execute()`` method on the expression itself, utilizing the fact that either an ``Engine`` or ``Connection`` has been *bound* to the expression object (binding is discussed further in the next section, `metadata`):
+Implicit execution is also connectionless, and calls the ``execute()`` method on the expression itself, utilizing the fact that either an ``Engine`` or ``Connection`` has been *bound* to the expression object (binding is discussed further in the next section, :ref:`metadata_toplevel`):
 
 .. sourcecode:: python+sql
 

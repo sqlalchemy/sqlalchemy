@@ -213,7 +213,7 @@ When the ``MetaData`` is bound, statements will also compile against the engine'
 
     >>> metadata.bind = None
 
-Detailed examples of connectionless and implicit execution are available in the "Engines" chapter: `dbengine_implicit`.
+Detailed examples of connectionless and implicit execution are available in the "Engines" chapter: :ref:`dbengine_implicit`.
     
 Selecting 
 ==========

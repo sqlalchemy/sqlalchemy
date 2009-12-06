@@ -31,7 +31,7 @@ To represent a Table, use the ``Table`` class::
         Column('pref_value', String(100))
     )
 
-The specific datatypes for each Column, such as Integer, String, etc. are described in `types`, and exist within the module ``sqlalchemy.types`` as well as the global ``sqlalchemy`` namespace.
+The specific datatypes for each Column, such as Integer, String, etc. are described in :mod:`sqlalchemy.types`, and exist within the module ``sqlalchemy.types`` as well as the global ``sqlalchemy`` namespace.
 
 .. _metadata_foreignkeys:
 

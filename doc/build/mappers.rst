@@ -881,6 +881,8 @@ Multiple extensions will be chained together and processed in order; they are sp
 
     m = mapper(User, users_table, extension=[ext1, ext2, ext3])
 
+.. _advdatamapping_relation:
+
 Relation Configuration 
 =======================
 
@@ -1466,7 +1468,7 @@ Dictionary-Based Collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-A ``dict`` can be used as a collection, but a keying strategy is needed to map entities loaded by the ORM to key, value pairs.  The `sqlalchemy.orm.collections` package provides several built-in types for dictionary-based collections:
+A ``dict`` can be used as a collection, but a keying strategy is needed to map entities loaded by the ORM to key, value pairs.  The :mod:`sqlalchemy.orm.collections` package provides several built-in types for dictionary-based collections:
 
 .. sourcecode:: python+sql
 
@@ -1488,7 +1490,7 @@ A ``dict`` can be used as a collection, but a keying strategy is needed to map e
 
 These functions each provide a ``dict`` subclass with decorated ``set`` and ``remove`` methods and the keying strategy of your choice.
 
-The `sqlalchemy.orm.collections.MappedCollection` class can be used as a base class for your custom types or as a mix-in to quickly add ``dict`` collection support to other classes.  It uses a keying function to delegate to ``__setitem__`` and ``__delitem__``:
+The :class:`sqlalchemy.orm.collections.MappedCollection` class can be used as a base class for your custom types or as a mix-in to quickly add ``dict`` collection support to other classes.  It uses a keying function to delegate to ``__setitem__`` and ``__delitem__``:
 
 .. sourcecode:: python+sql
 
@@ -1521,7 +1523,7 @@ The decorations are lightweight and no-op outside of relations, but they do add 
 
 The ORM uses this approach for built-ins, quietly substituting a trivial subclass when a ``list``, ``set`` or ``dict`` is used directly.
 
-The collections package provides additional decorators and support for authoring custom types.  See the `sqlalchemy.orm.collections` for more information and discussion of advanced usage and Python 2.3-compatible decoration options.
+The collections package provides additional decorators and support for authoring custom types.  See the :mod:`sqlalchemy.orm.collections` package for more information and discussion of advanced usage and Python 2.3-compatible decoration options.
 
 Configuring Loader Strategies: Lazy Loading, Eager Loading 
 -----------------------------------------------------------
