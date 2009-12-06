@@ -135,7 +135,7 @@ Frequently Asked Questions
 
     You typically invoke ``Session()`` when you first need to talk to your database, and want to save some objects or load some existing ones.  Then, you work with it, save your changes, and then dispose of it....or at the very least ``close()`` it.  It's not a "global" kind of object, and should be handled more like a "local variable", as it's generally **not** safe to use with concurrent threads.  Sessions are very inexpensive to make, and don't use any resources whatsoever until they are first used...so create some !
 
-    There is also a pattern whereby you're using a **contextual session**, this is described later in `unitofwork_contextual`.  In this pattern, a helper object is maintaining a ``Session`` for you, most commonly one that is local to the current thread (and sometimes also local to an application instance).  SQLAlchemy has worked this pattern out such that it still *looks* like you're creating a new session as you need one...so in that case, it's still a guaranteed win to just say ``Session()`` whenever you want a session.  
+    There is also a pattern whereby you're using a **contextual session**, this is described later in :ref:`unitofwork_contextual`.  In this pattern, a helper object is maintaining a ``Session`` for you, most commonly one that is local to the current thread (and sometimes also local to an application instance).  SQLAlchemy has worked this pattern out such that it still *looks* like you're creating a new session as you need one...so in that case, it's still a guaranteed win to just say ``Session()`` whenever you want a session.  
 
 * Is the Session a cache ? 
 
@@ -197,7 +197,7 @@ To add a list of items to the session at once, use ``add_all()``::
 
     session.add_all([item1, item2, item3])
 
-The ``add()`` operation **cascades** along the ``save-update`` cascade.  For more details see the section `unitofwork_cascades`.
+The ``add()`` operation **cascades** along the ``save-update`` cascade.  For more details see the section :ref:`unitofwork_cascades`.
 
 Merging
 -------
@@ -368,6 +368,8 @@ The session is also keeping track of all newly created (i.e. pending) objects, a
 
 Note that objects within the session are by default *weakly referenced*.  This means that when they are dereferenced in the outside application, they fall out of scope from within the ``Session`` as well and are subject to garbage collection by the Python interpreter.  The exceptions to this include objects which are pending, objects which are marked as deleted, or persistent objects which have pending changes on them.  After a full flush, these collections are all empty, and all objects are again weakly referenced.  To disable the weak referencing behavior and force all objects within the session to remain until explicitly expunged, configure ``sessionmaker()`` with the ``weak_identity_map=False`` setting.
 
+.. _unitofwork_cascades:
+
 Cascades
 ========
 
@@ -387,6 +389,8 @@ The ``customer`` relationship specifies only the "save-update" cascade value, in
 Note that the ``delete-orphan`` cascade only functions for relationships where the target object can have a single parent at a time, meaning it is only appropriate for one-to-one or one-to-many relationships.  For a :func:`~sqlalchemy.orm.relation` which establishes one-to-one via a local foreign key, i.e. a many-to-one that stores only a single parent, or one-to-one/one-to-many via a "secondary" (association) table, a warning will be issued if ``delete-orphan`` is configured.  To disable this warning, also specify the ``single_parent=True`` flag on the relationship, which constrains objects to allow attachment to only one parent at a time.
 
 The default value for ``cascade`` on :func:`~sqlalchemy.orm.relation()` is ``save-update, merge``.
+
+.. _unitofwork_transaction:
 
 Managing Transactions
 =====================
@@ -557,6 +561,8 @@ When using the ``threadlocal`` engine context, the process above is simplified; 
     # ... go nuts
     
     engine.commit() # commit the transaction
+
+.. _unitofwork_contextual:
 
 Contextual/Thread-local Sessions 
 =================================

@@ -795,7 +795,7 @@ If you want to reduce the number of queries (dramatically, in many cases), we ca
     >>> jack.addresses
     [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
-SQLAlchemy has the ability to control exactly which attributes and how many levels deep should be joined together in a single SQL query.  More information on this feature is available in `advdatamapping_relation`.
+SQLAlchemy has the ability to control exactly which attributes and how many levels deep should be joined together in a single SQL query.  More information on this feature is available in :ref:`advdatamapping_relation`.
 
 Querying with Joins
 ====================

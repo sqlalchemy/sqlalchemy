@@ -9,6 +9,9 @@ This is an in-depth discussion of collection mechanics.  For simple examples, se
 
 .. autoclass:: collection
 
+.. autoclass:: sqlalchemy.orm.collections.MappedCollection
+   :members:
+
 .. autofunction:: collection_adapter
 
 .. autofunction:: column_mapped_collection

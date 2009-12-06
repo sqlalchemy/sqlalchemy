@@ -63,25 +63,25 @@ There are also third-party dialects available - currently IBM offers a DB2/Infor
 Downloads for each DBAPI at the time of this writing are as follows:
 
 * Supported Dialects
- - PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_ `pg8000 <http://pybrary.net/pg8000/>`_
- - PostgreSQL on Jython: `PostgreSQL JDBC Driver <http://jdbc.postgresql.org/>`_
- - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
- - MySQL:   `MySQLdb (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_
- - MySQL on Jython: `MySQL Connector/J JDBC driver <http://dev.mysql.com/downloads/connector/j/>`_
- - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
- - Oracle on Jython:  `Oracle JDBC Driver <http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html>`_
- - Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
- - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) `adodbapi <http://adodbapi.sourceforge.net/>`_  `pymssql <http://pymssql.sourceforge.net/>`_
- - MS-SQL on Jython:  `jTDS JDBC Driver <http://jtds.sourceforge.net/>`_
+  - PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_ `pg8000 <http://pybrary.net/pg8000/>`_
+  - PostgreSQL on Jython: `PostgreSQL JDBC Driver <http://jdbc.postgresql.org/>`_
+  - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
+  - MySQL:   `MySQLdb (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_
+  - MySQL on Jython: `MySQL Connector/J JDBC driver <http://dev.mysql.com/downloads/connector/j/>`_
+  - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
+  - Oracle on Jython:  `Oracle JDBC Driver <http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html>`_
+  - Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
+  - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) `adodbapi <http://adodbapi.sourceforge.net/>`_  `pymssql <http://pymssql.sourceforge.net/>`_
+  - MS-SQL on Jython:  `jTDS JDBC Driver <http://jtds.sourceforge.net/>`_
 
 * Experimental Dialects
- - MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_
- - Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
- - Sybase:   TODO
- - MAXDB:    TODO
+  - MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_
+  - Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
+  - Sybase:   TODO
+  - MAXDB:    TODO
 
 * Third Party Dialects
- - DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_
+  - DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_
 
 The SQLAlchemy Wiki contains a page of database notes, describing whatever quirks and behaviors have been observed.  Its a good place to check for issues with specific databases.  `Database Notes <http://www.sqlalchemy.org/trac/wiki/DatabaseNotes>`_
 
@@ -193,7 +193,7 @@ The ``execute()`` methods on both ``Engine`` and ``Connection`` can also receive
         print row['col1'], row['col2']
     connection.close()
 
-The above SQL construct is known as a ``select()``.  The full range of SQL constructs available are described in `sql`.
+The above SQL construct is known as a ``select()``.  The full range of SQL constructs available are described in :ref:`sqlexpression_toplevel`.
 
 Both ``Connection`` and ``Engine`` fulfill an interface known as ``Connectable`` which specifies common functionality between the two objects, namely being able to call ``connect()`` to return a ``Connection`` object (``Connection`` just returns itself), and being able to call ``execute()`` to get a result set.   Following this, most SQLAlchemy functions and objects which accept an ``Engine`` as a parameter or attribute with which to execute SQL will also accept a ``Connection``.  This argument is named ``bind``::
 
@@ -264,7 +264,7 @@ The ``Transaction`` object also handles "nested" behavior by keeping track of th
 
 Above, ``method_a`` is called first, which calls ``connection.begin()``.  Then it calls ``method_b``. When ``method_b`` calls ``connection.begin()``, it just increments a counter that is decremented when it calls ``commit()``.  If either ``method_a`` or ``method_b`` calls ``rollback()``, the whole transaction is rolled back.  The transaction is not committed until ``method_a`` calls the ``commit()`` method.  This "nesting" behavior allows the creation of functions which "guarantee" that a transaction will be used if one was not already available, but will automatically participate in an enclosing transaction if one exists.
 
-Note that SQLAlchemy's Object Relational Mapper also provides a way to control transaction scope at a higher level; this is described in `unitofwork_transaction`.
+Note that SQLAlchemy's Object Relational Mapper also provides a way to control transaction scope at a higher level; this is described in :ref:`unitofwork_transaction`.
 
 .. index::
    single: thread safety; transactions
@@ -284,12 +284,14 @@ The above transaction example illustrates how to use ``Transaction`` so that sev
     conn = engine.connect()
     conn.execute("INSERT INTO users VALUES (1, 'john')")  # autocommits
 
+.. _dbengine_implicit:
+
 Connectionless Execution, Implicit Execution 
 =============================================
 
-Recall from the first section we mentioned executing with and without a ``Connection``.  ``Connectionless`` execution refers to calling the ``execute()`` method on an object which is not a ``Connection``, which could be on the ``Engine`` itself, or could be a constructed SQL object.  When we say "implicit", we mean that we are calling the ``execute()`` method on an object which is neither a ``Connection`` nor an ``Engine`` object; this can only be used with constructed SQL objects which have their own ``execute()`` method, and can be "bound" to an ``Engine``.  A description of "constructed SQL objects" may be found in `sql`.
+Recall from the first section we mentioned executing with and without a ``Connection``.  ``Connectionless`` execution refers to calling the ``execute()`` method on an object which is not a ``Connection``, which could be on the ``Engine`` itself, or could be a constructed SQL object.  When we say "implicit", we mean that we are calling the ``execute()`` method on an object which is neither a ``Connection`` nor an ``Engine`` object; this can only be used with constructed SQL objects which have their own ``execute()`` method, and can be "bound" to an ``Engine``.  A description of "constructed SQL objects" may be found in :ref:`sqlexpression_toplevel`.
 
-A summary of all three methods follows below.  First, assume the usage of the following ``MetaData`` and ``Table`` objects; while we haven't yet introduced these concepts, for now you only need to know that we are representing a database table, and are creating an "executable" SQL construct which issues a statement to the database.  These objects are described in `metadata`.
+A summary of all three methods follows below.  First, assume the usage of the following ``MetaData`` and ``Table`` objects; while we haven't yet introduced these concepts, for now you only need to know that we are representing a database table, and are creating an "executable" SQL construct which issues a statement to the database.  These objects are described in :ref:`metadata_toplevel`.
 
 .. sourcecode:: python+sql
 
@@ -320,7 +322,7 @@ Explicit, connectionless execution delivers the expression to the ``execute()`` 
         # ....
     result.close()
 
-Implicit execution is also connectionless, and calls the ``execute()`` method on the expression itself, utilizing the fact that either an ``Engine`` or ``Connection`` has been *bound* to the expression object (binding is discussed further in the next section, `metadata`):
+Implicit execution is also connectionless, and calls the ``execute()`` method on the expression itself, utilizing the fact that either an ``Engine`` or ``Connection`` has been *bound* to the expression object (binding is discussed further in the next section, :ref:`metadata_toplevel`):
 
 .. sourcecode:: python+sql
 

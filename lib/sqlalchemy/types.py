@@ -157,7 +157,7 @@ class UserDefinedType(TypeEngine):
 
     This should be the base of new types.  Note that
     for most cases, :class:`TypeDecorator` is probably
-    more appropriate.
+    more appropriate::
 
       import sqlalchemy.types as types
 

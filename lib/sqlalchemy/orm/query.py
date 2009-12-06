@@ -1568,29 +1568,27 @@ class Query(object):
         Deletes rows matched by this query from the database.
 
         :param synchronize_session: chooses the strategy for the removal of
-        matched objects from the session. Valid values are:
+            matched objects from the session. Valid values are:
+        
+            False - don't synchronize the session. This option is the most
+            efficient and is reliable once the session is expired, which
+            typically occurs after a commit(), or explicitly using
+            expire_all(). Before the expiration, objects may still remain in
+            the session which were in fact deleted which can lead to confusing
+            results if they are accessed via get() or already loaded
+            collections.
 
-            False
-              don't synchronize the session. This option is the most efficient
-              and is reliable once the session is expired, which typically
-              occurs after a commit(), or explicitly using expire_all().
-              Before the expiration, objects may still remain in the session
-              which were in fact deleted which can lead to confusing results
-              if they are accessed via get() or already loaded collections.
+            'fetch' - performs a select query before the delete to find
+            objects that are matched by the delete query and need to be
+            removed from the session. Matched objects are removed from the
+            session.
 
-            'fetch'
-              performs a select query before the delete to find objects that
-              are matched by the delete query and need to be removed from the
-              session. Matched objects are removed from the session.
-
-            'evaluate'
-              experimental feature. Tries to evaluate the querys criteria in
-              Python straight on the objects in the session. If evaluation of
-              the criteria isn't implemented, the 'fetch' strategy will be
-              used as a fallback.
-              
-               The expression evaluator currently doesn't account for
-              differing string collations between the database and Python.
+            'evaluate' - Evaluate the query's criteria in Python straight on
+            the objects in the session. If evaluation of the criteria isn't
+            implemented, the 'fetch' strategy will be used as a fallback.
+          
+            The expression evaluator currently doesn't account for differing
+            string collations between the database and Python.
 
         Returns the number of rows deleted, excluding any cascades.
 
@@ -1672,29 +1670,29 @@ class Query(object):
 
         Updates rows matched by this query in the database.
 
-        :param values: a dictionary with attributes names as keys and literal values or sql expressions
-            as values.
+        :param values: a dictionary with attributes names as keys and literal
+          values or sql expressions as values.
 
         :param synchronize_session: chooses the strategy to update the
             attributes on objects in the session. Valid values are:
 
-            False
-              don't synchronize the session. This option is the most efficient and is reliable
-              once the session is expired, which typically occurs after a commit(), or explicitly
-              using expire_all().  Before the expiration, updated objects may still remain in the session 
-              with stale values on their attributes, which can lead to confusing results.
+            False - don't synchronize the session. This option is the most
+            efficient and is reliable once the session is expired, which
+            typically occurs after a commit(), or explicitly using
+            expire_all(). Before the expiration, updated objects may still
+            remain in the session with stale values on their attributes, which
+            can lead to confusing results.
               
-            'fetch'
-              performs a select query before the update to find objects that are matched
-              by the update query. The updated attributes are expired on matched objects.
+            'fetch' - performs a select query before the update to find
+            objects that are matched by the update query. The updated
+            attributes are expired on matched objects.
 
-            'evaluate'
-              Tries to evaluate the Query's criteria in Python
-              straight on the objects in the session. If evaluation of the criteria isn't
-              implemented, an exception is raised.
+            'evaluate' - Evaluate the Query's criteria in Python straight on
+            the objects in the session. If evaluation of the criteria isn't
+            implemented, an exception is raised.
 
-              The expression evaluator currently doesn't account for differing string
-              collations between the database and Python.
+            The expression evaluator currently doesn't account for differing
+            string collations between the database and Python.
 
         Returns the number of rows matched by the update.
 
