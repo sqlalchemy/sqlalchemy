@@ -614,6 +614,19 @@ class SQLiteSchemaGenerator(compiler.SchemaGenerator):
             colspec += " NOT NULL"
         return colspec
 
+    def visit_index(self, index):
+        preparer = self.preparer
+        self.append("CREATE ")
+        if index.unique:
+            self.append("UNIQUE ")
+        self.append("INDEX %s ON %s (%s)" \
+                    % (preparer.format_index(index,
+                       name=self._validate_identifier(index.name, True)),
+                       preparer.format_table(index.table, use_schema=False),
+                       ', '.join(preparer.quote(c.name, c.quote)
+                                 for c in index.columns)))
+        self.execute()
+
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = set([
         'add', 'after', 'all', 'alter', 'analyze', 'and', 'as', 'asc',
@@ -637,6 +650,16 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
 
     def __init__(self, dialect):
         super(SQLiteIdentifierPreparer, self).__init__(dialect)
+
+    def format_index(self, index, use_schema=True, name=None):
+        """Prepare a quoted index and schema name."""
+
+        if name is None:
+            name = index.name
+        result = self.quote(name, index.quote)
+        if not self.omit_schema and use_schema and getattr(index.table, "schema", None):
+            result = self.quote_schema(index.table.schema, index.table.quote_schema) + "." + result
+        return result
 
 dialect = SQLiteDialect
 dialect.poolclass = pool.SingletonThreadPool

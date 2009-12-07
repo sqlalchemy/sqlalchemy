@@ -306,6 +306,18 @@ class DialectTest(TestBase, AssertsExecutionResults):
             raise
 
 
+    def test_create_index_with_schema(self):
+        """Test creation of index with explicit schema"""
+
+        meta = MetaData(testing.db)
+        t = Table('foo', meta, Column('bar', String, index=True), schema='main')
+
+        try:
+            meta.create_all()
+        finally:
+            meta.drop_all()
+
+
 class SQLTest(TestBase, AssertsCompiledSQL):
     """Tests SQLite-dialect specific compilation."""
 
