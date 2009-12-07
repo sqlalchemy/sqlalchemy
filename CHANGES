@@ -854,6 +854,10 @@ CHANGES
       would populate the related object's "subclass" table with
       data from the "subclass" table of the parent.
       [ticket:1485]
+    
+    - Fixed a needless select which would occur when merging
+      transient objects that contained a null primary key
+      identifier.  [ticket:1618]
       
     - relations() now have greater ability to be "overridden",
       meaning a subclass that explicitly specifies a relation()

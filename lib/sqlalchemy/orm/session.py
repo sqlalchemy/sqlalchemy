@@ -19,7 +19,7 @@ from sqlalchemy.orm.util import class_mapper as _class_mapper
 from sqlalchemy.orm.util import (
     _class_to_mapper, _state_has_identity, _state_mapper,
     )
-from sqlalchemy.orm.mapper import Mapper
+from sqlalchemy.orm.mapper import Mapper, _none_set
 from sqlalchemy.orm.unitofwork import UOWTransaction
 from sqlalchemy.orm import identity
 
@@ -1124,7 +1124,7 @@ class Session(object):
         new_instance = False
         state = attributes.instance_state(instance)
         key = state.key
-
+        
         if key is None:
             if not load:
                 raise sa_exc.InvalidRequestError(
@@ -1134,24 +1134,25 @@ class Session(object):
                     "load=False.")
             key = mapper._identity_key_from_state(state)
 
-        merged = None
-        if key:
-            if key in self.identity_map:
-                merged = self.identity_map[key]
-            elif not load:
-                if state.modified:
-                    raise sa_exc.InvalidRequestError(
-                        "merge() with load=False option does not support "
-                        "objects marked as 'dirty'.  flush() all changes on "
-                        "mapped instances before merging with load=False.")
-                merged = mapper.class_manager.new_instance()
-                merged_state = attributes.instance_state(merged)
-                merged_state.key = key
-                self._update_impl(merged_state)
-                new_instance = True
-            else:
-                merged = self.query(mapper.class_).get(key[1])
+        if key in self.identity_map:
+            merged = self.identity_map[key]
+        elif not load:
+            if state.modified:
+                raise sa_exc.InvalidRequestError(
+                    "merge() with load=False option does not support "
+                    "objects marked as 'dirty'.  flush() all changes on "
+                    "mapped instances before merging with load=False.")
+            merged = mapper.class_manager.new_instance()
+            merged_state = attributes.instance_state(merged)
+            merged_state.key = key
+            self._update_impl(merged_state)
+            new_instance = True
 
+        elif not _none_set.issuperset(key[1]):
+            merged = self.query(mapper.class_).get(key[1])
+        else:
+            merged = None
+            
         if merged is None:
             merged = mapper.class_manager.new_instance()
             merged_state = attributes.instance_state(merged)
