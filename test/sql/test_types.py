@@ -27,9 +27,6 @@ class AdaptTest(TestBase):
                 mysql.dialect(), 
                 postgresql.dialect(), 
                 sqlite.dialect(), 
-                sybase.dialect(), 
-                informix.dialect(), 
-                maxdb.dialect(), 
                 mssql.dialect()]: # TODO when dialects are complete:  engines.all_dialects():
             for type_, expected in (
                 (FLOAT, "FLOAT"),
