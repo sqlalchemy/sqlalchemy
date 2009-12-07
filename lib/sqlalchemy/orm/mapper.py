@@ -41,6 +41,7 @@ __all__ = (
 _mapper_registry = weakref.WeakKeyDictionary()
 _new_mappers = False
 _already_compiling = False
+_none_set = frozenset([None])
 
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
@@ -1684,10 +1685,7 @@ class Mapper(object):
                     self._log_debug("_instance(): identity key %s not in session" % (identitykey,))
 
                 if self.allow_null_pks:
-                    for x in identitykey[1]:
-                        if x is not None:
-                            break
-                    else:
+                    if _none_set.issuperset(identitykey[1]):
                         return None
                 else:
                     if None in identitykey[1]:

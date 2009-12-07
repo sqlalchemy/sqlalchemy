@@ -42,6 +42,16 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(sess.query(User).first(), User(id=7, name='fred'))
 
     @testing.resolve_artifact_names
+    def test_transient_to_pending_no_pk(self):
+        """test that a transient object with no PK attribute doesn't trigger a needless load."""
+        mapper(User, users)
+        sess = create_session()
+        u = User(name='fred')
+        def go():
+            sess.merge(u)
+        self.assert_sql_count(testing.db, go, 0)
+        
+    @testing.resolve_artifact_names
     def test_transient_to_pending_collection(self):
         mapper(User, users, properties={
             'addresses': relation(Address, backref='user',
