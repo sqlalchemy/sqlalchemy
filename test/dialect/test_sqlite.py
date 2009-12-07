@@ -69,7 +69,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
 
             bindproc = t.dialect_impl(dialect).bind_processor(dialect)
             assert not bindproc or isinstance(bindproc(u"some string"), unicode)
-        
+
     def test_type_reflection(self):
         # (ask_for, roundtripped_as_if_different)
         specs = [( String(), String(), ),
@@ -322,6 +322,18 @@ class DialectTest(TestBase, AssertsExecutionResults):
 
         assert_raises(exc.ArgumentError, create_engine, testing.db.url,
             isolation_level="FOO")
+
+
+    def test_create_index_with_schema(self):
+        """Test creation of index with explicit schema"""
+
+        meta = MetaData(testing.db)
+        t = Table('foo', meta, Column('bar', String, index=True), schema='main')
+
+        try:
+            meta.create_all()
+        finally:
+            meta.drop_all()
 
 
 class SQLTest(TestBase, AssertsCompiledSQL):

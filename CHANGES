@@ -792,6 +792,10 @@ CHANGES
     - The cursor associated with connection pool connections
       (i.e. _CursorFairy) now proxies `__iter__()` to the 
       underlying cursor correctly. [ticket:1632]
+
+- sqlite
+    - sqlite dialect properly generates CREATE INDEX for a table
+      that is in an alternate schema.  [ticket:1439]
       
 - postgresql
     - Added support for reflecting the DOUBLE PRECISION type,

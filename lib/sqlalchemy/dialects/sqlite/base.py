@@ -239,11 +239,25 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec += " NOT NULL"
         return colspec
-    
+
+    def visit_create_index(self, create):
+        index = create.element
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+        text += "INDEX %s ON %s (%s)" \
+                    % (preparer.format_index(index,
+                       name=self._validate_identifier(index.name, True)),
+                       preparer.format_table(index.table, use_schema=False),
+                       ', '.join(preparer.quote(c.name, c.quote)
+                                 for c in index.columns))
+        return text
+
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
     def visit_binary(self, type_):
         return self.visit_BLOB(type_)
-    
+
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = set([
         'add', 'after', 'all', 'alter', 'analyze', 'and', 'as', 'asc',
@@ -264,6 +278,16 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
         'transaction', 'trigger', 'true', 'union', 'unique', 'update', 'using',
         'vacuum', 'values', 'view', 'virtual', 'when', 'where',
         ])
+
+    def format_index(self, index, use_schema=True, name=None):
+        """Prepare a quoted index and schema name."""
+
+        if name is None:
+            name = index.name
+        result = self.quote(name, index.quote)
+        if not self.omit_schema and use_schema and getattr(index.table, "schema", None):
+            result = self.quote_schema(index.table.schema, index.table.quote_schema) + "." + result
+        return result
 
 class SQLiteDialect(default.DefaultDialect):
     name = 'sqlite'
