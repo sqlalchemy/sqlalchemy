@@ -751,6 +751,10 @@ CHANGES
       by contains_eager() out of individual instance states.
       [ticket:1553]
 
+    - Fixed a needless select which would occur when merging
+      transient objects that contained a null primary key
+      identifier.  [ticket:1618]
+
     - Mutable collection passed to the "extension" attribute
       of relation(), column_property() etc. will not be mutated
       or shared among multiple instrumentation calls, preventing
@@ -855,10 +859,6 @@ CHANGES
       data from the "subclass" table of the parent.
       [ticket:1485]
     
-    - Fixed a needless select which would occur when merging
-      transient objects that contained a null primary key
-      identifier.  [ticket:1618]
-      
     - relations() now have greater ability to be "overridden",
       meaning a subclass that explicitly specifies a relation()
       overriding that of the parent class will be honored
