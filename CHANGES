@@ -763,7 +763,12 @@ CHANGES
       various unserializable options like those generated
       by contains_eager() out of individual instance states.
       [ticket:1553]
-
+    
+    - Session.execute() now locates table- and 
+      mapper-specific binds based on a passed
+      in expression which is an insert()/update()/delete() 
+      construct. [ticket:1054]
+      
     - Fixed a needless select which would occur when merging
       transient objects that contained a null primary key
       identifier.  [ticket:1618]

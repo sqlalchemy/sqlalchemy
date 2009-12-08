@@ -47,7 +47,9 @@ def find_join_source(clauses, join_to):
         return None, None
 
     
-def find_tables(clause, check_columns=False, include_aliases=False, include_joins=False, include_selects=False):
+def find_tables(clause, check_columns=False, 
+                include_aliases=False, include_joins=False, 
+                include_selects=False, include_crud=False):
     """locate Table objects within the given expression."""
     
     tables = []
@@ -61,7 +63,11 @@ def find_tables(clause, check_columns=False, include_aliases=False, include_join
         
     if include_aliases:
         _visitors['alias']  = tables.append
-
+    
+    if include_crud:
+        _visitors['insert'] = _visitors['update'] = \
+                    _visitors['delete'] = lambda ent: tables.append(ent.table)
+        
     if check_columns:
         def visit_column(column):
             tables.append(column.table)
