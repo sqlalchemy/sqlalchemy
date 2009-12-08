@@ -105,35 +105,15 @@ class SessionTest(_fixtures.FixtureTest):
 
     @engines.close_open_connections
     @testing.resolve_artifact_names
-    def test_table_binds_from_expression(self):
-        """Session can extract Table objects from ClauseElements and match them to tables."""
+    def test_mapped_binds(self):
 
-        mapper(Address, addresses)
-        mapper(User, users, properties={
-            'addresses':relation(Address,
-                                 backref=backref("user", cascade="all"),
-                                 cascade="all")})
+        # ensure tables are unbound
+        m2 = sa.MetaData()
+        users_unbound =users.tometadata(m2)
+        addresses_unbound = addresses.tometadata(m2)
 
-        Session = sessionmaker(binds={users: self.metadata.bind,
-                                      addresses: self.metadata.bind})
-        sess = Session()
-
-        sess.execute(users.insert(), params=dict(id=1, name='ed'))
-        eq_(sess.execute(users.select(users.c.id == 1)).fetchall(),
-            [(1, 'ed')])
-
-        eq_(sess.execute(users.select(User.id == 1)).fetchall(),
-            [(1, 'ed')])
-
-        sess.close()
-
-    @engines.close_open_connections
-    @testing.resolve_artifact_names
-    def test_mapped_binds_from_expression(self):
-        """Session can extract Table objects from ClauseElements and match them to tables."""
-
-        mapper(Address, addresses)
-        mapper(User, users, properties={
+        mapper(Address, addresses_unbound)
+        mapper(User, users_unbound, properties={
             'addresses':relation(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
@@ -142,12 +122,57 @@ class SessionTest(_fixtures.FixtureTest):
                                       Address: self.metadata.bind})
         sess = Session()
 
-        sess.execute(users.insert(), params=dict(id=1, name='ed'))
-        eq_(sess.execute(users.select(users.c.id == 1)).fetchall(),
-            [(1, 'ed')])
+        u1 = User(id=1, name='ed')
+        sess.add(u1)
+        eq_(sess.query(User).filter(User.id==1).all(),
+            [User(id=1, name='ed')])
 
-        eq_(sess.execute(users.select(User.id == 1)).fetchall(),
-            [(1, 'ed')])
+        # test expression binding
+        sess.execute(users_unbound.insert(), params=dict(id=2, name='jack'))
+        eq_(sess.execute(users_unbound.select(users_unbound.c.id == 2)).fetchall(),
+            [(2, 'jack')])
+
+        eq_(sess.execute(users_unbound.select(User.id == 2)).fetchall(),
+            [(2, 'jack')])
+
+        sess.execute(users_unbound.delete())
+        eq_(sess.execute(users_unbound.select()).fetchall(), [])
+        
+        sess.close()
+
+    @engines.close_open_connections
+    @testing.resolve_artifact_names
+    def test_table_binds(self):
+
+        # ensure tables are unbound
+        m2 = sa.MetaData()
+        users_unbound =users.tometadata(m2)
+        addresses_unbound = addresses.tometadata(m2)
+
+        mapper(Address, addresses_unbound)
+        mapper(User, users_unbound, properties={
+            'addresses':relation(Address,
+                                 backref=backref("user", cascade="all"),
+                                 cascade="all")})
+
+        Session = sessionmaker(binds={users_unbound: self.metadata.bind,
+                                      addresses_unbound: self.metadata.bind})
+        sess = Session()
+
+        u1 = User(id=1, name='ed')
+        sess.add(u1)
+        eq_(sess.query(User).filter(User.id==1).all(),
+            [User(id=1, name='ed')])
+
+        sess.execute(users_unbound.insert(), params=dict(id=2, name='jack'))
+        eq_(sess.execute(users_unbound.select(users_unbound.c.id == 2)).fetchall(),
+            [(2, 'jack')])
+
+        eq_(sess.execute(users_unbound.select(User.id == 2)).fetchall(),
+            [(2, 'jack')])
+
+        sess.execute(users_unbound.delete())
+        eq_(sess.execute(users_unbound.select()).fetchall(), [])
 
         sess.close()
 
