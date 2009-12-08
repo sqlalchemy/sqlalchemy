@@ -3022,14 +3022,6 @@ class ColumnClause(_Immutable, ColumnElement):
                 label = _escape_for_generated(self.table.name) + "_" + \
                             _escape_for_generated(self.name)
 
-            if label in self.table.c:
-                # TODO: coverage does not seem to be present for this
-                _label = label
-                counter = 1
-                while _label in self.table.c:
-                    _label = label + "_" + str(counter)
-                    counter += 1
-                label = _label
             return _generated_label(label)
 
         else:

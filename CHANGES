@@ -241,6 +241,15 @@ CHANGES
       with underscores for dots, i.e. "dbo_master_table_column".
       This is a "friendly" label that behaves better
       in result sets. [ticket:1428]
+    
+    - removed needless "counter" behavior with select()
+      labelnames that match a column name in the table,
+      i.e. generates "tablename_id" for "id", instead of
+      "tablename_id_1" in an attempt to avoid naming 
+      conflicts, when the table has a column actually 
+      named "tablename_id" - this is because
+      the labeling logic is always applied to all columns
+      so a naming conflict will never occur.
       
     - Deprecated or removed:
         * "scalar" flag on select() is removed, use 
