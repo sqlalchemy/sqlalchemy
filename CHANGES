@@ -745,6 +745,13 @@ CHANGES
       the Session methods of those names, ensuring that the bind is
       in terms of the SqlSoup object's bind.
     
+    - The signature of the proxy_factory callable passed to 
+      association_proxy is now (lazy_collection, creator, 
+      value_attr, association_proxy), adding a fourth argument
+      that is the parent AssociationProxy argument.  Allows
+      serializability and subclassing of the built in collections.
+      [ticket:1259]
+      
 0.5.7
 =====
 - orm

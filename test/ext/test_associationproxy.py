@@ -6,6 +6,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.ext.associationproxy import *
+from sqlalchemy.ext.associationproxy import _AssociationList
 from sqlalchemy.test import *
 from sqlalchemy.test.util import gc_collect
 
@@ -615,6 +616,56 @@ class CustomObjectTest(_CollectionOperations):
         except TypeError:
             pass
 
+class ProxyFactoryTest(ListTest):
+    def setup(self):
+        metadata = MetaData(testing.db)
+
+        parents_table = Table('Parent', metadata,
+                              Column('id', Integer, primary_key=True,
+                                     test_needs_autoincrement=True),
+                              Column('name', String(128)))
+        children_table = Table('Children', metadata,
+                               Column('id', Integer, primary_key=True,
+                                      test_needs_autoincrement=True),
+                               Column('parent_id', Integer,
+                                      ForeignKey('Parent.id')),
+                               Column('foo', String(128)),
+                               Column('name', String(128)))
+        
+        class CustomProxy(_AssociationList):
+            def __init__(self, lazy_collection, creator, value_attr, parent):
+                getter, setter = parent._default_getset(lazy_collection)
+                _AssociationList.__init__(self, lazy_collection, creator, getter, setter, parent)
+                
+        
+        class Parent(object):
+            children = association_proxy('_children', 'name', 
+                        proxy_factory=CustomProxy, 
+                        proxy_bulk_set=CustomProxy.extend
+                    )
+
+            def __init__(self, name):
+                self.name = name
+
+        class Child(object):
+            def __init__(self, name):
+                self.name = name
+
+        mapper(Parent, parents_table, properties={
+            '_children': relation(Child, lazy=False,
+                                  collection_class=list)})
+        mapper(Child, children_table)
+
+        metadata.create_all()
+
+        self.metadata = metadata
+        self.session = create_session()
+        self.Parent, self.Child = Parent, Child
+    
+    def test_sequence_ops(self):
+        self._test_sequence_ops()
+    
+    
 class ScalarTest(TestBase):
     def test_scalar_proxy(self):
         metadata = MetaData(testing.db)

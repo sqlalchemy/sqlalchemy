@@ -220,7 +220,7 @@ class AssociationProxy(object):
         self.collection_class = util.duck_type_collection(lazy_collection())
 
         if self.proxy_factory:
-            return self.proxy_factory(lazy_collection, creator, self.value_attr)
+            return self.proxy_factory(lazy_collection, creator, self.value_attr, self)
 
         if self.getset_factory:
             getter, setter = self.getset_factory(self.collection_class, self)
