@@ -224,15 +224,6 @@ CHANGES
       keys showing up in the VALUES or SET clause of the generated
       SQL. [ticket:1579]
       
-    - Databases which rely upon postfetch of "last inserted id"
-      to get at a generated sequence value (i.e. MySQL, MS-SQL)
-      now work correctly when there is a composite primary key
-      where the "autoincrement" column is not the first primary
-      key column in the table.
-
-    - the last_inserted_ids() method has been renamed to the
-      descriptor "inserted_primary_key".
-
     - the Binary type now returns data as a Python string
       (or a "bytes" type in Python 3), instead of the built-
       in "buffer" type.  This allows symmetric round trips
@@ -244,7 +235,13 @@ CHANGES
       of bind parameters currently being processed.  This
       dict is available in the same way regardless of 
       single-execute or executemany-style statement execution.
-    
+
+    - multi-part schema names, i.e. with dots such as 
+      "dbo.master", are now rendered in select() labels
+      with underscores for dots, i.e. "dbo_master_table_column".
+      This is a "friendly" label that behaves better
+      in result sets. [ticket:1428]
+      
     - Deprecated or removed:
         * "scalar" flag on select() is removed, use 
           select.as_scalar().
@@ -276,6 +273,15 @@ CHANGES
     improvement when fetching large result sets with no unicode
     conversion as tuples.  Many thanks to Elixir's Gaëtan de Menten
     for this dramatic improvement !  [ticket:1586]
+
+  - Databases which rely upon postfetch of "last inserted id"
+    to get at a generated sequence value (i.e. MySQL, MS-SQL)
+    now work correctly when there is a composite primary key
+    where the "autoincrement" column is not the first primary
+    key column in the table.
+
+  - the last_inserted_ids() method has been renamed to the
+    descriptor "inserted_primary_key".
     
   - setting echo=False on create_engine() now sets the loglevel
     to WARN instead of NOTSET.  This so that logging can be
@@ -346,9 +352,7 @@ CHANGES
       DDL() event system. A side effect of this refactor is
       that ForeignKeyConstraint objects with use_alter=True
       will *not* be emitted on SQLite, which does not support
-      ALTER for foreign keys. This has no effect on SQLite's
-      behavior since SQLite does not actually honor FOREIGN KEY
-      constraints.
+      ALTER for foreign keys.
     
     - ForeignKey and ForeignKeyConstraint objects now correctly
       copy() all their public keyword arguments.  [ticket:1605]

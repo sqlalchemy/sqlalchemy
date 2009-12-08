@@ -27,12 +27,23 @@ table3 = table(
 )
 
 metadata = MetaData()
+
+# table with a schema
 table4 = Table(
     'remotetable', metadata,
     Column('rem_id', Integer, primary_key=True),
     Column('datatype_id', Integer),
     Column('value', String(20)),
     schema = 'remote_owner'
+)
+
+# table with a 'multipart' schema
+table5 = Table(
+    'remotetable', metadata,
+    Column('rem_id', Integer, primary_key=True),
+    Column('datatype_id', Integer),
+    Column('value', String(20)),
+    schema = 'dbo.remote_owner'
 )
 
 users = table('users',
@@ -1631,28 +1642,55 @@ class InlineDefaultTest(TestBase, AssertsCompiledSQL):
 
 class SchemaTest(TestBase, AssertsCompiledSQL):
     def test_select(self):
-        # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables
-        self.assert_compile(table4.select(), "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id, remote_owner.remotetable.value FROM remote_owner.remotetable")
+        self.assert_compile(table4.select(), 
+                "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id,"
+                " remote_owner.remotetable.value FROM remote_owner.remotetable")
+                
         self.assert_compile(table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi')),
-            "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id, remote_owner.remotetable.value FROM remote_owner.remotetable WHERE "\
-            "remote_owner.remotetable.datatype_id = :datatype_id_1 AND remote_owner.remotetable.value = :value_1")
+                "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id,"
+                " remote_owner.remotetable.value FROM remote_owner.remotetable WHERE "
+                "remote_owner.remotetable.datatype_id = :datatype_id_1 AND"
+                " remote_owner.remotetable.value = :value_1")
 
-        s = table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi'))
-        s.use_labels = True
-        self.assert_compile(s, "SELECT remote_owner.remotetable.rem_id AS remote_owner_remotetable_rem_id, remote_owner.remotetable.datatype_id AS remote_owner_remotetable_datatype_id, remote_owner.remotetable.value "\
-            "AS remote_owner_remotetable_value FROM remote_owner.remotetable WHERE "\
-            "remote_owner.remotetable.datatype_id = :datatype_id_1 AND remote_owner.remotetable.value = :value_1")
+        s = table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi'), use_labels=True)
+        self.assert_compile(s, "SELECT remote_owner.remotetable.rem_id AS"
+            " remote_owner_remotetable_rem_id, remote_owner.remotetable.datatype_id AS"
+            " remote_owner_remotetable_datatype_id, remote_owner.remotetable.value "
+            "AS remote_owner_remotetable_value FROM remote_owner.remotetable WHERE "
+            "remote_owner.remotetable.datatype_id = :datatype_id_1 AND "
+            "remote_owner.remotetable.value = :value_1")
 
+        # multi-part schema name
+        self.assert_compile(table5.select(), 
+                'SELECT "dbo.remote_owner".remotetable.rem_id, '
+                '"dbo.remote_owner".remotetable.datatype_id, "dbo.remote_owner".remotetable.value '
+                'FROM "dbo.remote_owner".remotetable'
+        )
+
+        # multi-part schema name labels - convert '.' to '_'
+        self.assert_compile(table5.select(use_labels=True), 
+                'SELECT "dbo.remote_owner".remotetable.rem_id AS'
+                ' dbo_remote_owner_remotetable_rem_id, "dbo.remote_owner".remotetable.datatype_id'
+                ' AS dbo_remote_owner_remotetable_datatype_id,'
+                ' "dbo.remote_owner".remotetable.value AS dbo_remote_owner_remotetable_value FROM'
+                ' "dbo.remote_owner".remotetable'
+        )
+        
     def test_alias(self):
         a = alias(table4, 'remtable')
-        self.assert_compile(a.select(a.c.datatype_id==7), "SELECT remtable.rem_id, remtable.datatype_id, remtable.value FROM remote_owner.remotetable AS remtable "\
-            "WHERE remtable.datatype_id = :datatype_id_1")
+        self.assert_compile(a.select(a.c.datatype_id==7), 
+                            "SELECT remtable.rem_id, remtable.datatype_id, remtable.value FROM"
+                            " remote_owner.remotetable AS remtable "
+                            "WHERE remtable.datatype_id = :datatype_id_1")
 
     def test_update(self):
-        self.assert_compile(table4.update(table4.c.value=='test', values={table4.c.datatype_id:12}), "UPDATE remote_owner.remotetable SET datatype_id=:datatype_id "\
-            "WHERE remote_owner.remotetable.value = :value_1")
+        self.assert_compile(
+                table4.update(table4.c.value=='test', values={table4.c.datatype_id:12}), 
+                "UPDATE remote_owner.remotetable SET datatype_id=:datatype_id "
+                "WHERE remote_owner.remotetable.value = :value_1")
 
     def test_insert(self):
-        self.assert_compile(table4.insert(values=(2, 5, 'test')), "INSERT INTO remote_owner.remotetable (rem_id, datatype_id, value) VALUES "\
-            "(:rem_id, :datatype_id, :value)")
+        self.assert_compile(table4.insert(values=(2, 5, 'test')), 
+                    "INSERT INTO remote_owner.remotetable (rem_id, datatype_id, value) VALUES "
+                    "(:rem_id, :datatype_id, :value)")
 

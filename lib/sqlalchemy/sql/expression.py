@@ -3015,7 +3015,7 @@ class ColumnClause(_Immutable, ColumnElement):
 
         elif self.table is not None and self.table.named_with_column:
             if getattr(self.table, 'schema', None):
-                label = self.table.schema + "_" + \
+                label = self.table.schema.replace('.', '_') + "_" + \
                             _escape_for_generated(self.table.name) + "_" + \
                             _escape_for_generated(self.name)
             else:
