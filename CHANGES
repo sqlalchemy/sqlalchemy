@@ -807,6 +807,10 @@ CHANGES
       combinations of reflected and non-reflected types to work
       with 0.5 style type reflection, such as PGText/Text (note 0.6 
       reflects types as their generic versions).   [ticket:1556]
+    
+    - Fixed bug in query.update() when passing Cls.attribute
+      as keys in the value dict and using synchronize_session='expire'
+      ('fetch' in 0.6). [ticket:1436]
       
 - sql
     - Fixed bug in two-phase transaction whereby commit() method

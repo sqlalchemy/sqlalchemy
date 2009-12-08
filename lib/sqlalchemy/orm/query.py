@@ -1778,7 +1778,7 @@ class Query(object):
             for primary_key in matched_rows:
                 identity_key = target_mapper.identity_key_from_primary_key(list(primary_key))
                 if identity_key in session.identity_map:
-                    session.expire(session.identity_map[identity_key], values.keys())
+                    session.expire(session.identity_map[identity_key], [expression._column_as_key(k) for k in values])
 
         for ext in session.extensions:
             ext.after_bulk_update(session, self, context, result)

@@ -3578,6 +3578,10 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [25,27,19,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,27,19,27]))
 
+        sess.query(User).filter(User.age == 25).update({User.age: User.age - 10}, synchronize_session='fetch')
+        eq_([john.age, jack.age, jill.age, jane.age], [15,27,19,27])
+        eq_(sess.query(User.age).order_by(User.id).all(), zip([15,27,19,27]))
+
 
     @testing.resolve_artifact_names
     def test_update_with_bindparams(self):
