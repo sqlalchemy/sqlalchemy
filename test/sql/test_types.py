@@ -95,6 +95,21 @@ class AdaptTest(TestBase):
         ]:
             assert isinstance(start.dialect_impl(dialect), test), "wanted %r got %r" % (test, start.dialect_impl(dialect))
 
+class TypeAffinityTest(TestBase):
+    def test_type_affinity(self):
+        for t1, t2, comp in [
+            (Integer(), SmallInteger(), True),
+            (Integer(), String(), False),
+            (Integer(), Integer(), True),
+            (Text(), String(), True),
+            (Text(), Unicode(), True),
+            (Binary(), Integer(), False),
+            (Binary(), PickleType(), True),
+            (PickleType(), Binary(), True),
+            (PickleType(), PickleType(), True),
+        ]:
+            eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
+
 
 
 class UserDefinedTest(TestBase):

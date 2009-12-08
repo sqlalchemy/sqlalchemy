@@ -6,7 +6,8 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import attributes
 import sqlalchemy as sa
 from sqlalchemy.test import testing
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, SmallInteger
+from sqlalchemy.types import TypeDecorator
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 from sqlalchemy.orm import mapper, relation, create_session
@@ -272,6 +273,55 @@ class LazyTest(_fixtures.FixtureTest):
             ))
 
             sess = create_session()
+
+            # load address
+            a1 = sess.query(Address).filter_by(email_address="ed@wood.com").one()
+
+            # load user that is attached to the address
+            u1 = sess.query(User).get(8)
+
+            def go():
+                # lazy load of a1.user should get it from the session
+                assert a1.user is u1
+            self.assert_sql_count(testing.db, go, 0)
+            sa.orm.clear_mappers()
+
+    @testing.resolve_artifact_names
+    def test_uses_get_compatible_types(self):
+        """test the use_get optimization with compatible but non-identical types"""
+
+        class IntDecorator(TypeDecorator):
+            impl = Integer
+
+        class SmallintDecorator(TypeDecorator):
+            impl = SmallInteger
+        
+        class SomeDBInteger(sa.Integer):
+            pass
+            
+        for tt in [
+            Integer,
+            SmallInteger,
+            IntDecorator,
+            SmallintDecorator,
+            SomeDBInteger,
+        ]:
+            m = sa.MetaData()
+            users = Table('users', m, 
+                Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                Column('name', String(30), nullable=False),
+            )
+            addresses = Table('addresses', m,
+                  Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                  Column('user_id', tt, ForeignKey('users.id')),
+                  Column('email_address', String(50), nullable=False),
+            )
+
+            mapper(Address, addresses, properties = dict(
+                user = relation(mapper(User, users))
+            ))
+
+            sess = create_session(bind=testing.db)
 
             # load address
             a1 = sess.query(Address).filter_by(email_address="ed@wood.com").one()

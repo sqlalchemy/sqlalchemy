@@ -81,6 +81,19 @@ class AbstractType(object):
         By default, returns the operator unchanged.
         """
         return op
+        
+    @util.memoized_property
+    def _type_affinity(self):
+        """Return a rudimental 'affinity' value expressing the general class of type."""
+        
+        for i, t in enumerate(self.__class__.__mro__):
+            if t is TypeEngine:
+                return self.__class__.__mro__[i - 1]
+        else:
+            return self.__class__
+        
+    def _compare_type_affinity(self, other):
+        return self._type_affinity is other._type_affinity
 
     def __repr__(self):
         return "%s(%s)" % (
@@ -235,6 +248,10 @@ class TypeDecorator(AbstractType):
         tt.impl = typedesc
         self._impl_dict[dialect] = tt
         return tt
+
+    @util.memoized_property
+    def _type_affinity(self):
+        return self.impl._type_affinity
 
     def load_dialect_impl(self, dialect):
         """Loads the dialect-specific implementation of this type.
