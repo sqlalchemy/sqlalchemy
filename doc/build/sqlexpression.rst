@@ -500,11 +500,11 @@ Our last example really became a handful to type.  Going from what one understan
     ['m', 'z', '%@aol.com', '%@msn.com']
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
-To gain a "hybrid" approach, any of SA's SQL constructs can have text freely intermingled wherever you like - the ``text()`` construct can be placed within any other ``ClauseElement`` construct, and when used in a non-operator context, a direct string may be placed which converts to ``text()`` automatically.  Below we combine the usage of ``text()`` and strings with our constructed ``select()`` object, by using the ``select()`` object to structure the statement, and the ``text()``/strings to provide all the content within the structure.  For this example, SQLAlchemy is not given any ``Column`` or ``Table`` objects in any of its expressions, so it cannot generate a FROM clause.  So we also give it the ``from_obj`` keyword argument, which is a list of ``ClauseElements`` (or strings) to be placed within the FROM clause:
+To gain a "hybrid" approach, the `select()` construct accepts strings for most of its arguments.  Below we combine the usage of strings with our constructed ``select()`` object, by using the ``select()`` object to structure the statement, and strings to provide all the content within the structure.  For this example, SQLAlchemy is not given any ``Column`` or ``Table`` objects in any of its expressions, so it cannot generate a FROM clause.  So we also give it the ``from_obj`` keyword argument, which is a list of ``ClauseElements`` (or strings) to be placed within the FROM clause:
 
 .. sourcecode:: pycon+sql
 
-    >>> s = select([text("users.fullname || ', ' || addresses.email_address AS title")], 
+    >>> s = select(["users.fullname || ', ' || addresses.email_address AS title"], 
     ...        and_( 
     ...            "users.id = addresses.user_id", 
     ...             "users.name BETWEEN 'm' AND 'z'",
@@ -523,7 +523,6 @@ Going from constructed SQL to text, we lose some capabilities.  We lose the capa
 
 Using Aliases 
 ==============
-
 
 The alias corresponds to a "renamed" version of a table or arbitrary relation, which occurs anytime you say "SELECT  .. FROM sometable AS someothername".  The ``AS`` creates a new name for the table.  Aliases are super important in SQL as they allow you to reference the same table more than once.  Scenarios where you need to do this include when you self-join a table to itself, or more commonly when you need to join from a parent table to a child table multiple times.  For example, we know that our user ``jack`` has two email addresses.  How can we locate jack based on the combination of those two addresses?  We need to join twice to it.  Let's construct two distinct aliases for the ``addresses`` table and join:
 
