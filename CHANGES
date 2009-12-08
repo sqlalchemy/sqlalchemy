@@ -773,6 +773,15 @@ CHANGES
       when configured on a joined-table subclass, introduced in
       version 0.5.6 as a result of the fix for [ticket:1480].
       [ticket:1616] thx to Scott Torborg.
+
+    - The "use get" behavior of many-to-one relations, i.e. that a 
+      lazy load will fallback to the possibly cached query.get() 
+      value, now works across join conditions where the two compared 
+      types are not exactly the same class, but share the same 
+      "affinity" - i.e. Integer and SmallInteger.  Also allows
+      combinations of reflected and non-reflected types to work
+      with 0.5 style type reflection, such as PGText/Text (note 0.6 
+      reflects types as their generic versions).   [ticket:1556]
       
 - sql
     - Fixed bug in two-phase transaction whereby commit() method
@@ -792,6 +801,11 @@ CHANGES
     - The cursor associated with connection pool connections
       (i.e. _CursorFairy) now proxies `__iter__()` to the 
       underlying cursor correctly. [ticket:1632]
+
+    - types now support an "affinity comparison" operation, i.e.
+      that an Integer/SmallInteger are "compatible", or 
+      a Text/String, PickleType/Binary, etc.  Part of 
+      [ticket:1556].
 
 - sqlite
     - sqlite dialect properly generates CREATE INDEX for a table

@@ -55,7 +55,22 @@ class AdaptTest(TestBase):
                 else:
                     assert False, "%r matches none of %r for dialect %s" % (compiled, expected, dialect.name)
             
-
+class TypeAffinityTest(TestBase):
+    def test_type_affinity(self):
+        for t1, t2, comp in [
+            (Integer(), SmallInteger(), True),
+            (Integer(), String(), False),
+            (Integer(), Integer(), True),
+            (Text(), String(), True),
+            (Text(), Unicode(), True),
+            (Binary(), Integer(), False),
+            (Binary(), PickleType(), True),
+            (PickleType(), Binary(), True),
+            (PickleType(), PickleType(), True),
+        ]:
+            eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
+        
+    
 class UserDefinedTest(TestBase):
     """tests user-defined types."""
 
