@@ -426,6 +426,12 @@ If you have come across an operator which really isn't available, you can always
     >>> print users.c.name.op('tiddlywinks')('foo')
     users.name tiddlywinks :name_1
     
+This function can also be used to make bitwise operators explicit. For example::
+
+    somecolumn.op('&')(0xff)
+
+is a bitwise AND of the value in `somecolumn`.
+    
 Conjunctions 
 =============
 
