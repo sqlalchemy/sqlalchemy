@@ -1588,11 +1588,17 @@ class _CompareMixin(ColumnOperators):
 
           somecolumn * 5
 
-        operator
-          a string which will be output as the infix operator between
+        
+        :param operator: a string which will be output as the infix operator between
           this ``ClauseElement`` and the expression passed to the
           generated function.
 
+        This function can also be used to make bitwise operators explicit. For example::
+
+          somecolumn.op('&')(0xff)
+
+        is a bitwise AND of the value in somecolumn.
+          
         """
         return lambda other: self.__operate(operator, other)
 
