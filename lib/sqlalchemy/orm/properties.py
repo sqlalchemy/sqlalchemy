@@ -661,11 +661,13 @@ class RelationProperty(StrategizedProperty):
             if current is not None:
                 _recursive[(current, self)] = True
                 obj = session._merge(current, load=load, _recursive=_recursive)
-                if obj is not None:
-                    if not load:
-                        dest_state.dict[self.key] = obj
-                    else:
-                        setattr(dest, self.key, obj)
+            else:
+                obj = None
+            
+            if not load:
+                dest_state.dict[self.key] = obj
+            else:
+                setattr(dest, self.key, obj)
 
     def cascade_iterator(self, type_, state, visited_instances, halt_on=None):
         if not type_ in self.cascade:

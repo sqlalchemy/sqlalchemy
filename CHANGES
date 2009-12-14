@@ -776,6 +776,10 @@ CHANGES
       in expression which is an insert()/update()/delete() 
       construct. [ticket:1054]
       
+    - Session.merge() now properly overwrites a many-to-one or 
+      uselist=False attribute to None if the attribute 
+      is also None in the given object to be merged.
+     
     - Fixed a needless select which would occur when merging
       transient objects that contained a null primary key
       identifier.  [ticket:1618]
