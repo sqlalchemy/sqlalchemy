@@ -2819,7 +2819,7 @@ class Alias(FromClause):
         self.element = _clone(self.element)
         baseselectable = self.element
         while isinstance(baseselectable, Alias):
-            baseselectable = baseselectable.selectable
+            baseselectable = baseselectable.element
         self.original = baseselectable
 
     def get_children(self, column_collections=True, aliased_selectables=True, **kwargs):

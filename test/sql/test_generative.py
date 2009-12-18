@@ -338,6 +338,11 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         s4 = sql_util.ClauseAdapter(table('foo')).traverse(s3)
         assert orig == str(s) == str(s3) == str(s4)
 
+        subq = subq.alias('subq')
+        s = select([t1.c.col1, subq.c.col1], from_obj=[t1, subq, t1.join(subq, t1.c.col1==subq.c.col2)])
+        s5 = CloningVisitor().traverse(s)
+        assert orig == str(s) == str(s5)
+        
     def test_correlated_select(self):
         s = select(['*'], t1.c.col1==t2.c.col1, from_obj=[t1, t2]).correlate(t2)
         class Vis(CloningVisitor):

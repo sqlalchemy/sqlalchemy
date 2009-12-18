@@ -845,6 +845,10 @@ CHANGES
       a Text/String, PickleType/Binary, etc.  Part of 
       [ticket:1556].
 
+    - Fixed bug preventing alias() of an alias() from being
+      cloned or adapted (occurs frequently in ORM operations).
+      [ticket:1641]
+      
 - sqlite
     - sqlite dialect properly generates CREATE INDEX for a table
       that is in an alternate schema.  [ticket:1439]
