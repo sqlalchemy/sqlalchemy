@@ -308,6 +308,10 @@ CHANGES
     as invalidated connections, DEBUG for all the acquire/return
     logging.  `echo_pool` can be False, None, True or "debug"
     the same way as `echo` works.
+  
+  - All pyodbc-dialects now support extra pyodbc-specific 
+    kw arguments 'ansi', 'unicode_results', 'autocommit'.
+    [ticket:1621]
     
   - deprecated or removed
       * result.last_inserted_ids() is deprecated.  Use 

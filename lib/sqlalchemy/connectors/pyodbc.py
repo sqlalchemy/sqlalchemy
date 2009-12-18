@@ -1,4 +1,5 @@
 from sqlalchemy.connectors import Connector
+from sqlalchemy.util import asbool
 
 import sys
 import re
@@ -27,6 +28,11 @@ class PyODBCConnector(Connector):
         
         keys = opts
         query = url.query
+
+        connect_args = {}
+        for param in ('ansi', 'unicode_results', 'autocommit'):
+            if param in keys:
+                connect_args[param] = asbool(keys.pop(param))
 
         if 'odbc_connect' in keys:
             connectors = [urllib.unquote_plus(keys.pop('odbc_connect'))]
@@ -58,8 +64,8 @@ class PyODBCConnector(Connector):
                 connectors.append("AutoTranslate=%s" % keys.pop("odbc_autotranslate"))
 
             connectors.extend(['%s=%s' % (k,v) for k,v in keys.iteritems()])
-        return [[";".join (connectors)], {}]
-
+        return [[";".join (connectors)], connect_args]
+        
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(e) or 'Attempt to use a closed connection.' in str(e)
