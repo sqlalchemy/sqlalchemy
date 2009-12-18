@@ -675,10 +675,10 @@ CHANGES
       bind parameters: Date type only accepts date objects (and datetime
       ones, because they inherit from date), Time only accepts time
       objects, and DateTime only accepts date and datetime objects.
-    - Column() supports a keyword argument "sqlite_autoincrement", which
-      applies the SQLite keyword "AUTOINCREMENT" to columns within DDL - 
-      will prevent generation of a separate PRIMARY KEY constraint.
-      [ticket:1016]
+    - Table() supports a keyword argument "sqlite_autoincrement", which
+      applies the SQLite keyword "AUTOINCREMENT" to the single integer
+      primary key column when generating DDL. Will prevent generation of 
+      a separate PRIMARY KEY constraint. [ticket:1016]
       
 - new dialects
     - postgresql+pg8000
