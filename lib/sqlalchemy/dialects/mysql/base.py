@@ -1318,9 +1318,13 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         default = self.get_column_default_string(column)
         if default is not None:
             colspec.append('DEFAULT ' + default)
-
-        if not column.nullable:
+        
+        is_timestamp = isinstance(column.type, sqltypes.TIMESTAMP)
+        if not column.nullable and not is_timestamp:
             colspec.append('NOT NULL')
+
+        elif column.nullable and is_timestamp and default is None:
+            colspec.append('NULL')
 
         if column.primary_key and column.autoincrement:
             try:

@@ -12,7 +12,7 @@ from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test import *
 from sqlalchemy.test.engines import utf8_engine
-
+import datetime
 
 class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"
@@ -417,9 +417,9 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         try:
             columns = [
                 ([TIMESTAMP],
-                 'TIMESTAMP'),
+                 'TIMESTAMP NULL'),
                 ([mysql.MSTimeStamp],
-                 'TIMESTAMP'),
+                 'TIMESTAMP NULL'),
                 ([mysql.MSTimeStamp,
                   DefaultClause(sql.text('CURRENT_TIMESTAMP'))],
                  "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
@@ -451,6 +451,35 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             meta.drop_all()
 
+    def test_timestamp_nullable(self):
+        meta = MetaData(testing.db)
+        ts_table = Table('mysql_timestamp', meta,
+                            Column('t1', TIMESTAMP),
+                            Column('t2', TIMESTAMP, nullable=False),
+                    )
+        meta.create_all()
+        try:
+            # there's a slight assumption here that this test can
+            # complete within the scope of a single second.
+            # if needed, can break out the eq_() just to check for
+            # timestamps that are within a few seconds of "now" 
+            # using timedelta.
+            
+            now = testing.db.execute("select now()").scalar()
+            
+            # TIMESTAMP without NULL inserts current time when passed
+            # NULL.  when not passed, generates 0000-00-00 quite
+            # annoyingly.
+            ts_table.insert().execute({'t1':now, 't2':None})
+            ts_table.insert().execute({'t1':None, 't2':None})
+            
+            eq_(
+                ts_table.select().execute().fetchall(),
+                [(now, now), (None, now)]
+            )
+        finally:
+            meta.drop_all()
+            
     def test_year(self):
         """Exercise YEAR."""
 
@@ -711,7 +740,7 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
             Column('c2', String(10), DefaultClause('0')),
             Column('c3', String(10), DefaultClause('abc')),
             Column('c4', TIMESTAMP, DefaultClause('2009-04-05 12:00:00')),
-            Column('c5', TIMESTAMP, ),
+            Column('c5', TIMESTAMP),
             
         )
 

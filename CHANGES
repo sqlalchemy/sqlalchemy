@@ -580,6 +580,13 @@ CHANGES
     - ENUM now subclasses the new generic Enum type, and also handles
       unicode values implicitly, if the given labelnames are unicode
       objects.
+    
+    - a column of type TIMESTAMP now defaults to NULL if
+      "nullable=False" is not passed to Column(), and no default
+      is present. This is now consistent with all other types, 
+      and in the case of TIMESTAMP explictly renders "NULL" 
+      due to MySQL's "switching" of default nullability
+      for TIMESTAMP columns. [ticket:1539]
       
 - oracle
     - unit tests pass 100% with cx_oracle !
