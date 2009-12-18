@@ -794,7 +794,13 @@ class EagerLoader(AbstractRelationLoader):
                     else:
                         # call _instance on the row, even though the object has been created,
                         # so that we further descend into properties
-                        _instance(row, None)
+                        existing = _instance(row, None)
+                        if existing is not None \
+                            and key in dict_ \
+                            and existing is not dict_[key]:
+                            util.warn(
+                                "Multiple rows returned with "
+                                "uselist=False for eagerly-loaded attribute '%s' " % self)
             else:
                 def execute(state, dict_, row, isnew, **flags):
                     if isnew or (state, key) not in context.attributes:

@@ -69,6 +69,11 @@ CHANGES
     in filter criterion against the dynamic relation.
     [ticket:1531]
 
+  - relation() with uselist=False will emit a warning when 
+    an eager load locates more than one valid value for the row,
+    typically due to primaryjoin/secondaryjoin conditions which
+    aren't appropriate for LEFT OUTER JOIN.  [ticket:1643]
+    
   - an explicit check occurs when a synonym() is used with 
     map_column=True, when a ColumnProperty (deferred or otherwise)
     exists separately in the properties dictionary sent to mapper

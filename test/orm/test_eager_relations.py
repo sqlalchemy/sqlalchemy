@@ -7,7 +7,7 @@ from sqlalchemy.orm import eagerload, deferred, undefer, eagerload_all, backref
 from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, func
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session, lazyload, aliased
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
 from sqlalchemy.util import OrderedDict as odict
@@ -774,6 +774,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ], q.order_by(User.id).all())
         self.assert_sql_count(testing.db, go, 1)
 
+    @testing.resolve_artifact_names 
+    def test_uselist_false_warning(self):
+        """test that multiple rows received by a uselist=False raises a warning."""
+        
+        mapper(User, users, properties={
+            'order':relation(Order, uselist=False)
+        })
+        mapper(Order, orders)
+        s = create_session()
+        assert_raises(sa.exc.SAWarning, s.query(User).options(eagerload(User.order)).all)
+        
     @testing.resolve_artifact_names
     def test_wide(self):
         mapper(Order, orders, properties={'items':relation(Item, secondary=order_items, lazy=False,
