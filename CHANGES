@@ -661,20 +661,25 @@ CHANGES
       the MSSQL dialect documentation for more information.
 
 - sqlite
-    - DATE, TIME and DATETIME types can now take optional storage_format and
-      regexp argument. storage_format can be used to store those types using
-      a custom string format. regexp allows to use a custom regular expression
-      to match string values from the database.
+    - DATE, TIME and DATETIME types can now take optional storage_format
+      and regexp argument. storage_format can be used to store those types
+      using a custom string format. regexp allows to use a custom regular
+      expression to match string values from the database.
     - Time and DateTime types now use by a default a stricter regular
-      expression to match strings from the database. Use the regexp argument
-      if you are using data stored in a legacy format.
+      expression to match strings from the database. Use the regexp
+      argument if you are using data stored in a legacy format.
     - __legacy_microseconds__ on SQLite Time and DateTime types is not
-      supported anymore. You should use the storage_format argument instead.
+      supported anymore. You should use the storage_format argument
+      instead.
     - Date, Time and DateTime types are now stricter in what they accept as
-      bind parameters: Date type only accepts date objects (and datetime ones,
-      because they inherit from date), Time only accepts time objects, and
-      DateTime only accepts date and datetime objects.
-
+      bind parameters: Date type only accepts date objects (and datetime
+      ones, because they inherit from date), Time only accepts time
+      objects, and DateTime only accepts date and datetime objects.
+    - Column() supports a keyword argument "sqlite_autoincrement", which
+      applies the SQLite keyword "AUTOINCREMENT" to columns within DDL - 
+      will prevent generation of a separate PRIMARY KEY constraint.
+      [ticket:1016]
+      
 - new dialects
     - postgresql+pg8000
     - postgresql+pypostgresql (partial)

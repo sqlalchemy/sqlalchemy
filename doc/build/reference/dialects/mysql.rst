@@ -139,7 +139,7 @@ MySQL Column Types
    :show-inheritance:
 
 MySQL-Python Notes
---------------
+--------------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqldb
 
@@ -149,7 +149,7 @@ OurSQL Notes
 .. automodule:: sqlalchemy.dialects.mysql.oursql
 
 MyConnPY Notes
---------------
+----------------
 
 .. automodule:: sqlalchemy.dialects.mysql.myconnpy
 

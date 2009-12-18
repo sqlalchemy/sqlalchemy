@@ -20,7 +20,25 @@ These types represent dates and times as ISO formatted strings, which also nicel
 support ordering.   There's no reliance on typical "libc" internals for these functions
 so historical dates are fully supported.
 
+Auto Incrementing Beahvior
+--------------------------
 
+Background on SQLite's autoincrement is at: http://sqlite.org/autoinc.html
+
+Two things to note:
+
+* The AUTOINCREMENT keyword is **not** required for SQLite tables to
+  generate primary key values automatically. AUTOINCREMENT only means that
+  the algorithm used to generate ROWID values should be slightly different.
+* SQLite does **not** generate primary key (i.e. ROWID) values, even for
+  one column, if the table has a composite (i.e. multi-column) primary key.
+  This is regardless of the AUTOINCREMENT keyword being present or not.
+
+To specifically render the AUTOINCREMENT keyword on a SQLAlchemy column
+when rendering DDL, add the flag ``sqlite_autoincrement=True``::
+
+    Column('id', Integer, primary_key=True, sqlite_autoincrement=True)
+    
 """
 
 import datetime, re, time
@@ -238,7 +256,31 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         if not column.nullable:
             colspec += " NOT NULL"
+
+        if column.primary_key and \
+             column.table.kwargs.get('sqlite_autoincrement', False) and \
+             len(column.table.primary_key.columns) == 1 and \
+             isinstance(column.type, sqltypes.Integer) and \
+             not column.foreign_keys:
+             colspec += " PRIMARY KEY AUTOINCREMENT"
+            
         return colspec
+
+    def visit_primary_key_constraint(self, constraint):
+        # for columns with sqlite_autoincrement=True,
+        # the PRIMARY KEY constraint can only be inline
+        # with the column itself.
+        if len(constraint.columns) == 1:
+            c = list(constraint)[0]
+            if c.primary_key and \
+                c.table.kwargs.get('sqlite_autoincrement', False) and \
+                isinstance(c.type, sqltypes.Integer) and \
+                not c.foreign_keys:
+                return ''
+ 
+        return super(SQLiteDDLCompiler, self).\
+                    visit_primary_key_constraint(constraint)
+ 
 
     def visit_create_index(self, create):
         index = create.element

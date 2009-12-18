@@ -3,7 +3,7 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exc, sql
+from sqlalchemy import exc, sql, schema
 from sqlalchemy.dialects.sqlite import base as sqlite, pysqlite as pysqlite_dialect
 from sqlalchemy.test import *
 
@@ -528,4 +528,26 @@ class MatchTest(TestBase, AssertsCompiledSQL):
                                            ).order_by(matchtable.c.id).execute().fetchall()
         eq_([1, 3], [r.id for r in results])
 
+class TestAutoIncrement(TestBase, AssertsCompiledSQL):
+
+    def test_sqlite_autoincrement(self):
+        table = Table('autoinctable', MetaData(),
+                      Column('id', Integer, primary_key=True),
+                      Column('x', Integer, default=None),
+                      sqlite_autoincrement=True)
+        self.assert_compile(
+            schema.CreateTable(table),
+            "CREATE TABLE autoinctable (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, x INTEGER)",
+            dialect=sqlite.dialect()
+        )
+
+    def test_sqlite_no_autoincrement(self):
+        table = Table('noautoinctable', MetaData(),
+                      Column('id', Integer, primary_key=True),
+                      Column('x', Integer, default=None))
+        self.assert_compile(
+            schema.CreateTable(table),
+            "CREATE TABLE noautoinctable (id INTEGER NOT NULL, x INTEGER, PRIMARY KEY (id))",
+            dialect=sqlite.dialect()
+        )
 

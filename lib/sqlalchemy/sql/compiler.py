@@ -982,7 +982,9 @@ class DDLCompiler(engine.Compiled):
         # On some DB order is significant: visit PK first, then the
         # other constraints (engine.ReflectionTest.testbasic failed on FB2)
         if table.primary_key:
-            text += ", \n\t" + self.process(table.primary_key)
+            pk = self.process(table.primary_key)
+            if pk:
+                text += ", \n\t" + pk
         
         const = ", \n\t".join(p for p in 
                         (self.process(constraint) for constraint in table.constraints 
