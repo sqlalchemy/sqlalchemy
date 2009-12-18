@@ -200,6 +200,7 @@ class UnicodeTest(_base.MappedTest):
         class Test2(_base.BasicEntity):
             pass
 
+    @testing.fails_on('mysql+oursql', 'raises a warning')
     @testing.resolve_artifact_names
     def test_basic(self):
         mapper(Test, uni_t1)
@@ -213,7 +214,8 @@ class UnicodeTest(_base.MappedTest):
         session.commit()
 
         self.assert_(t1.txt == txt)
-
+    
+    @testing.fails_on('mysql+oursql', 'raises a warning')
     @testing.resolve_artifact_names
     def test_relation(self):
         mapper(Test, uni_t1, properties={

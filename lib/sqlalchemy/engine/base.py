@@ -706,9 +706,10 @@ class Connection(Connectable):
     .. index::
       single: thread safety; Connection
     """
-
+    options = {}
+    
     def __init__(self, engine, connection=None, close_with_result=False,
-                 _branch=False):
+                 _branch=False, _options=None):
         """Construct a new Connection.
 
         Connection objects are typically constructed by an
@@ -723,6 +724,8 @@ class Connection(Connectable):
         self.__savepoint_seq = 0
         self.__branch = _branch
         self.__invalid = False
+        if _options:
+            self.options = _options
 
     def _branch(self):
         """Return a new Connection which references this Connection's
@@ -734,7 +737,22 @@ class Connection(Connectable):
         """
 
         return self.engine.Connection(self.engine, self.__connection, _branch=True)
-
+    
+    def _with_options(self, **opt):
+        """Add keyword options to a Connection generatively.
+        
+        Experimental.  May change the name/signature at 
+        some point.
+        
+        If made public, strongly consider the name
+        "options()" so as to be consistent with
+        orm.Query.options().
+        
+        """
+        return self.engine.Connection(
+                    self.engine, self.__connection,
+                     _branch=self.__branch, _options=opt)
+        
     @property
     def dialect(self):
         "Dialect used by this Connection."

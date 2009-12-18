@@ -138,10 +138,25 @@ MySQL Column Types
    :members: __init__
    :show-inheritance:
 
-MySQLdb Notes
+MySQL-Python Notes
 --------------
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqldb
+
+OurSQL Notes
+--------------
+
+.. automodule:: sqlalchemy.dialects.mysql.oursql
+
+MyConnPY Notes
+--------------
+
+.. automodule:: sqlalchemy.dialects.mysql.myconnpy
+
+pyodbc Notes
+--------------
+
+.. automodule:: sqlalchemy.dialects.mysql.pyodbc
 
 zxjdbc Notes
 --------------
