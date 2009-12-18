@@ -1414,7 +1414,7 @@ class Mapper(object):
             if update:
                 mapper = table_to_mapper[table]
                 clause = sql.and_()
-
+                
                 for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col._label, type_=col.type))
 
@@ -1429,9 +1429,16 @@ class Mapper(object):
 
                     rows += c.rowcount
 
-                if c.supports_sane_rowcount() and rows != len(update):
-                    raise exc.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
-
+                if connection.dialect.supports_sane_rowcount:
+                    if rows != len(update):
+                        raise exc.ConcurrentModificationError(
+                                "Updated rowcount %d does not match number of objects updated %d" %
+                                (rows, len(update)))
+                        
+                elif mapper.version_id_col is not None:
+                    util.warn("Dialect %s does not support updated rowcount "
+                            "- versioning cannot be verified." % c.dialect.dialect_description)
+                    
             if insert:
                 statement = table.insert()
                 for state, params, mapper, connection, value_params in insert:

@@ -107,7 +107,11 @@ class DefaultDialect(base.Dialect):
         #self.supports_unicode_statements = True
         #self.supports_unicode_binds = True
         #self.returns_unicode_strings = True
-
+    
+    @property
+    def dialect_description(self):
+        return self.name + "+" + self.driver
+        
     def initialize(self, connection):
         try:
             self.server_version_info = self._get_server_version_info(connection)

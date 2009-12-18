@@ -67,10 +67,12 @@ class VersioningTest(_base.MappedTest):
         class Foo(_base.ComparableEntity):
             pass
 
+    @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_basic(self):
-        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        mapper(Foo, version_table, 
+                version_id_col=version_table.c.version_id)
 
         s1 = create_session(autocommit=False)
         f1 = Foo(value='f1')
@@ -113,6 +115,27 @@ class VersioningTest(_base.MappedTest):
 
     @engines.close_open_connections
     @testing.resolve_artifact_names
+    def test_notsane_warning(self):
+        save = testing.db.dialect.supports_sane_rowcount
+        testing.db.dialect.supports_sane_rowcount = False
+        try:
+            mapper(Foo, version_table, 
+                    version_id_col=version_table.c.version_id)
+
+            s1 = create_session(autocommit=False)
+            f1 = Foo(value='f1')
+            f2 = Foo(value='f2')
+            s1.add_all((f1, f2))
+            s1.commit()
+
+            f1.value='f1rev2'
+            assert_raises(sa.exc.SAWarning, s1.commit)
+        finally:
+            testing.db.dialect.supports_sane_rowcount = save
+
+    @testing.emits_warning(r'.*does not support updated rowcount')
+    @engines.close_open_connections
+    @testing.resolve_artifact_names
     def test_versioncheck(self):
         """query.with_lockmode performs a 'version check' on an already loaded instance"""
 
@@ -140,6 +163,7 @@ class VersioningTest(_base.MappedTest):
         s1.close()
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
 
+    @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_noversioncheck(self):

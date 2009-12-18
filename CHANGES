@@ -146,6 +146,10 @@ CHANGES
      The internal BackRef() is gone and backref() returns a plain 
      tuple that is understood by RelationProperty.
      
+   - The version_id_col feature on mapper() will raise a warning when
+     used with dialects that don't support "rowcount" adequately.
+     [ticket:1569]
+     
    - Deprecated or removed:
       * 'allow_null_pks' flag on mapper() is deprecated.  It does
         nothing now and the setting is "on" in all cases.
