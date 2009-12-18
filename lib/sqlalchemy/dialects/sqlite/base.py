@@ -34,10 +34,13 @@ Two things to note:
   one column, if the table has a composite (i.e. multi-column) primary key.
   This is regardless of the AUTOINCREMENT keyword being present or not.
 
-To specifically render the AUTOINCREMENT keyword on a SQLAlchemy column
-when rendering DDL, add the flag ``sqlite_autoincrement=True``::
+To specifically render the AUTOINCREMENT keyword on the primary key
+column when rendering DDL, add the flag ``sqlite_autoincrement=True`` 
+to the Table construct::
 
-    Column('id', Integer, primary_key=True, sqlite_autoincrement=True)
+    Table('sometable', metadata,
+            Column('id', Integer, primary_key=True), 
+            sqlite_autoincrement=True)
     
 """
 
