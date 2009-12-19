@@ -167,6 +167,18 @@ class LazyTest(_fixtures.FixtureTest):
         l = q.filter(s.c.u2_id==User.id).order_by(User.id).distinct().all()
         eq_(self.static.user_all_result, l)
 
+    @testing.resolve_artifact_names 
+    def test_uselist_false_warning(self):
+        """test that multiple rows received by a uselist=False raises a warning."""
+
+        mapper(User, users, properties={
+            'order':relation(Order, uselist=False)
+        })
+        mapper(Order, orders)
+        s = create_session()
+        u1 = s.query(User).filter(User.id==7).one()
+        assert_raises(sa.exc.SAWarning, getattr, u1, 'order')
+
     @testing.resolve_artifact_names
     def test_one_to_many_scalar(self):
         mapper(User, users, properties = dict(

@@ -600,7 +600,13 @@ class LoadLazyAttribute(object):
         if strategy.uselist:
             return result
         else:
-            if result:
+            l = len(result)
+            if l:
+                if l > 1:
+                    util.warn(
+                        "Multiple rows returned with "
+                        "uselist=False for lazily-loaded attribute '%s' " % prop)
+                    
                 return result[0]
             else:
                 return None

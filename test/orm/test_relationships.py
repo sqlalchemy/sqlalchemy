@@ -329,7 +329,7 @@ class RelationTest3(_base.MappedTest):
                                  order_by=pages.c.pagename)),
             'currentversion': relation(
                  PageVersion,
-                 foreign_keys=[pages.c.current_version],
+                 uselist=False,
                  primaryjoin=sa.and_(
                      pages.c.jobno==pageversions.c.jobno,
                      pages.c.pagename==pageversions.c.pagename,
@@ -353,7 +353,7 @@ class RelationTest3(_base.MappedTest):
                                   order_by=pagecomments.c.comment_id))})
 
     @testing.resolve_artifact_names
-    def testbasic(self):
+    def test_basic(self):
         """A combination of complicated join conditions with post_update."""
 
         j1 = Job(jobno=u'somejob')
