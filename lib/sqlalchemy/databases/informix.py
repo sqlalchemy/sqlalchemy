@@ -160,7 +160,7 @@ ischema_names = {
     1   : InfoSmallInteger, # SMALLINT
     2   : InfoInteger,      # INT
     3   : InfoNumeric,      # Float
-    3   : InfoNumeric,      # SmallFloat
+    4   : InfoNumeric,      # SmallFloat
     5   : InfoNumeric,      # DECIMAL
     6   : InfoInteger,      # Serial
     7   : InfoDate,         # DATE
@@ -253,11 +253,11 @@ class InfoDialect(default.DefaultDialect):
         if not rows :
             raise exc.NoSuchTableError(table.name)
         else:
-            if table.owner is not None:
-                if table.owner.lower() in [r[0] for r in rows]:
-                    owner = table.owner.lower()
+            if table.schema is not None:
+                if table.schema.lower() in [r[0] for r in rows]:
+                    owner = table.schema.lower()
                 else:
-                    raise AssertionError("Specified owner %s does not own table %s"%(table.owner, table.name))
+                    raise AssertionError("Specified owner %s does not own table %s"%(table.schema, table.name))
             else:
                 if len(rows)==1:
                     owner = rows[0][0]

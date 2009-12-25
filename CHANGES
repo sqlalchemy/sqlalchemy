@@ -127,6 +127,11 @@ CHANGES
       Trusted_Connection when constructing pyodbc connect
       arguments [ticket:1561]
 
+- informix
+    - Fixed erroneous reference to "owner" attribute in 
+      Informix dialect when reflecting tables.
+      [ticket:1645]
+      
 - ext 
     - A column can be added to a joined-table declarative 
       superclass after the class has been constructed 
