@@ -304,6 +304,12 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
         assert_no_mappers()
 
+    # fails on newer versions of pysqlite due to unusual memory 
+    # behvior in pysqlite itself.
+    # background at: http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
+    @testing.fails_if(lambda: 
+                        testing.db.dialect.name == 'sqlite' and 
+                        testing.db.dialect.dbapi.version > '2.5')
     def test_join_cache(self):
         metadata = MetaData(testing.db)
 
