@@ -551,12 +551,14 @@ class OracleDialect(default.DefaultDialect):
         if schema is None:
             cursor = connection.execute(
                 "SELECT table_name FROM all_tables "
-                "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX')")
+                "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
+                "AND IOT_NAME IS NULL")
         else:
             s = sql.text(
                 "SELECT table_name FROM all_tables "
                 "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
-                "AND OWNER = :owner")
+                "AND OWNER = :owner "
+                "AND IOT_NAME IS NULL")
             cursor = connection.execute(s, owner=self.denormalize_name(schema))
         return [self.normalize_name(row[0]) for row in cursor]
 

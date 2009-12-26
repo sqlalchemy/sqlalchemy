@@ -527,6 +527,34 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             t.drop(engine)
             
             
+class DontReflectIOTTest(TestBase):
+    """test that index overflow tables aren't included in table_names."""
+    
+    def setup(self):
+        testing.db.execute("""
+        CREATE TABLE admin_docindex(
+                token char(20), 
+                doc_id NUMBER,
+                token_frequency NUMBER,
+                token_offsets VARCHAR2(2000),
+                CONSTRAINT pk_admin_docindex PRIMARY KEY (token, doc_id))
+            ORGANIZATION INDEX 
+            TABLESPACE users
+            PCTTHRESHOLD 20
+            OVERFLOW TABLESPACE users
+        """)
+    
+    def teardown(self):
+        testing.db.execute("drop table admin_docindex")
+    
+    def test_reflect_all(self):
+        m = MetaData(testing.db)
+        m.reflect()
+        eq_(
+            set(t.name for t in m.tables.values()),
+            set(['admin_docindex'])
+        )
+        
 class BufferedColumnTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
