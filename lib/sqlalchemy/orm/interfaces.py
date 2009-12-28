@@ -54,7 +54,7 @@ class MapperExtension(object):
     New extension classes subclass ``MapperExtension`` and are specified
     using the ``extension`` mapper() argument, which is a single
     ``MapperExtension`` or a list of such.   A single mapper
-    can maintain a chain of `MapperExtension`` objects.  When a
+    can maintain a chain of ``MapperExtension`` objects.  When a
     particular mapping event occurs, the corresponding method 
     on each ``MapperExtension`` is invoked serially, and each method
     has the ability to halt the chain from proceeding further.
@@ -69,7 +69,7 @@ class MapperExtension(object):
     new instance to a result list.
     
     The symbol EXT_STOP has significance within a chain
-    of ``MapperExtension``s that the chain will be stopped
+    of ``MapperExtension`` objects that the chain will be stopped
     when this symbol is returned.  Like EXT_CONTINUE, it also
     has additional significance in some cases that a default
     mapper activity will not be performed.
