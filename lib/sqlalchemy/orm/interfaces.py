@@ -49,26 +49,67 @@ MANYTOONE = util.symbol('MANYTOONE')
 MANYTOMANY = util.symbol('MANYTOMANY')
 
 class MapperExtension(object):
-    """Base implementation for customizing Mapper behavior.
+    """Base implementation for customizing ``Mapper`` behavior.
 
-    For each method in MapperExtension, returning a result of EXT_CONTINUE
-    will allow processing to continue to the next MapperExtension in line or
-    use the default functionality if there are no other extensions.
-
-    Returning EXT_STOP will halt processing of further extensions handling
-    that method.  Some methods such as ``load`` have other return
-    requirements, see the individual documentation for details.  Other than
-    these exception cases, any return value other than EXT_CONTINUE or
-    EXT_STOP will be interpreted as equivalent to EXT_STOP.
+    New extension classes subclass ``MapperExtension`` and are specified
+    using the ``extension`` mapper() argument, which is a single
+    ``MapperExtension`` or a list of such.   A single mapper
+    can maintain a chain of `MapperExtension`` objects.  When a
+    particular mapping event occurs, the corresponding method 
+    on each ``MapperExtension`` is invoked serially, and each method
+    has the ability to halt the chain from proceeding further.
+    
+    Each ``MapperExtension`` method returns the symbol
+    EXT_CONTINUE by default.   This symbol generally means "move
+    to the next ``MapperExtension`` for processing".  For methods
+    that return objects like translated rows or new object
+    instances, EXT_CONTINUE means the result of the method
+    should be ignored.   In some cases it's required for a 
+    default mapper activity to be performed, such as adding a 
+    new instance to a result list.
+    
+    The symbol EXT_STOP has significance within a chain
+    of ``MapperExtension``s that the chain will be stopped
+    when this symbol is returned.  Like EXT_CONTINUE, it also
+    has additional significance in some cases that a default
+    mapper activity will not be performed.
 
     """
     def instrument_class(self, mapper, class_):
+        """Receive a class when the mapper is first constructed, and has
+        applied instrumentation to the mapped class.
+        
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
+        
+        """
         return EXT_CONTINUE
 
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
+        """Receive an instance when it's constructor is called.
+        
+        This method is only called during a userland construction of 
+        an object.  It is not called when an object is loaded from the
+        database.
+        
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
+
+        """
         return EXT_CONTINUE
 
     def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):
+        """Receive an instance when it's constructor has been called, 
+        and raised an exception.
+        
+        This method is only called during a userland construction of 
+        an object.  It is not called when an object is loaded from the
+        database.
+        
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
+
+        """
         return EXT_CONTINUE
 
     def translate_row(self, mapper, context, row):
@@ -77,8 +118,15 @@ class MapperExtension(object):
 
         This is called when the mapper first receives a row, before
         the object identity or the instance itself has been derived
-        from that row.
-
+        from that row.   The given row may or may not be a 
+        ``RowProxy`` object - it will always be a dictionary-like
+        object which contains mapped columns as keys.  The 
+        returned object should also be a dictionary-like object
+        which recognizes mapped columns as keys.
+        
+        If the ultimate return value is EXT_CONTINUE, the row
+        is not translated.
+        
         """
         return EXT_CONTINUE
 
@@ -93,7 +141,7 @@ class MapperExtension(object):
           The mapper doing the operation
 
         selectcontext
-          SelectionContext corresponding to the instances() call
+          The QueryContext generated from the Query.
 
         row
           The result row from the database
@@ -121,7 +169,7 @@ class MapperExtension(object):
           The mapper doing the operation.
 
         selectcontext
-          SelectionContext corresponding to the instances() call.
+          The QueryContext generated from the Query.
 
         row
           The result row from the database.
@@ -172,15 +220,18 @@ class MapperExtension(object):
         instance's lifetime.
 
         Note that during a result-row load, this method is called upon
-        the first row received for this instance. If eager loaders are
-        set to further populate collections on the instance, those
-        will *not* yet be completely loaded.
+        the first row received for this instance.  Note that some 
+        attributes and collections may or may not be loaded or even 
+        initialized, depending on what's present in the result rows.
+
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
 
         """
         return EXT_CONTINUE
 
     def before_insert(self, mapper, connection, instance):
-        """Receive an object instance before that instance is INSERTed
+        """Receive an object instance before that instance is inserted
         into its table.
 
         This is a good place to set up primary key values and such
@@ -188,22 +239,30 @@ class MapperExtension(object):
 
         Column-based attributes can be modified within this method
         which will result in the new value being inserted.  However
-        *no* changes to the overall flush plan can be made; this means
-        any collection modification or save() operations which occur
-        within this method will not take effect until the next flush
-        call.
+        *no* changes to the overall flush plan can be made, and 
+        manipulation of the ``Session`` will not have the desired effect.
+        To manipulate the ``Session`` within an extension, use 
+        ``SessionExtension``.
+
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
 
         """
 
         return EXT_CONTINUE
 
     def after_insert(self, mapper, connection, instance):
-        """Receive an object instance after that instance is INSERTed."""
+        """Receive an object instance after that instance is inserted.
+
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
+        
+        """
 
         return EXT_CONTINUE
 
     def before_update(self, mapper, connection, instance):
-        """Receive an object instance before that instance is UPDATEed.
+        """Receive an object instance before that instance is updated.
 
         Note that this method is called for all instances that are marked as
         "dirty", even those which have no net changes to their column-based
@@ -219,35 +278,52 @@ class MapperExtension(object):
         and will therefore generate an UPDATE statement, use
         ``object_session(instance).is_modified(instance, include_collections=False)``.
 
-        Column-based attributes can be modified within this method which will
-        result in their being updated.  However *no* changes to the overall
-        flush plan can be made; this means any collection modification or
-        save() operations which occur within this method will not take effect
-        until the next flush call.
+        Column-based attributes can be modified within this method
+        which will result in the new value being updated.  However
+        *no* changes to the overall flush plan can be made, and 
+        manipulation of the ``Session`` will not have the desired effect.
+        To manipulate the ``Session`` within an extension, use 
+        ``SessionExtension``.
+
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
 
         """
 
         return EXT_CONTINUE
 
     def after_update(self, mapper, connection, instance):
-        """Receive an object instance after that instance is UPDATEed."""
+        """Receive an object instance after that instance is updated.
+
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
+        
+        """
 
         return EXT_CONTINUE
 
     def before_delete(self, mapper, connection, instance):
-        """Receive an object instance before that instance is DELETEed.
+        """Receive an object instance before that instance is deleted.
 
-        Note that *no* changes to the overall
-        flush plan can be made here; this means any collection modification,
-        save() or delete() operations which occur within this method will
-        not take effect until the next flush call.
+        Note that *no* changes to the overall flush plan can be made
+        here; and manipulation of the ``Session`` will not have the
+        desired effect. To manipulate the ``Session`` within an
+        extension, use ``SessionExtension``.
+
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
 
         """
 
         return EXT_CONTINUE
 
     def after_delete(self, mapper, connection, instance):
-        """Receive an object instance after that instance is DELETEed."""
+        """Receive an object instance after that instance is deleted.
+        
+        The return value is only significant within the ``MapperExtension`` 
+        chain; the parent mapper's behavior isn't modified by this method.
+        
+        """
 
         return EXT_CONTINUE
 
