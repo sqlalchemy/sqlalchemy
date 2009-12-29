@@ -529,7 +529,9 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             
 class DontReflectIOTTest(TestBase):
     """test that index overflow tables aren't included in table_names."""
-    
+
+    __only_on__ = 'oracle' 
+
     def setup(self):
         testing.db.execute("""
         CREATE TABLE admin_docindex(
