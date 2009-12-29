@@ -559,6 +559,9 @@ CHANGES
       select from a procedure that modifies rows, now work 
       with server-side cursor mode (the named cursor isn't 
       used for such statements.)
+    
+    - postgresql dialect can properly detect pg "devel" version
+      strings, i.e. "8.5devel" [ticket:1636]
       
 - mysql
     - New dialects: oursql, a new native dialect, 

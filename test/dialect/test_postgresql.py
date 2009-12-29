@@ -978,7 +978,25 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             assert t2.c.date2.type.timezone is False
         finally:
             m1.drop_all()
-
+    
+    def test_version_parsing(self):
+        class MockConn(object):
+            def __init__(self, res):
+                self.res = res
+                
+            def execute(self, str):
+                return self
+                
+            def scalar(self):
+                return self.res
+                
+        for string, version in [
+            ("PostgreSQL 8.3.8 on i686-redhat-linux-gnu, compiled by GCC gcc (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)", (8, 3, 8)),
+            ("PostgreSQL 8.5devel on x86_64-unknown-linux-gnu, compiled by GCC gcc (GCC) 4.4.2, 64-bit", (8, 5)),
+        ]:
+            
+            eq_(testing.db.dialect._get_server_version_info(MockConn(string)), version)
+        
     def test_pg_weirdchar_reflection(self):
         meta1 = MetaData(testing.db)
         subject = Table("subject", meta1,

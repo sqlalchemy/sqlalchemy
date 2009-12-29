@@ -706,10 +706,10 @@ class PGDialect(default.DefaultDialect):
 
     def _get_server_version_info(self, connection):
         v = connection.execute("select version()").scalar()
-        m = re.match('PostgreSQL (\d+)\.(\d+)\.(\d+)', v)
+        m = re.match('PostgreSQL (\d+)\.(\d+)(?:\.(\d+))?(?:devel)?', v)
         if not m:
             raise AssertionError("Could not determine version from string '%s'" % v)
-        return tuple([int(x) for x in m.group(1, 2, 3)])
+        return tuple([int(x) for x in m.group(1, 2, 3) if x is not None])
 
     @reflection.cache
     def get_table_oid(self, connection, table_name, schema=None, **kw):
