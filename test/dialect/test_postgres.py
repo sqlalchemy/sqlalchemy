@@ -62,7 +62,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
     def test_extract(self):
 
-        t = table('t', column('col1', DateTime), column('col2', Date), column('col3', Time))
+        t = table('t', column('col1', DateTime), column('col2', Date), column('col3', Time),
+                    column('col4', postgres.PGDateTime), column('col5', postgres.PGDate),
+                    column('col6', postgres.PGTime), column('col7', postgres.PGInterval)
+        )
 
         for field in 'year', 'month', 'day', 'epoch', 'hour':
             for expr, compiled_expr in [
@@ -84,12 +87,18 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 (t.c.col2 + t.c.col3,
                     "(t.col2 + t.col3) :: timestamp"
                 ),
+                (t.c.col5 + t.c.col6,
+                    "(t.col5 + t.col6) :: timestamp"
+                ),
                 # addition is commutative
                 (t.c.col2 + datetime.timedelta(days=5),
                     "(t.col2 + %(col2_1)s) :: timestamp"
                 ),
                 (datetime.timedelta(days=5) + t.c.col2,
                     "(%(col2_1)s + t.col2) :: timestamp"
+                ),
+                (t.c.col4 + t.c.col7,
+                    "(t.col4 + t.col7) :: timestamp"
                 ),
                 # subtraction is not
                 (t.c.col1 - datetime.timedelta(seconds=30),
@@ -103,6 +112,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 ),
                 (t.c.col3 + datetime.timedelta(seconds=30),
                     "(t.col3 + %(col3_1)s) :: time"
+                ),
+                (t.c.col6 + datetime.timedelta(seconds=30),
+                    "(t.col6 + %(col6_1)s) :: time"
                 ),
                 (func.current_timestamp() - func.coalesce(t.c.col1, func.current_timestamp()),
                     "(CURRENT_TIMESTAMP - coalesce(t.col1, CURRENT_TIMESTAMP)) :: interval",

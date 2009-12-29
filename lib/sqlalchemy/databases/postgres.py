@@ -166,7 +166,11 @@ class PGTime(sqltypes.Time):
 class PGInterval(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "INTERVAL"
-
+    
+    @property
+    def _type_affinity(self):
+        return sqltypes.Interval
+        
 class PGText(sqltypes.Text):
     def get_col_spec(self):
         return "TEXT"
