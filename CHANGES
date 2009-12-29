@@ -789,7 +789,10 @@ CHANGES
       on PG's documentation for date/time/interval arithmetic.
       It also accepts text() constructs again, which was broken
       in 0.5.7. [ticket:1647]
-      
+
+- firebird 
+    - Recognize more errors as disconnections. [ticket:1646]
+
 0.5.7
 =====
 - orm
