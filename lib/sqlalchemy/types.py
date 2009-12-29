@@ -1213,6 +1213,10 @@ class Interval(TypeDecorator):
                 return value - epoch
         return process
 
+    @property
+    def _type_affinity(self):
+        return Interval
+
 class FLOAT(Float):
     """The SQL FLOAT type."""
 

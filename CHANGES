@@ -777,6 +777,18 @@ CHANGES
       that is the parent AssociationProxy argument.  Allows
       serializability and subclassing of the built in collections.
       [ticket:1259]
+     
+0.5.8
+=====
+- postgresql
+    - The extract() function, which was slightly improved in
+      0.5.7, needed a lot more work to generate the correct
+      typecast (the typecasts appear to be necessary in PG's
+      EXTRACT quite a lot of the time).  The typecast is 
+      now generated using a rule dictionary based 
+      on PG's documentation for date/time/interval arithmetic.
+      It also accepts text() constructs again, which was broken
+      in 0.5.7. [ticket:1647]
       
 0.5.7
 =====
