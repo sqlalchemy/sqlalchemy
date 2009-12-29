@@ -839,7 +839,11 @@ class Interval(TypeDecorator):
         import sqlalchemy.databases.postgres as pg
         self.__supported = {pg.PGDialect:pg.PGInterval}
         del pg
-
+    
+    @property
+    def _type_affinity(self):
+        return Interval
+        
     def load_dialect_impl(self, dialect):
         if dialect.__class__ in self.__supported:
             return self.__supported[dialect.__class__]()
