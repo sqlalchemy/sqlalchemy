@@ -125,6 +125,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 (literal(datetime.timedelta(seconds=10)) - literal(datetime.timedelta(seconds=10)),
                     "(%(param_1)s - %(param_2)s) :: interval"
                 ),
+                (t.c.col3 + "some string", # dont crack up on entirely unsupported types
+                    "t.col3 + %(col3_1)s"
+                )
             ]:
                 self.assert_compile(
                     select([extract(field, expr)]).select_from(t),
