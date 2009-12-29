@@ -1498,7 +1498,15 @@ class _CompareMixin(ColumnOperators):
             args.append(o)
 
         if len(args) == 0:
-            # Special case handling for empty IN's, behave like comparison against zero row selectable
+            # Special case handling for empty IN's, behave like comparison 
+            # against zero row selectable.  We use != to build the 
+            # contradiction as it handles NULL values appropriately, i.e.
+            # "not (x IN ())" should not return NULL values for x.
+            util.warn("The IN-predicate on \"%s\" was invoked with an empty sequence. "
+                       "This results in a contradiction, which nonetheless can be "
+                       "expensive to evaluate.  Consider alternative strategies for "
+                       "improved performance." % self)
+                       
             return self != self
 
         return self.__compare(op, ClauseList(*args).self_group(against=op), negate=negate_op)

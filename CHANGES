@@ -260,7 +260,15 @@ CHANGES
       named "tablename_id" - this is because
       the labeling logic is always applied to all columns
       so a naming conflict will never occur.
-      
+    
+    - calling expr.in_([]), i.e. with an empty list, emits a warning
+      before issuing the usual "expr != expr" clause.  The
+      "expr != expr" can be very expensive, and it's preferred
+      that the user not issue in_() if the list is empty,
+      instead simply not querying, or modifying the criterion
+       as appropriate for more complex situations.
+       [ticket:1628]
+       
     - Deprecated or removed:
         * "scalar" flag on select() is removed, use 
           select.as_scalar().

@@ -1265,6 +1265,7 @@ UNION SELECT mytable.myid FROM mytable"
         
         assert [str(c) for c in s.c] == ["id", "hoho"]
 
+    @testing.emits_warning('.*empty sequence.*')
     def test_in(self):
         self.assert_compile(select([table1], table1.c.myid.in_(['a'])),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1)")

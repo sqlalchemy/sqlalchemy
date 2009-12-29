@@ -721,6 +721,7 @@ class QueryTest(TestBase):
         finally:
             shadowed.drop(checkfirst=True)
 
+    @testing.emits_warning('.*empty sequence.*')
     def test_in_filtering(self):
         """test the behavior of the in_() function."""
 
@@ -747,6 +748,7 @@ class QueryTest(TestBase):
         # Null values are not outside any set
         assert len(r) == 0
 
+    @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
     def test_bind_in(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
@@ -761,6 +763,7 @@ class QueryTest(TestBase):
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
 
+    @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.fails_on('oracle', 'FIXME: unknown')
