@@ -110,6 +110,10 @@ class INTERVAL(sqltypes.TypeEngine):
     
     def adapt(self, impltype):
         return impltype(self.precision)
+
+    @property
+    def _type_affinity(self):
+        return sqltypes.Interval
         
 PGInterval = INTERVAL
 

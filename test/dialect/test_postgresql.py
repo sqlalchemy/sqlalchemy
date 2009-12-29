@@ -100,8 +100,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             "CREATE INDEX test_idx1 ON testtbl (data) WHERE data > 5 AND data < 10", dialect=postgresql.dialect())
 
     def test_extract(self):
-
-        t = table('t', column('col1', DateTime), column('col2', Date), column('col3', Time))
+        t = table('t', column('col1', DateTime), column('col2', Date), column('col3', Time),
+                    column('col4', postgresql.INTERVAL)
+        )
 
         for field in 'year', 'month', 'day', 'epoch', 'hour':
             for expr, compiled_expr in [
@@ -130,6 +131,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 (datetime.timedelta(days=5) + t.c.col2,
                     "(%(col2_1)s + t.col2) :: timestamp"
                 ),
+                (t.c.col1 + t.c.col4,
+                    "(t.col1 + t.col4) :: timestamp"
+                ),
                 # subtraction is not
                 (t.c.col1 - datetime.timedelta(seconds=30),
                     "(t.col1 - %(col1_1)s) :: timestamp"
@@ -152,6 +156,9 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 (literal(datetime.timedelta(seconds=10)) - literal(datetime.timedelta(seconds=10)),
                     "(%(param_1)s - %(param_2)s) :: interval"
                 ),
+                (t.c.col3 + "some string", # dont crack up on entirely unsupported types
+                    "t.col3 + %(col3_1)s"
+                )
             ]:
                 self.assert_compile(
                     select([extract(field, expr)]).select_from(t),

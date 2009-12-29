@@ -104,6 +104,9 @@ def determine_date_affinity(expr):
         left_affin, right_affin = \
             determine_date_affinity(expr.left), \
             determine_date_affinity(expr.right)
+
+        if left_affin is None or right_affin is None:
+            return None
         
         if operators.is_commutative(expr.operator):
             key = tuple(sorted([left_affin, right_affin], key=lambda cls:cls.__name__))
