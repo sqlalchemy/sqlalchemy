@@ -54,7 +54,7 @@ class EvaluatorCompiler(object):
                 if has_null:
                     return None
                 return False
-        if clause.operator is operators.and_:
+        elif clause.operator is operators.and_:
             def evaluate(obj):
                 for sub_evaluate in evaluators:
                     value = sub_evaluate(obj)
@@ -63,6 +63,8 @@ class EvaluatorCompiler(object):
                             return None
                         return False
                 return True
+        else:
+            raise UnevaluatableError("Cannot evaluate clauselist with operator %s" % clause.operator)
 
         return evaluate
 
