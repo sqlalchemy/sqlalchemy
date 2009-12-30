@@ -93,11 +93,11 @@ Within the new compilation function, to get at the "original" compilation routin
 use the appropriate visit_XXX method - this because compiler.process() will call upon the 
 overriding routine and cause an endless loop.   Such as, to add "prefix" to all insert statements::
 
-from sqlalchemy.sql.expression import Insert
+    from sqlalchemy.sql.expression import Insert
 
-@compiles(Insert)
-def prefix_inserts(insert, compiler, **kw)
-    return compiler.visit_insert(insert.prefix_with("some prefix"), **kw)
+    @compiles(Insert)
+    def prefix_inserts(insert, compiler, **kw):
+        return compiler.visit_insert(insert.prefix_with("some prefix"), **kw)
 
 The above compiler will prefix all INSERT statements with "some prefix" when compiled.
 
