@@ -30,6 +30,9 @@ Produces::
 
     SELECT [x], [y]
 
+Dialect-specific compilation rules
+==================================
+
 Compilers can also be made dialect-specific. The appropriate compiler will be
 invoked for the dialect in use::
 
@@ -50,6 +53,9 @@ invoked for the dialect in use::
         return "ALTER TABLE %s ALTER COLUMN %s ..." % (element.table.name, element.column.name)
 
 The second ``visit_alter_table`` will be invoked when any ``postgresql`` dialect is used.
+
+Compiling sub-elements of a custom expression construct
+=======================================================
 
 The ``compiler`` argument is the :class:`~sqlalchemy.engine.base.Compiled`
 object in use. This object can be inspected for any information about the
@@ -76,6 +82,40 @@ method which can be used for compilation of embedded attributes::
 Produces::
 
     "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z FROM mytable WHERE mytable.x > :x_1)"
+
+Cross Compiling between SQL and DDL compilers
+---------------------------------------------
+
+SQL and DDL constructs are each compiled using different base compilers - ``SQLCompiler``
+and ``DDLCompiler``.   A common need is to access the compilation rules of SQL expressions
+from within a DDL expression. The ``DDLCompiler`` includes an accessor ``sql_compiler`` for this reason, such as below where we generate a CHECK
+constraint that embeds a SQL expression::
+
+    @compiles(MyConstraint)
+    def compile_my_constraint(constraint, ddlcompiler, **kw):
+        return "CONSTRAINT %s CHECK (%s)" % (
+            constraint.name,
+            ddlcompiler.sql_compiler.process(constraint.expression)
+        )
+
+Changing the default compilation of existing constructs
+=======================================================
+
+The compiler extension applies just as well to the existing constructs.  When overriding
+the compilation of a built in SQL construct, the @compiles decorator is invoked upon
+the appropriate class (be sure to use the class, i.e. ``Insert`` or ``Select``, instead of the creation function such as ``insert()`` or ``select()``).
+
+Within the new compilation function, to get at the "original" compilation routine,
+use the appropriate visit_XXX method - this because compiler.process() will call upon the 
+overriding routine and cause an endless loop.   Such as, to add "prefix" to all insert statements::
+
+    from sqlalchemy.sql.expression import Insert
+
+    @compiles(Insert)
+    def prefix_inserts(insert, compiler, **kw):
+        return compiler.visit_insert(insert.prefix_with("some prefix"), **kw)
+
+The above compiler will prefix all INSERT statements with "some prefix" when compiled.
 
 Subclassing Guidelines
 ======================
@@ -105,8 +145,6 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
   ``DDLElement`` also features ``Table`` and ``MetaData`` event hooks via the
   ``execute_at()`` method, allowing the construct to be invoked during CREATE
   TABLE and DROP TABLE sequences.
- 
-
 
 """
 
