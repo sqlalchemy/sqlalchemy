@@ -1628,7 +1628,8 @@ class Query(object):
                 if self.whereclause is not None:
                     eval_condition = evaluator_compiler.process(self.whereclause)
                 else:
-                    eval_condition = evaluator_compiler.process(expression._Null)
+                    def eval_condition(obj):
+                        return True
                     
             except evaluator.UnevaluatableError:
                 raise sa_exc.InvalidRequestError("Could not evaluate current criteria in Python.  "
@@ -1732,8 +1733,8 @@ class Query(object):
                 if self.whereclause is not None:
                     eval_condition = evaluator_compiler.process(self.whereclause)
                 else:
-                    eval_condition = evaluator_compiler.process(expression._Null)
-                    
+                    def eval_condition(obj):
+                        return True
 
                 value_evaluators = {}
                 for key,value in values.iteritems():

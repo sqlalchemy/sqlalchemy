@@ -3705,3 +3705,23 @@ class UpdateDeleteTest(_base.MappedTest):
 
         eq_(sess.query(Document.title).all(), zip(['baz']))
 
+    @testing.resolve_artifact_names
+    def test_update_all(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+    
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).update({'age': 42}, synchronize_session='evaluate')
+    
+        eq_([john.age, jack.age, jill.age, jane.age], [42,42,42,42])
+        eq_(sess.query(User.age).order_by(User.id).all(), zip([42,42,42,42]))
+
+    @testing.resolve_artifact_names
+    def test_delete_all(self):
+        sess = create_session(bind=testing.db, autocommit=False)
+    
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).delete(synchronize_session='evaluate')
+        
+        assert not (john in sess or jack in sess or jill in sess or jane in sess)
+        eq_(sess.query(User).count(), 0)
+        
