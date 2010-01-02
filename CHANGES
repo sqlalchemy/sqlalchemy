@@ -791,6 +791,12 @@ CHANGES
      
 0.5.8
 =====
+- sql
+    - The copy() method on Column now supports uninitialized,
+      unnamed Column objects. This allows easy creation of 
+      declarative helpers which place common columns on multiple 
+      subclasses.
+      
 - postgresql
     - The extract() function, which was slightly improved in
       0.5.7, needed a lot more work to generate the correct

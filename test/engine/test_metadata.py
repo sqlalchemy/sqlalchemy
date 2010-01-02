@@ -36,6 +36,24 @@ class MetaDataTest(TestBase, ComparesTables):
         assert t3 not in metadata
         assert t4 not in metadata
         
+    def test_uninitialized_column_copy(self):
+        for col in [
+            Column('foo', String(), nullable=False),
+            Column(Integer(), primary_key=True),
+            Column('bar', Integer(), Sequence('foo_seq'), primary_key=True, key='bar'),
+            Column(Integer(), ForeignKey('bat.blah')),
+            Column('bar', Integer(), ForeignKey('bat.blah'), primary_key=True, key='bar'),
+        ]:
+            c2 = col.copy()
+            for attr in ('name', 'type', 'nullable', 'primary_key', 'key'):
+                eq_(getattr(col, attr), getattr(c2, attr))
+            eq_(len(col.foreign_keys), len(c2.foreign_keys))
+            if col.default:
+                eq_(c2.default.name, 'foo_seq')
+            for a1, a2 in zip(col.foreign_keys, c2.foreign_keys):
+                assert a1 is not a2
+                eq_(a2._colspec, 'bat.blah')
+            
     def test_dupe_tables(self):
         metadata = MetaData()
         t1 = Table('table1', metadata, Column('col1', Integer, primary_key=True),

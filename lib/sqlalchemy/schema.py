@@ -616,8 +616,8 @@ class Column(SchemaItem, expression.ColumnClause):
 
         name = kwargs.pop('name', None)
         type_ = kwargs.pop('type_', None)
+        args = list(args)
         if args:
-            args = list(args)
             if isinstance(args[0], basestring):
                 if name is not None:
                     raise exc.ArgumentError(
@@ -794,10 +794,13 @@ class Column(SchemaItem, expression.ColumnClause):
         This is used in ``Table.tometadata``.
 
         """
+        args = [c.copy(**kw) for c in self.constraints]
+        if self.table is None:
+            args += [c.copy(**kw) for c in self.foreign_keys]
+            
         return Column(
-                self.name, 
-                self.type, 
-                self.default, 
+                name=self.name, 
+                type_=self.type, 
                 key = self.key, 
                 primary_key = self.primary_key, 
                 nullable = self.nullable, 
@@ -808,7 +811,8 @@ class Column(SchemaItem, expression.ColumnClause):
                 server_default=self.server_default,
                 onupdate=self.onupdate,
                 server_onupdate=self.server_onupdate,
-                *[c.copy(**kw) for c in self.constraints])
+                *args
+                )
 
     def _make_proxy(self, selectable, name=None):
         """Create a *proxy* for this column.
@@ -925,7 +929,6 @@ class ForeignKey(SchemaItem):
 
     def copy(self, schema=None):
         """Produce a copy of this ForeignKey object."""
-
         return ForeignKey(
                 self._get_colspec(schema=schema),
                 use_alter=self.use_alter,
@@ -1054,7 +1057,6 @@ class ForeignKey(SchemaItem):
                 return
             raise exc.InvalidRequestError("This ForeignKey already has a parent !")
         self.parent = column
-
         self.parent.foreign_keys.add(self)
         self.parent._on_table_attach(self._set_table)
     
