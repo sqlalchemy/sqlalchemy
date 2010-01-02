@@ -112,6 +112,10 @@ Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: _BindParamClause
+   :members:
+   :show-inheritance:
+
 .. autoclass:: ClauseElement
    :members:
    :show-inheritance:
@@ -171,6 +175,10 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Selectable
+   :members:
+   :show-inheritance:
+
+.. autoclass:: _SelectBaseMixin
    :members:
    :show-inheritance:
 
