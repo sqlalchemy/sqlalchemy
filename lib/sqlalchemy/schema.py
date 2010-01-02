@@ -723,10 +723,21 @@ class Column(SchemaItem, expression.ColumnClause):
         This is used in ``Table.tometadata``.
 
         """
+        
+        if self.args:
+            # if not Table initialized
+            args = []
+            for a in self.args:
+                if isinstance(a, Constraint):
+                    a = a.copy()
+            args.append(a)
+        else:
+            # if Table initialized
+            args = [c.copy(**kw) for c in self.constraints]
+            
         return Column(
-                self.name, 
-                self.type, 
-                self.default, 
+                name=self.name, 
+                type_=self.type, 
                 key = self.key, 
                 primary_key = self.primary_key, 
                 nullable = self.nullable, 
@@ -737,7 +748,8 @@ class Column(SchemaItem, expression.ColumnClause):
                 server_default=self.server_default,
                 onupdate=self.onupdate,
                 server_onupdate=self.server_onupdate,
-                *[c.copy(**kw) for c in self.constraints])
+                *args
+                )
 
     def _make_proxy(self, selectable, name=None):
         """Create a *proxy* for this column.
