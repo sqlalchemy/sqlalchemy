@@ -1843,7 +1843,8 @@ class FromClause(Selectable):
         target_set = column.proxy_set
         cols = self.c
         for c in cols:
-            i = c.proxy_set.intersection(target_set)
+            i = target_set.intersection(itertools.chain(*[p._cloned_set for p in c.proxy_set]))
+
             if i and \
                 (not require_embedded or c.proxy_set.issuperset(target_set)):
                 

@@ -57,7 +57,20 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         # test alias of the join
         j2 = jjj.alias('foo')
         assert j2.corresponding_column(table1.c.col1) is j2.c.table1_col1
+    
+    def test_against_cloned_non_table(self):
+        # test that corresponding column digs across
+        # clone boundaries with anonymous labeled elements
+        col = func.count().label('foo')
+        sel = select([col])
+        
+        sel2 = visitors.ReplacingCloningVisitor().traverse(sel)
+        assert sel2.corresponding_column(col) is sel2.c.foo
 
+        sel3 = visitors.ReplacingCloningVisitor().traverse(sel2)
+        assert sel3.corresponding_column(col) is sel3.c.foo
+
+        
     def test_select_on_table(self):
         sel = select([table1, table2], use_labels=True)
         assert sel.corresponding_column(table1.c.col1) is sel.c.table1_col1
