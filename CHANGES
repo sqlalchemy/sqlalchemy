@@ -524,6 +524,9 @@ CHANGES
              "postgres_where" names still work with a
              deprecation warning.
     
+    - "postgresql_where" now accepts SQL expressions which 
+      can also include literals, which will be quoted as needed.
+      
     - The psycopg2 dialect now uses psycopg2's "unicode extension"
       on all new connections, which allows all String/Text/etc.
       types to skip the need to post-process bytestrings into

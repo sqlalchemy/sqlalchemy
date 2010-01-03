@@ -87,9 +87,16 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data',Integer))
         idx = Index('test_idx1', tbl.c.data, postgresql_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+        idx = Index('test_idx1', tbl.c.data, postgresql_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+        
+        # test quoting and all that
+        idx2 = Index('test_idx2', tbl.c.data, postgresql_where=and_(tbl.c.data > 'a', tbl.c.data < "b's"))
 
         self.assert_compile(schema.CreateIndex(idx), 
             "CREATE INDEX test_idx1 ON testtbl (data) WHERE data > 5 AND data < 10", dialect=postgresql.dialect())
+
+        self.assert_compile(schema.CreateIndex(idx2), 
+            "CREATE INDEX test_idx2 ON testtbl (data) WHERE data > 'a' AND data < 'b''s'", dialect=postgresql.dialect())
             
     @testing.uses_deprecated(r".*'postgres_where' argument has been renamed.*")
     def test_old_create_partial_index(self):

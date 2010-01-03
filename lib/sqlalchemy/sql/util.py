@@ -172,6 +172,13 @@ def find_columns(clause):
     visitors.traverse(clause, {}, {'column':cols.add})
     return cols
 
+def _quote_ddl_expr(element):
+    if isinstance(element, basestring):
+        element = element.replace("'", "''")
+        return "'%s'" % element
+    else:
+        return repr(element)
+    
 def expression_as_ddl(clause):
     """Given a SQL expression, convert for usage in DDL, such as 
      CREATE INDEX and CHECK CONSTRAINT.
@@ -183,7 +190,7 @@ def expression_as_ddl(clause):
     """
     def repl(element):
         if isinstance(element, expression._BindParamClause):
-            return expression.literal_column(repr(element.value))
+            return expression.literal_column(_quote_ddl_expr(element.value))
         elif isinstance(element, expression.ColumnClause) and \
                 element.table is not None:
             return expression.column(element.name)
