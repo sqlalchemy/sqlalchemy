@@ -983,11 +983,14 @@ class ComponentReflectionTest(TestBase):
 
     @testing.requires.schemas
     def test_get_schema_names(self):
-        meta = MetaData(testing.db)
-        insp = Inspector(meta.bind)
+        insp = Inspector(testing.db)
         
         self.assert_(get_schema() in insp.get_schema_names())
 
+    def test_get_default_schema_name(self):
+        insp = Inspector(testing.db)
+        eq_(insp.default_schema_name, testing.db.dialect.default_schema_name)
+        
     def _test_get_table_names(self, schema=None, table_type='table',
                               order_by=None):
         meta = MetaData(testing.db)
