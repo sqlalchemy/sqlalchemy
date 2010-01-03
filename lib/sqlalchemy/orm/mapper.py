@@ -753,7 +753,9 @@ class Mapper(object):
             self.logger.info(
                 "(" + self.class_.__name__ + 
                 "|" + 
-                (self.local_table and self.local_table.description or str(self.local_table)) +
+                (self.local_table is not None and 
+                    self.local_table.description or 
+                    str(self.local_table)) +
                 (self.non_primary and "|non-primary" or "") + ") " + 
                 msg)
 
@@ -762,7 +764,9 @@ class Mapper(object):
             self.logger.debug(
                 "(" + self.class_.__name__ + 
                 "|" + 
-                (self.local_table and self.local_table.description or str(self.local_table)) + 
+                (self.local_table is not None and 
+                    self.local_table.description 
+                    or str(self.local_table)) + 
                 (self.non_primary and "|non-primary" or "") + ") " + 
                 msg)
 

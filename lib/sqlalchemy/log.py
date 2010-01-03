@@ -46,6 +46,7 @@ def default_logging(name):
             '%(asctime)s %(levelname)s %(name)s %(message)s'))
         rootlogger.addHandler(handler)
 
+_logged_classes = set()
 def class_logger(cls, enable=False):
     logger = logging.getLogger(cls.__module__ + "." + cls.__name__)
     if enable == 'debug':
@@ -55,7 +56,14 @@ def class_logger(cls, enable=False):
     cls._should_log_debug = logger.isEnabledFor(logging.DEBUG)
     cls._should_log_info = logger.isEnabledFor(logging.INFO)
     cls.logger = logger
-
+    _logged_classes.add(cls)
+    
+def _refresh_class_loggers():
+    for cls in _logged_classes:
+        logger = logging.getLogger(cls.__module__ + "." + cls.__name__)
+        cls._should_log_debug = logger.isEnabledFor(logging.DEBUG)
+        cls._should_log_info = logger.isEnabledFor(logging.INFO)
+        
 def instance_logger(instance, echoflag=None):
     """create a logger for an instance.
     

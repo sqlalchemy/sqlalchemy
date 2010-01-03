@@ -14,7 +14,7 @@ from config import db, db_label, db_url, file_config, base_config, \
                            _set_table_options, _reverse_topological, _log
 from sqlalchemy.test import testing, config, requires
 from nose.plugins import Plugin
-from sqlalchemy import util
+from sqlalchemy import util, log as sqla_log
 import nose.case
 
 log = logging.getLogger('nose.plugins.sqlalchemy')
@@ -83,7 +83,9 @@ class NoseSQLAlchemy(Plugin):
         # Lazy setup of other options (post coverage)
         for fn in post_configure:
             fn(self.options, file_config)
-
+        
+        sqla_log._refresh_class_loggers()
+        
     def describeTest(self, test):
         return ""
         
