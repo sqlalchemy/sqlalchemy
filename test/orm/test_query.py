@@ -921,6 +921,21 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             #    order_by(User.id, Address.id).first(),
             (User(id=8, addresses=[Address(), Address(), Address()]), Address(id=2)),
         )
+
+    def test_multiple_with_column_entities(self):
+        sess = create_session()
+        
+        eq_(
+            sess.query(User.id).from_self().\
+                add_column(func.count().label('foo')).\
+                group_by(User.id).\
+                from_self().all(),
+            [
+                (7,1), (8, 1), (9, 1), (10, 1)
+            ]
+            
+        )
+
     
 class SetOpsTest(QueryTest, AssertsCompiledSQL):
     

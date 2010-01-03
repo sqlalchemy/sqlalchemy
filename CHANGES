@@ -799,7 +799,15 @@ CHANGES
       unnamed Column objects. This allows easy creation of 
       declarative helpers which place common columns on multiple 
       subclasses.
-      
+    
+    - Fixed a column arithmetic bug that affected column
+      correspondence for cloned selectables which contain
+      free-standing column expressions.   This bug is
+      generally only noticeable when exercising newer 
+      ORM behavior only availble in 0.6 via [ticket:1568], 
+      but is more correct at the SQL expression level 
+      as well. [ticket:1617]
+    
 - postgresql
     - The extract() function, which was slightly improved in
       0.5.7, needed a lot more work to generate the correct
