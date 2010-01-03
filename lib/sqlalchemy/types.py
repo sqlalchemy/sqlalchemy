@@ -680,7 +680,8 @@ class Numeric(TypeEngine):
     """A type for fixed precision numbers.
 
     Typically generates DECIMAL or NUMERIC.  Returns
-    ``decimal.Decimal`` objects by default.
+    ``decimal.Decimal`` objects by default, applying
+    conversion as needed.
 
     """
 
@@ -694,10 +695,27 @@ class Numeric(TypeEngine):
 
         :param scale: the numeric scale for use in DDL ``CREATE TABLE``.
 
-        :param asdecimal: default True.  If False, values will be
-          returned as-is from the DB-API, and may be either
-          ``Decimal`` or ``float`` types depending on the DB-API in
-          use.
+        :param asdecimal: default True.  Return whether or not
+          values should be sent as Python Decimal objects, or
+          as floats.   Different DBAPIs send one or the other based on
+          datatypes - the Numeric type will ensure that return values
+          are one or the other across DBAPIs consistently.  
+          
+        When using the ``Numeric`` type, care should be taken to ensure
+        that the asdecimal setting is apppropriate for the DBAPI in use -
+        when Numeric applies a conversion from Decimal->float or float->
+        Decimal, this conversion incurs an additional performance overhead
+        for all result columns received. 
+        
+        DBAPIs that return Decimal natively (e.g. psycopg2) will have 
+        better accuracy and higher performance with a setting of ``True``,
+        as the native translation to Decimal reduces the amount of floating-
+        point issues at play, and the Numeric type itself doesn't need
+        to apply any further conversions.  However, another DBAPI which 
+        returns floats natively *will* incur an additional conversion 
+        overhead, and is still subject to floating point data loss - in 
+        which case ``asdecimal=False`` will at least remove the extra
+        conversion overhead.
 
         """
         self.precision = precision
@@ -734,7 +752,12 @@ class Numeric(TypeEngine):
 
 
 class Float(Numeric):
-    """A type for ``float`` numbers."""
+    """A type for ``float`` numbers.  
+    
+    Returns Python ``float`` objects by default, applying
+    conversion as needed.
+    
+    """
 
     __visit_name__ = 'float'
 
@@ -743,6 +766,9 @@ class Float(Numeric):
         Construct a Float.
 
         :param precision: the numeric precision for use in DDL ``CREATE TABLE``.
+        
+        :param asdecimal: the same flag as that of :class:`Numeric`, but
+          defaults to ``False``.
 
         """
         self.precision = precision
@@ -940,52 +966,55 @@ class Enum(String, SchemaType):
     
     By default, uses the backend's native ENUM type if available, 
     else uses VARCHAR + a CHECK constraint.
-    
-    Keyword arguments which don't apply to a specific backend are ignored
-    by that backend.
-    
-    :param \*enums: string or unicode enumeration labels. If unicode labels
-        are present, the `convert_unicode` flag is auto-enabled.
-    
-    :param assert_unicode: Enable unicode asserts for bind parameter values.
-        This flag is equivalent to that of ``String``.
-
-    :param convert_unicode: Enable unicode-aware bind parameter and result-set
-        processing for this Enum's data. This is set automatically based on
-        the presence of unicode label strings.
-
-    :param metadata: Associate this type directly with a ``MetaData`` object.
-        For types that exist on the target database as an independent schema
-        construct (Postgresql), this type will be created and dropped within
-        ``create_all()`` and ``drop_all()`` operations. If the type is not
-        associated with any ``MetaData`` object, it will associate itself with
-        each ``Table`` in which it is used, and will be created when any of
-        those individual tables are created, after a check is performed for
-        it's existence. The type is only dropped when ``drop_all()`` is called
-        for that ``Table`` object's metadata, however.
-    
-    :param name: The name of this type. This is required for Postgresql and
-        any future supported database which requires an explicitly named type,
-        or an explicitly named constraint in order to generate the type and/or
-        a table that uses it.
-    
-    :param native_enum: Use the database's native ENUM type when available.
-        Defaults to True.  When False, uses VARCHAR + check constraint
-        for all backends.
-    
-    :param schema: Schemaname of this type. For types that exist on the target
-        database as an independent schema construct (Postgresql), this
-        parameter specifies the named schema in which the type is present.
-    
-    :param quote: Force quoting to be on or off on the type's name. If left as
-        the default of `None`, the usual schema-level "case
-        sensitive"/"reserved name" rules are used to determine if this type's
-        name should be quoted.
-    
     """
+    
     __visit_name__ = 'enum'
     
     def __init__(self, *enums, **kw):
+        """Construct an enum.
+        
+        Keyword arguments which don't apply to a specific backend are ignored
+        by that backend.
+
+        :param \*enums: string or unicode enumeration labels. If unicode labels
+            are present, the `convert_unicode` flag is auto-enabled.
+
+        :param assert_unicode: Enable unicode asserts for bind parameter values.
+            This flag is equivalent to that of ``String``.
+
+        :param convert_unicode: Enable unicode-aware bind parameter and result-set
+            processing for this Enum's data. This is set automatically based on
+            the presence of unicode label strings.
+
+        :param metadata: Associate this type directly with a ``MetaData`` object.
+            For types that exist on the target database as an independent schema
+            construct (Postgresql), this type will be created and dropped within
+            ``create_all()`` and ``drop_all()`` operations. If the type is not
+            associated with any ``MetaData`` object, it will associate itself with
+            each ``Table`` in which it is used, and will be created when any of
+            those individual tables are created, after a check is performed for
+            it's existence. The type is only dropped when ``drop_all()`` is called
+            for that ``Table`` object's metadata, however.
+
+        :param name: The name of this type. This is required for Postgresql and
+            any future supported database which requires an explicitly named type,
+            or an explicitly named constraint in order to generate the type and/or
+            a table that uses it.
+
+        :param native_enum: Use the database's native ENUM type when available.
+            Defaults to True.  When False, uses VARCHAR + check constraint
+            for all backends.
+
+        :param schema: Schemaname of this type. For types that exist on the target
+            database as an independent schema construct (Postgresql), this
+            parameter specifies the named schema in which the type is present.
+
+        :param quote: Force quoting to be on or off on the type's name. If left as
+            the default of `None`, the usual schema-level "case
+            sensitive"/"reserved name" rules are used to determine if this type's
+            name should be quoted.
+
+        """
         self.enums = enums
         self.native_enum = kw.pop('native_enum', True)
         convert_unicode= kw.pop('convert_unicode', None)

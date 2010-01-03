@@ -52,9 +52,11 @@ Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: Enum
   :show-inheritance:
+  :members:
 
 .. autoclass:: Float
   :show-inheritance:
+  :members:
 
 .. autoclass:: Integer
   :show-inheritance:
@@ -64,6 +66,7 @@ Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: Numeric
   :show-inheritance:
+  :members:
 
 .. autoclass:: PickleType
  :show-inheritance:
