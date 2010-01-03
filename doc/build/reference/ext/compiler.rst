@@ -1,3 +1,5 @@
+.. _sqlalchemy.ext.compiler_toplevel:
+
 compiler
 ========
 

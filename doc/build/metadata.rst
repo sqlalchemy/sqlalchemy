@@ -790,6 +790,17 @@ When using a callable, the callable is passed the ddl element, event name, the `
 Custom DDL
 ----------
 
+Custom DDL phrases are most easily achieved using the :class:`~sqlalchemy.schema.DDL` construct.  This construct works like all the other DDL elements except it accepts a string which is the
+text to be emitted:
+
+.. sourcecode:: python+sql
+
+    DDL("ALTER TABLE users ADD CONSTRAINT "
+        "cst_user_name_length "
+        " CHECK (length(user_name) >= 8)").execute_at("after-create", metadata)
+
+A more comprehensive method of creating libraries of DDL constructs is to use the :ref:`sqlalchemy.ext.compiler_toplevel` extension.   See that chapter for full details.
+
 Adapting Tables to Alternate Metadata 
 ======================================
 
