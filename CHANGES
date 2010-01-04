@@ -19,7 +19,8 @@ CHANGES
 - orm
   - Changes to query.update() and query.delete():
       - the 'expire' option on query.update() has been renamed to
-        'fetch', thus matching that of query.delete()
+        'fetch', thus matching that of query.delete().  
+        'expire' is deprecated and issues a warning.
 
       - query.update() and query.delete() both default to
         'evaluate' for the synchronize strategy.

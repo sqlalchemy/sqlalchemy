@@ -1714,6 +1714,12 @@ class Query(object):
         #TODO: updates of manytoone relations need to be converted to fk assignments
         #TODO: cascades need handling.
 
+        if synchronize_session == 'expire':
+            util.warn_deprecated("The 'expire' value as applied to "
+                                    "the synchronize_session argument of "
+                                    "query.update() is now called 'fetch'")
+            synchronize_session = 'fetch'
+            
         if synchronize_session not in [False, 'evaluate', 'fetch']:
             raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'fetch'")
         self._no_select_modifiers("update")
