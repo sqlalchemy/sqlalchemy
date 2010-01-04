@@ -1,4 +1,4 @@
-from sqlalchemy.dialects.mysql import base, mysqldb, oursql, pyodbc, zxjdbc, myconnpy
+from sqlalchemy.dialects.mysql import base, mysqldb, oursql, pyodbc, zxjdbc, mysqlconnector
 
 # default dialect
 base.dialect = mysqldb.dialect

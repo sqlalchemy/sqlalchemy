@@ -57,13 +57,7 @@ class MySQL_mysqlconnector(MySQLDialect):
 
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
-        version = []
-        r = re.compile('[.\-]')
-        for n in r.split(dbapi_con.get_server_version()):
-            try:
-                version.append(int(n))
-            except ValueError:
-                version.append(n)
+        version = dbapi_con.get_server_version()
         return tuple(version)
 
     def _detect_charset(self, connection):
