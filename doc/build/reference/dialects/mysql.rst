@@ -148,10 +148,10 @@ OurSQL Notes
 
 .. automodule:: sqlalchemy.dialects.mysql.oursql
 
-MyConnPY Notes
-----------------
+MySQL-Connector Notes
+----------------------
 
-.. automodule:: sqlalchemy.dialects.mysql.myconnpy
+.. automodule:: sqlalchemy.dialects.mysql.mysqlconnector
 
 pyodbc Notes
 --------------

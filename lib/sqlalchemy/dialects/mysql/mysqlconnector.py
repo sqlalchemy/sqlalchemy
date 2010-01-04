@@ -1,13 +1,6 @@
 """Support for the MySQL database via the MySQL Connector/Python adapter.
 
-This dialect is in development pending further progress on this
-new DBAPI.
-
-current issue (2009-10-18):
-
-fetchone() does not obey PEP 249
-
-https://bugs.launchpad.net/myconnpy/+bug/454782
+# TODO: add docs/notes here regarding MySQL Connector/Python
 
 """
 
@@ -20,25 +13,13 @@ from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
 
-class MySQL_myconnpyExecutionContext(MySQLExecutionContext):
-    # DBAPI BUG:
-    # fetchone() improperly raises an exception when no rows remain
-    
+class MySQL_mysqlconnectorExecutionContext(MySQLExecutionContext):
     
     def get_lastrowid(self):
-        # DBAPI BUG: wrong name of attribute
-        # https://bugs.launchpad.net/myconnpy/+bug/454782
-        return self.cursor._lastrowid
-        
-        # this is the fallback approach.
-#        cursor = self.create_cursor()
-#        cursor.execute("SELECT LAST_INSERT_ID()")
-#        lastrowid = cursor.fetchone()[0]
-#        cursor.close()
-#        return lastrowid
+        return self.cursor.lastrowid
     
         
-class MySQL_myconnpyCompiler(MySQLCompiler):
+class MySQL_mysqlconnectorCompiler(MySQLCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
     
@@ -46,32 +27,24 @@ class MySQL_myconnpyCompiler(MySQLCompiler):
         return text.replace('%', '%%')
 
 
-class MySQL_myconnpyIdentifierPreparer(MySQLIdentifierPreparer):
+class MySQL_mysqlconnectorIdentifierPreparer(MySQLIdentifierPreparer):
     
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace("%", "%%")
 
-class MySQL_myconnpy(MySQLDialect):
-    driver = 'myconnpy'
+class MySQL_mysqlconnector(MySQLDialect):
+    driver = 'mysqlconnector'
     supports_unicode_statements = False
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
     default_paramstyle = 'format'
-    execution_ctx_cls = MySQL_myconnpyExecutionContext
-    statement_compiler = MySQL_myconnpyCompiler
+    execution_ctx_cls = MySQL_mysqlconnectorExecutionContext
+    statement_compiler = MySQL_mysqlconnectorCompiler
     
-    preparer = MySQL_myconnpyIdentifierPreparer
+    preparer = MySQL_mysqlconnectorIdentifierPreparer
     
-    def __init__(self, **kw):
-        # DBAPI BUG:
-        # named parameters don't work:
-        # "Parameters must be given as a sequence."
-        # https://bugs.launchpad.net/myconnpy/+bug/454782
-        kw['paramstyle'] = 'format'
-        MySQLDialect.__init__(self, **kw)
-        
     @classmethod
     def dbapi(cls):
         from mysql import connector
@@ -106,4 +79,4 @@ class MySQL_myconnpy(MySQLDialect):
         else:
             return None
 
-dialect = MySQL_myconnpy
+dialect = MySQL_mysqlconnector
