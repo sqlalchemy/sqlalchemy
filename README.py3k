@@ -17,6 +17,12 @@ written.
 
 You now have a Python 3 version of SQLAlchemy in lib/.   
 
+Current 3k Issues
+-----------------
+
+Current bugs and tickets related to Py3k are on the Py3k milestone in trac:
+
+http://www.sqlalchemy.org/trac/query?status=new&status=assigned&status=reopened&milestone=py3k
 
 Running Tests
 -------------

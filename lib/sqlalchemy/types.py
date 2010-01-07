@@ -849,6 +849,8 @@ class Binary(TypeEngine):
         """
         self.length = length
 
+    # Python 3 - sqlite3 doesn't need the `Binary` conversion
+    # here, though pg8000 does to indicate "bytea"
     def bind_processor(self, dialect):
         DBAPIBinary = dialect.dbapi.Binary
         def process(value):
@@ -858,6 +860,10 @@ class Binary(TypeEngine):
                 return None
         return process
 
+    # Python 3 has native bytes() type 
+    # both sqlite3 and pg8000 seem to return it
+    # (i.e. and not 'memoryview')
+    # Py2K
     def result_processor(self, dialect, coltype):
         if util.jython:
             def process(value):
@@ -874,7 +880,8 @@ class Binary(TypeEngine):
                 else:
                     return None
         return process
-
+    # end Py2K
+    
     def adapt(self, impltype):
         return impltype(length=self.length)
 

@@ -23,7 +23,7 @@ from sqlalchemy.orm.interfaces import (
     MANYTOMANY, MANYTOONE, MapperProperty, ONETOMANY, PropComparator,
     StrategizedProperty,
     )
-from types import NoneType
+NoneType = type(None)
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
            'ComparableProperty', 'RelationProperty', 'BackRef')

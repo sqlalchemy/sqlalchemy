@@ -145,6 +145,9 @@ class _OracleUnicodeText(sqltypes.UnicodeText):
                     return value
             return process
         else:
+            # TODO: this is wrong - we are getting a LOB here
+            # no matter what version of oracle, so process() 
+            # is still needed
             return super(_OracleUnicodeText, self).result_processor(dialect, coltype)
 
 class _OracleInteger(sqltypes.Integer):
