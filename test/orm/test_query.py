@@ -929,6 +929,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             sess.query(User.id).from_self().\
                 add_column(func.count().label('foo')).\
                 group_by(User.id).\
+                order_by(User.id).\
                 from_self().all(),
             [
                 (7,1), (8, 1), (9, 1), (10, 1)

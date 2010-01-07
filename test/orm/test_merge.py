@@ -4,7 +4,8 @@ from sqlalchemy import Integer, PickleType
 import operator
 from sqlalchemy.test import testing
 from sqlalchemy.util import OrderedSet
-from sqlalchemy.orm import mapper, relation, create_session, PropComparator, synonym, comparable_property, sessionmaker
+from sqlalchemy.orm import mapper, relation, create_session, PropComparator, \
+                            synonym, comparable_property, sessionmaker, attributes
 from sqlalchemy.test.testing import eq_, ne_
 from test.orm import _base, _fixtures
 from sqlalchemy.test.schema import Table, Column
@@ -378,6 +379,43 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(on_load.called, 6)
         eq_(u3.name, 'also fred')
 
+    @testing.resolve_artifact_names
+    def test_many_to_one_cascade(self):
+        mapper(Address, addresses, properties={
+            'user':relation(User)
+        })
+        mapper(User, users)
+        
+        u1 = User(id=1, name="u1")
+        a1 =Address(id=1, email_address="a1", user=u1)
+        u2 = User(id=2, name="u2")
+        
+        sess = create_session()
+        sess.add_all([a1, u2])
+        sess.flush()
+        
+        a1.user = u2
+        
+        sess2 = create_session()
+        a2 = sess2.merge(a1)
+        eq_(
+            attributes.get_history(a2, 'user'), 
+            ([u2], (), [attributes.PASSIVE_NO_RESULT])
+        )
+        assert a2 in sess2.dirty
+        
+        sess.refresh(a1)
+        
+        sess2 = create_session()
+        a2 = sess2.merge(a1, load=False)
+        eq_(
+            attributes.get_history(a2, 'user'), 
+            ((), [u1], ())
+        )
+        assert a2 not in sess2.dirty
+        
+        
+        
     @testing.resolve_artifact_names
     def test_many_to_many_cascade(self):
 

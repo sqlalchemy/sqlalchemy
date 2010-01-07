@@ -121,6 +121,11 @@ CHANGES
     
   - the "dont_load=True" flag on Session.merge() is deprecated
     and is now "load=False".
+    
+  - Session.merge() is performance optimized, using half the
+    call counts for "load=False" mode compared to 0.5 and
+    significantly fewer SQL queries in the case of collections
+    for "load=True" mode.
 
   - `expression.null()` is fully understood the same way
     None is when comparing an object/collection-referencing

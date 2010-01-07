@@ -105,13 +105,17 @@ class ColumnProperty(StrategizedProperty):
     def setattr(self, state, value, column):
         state.get_impl(self.key).set(state, state.dict, value, None)
 
-    def merge(self, session, source, dest, load, _recursive):
-        value = attributes.instance_state(source).value_as_iterable(
-            self.key, passive=True)
-        if value:
-            setattr(dest, self.key, value[0])
+    def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
+        if self.key in source_dict:
+            value = source_dict[self.key]
+        
+            if not load:
+                dest_dict[self.key] = value
+            else:
+                impl = dest_state.get_impl(self.key)
+                impl.set(dest_state, dest_dict, value, None)
         else:
-            attributes.instance_state(dest).expire_attributes([self.key])
+            dest_state.expire_attributes([self.key])
 
     def get_col_value(self, column, value):
         return value
@@ -301,7 +305,7 @@ class SynonymProperty(MapperProperty):
             proxy_property=self.descriptor
             )
 
-    def merge(self, session, source, dest, load, _recursive):
+    def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
         pass
         
 log.class_logger(SynonymProperty)
@@ -334,7 +338,7 @@ class ComparableProperty(MapperProperty):
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
 
-    def merge(self, session, source, dest, load, _recursive):
+    def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
         pass
 
 
@@ -624,50 +628,61 @@ class RelationProperty(StrategizedProperty):
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
 
-    def merge(self, session, source, dest, load, _recursive):
+    def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
         if load:
             # TODO: no test coverage for recursive check
             for r in self._reverse_property:
-                if (source, r) in _recursive:
+                if (source_state, r) in _recursive:
                     return
-
-        source_state = attributes.instance_state(source)
-        dest_state, dest_dict = attributes.instance_state(dest), attributes.instance_dict(dest)
 
         if not "merge" in self.cascade:
             dest_state.expire_attributes([self.key])
             return
 
-        instances = source_state.value_as_iterable(self.key, passive=True)
-
-        if not instances:
+        if self.key not in source_dict:
             return
 
         if self.uselist:
+            instances = source_state.get_impl(self.key).\
+                            get(source_state, source_dict)
+            
+            if load:
+                # for a full merge, pre-load the destination collection,
+                # so that individual _merge of each item pulls from identity
+                # map for those already present.  
+                # also assumes CollectionAttrbiuteImpl behavior of loading
+                # "old" list in any case
+                dest_state.get_impl(self.key).get(dest_state, dest_dict)
+                
             dest_list = []
             for current in instances:
-                _recursive[(current, self)] = True
-                obj = session._merge(current, load=load, _recursive=_recursive)
+                current_state = attributes.instance_state(current)
+                current_dict = attributes.instance_dict(current)
+                _recursive[(current_state, self)] = True
+                obj = session._merge(current_state, current_dict, load=load, _recursive=_recursive)
                 if obj is not None:
                     dest_list.append(obj)
+                    
             if not load:
                 coll = attributes.init_state_collection(dest_state, dest_dict, self.key)
                 for c in dest_list:
                     coll.append_without_event(c)
             else:
-                getattr(dest.__class__, self.key).impl._set_iterable(dest_state, dest_dict, dest_list)
+                dest_state.get_impl(self.key)._set_iterable(dest_state, dest_dict, dest_list)
         else:
-            current = instances[0]
+            current = source_dict[self.key]
             if current is not None:
-                _recursive[(current, self)] = True
-                obj = session._merge(current, load=load, _recursive=_recursive)
+                current_state = attributes.instance_state(current)
+                current_dict = attributes.instance_dict(current)
+                _recursive[(current_state, self)] = True
+                obj = session._merge(current_state, current_dict, load=load, _recursive=_recursive)
             else:
                 obj = None
-            
+
             if not load:
-                dest_state.dict[self.key] = obj
+                dest_dict[self.key] = obj
             else:
-                setattr(dest, self.key, obj)
+                dest_state.get_impl(self.key).set(dest_state, dest_dict, obj, None)
 
     def cascade_iterator(self, type_, state, visited_instances, halt_on=None):
         if not type_ in self.cascade:
