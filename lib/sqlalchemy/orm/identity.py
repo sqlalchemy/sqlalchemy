@@ -236,7 +236,7 @@ class StrongInstanceDict(IdentityMap):
         """prune unreferenced, non-dirty states."""
         
         ref_count = len(self)
-        dirty = [s.obj() for s in self.all_states() if s.check_modified()]
+        dirty = [s.obj() for s in self.all_states() if s.modified]
 
         # work around http://bugs.python.org/issue6149
         keepers = weakref.WeakValueDictionary()

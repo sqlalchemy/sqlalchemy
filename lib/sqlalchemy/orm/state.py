@@ -68,10 +68,6 @@ class InstanceState(object):
     def sort_key(self):
         return self.key and self.key[1] or (self.insert_order, )
 
-    def check_modified(self):
-        # TODO: deprecate
-        return self.modified
-
     def initialize_instance(*mixed, **kwargs):
         self, instance, args = mixed[0], mixed[1], mixed[2:]
         manager = self.manager
