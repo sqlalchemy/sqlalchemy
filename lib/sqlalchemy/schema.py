@@ -697,7 +697,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         toinit = list(self.args)
         if self.default is not None:
-            if isinstance(self.default, ColumnDefault):
+            if isinstance(self.default, DefaultGenerator):
                 toinit.append(self.default)
             else:
                 toinit.append(ColumnDefault(self.default))
@@ -707,7 +707,10 @@ class Column(SchemaItem, expression.ColumnClause):
             else:
                 toinit.append(DefaultClause(self.server_default))
         if self.onupdate is not None:
-            toinit.append(ColumnDefault(self.onupdate, for_update=True))
+            if isinstance(self.onupdate, DefaultGenerator):
+                toinit.append(self.onupdate)
+            else:
+                toinit.append(ColumnDefault(self.onupdate, for_update=True))
         if self.server_onupdate is not None:
             if isinstance(self.server_onupdate, FetchedValue):
                 toinit.append(self.server_default)
