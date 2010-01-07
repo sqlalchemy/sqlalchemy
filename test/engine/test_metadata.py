@@ -1,7 +1,8 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, CheckConstraint,\
-                        ForeignKey, MetaData, Sequence, ForeignKeyConstraint
+                        ForeignKey, MetaData, Sequence, ForeignKeyConstraint,\
+                        ColumnDefault
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import schema
 import sqlalchemy as tsa
@@ -99,7 +100,7 @@ class MetaDataTest(TestBase, ComparesTables):
         meta = MetaData()
 
         table = Table('mytable', meta,
-            Column('myid', Integer, primary_key=True),
+            Column('myid', Integer, Sequence('foo_id_seq'), primary_key=True),
             Column('name', String(40), nullable=True),
             Column('foo', String(40), nullable=False, server_default='x', server_onupdate='q'),
             Column('bar', String(40), nullable=False, default='y', onupdate='z'),
@@ -154,6 +155,7 @@ class MetaDataTest(TestBase, ComparesTables):
                 assert 'x' in str(table_c.c.foo.server_default.arg)
                 
                 if not reflect:
+                    assert isinstance(table_c.c.myid.default, Sequence)
                     assert str(table_c.c.foo.server_onupdate.arg) == 'q'
                     assert str(table_c.c.bar.default.arg) == 'y'
                     assert getattr(table_c.c.bar.onupdate.arg, 'arg', table_c.c.bar.onupdate.arg) == 'z'
@@ -241,6 +243,15 @@ class TableOptionsTest(TestBase, AssertsCompiledSQL):
             assert t.info['bar'] == 'zip'
 
 class ColumnOptionsTest(TestBase):
+    
+    def test_default_generators(self):
+        g1, g2 = Sequence('foo_id_seq'), ColumnDefault('f5')
+        assert Column(default=g1).default is g1
+        assert Column(onupdate=g1).onupdate is g1
+        assert Column(default=g2).default is g2
+        assert Column(onupdate=g2).onupdate is g2
+        
+        
     def test_column_info(self):
         
         c1 = Column('foo', info={'x':'y'})

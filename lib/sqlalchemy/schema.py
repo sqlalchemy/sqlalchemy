@@ -670,7 +670,10 @@ class Column(SchemaItem, expression.ColumnClause):
                 args.append(DefaultClause(self.server_default))
                 
         if self.onupdate is not None:
-            args.append(ColumnDefault(self.onupdate, for_update=True))
+            if isinstance(self.onupdate, (ColumnDefault, Sequence)):
+                args.append(self.onupdate)
+            else:
+                args.append(ColumnDefault(self.onupdate, for_update=True))
             
         if self.server_onupdate is not None:
             if isinstance(self.server_onupdate, FetchedValue):

@@ -801,6 +801,14 @@ CHANGES
       declarative helpers which place common columns on multiple 
       subclasses.
     
+    - Default generators like Sequence() translate correctly
+      across a copy() operation.
+      
+    - Sequence() and other DefaultGenerator objects are accepted 
+      as the value for the "default" and "onupdate" keyword
+      arguments of Column, in addition to being accepted
+      positionally.  
+      
     - Fixed a column arithmetic bug that affected column
       correspondence for cloned selectables which contain
       free-standing column expressions.   This bug is
