@@ -6,6 +6,7 @@ from sqlalchemy.test import testing
 from sqlalchemy.util import OrderedSet
 from sqlalchemy.orm import mapper, relation, create_session, PropComparator, \
                             synonym, comparable_property, sessionmaker, attributes
+from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.test.testing import eq_, ne_
 from test.orm import _base, _fixtures
 from sqlalchemy.test.schema import Table, Column
@@ -822,6 +823,63 @@ class MergeTest(_fixtures.FixtureTest):
         assert sess.autoflush
         sess.commit()
 
+    @testing.resolve_artifact_names
+    def test_option_state(self):
+        """test that the merged takes on the MapperOption characteristics
+        of that which is merged.
+        
+        """
+        class Option(MapperOption):
+            propagate_to_loaders = True
+            
+        opt1, opt2 = Option(), Option()
+
+        sess = sessionmaker()()
+        
+        umapper = mapper(User, users)
+        
+        sess.add_all([
+            User(id=1, name='u1'),
+            User(id=2, name='u2'),
+        ])
+        sess.commit()
+        
+        sess2 = sessionmaker()()
+        s2_users = sess2.query(User).options(opt2).all()
+        
+        # test 1.  no options are replaced by merge options
+        sess = sessionmaker()()
+        s1_users = sess.query(User).all()
+        
+        for u in s1_users:
+            ustate = attributes.instance_state(u)
+            eq_(ustate.load_path, ())
+            eq_(ustate.load_options, set())
+            
+        for u in s2_users:
+            sess.merge(u)
+
+        for u in s1_users:
+            ustate = attributes.instance_state(u)
+            eq_(ustate.load_path, (umapper, ))
+            eq_(ustate.load_options, set([opt2]))
+        
+        # test 2.  present options are replaced by merge options
+        sess = sessionmaker()()
+        s1_users = sess.query(User).options(opt1).all()
+        for u in s1_users:
+            ustate = attributes.instance_state(u)
+            eq_(ustate.load_path, (umapper, ))
+            eq_(ustate.load_options, set([opt1]))
+
+        for u in s2_users:
+            sess.merge(u)
+            
+        for u in s1_users:
+            ustate = attributes.instance_state(u)
+            eq_(ustate.load_path, (umapper, ))
+            eq_(ustate.load_options, set([opt2]))
+        
 
 class MutableMergeTest(_base.MappedTest):
     @classmethod

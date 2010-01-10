@@ -685,11 +685,11 @@ def build_path(entity, key, prev=None):
 def serialize_path(path):
     if path is None:
         return None
-
-    return [
-        (mapper.class_, key)
-        for mapper, key in [(path[i], path[i+1]) for i in range(0, len(path)-1, 2)]
-    ]
+    
+    return zip(
+        [m.class_ for m in [path[i] for i in range(0, len(path), 2)]], 
+        [path[i] for i in range(1, len(path), 2)] + [None]
+    )
 
 def deserialize_path(path):
     if path is None:
@@ -698,10 +698,11 @@ def deserialize_path(path):
     global class_mapper
     if class_mapper is None:
         from sqlalchemy.orm import class_mapper
-
-    return tuple(
-        chain(*[(class_mapper(cls), key) for cls, key in path])
-    )
+    
+    p = tuple(chain(*[(class_mapper(cls), key) for cls, key in path]))
+    if p[-1] is None:
+        p = p[0:-1]
+    return p
 
 class MapperOption(object):
     """Describe a modification to a Query."""

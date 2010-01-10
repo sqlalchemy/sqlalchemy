@@ -1,0 +1,54 @@
+Illustrates how to embed Beaker cache functionality within
+the Query object, allowing full cache control as well as the
+ability to pull "lazy loaded" attributes from long term cache 
+as well.
+
+In this demo, the following techniques are illustrated:
+
+  * Using custom subclasses of Query
+  * Basic technique of circumventing Query to pull from a 
+    custom cache source instead of the database.
+  * Rudimental caching with Beaker, using "regions" which allow
+    global control over a fixed set of configurations.
+  * Using custom MapperOption objects to configure options on 
+    a Query, including the ability to invoke the options 
+    deep within an object graph when lazy loads occur.
+
+To run, both SQLAlchemy and Beaker (1.4 or greater) must be
+installed or on the current PYTHONPATH. The demo will create a local
+directory for datafiles, insert initial data, and run. Running the
+demo a second time will utilize the cache files already present, and
+exactly one SQL statement against two tables will be emitted - the
+displayed result however will utilize dozens of lazyloads that all
+pull from cache.
+
+Two endpoint scripts, "demo.py" and "ad_hoc.py", are run as follows:
+
+   python examples/beaker_caching/demo.py
+
+   python examples/beaker_caching/ad_hoc.py
+
+
+Listing of files:
+
+__init__.py - Establish data / cache file paths, and configurations, 
+bootstrap fixture data if necessary.
+
+meta.py - Represent persistence structures which allow the usage of
+Beaker caching with SQLAlchemy.  Introduces a query option called
+FromCache.
+
+model.py - The datamodel, which represents Person that has multiple
+Address objects, each with PostalCode, City, Country
+
+fixture_data.py - creates demo PostalCode, Address, Person objects
+in the database.
+
+demo.py - The first script to run - illustrates loading a list of
+Person / Address objects.  When run a second time, most data is 
+cached and only one SQL statement is emitted.
+
+ad_hoc.py - Further examples of how to use FromCache.  Illustrates
+front-end usage, cache invalidation, loading related collections
+from cache vs. eager loading of collections.
+

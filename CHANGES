@@ -63,6 +63,34 @@ CHANGES
         limit/offset without the extra overhead of a subquery,
         since a many-to-one join does not add rows to the result.
 
+  - Enhancements / Changes on Session.merge():
+     - the "dont_load=True" flag on Session.merge() is deprecated
+       and is now "load=False".
+    
+     - Session.merge() is performance optimized, using half the
+       call counts for "load=False" mode compared to 0.5 and
+       significantly fewer SQL queries in the case of collections
+       for "load=True" mode.
+
+     - merge() will not issue a needless merge of attributes if the
+       given instance is the same instance which is already present.
+       
+     - merge() now also merges the "options" associated with a given
+       state, i.e. those passed through query.options() which follow
+       along with an instance, such as options to eagerly- or
+       lazyily- load various attributes.   This is essential for
+       the construction of highly integrated caching schemes.  This
+       is a subtle behavioral change vs. 0.5.
+       
+     - A bug was fixed regarding the serialization of the "loader
+       path" present on an instance's state, which is also necessary
+       when combining the usage of merge() with serialized state
+       and associated options that should be preserved.  
+       
+     - The all new merge() is showcased in a new comprehensive 
+       example of how to integrate Beaker with SQLAlchemy.  See
+       the notes in the "examples" note below.
+  
   - Using a "dynamic" loader with a "secondary" table now produces
     a query where the "secondary" table is *not* aliased.  This
     allows the secondary Table object to be used in the "order_by"
@@ -119,14 +147,6 @@ CHANGES
     things like FROM expressions being placed there directly.
     [ticket:1622]
     
-  - the "dont_load=True" flag on Session.merge() is deprecated
-    and is now "load=False".
-    
-  - Session.merge() is performance optimized, using half the
-    call counts for "load=False" mode compared to 0.5 and
-    significantly fewer SQL queries in the case of collections
-    for "load=True" mode.
-
   - `expression.null()` is fully understood the same way
     None is when comparing an object/collection-referencing
     attribute within query.filter(), filter_by(), etc.
@@ -797,7 +817,15 @@ CHANGES
       that is the parent AssociationProxy argument.  Allows
       serializability and subclassing of the built in collections.
       [ticket:1259]
-     
+
+- examples
+    - The "query_cache" examples have been removed, and are replaced
+      with a fully comprehensive approach that combines the usage of
+      Beaker with SQLAlchemy.  New query options are used to indicate
+      the caching characteristics of a particular Query, which 
+      can also be invoked deep within an object graph when lazily
+      loading related objects.  See /examples/beaker_caching/README.
+    
 0.5.8
 =====
 - sql

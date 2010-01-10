@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session, attributes
+from sqlalchemy.orm import mapper, relation, create_session, attributes, interfaces
 from test.orm import _base, _fixtures
 
 
@@ -32,6 +32,28 @@ class PickleTest(_fixtures.FixtureTest):
 
         eq_(u1, sess.query(User).get(u2.id))
 
+    @testing.resolve_artifact_names
+    def test_serialize_path(self):
+        umapper = mapper(User, users, properties={
+            'addresses':relation(Address, backref="user")
+        })
+        amapper = mapper(Address, addresses)
+        
+        # this is a "relation" path with mapper, key, mapper, key
+        p1 = (umapper, 'addresses', amapper, 'email_address')
+        eq_(
+            interfaces.deserialize_path(interfaces.serialize_path(p1)),
+            p1
+        )
+        
+        # this is a "mapper" path with mapper, key, mapper, no key
+        # at the end.
+        p2 = (umapper, 'addresses', amapper, )
+        eq_(
+            interfaces.deserialize_path(interfaces.serialize_path(p2)),
+            p2
+        )
+        
     @testing.resolve_artifact_names
     def test_class_deferred_cols(self):
         mapper(User, users, properties={
@@ -77,7 +99,10 @@ class PickleTest(_fixtures.FixtureTest):
         sess.flush()
         sess.expunge_all()
 
-        u1 = sess.query(User).options(sa.orm.defer('name'), sa.orm.defer('addresses.email_address')).get(u1.id)
+        u1 = sess.query(User).\
+                options(sa.orm.defer('name'), 
+                        sa.orm.defer('addresses.email_address')).\
+                        get(u1.id)
         assert 'name' not in u1.__dict__
         assert 'addresses' not in u1.__dict__
 
@@ -97,7 +122,11 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(u2.name, 'ed')
         assert 'addresses' not in u2.__dict__
         ad = u2.addresses[0]
-        assert 'email_address' in ad.__dict__  # mapper options dont transmit over merge() right now
+        
+        # mapper options now transmit over merge(),
+        # new as of 0.6, so email_address is deferred.
+        assert 'email_address' not in ad.__dict__  
+        
         eq_(ad.email_address, 'ed@bar.com')
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 

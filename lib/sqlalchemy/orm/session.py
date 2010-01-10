@@ -1165,8 +1165,14 @@ class Session(object):
             
         _recursive[state] = merged
 
-        for prop in mapper.iterate_properties:
-            prop.merge(self, state, state_dict, merged_state, merged_dict, load, _recursive)
+        # check that we didn't just pull the exact same
+        # state out.   
+        if state is not merged_state:
+            merged_state.load_path = state.load_path
+            merged_state.load_options = state.load_options
+            
+            for prop in mapper.iterate_properties:
+                prop.merge(self, state, state_dict, merged_state, merged_dict, load, _recursive)
 
         if not load:
             # remove any history
