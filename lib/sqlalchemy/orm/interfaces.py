@@ -642,7 +642,7 @@ class StrategizedProperty(MapperProperty):
     """
 
     def __get_context_strategy(self, context, path):
-        cls = context.attributes.get(("loaderstrategy", path), None)
+        cls = context.attributes.get(("loaderstrategy", _reduce_path(path)), None)
         if cls:
             try:
                 return self.__all_strategies[cls]
@@ -762,11 +762,13 @@ class PropertyOption(MapperOption):
 
         if _is_aliased_class(mapper):
             searchfor = mapper
+            isa = False
         else:
-            searchfor = _class_to_mapper(mapper).base_mapper
-        
+            searchfor = _class_to_mapper(mapper)
+            isa = True
+            
         for ent in query._mapper_entities:
-            if ent.path_entity is searchfor:
+            if searchfor is ent.path_entity or (isa and searchfor.common_parent(ent.path_entity)):
                 return ent
         else:
             if raiseerr:
@@ -852,7 +854,7 @@ class PropertyOption(MapperOption):
                     path_element = mapper = getattr(prop, 'mapper', None)
 
                 if path_element:
-                    path_element = path_element.base_mapper
+                    path_element = path_element
                     
                 
         # if current_path tokens remain, then
@@ -911,15 +913,34 @@ class StrategizedOption(PropertyOption):
         return False
 
     def process_query_property(self, query, paths, mappers):
+        # __get_context_strategy may receive the path in terms of
+        # a base mapper - e.g.  options(eagerload_all(Company.employees, Engineer.machines))
+        # in the polymorphic tests leads to "(Person, 'machines')" in 
+        # the path due to the mechanics of how the eager strategy builds
+        # up the path
         if self.is_chained():
             for path in paths:
-                query._attributes[("loaderstrategy", path)] = self.get_strategy_class()
+                query._attributes[("loaderstrategy", _reduce_path(path))] = \
+                 self.get_strategy_class()
         else:
-            query._attributes[("loaderstrategy", paths[-1])] = self.get_strategy_class()
+            query._attributes[("loaderstrategy", _reduce_path(paths[-1]))] = \
+                            self.get_strategy_class()
 
     def get_strategy_class(self):
         raise NotImplementedError()
 
+def _reduce_path(path):
+    """Convert a (mapper, path) path to use base mappers.
+    
+    This is used to allow more open ended selection of loader strategies, i.e.
+    Mapper -> prop1 -> Subclass -> prop2, where Subclass is a sub-mapper
+    of the mapper referened by Mapper.prop1.
+    
+    """
+    return tuple([i % 2 != 0 and 
+                    path[i] or 
+                    getattr(path[i], 'base_mapper', path[i]) 
+                    for i in xrange(len(path))])
 
 class LoaderStrategy(object):
     """Describe the loading behavior of a StrategizedProperty object.

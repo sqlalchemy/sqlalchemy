@@ -628,16 +628,20 @@ class EagerLoader(AbstractRelationLoader):
             return
             
         path = path + (self.key,)
-
+        
+        reduced_path = interfaces._reduce_path(path)
+        
         # check for user-defined eager alias
-        if ("user_defined_eager_row_processor", path) in context.attributes:
-            clauses = context.attributes[("user_defined_eager_row_processor", path)]
+        if ("user_defined_eager_row_processor", reduced_path) in context.attributes:
+            clauses = context.attributes[("user_defined_eager_row_processor", reduced_path)]
             
             adapter = entity._get_entity_clauses(context.query, context)
             if adapter and clauses:
-                context.attributes[("user_defined_eager_row_processor", path)] = clauses = clauses.wrap(adapter)
+                context.attributes[("user_defined_eager_row_processor", reduced_path)] = \
+                                        clauses = clauses.wrap(adapter)
             elif adapter:
-                context.attributes[("user_defined_eager_row_processor", path)] = clauses = adapter
+                context.attributes[("user_defined_eager_row_processor", reduced_path)] = \
+                                        clauses = adapter
             
             add_to_collection = context.primary_columns
             
@@ -645,12 +649,12 @@ class EagerLoader(AbstractRelationLoader):
             # check for join_depth or basic recursion,
             # if the current path was not explicitly stated as 
             # a desired "loaderstrategy" (i.e. via query.options())
-            if ("loaderstrategy", path) not in context.attributes:
+            if ("loaderstrategy", reduced_path) not in context.attributes:
                 if self.join_depth:
                     if len(path) / 2 > self.join_depth:
                         return
                 else:
-                    if self.mapper.base_mapper in path:
+                    if self.mapper.base_mapper in reduced_path:
                         return
 
             clauses = mapperutil.ORMAdapter(mapperutil.AliasedClass(self.mapper), 
@@ -664,13 +668,13 @@ class EagerLoader(AbstractRelationLoader):
             )
 
             add_to_collection = context.secondary_columns
-            context.attributes[("eager_row_processor", path)] = clauses
+            context.attributes[("eager_row_processor", reduced_path)] = clauses
 
         for value in self.mapper._iterate_polymorphic_properties():
             value.setup(
                 context, 
                 entity, 
-                path + (self.mapper.base_mapper,), 
+                path + (self.mapper,), 
                 clauses, 
                 parentmapper=self.mapper, 
                 column_collection=add_to_collection)
@@ -757,16 +761,17 @@ class EagerLoader(AbstractRelationLoader):
 
         
     def _create_eager_adapter(self, context, row, adapter, path):
-        if ("user_defined_eager_row_processor", path) in context.attributes:
-            decorator = context.attributes[("user_defined_eager_row_processor", path)]
+        reduced_path = interfaces._reduce_path(path)
+        if ("user_defined_eager_row_processor", reduced_path) in context.attributes:
+            decorator = context.attributes[("user_defined_eager_row_processor", reduced_path)]
             # user defined eagerloads are part of the "primary" portion of the load.
             # the adapters applied to the Query should be honored.
             if context.adapter and decorator:
                 decorator = decorator.wrap(context.adapter)
             elif context.adapter:
                 decorator = context.adapter
-        elif ("eager_row_processor", path) in context.attributes:
-            decorator = context.attributes[("eager_row_processor", path)]
+        elif ("eager_row_processor", reduced_path) in context.attributes:
+            decorator = context.attributes[("eager_row_processor", reduced_path)]
         else:
             if self._should_log_debug:
                 self.logger.debug("Could not locate aliased clauses for key: " + str(path))
@@ -788,7 +793,7 @@ class EagerLoader(AbstractRelationLoader):
         
         if eager_adapter is not False:
             key = self.key
-            _instance = self.mapper._instance_processor(context, path + (self.mapper.base_mapper,), eager_adapter)
+            _instance = self.mapper._instance_processor(context, path + (self.mapper,), eager_adapter)
             
             if not self.uselist:
                 def execute(state, dict_, row, isnew, **flags):
@@ -892,13 +897,18 @@ class LoadEagerFromAliasOption(PropertyOption):
                 (root_mapper, propname) = paths[-1][-2:]
                 prop = mapper.get_property(propname, resolve_synonyms=True)
                 self.alias = prop.target.alias(self.alias)
-            query._attributes[("user_defined_eager_row_processor", paths[-1])] = sql_util.ColumnAdapter(self.alias)
+            query._attributes[
+                        ("user_defined_eager_row_processor", 
+                        interfaces._reduce_path(paths[-1]))
+                        ] = sql_util.ColumnAdapter(self.alias)
         else:
             (root_mapper, propname) = paths[-1][-2:]
             mapper = mappers[-1]
             prop = mapper.get_property(propname, resolve_synonyms=True)
             adapter = query._polymorphic_adapters.get(prop.mapper, None)
-            query._attributes[("user_defined_eager_row_processor", paths[-1])] = adapter
+            query._attributes[
+                        ("user_defined_eager_row_processor", 
+                        interfaces._reduce_path(paths[-1]))] = adapter
 
 class _SingleParentValidator(interfaces.AttributeExtension):
     def __init__(self, prop):

@@ -170,7 +170,7 @@ class FromCache(MapperOption):
         """
         if self.cls_ is not None and query._current_path:
             mapper, key = query._current_path[-2:]
-            if issubclass(self.cls_, mapper.class_) and key == self.propname:
+            if self.cls_ is mapper.class_ and key == self.propname:
                 self._set_query_cache(query)
 
     def process_query(self, query):
