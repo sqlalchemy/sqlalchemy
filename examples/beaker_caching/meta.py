@@ -183,7 +183,8 @@ def _params_from_query(query):
             value = value()
             
         v.append(value)
-    visitors.traverse(query._criterion, {}, {'bindparam':visit_bindparam})
+    if query._criterion is not None:
+        visitors.traverse(query._criterion, {}, {'bindparam':visit_bindparam})
     return v
 
 # Beaker CacheManager.  A home base for cache configurations.
