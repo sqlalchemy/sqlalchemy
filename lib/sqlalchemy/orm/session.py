@@ -1104,7 +1104,11 @@ class Session(object):
             util.warn_deprecated("dont_load=True has been renamed to load=False.")
         
         _recursive = {}
-        self._autoflush()
+        
+        if load:
+            # flush current contents if we expect to load data
+            self._autoflush()
+            
         _object_mapper(instance) # verify mapped
         autoflush = self.autoflush
         try:

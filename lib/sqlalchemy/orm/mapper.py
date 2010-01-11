@@ -317,7 +317,7 @@ class Mapper(object):
 
         """
         manager = attributes.manager_of_class(self.class_)
-
+        
         if self.non_primary:
             if not manager or manager.mapper is None:
                 raise sa_exc.InvalidRequestError(
@@ -803,7 +803,8 @@ class Mapper(object):
     def get_property(self, key, resolve_synonyms=False, raiseerr=True):
         """return a MapperProperty associated with the given key."""
 
-        self.compile()
+        if not self.compiled:
+            self.compile()
         return self._get_property(key, resolve_synonyms=resolve_synonyms, raiseerr=raiseerr)
 
     def _get_property(self, key, resolve_synonyms=False, raiseerr=True):
@@ -818,7 +819,8 @@ class Mapper(object):
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""
-        self.compile()
+        if not self.compiled:
+            self.compile()
         return self._props.itervalues()
 
     def _mappers_from_spec(self, spec, selectable):

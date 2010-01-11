@@ -89,7 +89,6 @@ class CachingQuery(Query):
         """
         if hasattr(self, 'cache_region'):
             cache, cache_key = self._get_cache_plus_key()
-            
             ret = cache.get_value(cache_key, createfunc=lambda: list(Query.__iter__(self)))
             return iter(self.session.merge(x, load=False) for x in ret)
         else:

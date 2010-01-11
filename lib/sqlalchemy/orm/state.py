@@ -159,11 +159,11 @@ class InstanceState(object):
         if self.modified:
             self._strong_obj = state['instance']
             
-        self.__dict__.update(
+        self.__dict__.update([
             (k, state[k]) for k in (
                 'key', 'load_options', 'expired_attributes', 'mutable_dict'
             ) if k in state 
-        )
+        ])
 
         if 'load_path' in state:
             self.load_path = interfaces.deserialize_path(state['load_path'])

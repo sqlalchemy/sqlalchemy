@@ -11,7 +11,7 @@ from meta import Session
 from sqlalchemy.orm import eagerload
 import os
 
-for p in Session.query(Person).options(eagerload(Person.addresses), *cache_address_bits):
+for p in Session.query(Person).options(eagerload(Person.addresses), cache_address_bits):
     print p.format_full()
 
 

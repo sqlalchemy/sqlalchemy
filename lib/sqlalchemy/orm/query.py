@@ -658,7 +658,7 @@ class Query(object):
         # most MapperOptions write to the '_attributes' dictionary,
         # so copy that as well
         self._attributes = self._attributes.copy()
-        opts = [o for o in util.flatten_iterator(args)]
+        opts = list(util.flatten_iterator(args))
         self._with_options = self._with_options + opts
         if conditional:
             for opt in opts:

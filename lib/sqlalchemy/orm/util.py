@@ -7,9 +7,11 @@
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import sql, util
 from sqlalchemy.sql import expression, util as sql_util, operators
-from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, PropComparator, MapperProperty, AttributeExtension
+from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, PropComparator, \
+                                        MapperProperty, AttributeExtension
 from sqlalchemy.orm import attributes, exc
 
+mapperlib = None
 
 all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
                           "expunge", "save-update", "refresh-expire",
@@ -488,17 +490,27 @@ def _entity_info(entity, compile=True):
     """
     if isinstance(entity, AliasedClass):
         return entity._AliasedClass__mapper, entity._AliasedClass__alias, True
-    elif _is_mapped_class(entity):
-        if isinstance(entity, type):
-            mapper = class_mapper(entity, compile)
-        else:
-            if compile:
-                mapper = entity.compile()
-            else:
-                mapper = entity
-        return mapper, mapper._with_polymorphic_selectable, False
+
+    global mapperlib
+    if mapperlib is None:
+        from sqlalchemy.orm import mapperlib
+    
+    if isinstance(entity, mapperlib.Mapper):
+        mapper = entity
+        
+    elif isinstance(entity, type):
+        class_manager = attributes.manager_of_class(entity)
+        
+        if class_manager is None:
+            return None, entity, False
+            
+        mapper = class_manager.mapper
     else:
         return None, entity, False
+        
+    if compile:
+        mapper = mapper.compile()
+    return mapper, mapper._with_polymorphic_selectable, False
 
 def _entity_descriptor(entity, key):
     """Return attribute/property information given an entity and string name.
@@ -600,8 +612,10 @@ def _state_has_identity(state):
     return bool(state.key)
 
 def _is_mapped_class(cls):
-    from sqlalchemy.orm import mapperlib as mapper
-    if isinstance(cls, (AliasedClass, mapper.Mapper)):
+    global mapperlib
+    if mapperlib is None:
+        from sqlalchemy.orm import mapperlib
+    if isinstance(cls, (AliasedClass, mapperlib.Mapper)):
         return True
     if isinstance(cls, expression.ClauseElement):
         return False

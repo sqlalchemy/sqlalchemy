@@ -1479,7 +1479,13 @@ def is_instrumented(instance, key):
     return manager_of_class(instance.__class__).is_instrumented(key, search=True)
 
 class InstrumentationRegistry(object):
-    """Private instrumentation registration singleton."""
+    """Private instrumentation registration singleton.
+    
+    All classes are routed through this registry 
+    when first instrumented, however the InstrumentationRegistry
+    is not actually needed unless custom ClassManagers are in use.
+    
+    """
 
     _manager_finders = weakref.WeakKeyDictionary()
     _state_finders = util.WeakIdentityMapping()
@@ -1510,6 +1516,9 @@ class InstrumentationRegistry(object):
             manager = _ClassInstrumentationAdapter(class_, manager)
             
         if factory != ClassManager and not self._extended:
+            # somebody invoked a custom ClassManager.
+            # reinstall global "getter" functions with the more 
+            # expensive ones.
             self._extended = True
             _install_lookup_strategy(self)
         
@@ -1548,6 +1557,7 @@ class InstrumentationRegistry(object):
         return factories
 
     def manager_of_class(self, cls):
+        # this is only called when alternate instrumentation has been established
         if cls is None:
             return None
         try:
@@ -1583,7 +1593,9 @@ class InstrumentationRegistry(object):
             del self._manager_finders[class_]
             del self._state_finders[class_]
             del self._dict_finders[class_]
-
+        if ClassManager.MANAGER_ATTR in class_.__dict__:
+            delattr(class_, ClassManager.MANAGER_ATTR)
+        
 instrumentation_registry = InstrumentationRegistry()
 
 def _install_lookup_strategy(implementation):
@@ -1596,16 +1608,23 @@ def _install_lookup_strategy(implementation):
     and unit tests specific to this behavior.
     
     """
-    global instance_state, instance_dict
+    global instance_state, instance_dict, manager_of_class
     if implementation is util.symbol('native'):
         instance_state = attrgetter(ClassManager.STATE_ATTR)
         instance_dict = attrgetter("__dict__")
+        def manager_of_class(cls):
+            return cls.__dict__.get(ClassManager.MANAGER_ATTR, None)
     else:
         instance_state = instrumentation_registry.state_of
         instance_dict = instrumentation_registry.dict_of
+        manager_of_class = instrumentation_registry.manager_of_class
         
-manager_of_class = instrumentation_registry.manager_of_class
 _create_manager_for_cls = instrumentation_registry.create_manager_for_cls
+
+# Install default "lookup" strategies.  These are basically
+# very fast attrgetters for key attributes.
+# When a custom ClassManager is installed, more expensive per-class
+# strategies are copied over these.
 _install_lookup_strategy(util.symbol('native'))
 
 def find_native_user_instrumentation_hook(cls):

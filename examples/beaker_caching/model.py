@@ -92,9 +92,9 @@ class Person(Base):
 # Caching options.   A set of three FromCache options
 # which can be applied to Query(), causing the "lazy load"
 # of these attributes to be loaded from cache.
-cache_address_bits = [
+cache_address_bits = (
                 FromCache("default", "byid", PostalCode.city), 
                 FromCache("default", "byid", City.country), 
                 FromCache("default", "byid", Address.postal_code),
-            ]
+            )
 
