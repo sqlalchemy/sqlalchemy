@@ -73,9 +73,13 @@ class CachingQuery(Query):
         # memcached wants this
         namespace = namespace.replace(' ', '_')
         
-        # cache key - the value arguments from this query's parameters.
-        args = _params_from_query(self)
-        cache_key = " ".join([str(x) for x in args])
+        if hasattr(self, 'cache_key'):
+            # if a hardcoded cache_key was attached, use that
+            cache_key = self.cache_key
+        else:
+            # cache key - the value arguments from this query's parameters.
+            args = _params_from_query(self)
+            cache_key = " ".join([str(x) for x in args])
         
         # get cache
         cache = cache_manager.get_cache_region(namespace, self.cache_region)
@@ -112,7 +116,7 @@ class FromCache(MapperOption):
     lazy loader.
     
     """
-    def __init__(self, region, namespace, key=None):
+    def __init__(self, region, namespace, key=None, cache_key=None):
         """Construct a new FromCache.
         
         :param region: the cache region.  Should be a
@@ -126,9 +130,16 @@ class FromCache(MapperOption):
         indicates a particular class relation() whose
         lazy loader should be pulled from the cache.
         
+        :param cache_key: optional.  A string cache key 
+        that will serve as the key to the query.   Use this
+        if your query has a huge amount of parameters (such
+        as when using in_()) which correspond more simply to 
+        some other identifier.
+
         """
         self.region = region
         self.namespace = namespace
+        self.cache_key = cache_key
         if key:
             self.cls_ = key.property.parent.class_
             self.propname = key.property.key
@@ -147,6 +158,8 @@ class FromCache(MapperOption):
                         )
         query.cache_region = self.region
         query.cache_namespace = self.namespace
+        if self.cache_key:
+            query.cache_key = self.cache_key
         
     def process_query_conditionally(self, query):
         """Process a Query that is used within a lazy loader.
