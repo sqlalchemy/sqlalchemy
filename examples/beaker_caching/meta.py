@@ -70,6 +70,9 @@ class CachingQuery(Query):
         # option + class we're querying against
         namespace = " ".join([self.cache_namespace] + [str(x) for x in self._entities])
         
+        # memcached wants this
+        namespace = namespace.replace(' ', '_')
+        
         # cache key - the value arguments from this query's parameters.
         args = _params_from_query(self)
         cache_key = " ".join([str(x) for x in args])
