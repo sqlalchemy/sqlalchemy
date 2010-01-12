@@ -106,7 +106,12 @@ class CachingQuery(Query):
 
         cache, cache_key = self._get_cache_plus_key()
         cache.remove(cache_key)
-        
+
+    def set_value(self, value):
+        """Set the value in the cache for this query."""
+
+        cache, cache_key = self._get_cache_plus_key()
+        cache.put(cache_key, value)        
 
 class FromCache(MapperOption):
     """A MapperOption which configures a Query to use a particular 
