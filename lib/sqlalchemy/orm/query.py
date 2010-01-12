@@ -1399,6 +1399,59 @@ class Query(object):
             if not self._yield_per:
                 break
 
+    def merge_result(self, iterator, load=True):
+        """Merge a result into this Query's Session.
+        
+        Given an iterator returned by a Query of the same structure as this one,
+        return an identical iterator of results, with all mapped instances
+        merged into the session using Session.merge().   This is an optimized
+        method which will merge all mapped instances, preserving the structure
+        of the result rows and unmapped columns with less method overhead than
+        that of calling Session.merge() explicitly for each value.
+        
+        The structure of the results is determined based on the column list
+        of this Query - if these do not correspond, unchecked errors will occur.
+        
+        The 'load' argument is the same as that of Session.merge().
+        
+        """
+        
+        session = self.session
+        if load:
+            # flush current contents if we expect to load data
+            session._autoflush()
+            
+        autoflush = session.autoflush
+        try:
+            session.autoflush = False
+            single_entity = len(self._entities) == 1
+            if single_entity:
+                if isinstance(self._entities[0], _MapperEntity):
+                    result = [session._merge(
+                            attributes.instance_state(instance), 
+                            attributes.instance_dict(instance), 
+                            load=load, _recursive={})
+                            for instance in iterator]
+                else:
+                    result = list(iterator)
+            else:
+                mapped_entities = [i for i, e in enumerate(self._entities) 
+                                        if isinstance(e, _MapperEntity)]
+                result = []
+                for row in iterator:
+                    newrow = list(row)
+                    for i in mapped_entities:
+                        newrow[i] = session._merge(
+                                attributes.instance_state(newrow[i]), 
+                                attributes.instance_dict(newrow[i]), 
+                                load=load, _recursive={})
+                    result.append(util.NamedTuple(row._labels, newrow))  
+            
+            return iter(result)
+        finally:
+            session.autoflush = autoflush
+        
+        
     def _get(self, key=None, ident=None, refresh_state=None, lockmode=None,
                                         only_load_props=None, passive=None):
         lockmode = lockmode or self._lockmode
