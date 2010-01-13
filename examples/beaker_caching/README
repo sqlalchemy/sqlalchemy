@@ -22,11 +22,13 @@ exactly one SQL statement against two tables will be emitted - the
 displayed result however will utilize dozens of lazyloads that all
 pull from cache.
 
-Two endpoint scripts, "demo.py" and "ad_hoc.py", are run as follows:
+Three endpoint scripts, in order of complexity, are run as follows:
 
-   python examples/beaker_caching/demo.py
+   python examples/beaker_caching/helloworld.py
 
-   python examples/beaker_caching/ad_hoc.py
+   python examples/beaker_caching/relation_caching.py
+
+   python examples/beaker_caching/advanced.py
 
 
 Listing of files:
@@ -44,11 +46,10 @@ Address objects, each with PostalCode, City, Country
 fixture_data.py - creates demo PostalCode, Address, Person objects
 in the database.
 
-demo.py - The first script to run - illustrates loading a list of
-Person / Address objects.  When run a second time, most data is 
-cached and only one SQL statement is emitted.
+helloworld.py - the basic idea.
 
-ad_hoc.py - Further examples of how to use FromCache.  Illustrates
-front-end usage, cache invalidation, loading related collections
-from cache vs. eager loading of collections.
+relation_caching.py - Illustrates how to add cache options on
+relation endpoints, so that lazyloads load from cache.
 
+advanced.py - Further examples of how to use FromCache.  Combines
+techniques from the first two scripts.

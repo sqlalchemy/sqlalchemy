@@ -1,4 +1,4 @@
-"""ac_hoc.py
+"""advanced.py
 
 Illustrate usage of Query combined with the FromCache option, 
 including front-end loading, cache invalidation, namespace techniques
@@ -75,5 +75,5 @@ print "\n\nPeople plus addresses, two through twelve, addresses from cache"
 for p in load_name_range(2, 12):
     print p.format_full()
 
-print "\n\nIf this was the first run of ad_hoc.py, try "\
+print "\n\nIf this was the first run of advanced.py, try "\
         "a second run.  Only one SQL statement will be emitted."

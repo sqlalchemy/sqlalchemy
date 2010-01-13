@@ -1,7 +1,7 @@
-"""demo.py
+"""relation_caching.py
 
 Load a set of Person and Address objects, specifying that 
-PostalCode, City, Country objects should be pulled from long 
+related PostalCode, City, Country objects should be pulled from long 
 term cache.
 
 """
@@ -15,7 +15,7 @@ for p in Session.query(Person).options(eagerload(Person.addresses), cache_addres
     print p.format_full()
 
 
-print "\n\nIf this was the first run of demo.py, SQL was likely emitted to "\
+print "\n\nIf this was the first run of relation_caching.py, SQL was likely emitted to "\
         "load postal codes, cities, countries.\n"\
         "If run a second time, only a single SQL statement will run - all "\
         "related data is pulled from cache.\n"\
