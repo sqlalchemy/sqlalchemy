@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session, attributes, interfaces
+from sqlalchemy.orm import mapper, relation, create_session, sessionmaker, attributes, interfaces
 from test.orm import _base, _fixtures
 
 
@@ -130,6 +130,25 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(ad.email_address, 'ed@bar.com')
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
+    @testing.resolve_artifact_names
+    def test_pickle_protocols(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref="user")
+        })
+        mapper(Address, addresses)
+
+        sess = sessionmaker()()
+        u1 = User(name='ed')
+        u1.addresses.append(Address(email_address='ed@bar.com'))
+        sess.add(u1)
+        sess.commit()
+
+        u1 = sess.query(User).first()
+        u1.addresses
+        for protocol in -1, 0, 1, 2:
+            u2 = pickle.loads(pickle.dumps(u1, protocol))
+            eq_(u1, u2)
+        
     @testing.resolve_artifact_names
     def test_options_with_descriptors(self):
         mapper(User, users, properties={

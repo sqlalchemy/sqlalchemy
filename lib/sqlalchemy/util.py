@@ -642,11 +642,12 @@ class NamedTuple(tuple):
     
     """
 
-    def __new__(cls, labels, vals):
+    def __new__(cls, vals, labels=None):
         vals = list(vals)
         t = tuple.__new__(cls, vals)
-        t.__dict__ = dict(itertools.izip(labels, vals))
-        t._labels = labels
+        if labels:
+            t.__dict__ = dict(itertools.izip(labels, vals))
+            t._labels = labels
         return t
 
     def keys(self):

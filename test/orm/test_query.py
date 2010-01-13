@@ -2403,44 +2403,49 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
     def test_tuple_labeling(self):
         sess = create_session()
         
-        for pickled in False, True:
+        # test pickle + all the protocols !
+        for pickled in False, -1, 0, 1, 2:
             for row in sess.query(User, Address).join(User.addresses).all():
-                if pickled:
-                    row = util.pickle.loads(util.pickle.dumps(row))
+                if pickled is not False:
+                    row = util.pickle.loads(util.pickle.dumps(row, pickled))
                     
                 eq_(set(row.keys()), set(['User', 'Address']))
                 eq_(row.User, row[0])
                 eq_(row.Address, row[1])
         
             for row in sess.query(User.name, User.id.label('foobar')):
-                if pickled:
-                    row = util.pickle.loads(util.pickle.dumps(row))
+                if pickled is not False:
+                    row = util.pickle.loads(util.pickle.dumps(row, pickled))
                 eq_(set(row.keys()), set(['name', 'foobar']))
                 eq_(row.name, row[0])
                 eq_(row.foobar, row[1])
 
             for row in sess.query(User).values(User.name, User.id.label('foobar')):
-                if pickled:
-                    row = util.pickle.loads(util.pickle.dumps(row))
+                if pickled is not False:
+                    row = util.pickle.loads(util.pickle.dumps(row, pickled))
                 eq_(set(row.keys()), set(['name', 'foobar']))
                 eq_(row.name, row[0])
                 eq_(row.foobar, row[1])
 
             oalias = aliased(Order)
             for row in sess.query(User, oalias).join(User.orders).all():
-                if pickled:
-                    row = util.pickle.loads(util.pickle.dumps(row))
+                if pickled is not False:
+                    row = util.pickle.loads(util.pickle.dumps(row, pickled))
                 eq_(set(row.keys()), set(['User']))
                 eq_(row.User, row[0])
 
             oalias = aliased(Order, name='orders')
             for row in sess.query(User, oalias).join(User.orders).all():
-                if pickled:
-                    row = util.pickle.loads(util.pickle.dumps(row))
+                if pickled is not False:
+                    row = util.pickle.loads(util.pickle.dumps(row, pickled))
                 eq_(set(row.keys()), set(['User', 'orders']))
                 eq_(row.User, row[0])
                 eq_(row.orders, row[1])
-
+            
+            if pickled is not False:
+                ret = sess.query(User, Address).join(User.addresses).all()
+                util.pickle.loads(util.pickle.dumps(ret, pickled))
+                
     def test_column_queries(self):
         sess = create_session()
 

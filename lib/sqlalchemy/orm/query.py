@@ -1375,8 +1375,7 @@ class Query(object):
             elif single_entity:
                 rows = [process[0](row, None) for row in fetch]
             else:
-                rows = [util.NamedTuple(labels,
-                                        [proc(row, None) for proc in process])
+                rows = [util.NamedTuple([proc(row, None) for proc in process], labels)
                         for row in fetch]
 
             if filter:
@@ -1445,7 +1444,7 @@ class Query(object):
                                 attributes.instance_state(newrow[i]), 
                                 attributes.instance_dict(newrow[i]), 
                                 load=load, _recursive={})
-                    result.append(util.NamedTuple(row._labels, newrow))  
+                    result.append(util.NamedTuple(newrow, row._labels))  
             
             return iter(result)
         finally:
