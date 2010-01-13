@@ -1,6 +1,7 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy.orm import interfaces
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine import default
@@ -379,6 +380,31 @@ def _produce_test(select_type):
                 sess.query(malias.name).join((paperwork, malias.person_id==paperwork.c.person_id)).all(),
                 [(u'pointy haired boss',), (u'dogbert',), (u'dogbert',)]
             )
+        
+        def test_polymorphic_option(self):
+            """test that polymorphic loading sets state.load_path with its actual mapper
+            on a subclass, and not the superclass mapper.
+            
+            """
+            paths = []
+            class MyOption(interfaces.MapperOption):
+                propagate_to_loaders = True
+                def process_query_conditionally(self, query):
+                    paths.append(query._current_path)
+            
+            sess = create_session()
+            dilbert, boss = sess.query(Person).\
+                            options(MyOption()).\
+                            filter(Person.name.in_(['dilbert', 'pointy haired boss'])).\
+                            order_by(Person.name).\
+                            all()
+                            
+            dilbert.machines
+            boss.paperwork
+            eq_(paths, 
+                [(class_mapper(Engineer), 'machines'), 
+                (class_mapper(Boss), 'paperwork')])
+            
             
         def test_expire(self):
             """test that individual column refresh doesn't get tripped up by the select_table mapper"""

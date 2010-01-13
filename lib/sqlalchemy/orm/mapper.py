@@ -1805,7 +1805,18 @@ class Mapper(object):
                 raise AssertionError("No such polymorphic_identity %r is defined" % discriminator)
             if mapper is self:
                 return None
-            return mapper._instance_processor(context, path, adapter, polymorphic_from=self)
+                
+            # replace the tip of the path info with the subclass mapper being used.
+            # that way accurate "load_path" info is available for options
+            # invoked during deferred loads.
+            # we lose AliasedClass path elements this way, but currently,
+            # those are not needed at this stage.
+            
+            # this asserts to true
+            #assert mapper.isa(_class_to_mapper(path[-1]))
+            
+            return mapper._instance_processor(context, path[0:-1] + (mapper,), 
+                                                    adapter, polymorphic_from=self)
         return configure_subclass_mapper
 
 log.class_logger(Mapper)
