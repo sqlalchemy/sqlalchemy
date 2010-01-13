@@ -30,6 +30,8 @@ Three endpoint scripts, in order of complexity, are run as follows:
 
    python examples/beaker_caching/advanced.py
 
+   python examples/beaker_caching/local_session_caching.py
+
 
 Listing of files:
 
@@ -53,3 +55,8 @@ relation endpoints, so that lazyloads load from cache.
 
 advanced.py - Further examples of how to use FromCache.  Combines
 techniques from the first two scripts.
+
+local_session_caching.py - Grok everything so far ?   This example
+creates a new Beaker container that will persist data in a dictionary
+which is local to the current session.   remove() the session
+and the cache is gone.
