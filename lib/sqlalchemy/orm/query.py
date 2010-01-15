@@ -2038,10 +2038,10 @@ class _MapperEntity(_QueryEntity):
             self.adapter = query._get_polymorphic_adapter(self, from_obj)
 
     def corresponds_to(self, entity):
-        if _is_aliased_class(entity):
+        if _is_aliased_class(entity) or self.is_aliased_class:
             return entity is self.path_entity
         else:
-            return entity.isa(self.path_entity)
+            return entity.common_parent(self.path_entity)
 
     def adapt_to_selectable(self, query, sel):
         query._entities.append(self)

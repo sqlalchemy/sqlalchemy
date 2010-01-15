@@ -503,6 +503,12 @@ def _produce_test(select_type):
                 )
             self.assert_sql_count(testing.db, go, 1)
 
+            
+        def test_query_subclass_join_to_base_relation(self):
+            sess = create_session()
+            # non-polymorphic
+            eq_(sess.query(Engineer).join(Person.paperwork).all(), [e1, e2, e3])
+
         def test_join_to_subclass(self):
             sess = create_session()
             eq_(sess.query(Company).join(('employees', people.join(engineers))).filter(Engineer.primary_language=='java').all(), [c1])
