@@ -29,7 +29,12 @@ class SQLSoupTest(TestBase):
         for sql in _teardown:
             engine.execute(sql)
         
-    
+    def test_bad_names(self):
+        db = sqlsoup.SqlSoup(engine)
+#        print db.bad_names.c.id
+        print db.bad_names.c.query
+        
+        
     def test_load(self):
         db = sqlsoup.SqlSoup(engine)
         MappedUsers = db.users
@@ -329,6 +334,11 @@ CREATE TABLE loans (
 CREATE TABLE nopk (
     i                    int
 );
+
+CREATE TABLE bad_names (
+   id int primary key,
+   query  varchar(100)
+)
 """.split(';')
 
 

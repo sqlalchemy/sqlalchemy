@@ -811,6 +811,10 @@ CHANGES
       the Session methods of those names, ensuring that the bind is
       in terms of the SqlSoup object's bind.
     
+    - sqlsoup objects no longer have the 'query' attribute - it's
+      not needed for sqlsoup's usage paradigm and it gets in the
+      way of a column that is actually named 'query'.
+      
     - The signature of the proxy_factory callable passed to 
       association_proxy is now (lazy_collection, creator, 
       value_attr, association_proxy), adding a fourth argument
