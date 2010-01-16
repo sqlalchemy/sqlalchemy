@@ -342,6 +342,11 @@ CHANGES
     for "sqlalchemy.engine" is enabled overall.  Note that the
     default setting of "echo" is `None`. [ticket:1554]
   
+  - ConnectionProxy now has wrapper methods for all transaction
+    lifecycle events, including begin(), rollback(), commit()
+    begin_nested(), begin_prepared(), prepare(), release_savepoint(),
+    etc.
+    
   - Connection pool logging now uses both INFO and DEBUG
     log levels for logging.  INFO is for major events such
     as invalidated connections, DEBUG for all the acquire/return

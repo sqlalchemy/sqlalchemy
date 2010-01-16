@@ -1523,6 +1523,36 @@ def _proxy_connection_cls(cls, proxy):
         def _cursor_executemany(self, cursor, statement, parameters, context=None):
             return proxy.cursor_execute(super(ProxyConnection, self)._cursor_executemany, cursor, statement, parameters, context, True)
 
+        def _begin_impl(self):
+            return proxy.begin(self, super(ProxyConnection, self)._begin_impl)
+            
+        def _rollback_impl(self):
+            return proxy.rollback(self, super(ProxyConnection, self)._rollback_impl)
+
+        def _commit_impl(self):
+            return proxy.commit(self, super(ProxyConnection, self)._commit_impl)
+
+        def _savepoint_impl(self, name=None):
+            return proxy.savepoint(self, super(ProxyConnection, self)._savepoint_impl, name=name)
+
+        def _rollback_to_savepoint_impl(self, name, context):
+            return proxy.rollback_savepoint(self, super(ProxyConnection, self)._rollback_to_savepoint_impl, name, context)
+            
+        def _release_savepoint_impl(self, name, context):
+            return proxy.release_savepoint(self, super(ProxyConnection, self)._release_savepoint_impl, name, context)
+
+        def _begin_twophase_impl(self, xid):
+            return proxy.begin_twophase(self, super(ProxyConnection, self)._begin_twophase_impl, xid)
+
+        def _prepare_twophase_impl(self, xid):
+            return proxy.prepare_twophase(self, super(ProxyConnection, self)._prepare_twophase_impl, xid)
+
+        def _rollback_twophase_impl(self, xid, is_prepared):
+            return proxy.rollback_twophase(self, super(ProxyConnection, self)._rollback_twophase_impl, xid, is_prepared)
+
+        def _commit_twophase_impl(self, xid, is_prepared):
+            return proxy.commit_twophase(self, super(ProxyConnection, self)._commit_twophase_impl, xid, is_prepared)
+
     return ProxyConnection
 
 

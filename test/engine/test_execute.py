@@ -106,7 +106,6 @@ class ProxyConnectionTest(TestBase):
                 return execute(clauseelement, *multiparams, **params)
 
             def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
-                print "CE", statement, parameters
                 cursor_stmts.append(
                     (str(statement), parameters, None)
                 )
@@ -173,4 +172,61 @@ class ProxyConnectionTest(TestBase):
             assert_stmts(compiled, stmts)
             assert_stmts(cursor, cursor_stmts)
     
+    def test_transactional(self):
+        track = []
+        class TrackProxy(ConnectionProxy):
+            def __getattribute__(self, key):
+                fn = object.__getattribute__(self, key)
+                def go(*arg, **kw):
+                    track.append(fn.__name__)
+                    return fn(*arg, **kw)
+                return go
+
+        engine = engines.testing_engine(options={'proxy':TrackProxy()})
+        conn = engine.connect()
+        trans = conn.begin()
+        conn.execute("select 1")
+        trans.rollback()
+        trans = conn.begin()
+        conn.execute("select 1")
+        trans.commit()
+        
+        eq_(track, ['begin', 'execute', 'cursor_execute', 
+                        'rollback', 'begin', 'execute', 'cursor_execute', 'commit'])
+        
+    @testing.requires.savepoints
+    @testing.requires.two_phase_transactions
+    def test_transactional_advanced(self):
+        track = []
+        class TrackProxy(ConnectionProxy):
+            def __getattribute__(self, key):
+                fn = object.__getattribute__(self, key)
+                def go(*arg, **kw):
+                    track.append(fn.__name__)
+                    return fn(*arg, **kw)
+                return go
+
+        engine = engines.testing_engine(options={'proxy':TrackProxy()})
+        conn = engine.connect()
+        
+        trans = conn.begin()
+        trans2 = conn.begin_nested()
+        conn.execute("select 1")
+        trans2.rollback()
+        trans2 = conn.begin_nested()
+        conn.execute("select 1")
+        trans2.commit()
+        trans.rollback()
+        
+        trans = conn.begin_twophase()
+        conn.execute("select 1")
+        trans.prepare()
+        trans.commit()
+
+        eq_(track, ['begin', 'savepoint', 'execute', 'cursor_execute', 'execute', 'cursor_execute',
+                    'rollback_savepoint', 'execute', 'cursor_execute', 'savepoint', 'execute',
+                     'cursor_execute', 'execute', 'cursor_execute', 'release_savepoint', 'execute',
+                      'cursor_execute', 'rollback', 'begin_twophase', 'execute', 'cursor_execute',
+                       'prepare_twophase', 'execute', 'cursor_execute', 'commit_twophase',
+                        'execute', 'cursor_execute', 'execute', 'cursor_execute'])
 
