@@ -79,14 +79,14 @@ class Query(object):
     _from_obj = ()
     _filter_aliases = None
     _from_obj_alias = None
-    _joinpath = _joinpoint = {}
+    _joinpath = _joinpoint = util.frozendict()
+    _statement_options = util.frozendict()
+    _params = util.frozendict()
+    _attributes = util.frozendict()
+    _with_options = ()
     
     def __init__(self, entities, session=None):
         self.session = session
-
-        self._with_options = []
-        self._params = {}
-        self._attributes = {}
         self._polymorphic_adapters = {}
         self._set_entities(entities)
 
@@ -488,9 +488,17 @@ class Query(object):
         collections will be cleared for a new load when encountered in a
         subsequent result batch.
 
+        Also note that many DBAPIs do not "stream" results, pre-buffering
+        all rows before making them available, including mysql-python and 
+        psycopg2.  yield_per() will also set the ``stream_results`` statement
+        option to ``True``, which currently is only understood by psycopg2
+        and causes server side cursors to be used.
+        
         """
         self._yield_per = count
-
+        self._statement_options = self._statement_options.copy()
+        self._statement_options['stream_results'] = True
+        
     def get(self, ident):
         """Return an instance of the object based on the given identifier, or None if not found.
 
@@ -658,7 +666,7 @@ class Query(object):
         # most MapperOptions write to the '_attributes' dictionary,
         # so copy that as well
         self._attributes = self._attributes.copy()
-        opts = list(util.flatten_iterator(args))
+        opts = tuple(util.flatten_iterator(args))
         self._with_options = self._with_options + opts
         if conditional:
             for opt in opts:
@@ -666,6 +674,21 @@ class Query(object):
         else:
             for opt in opts:
                 opt.process_query(self)
+
+    @_generative()
+    def statement_options(self, **kwargs):
+        """ Set non-SQL options for the resulting statement, such as dialect-specific options.
+        
+        The only option currently understood is ``stream_results=True``, 
+        only used by Psycopg2 to enable "server side cursors".  This option
+        only has a useful effect if used in conjunction with :meth:`~sqlalchemy.orm.query.Query.yield_per()`,
+        which currently sets ``stream_results`` to ``True`` automatically.
+
+        """
+        _statement_options = self._statement_options.copy()
+        for key, value in kwargs.items():
+            _statement_options[key] = value
+        self._statement_options = _statement_options
 
     @_generative()
     def with_lockmode(self, mode):
@@ -1915,7 +1938,7 @@ class Query(object):
 
             context.adapter = sql_util.ColumnAdapter(inner, equivs)
 
-            statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=labels)
+            statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=labels, statement_options=self._statement_options)
 
             from_clause = inner
             for eager_join in eager_joins:
@@ -1947,6 +1970,7 @@ class Query(object):
                             for_update=for_update,
                             correlate=False,
                             order_by=context.order_by,
+                            statement_options=self._statement_options,
                             **self._select_args
                         )
 

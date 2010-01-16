@@ -785,6 +785,27 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(select_copy, "SELECT FOOBER table1.col1, table1.col2, table1.col3 FROM table1")
         self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
 
+    def test_statement_options(self):
+        s = select().statement_options(foo='bar')
+        s2 = s.statement_options(bar='baz')
+        s3 = s.statement_options(foo='not bar')
+        # The original select should not be modified.
+        assert s._statement_options == dict(foo='bar')
+        # s2 should have its statement_options based on s, though.
+        assert s2._statement_options == dict(foo='bar', bar='baz')
+        assert s3._statement_options == dict(foo='not bar')
+
+    def test_statement_options_in_kwargs(self):
+        s = select(statement_options=dict(foo='bar'))
+        s2 = s.statement_options(bar='baz')
+        # The original select should not be modified.
+        assert s._statement_options == dict(foo='bar')
+        # s2 should have its statement_options based on s, though.
+        assert s2._statement_options == dict(foo='bar', bar='baz')
+
+    def test_statement_options_in_text(self):
+        s = text('select 42', statement_options=dict(foo='bar'))
+        assert s._statement_options == dict(foo='bar')
 
 class InsertTest(TestBase, AssertsCompiledSQL):
     """Tests the generative capability of Insert"""

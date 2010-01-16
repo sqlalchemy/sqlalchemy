@@ -2178,8 +2178,13 @@ class _TypeClause(ClauseElement):
     def __init__(self, type):
         self.type = type
 
+class _Executable(object):
+    """Mark a ClauseElement as supporting execution."""
 
-class _TextClause(ClauseElement):
+    supports_execution = True
+    _statement_options = util.frozendict()
+    
+class _TextClause(_Executable, ClauseElement):
     """Represent a literal SQL text fragment.
 
     Public constructor is the :func:`text()` function.
@@ -2189,7 +2194,6 @@ class _TextClause(ClauseElement):
     __visit_name__ = 'textclause'
 
     _bind_params_regex = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
-    supports_execution = True
 
     @property
     def _select_iterable(self):
@@ -2198,11 +2202,14 @@ class _TextClause(ClauseElement):
     _hide_froms = []
 
     def __init__(self, text = "", bind=None, 
-                    bindparams=None, typemap=None, autocommit=PARSE_AUTOCOMMIT):
+                    bindparams=None, typemap=None, autocommit=PARSE_AUTOCOMMIT, statement_options=None):
         self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
         self._autocommit = autocommit
+        self._statement_options = statement_options
+        if self._statement_options is None:
+            self._statement_options = {}
         if typemap is not None:
             for key in typemap.keys():
                 typemap[key] = sqltypes.to_instance(typemap[key])
@@ -2792,6 +2799,7 @@ class Alias(FromClause):
         self.supports_execution = baseselectable.supports_execution
         if self.supports_execution:
             self._autocommit = baseselectable._autocommit
+            self._statement_options = baseselectable._statement_options
         self.element = selectable
         if alias is None:
             if self.original.named_with_column:
@@ -2844,6 +2852,7 @@ class Alias(FromClause):
     @property
     def bind(self):
         return self.element.bind
+
 
 class _Grouping(ColumnElement):
     """Represent a grouping within a column expression"""
@@ -3159,10 +3168,8 @@ def _generative(fn, *args, **kw):
     fn(self, *args[1:], **kw)
     return self
 
-class _SelectBaseMixin(object):
+class _SelectBaseMixin(_Executable):
     """Base class for :class:`Select` and ``CompoundSelects``."""
-
-    supports_execution = True
 
     def __init__(self,
             use_labels=False,
@@ -3172,13 +3179,17 @@ class _SelectBaseMixin(object):
             order_by=None,
             group_by=None,
             bind=None,
-            autocommit=False):
+            autocommit=False,
+            statement_options=None):
         self.use_labels = use_labels
         self.for_update = for_update
         self._autocommit = autocommit
         self._limit = limit
         self._offset = offset
         self._bind = bind
+        self._statement_options = statement_options
+        if self._statement_options is None:
+            self._statement_options = dict()
 
         self._order_by_clause = ClauseList(*util.to_list(order_by) or [])
         self._group_by_clause = ClauseList(*util.to_list(group_by) or [])
@@ -3289,6 +3300,18 @@ class _SelectBaseMixin(object):
     @property
     def _from_objects(self):
         return [self]
+
+    @_generative
+    def statement_options(self, **kwargs):
+        """ Set non-SQL options for the statement, such as dialect-specific options.
+
+        The options available are covered in the respective dialect's section.
+
+        """
+        _statement_options = self._statement_options.copy()
+        for key, value in kwargs.items():
+            _statement_options[key] = value
+        self._statement_options = _statement_options
 
 
 class _ScalarSelect(_Grouping):
@@ -3411,7 +3434,9 @@ class Select(_SelectBaseMixin, FromClause):
     """
 
     __visit_name__ = 'select'
-
+    
+    _prefixes = ()
+    
     def __init__(self, 
                 columns, 
                 whereclause=None, 
@@ -3468,9 +3493,7 @@ class Select(_SelectBaseMixin, FromClause):
             self._having = None
 
         if prefixes:
-            self._prefixes = [_literal_as_text(p) for p in prefixes]
-        else:
-            self._prefixes = []
+            self._prefixes = tuple([_literal_as_text(p) for p in prefixes])
 
         _SelectBaseMixin.__init__(self, **kwargs)
 
@@ -3624,7 +3647,7 @@ class Select(_SelectBaseMixin, FromClause):
 
          """
         clause = _literal_as_text(clause)
-        self._prefixes = self._prefixes + [clause]
+        self._prefixes = self._prefixes + (clause,)
 
     @_generative
     def select_from(self, fromclause):
@@ -3682,7 +3705,7 @@ class Select(_SelectBaseMixin, FromClause):
         
         """
         clause = _literal_as_text(clause)
-        self._prefixes = self._prefixes.union([clause])
+        self._prefixes = self._prefixes + (clause,)
 
     def append_whereclause(self, whereclause):
         """append the given expression to this select() construct's WHERE criterion.
@@ -3803,12 +3826,11 @@ class Select(_SelectBaseMixin, FromClause):
         self._bind = bind
     bind = property(bind, _set_bind)
 
-class _UpdateBase(ClauseElement):
+class _UpdateBase(_Executable, ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
 
     __visit_name__ = 'update_base'
 
-    supports_execution = True
     _autocommit = True
     
     def _generate(self):
@@ -3924,7 +3946,9 @@ class Insert(_ValuesBase):
 
     """
     __visit_name__ = 'insert'
-
+    
+    _prefixes = ()
+    
     def __init__(self, 
                 table, 
                 values=None, 
@@ -3939,9 +3963,7 @@ class Insert(_ValuesBase):
         self.inline = inline
         self._returning = returning
         if prefixes:
-            self._prefixes = [_literal_as_text(p) for p in prefixes]
-        else:
-            self._prefixes = []
+            self._prefixes = tuple([_literal_as_text(p) for p in prefixes])
             
         self.kwargs = self._process_deprecated_kw(kwargs)
 
@@ -3964,7 +3986,7 @@ class Insert(_ValuesBase):
 
         """
         clause = _literal_as_text(clause)
-        self._prefixes = self._prefixes + [clause]
+        self._prefixes = self._prefixes + (clause,)
 
 class Update(_ValuesBase):
     """Represent an Update construct.
@@ -4061,9 +4083,8 @@ class Delete(_UpdateBase):
         # TODO: coverage
         self._whereclause = clone(self._whereclause)
 
-class _IdentifiedClause(ClauseElement):
+class _IdentifiedClause(_Executable, ClauseElement):
     __visit_name__ = 'identified'
-    supports_execution = True
     _autocommit = False
     quote = None
 

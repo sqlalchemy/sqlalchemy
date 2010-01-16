@@ -2027,10 +2027,9 @@ class SchemaVisitor(visitors.ClauseVisitor):
     __traverse_options__ = {'schema_visitor':True}
 
 
-class DDLElement(expression.ClauseElement):
+class DDLElement(expression._Executable, expression.ClauseElement):
     """Base class for DDL expression constructs."""
     
-    supports_execution = True
     _autocommit = True
 
     target = None

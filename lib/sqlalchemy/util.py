@@ -138,7 +138,25 @@ except ImportError:
             return 'defaultdict(%s, %s)' % (self.default_factory,
                                             dict.__repr__(self))
 
-        
+class frozendict(dict):
+    def _blocked_attribute(obj):
+        raise AttributeError, "A frozendict cannot be modified."
+    _blocked_attribute = property(_blocked_attribute)
+
+    __delitem__ = __setitem__ = clear = _blocked_attribute
+    pop = popitem = setdefault = update = _blocked_attribute
+
+    def __new__(cls, *args):
+        new = dict.__new__(cls)
+        dict.__init__(new, *args)
+        return new
+
+    def __init__(self, *args):
+        pass
+
+    def __repr__(self):
+        return "frozendict(%s)" % dict.__repr__(self)
+
 def to_list(x, default=None):
     if x is None:
         return default

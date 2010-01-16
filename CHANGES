@@ -176,6 +176,15 @@ CHANGES
    - The version_id_col feature on mapper() will raise a warning when
      used with dialects that don't support "rowcount" adequately.
      [ticket:1569]
+
+   - added "statement_options()" to Query, to so options can be
+     passed to the resulting statement. Currently only
+     Select-statements have these options, and the only option
+     used is "stream_results", and the only dialect which knows
+     "stream_results" is psycopg2. 
+     
+   - Query.yield_per() will set the "stream_results" statement
+     option automatically.
      
    - Deprecated or removed:
       * 'allow_null_pks' flag on mapper() is deprecated.  It does
@@ -294,6 +303,10 @@ CHANGES
       instead simply not querying, or modifying the criterion
        as appropriate for more complex situations.
        [ticket:1628]
+
+    - Added "statement_options()" to Selects, which set statement
+      specific options. These enable e.g. dialect specific options
+      such as whether to enable using server side cursors, etc.
        
     - Deprecated or removed:
         * "scalar" flag on select() is removed, use 
@@ -596,6 +609,13 @@ CHANGES
     
     - postgresql dialect can properly detect pg "devel" version
       strings, i.e. "8.5devel" [ticket:1636]
+
+    - The psycopg2 now respects the statement option
+      "stream_results". This option overrides the connection setting
+      "server_side_cursors". If true, server side cursors will be
+      used for the statement. If false, they will not be used, even
+      if "server_side_cursors" is true on the
+      connection. [ticket:1619]
       
 - mysql
     - New dialects: oursql, a new native dialect, 

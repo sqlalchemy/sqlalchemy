@@ -72,7 +72,7 @@ class MergeTest(_base.MappedTest):
             
         p3 = go()
 
-
+    @testing.fails_on_everything_except('sqlite')
     @testing.resolve_artifact_names
     def test_merge_load(self):
         sess = sessionmaker()()

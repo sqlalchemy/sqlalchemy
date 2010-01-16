@@ -35,6 +35,15 @@ Transactions
 The psycopg2 dialect fully supports SAVEPOINT and two-phase commit operations.
 
 
+Statement options
+-----------------
+
+The following statement options are respected:
+
+* *stream_results* - Enable or disable usage of server side cursors for the SELECT-statement.
+  If *None* or not set, the *server_side_cursors* option of the connection is used. If
+  auto-commit is enabled, the option is ignored.
+
 """
 
 import decimal, random, re
@@ -93,8 +102,9 @@ class _PGArray(ARRAY):
         if isinstance(self.item_type, sqltypes.String) and \
                     self.item_type.convert_unicode:
             self.item_type.convert_unicode = "force"
-    
-# TODO: filter out 'FOR UPDATE' statements
+
+# When we're handed literal SQL, ensure it's a SELECT-query. Since
+# 8.3, combining cursors and "FOR UPDATE" has been fine.
 SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
     re.I | re.UNICODE)
@@ -102,16 +112,22 @@ SERVER_SIDE_CURSOR_RE = re.compile(
 class PostgreSQL_psycopg2ExecutionContext(PGExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
-        is_server_side = \
-            self.dialect.server_side_cursors and \
-            not self.should_autocommit and \
-            ((self.compiled and isinstance(self.compiled.statement, expression.Selectable) 
-                and not getattr(self.compiled.statement, 'for_update', False)) \
-            or \
-            (
-                (not self.compiled or isinstance(self.compiled.statement, expression._TextClause)) 
-                and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement))
-            )
+        stream_results_option = self.statement_options.get('stream_results')
+        is_server_side = (
+            # Enabled for this statement ...
+            (stream_results_option or
+             # ... or enabled for all statements
+             (self.dialect.server_side_cursors and
+              # ... and not explicitly disabled for this one.
+              (stream_results_option or stream_results_option is None))
+             ) and (
+                # But don't use SS-cursors when autocommit is on ...
+                (not self.should_autocommit and
+                 self.compiled and isinstance(self.compiled.statement, expression.Selectable))
+                or (
+                    # ... or if it's not even a SELECT.
+                    (not self.compiled or isinstance(self.compiled.statement, expression._TextClause))
+                    and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement))))
 
         self.__is_server_side = is_server_side
         if is_server_side:
