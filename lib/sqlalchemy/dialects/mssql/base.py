@@ -1228,6 +1228,7 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     def get_indexes(self, connection, tablename, schema=None, **kw):
         current_schema = schema or self.default_schema_name
+        col_finder = re.compile("(\w+)")
         full_tname = "%s.%s" % (current_schema, tablename)
         indexes = []
         s = sql.text("exec sp_helpindex '%s'" % full_tname)
@@ -1239,7 +1240,7 @@ class MSDialect(default.DefaultDialect):
             if 'primary key' not in row['index_description']:
                 indexes.append({
                     'name' : row['index_name'],
-                    'column_names' : [c.strip() for c in row['index_keys'].split(',')],
+                    'column_names' : col_finder.findall(row['index_keys']),
                     'unique': 'unique' in row['index_description']
                 })
         return indexes
