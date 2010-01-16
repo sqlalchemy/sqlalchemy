@@ -249,6 +249,17 @@ The solution is to use proper cascading::
     del user.addresses[1]
     session.flush()
 
+Deleting based on Filter Criterion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The caveat with ``Session.delete()`` is that you need to have an object handy already in order to delete.   The Query includes a ``delete()`` method which deletes based on filtering criteria::
+
+    session.query(User).filter(User.id==7).delete()
+    
+The ``Query.delete()`` method includes functionality to "expire" objects already in the session which 
+match the criteria.   However it does have some caveats, including that "delete" and "delete-orphan" 
+cascades won't be fully expressed for collections which are already loaded.  See the API docs for :meth:`~sqlalchemy.orm.query.Query.delete` for more details.
+
 Flushing
 --------
 
