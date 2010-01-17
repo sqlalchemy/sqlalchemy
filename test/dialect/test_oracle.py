@@ -2,10 +2,10 @@
 
 from sqlalchemy.test.testing import eq_
 from sqlalchemy import *
-from sqlalchemy import types as sqltypes
+from sqlalchemy import types as sqltypes, exc
 from sqlalchemy.sql import table, column
 from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy.test.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
@@ -354,7 +354,34 @@ drop synonym test_schema.ptable;
         self.assert_compile(parent.join(child), "test_schema.ptable JOIN test_schema.ctable ON test_schema.ptable.id = test_schema.ctable.parent_id")
         select([parent, child]).select_from(parent.join(child)).execute().fetchall()
 
- 
+class ConstraintTest(TestBase):
+    __only_on__ = 'oracle'
+    
+    def test_oracle_has_no_on_update_cascade(self):
+        m = MetaData(testing.db)
+        
+        foo = Table('foo', m,
+                Column('id', Integer, primary_key=True),
+        )
+        foo.create(checkfirst=True)
+        try:
+            bar = Table('bar', m,
+                    Column('id', Integer, primary_key=True),
+                    Column('foo_id', Integer, ForeignKey('foo.id', onupdate="CASCADE"))
+            )
+            assert_raises(exc.SAWarning, bar.create)
+
+            bat = Table('bat', m,
+                    Column('id', Integer, primary_key=True),
+                    Column('foo_id', Integer),
+                    ForeignKeyConstraint(['foo_id'], ['foo.id'], onupdate="CASCADE")
+            )
+            assert_raises(exc.SAWarning, bat.create)
+            
+        finally:
+            m.drop_all()
+        
+        
 class TypesTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
@@ -651,5 +678,8 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
 class ExecuteTest(TestBase):
     __only_on__ = 'oracle'
     def test_basic(self):
-        assert testing.db.execute("/*+ this is a comment */ SELECT 1 FROM DUAL").fetchall() == [(1,)]
+        eq_(
+            testing.db.execute("/*+ this is a comment */ SELECT 1 FROM DUAL").fetchall(),
+            [(1,)]
+        )
 

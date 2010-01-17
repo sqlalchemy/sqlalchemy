@@ -440,7 +440,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         if constraint.onupdate is not None:
             util.warn(
                 "Oracle does not contain native UPDATE CASCADE "
-                 "functionality - onupdates will not be rendered for foreign keys."
+                 "functionality - onupdates will not be rendered for foreign keys. "
                  "Consider using deferrable=True, initially='deferred' or triggers.")
         
         return text
