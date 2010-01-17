@@ -225,23 +225,48 @@ AND mytable.myid = myothertable.otherid(+)",
             "address_types.id")
 
 class MultiSchemaTest(TestBase, AssertsCompiledSQL):
-    """instructions:
-
-       1. create a user 'ed' in the oracle database.
-       2. in 'ed', issue the following statements:
-           create table parent(id integer primary key, data varchar2(50));
-           create table child(id integer primary key, data varchar2(50), parent_id integer references parent(id));
-           create synonym ptable for parent;
-           create synonym ctable for child;
-           grant all on parent to scott;  (or to whoever you run the oracle tests as)
-           grant all on child to scott;  (same)
-           grant all on ptable to scott;
-           grant all on ctable to scott;
-
-    """
-
     __only_on__ = 'oracle'
+    
+    @classmethod
+    def setup_class(cls):
+        # currently assuming full DBA privs for the user.
+        # don't really know how else to go here unless
+        # we connect as the other user.
+        
+        for stmt in """
+create table test_schema.parent(
+    id integer primary key, 
+    data varchar2(50)
+);
+                
+create table test_schema.child(
+    id integer primary key,
+    data varchar2(50), 
+    parent_id integer references test_schema.parent(id)
+);
 
+create synonym test_schema.ptable for test_schema.parent;
+create synonym test_schema.ctable for test_schema.child;
+
+-- can't make a ref from local schema to the remote schema's table without this, 
+-- *and* cant give yourself a grant !  so we give it to public.  ideas welcome. 
+grant references on test_schema.parent to public;
+grant references on test_schema.child to public;
+""".split(";"):
+            if stmt.strip():
+                testing.db.execute(stmt)
+        
+    @classmethod
+    def teardown_class(cls):
+        for stmt in """
+drop table test_schema.child;
+drop table test_schema.parent;
+drop synonym test_schema.ctable;
+drop synonym test_schema.ptable;
+""".split(";"):
+            if stmt.strip():
+                testing.db.execute(stmt)
+        
     def test_create_same_names_explicit_schema(self):
         schema = testing.db.dialect.default_schema_name
         meta = MetaData(testing.db)
@@ -251,7 +276,7 @@ class MultiSchemaTest(TestBase, AssertsCompiledSQL):
         )
         child = Table('child', meta, 
             Column('cid', Integer, primary_key=True),
-            Column('pid', Integer, ForeignKey('scott.parent.pid')),
+            Column('pid', Integer, ForeignKey('%s.parent.pid' % schema)),
             schema=schema
         )
         meta.create_all()
@@ -282,47 +307,51 @@ class MultiSchemaTest(TestBase, AssertsCompiledSQL):
 
     def test_reflect_alt_owner_explicit(self):
         meta = MetaData(testing.db)
-        parent = Table('parent', meta, autoload=True, schema='ed')
-        child = Table('child', meta, autoload=True, schema='ed')
+        parent = Table('parent', meta, autoload=True, schema='test_schema')
+        child = Table('child', meta, autoload=True, schema='test_schema')
 
-        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id")
+        self.assert_compile(parent.join(child), "test_schema.parent JOIN test_schema.child ON test_schema.parent.id = test_schema.child.parent_id")
         select([parent, child]).select_from(parent.join(child)).execute().fetchall()
 
     def test_reflect_local_to_remote(self):
-        testing.db.execute("CREATE TABLE localtable (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES ed.parent(id))")
+        testing.db.execute("CREATE TABLE localtable "
+                            "(id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES"
+                            " test_schema.parent(id))")
         try:
             meta = MetaData(testing.db)
             lcl = Table('localtable', meta, autoload=True)
-            parent = meta.tables['ed.parent']
-            self.assert_compile(parent.join(lcl), "ed.parent JOIN localtable ON ed.parent.id = localtable.parent_id")
+            parent = meta.tables['test_schema.parent']
+            self.assert_compile(parent.join(lcl), "test_schema.parent JOIN localtable ON test_schema.parent.id = localtable.parent_id")
             select([parent, lcl]).select_from(parent.join(lcl)).execute().fetchall()
         finally:
             testing.db.execute("DROP TABLE localtable")
 
     def test_reflect_alt_owner_implicit(self):
         meta = MetaData(testing.db)
-        parent = Table('parent', meta, autoload=True, schema='ed')
-        child = Table('child', meta, autoload=True, schema='ed')
+        parent = Table('parent', meta, autoload=True, schema='test_schema')
+        child = Table('child', meta, autoload=True, schema='test_schema')
 
-        self.assert_compile(parent.join(child), "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id")
+        self.assert_compile(parent.join(child), "test_schema.parent JOIN test_schema.child ON test_schema.parent.id = test_schema.child.parent_id")
         select([parent, child]).select_from(parent.join(child)).execute().fetchall()
       
     def test_reflect_alt_owner_synonyms(self):
-        testing.db.execute("CREATE TABLE localtable (id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES ed.ptable(id))")
+        testing.db.execute("CREATE TABLE localtable "
+                            "(id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES"
+                            " test_schema.ptable(id))")
         try:
             meta = MetaData(testing.db)
             lcl = Table('localtable', meta, autoload=True, oracle_resolve_synonyms=True)
-            parent = meta.tables['ed.ptable']
-            self.assert_compile(parent.join(lcl), "ed.ptable JOIN localtable ON ed.ptable.id = localtable.parent_id")
+            parent = meta.tables['test_schema.ptable']
+            self.assert_compile(parent.join(lcl), "test_schema.ptable JOIN localtable ON test_schema.ptable.id = localtable.parent_id")
             select([parent, lcl]).select_from(parent.join(lcl)).execute().fetchall()
         finally:
             testing.db.execute("DROP TABLE localtable")
  
     def test_reflect_remote_synonyms(self):
         meta = MetaData(testing.db)
-        parent = Table('ptable', meta, autoload=True, schema='ed', oracle_resolve_synonyms=True)
-        child = Table('ctable', meta, autoload=True, schema='ed', oracle_resolve_synonyms=True)
-        self.assert_compile(parent.join(child), "ed.ptable JOIN ed.ctable ON ed.ptable.id = ed.ctable.parent_id")
+        parent = Table('ptable', meta, autoload=True, schema='test_schema', oracle_resolve_synonyms=True)
+        child = Table('ctable', meta, autoload=True, schema='test_schema', oracle_resolve_synonyms=True)
+        self.assert_compile(parent.join(child), "test_schema.ptable JOIN test_schema.ctable ON test_schema.ptable.id = test_schema.ctable.parent_id")
         select([parent, child]).select_from(parent.join(child)).execute().fetchall()
 
  

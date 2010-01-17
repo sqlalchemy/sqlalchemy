@@ -549,17 +549,13 @@ class OracleDialect(default.DefaultDialect):
     def table_names(self, connection, schema):
         # note that table_names() isnt loading DBLINKed or synonym'ed tables
         if schema is None:
-            cursor = connection.execute(
-                "SELECT table_name FROM all_tables "
-                "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
-                "AND IOT_NAME IS NULL")
-        else:
-            s = sql.text(
-                "SELECT table_name FROM all_tables "
-                "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
-                "AND OWNER = :owner "
-                "AND IOT_NAME IS NULL")
-            cursor = connection.execute(s, owner=self.denormalize_name(schema))
+            schema = self.default_schema_name
+        s = sql.text(
+            "SELECT table_name FROM all_tables "
+            "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
+            "AND OWNER = :owner "
+            "AND IOT_NAME IS NULL")
+        cursor = connection.execute(s, owner=self.denormalize_name(schema))
         return [self.normalize_name(row[0]) for row in cursor]
 
     def _resolve_synonym(self, connection, desired_owner=None, desired_synonym=None, desired_table=None):
@@ -660,7 +656,8 @@ class OracleDialect(default.DefaultDialect):
         c = connection.execute(sql.text(
                 "SELECT column_name, data_type, data_length, data_precision, data_scale, "
                 "nullable, data_default FROM ALL_TAB_COLUMNS%(dblink)s "
-                "WHERE table_name = :table_name AND owner = :owner" % {'dblink': dblink}),
+                "WHERE table_name = :table_name AND owner = :owner " 
+                "ORDER BY column_id" % {'dblink': dblink}),
                                table_name=table_name, owner=schema)
 
         for row in c:

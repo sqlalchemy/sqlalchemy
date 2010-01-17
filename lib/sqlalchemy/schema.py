@@ -250,7 +250,12 @@ class Table(SchemaItem, expression.TableClause):
             if autoload_with:
                 autoload_with.reflecttable(self, include_columns=include_columns)
             else:
-                _bind_or_error(metadata).reflecttable(self, include_columns=include_columns)
+                _bind_or_error(metadata, msg="No engine is bound to this Table's MetaData. "
+                                        "Pass an engine to the Table via "
+                                        "autoload_with=<someengine>, "
+                                        "or associate the MetaData with an engine via "
+                                        "metadata.bind=<someengine>").\
+                                        reflecttable(self, include_columns=include_columns)
 
         # initialize all the column, etc. objects.  done after reflection to
         # allow user-overrides
@@ -2340,7 +2345,7 @@ class DropConstraint(_CreateDropBase):
         super(DropConstraint, self).__init__(element, **kw)
         element._create_rule = lambda compiler: False
 
-def _bind_or_error(schemaitem):
+def _bind_or_error(schemaitem, msg=None):
     bind = schemaitem.bind
     if not bind:
         name = schemaitem.__class__.__name__
@@ -2354,11 +2359,12 @@ def _bind_or_error(schemaitem):
             bindable = "the %s's .bind" % name
         else:
             bindable = "this %s's .metadata.bind" % name
-
-        msg = ('The %s is not bound to an Engine or Connection.  '
-               'Execution can not proceed without a database to execute '
-               'against.  Either execute with an explicit connection or '
-               'assign %s to enable implicit execution.') % (item, bindable)
+        
+        if msg is None:
+            msg = ('The %s is not bound to an Engine or Connection.  '
+                   'Execution can not proceed without a database to execute '
+                   'against.  Either execute with an explicit connection or '
+                   'assign %s to enable implicit execution.') % (item, bindable)
         raise exc.UnboundExecutionError(msg)
     return bind
 

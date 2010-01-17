@@ -439,7 +439,12 @@ CHANGES
       a wide variety of schema information, with room for expansion,
       including table names, column names, view definitions, sequences,
       indexes, etc.  
-      
+    
+    - Views are now reflectable as ordinary Table objects.  The same
+      Table constructor is used, with the caveat that "effective" 
+      primary and foreign key constraints aren't part of the reflection
+      results; these have to be specified explicitly if desired.
+    
     - The existing autoload=True system now uses Inspector underneath
       so that each dialect need only return "raw" data about tables
       and other objects - Inspector is the single place that information

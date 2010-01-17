@@ -687,6 +687,28 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             m1.drop_all()
 
+    def test_views(self):
+        meta = MetaData(testing.db)
+        users, addresses = createTables(meta, None)
+        meta.create_all()
+        createViews(meta.bind, None)
+        try:
+            m2 = MetaData(testing.db)
+            users_v = Table("users_v", m2, autoload=True)
+            addresses_v = Table("email_addresses_v", m2, autoload=True)
+            
+            for c1, c2 in zip(users.c, users_v.c):
+                eq_(c1.name, c2.name)
+                assert c1.type._compare_type_affinity(c2.type)
+                
+            for c1, c2 in zip(addresses.c, addresses_v.c):
+                eq_(c1.name, c2.name)
+                assert c1.type._compare_type_affinity(c2.type)
+            
+        finally:
+            dropViews(meta.bind, None)
+            meta.drop_all()
+        
 class CreateDropTest(TestBase):
     @classmethod
     def setup_class(cls):
@@ -889,9 +911,8 @@ class HasSequenceTest(TestBase):
 
     @testing.requires.schemas
     @testing.requires.sequences
-    @testing.fails_on('oracle', "the 'scott' schema is the same as the default schema")
     def test_has_sequence_schema(self):
-        test_schema = get_schema()
+        test_schema = 'test_schema'
         s1 = sa.Sequence('user_id_seq', schema=test_schema)
         s2 = sa.Sequence('user_id_seq')
         testing.db.execute(schema.CreateSequence(s1))
@@ -907,11 +928,6 @@ class HasSequenceTest(TestBase):
         
 # Tests related to engine.reflection
 
-def get_schema():
-    # TODO: how to get multiple schemas in use on Oracle XE ?
-    if testing.against('oracle'):
-        return 'scott'
-    return 'test_schema'
 
 def createTables(meta, schema=None):
     if schema:
@@ -985,7 +1001,7 @@ class ComponentReflectionTest(TestBase):
     def test_get_schema_names(self):
         insp = Inspector(testing.db)
         
-        self.assert_(get_schema() in insp.get_schema_names())
+        self.assert_('test_schema' in insp.get_schema_names())
 
     def test_get_default_schema_name(self):
         insp = Inspector(testing.db)
@@ -1022,14 +1038,14 @@ class ComponentReflectionTest(TestBase):
 
     @testing.requires.schemas
     def test_get_table_names_with_schema(self):
-        self._test_get_table_names(get_schema())
+        self._test_get_table_names('test_schema')
 
     def test_get_view_names(self):
         self._test_get_table_names(table_type='view')
 
     @testing.requires.schemas
     def test_get_view_names_with_schema(self):
-        self._test_get_table_names(get_schema(), table_type='view')
+        self._test_get_table_names('test_schema', table_type='view')
 
     def _test_get_columns(self, schema=None, table_type='table'):
         meta = MetaData(testing.db)
@@ -1082,14 +1098,14 @@ class ComponentReflectionTest(TestBase):
 
     @testing.requires.schemas
     def test_get_columns_with_schema(self):
-        self._test_get_columns(schema=get_schema())
+        self._test_get_columns(schema='test_schema')
 
     def test_get_view_columns(self):
         self._test_get_columns(table_type='view')
 
     @testing.requires.schemas
     def test_get_view_columns_with_schema(self):
-        self._test_get_columns(schema=get_schema(), table_type='view')
+        self._test_get_columns(schema='test_schema', table_type='view')
 
     def _test_get_primary_keys(self, schema=None):
         meta = MetaData(testing.db)
@@ -1113,7 +1129,7 @@ class ComponentReflectionTest(TestBase):
 
     @testing.fails_on('sqlite', 'no schemas')
     def test_get_primary_keys_with_schema(self):
-        self._test_get_primary_keys(schema=get_schema())
+        self._test_get_primary_keys(schema='test_schema')
 
     def _test_get_foreign_keys(self, schema=None):
         meta = MetaData(testing.db)
@@ -1149,7 +1165,7 @@ class ComponentReflectionTest(TestBase):
 
     @testing.requires.schemas
     def test_get_foreign_keys_with_schema(self):
-        self._test_get_foreign_keys(schema=get_schema())
+        self._test_get_foreign_keys(schema='test_schema')
 
     def _test_get_indexes(self, schema=None):
         meta = MetaData(testing.db)
@@ -1182,7 +1198,7 @@ class ComponentReflectionTest(TestBase):
 
     @testing.requires.schemas
     def test_get_indexes_with_schema(self):
-        self._test_get_indexes(schema=get_schema())
+        self._test_get_indexes(schema='test_schema')
 
     def _test_get_view_definition(self, schema=None):
         meta = MetaData(testing.db)
@@ -1207,7 +1223,7 @@ class ComponentReflectionTest(TestBase):
 
     @testing.requires.schemas
     def test_get_view_definition_with_schema(self):
-        self._test_get_view_definition(schema=get_schema())
+        self._test_get_view_definition(schema='test_schema')
 
     def _test_get_table_oid(self, table_name, schema=None):
         if testing.against('postgresql'):
@@ -1227,6 +1243,6 @@ class ComponentReflectionTest(TestBase):
 
     @testing.requires.schemas
     def test_get_table_oid_with_schema(self):
-        self._test_get_table_oid('users', schema=get_schema())
+        self._test_get_table_oid('users', schema='test_schema')
 
 
