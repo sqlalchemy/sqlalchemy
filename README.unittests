@@ -87,8 +87,51 @@ Use an empty database and a database user with general DBA privileges.
 The test suite will be creating and dropping many tables and other DDL, and
 preexisting tables will interfere with the tests.
 
-IMPORTANT !: please see TIPS at the end if your are testing on POSTGRESQL,
-ORACLE, or MSSQL - additional steps are required to prepare a test database.
+Several tests require alternate schemas to be present.    This requirement
+applies to all backends except SQLite and Firebird.   These schemas are:
+
+    test_schema
+    test_schema_2
+
+Please refer to your vendor documentation for the proper syntax to create 
+these schemas - the database user must have permission to create and drop
+tables within these schemas.  Its perfectly fine to run the test suite
+without these schemas present, it only means that a handful of tests which
+expect them to be present will fail.
+
+Additional steps specific to individual databases are as follows:
+
+Oracle: to run the test.dialect.test_oracle:MultiSchemaTest suite of tests,
+the database owner should be named "scott" (this will be fixed),
+and an additional "owner" named "ed" is required:
+
+1. create a user 'ed' in the oracle database.
+2. in 'ed', issue the following statements:
+    create table parent(id integer primary key, data varchar2(50));
+    create table child(id integer primary key, data varchar2(50), 
+                       parent_id integer references parent(id));
+    create synonym ptable for parent;
+    create synonym ctable for child;
+    grant all on parent to scott;  (or to whoever you run the oracle tests as)
+    grant all on child to scott;  (same)
+    grant all on ptable to scott;
+    grant all on ctable to scott;
+
+MSSQL: Tests that involve multiple connections require Snapshot Isolation
+ability implented on the test database in order to prevent deadlocks that will
+occur with record locking isolation. This feature is only available with
+MSSQL 2005 and greater. You must enable snapshot isolation at the database level
+and set the default cursor isolation with two SQL commands:
+
+    ALTER DATABASE MyDatabase
+    SET ALLOW_SNAPSHOT_ISOLATION ON
+    
+    ALTER DATABASE MyDatabase
+    SET READ_COMMITTED_SNAPSHOT ON
+
+MSSQL+zxJDBC: Trying to run the unit tests on Windows against SQL Server
+requires using a test.cfg configuration file as the cmd.exe shell won't properly
+pass the URL arguments into the nose test runner.
 
 If you'll be running the tests frequently, database aliases can save a lot of
 typing.  The --dbs option lists the built-in aliases and their matching URLs:
@@ -113,7 +156,6 @@ or a `.satest.cfg` in your home directory:
 
 Your custom entries will override the defaults and you'll see them reflected
 in the output of --dbs.
-
 
 CONFIGURING LOGGING
 -------------------
@@ -174,38 +216,3 @@ always possible.  If you hit a wall, join us on the mailing list or, better,
 IRC!
 
 
-TIPS
-----
-
-PostgreSQL: The tests require an 'test_schema' and 'test_schema_2' to be present in
-the testing database.
-
-Oracle: the database owner should be named "scott" (this will be fixed),
-and an additional "owner" named "ed" is required:
-
-1. create a user 'ed' in the oracle database.
-2. in 'ed', issue the following statements:
-    create table parent(id integer primary key, data varchar2(50));
-    create table child(id integer primary key, data varchar2(50), parent_id integer references parent(id));
-    create synonym ptable for parent;
-    create synonym ctable for child;
-    grant all on parent to scott;  (or to whoever you run the oracle tests as)
-    grant all on child to scott;  (same)
-    grant all on ptable to scott;
-    grant all on ctable to scott;
-
-MSSQL: Tests that involve multiple connections require Snapshot Isolation
-ability implented on the test database in order to prevent deadlocks that will
-occur with record locking isolation. This feature is only available with
-MSSQL 2005 and greater. You must enable snapshot isolation at the database level
-and set the default cursor isolation with two SQL commands ::
-
-    ALTER DATABASE MyDatabase
-    SET ALLOW_SNAPSHOT_ISOLATION ON
-    
-    ALTER DATABASE MyDatabase
-    SET READ_COMMITTED_SNAPSHOT ON
-
-MSSQL+zxJDBC: Trying to run the unit tests on Windows against SQL Server
-requires using a test.cfg configuration file as the cmd.exe shell won't properly
-pass the URL arguments into the nose test runner.
