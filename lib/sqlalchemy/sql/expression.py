@@ -977,6 +977,15 @@ def _corresponding_column_or_error(fromclause, column, require_embedded=False):
                 )
     return c
 
+@util.decorator
+def _generative(fn, *args, **kw):
+    """Mark a method as generative."""
+
+    self = args[0]._generate()
+    fn(self, *args[1:], **kw)
+    return self
+
+
 def is_column(col):
     """True if ``col`` is an instance of :class:`ColumnElement`."""
     
@@ -2182,7 +2191,20 @@ class _Executable(object):
     """Mark a ClauseElement as supporting execution."""
 
     supports_execution = True
-    _statement_options = util.frozendict()
+    _execution_options = util.frozendict()
+
+    @_generative
+    def execution_options(self, **kwargs):
+        """ Set non-SQL options for the statement, such as dialect-specific options.
+
+        The options available are covered in the respective dialect's section.
+
+        """
+        _execution_options = self._execution_options.copy()
+        for key, value in kwargs.items():
+            _execution_options[key] = value
+        self._execution_options = _execution_options
+
     
 class _TextClause(_Executable, ClauseElement):
     """Represent a literal SQL text fragment.
@@ -2202,14 +2224,14 @@ class _TextClause(_Executable, ClauseElement):
     _hide_froms = []
 
     def __init__(self, text = "", bind=None, 
-                    bindparams=None, typemap=None, autocommit=PARSE_AUTOCOMMIT, statement_options=None):
+                    bindparams=None, typemap=None, autocommit=PARSE_AUTOCOMMIT, execution_options=None):
         self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
         self._autocommit = autocommit
-        self._statement_options = statement_options
-        if self._statement_options is None:
-            self._statement_options = {}
+        self._execution_options = execution_options
+        if self._execution_options is None:
+            self._execution_options = {}
         if typemap is not None:
             for key in typemap.keys():
                 typemap[key] = sqltypes.to_instance(typemap[key])
@@ -2799,7 +2821,7 @@ class Alias(FromClause):
         self.supports_execution = baseselectable.supports_execution
         if self.supports_execution:
             self._autocommit = baseselectable._autocommit
-            self._statement_options = baseselectable._statement_options
+            self._execution_options = baseselectable._execution_options
         self.element = selectable
         if alias is None:
             if self.original.named_with_column:
@@ -3160,14 +3182,6 @@ class TableClause(_Immutable, FromClause):
     def _from_objects(self):
         return [self]
 
-@util.decorator
-def _generative(fn, *args, **kw):
-    """Mark a method as generative."""
-
-    self = args[0]._generate()
-    fn(self, *args[1:], **kw)
-    return self
-
 class _SelectBaseMixin(_Executable):
     """Base class for :class:`Select` and ``CompoundSelects``."""
 
@@ -3180,16 +3194,16 @@ class _SelectBaseMixin(_Executable):
             group_by=None,
             bind=None,
             autocommit=False,
-            statement_options=None):
+            execution_options=None):
         self.use_labels = use_labels
         self.for_update = for_update
         self._autocommit = autocommit
         self._limit = limit
         self._offset = offset
         self._bind = bind
-        self._statement_options = statement_options
-        if self._statement_options is None:
-            self._statement_options = dict()
+        self._execution_options = execution_options
+        if self._execution_options is None:
+            self._execution_options = dict()
 
         self._order_by_clause = ClauseList(*util.to_list(order_by) or [])
         self._group_by_clause = ClauseList(*util.to_list(group_by) or [])
@@ -3300,18 +3314,6 @@ class _SelectBaseMixin(_Executable):
     @property
     def _from_objects(self):
         return [self]
-
-    @_generative
-    def statement_options(self, **kwargs):
-        """ Set non-SQL options for the statement, such as dialect-specific options.
-
-        The options available are covered in the respective dialect's section.
-
-        """
-        _statement_options = self._statement_options.copy()
-        for key, value in kwargs.items():
-            _statement_options[key] = value
-        self._statement_options = _statement_options
 
 
 class _ScalarSelect(_Grouping):

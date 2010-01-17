@@ -1455,19 +1455,19 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
         # It should be off globally ...
         assert not result.cursor.name
 
-        s = select([1]).statement_options(stream_results=True)
+        s = select([1]).execution_options(stream_results=True)
         result = engine.execute(s)
         # ... but enabled for this one.
         assert result.cursor.name
 
     def test_ss_explicitly_disabled(self):
-        s = select([1]).statement_options(stream_results=False)
+        s = select([1]).execution_options(stream_results=False)
         result = ss_engine.execute(s)
         assert not result.cursor.name
 
     def test_aliases_and_ss(self):
         engine = engines.testing_engine(options={'server_side_cursors':False})
-        s1 = select([1]).statement_options(stream_results=True).alias()
+        s1 = select([1]).execution_options(stream_results=True).alias()
         result = engine.execute(s1)
         assert result.cursor.name
 
@@ -1500,12 +1500,12 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
             assert not result.cursor.name, result.cursor.name
             result.close()
 
-            q = sess.query(Foo).statement_options(stream_results=True)
+            q = sess.query(Foo).execution_options(stream_results=True)
             result = engine.execute(q.statement)
             assert result.cursor.name
             result.close()
 
-            result = sess.query(Foo).statement_options(stream_results=True).subquery().execute()
+            result = sess.query(Foo).execution_options(stream_results=True).subquery().execute()
             assert result.cursor.name
             result.close()
         finally:
@@ -1516,7 +1516,7 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
         s = text('select 42')
         result = engine.execute(s)
         assert not result.cursor.name
-        s = text('select 42', statement_options=dict(stream_results=True))
+        s = text('select 42', execution_options=dict(stream_results=True))
         result = engine.execute(s)
         assert result.cursor.name
 

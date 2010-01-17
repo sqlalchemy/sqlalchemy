@@ -35,10 +35,10 @@ Transactions
 The psycopg2 dialect fully supports SAVEPOINT and two-phase commit operations.
 
 
-Statement options
------------------
+Per-Statement Execution Options
+-------------------------------
 
-The following statement options are respected:
+The following per-statement execution options are respected:
 
 * *stream_results* - Enable or disable usage of server side cursors for the SELECT-statement.
   If *None* or not set, the *server_side_cursors* option of the connection is used. If
@@ -112,7 +112,7 @@ SERVER_SIDE_CURSOR_RE = re.compile(
 class PostgreSQL_psycopg2ExecutionContext(PGExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
-        stream_results_option = self.statement_options.get('stream_results')
+        stream_results_option = self.execution_options.get('stream_results')
         is_server_side = (
             # Enabled for this statement ...
             (stream_results_option or

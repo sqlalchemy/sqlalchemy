@@ -80,7 +80,7 @@ class Query(object):
     _filter_aliases = None
     _from_obj_alias = None
     _joinpath = _joinpoint = util.frozendict()
-    _statement_options = util.frozendict()
+    _execution_options = util.frozendict()
     _params = util.frozendict()
     _attributes = util.frozendict()
     _with_options = ()
@@ -490,14 +490,14 @@ class Query(object):
 
         Also note that many DBAPIs do not "stream" results, pre-buffering
         all rows before making them available, including mysql-python and 
-        psycopg2.  yield_per() will also set the ``stream_results`` statement
+        psycopg2.  yield_per() will also set the ``stream_results`` execution
         option to ``True``, which currently is only understood by psycopg2
         and causes server side cursors to be used.
         
         """
         self._yield_per = count
-        self._statement_options = self._statement_options.copy()
-        self._statement_options['stream_results'] = True
+        self._execution_options = self._execution_options.copy()
+        self._execution_options['stream_results'] = True
         
     def get(self, ident):
         """Return an instance of the object based on the given identifier, or None if not found.
@@ -676,19 +676,21 @@ class Query(object):
                 opt.process_query(self)
 
     @_generative()
-    def statement_options(self, **kwargs):
-        """ Set non-SQL options for the resulting statement, such as dialect-specific options.
+    def execution_options(self, **kwargs):
+        """ Set non-SQL options for the resulting statement, 
+        such as dialect-specific options.
         
         The only option currently understood is ``stream_results=True``, 
         only used by Psycopg2 to enable "server side cursors".  This option
-        only has a useful effect if used in conjunction with :meth:`~sqlalchemy.orm.query.Query.yield_per()`,
+        only has a useful effect if used in conjunction with
+        :meth:`~sqlalchemy.orm.query.Query.yield_per()`,
         which currently sets ``stream_results`` to ``True`` automatically.
 
         """
-        _statement_options = self._statement_options.copy()
+        _execution_options = self._execution_options.copy()
         for key, value in kwargs.items():
-            _statement_options[key] = value
-        self._statement_options = _statement_options
+            _execution_options[key] = value
+        self._execution_options = _execution_options
 
     @_generative()
     def with_lockmode(self, mode):
@@ -1938,7 +1940,7 @@ class Query(object):
 
             context.adapter = sql_util.ColumnAdapter(inner, equivs)
 
-            statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=labels, statement_options=self._statement_options)
+            statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=labels, execution_options=self._execution_options)
 
             from_clause = inner
             for eager_join in eager_joins:
@@ -1970,7 +1972,7 @@ class Query(object):
                             for_update=for_update,
                             correlate=False,
                             order_by=context.order_by,
-                            statement_options=self._statement_options,
+                            execution_options=self._execution_options,
                             **self._select_args
                         )
 

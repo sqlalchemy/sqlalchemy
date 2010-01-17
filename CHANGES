@@ -177,7 +177,7 @@ CHANGES
      used with dialects that don't support "rowcount" adequately.
      [ticket:1569]
 
-   - added "statement_options()" to Query, to so options can be
+   - added "execution_options()" to Query, to so options can be
      passed to the resulting statement. Currently only
      Select-statements have these options, and the only option
      used is "stream_results", and the only dialect which knows
@@ -304,7 +304,7 @@ CHANGES
        as appropriate for more complex situations.
        [ticket:1628]
 
-    - Added "statement_options()" to Selects, which set statement
+    - Added "execution_options()" to Selects, which set statement
       specific options. These enable e.g. dialect specific options
       such as whether to enable using server side cursors, etc.
        

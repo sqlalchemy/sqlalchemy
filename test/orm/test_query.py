@@ -3748,27 +3748,27 @@ class UpdateDeleteTest(_base.MappedTest):
         
 
 class StatementOptionsTest(QueryTest):
-    """ Make sure a Query's statement_options are passed on to the
+    """ Make sure a Query's execution_options are passed on to the
     resulting statement. """
 
     def test_query_with_statement_option(self):
         sess = create_session(bind=testing.db, autocommit=False)
 
         q1 = sess.query(User)
-        assert q1._statement_options == dict()
-        q2 = q1.statement_options(foo='bar', stream_results=True)
+        assert q1._execution_options == dict()
+        q2 = q1.execution_options(foo='bar', stream_results=True)
         # q1's options should be unchanged.
-        assert q1._statement_options == dict()
+        assert q1._execution_options == dict()
         # q2 should have them set.
-        assert q2._statement_options == dict(foo='bar', stream_results=True)
-        q3 = q2.statement_options(foo='not bar', answer=42)
-        assert q2._statement_options == dict(foo='bar', stream_results=True)
+        assert q2._execution_options == dict(foo='bar', stream_results=True)
+        q3 = q2.execution_options(foo='not bar', answer=42)
+        assert q2._execution_options == dict(foo='bar', stream_results=True)
 
         q3_options = dict(foo='not bar', stream_results=True, answer=42)
-        assert q3._statement_options == q3_options
-        assert q3.statement._statement_options == q3_options
-        assert q3._compile_context().statement._statement_options == q3_options
-        assert q3.subquery().original._statement_options == q3_options
+        assert q3._execution_options == q3_options
+        assert q3.statement._execution_options == q3_options
+        assert q3._compile_context().statement._execution_options == q3_options
+        assert q3.subquery().original._execution_options == q3_options
 
     # TODO: Test that statement options are passed on to
     # updates/deletes, but currently there are no such options

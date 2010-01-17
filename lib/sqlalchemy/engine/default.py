@@ -223,7 +223,7 @@ class DefaultDialect(base.Dialect):
 
 
 class DefaultExecutionContext(base.ExecutionContext):
-    statement_options = util.frozendict()
+    execution_options = util.frozendict()
     
     def __init__(self, dialect, connection, compiled_sql=None, compiled_ddl=None, statement=None, parameters=None):
         self.dialect = dialect
@@ -269,7 +269,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isupdate = compiled.isupdate
             self.isdelete = compiled.isdelete
             self.should_autocommit = compiled.statement._autocommit
-            self.statement_options = compiled.statement._statement_options
+            self.execution_options = compiled.statement._execution_options
             if self.should_autocommit is expression.PARSE_AUTOCOMMIT:
                 self.should_autocommit = self.should_autocommit_text(self.statement)
 
