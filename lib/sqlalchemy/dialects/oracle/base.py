@@ -140,6 +140,14 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
             asdecimal = bool(scale and scale > 0)
                 
         super(NUMBER, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal)
+    
+    @property
+    def _type_affinity(self):
+        if bool(self.scale and self.scale > 0):
+            return sqltypes.Numeric
+        else:
+            return sqltypes.Integer
+    
             
 class DOUBLE_PRECISION(sqltypes.Numeric):
     __visit_name__ = 'DOUBLE_PRECISION'

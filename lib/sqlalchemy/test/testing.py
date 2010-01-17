@@ -657,12 +657,9 @@ class ComparesTables(object):
             assert reflected_table.primary_key.columns[c.name] is not None
     
     def assert_types_base(self, c1, c2):
-        base_mro = sqltypes.TypeEngine.__mro__
-        assert len(
-            set(type(c1.type).__mro__).difference(base_mro).intersection(
-            set(type(c2.type).__mro__).difference(base_mro)
-            )
-        ) > 0, "On column %r, type '%s' doesn't correspond to type '%s'" % (c1.name, c1.type, c2.type)
+        assert c1.type._compare_type_affinity(c2.type),\
+                "On column %r, type '%s' doesn't correspond to type '%s'" % \
+                (c1.name, c1.type, c2.type)
 
 class AssertsExecutionResults(object):
     def assert_result(self, result, class_, *objects):

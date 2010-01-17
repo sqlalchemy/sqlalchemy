@@ -699,11 +699,11 @@ class ReflectionTest(TestBase, ComparesTables):
             
             for c1, c2 in zip(users.c, users_v.c):
                 eq_(c1.name, c2.name)
-                assert c1.type._compare_type_affinity(c2.type)
+                self.assert_types_base(c1, c2)
                 
             for c1, c2 in zip(addresses.c, addresses_v.c):
                 eq_(c1.name, c2.name)
-                assert c1.type._compare_type_affinity(c2.type)
+                self.assert_types_base(c1, c2)
             
         finally:
             dropViews(meta.bind, None)
@@ -946,10 +946,10 @@ def createTables(meta, schema=None):
         Column('test2', sa.Float(5), nullable=False),
         Column('test3', sa.Text),
         Column('test4', sa.Numeric(10, 2), nullable = False),
-        Column('test5', sa.DateTime),
+        Column('test5', sa.Date),
         Column('test5-1', sa.TIMESTAMP),
         parent_user_id,
-        Column('test6', sa.DateTime, nullable=False),
+        Column('test6', sa.Date, nullable=False),
         Column('test7', sa.Text),
         Column('test8', sa.Binary),
         Column('test_passivedefault2', sa.Integer, server_default='5'),
