@@ -478,11 +478,19 @@ class String(Concatenable, TypeEngine):
           If False, may be overridden by
           :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
           
-          If the dialect has been detected as returning unicode 
-          strings from a VARCHAR result column, no unicode translation
-          will be done on results.   To force unicode translation
-          for individual types regardless of dialect setting,
-          set convert_unicode='force'.
+          If the DBAPI in use has been detected to return unicode 
+          strings from a VARCHAR result column, the String object will
+          assume all subsequent results are already unicode objects, and no
+          type detection will be done to verify this.  The 
+          rationale here is that isinstance() calls are enormously
+          expensive at the level of column-fetching.  To
+          force the check to occur regardless, set 
+          convert_unicode='force'.
+          
+          Similarly, if the dialect is known to accept bind parameters
+          as unicode objects, no translation from unicode to bytestring
+          is performed on binds.  Again, encoding to a bytestring can be 
+          forced for special circumstances by setting convert_unicode='force'.
 
         :param assert_unicode:
 
@@ -523,7 +531,7 @@ class String(Concatenable, TypeEngine):
                             raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
                     else:
                         return value
-            elif dialect.supports_unicode_binds:
+            elif dialect.supports_unicode_binds and self.convert_unicode != 'force':
                 return None
             else:
                 def process(value):
@@ -583,7 +591,15 @@ class Unicode(String):
     ``u'somevalue'``) into encoded bytestrings when passing the value
     to the database driver, and similarly decodes values from the
     database back into Python ``unicode`` objects.
-
+    
+    It's roughly equivalent to using a ``String`` object with
+    ``convert_unicode=True`` and ``assert_unicode='warn'``, however
+    the type has other significances in that it implies the usage 
+    of a unicode-capable type being used on the backend, such as NVARCHAR.
+    This may affect what type is emitted when issuing CREATE TABLE
+    and also may effect some DBAPI-specific details, such as type
+    information passed along to ``setinputsizes()``.
+    
     When using the ``Unicode`` type, it is only appropriate to pass
     Python ``unicode`` objects, and not plain ``str``.  If a
     bytestring (``str``) is passed, a runtime warning is issued.  If
@@ -625,6 +641,9 @@ class UnicodeText(Text):
 
     See :class:`Unicode` for details on the unicode
     behavior of this object.
+
+    Like ``Unicode``, usage the ``UnicodeText`` type implies a 
+    unicode-capable type being used on the backend, such as NCLOB.
 
     """
 

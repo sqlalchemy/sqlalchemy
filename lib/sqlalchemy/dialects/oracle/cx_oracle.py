@@ -118,6 +118,8 @@ class _OracleChar(sqltypes.CHAR):
         return dbapi.FIXED_CHAR
 
 class _OracleNVarChar(sqltypes.NVARCHAR):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.UNICODE
     def result_processor(self, dialect, coltype):
         if dialect._cx_oracle_native_nvarchar:
             return None
@@ -204,7 +206,7 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
                     del param[fromname]
 
         if self.dialect.auto_setinputsizes:
-            self.set_input_sizes(quoted_bind_names, exclude_types=(self.dialect.dbapi.STRING,))
+            self.set_input_sizes(quoted_bind_names)
             
         if len(self.compiled_parameters) == 1:
             for key in self.compiled.binds:

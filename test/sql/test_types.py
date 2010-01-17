@@ -308,8 +308,10 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         )
 
         x = unicode_table.select().execute().first()
-        self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
-        self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
+        assert isinstance(x['unicode_varchar'], unicode)
+        eq_(x['unicode_varchar'], unicodedata)
+        assert isinstance(x['unicode_text'], unicode)
+        eq_(x['unicode_text'], unicodedata)
 
     def test_union(self):
         """ensure compiler processing works for UNIONs"""
