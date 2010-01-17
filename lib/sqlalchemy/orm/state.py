@@ -1,9 +1,10 @@
 from sqlalchemy.util import EMPTY_SET
 import weakref
 from sqlalchemy import util
-from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, PASSIVE_OFF, NEVER_SET, NO_VALUE, manager_of_class, ATTR_WAS_SET
-from sqlalchemy.orm import attributes
-from sqlalchemy.orm import interfaces
+from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, PASSIVE_OFF, \
+                                        NEVER_SET, NO_VALUE, manager_of_class, \
+                                        ATTR_WAS_SET
+from sqlalchemy.orm import attributes, exc as orm_exc, interfaces
 
 class InstanceState(object):
     """tracks state information at the instance level."""
@@ -147,8 +148,14 @@ class InstanceState(object):
     def __setstate__(self, state):
         self.obj = weakref.ref(state['instance'], self._cleanup)
         self.class_ = state['instance'].__class__
-        self.manager = manager_of_class(self.class_)
-
+        self.manager = manager = manager_of_class(self.class_)
+        if manager is None:
+            raise orm_exc.UnmappedInstanceError(
+                        state['instance'],
+                        "Cannot deserialize object of type %r - no mapper() has"
+                        " been configured for this class within the current Python process!" %
+                        self.class_)
+        
         self.committed_state = state.get('committed_state', {})
         self.pending = state.get('pending', {})
         self.parents = state.get('parents', {})

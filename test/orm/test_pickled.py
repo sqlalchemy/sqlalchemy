@@ -2,9 +2,12 @@ from sqlalchemy.test.testing import eq_
 import pickle
 import sqlalchemy as sa
 from sqlalchemy.test import testing
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy.test.testing import assert_raises_message
+from sqlalchemy import Integer, String, ForeignKey, exc
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session, sessionmaker, attributes, interfaces
+from sqlalchemy.orm import mapper, relation, create_session, \
+                            sessionmaker, attributes, interfaces,\
+                            clear_mappers, exc as orm_exc
 from test.orm import _base, _fixtures
 
 
@@ -32,6 +35,20 @@ class PickleTest(_fixtures.FixtureTest):
 
         eq_(u1, sess.query(User).get(u2.id))
 
+    @testing.resolve_artifact_names
+    def test_no_mappers(self):
+        
+        umapper = mapper(User, users)
+        u1 = User(name='ed')
+        u1_pickled = pickle.dumps(u1, -1)
+
+        clear_mappers()
+
+        assert_raises_message(
+            orm_exc.UnmappedInstanceError,
+            "Cannot deserialize object of type <class 'test.orm._fixtures.User'> - no mapper()",
+            pickle.loads, u1_pickled)
+        
     @testing.resolve_artifact_names
     def test_serialize_path(self):
         umapper = mapper(User, users, properties={
