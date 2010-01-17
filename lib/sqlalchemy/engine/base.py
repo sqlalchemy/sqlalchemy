@@ -173,7 +173,7 @@ class Dialect(object):
         """Transform a generic type to a dialect-specific type.
 
         Dialect classes will usually use the
-        :func:`~sqlalchemy.types.adapt_type` method in the types module to
+        :func:`~sqlalchemy.types.adapt_type` function in the types module to
         make this job easy.
 
         The returned result is cached *per dialect class* so can
@@ -577,6 +577,19 @@ class ExecutionContext(object):
     def lastrow_has_defaults(self):
         """Return True if the last INSERT or UPDATE row contained
         inlined or database-side defaults.
+        """
+
+        raise NotImplementedError()
+
+    def get_rowcount(self):
+        """Return the number of rows produced (by a SELECT query)
+        or affected (by an INSERT/UPDATE/DELETE statement).
+
+        Note that this row count may not be properly implemented 
+        in some dialects; this is indicated by the 
+        ``supports_sane_rowcount`` and ``supports_sane_multi_rowcount``
+        dialect attributes.
+        
         """
 
         raise NotImplementedError()
@@ -1767,13 +1780,12 @@ class ResultProxy(object):
         uses and is not intended to provide the number of rows
         present from a SELECT.
         
-        Additionally, this value is only meaningful if the
-        dialect's supports_sane_rowcount flag is True for
-        single-parameter executions, or supports_sane_multi_rowcount
-        is true for multiple parameter executions - otherwise
-        results are undefined.
+        Note that this row count may not be properly implemented
+        in some dialects; this is indicated by
+         :meth:`~sqlalchemy.engine.base.ResultProxy.supports_sane_rowcount()` and
+         :meth:`~sqlalchemy.engine.base.ResultProxy.supports_sane_multi_rowcount()`.
         
-        rowcount may not work at this time for a statement
+        ``rowcount()`` also may not work at this time for a statement
         that uses ``returning()``.
         
         """

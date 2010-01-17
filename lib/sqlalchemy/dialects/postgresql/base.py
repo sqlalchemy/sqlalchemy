@@ -65,8 +65,6 @@ option to the Index constructor::
 
   Index('my_index', my_table.c.id, postgresql_where=tbl.c.value > 10)
 
-
-
 """
 
 import re
@@ -129,6 +127,27 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     __visit_name__ = 'ARRAY'
     
     def __init__(self, item_type, mutable=True):
+        """Construct an ARRAY.
+
+        E.g.::
+
+          Column('myarray', ARRAY(Integer))
+
+        Arguments are:
+
+        :param item_type: The data type of items of this array. Note that dimensionality is
+          irrelevant here, so multi-dimensional arrays like ``INTEGER[][]``, are constructed as
+          ``ARRAY(Integer)``, not as ``ARRAY(ARRAY(Integer))`` or such. The type mapping figures
+          out on the fly
+
+        :param mutable: Defaults to True: specify whether lists passed to this class should be
+          considered mutable.  If so, generic copy operations (typically used by the ORM) will
+          shallow-copy values.
+          
+        """
+        if isinstance(item_type, ARRAY):
+            raise ValueError("Do not nest ARRAY types; ARRAY(basetype) "
+                            "handles multi-dimensional arrays of basetype")
         if isinstance(item_type, type):
             item_type = item_type()
         self.item_type = item_type
@@ -903,7 +922,7 @@ class PGDialect(default.DefaultDialect):
             if coltype:
                 coltype = coltype(*args, **kwargs)
                 if is_array:
-                    coltype = PGArray(coltype)
+                    coltype = ARRAY(coltype)
             else:
                 util.warn("Did not recognize type '%s' of column '%s'" %
                           (attype, name))
