@@ -86,6 +86,15 @@ Transactions
 
 The PostgreSQL dialect fully supports SAVEPOINT and two-phase commit operations.
 
+Arrays
+------
+
+The PostgreSQL dialect supports ``ARRAY`` types with the :class:`~sqlalchemy.databases.postgres.PGArray` datatype::.
+E.g. to represent ``INTEGER[]``, use ``PGArray(Integer)``. This is also the
+correct type representation for ``INTEGER[][]`` and ``INTEGER[3][][4]``, so
+dimensionality and range limits do not matter. (In particular, do not
+try to represent ``INTEGER[][]`` with ``PGArray(PGArray(Integer))``.)
+
 
 """
 
@@ -210,9 +219,26 @@ class PGDoublePrecision(sqltypes.Float):
         return "DOUBLE PRECISION"
     
 class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
+    """PostgreSQL ARRAY type."""
     def __init__(self, item_type, mutable=True):
+        """Construct an ARRAY.
+
+        Example:
+
+          Column('myarray', PGArray(Integer))
+
+        Arguments are:
+
+        :param item_type: The data type of items of this array. Note that dimensionality is irrelevant here, so
+                          multi-dimensional arrays like `INTEGER[][]`, are constructed as `PGArray(Integer)`, not as
+                          `PGArray(PGArray(Integer))` or such. The type mapping figures out on the fly
+        :param mutable:   Defaults to True: specify whether lists passed to this class should be considered mutable.
+                          If so, then they are shallow-copied.
+        """
         if isinstance(item_type, type):
             item_type = item_type()
+        if isinstance(item_type, PGArray):
+            raise ValueError('Do not nest PGArray types; PGArray(basetype) handles multi-dimensional arrays of basetype')
         self.item_type = item_type
         self.mutable = mutable
 
