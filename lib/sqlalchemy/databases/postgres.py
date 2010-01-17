@@ -233,7 +233,7 @@ class PGArray(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
                           multi-dimensional arrays like `INTEGER[][]`, are constructed as `PGArray(Integer)`, not as
                           `PGArray(PGArray(Integer))` or such. The type mapping figures out on the fly
         :param mutable:   Defaults to True: specify whether lists passed to this class should be considered mutable.
-                          If so, then they are shallow-copied.
+                          If so, generic copy operations (typically used by the ORM) will shallow-copy values.
         """
         if isinstance(item_type, type):
             item_type = item_type()
