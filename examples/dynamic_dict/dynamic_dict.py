@@ -2,23 +2,21 @@
 that dictionary operations (assuming simple string keys) can operate upon a large 
 collection without loading the full collection at once.
 
-This is something that may eventually be added as a feature to dynamic_loader() itself.
-
 Similar approaches could be taken towards sets and dictionaries with non-string keys 
 although the hash policy of the members would need to be distilled into a filter() criterion.
 
 """
 
-class MyProxyDict(object):
+class ProxyDict(object):
     def __init__(self, parent, collection_name, childclass, keyname):
         self.parent = parent
         self.collection_name = collection_name
         self.childclass = childclass
         self.keyname = keyname
-        
+    
+    @property
     def collection(self):
         return getattr(self.parent, self.collection_name)
-    collection = property(collection)
     
     def keys(self):
         descriptor = getattr(self.childclass, self.keyname)
@@ -41,43 +39,58 @@ class MyProxyDict(object):
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import sessionmaker, dynamic_loader
+from sqlalchemy.orm import sessionmaker, relation
 
-Base = declarative_base(engine=create_engine('sqlite://'))
+engine=create_engine('sqlite://', echo=True)
+Base = declarative_base(engine)
 
-class MyParent(Base):
+class Parent(Base):
     __tablename__ = 'parent'
     id = Column(Integer, primary_key=True)
     name = Column(String(50))
-    _collection = dynamic_loader("MyChild", cascade="all, delete-orphan")
+    _collection = relation("Child", lazy="dynamic", cascade="all, delete-orphan")
     
+    @property
     def child_map(self):
-        return MyProxyDict(self, '_collection', MyChild, 'key')
-    child_map = property(child_map)
+        return ProxyDict(self, '_collection', Child, 'key')
     
-class MyChild(Base):
+class Child(Base):
     __tablename__ = 'child'
     id = Column(Integer, primary_key=True)
     key = Column(String(50))
     parent_id = Column(Integer, ForeignKey('parent.id'))
 
+    def __repr__(self):
+        return "Child(key=%r)" % self.key
     
 Base.metadata.create_all()
 
 sess = sessionmaker()()
 
-p1 = MyParent(name='p1')
+p1 = Parent(name='p1')
 sess.add(p1)
 
-p1.child_map['k1'] = k1 = MyChild(key='k1')
-p1.child_map['k2'] = k2 = MyChild(key='k2')
+print "\n---------begin setting nodes, autoflush occurs\n"
+p1.child_map['k1'] = Child(key='k1')
+p1.child_map['k2'] = Child(key='k2')
 
-assert p1.child_map.keys() == ['k1', 'k2']
+# this will autoflush the current map.
+# ['k1', 'k2']
+print "\n---------print keys - flushes first\n"
+print p1.child_map.keys()
 
-assert p1.child_map['k1'] is k1
+# k1
+print "\n---------print 'k1' node\n"
+print p1.child_map['k1']
 
-p1.child_map['k2'] = k2b = MyChild(key='k2')
-assert p1.child_map['k2'] is k2b
+print "\n---------update 'k2' node - must find existing, and replace\n"
+p1.child_map['k2'] = Child(key='k2')
 
-assert sess.query(MyChild).all() == [k1, k2b]
+print "\n---------print 'k2' key - flushes first\n"
+# k2
+print p1.child_map['k2']
+
+print "\n---------print all child nodes\n"
+# [k1, k2b]
+print sess.query(Child).all()
 
