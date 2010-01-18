@@ -57,6 +57,8 @@ class DefaultDialect(base.Dialect):
     supports_default_values = False
     supports_empty_insert = True
     
+    server_version_info = None
+    
     # indicates symbol names are 
     # UPPERCASEd if they are case insensitive
     # within the database.
@@ -142,8 +144,7 @@ class DefaultDialect(base.Dialect):
         cursor.close()
         return result
         
-    @classmethod
-    def type_descriptor(cls, typeobj):
+    def type_descriptor(self, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given
         the generic object which comes from the types module.
 
@@ -152,7 +153,7 @@ class DefaultDialect(base.Dialect):
         and passes on to ``types.adapt_type()``.
 
         """
-        return sqltypes.adapt_type(typeobj, cls.colspecs)
+        return sqltypes.adapt_type(typeobj, self.colspecs)
 
     def reflecttable(self, connection, table, include_columns):
         insp = reflection.Inspector.from_engine(connection)

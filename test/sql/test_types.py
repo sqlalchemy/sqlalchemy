@@ -8,7 +8,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.test.testing import eq_
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import *
-
+from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.test import *
 
 
@@ -827,8 +827,10 @@ class IntervalTest(TestBase, AssertsExecutionResults):
         global interval_table, metadata
         metadata = MetaData(testing.db)
         interval_table = Table("intervaltable", metadata,
-            Column("id", Integer, Sequence('interval_id_seq', optional=True), primary_key=True),
-            Column("interval", Interval),
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
+            Column("native_interval", Interval()),
+            Column("native_interval_args", Interval(day_precision=3, second_precision=6)),
+            Column("non_native_interval", Interval(native=False)),
             )
         metadata.create_all()
 
@@ -843,13 +845,24 @@ class IntervalTest(TestBase, AssertsExecutionResults):
     @testing.fails_on("+pg8000", "Not yet known how to pass values of the INTERVAL type")
     @testing.fails_on("postgresql+zxjdbc", "Not yet known how to pass values of the INTERVAL type")
     def test_roundtrip(self):
-        delta = datetime.datetime(2006, 10, 5) - datetime.datetime(2005, 8, 17)
-        interval_table.insert().execute(interval=delta)
-        assert interval_table.select().execute().first()['interval'] == delta
+        small_delta = datetime.timedelta(days=15, seconds=5874)
+        delta = datetime.timedelta(414)
+        interval_table.insert().execute(
+                                native_interval=small_delta, 
+                                native_interval_args=delta, 
+                                non_native_interval=delta
+                                )
+        row = interval_table.select().execute().first()
+        eq_(row['native_interval'], small_delta)
+        eq_(row['native_interval_args'], delta)
+        eq_(row['non_native_interval'], delta)
 
     def test_null(self):
-        interval_table.insert().execute(id=1, inverval=None)
-        assert interval_table.select().execute().first()['interval'] is None
+        interval_table.insert().execute(id=1, native_inverval=None, non_native_interval=None)
+        row = interval_table.select().execute().first()
+        eq_(row['native_interval'], None)
+        eq_(row['native_interval_args'], None)
+        eq_(row['non_native_interval'], None)
 
 class BooleanTest(TestBase, AssertsExecutionResults):
     @classmethod

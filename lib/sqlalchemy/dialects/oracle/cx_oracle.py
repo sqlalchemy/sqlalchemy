@@ -167,15 +167,19 @@ class _OracleBinary(_LOBMixin, sqltypes.Binary):
     def bind_processor(self, dialect):
         return None
 
-
+class _OracleInterval(oracle.INTERVAL):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.INTERVAL
+    
 class _OracleRaw(oracle.RAW):
     pass
-
 
 colspecs = {
     sqltypes.Date : _OracleDate,
     sqltypes.Binary : _OracleBinary,
     sqltypes.Boolean : oracle._OracleBoolean,
+    sqltypes.Interval : _OracleInterval,
+    oracle.INTERVAL : _OracleInterval,
     sqltypes.Text : _OracleText,
     sqltypes.UnicodeText : _OracleUnicodeText,
     sqltypes.CHAR : _OracleChar,

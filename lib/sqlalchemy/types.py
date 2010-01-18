@@ -31,7 +31,7 @@ import sys
 schema.types = expression.sqltypes =sys.modules['sqlalchemy.types']
 from sqlalchemy.util import pickle
 from sqlalchemy.sql.visitors import Visitable
-import sqlalchemy.util as util
+from sqlalchemy import util
 NoneType = type(None)
 if util.jython:
     import array
@@ -131,10 +131,12 @@ class TypeEngine(AbstractType):
         return {}
 
     def dialect_impl(self, dialect, **kwargs):
+        key = (dialect.__class__, dialect.server_version_info)
+        
         try:
-            return self._impl_dict[dialect.__class__]
+            return self._impl_dict[key]
         except KeyError:
-            return self._impl_dict.setdefault(dialect.__class__, dialect.__class__.type_descriptor(self))
+            return self._impl_dict.setdefault(key, dialect.type_descriptor(self))
 
     def __getstate__(self):
         d = self.__dict__.copy()
@@ -256,19 +258,18 @@ class TypeDecorator(AbstractType):
         return cls()
         
     def dialect_impl(self, dialect):
+        key = (dialect.__class__, dialect.server_version_info)
         try:
-            return self._impl_dict[dialect.__class__]
-        except AttributeError:
-            self._impl_dict = {}
+            return self._impl_dict[key]
         except KeyError:
             pass
 
         # adapt the TypeDecorator first, in
         # the case that the dialect maps the TD
         # to one of its native types (i.e. PGInterval)
-        adapted = dialect.__class__.type_descriptor(self)
+        adapted = dialect.type_descriptor(self)
         if adapted is not self:
-            self._impl_dict[dialect] = adapted
+            self._impl_dict[key] = adapted
             return adapted
 
         # otherwise adapt the impl type, link
@@ -280,7 +281,7 @@ class TypeDecorator(AbstractType):
             raise AssertionError("Type object %s does not properly implement the copy() "
                     "method, it must return an object of type %s" % (self, self.__class__))
         tt.impl = typedesc
-        self._impl_dict[dialect] = tt
+        self._impl_dict[key] = tt
         return tt
 
     @util.memoized_property
@@ -304,7 +305,7 @@ class TypeDecorator(AbstractType):
         if isinstance(self.impl, TypeDecorator):
             return self.impl.dialect_impl(dialect)
         else:
-            return dialect.__class__.type_descriptor(self.impl)
+            return dialect.type_descriptor(self.impl)
 
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying implementation."""
@@ -348,6 +349,7 @@ class TypeDecorator(AbstractType):
     def copy(self):
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
+        instance._impl_dict = {}
         return instance
 
     def get_dbapi_type(self, dbapi):
@@ -938,7 +940,6 @@ class SchemaType(object):
                                                 self._on_metadata_create)
             table.metadata.append_ddl_listener('after-drop',
                                                 self._on_metadata_drop)
-
     
     @property
     def bind(self):
@@ -1237,6 +1238,36 @@ class Interval(TypeDecorator):
     impl = DateTime
     epoch = dt.datetime.utcfromtimestamp(0)
 
+    def __init__(self, native=True, 
+                        second_precision=None, 
+                        day_precision=None):
+        """Construct an Interval object.
+        
+        :param native: when True, use the actual
+        INTERVAL type provided by the database, if
+        supported (currently Postgresql, Oracle).  
+        Otherwise, represent the interval data as 
+        an epoch value regardless.
+        
+        :param second_precision: For native interval types
+        which support a "fractional seconds precision" parameter,
+        i.e. Oracle and Postgresql
+        
+        :param day_precision: for native interval types which 
+        support a "day precision" parameter, i.e. Oracle.
+        
+        """
+        super(Interval, self).__init__()
+        self.native = native
+        self.second_precision = second_precision
+        self.day_precision = day_precision
+        
+    def adapt(self, cls):
+        if self.native:
+            return cls._adapt_from_generic_interval(self)
+        else:
+            return self
+    
     def bind_processor(self, dialect):
         impl_processor = self.impl.bind_processor(dialect)
         epoch = self.epoch

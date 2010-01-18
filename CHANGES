@@ -668,6 +668,10 @@ CHANGES
 
     - an NCLOB type is added to the base types.
     
+    - added native INTERVAL type to the dialect.  This supports
+      only the DAY TO SECOND interval type so far due to lack 
+      of support in cx_oracle for YEAR TO MONTH. [ticket:1467]
+      
     - usage of the CHAR type results in cx_oracle's 
       FIXED_CHAR dbapi type being bound to statements.
       
@@ -799,6 +803,12 @@ CHANGES
       constraint to enforce the enum.
       [ticket:1109] [ticket:1511]
     
+    - The Interval type includes a "native" flag which controls
+      if native INTERVAL types (postgresql + oracle) are selected
+      if available, or not.  "day_precision" and "second_precision"
+      arguments are also added which propagate as appropriately
+      to these native types. Related to [ticket:1467].
+      
     - The Boolean type, when used on a backend that doesn't 
       have native boolean support, will generate a CHECK 
       constraint "col IN (0, 1)" along with the int/smallint-

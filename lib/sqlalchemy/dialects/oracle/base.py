@@ -162,6 +162,40 @@ class BFILE(sqltypes.Binary):
 
 class LONG(sqltypes.Text):
     __visit_name__ = 'LONG'
+
+class INTERVAL(sqltypes.TypeEngine):
+    __visit_name__ = 'INTERVAL'
+    
+    def __init__(self, 
+                    day_precision=None, 
+                    second_precision=None):
+        """Construct an INTERVAL.
+        
+        Note that only DAY TO SECOND intervals are currently supported.
+        This is due to a lack of support for YEAR TO MONTH intervals
+        within available DBAPIs (cx_oracle and zxjdbc).
+        
+        :param day_precision: the day precision value.  this is the number of digits
+        to store for the day field.  Defaults to "2"
+        :param second_precision: the second precision value.  this is the number of digits
+        to store for the fractional seconds field.  Defaults to "6".
+        
+        """
+        self.day_precision = day_precision
+        self.second_precision = second_precision
+    
+    @classmethod
+    def _adapt_from_generic_interval(cls, interval):
+        return INTERVAL(day_precision=interval.day_precision,
+                        second_precision=interval.second_precision)
+        
+    def adapt(self, impltype):
+        return impltype(day_precision=self.day_precision, 
+                        second_precision=self.second_precision)
+
+    @property
+    def _type_affinity(self):
+        return sqltypes.Interval
     
 class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
@@ -169,6 +203,7 @@ class _OracleBoolean(sqltypes.Boolean):
 
 colspecs = {
     sqltypes.Boolean : _OracleBoolean,
+    sqltypes.Interval : INTERVAL,
 }
 
 ischema_names = {
@@ -204,7 +239,17 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         
     def visit_unicode(self, type_):
         return self.visit_NVARCHAR(type_)
- 
+    
+    def visit_INTERVAL(self, type_):
+        return "INTERVAL DAY%s TO SECOND%s" % (
+            type_.day_precision is not None and 
+                "(%d)" % type_.day_precision or
+                "",
+            type_.second_precision is not None and 
+                "(%d)" % type_.second_precision or
+                "",
+        )
+            
     def visit_DOUBLE_PRECISION(self, type_):
         return self._generate_numeric(type_, "DOUBLE PRECISION")
         
@@ -511,6 +556,10 @@ class OracleDialect(default.DefaultDialect):
         super(OracleDialect, self).initialize(connection)
         self.implicit_returning = self.server_version_info > (10, ) and \
                                         self.__dict__.get('implicit_returning', True)
+
+        if self.server_version_info < (9,):
+            self.colspecs = self.colspecs.copy()
+            self.colspecs.pop(sqltypes.Interval)
 
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT

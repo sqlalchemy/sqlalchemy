@@ -109,6 +109,10 @@ class INTERVAL(sqltypes.TypeEngine):
     def adapt(self, impltype):
         return impltype(self.precision)
 
+    @classmethod
+    def _adapt_from_generic_interval(cls, interval):
+        return INTERVAL(precision=interval.second_precision)
+
     @property
     def _type_affinity(self):
         return sqltypes.Interval

@@ -338,7 +338,7 @@ def get_cls_kwargs(cls):
         if has_kw:
             stack.update(class_.__bases__)
     args.discard('self')
-    return list(args)
+    return args
 
 def get_func_kwargs(func):
     """Return the full set of legal kwargs for the given `func`."""
