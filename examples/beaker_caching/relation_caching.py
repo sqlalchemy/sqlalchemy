@@ -5,7 +5,7 @@ related PostalCode, City, Country objects should be pulled from long
 term cache.
 
 """
-import __init__ # if running as a script
+import environment
 from model import Person, Address, cache_address_bits
 from meta import Session
 from sqlalchemy.orm import eagerload
@@ -22,4 +22,4 @@ print "\n\nIf this was the first run of relation_caching.py, SQL was likely emit
         "To clear the cache, delete the directory %r.  \n"\
         "This will cause a re-load of cities, postal codes and countries on "\
         "the next run.\n"\
-        % os.path.join(__init__.root, 'container_file')
+        % os.path.join(environment.root, 'container_file')

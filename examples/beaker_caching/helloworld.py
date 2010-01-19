@@ -4,7 +4,7 @@ Illustrate how to load some data, and cache the results.
 
 """
 
-import __init__ # if running as a script
+import environment
 from model import Person
 from meta import Session, FromCache
 

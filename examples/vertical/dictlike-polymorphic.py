@@ -25,8 +25,6 @@ we'll use a Python @property to build a smart '.value' attribute that wraps up
 reading and writing those various '_value' columns and keeps the '.type' up to
 date.
 
-Note: Something much like 'comparable_property' is slated for inclusion in a
-      future version of SQLAlchemy.
 """
 
 from sqlalchemy.orm.interfaces import PropComparator

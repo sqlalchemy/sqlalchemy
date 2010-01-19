@@ -1,6 +1,3 @@
-"""A couple of helper descriptors to allow to use the same code as query
-criterion creators and as instance code. As this doesn't do advanced
-magic recompiling, you can only use basic expression-like code."""
 
 import new
 

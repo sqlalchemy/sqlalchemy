@@ -82,6 +82,7 @@ class MyClass(object):
 
 class MyCollectionAdapter(object):
     """An wholly alternative instrumentation implementation."""
+    
     def __init__(self, key, state, collection):
         self.key = key
         self.state = state

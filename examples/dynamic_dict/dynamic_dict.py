@@ -1,12 +1,3 @@
-"""Illustrates how to place a dictionary-like facade on top of a dynamic_loader, so
-that dictionary operations (assuming simple string keys) can operate upon a large 
-collection without loading the full collection at once.
-
-Similar approaches could be taken towards sets and dictionaries with non-string keys 
-although the hash policy of the members would need to be distilled into a filter() criterion.
-
-"""
-
 class ProxyDict(object):
     def __init__(self, parent, collection_name, childclass, keyname):
         self.parent = parent

@@ -45,8 +45,6 @@ person_mapper = mapper(Person, employees_table, polymorphic_on=employees_table.c
 manager_mapper = mapper(Manager, inherits=person_mapper, polymorphic_identity='manager')
 engineer_mapper = mapper(Engineer, inherits=person_mapper, polymorphic_identity='engineer')
 
-
-
 mapper(Company, companies, properties={
     'employees': relation(Person, lazy=True, backref='company')
 })
@@ -65,7 +63,7 @@ session.expunge_all()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e, e._sa_instance_state.key, e.company
+    print e, e.company
 
 print "\n"
 
@@ -80,7 +78,7 @@ session.expunge_all()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e, e._sa_instance_state.key
+    print e
 
 session.delete(c)
 session.flush()

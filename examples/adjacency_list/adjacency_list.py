@@ -1,9 +1,3 @@
-"""
-An example of a dictionary-of-dictionaries structure mapped using
-an adjacency list model
-
-"""
-
 from sqlalchemy import MetaData, Table, Column, Sequence, ForeignKey,\
                         Integer, String, create_engine
                         

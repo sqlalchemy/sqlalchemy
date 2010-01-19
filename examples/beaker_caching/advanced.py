@@ -6,7 +6,7 @@ and collection caching.
 
 """
 
-import __init__ # if running as a script
+import environment
 from model import Person, Address, cache_address_bits
 from meta import Session, FromCache
 from sqlalchemy.orm import eagerload

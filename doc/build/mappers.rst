@@ -337,6 +337,8 @@ Ordering for rows loaded through ``Query`` is usually specified using the ``orde
 
 Above, a ``Query`` issued for the ``User`` class will use the value of the mapper's ``order_by`` setting if the ``Query`` itself has no ordering specified.
 
+.. _datamapping_inheritance:
+
 Mapping Class Inheritance Hierarchies 
 --------------------------------------
 

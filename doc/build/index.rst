@@ -10,6 +10,7 @@ Table of Contents
     session
     dbengine
     metadata
+    examples
     reference/index
 
 Indices and tables

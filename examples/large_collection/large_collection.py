@@ -1,9 +1,3 @@
-"""Large collection example.
-
-Illustrates the options to use on relation() when the list of related objects
-is very large.
-
-"""
 
 from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
                         create_engine)

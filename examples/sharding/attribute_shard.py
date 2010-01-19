@@ -1,21 +1,3 @@
-"""a basic example of using the SQLAlchemy Sharding API.
-Sharding refers to horizontally scaling data across multiple
-databases.
-
-In this example, four sqlite databases will store information about
-weather data on a database-per-continent basis.
-
-To set up a sharding system, you need:
-    1. multiple databases, each assined a 'shard id'
-    2. a function which can return a single shard id, given an instance
-    to be saved; this is called "shard_chooser"
-    3. a function which can return a list of shard ids which apply to a particular
-    instance identifier; this is called "id_chooser".  If it returns all shard ids,
-    all shards will be searched.
-    4. a function which can return a list of shard ids to try, given a particular 
-    Query ("query_chooser").  If it returns all shard ids, all shards will be 
-    queried and the results joined together.
-"""
 
 # step 1. imports
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,

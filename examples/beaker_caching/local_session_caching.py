@@ -53,7 +53,7 @@ class ScopedSessionNamespace(container.MemoryNamespaceManager):
 
 
 if __name__ == '__main__':
-    import __init__ # if running as a script
+    import environment
     import meta
     
     # create a Beaker container type called "ext:local_session".

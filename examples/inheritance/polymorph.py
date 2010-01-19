@@ -56,8 +56,6 @@ class Company(object):
         return "Company %s" % self.name
 
 
-person_join = people.outerjoin(engineers).outerjoin(managers)
-
 person_mapper = mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
 mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
 mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
@@ -75,7 +73,6 @@ c.employees.append(Engineer(name='wally', status='CGG', engineer_name='engineer2
 c.employees.append(Manager(name='jsmith', status='ABA', manager_name='manager2'))
 session.add(c)
 
-print session.new
 session.flush()
 session.expunge_all()
 
@@ -96,7 +93,7 @@ session.expunge_all()
 
 c = session.query(Company).get(1)
 for e in c.employees:
-    print e, e._sa_instance_state.key
+    print e
 
 session.delete(c)
 session.flush()

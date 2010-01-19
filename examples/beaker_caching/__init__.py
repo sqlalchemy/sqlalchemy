@@ -1,44 +1,77 @@
-"""__init__.py
+"""
+Illustrates how to embed Beaker cache functionality within
+the Query object, allowing full cache control as well as the
+ability to pull "lazy loaded" attributes from long term cache 
+as well.
 
-Establish data / cache file paths, and configurations, 
-bootstrap fixture data if necessary.
+In this demo, the following techniques are illustrated:
+
+* Using custom subclasses of Query
+* Basic technique of circumventing Query to pull from a 
+  custom cache source instead of the database.
+* Rudimental caching with Beaker, using "regions" which allow
+  global control over a fixed set of configurations.
+* Using custom MapperOption objects to configure options on 
+  a Query, including the ability to invoke the options 
+  deep within an object graph when lazy loads occur.
+
+E.g.::
+    
+    # query for Person objects, specifying cache
+    q = Session.query(Person).options(FromCache("default", "all_people"))
+    
+    # specify that each Person's "addresses" collection comes from
+    # cache too
+    q = q.options(FromCache("default", "by_person", Person.addresses))
+    
+    # query
+    print q.all()
+    
+To run, both SQLAlchemy and Beaker (1.4 or greater) must be
+installed or on the current PYTHONPATH. The demo will create a local
+directory for datafiles, insert initial data, and run. Running the
+demo a second time will utilize the cache files already present, and
+exactly one SQL statement against two tables will be emitted - the
+displayed result however will utilize dozens of lazyloads that all
+pull from cache.
+
+Three endpoint scripts, in order of complexity, are run as follows::
+
+   python examples/beaker_caching/helloworld.py
+
+   python examples/beaker_caching/relation_caching.py
+
+   python examples/beaker_caching/advanced.py
+
+   python examples/beaker_caching/local_session_caching.py
+
+
+Listing of files:
+
+    environment.py - Establish data / cache file paths, and configurations, 
+    bootstrap fixture data if necessary.
+
+    meta.py - Represent persistence structures which allow the usage of
+    Beaker caching with SQLAlchemy.  Introduces a query option called
+    FromCache.
+
+    model.py - The datamodel, which represents Person that has multiple
+    Address objects, each with PostalCode, City, Country
+
+    fixture_data.py - creates demo PostalCode, Address, Person objects
+    in the database.
+
+    helloworld.py - the basic idea.
+
+    relation_caching.py - Illustrates how to add cache options on
+    relation endpoints, so that lazyloads load from cache.
+
+    advanced.py - Further examples of how to use FromCache.  Combines
+    techniques from the first two scripts.
+
+    local_session_caching.py - Grok everything so far ?   This example
+    creates a new Beaker container that will persist data in a dictionary
+    which is local to the current session.   remove() the session
+    and the cache is gone.
 
 """
-import meta, model, fixture_data
-from sqlalchemy import create_engine
-import os
-
-root = "./beaker_data/"
-
-if not os.path.exists(root):
-    raw_input("Will create datafiles in %r.\n"
-                "To reset the cache + database, delete this directory.\n"
-                "Press enter to continue.\n" % root
-                )
-    os.makedirs(root)
-    
-dbfile = os.path.join(root, "beaker_demo.db")
-engine = create_engine('sqlite:///%s' % dbfile, echo=True)
-meta.Session.configure(bind=engine)
-
-# configure the "default" cache region.
-meta.cache_manager.regions['default'] ={
-
-        # using type 'file' to illustrate
-        # serialized persistence.  In reality,
-        # use memcached.   Other backends
-        # are much, much slower.
-        'type':'file',
-        'data_dir':root,
-        'expire':3600,
-        
-        # set start_time to current time
-        # to re-cache everything
-        # upon application startup
-        #'start_time':time.time()
-    }
-
-installed = False
-if not os.path.exists(dbfile):
-    fixture_data.install()
-    installed = True

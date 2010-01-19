@@ -12,15 +12,6 @@ from sqlalchemy.orm import mapper, create_session
 
 import sys, os
 
-import logging
-logging.basicConfig()
-
-# uncomment to show SQL statements
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
-# uncomment to show SQL statements and result sets
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-
 from xml.etree import ElementTree
 
 engine = create_engine('sqlite://')

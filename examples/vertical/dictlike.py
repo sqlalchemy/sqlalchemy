@@ -28,6 +28,7 @@ entity, and another related table holding key/value pairs::
 Because the key/value pairs in a vertical scheme are not fixed in advance,
 accessing them like a Python dict can be very convenient.  The example below
 can be used with many common vertical schemas as-is or with minor adaptations.
+
 """
 
 class VerticalProperty(object):

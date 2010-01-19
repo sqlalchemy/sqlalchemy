@@ -17,6 +17,7 @@ import sys, os
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 sys.path.insert(0, os.path.abspath('../../lib'))
+sys.path.insert(0, os.path.abspath('../../examples'))
 sys.path.insert(0, os.path.abspath('.'))
 
 import sqlalchemy
@@ -44,7 +45,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'SQLAlchemy'
-copyright = u'2007, 2008, 2009, the SQLAlchemy authors and contributors'
+copyright = u'2007, 2008, 2009, 2010, the SQLAlchemy authors and contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
