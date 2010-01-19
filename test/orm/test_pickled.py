@@ -7,11 +7,13 @@ from sqlalchemy import Integer, String, ForeignKey, exc
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session, \
                             sessionmaker, attributes, interfaces,\
-                            clear_mappers, exc as orm_exc
+                            clear_mappers, exc as orm_exc,\
+                            compile_mappers
 from test.orm import _base, _fixtures
 
 
 User, EmailUser = None, None
+
 
 class PickleTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -48,6 +50,22 @@ class PickleTest(_fixtures.FixtureTest):
             orm_exc.UnmappedInstanceError,
             "Cannot deserialize object of type <class 'test.orm._fixtures.User'> - no mapper()",
             pickle.loads, u1_pickled)
+
+    @testing.resolve_artifact_names
+    def test_no_instrumentation(self):
+
+        umapper = mapper(User, users)
+        u1 = User(name='ed')
+        u1_pickled = pickle.dumps(u1, -1)
+
+        clear_mappers()
+
+        umapper = mapper(User, users)
+
+        u1 = pickle.loads(u1_pickled)
+        # this fails unless the InstanceState
+        # compiles the mapper
+        eq_(str(u1), "User(name='ed')")
         
     @testing.resolve_artifact_names
     def test_serialize_path(self):
@@ -69,6 +87,13 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(
             interfaces.deserialize_path(interfaces.serialize_path(p2)),
             p2
+        )
+        
+        # test a blank path
+        p3 = ()
+        eq_(
+            interfaces.deserialize_path(interfaces.serialize_path(p3)),
+            p3
         )
         
     @testing.resolve_artifact_names
@@ -254,3 +279,31 @@ class CustomSetupTeardownTest(_fixtures.FixtureTest):
         attributes.manager_of_class(User).setup_instance(u2)
         assert attributes.instance_state(u2)
     
+class UnpickleSA05Test(_fixtures.FixtureTest):
+    """test loading picklestrings from SQLA 0.5."""
+    
+    @testing.resolve_artifact_names
+    def test_one(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref="user")
+        })
+        mapper(Address, addresses)
+        data = \
+                 '\x80\x02]q\x00(ctest.orm._fixtures\nUser\nq\x01)\x81q\x02}q\x03(U\x12_sa_instance_stateq\x04csqlalchemy.orm.state\nInstanceState\nq\x05)\x81q\x06}q\x07(U\x08instanceq\x08h\x02U\x03keyq\th\x01K\x07\x85q\n\x86q\x0bubU\taddressesq\x0ccsqlalchemy.orm.collections\nInstrumentedList\nq\r)\x81q\x0ectest.orm._fixtures\nAddress\nq\x0f)\x81q\x10}q\x11(U\remail_addressq\x12X\r\x00\x00\x00jack@bean.comq\x13h\x04h\x05)\x81q\x14}q\x15(h\x08h\x10h\th\x0fK\x01\x85q\x16\x86q\x17ubU\x07user_idq\x18K\x07U\x02idq\x19K\x01uba}q\x1aU\x0b_sa_adapterq\x1bcsqlalchemy.orm.collections\nCollectionAdapter\nq\x1c)\x81q\x1d}q\x1e(U\x04dataq\x1fh\x0eU\x0bowner_stateq h\x06U\x03keyq!h\x0cubsbh\x19K\x07U\x04nameq"X\x04\x00\x00\x00jackq#ubh\x01)\x81q$}q%(h\x04h\x05)\x81q&}q\'(h\x08h$h\th\x01K\x08\x85q(\x86q)ubh\x0ch\r)\x81q*(h\x0f)\x81q+}q,(h\x12X\x0b\x00\x00\x00ed@wood.comq-h\x04h\x05)\x81q.}q/(h\x08h+h\th\x0fK\x02\x85q0\x86q1ubh\x18K\x08h\x19K\x02ubh\x0f)\x81q2}q3(h\x12X\x10\x00\x00\x00ed@bettyboop.comq4h\x04h\x05)\x81q5}q6(h\x08h2h\th\x0fK\x03\x85q7\x86q8ubh\x18K\x08h\x19K\x03ubh\x0f)\x81q9}q:(h\x12X\x0b\x00\x00\x00ed@lala.comq;h\x04h\x05)\x81q<}q=(h\x08h9h\th\x0fK\x04\x85q>\x86q?ubh\x18K\x08h\x19K\x04ube}q@h\x1bh\x1c)\x81qA}qB(h\x1fh*h h&h!h\x0cubsbh\x19K\x08h"X\x02\x00\x00\x00edqCubh\x01)\x81qD}qE(h\x04h\x05)\x81qF}qG(h\x08hDh\th\x01K\t\x85qH\x86qIubh\x0ch\r)\x81qJh\x0f)\x81qK}qL(h\x12X\r\x00\x00\x00fred@fred.comqMh\x04h\x05)\x81qN}qO(h\x08hKh\th\x0fK\x05\x85qP\x86qQubh\x18K\th\x19K\x05uba}qRh\x1bh\x1c)\x81qS}qT(h\x1fhJh hFh!h\x0cubsbh\x19K\th"X\x04\x00\x00\x00fredqUubh\x01)\x81qV}qW(h\x04h\x05)\x81qX}qY(h\x08hVh\th\x01K\n\x85qZ\x86q[ubh\x0ch\r)\x81q\\}q]h\x1bh\x1c)\x81q^}q_(h\x1fh\\h hXh!h\x0cubsbh\x19K\nh"X\x05\x00\x00\x00chuckq`ube.'
+
+        sess = create_session()
+        result = list(sess.query(User).merge_result(pickle.loads(data)))
+        eq_(result, self.static.user_address_result)
+
+    @testing.resolve_artifact_names
+    def test_two(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref="user")
+        })
+        mapper(Address, addresses)
+        data = \
+'\x80\x02]q\x00(ctest.orm._fixtures\nUser\nq\x01)\x81q\x02}q\x03(U\x12_sa_instance_stateq\x04csqlalchemy.orm.state\nInstanceState\nq\x05)\x81q\x06}q\x07(U\x08instanceq\x08h\x02U\tload_pathq\t]q\nU\x03keyq\x0bh\x01K\x07\x85q\x0c\x86q\rU\x0cload_optionsq\x0ec__builtin__\nset\nq\x0f]q\x10csqlalchemy.orm.strategies\nEagerLazyOption\nq\x11)\x81q\x12}q\x13(U\x06mapperq\x14NU\x04lazyq\x15\x89U\x14propagate_to_loadersq\x16\x88U\x03keyq\x17]q\x18h\x01U\taddressesq\x19\x86q\x1aaU\x07chainedq\x1b\x89uba\x85q\x1cRq\x1dubh\x19csqlalchemy.orm.collections\nInstrumentedList\nq\x1e)\x81q\x1fctest.orm._fixtures\nAddress\nq )\x81q!}q"(U\remail_addressq#X\r\x00\x00\x00jack@bean.comq$h\x04h\x05)\x81q%}q&(h\x08h!h\t]q\'h\x01h\x19\x86q(ah\x0bh K\x01\x85q)\x86q*h\x0eh\x1dubU\x07user_idq+K\x07U\x02idq,K\x01uba}q-U\x0b_sa_adapterq.csqlalchemy.orm.collections\nCollectionAdapter\nq/)\x81q0}q1(U\x04dataq2h\x1fU\x0bowner_stateq3h\x06h\x17h\x19ubsbU\x04nameq4X\x04\x00\x00\x00jackq5h,K\x07ubh\x01)\x81q6}q7(h\x04h\x05)\x81q8}q9(h\x08h6h\t]q:h\x0bh\x01K\x08\x85q;\x86q<h\x0eh\x1dubh\x19h\x1e)\x81q=(h )\x81q>}q?(h#X\x0b\x00\x00\x00ed@wood.comq@h\x04h\x05)\x81qA}qB(h\x08h>h\t]qCh\x01h\x19\x86qDah\x0bh K\x02\x85qE\x86qFh\x0eh\x1dubh+K\x08h,K\x02ubh )\x81qG}qH(h#X\x10\x00\x00\x00ed@bettyboop.comqIh\x04h\x05)\x81qJ}qK(h\x08hGh\t]qLh\x01h\x19\x86qMah\x0bh K\x03\x85qN\x86qOh\x0eh\x1dubh+K\x08h,K\x03ubh )\x81qP}qQ(h#X\x0b\x00\x00\x00ed@lala.comqRh\x04h\x05)\x81qS}qT(h\x08hPh\t]qUh\x01h\x19\x86qVah\x0bh K\x04\x85qW\x86qXh\x0eh\x1dubh+K\x08h,K\x04ube}qYh.h/)\x81qZ}q[(h2h=h3h8h\x17h\x19ubsbh4X\x02\x00\x00\x00edq\\h,K\x08ubh\x01)\x81q]}q^(h\x04h\x05)\x81q_}q`(h\x08h]h\t]qah\x0bh\x01K\t\x85qb\x86qch\x0eh\x1dubh\x19h\x1e)\x81qdh )\x81qe}qf(h#X\r\x00\x00\x00fred@fred.comqgh\x04h\x05)\x81qh}qi(h\x08heh\t]qjh\x01h\x19\x86qkah\x0bh K\x05\x85ql\x86qmh\x0eh\x1dubh+K\th,K\x05uba}qnh.h/)\x81qo}qp(h2hdh3h_h\x17h\x19ubsbh4X\x04\x00\x00\x00fredqqh,K\tubh\x01)\x81qr}qs(h\x04h\x05)\x81qt}qu(h\x08hrh\t]qvh\x0bh\x01K\n\x85qw\x86qxh\x0eh\x1dubh\x19h\x1e)\x81qy}qzh.h/)\x81q{}q|(h2hyh3hth\x17h\x19ubsbh4X\x05\x00\x00\x00chuckq}h,K\nube.'
+
+        sess = create_session()
+        result = list(sess.query(User).merge_result(pickle.loads(data)))
+        eq_(result, self.static.user_address_result)

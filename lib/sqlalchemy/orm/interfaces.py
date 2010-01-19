@@ -700,7 +700,7 @@ def deserialize_path(path):
         from sqlalchemy.orm import class_mapper
     
     p = tuple(chain(*[(class_mapper(cls), key) for cls, key in path]))
-    if p[-1] is None:
+    if p and p[-1] is None:
         p = p[0:-1]
     return p
 

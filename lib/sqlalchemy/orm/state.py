@@ -155,7 +155,9 @@ class InstanceState(object):
                         "Cannot deserialize object of type %r - no mapper() has"
                         " been configured for this class within the current Python process!" %
                         self.class_)
-        
+        elif manager.mapper and not manager.mapper.compiled:
+            manager.mapper.compile()
+            
         self.committed_state = state.get('committed_state', {})
         self.pending = state.get('pending', {})
         self.parents = state.get('parents', {})
@@ -355,6 +357,13 @@ class InstanceState(object):
         self._strong_obj = None
 
 class MutableAttrInstanceState(InstanceState):
+    """InstanceState implementation for objects that reference 'mutable' 
+    attributes.
+    
+    Has a more involved "cleanup" handler that checks mutable attributes
+    for changes upon dereference, resurrecting if needed.
+    
+    """
     def __init__(self, obj, manager):
         self.mutable_dict = {}
         InstanceState.__init__(self, obj, manager)
