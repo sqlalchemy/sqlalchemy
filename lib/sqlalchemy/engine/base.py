@@ -1731,7 +1731,7 @@ class ResultMetaData(object):
             # store the "origname" if we truncated (sqlite only)
             if origname and \
                     colfuncs.setdefault(origname.lower(), rec) is not rec:
-                colfuncs[name.lower()] = (self._ambiguous_processor(origname), i, "ambiguous")
+                colfuncs[origname.lower()] = (self._ambiguous_processor(origname), i, "ambiguous")
             
             if dialect.requires_name_normalize:
                 colname = dialect.normalize_name(colname)
