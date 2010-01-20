@@ -129,6 +129,11 @@ CHANGES
     multiple comma separated entries within the FROM clause.
     Useful when selecting from multiple-homed join() clauses.
 
+  - query.select_from() also accepts mapped classes, aliased()
+    constructs, and mappers as arguments.  In particular this
+    helps when querying from multiple joined-table classes to ensure
+    the full join gets rendered.
+
   - query.get() can be used with a mapping to an outer join
     where one or more of the primary key values are None.
     [ticket:1135]

@@ -1167,14 +1167,24 @@ class Query(object):
         """Set the `from_obj` parameter of the query and return the newly
         resulting ``Query``.  This replaces the table which this Query selects
         from with the given table.
+        
+        ``select_from()`` also accepts class arguments.   Though usually not necessary,
+        can ensure that the full selectable of the given mapper is applied, e.g.
+        for joined-table mappers.
 
         """
         
+        obj = []
         for fo in from_obj:
-            if not isinstance(fo, expression.FromClause):
+            if _is_mapped_class(fo):
+                mapper, selectable, is_aliased_class = _entity_info(fo)
+                obj.append(selectable)
+            elif not isinstance(fo, expression.FromClause):
                 raise sa_exc.ArgumentError("select_from() accepts FromClause objects only.")
+            else:
+                obj.append(fo)  
                 
-        self._set_select_from(*from_obj)
+        self._set_select_from(*obj)
 
     def __getitem__(self, item):
         if isinstance(item, slice):

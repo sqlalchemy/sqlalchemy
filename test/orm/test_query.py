@@ -1303,6 +1303,33 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
         )
 
     @testing.resolve_artifact_names
+    def test_force_via_select_from(self):
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(Company).\
+                filter(Company.company_id==Engineer.company_id).\
+                filter(Engineer.primary_language=='java'),
+            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
+            "FROM companies, people, engineers "
+            "WHERE companies.company_id = people.company_id AND engineers.primary_language "
+            "= :primary_language_1",
+            use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(Company).select_from(Company, Engineer).\
+                filter(Company.company_id==Engineer.company_id).\
+                filter(Engineer.primary_language=='java'),
+            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
+            "FROM companies, people JOIN engineers ON people.person_id = engineers.person_id "
+            "WHERE companies.company_id = people.company_id AND engineers.primary_language ="
+            " :primary_language_1",
+            use_default_dialect=True
+            
+        )
+            
+    @testing.resolve_artifact_names
     def test_single_prop_of_type(self):
         sess = create_session()
 
