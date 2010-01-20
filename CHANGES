@@ -333,6 +333,10 @@ CHANGES
   - RowProxy objects are now pickleable, i.e. the object returned
     by result.fetchone(), result.fetchall() etc.
 
+  - RowProxy no longer has a close() method, as the row no longer
+    maintains a reference to the parent.  Call close() on 
+    the parent ResultProxy instead, or use autoclose.
+    
   - ResultProxy internals have been overhauled to greatly reduce
     method call counts when fetching columns that have no 
     type-level processing applied.   Provides a 100% speed

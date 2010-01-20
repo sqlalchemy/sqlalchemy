@@ -1727,6 +1727,11 @@ class MySQLDialect(default.DefaultDialect):
 
         return _DecodingRowProxy(rp.fetchone(), charset)
 
+    def _compat_first(self, rp, charset=None):
+        """Proxy a result row to smooth over MySQL-Python driver inconsistencies."""
+
+        return _DecodingRowProxy(rp.first(), charset)
+
     def _extract_error_code(self, exception):
         raise NotImplementedError()
     
@@ -1975,7 +1980,7 @@ class MySQLDialect(default.DefaultDialect):
         # http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
 
         charset = self._connection_charset
-        row = self._compat_fetchone(connection.execute(
+        row = self._compat_first(connection.execute(
             "SHOW VARIABLES LIKE 'lower_case_table_names'"),
                                charset=charset)
         if not row:
@@ -1989,7 +1994,6 @@ class MySQLDialect(default.DefaultDialect):
                 cs = 1
             else:
                 cs = int(row[1])
-            row.close()
         return cs
 
     def _detect_collations(self, connection):
@@ -2011,7 +2015,7 @@ class MySQLDialect(default.DefaultDialect):
     def _detect_ansiquotes(self, connection):
         """Detect and adjust for the ANSI_QUOTES sql mode."""
 
-        row = self._compat_fetchone(
+        row = self._compat_first(
             connection.execute("SHOW VARIABLES LIKE 'sql_mode'"),
                                charset=self._connection_charset)
 
@@ -2036,20 +2040,16 @@ class MySQLDialect(default.DefaultDialect):
 
         rp = None
         try:
-            try:
-                rp = connection.execute(st)
-            except exc.SQLError, e:
-                if self._extract_error_code(e) == 1146:
-                    raise exc.NoSuchTableError(full_name)
-                else:
-                    raise
-            row = self._compat_fetchone(rp, charset=charset)
-            if not row:
+            rp = connection.execute(st)
+        except exc.SQLError, e:
+            if self._extract_error_code(e) == 1146:
                 raise exc.NoSuchTableError(full_name)
-            return row[1].strip()
-        finally:
-            if rp:
-                rp.close()
+            else:
+                raise
+        row = self._compat_first(rp, charset=charset)
+        if not row:
+            raise exc.NoSuchTableError(full_name)
+        return row[1].strip()
 
         return sql
 

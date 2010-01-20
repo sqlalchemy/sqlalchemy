@@ -717,7 +717,6 @@ class QueryTest(TestBase):
                 self.fail('Should not allow access to private attributes')
             except AttributeError:
                 pass # expected
-            r.close()
         finally:
             shadowed.drop(checkfirst=True)
 
