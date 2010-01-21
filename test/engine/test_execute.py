@@ -223,10 +223,10 @@ class ProxyConnectionTest(TestBase):
         trans.prepare()
         trans.commit()
 
-        eq_(track, ['begin', 'savepoint', 'execute', 'cursor_execute', 'execute', 'cursor_execute',
-                    'rollback_savepoint', 'execute', 'cursor_execute', 'savepoint', 'execute',
-                     'cursor_execute', 'execute', 'cursor_execute', 'release_savepoint', 'execute',
-                      'cursor_execute', 'rollback', 'begin_twophase', 'execute', 'cursor_execute',
-                       'prepare_twophase', 'execute', 'cursor_execute', 'commit_twophase',
-                        'execute', 'cursor_execute', 'execute', 'cursor_execute'])
+        track = [t for t in track if t not in ('cursor_execute', 'execute')]
+        eq_(track, ['begin', 'savepoint', 
+                    'rollback_savepoint', 'savepoint', 'release_savepoint',
+                    'rollback', 'begin_twophase', 
+                       'prepare_twophase', 'commit_twophase']
+        )
 
