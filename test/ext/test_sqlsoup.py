@@ -4,6 +4,7 @@ from sqlalchemy.ext import sqlsoup
 from sqlalchemy.test.testing import TestBase, eq_, assert_raises
 from sqlalchemy import create_engine, or_, desc, select, func, exc, Table,\
                         util
+from sqlalchemy.orm import scoped_session, sessionmaker
 import datetime
 
 class SQLSoupTest(TestBase):
@@ -214,7 +215,20 @@ class SQLSoupTest(TestBase):
         db.users.relate('loans', db.loans, 
                 order_by=db.loans.loan_date, cascade='all, delete-orphan')
         
-    
+    def test_explicit_session(self):
+        Session = scoped_session(sessionmaker())
+        db = sqlsoup.SqlSoup(engine, session=Session)
+        try:
+            MappedUsers = db.users
+            sess = Session()
+            assert db.users._query.session is db.users.session is sess
+        
+            row = db.users.insert(name='new name', email='new email')
+            assert row in sess
+        finally:
+            sess.rollback()
+            sess.close()
+        
     def test_selectable(self):
         db = sqlsoup.SqlSoup(engine)
         MappedBooks = db.books

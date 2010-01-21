@@ -395,7 +395,7 @@ def _selectable_name(selectable):
             x = x[1:]
         return x
 
-def class_for_table(selectable, **mapper_kwargs):
+def class_for_table(session, selectable, **mapper_kwargs):
     selectable = expression._clause_element_as_expr(selectable)
     mapname = 'Mapped' + _selectable_name(selectable)
     # Py2K
@@ -429,13 +429,13 @@ def class_for_table(selectable, **mapper_kwargs):
     klass.c = expression.ColumnCollection()
     mappr = mapper(klass,
                    selectable,
-                   extension=AutoAdd(Session),
+                   extension=AutoAdd(session),
                    **mapper_kwargs)
                    
     for k in mappr.iterate_properties:
         klass.c[k.key] = k.columns[0]
     
-    klass._query = Session.query_property()
+    klass._query = session.query_property()
     return klass
 
 class SqlSoup(object):
@@ -502,7 +502,7 @@ class SqlSoup(object):
         try:
             t = self._cache[selectable]
         except KeyError:
-            t = class_for_table(selectable, **kwargs)
+            t = class_for_table(self.session, selectable, **kwargs)
             self._cache[selectable] = t
         return t
 
@@ -525,7 +525,7 @@ class SqlSoup(object):
             if not table.primary_key.columns:
                 raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys())))
             if table.columns:
-                t = class_for_table(table)
+                t = class_for_table(self.session, table)
             else:
                 t = None
             self._cache[attr] = t
