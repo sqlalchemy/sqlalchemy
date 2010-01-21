@@ -450,7 +450,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_TIMESTAMP(type_)
     
     def visit_enum(self, type_):
-        if not type_.native_enum:
+        if not type_.native_enum or not self.dialect.supports_native_enum:
             return super(PGTypeCompiler, self).visit_enum(type_)
         else:
             return self.visit_ENUM(type_)
@@ -589,7 +589,11 @@ class PGDialect(default.DefaultDialect):
         super(PGDialect, self).initialize(connection)
         self.implicit_returning = self.server_version_info > (8, 2) and \
                                         self.__dict__.get('implicit_returning', True)
-        
+        self.supports_native_enum = self.server_version_info >= (8, 3)
+        if not self.supports_native_enum:
+            self.colspecs = self.colspecs.copy()
+            del self.colspecs[ENUM]
+            
     def visit_pool(self, pool):
         if self.isolation_level is not None:
             class SetIsolationLevel(object):
@@ -1047,6 +1051,9 @@ class PGDialect(default.DefaultDialect):
         return indexes
 
     def _load_enums(self, connection):
+        if not self.supports_native_enum:
+            return {}
+
         ## Load data types for enums:
         SQL_ENUMS = """
             SELECT t.typname as "name",
