@@ -497,10 +497,13 @@ class FBDialect(default.DefaultDialect):
 
             # does it have a default value?
             if row['fdefault'] is not None:
-                # the value comes down as "DEFAULT 'value'"
-                assert row['fdefault'].upper().startswith('DEFAULT '), row
-                defvalue = row['fdefault'][8:]
-                args.append(schema.DefaultClause(sql.text(defvalue)))
+                # the value comes down as "DEFAULT 'value'": there may be
+                # more than one space around the "DEFAULT" keyword
+                defexpr = row['fdefault'].lstrip()
+                assert defexpr.startswith('DEFAULT '), "Unrecognized default value: %s" % defexpr
+                defvalue = defexpr[8:].strip()
+                if defvalue != 'NULL':
+                    args.append(schema.DefaultClause(sql.text(defvalue)))
 
             col = schema.Column(*args, **kw)
             if kw['primary_key']:

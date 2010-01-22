@@ -4,6 +4,12 @@
 CHANGES
 =======
 
+0.5.9
+=====
+- firebird
+    - Fix reflection of default values with spurious spaces
+      (backport of r6257). [ticket:1582]
+
 0.5.8
 =====
 - sql
