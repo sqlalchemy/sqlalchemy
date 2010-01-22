@@ -6,16 +6,16 @@ import time
 import warnings
 import ConfigParser
 import StringIO
-from config import db, db_label, db_url, file_config, base_config, \
-                           post_configure, \
-                           _list_dbs, _server_side_cursors, _engine_strategy, \
-                           _engine_uri, _require, _engine_pool, \
-                           _create_testing_engine, _prep_testing_database, \
-                           _set_table_options, _reverse_topological, _log
-from sqlalchemy.test import testing, config, requires
-from nose.plugins import Plugin
-from sqlalchemy import util, log as sqla_log
+
 import nose.case
+from nose.plugins import Plugin
+
+from sqlalchemy import util, log as sqla_log
+from sqlalchemy.test import testing, config, requires
+from sqlalchemy.test.config import (
+    _create_testing_engine, _engine_pool, _engine_strategy, _engine_uri, _list_dbs, _log,
+    _prep_testing_database, _require, _reverse_topological, _server_side_cursors,
+    _set_table_options, base_config, db, db_label, db_url, file_config, post_configure)
 
 log = logging.getLogger('nose.plugins.sqlalchemy')
 
@@ -43,7 +43,8 @@ class NoseSQLAlchemy(Plugin):
         opt("--dburi", action="store", dest="dburi",
             help="Database uri (overrides --db)")
         opt("--dropfirst", action="store_true", dest="dropfirst",
-            help="Drop all tables in the target database first (use with caution on Oracle, MS-SQL)")
+            help="Drop all tables in the target database first (use with caution on Oracle, "
+            "MS-SQL)")
         opt("--mockpool", action="store_true", dest="mockpool",
             help="Use mock pool (asserts only one connection used)")
         opt("--enginestrategy", action="callback", type="string",
@@ -103,8 +104,7 @@ class NoseSQLAlchemy(Plugin):
         if not issubclass(cls, testing.TestBase):
             return False
         else:
-            if (hasattr(cls, '__whitelist__') and
-                testing.db.name in cls.__whitelist__):
+            if (hasattr(cls, '__whitelist__') and testing.db.name in cls.__whitelist__):
                 return True
             else:
                 return not self.__should_skip_for(cls)
@@ -131,7 +131,7 @@ class NoseSQLAlchemy(Plugin):
                      cls.__class__.__name__, testing.db.name)
                 return True                    
 
-        if (getattr(cls, '__skip_if__', False)):
+        if getattr(cls, '__skip_if__', False):
             for c in getattr(cls, '__skip_if__'):
                 if c():
                     print "'%s' skipped by %s" % (
