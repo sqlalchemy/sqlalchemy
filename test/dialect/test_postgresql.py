@@ -986,6 +986,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             m1.drop_all()
     
+    @testing.fails_on('+zxjdbc', 'The JDBC driver handles the version parsing')
     def test_version_parsing(self):
         class MockConn(object):
             def __init__(self, res):
