@@ -871,6 +871,10 @@ CHANGES
       serializability and subclassing of the built in collections.
       [ticket:1259]
 
+    - association_proxy now has basic comparator methods .any(),
+      .has(), .contains(), ==, !=, thanks to Scott Torborg.
+      [ticket:1372]
+      
 - examples
     - The "query_cache" examples have been removed, and are replaced
       with a fully comprehensive approach that combines the usage of

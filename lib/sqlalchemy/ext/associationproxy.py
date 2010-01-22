@@ -13,6 +13,7 @@ from sqlalchemy import exceptions
 from sqlalchemy import orm
 from sqlalchemy import util
 from sqlalchemy.orm import collections
+from sqlalchemy.sql import not_
 
 
 def association_proxy(target_collection, attr, **kw):
@@ -265,6 +266,26 @@ class AssociationProxy(object):
             raise exceptions.ArgumentError(
                'no proxy_bulk_set supplied for custom '
                'collection_class implementation')
+
+    @property
+    def _comparator(self):
+        return self._get_property().comparator
+
+    def any(self, criterion=None, **kwargs):
+        return self._comparator.any(getattr(self.target_class, self.value_attr).has(criterion, **kwargs))
+    
+    def has(self, criterion=None, **kwargs):
+        return self._comparator.has(getattr(self.target_class, self.value_attr).has(criterion, **kwargs))
+
+    def contains(self, obj):
+        return self._comparator.any(**{self.value_attr: obj})
+
+    def __eq__(self, obj):
+        return self._comparator.has(**{self.value_attr: obj})
+
+    def __ne__(self, obj):
+        return not_(self.__eq__(obj))
+
 
 class _lazy_collection(object):
     def __init__(self, obj, target):
