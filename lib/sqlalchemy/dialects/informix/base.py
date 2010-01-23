@@ -65,7 +65,7 @@ ischema_names = {
     7   : sqltypes.DATE,         # DATE
     8   : sqltypes.Numeric,      # MONEY
     10  : sqltypes.DATETIME,     # DATETIME
-    11  : sqltypes.Binary,       # BYTE
+    11  : sqltypes.LargeBinary,       # BYTE
     12  : sqltypes.TEXT,         # TEXT
     13  : sqltypes.VARCHAR,       # VARCHAR
     15  : sqltypes.NCHAR,       # NCHAR
@@ -85,7 +85,7 @@ class InfoTypeCompiler(compiler.GenericTypeCompiler):
     def visit_TIME(self, type_):
         return "DATETIME HOUR TO SECOND"
 
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return "BYTE"
 
     def visit_boolean(self, type_):

@@ -139,7 +139,7 @@ a subclass of compiler.GenericTypeCompiler.
     arguments and flags to those types.  
     
     d. the visit_lowercase methods are overridden to provide an interpretation of a generic 
-    type.  E.g.  visit_binary() might be overridden to say "return self.visit_BIT(type_)".
+    type.  E.g.  visit_large_binary() might be overridden to say "return self.visit_BIT(type_)".
     
     e. visit_lowercase methods should *never* render strings directly - it should always
     be via calling a visit_UPPERCASE() method.

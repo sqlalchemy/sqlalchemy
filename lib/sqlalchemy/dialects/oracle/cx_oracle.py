@@ -160,7 +160,7 @@ class _OracleInteger(sqltypes.Integer):
             return val
         return to_int
         
-class _OracleBinary(_LOBMixin, sqltypes.Binary):
+class _OracleBinary(_LOBMixin, sqltypes.LargeBinary):
     def get_dbapi_type(self, dbapi):
         return dbapi.BLOB
 
@@ -176,7 +176,7 @@ class _OracleRaw(oracle.RAW):
 
 colspecs = {
     sqltypes.Date : _OracleDate,
-    sqltypes.Binary : _OracleBinary,
+    sqltypes.LargeBinary : _OracleBinary,
     sqltypes.Boolean : oracle._OracleBoolean,
     sqltypes.Interval : _OracleInterval,
     oracle.INTERVAL : _OracleInterval,

@@ -235,7 +235,8 @@ from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from decimal import Decimal as _python_Decimal
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
-                                FLOAT, TIMESTAMP, DATETIME, DATE
+                                FLOAT, TIMESTAMP, DATETIME, DATE, BINARY,\
+                                VARBINARY, BLOB
             
 
 from sqlalchemy.dialects.mssql import information_schema as ischema
@@ -592,13 +593,7 @@ class NCHAR(_StringType, sqltypes.NCHAR):
         _StringType.__init__(self, collation)
         sqltypes.NCHAR.__init__(self, *args, **kw)
 
-class BINARY(sqltypes.Binary):
-    __visit_name__ = 'BINARY'
-
-class VARBINARY(sqltypes.Binary):
-    __visit_name__ = 'VARBINARY'
-        
-class IMAGE(sqltypes.Binary):
+class IMAGE(sqltypes.LargeBinary):
     __visit_name__ = 'IMAGE'
 
 class BIT(sqltypes.TypeEngine):
@@ -772,26 +767,11 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self.visit_TIME(type_)
             
-    def visit_binary(self, type_):
-        if type_.length:
-            return self.visit_BINARY(type_)
-        else:
-            return self.visit_IMAGE(type_)
-
-    def visit_BINARY(self, type_):
-        if type_.length:
-            return "BINARY(%s)" % type_.length
-        else:
-            return "BINARY"
+    def visit_large_binary(self, type_):
+        return self.visit_IMAGE(type_)
 
     def visit_IMAGE(self, type_):
         return "IMAGE"
-
-    def visit_VARBINARY(self, type_):
-        if type_.length:
-            return "VARBINARY(%s)" % type_.length
-        else:
-            return "VARBINARY"
 
     def visit_boolean(self, type_):
         return self.visit_BIT(type_)
@@ -1290,7 +1270,7 @@ class MSDialect(default.DefaultDialect):
             coltype = self.ischema_names.get(type, None)
 
             kwargs = {}
-            if coltype in (MSString, MSChar, MSNVarchar, MSNChar, MSText, MSNText, MSBinary, MSVarBinary, sqltypes.Binary):
+            if coltype in (MSString, MSChar, MSNVarchar, MSNChar, MSText, MSNText, MSBinary, MSVarBinary, sqltypes.LargeBinary):
                 kwargs['length'] = charlen
                 if collation:
                     kwargs['collation'] = collation

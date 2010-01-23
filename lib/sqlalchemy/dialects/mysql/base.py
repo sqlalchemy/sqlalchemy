@@ -197,7 +197,8 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import types as sqltypes
 
-from sqlalchemy.types import DATE, DATETIME, BOOLEAN, TIME
+from sqlalchemy.types import DATE, DATETIME, BOOLEAN, TIME, \
+                                BLOB, BINARY, VARBINARY
 
 RESERVED_WORDS = set(
     ['accessible', 'add', 'all', 'alter', 'analyze','and', 'as', 'asc',
@@ -304,11 +305,6 @@ class _StringType(sqltypes.String):
         return "%s(%s)" % (self.__class__.__name__,
                            ', '.join(['%s=%r' % (k, params[k]) for k in params]))
 
-
-class _BinaryType(sqltypes.Binary):
-    """Base for MySQL binary types."""
-
-    pass
 
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """MySQL NUMERIC type."""
@@ -826,62 +822,18 @@ class NCHAR(_StringType, sqltypes.NCHAR):
 
 
 
-class VARBINARY(_BinaryType):
-    """MySQL VARBINARY type, for variable length binary data."""
 
-    __visit_name__ = 'VARBINARY'
-
-    def __init__(self, length=None, **kw):
-        """Construct a VARBINARY.  Arguments are:
-
-        :param length: Maximum data length, in characters.
-
-        """
-        super(VARBINARY, self).__init__(length=length, **kw)
-
-class BINARY(_BinaryType):
-    """MySQL BINARY type, for fixed length binary data"""
-
-    __visit_name__ = 'BINARY'
-
-    def __init__(self, length=None, **kw):
-        """Construct a BINARY.
-
-        This is a fixed length type, and short values will be right-padded
-        with a server-version-specific pad value.
-
-        :param length: Maximum data length, in bytes. 
-
-        """
-        super(BINARY, self).__init__(length=length, **kw)
-
-class BLOB(_BinaryType, sqltypes.BLOB):
-    """MySQL BLOB type, for binary data up to 2^16 bytes"""
-
-    __visit_name__ = 'BLOB'
-
-    def __init__(self, length=None, **kw):
-        """Construct a BLOB.  Arguments are:
-
-        :param length: Optional, if provided the server may optimize storage
-          by substituting the smallest TEXT type sufficient to store
-          ``length`` characters.
-
-        """
-        super(BLOB, self).__init__(length=length, **kw)
-
-
-class TINYBLOB(_BinaryType):
+class TINYBLOB(sqltypes._Binary):
     """MySQL TINYBLOB type, for binary data up to 2^8 bytes."""
     
     __visit_name__ = 'TINYBLOB'
 
-class MEDIUMBLOB(_BinaryType):
+class MEDIUMBLOB(sqltypes._Binary):
     """MySQL MEDIUMBLOB type, for binary data up to 2^24 bytes."""
 
     __visit_name__ = 'MEDIUMBLOB'
 
-class LONGBLOB(_BinaryType):
+class LONGBLOB(sqltypes._Binary):
     """MySQL LONGBLOB type, for binary data up to 2^32 bytes."""
 
     __visit_name__ = 'LONGBLOB'
@@ -1122,7 +1074,6 @@ MSInteger = INTEGER
 colspecs = {
     sqltypes.Numeric: NUMERIC,
     sqltypes.Float: FLOAT,
-    sqltypes.Binary: _BinaryType,
     sqltypes.Time: _MSTime,
     sqltypes.Enum: ENUM,
 }
@@ -1217,7 +1168,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                 return 'CHAR(%s)' % type_.length
             else:
                 return 'CHAR'
-        elif isinstance(type_, sqltypes.Binary):
+        elif isinstance(type_, sqltypes._Binary):
             return 'BINARY'
         elif isinstance(type_, NUMERIC):
             return self.dialect.type_compiler.process(type_).replace('NUMERIC', 'DECIMAL')
@@ -1425,7 +1376,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
                          if c is not None])
     
     def _mysql_type(self, type_):
-        return isinstance(type_, (_StringType, _NumericType, _BinaryType))
+        return isinstance(type_, (_StringType, _NumericType))
     
     def visit_NUMERIC(self, type_):
         if type_.precision is None:
@@ -1564,12 +1515,9 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return self._extend_string(type_, {'national':True}, "CHAR")
     
     def visit_VARBINARY(self, type_):
-        if type_.length:
-            return "VARBINARY(%d)" % type_.length
-        else:
-            return self.visit_BLOB(type_)
+        return "VARBINARY(%d)" % type_.length
     
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return self.visit_BLOB(type_)
     
     def visit_enum(self, type_):
@@ -1577,12 +1525,6 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return super(MySQLTypeCompiler, self).visit_enum(type_)
         else:
             return self.visit_ENUM(type_)
-    
-    def visit_BINARY(self, type_):
-        if type_.length:
-            return "BINARY(%d)" % type_.length
-        else:
-            return "BINARY"
     
     def visit_BLOB(self, type_):
         if type_.length:

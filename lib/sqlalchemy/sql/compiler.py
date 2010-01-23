@@ -1217,6 +1217,12 @@ class GenericTypeCompiler(engine.TypeCompiler):
 
     def visit_BLOB(self, type_):
         return "BLOB"
+
+    def visit_BINARY(self, type_):
+        return "BINARY" + (type_.length and "(%d)" % type_.length or "")
+
+    def visit_VARBINARY(self, type_):
+        return "VARBINARY" + (type_.length and "(%d)" % type_.length or "")
     
     def visit_BOOLEAN(self, type_):
         return "BOOLEAN"
@@ -1224,7 +1230,7 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_TEXT(self, type_):
         return "TEXT"
     
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return self.visit_BLOB(type_)
         
     def visit_boolean(self, type_): 

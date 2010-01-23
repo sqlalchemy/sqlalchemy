@@ -122,7 +122,7 @@ from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, DATE, DATETIME, \
                 
 RESERVED_WORDS = set('''SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN DEFAULT ALTER IS INTO MINUS INTEGER NUMBER GRANT IDENTIFIED ALL TO ORDER ON FLOAT DATE HAVING CLUSTER NOWAIT RESOURCE ANY TABLE INDEX FOR UPDATE WHERE CHECK SMALLINT WITH DELETE BY ASC REVOKE LIKE SIZE RENAME NOCOMPRESS NULL GROUP VALUES AS IN VIEW EXCLUSIVE COMPRESS SYNONYM SELECT INSERT EXISTS NOT TRIGGER ELSE CREATE INTERSECT PCTFREE DISTINCT USER CONNECT SET MODE OF UNIQUE VARCHAR2 VARCHAR LOCK OR CHAR DECIMAL UNION PUBLIC AND START UID COMMENT'''.split()) 
 
-class RAW(sqltypes.Binary):
+class RAW(sqltypes.LargeBinary):
     pass
 OracleRaw = RAW
 
@@ -157,7 +157,7 @@ class DOUBLE_PRECISION(sqltypes.Numeric):
                 
         super(DOUBLE_PRECISION, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal)
 
-class BFILE(sqltypes.Binary):
+class BFILE(sqltypes.LargeBinary):
     __visit_name__ = 'BFILE'
 
 class LONG(sqltypes.Text):
@@ -282,7 +282,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     def visit_unicode_text(self, type_):
         return self.visit_NCLOB(type_)
 
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return self.visit_BLOB(type_)
 
     def visit_big_integer(self, type_):

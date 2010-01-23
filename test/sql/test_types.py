@@ -63,9 +63,9 @@ class TypeAffinityTest(TestBase):
             (Integer(), Integer(), True),
             (Text(), String(), True),
             (Text(), Unicode(), True),
-            (Binary(), Integer(), False),
-            (Binary(), PickleType(), True),
-            (PickleType(), Binary(), True),
+            (LargeBinary(), Integer(), False),
+            (LargeBinary(), PickleType(), True),
+            (PickleType(), LargeBinary(), True),
             (PickleType(), PickleType(), True),
         ]:
             eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
@@ -466,8 +466,8 @@ class BinaryTest(TestBase, AssertsExecutionResults):
 
         binary_table = Table('binary_table', MetaData(testing.db),
             Column('primary_id', Integer, Sequence('binary_id_seq', optional=True), primary_key=True),
-            Column('data', Binary),
-            Column('data_slice', Binary(100)),
+            Column('data', LargeBinary),
+            Column('data_slice', LargeBinary(100)),
             Column('misc', String(30)),
             # construct PickleType with non-native pickle module, since cPickle uses relative module
             # loading and confuses this test's parent package 'sql' with the 'sqlalchemy.sql' package relative
@@ -516,7 +516,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
             binary_table.select(order_by=binary_table.c.primary_id),
             text(
                 "select * from binary_table order by binary_table.primary_id", 
-                typemap={'pickled':PickleType, 'mypickle':MyPickleType, 'data':Binary, 'data_slice':Binary}, 
+                typemap={'pickled':PickleType, 'mypickle':MyPickleType, 'data':LargeBinary, 'data_slice':LargeBinary}, 
                 bind=testing.db)
         ):
             l = stmt.execute().fetchall()

@@ -788,6 +788,12 @@ CHANGES
       FLOAT, DECIMAL don't generate any length or scale unless
       specified.
     
+    - types.Binary is renamed to types.LargeBinary, it only
+      produces BLOB, BYTEA, or a similar "long binary" type.   
+      New base BINARY and VARBINARY
+      types have been added to access these MySQL/MS-SQL specific
+      types in an agnostic way [ticket:1664].
+      
     - String/Text/Unicode types now skip the unicode() check
       on each result column value if the dialect has 
       detected the DBAPI as returning Python unicode objects

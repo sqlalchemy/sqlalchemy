@@ -300,7 +300,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return self.visit_BLOB(type_)
 
 class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):

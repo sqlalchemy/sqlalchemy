@@ -99,7 +99,7 @@ RESERVED_WORDS = set([
     ])
 
 
-class SybaseImage(sqltypes.Binary):
+class SybaseImage(sqltypes.LargeBinary):
     __visit_name__ = 'IMAGE'
 
 class SybaseBit(sqltypes.TypeEngine):
@@ -135,7 +135,7 @@ class SybaseBoolean(sqltypes.Boolean):
         return process
 
 class SybaseTypeCompiler(compiler.GenericTypeCompiler):
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return self.visit_IMAGE(type_)
     
     def visit_boolean(self, type_):
@@ -157,7 +157,7 @@ class SybaseTypeCompiler(compiler.GenericTypeCompiler):
         return "UNIQUEIDENTIFIER"
         
 colspecs = {
-    sqltypes.Binary : SybaseImage,
+    sqltypes.LargeBinary : SybaseImage,
     sqltypes.Boolean : SybaseBoolean,
 }
 
@@ -176,9 +176,9 @@ ischema_names = {
     'numeric' : sqltypes.NUMERIC,
     'float' : sqltypes.FLOAT,
     'double' : sqltypes.Numeric,
-    'binary' : sqltypes.Binary,
-    'long binary' : sqltypes.Binary,
-    'varbinary' : sqltypes.Binary,
+    'binary' : sqltypes.LargeBinary,
+    'long binary' : sqltypes.LargeBinary,
+    'varbinary' : sqltypes.LargeBinary,
     'bit': SybaseBit,
     'image' : SybaseImage,
     'timestamp': sqltypes.TIMESTAMP,

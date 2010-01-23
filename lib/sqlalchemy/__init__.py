@@ -67,6 +67,7 @@ from sqlalchemy.types import (
     INTEGER,
     Integer,
     Interval,
+    LargeBinary,
     NCHAR,
     NVARCHAR,
     NUMERIC,

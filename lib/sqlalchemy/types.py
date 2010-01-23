@@ -16,7 +16,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'FLOAT', 'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB',
             'BLOB', 'BOOLEAN', 'SMALLINT', 'INTEGER', 'DATE', 'TIME',
             'String', 'Integer', 'SmallInteger', 'BigInteger', 'Numeric',
-            'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean',
+            'Float', 'DateTime', 'Date', 'Time', 'LargeBinary', 'Binary', 'Boolean',
             'Unicode', 'MutableType', 'Concatenable', 'UnicodeText',
             'PickleType', 'Interval', 'type_map', 'Enum' ]
 
@@ -845,29 +845,10 @@ class Time(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
-
-class Binary(TypeEngine):
-    """A type for binary byte data.
-
-    The Binary type generates BLOB or BYTEA when tables are created,
-    and also converts incoming values using the ``Binary`` callable
-    provided by each DB-API.
-
-    """
-
-    __visit_name__ = 'binary'
+class _Binary(TypeEngine):
+    """Define base behavior for binary types."""
 
     def __init__(self, length=None):
-        """
-        Construct a Binary type.
-
-        :param length: optional, a length for the column for use in
-          DDL statements.  May be safely omitted if no ``CREATE
-          TABLE`` will be issued.  Certain databases may require a
-          *length* for use in DDL, and will raise an exception when
-          the ``CREATE TABLE`` DDL is issued.
-
-        """
         self.length = length
 
     # Python 3 - sqlite3 doesn't need the `Binary` conversion
@@ -908,6 +889,40 @@ class Binary(TypeEngine):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.BINARY
+    
+class LargeBinary(_Binary):
+    """A type for large binary byte data.
+
+    The Binary type generates BLOB or BYTEA when tables are created,
+    and also converts incoming values using the ``Binary`` callable
+    provided by each DB-API.
+
+    """
+
+    __visit_name__ = 'large_binary'
+
+    def __init__(self, length=None):
+        """
+        Construct a LargeBinary type.
+
+        :param length: optional, a length for the column for use in
+          DDL statements, for those BLOB types that accept a length
+          (i.e. MySQL).  It does *not* produce a small BINARY/VARBINARY
+          type - use the BINARY/VARBINARY types specifically for those.
+          May be safely omitted if no ``CREATE
+          TABLE`` will be issued.  Certain databases may require a
+          *length* for use in DDL, and will raise an exception when
+          the ``CREATE TABLE`` DDL is issued.
+
+        """
+        _Binary.__init__(self, length=length)
+
+class Binary(LargeBinary):
+    """Deprecated.  Renamed to LargeBinary."""
+    
+    def __init__(self, *arg, **kw):
+        util.warn_deprecated("The Binary type has been renamed to LargeBinary.")
+        LargeBinary.__init__(self, *arg, **kw)
 
 class SchemaType(object):
     """Mark a type as possibly requiring schema-level DDL for usage.
@@ -1100,7 +1115,7 @@ class PickleType(MutableType, TypeDecorator):
 
     """
 
-    impl = Binary
+    impl = LargeBinary
 
     def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, mutable=True, comparator=None):
         """
@@ -1398,10 +1413,20 @@ class NCHAR(Unicode):
     __visit_name__ = 'NCHAR'
 
 
-class BLOB(Binary):
+class BLOB(LargeBinary):
     """The SQL BLOB type."""
 
     __visit_name__ = 'BLOB'
+
+class BINARY(_Binary):
+    """The SQL BINARY type."""
+
+    __visit_name__ = 'BINARY'
+
+class VARBINARY(_Binary):
+    """The SQL VARBINARY type."""
+
+    __visit_name__ = 'VARBINARY'
 
 
 class BOOLEAN(Boolean):

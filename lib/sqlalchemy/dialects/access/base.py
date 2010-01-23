@@ -95,7 +95,7 @@ class AcChar(types.CHAR):
     def get_col_spec(self):
         return "TEXT" + (self.length and ("(%d)" % self.length) or "")
 
-class AcBinary(types.Binary):
+class AcBinary(types.LargeBinary):
     def get_col_spec(self):
         return "BINARY"
 
@@ -170,7 +170,7 @@ class AccessDialect(default.DefaultDialect):
         types.DateTime : AcDateTime,
         types.Date : AcDate,
         types.String : AcString,
-        types.Binary : AcBinary,
+        types.LargeBinary : AcBinary,
         types.Boolean : AcBoolean,
         types.Text : AcText,
         types.CHAR: AcChar,

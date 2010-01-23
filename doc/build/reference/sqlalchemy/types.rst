@@ -38,9 +38,6 @@ database column type available on the target database when issuing a
 type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see `SQL
 Standard Types`_ and the other sections of this chapter.
 
-.. autoclass:: Binary
-   :show-inheritance:
-
 .. autoclass:: Boolean
   :show-inheritance:
 
@@ -62,6 +59,9 @@ Standard Types`_ and the other sections of this chapter.
   :show-inheritance:
 
 .. autoclass:: Interval
+ :show-inheritance:
+
+.. autoclass:: LargeBinary
  :show-inheritance:
 
 .. autoclass:: Numeric
@@ -100,6 +100,9 @@ SQL Standard Types
 The SQL standard types always create database column types of the same
 name when ``CREATE TABLE`` is issued.  Some types may not be supported
 on all databases.
+
+.. autoclass:: BINARY
+  :show-inheritance:
 
 .. autoclass:: BLOB
   :show-inheritance:
@@ -147,6 +150,9 @@ on all databases.
   :show-inheritance:
 
 .. autoclass:: TIMESTAMP
+  :show-inheritance:
+
+.. autoclass:: VARBINARY
   :show-inheritance:
 
 .. autoclass:: VARCHAR

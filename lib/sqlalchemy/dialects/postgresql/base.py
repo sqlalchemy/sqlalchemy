@@ -83,7 +83,7 @@ from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, VARCHAR, \
 class REAL(sqltypes.Float):
     __visit_name__ = "REAL"
 
-class BYTEA(sqltypes.Binary):
+class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = 'BYTEA'
 
 class DOUBLE_PRECISION(sqltypes.Float):
@@ -476,7 +476,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_UUID(self, type_):
         return "UUID"
 
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return self.visit_BYTEA(type_)
         
     def visit_BYTEA(self, type_):

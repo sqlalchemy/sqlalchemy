@@ -263,7 +263,7 @@ class MaxTime(sqltypes.Time):
         return process
 
 
-class MaxBlob(sqltypes.Binary):
+class MaxBlob(sqltypes.LargeBinary):
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -306,7 +306,7 @@ class MaxDBTypeCompiler(compiler.GenericTypeCompiler):
     def visit_string(self, type_):
         return self._string_spec("VARCHAR", type_)
 
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return "LONG BYTE"
     
     def visit_numeric(self, type_):
@@ -327,7 +327,7 @@ colspecs = {
     sqltypes.Time: MaxTime,
     sqltypes.String: MaxString,
     sqltypes.Unicode:MaxUnicode,
-    sqltypes.Binary: MaxBlob,
+    sqltypes.LargeBinary: MaxBlob,
     sqltypes.Text: MaxText,
     sqltypes.CHAR: MaxChar,
     sqltypes.TIMESTAMP: MaxTimestamp,

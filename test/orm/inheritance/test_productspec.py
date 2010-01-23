@@ -37,7 +37,7 @@ class InheritTest(_base.MappedTest):
             Column('last_updated', DateTime, default=lambda:datetime.now(),
                 onupdate=lambda:datetime.now()),
             Column('name', String(128)),
-            Column('data', Binary),
+            Column('data', LargeBinary),
             Column('size', Integer, default=0),
             )
 

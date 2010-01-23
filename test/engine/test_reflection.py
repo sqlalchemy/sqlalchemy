@@ -32,9 +32,9 @@ class ReflectionTest(TestBase, ComparesTables):
                    sa.ForeignKey('engine_users.user_id')),
             Column('test6', sa.Date, nullable=False),
             Column('test7', sa.Text),
-            Column('test8', sa.Binary),
+            Column('test8', sa.LargeBinary),
             Column('test_passivedefault2', sa.Integer, server_default='5'),
-            Column('test9', sa.Binary(100)),
+            Column('test9', sa.LargeBinary(100)),
             Column('test10', sa.Numeric(10, 2)),
             test_needs_fk=True,
         )
@@ -951,9 +951,9 @@ def createTables(meta, schema=None):
         parent_user_id,
         Column('test6', sa.Date, nullable=False),
         Column('test7', sa.Text),
-        Column('test8', sa.Binary),
+        Column('test8', sa.LargeBinary),
         Column('test_passivedefault2', sa.Integer, server_default='5'),
-        Column('test9', sa.Binary(100)),
+        Column('test9', sa.LargeBinary(100)),
         Column('test10', sa.Numeric(10, 2)),
         schema=schema,
         test_needs_fk=True,
@@ -1083,7 +1083,7 @@ class ComponentReflectionTest(TestBase):
                             ).intersection(ctype_def.__mro__)
                             .intersection([sql_types.Integer, sql_types.Numeric, 
                                             sql_types.DateTime, sql_types.Date, sql_types.Time, 
-                                            sql_types.String, sql_types.Binary])
+                                            sql_types.String, sql_types._Binary])
                             ) > 0
                     ,("%s(%s), %s(%s)" % (col.name, col.type, cols[i]['name'],
                                           ctype)))
