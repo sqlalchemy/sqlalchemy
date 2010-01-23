@@ -1,3 +1,4 @@
+import warnings
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc, util
@@ -555,6 +556,17 @@ class VersioningTest(_base.MappedTest):
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('parent', Integer, ForeignKey('base.id'))
             )
+
+    def setup(self):
+        super(VersioningTest, self).setup()
+        if not testing.db.dialect.supports_sane_rowcount:
+            self._warnings_filters = warnings.filters[:]
+            warnings.filterwarnings('ignore', category=sa_exc.SAWarning)
+
+    def teardown(self):
+        super(VersioningTest, self).teardown()
+        if not testing.db.dialect.supports_sane_rowcount:
+            warnings.filters[:] = self._warnings_filters
 
     @engines.close_open_connections
     def test_save_update(self):
