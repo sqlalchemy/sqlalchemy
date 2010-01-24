@@ -73,6 +73,16 @@ class VersioningTest(_base.MappedTest):
         # This test relies on an SAWarning being emitted, but the
         # subsequent tests' emits_warning cause that SAWarning to be
         # ignored forever. So it must run first
+        #
+        #
+        # TODO: ???????
+        # works fine without the 0 for me, including
+        # forcing the emits_warning tests to the zero pos,
+        # emits_warning() resets the warnings filter after 
+        # running the test.   many emits_warnings() in other
+        # tests too
+        #
+        #
         save = testing.db.dialect.supports_sane_rowcount
         testing.db.dialect.supports_sane_rowcount = False
         try:
