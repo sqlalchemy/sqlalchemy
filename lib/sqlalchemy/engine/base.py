@@ -765,7 +765,7 @@ class Connection(Connectable):
         return self.engine.Connection(
                     self.engine, self.__connection,
                      _branch=self.__branch, _options=opt)
-        
+    
     @property
     def dialect(self):
         "Dialect used by this Connection."
@@ -1026,7 +1026,8 @@ class Connection(Connectable):
             conn.close()
         self.__invalid = False
         del self.__connection
-
+        self.__transaction = None
+        
     def scalar(self, object, *multiparams, **params):
         """Executes and returns the first column of the first row.
 

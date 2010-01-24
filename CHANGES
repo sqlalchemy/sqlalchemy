@@ -378,6 +378,9 @@ CHANGES
   - All pyodbc-dialects now support extra pyodbc-specific 
     kw arguments 'ansi', 'unicode_results', 'autocommit'.
     [ticket:1621]
+
+  - the "threadlocal" engine has been rewritten and simplified 
+    and now supports SAVEPOINT operations.
     
   - deprecated or removed
       * result.last_inserted_ids() is deprecated.  Use 

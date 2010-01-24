@@ -3,6 +3,7 @@ from collections import deque
 import config
 from sqlalchemy.util import function_named, callable
 import re
+import warnings
 
 class ConnectionKiller(object):
     def __init__(self):
@@ -24,8 +25,7 @@ class ConnectionKiller(object):
                 except (SystemExit, KeyboardInterrupt):
                     raise
                 except Exception, e:
-                    # fixme
-                    sys.stderr.write("\n" + str(e) + "\n")
+                    warnings.warn("testing_reaper couldn't close connection: %s" % e)
 
     def rollback_all(self):
         self._apply_all(('rollback',))

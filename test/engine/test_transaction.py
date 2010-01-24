@@ -468,23 +468,20 @@ class TLTransactionTest(TestBase):
     def teardown_class(cls):
         users.drop(tlengine)
         tlengine.dispose()
-
-    def test_nested_unsupported(self):
-        assert_raises(NotImplementedError, tlengine.contextual_connect().begin_nested)
-        assert_raises(NotImplementedError, tlengine.begin_nested)
+    
+    def setup(self):
+        # ensure tests start with engine closed
+        tlengine.close()
         
     def test_connection_close(self):
-        """test that when connections are closed for real, transactions are rolled back and disposed."""
+        """test that when connections are closed for real, 
+        transactions are rolled back and disposed."""
 
         c = tlengine.contextual_connect()
         c.begin()
-        assert tlengine.session.in_transaction()
-        assert hasattr(tlengine.session, '_TLSession__transaction')
-        assert hasattr(tlengine.session, '_TLSession__trans')
+        assert c.in_transaction()
         c.close()
-        assert not tlengine.session.in_transaction()
-        assert not hasattr(tlengine.session, '_TLSession__transaction')
-        assert not hasattr(tlengine.session, '_TLSession__trans')
+        assert not c.in_transaction()
 
     def test_transaction_close(self):
         c = tlengine.contextual_connect()
@@ -615,8 +612,9 @@ class TLTransactionTest(TestBase):
             conn.close()
             external_connection.close()
 
-    def test_nesting(self):
-        """tests nesting of transactions"""
+    def test_nesting_rollback(self):
+        """tests nesting of transactions, rollback at the end"""
+        
         external_connection = tlengine.connect()
         self.assert_(external_connection.connection is not tlengine.contextual_connect().connection)
         tlengine.begin()
@@ -630,6 +628,25 @@ class TLTransactionTest(TestBase):
         tlengine.rollback()
         try:
             self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
+        finally:
+            external_connection.close()
+
+    def test_nesting_commit(self):
+        """tests nesting of transactions, commit at the end."""
+        
+        external_connection = tlengine.connect()
+        self.assert_(external_connection.connection is not tlengine.contextual_connect().connection)
+        tlengine.begin()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        tlengine.begin()
+        tlengine.execute(users.insert(), user_id=4, user_name='user4')
+        tlengine.execute(users.insert(), user_id=5, user_name='user5')
+        tlengine.commit()
+        tlengine.commit()
+        try:
+            self.assert_(external_connection.scalar("select count(1) from query_users") == 5)
         finally:
             external_connection.close()
 
@@ -684,14 +701,101 @@ class TLTransactionTest(TestBase):
         finally:
             external_connection.close()
 
+    @testing.requires.savepoints
+    def test_nested_subtransaction_rollback(self):
+        
+        tlengine.begin()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.begin_nested()
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        tlengine.rollback()
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        tlengine.commit()
+        tlengine.close()
+
+        eq_(
+            tlengine.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(3,)]
+        )
+        tlengine.close()
+
+    @testing.requires.savepoints
+    @testing.crashes('oracle+zxjdbc', 'Errors out and causes subsequent tests to deadlock')
+    def test_nested_subtransaction_commit(self):
+        tlengine.begin()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.begin_nested()
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        tlengine.commit()
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        tlengine.commit()
+
+        tlengine.close()
+        eq_(
+            tlengine.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(2,),(3,)]
+        )
+        tlengine.close()
+
+    @testing.requires.savepoints
+    def test_rollback_to_subtransaction(self):
+        tlengine.begin()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.begin_nested()
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        tlengine.begin()
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        tlengine.rollback()
+        tlengine.execute(users.insert(), user_id=4, user_name='user4')
+        tlengine.commit()
+        tlengine.close()
+
+        eq_(
+            tlengine.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(4,)]
+        )
+        tlengine.close()
+
     def test_connections(self):
         """tests that contextual_connect is threadlocal"""
         c1 = tlengine.contextual_connect()
         c2 = tlengine.contextual_connect()
         assert c1.connection is c2.connection
         c2.close()
-        assert c1.connection.connection is not None
+        assert not c1.closed
+        assert not tlengine.closed
+        
+    def test_result_closing(self):
+        """tests that contextual_connect is threadlocal"""
+        
+        r1 = tlengine.execute("select 1")
+        r2 = tlengine.execute("select 1")
+        row1 = r1.fetchone()
+        row2 = r2.fetchone()
+        r1.close()
+        assert r2.connection is r1.connection
+        assert not r2.connection.closed
+        assert not tlengine.closed
+        
+        # close again, nothing happens
+        # since resultproxy calls close() only
+        # once
+        r1.close()
+        assert r2.connection is r1.connection
+        assert not r2.connection.closed
+        assert not tlengine.closed
 
+        r2.close()
+        assert r2.connection.closed
+        assert tlengine.closed
+    
+    def test_dispose(self):
+        eng = create_engine(testing.db.url, strategy='threadlocal')
+        result = eng.execute("select 1")
+        eng.dispose()
+        eng.execute("select 1")
+        
+        
     @testing.requires.two_phase_transactions
     def test_two_phase_transaction(self):
         tlengine.begin_twophase()
