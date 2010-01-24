@@ -1461,6 +1461,14 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
         # ... but enabled for this one.
         assert result.cursor.name
 
+        # and this one
+        result = engine.connect().execution_options(stream_results=True).execute("select 1")
+        assert result.cursor.name
+        
+        # not this one
+        result = engine.connect().execution_options(stream_results=False).execute(s)
+        assert not result.cursor.name
+        
     def test_ss_explicitly_disabled(self):
         s = select([1]).execution_options(stream_results=False)
         result = ss_engine.execute(s)
@@ -1517,7 +1525,7 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
         s = text('select 42')
         result = engine.execute(s)
         assert not result.cursor.name
-        s = text('select 42', execution_options=dict(stream_results=True))
+        s = text('select 42').execution_options(stream_results=True)
         result = engine.execute(s)
         assert result.cursor.name
 

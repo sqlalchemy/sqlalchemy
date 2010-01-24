@@ -2194,16 +2194,13 @@ class _Executable(object):
     _execution_options = util.frozendict()
 
     @_generative
-    def execution_options(self, **kwargs):
+    def execution_options(self, **kw):
         """ Set non-SQL options for the statement, such as dialect-specific options.
 
         The options available are covered in the respective dialect's section.
 
         """
-        _execution_options = self._execution_options.copy()
-        for key, value in kwargs.items():
-            _execution_options[key] = value
-        self._execution_options = _execution_options
+        self._execution_options = self._execution_options.union(kw)
 
     
 class _TextClause(_Executable, ClauseElement):
@@ -2251,6 +2248,11 @@ class _TextClause(_Executable, ClauseElement):
             return list(self.typemap)[0]
         else:
             return None
+
+    def _generate(self):
+        s = self.__class__.__new__(self.__class__)
+        s.__dict__ = self.__dict__.copy()
+        return s
 
     def _copy_internals(self, clone=_clone):
         self.bindparams = dict((b.key, clone(b))

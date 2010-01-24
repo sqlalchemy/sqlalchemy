@@ -154,6 +154,14 @@ class frozendict(dict):
     def __init__(self, *args):
         pass
 
+    def union(self, d):
+        if not self:
+            return frozendict(d)
+        else:
+            d2 = self.copy()
+            d2.update(d)
+            return frozendict(d2)
+            
     def __repr__(self):
         return "frozendict(%s)" % dict.__repr__(self)
 

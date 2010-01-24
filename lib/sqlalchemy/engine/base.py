@@ -719,10 +719,10 @@ class Connection(Connectable):
     .. index::
       single: thread safety; Connection
     """
-    options = {}
+    _execution_options = util.frozendict()
     
     def __init__(self, engine, connection=None, close_with_result=False,
-                 _branch=False, _options=None):
+                 _branch=False, _execution_options=None):
         """Construct a new Connection.
 
         Connection objects are typically constructed by an
@@ -736,8 +736,8 @@ class Connection(Connectable):
         self.__savepoint_seq = 0
         self.__branch = _branch
         self.__invalid = False
-        if _options:
-            self.options = _options
+        if _execution_options:
+            self._execution_options = self._execution_options.union(_execution_options)
 
     def _branch(self):
         """Return a new Connection which references this Connection's
@@ -750,7 +750,7 @@ class Connection(Connectable):
 
         return self.engine.Connection(self.engine, self.__connection, _branch=True)
     
-    def _with_options(self, **opt):
+    def execution_options(self, **opt):
         """Add keyword options to a Connection generatively.
         
         Experimental.  May change the name/signature at 
@@ -763,7 +763,7 @@ class Connection(Connectable):
         """
         return self.engine.Connection(
                     self.engine, self.__connection,
-                     _branch=self.__branch, _options=opt)
+                     _branch=self.__branch, _execution_options=opt)
     
     @property
     def dialect(self):

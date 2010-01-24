@@ -224,13 +224,13 @@ class DefaultDialect(base.Dialect):
 
 
 class DefaultExecutionContext(base.ExecutionContext):
-    execution_options = util.frozendict()
     
     def __init__(self, dialect, connection, compiled_sql=None, compiled_ddl=None, statement=None, parameters=None):
         self.dialect = dialect
         self._connection = self.root_connection = connection
         self.engine = connection.engine
-
+        self.execution_options = connection._execution_options
+        
         if compiled_ddl is not None:
             self.compiled = compiled = compiled_ddl
             if not dialect.supports_unicode_statements:
@@ -268,7 +268,8 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
             self.isdelete = compiled.isdelete
-            self.execution_options = compiled.statement._execution_options
+            self.execution_options =\
+                    compiled.statement._execution_options.union(self.execution_options)
 
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]
