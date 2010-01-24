@@ -238,7 +238,6 @@ class DefaultExecutionContext(base.ExecutionContext):
             else:
                 self.statement = unicode(compiled)
             self.isinsert = self.isupdate = self.isdelete = self.executemany = False
-            self.should_autocommit = True
             self.result_map = None
             self.cursor = self.create_cursor()
             self.compiled_parameters = []
@@ -269,10 +268,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
             self.isdelete = compiled.isdelete
-            self.should_autocommit = compiled.statement._autocommit
             self.execution_options = compiled.statement._execution_options
-            if self.should_autocommit is expression.PARSE_AUTOCOMMIT:
-                self.should_autocommit = self.should_autocommit_text(self.statement)
 
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]
@@ -295,14 +291,27 @@ class DefaultExecutionContext(base.ExecutionContext):
             else:
                 self.statement = statement
             self.isinsert = self.isupdate = self.isdelete = False
-            self.should_autocommit = self.should_autocommit_text(statement)
             self.cursor = self.create_cursor()
         else:
             # no statement. used for standalone ColumnDefault execution.
             self.statement = self.compiled = None
-            self.isinsert = self.isupdate = self.isdelete = self.executemany = self.should_autocommit = False
+            self.isinsert = self.isupdate = self.isdelete = self.executemany = False
             self.cursor = self.create_cursor()
-    
+
+    @util.memoized_property
+    def should_autocommit(self):
+        
+        if self.compiled:
+            autocommit = self.compiled.statement._autocommit
+            if autocommit is expression.PARSE_AUTOCOMMIT:
+                return self.should_autocommit_text(self.statement)
+            else:
+                return autocommit
+        elif self.statement:
+            return self.should_autocommit_text(self.statement)
+        else:
+            return False
+            
     @util.memoized_property
     def _is_explicit_returning(self):
         return self.compiled and \

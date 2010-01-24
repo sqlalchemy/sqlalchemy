@@ -729,7 +729,6 @@ class Connection(Connectable):
         :class:`~sqlalchemy.engine.Engine`, see the ``connect()`` and
         ``contextual_connect()`` methods of Engine.
         """
-
         self.engine = engine
         self.__connection = connection or engine.raw_connection()
         self.__transaction = None
@@ -1133,8 +1132,8 @@ class Connection(Connectable):
             
             if context.isinsert and not context.executemany:
                 context.post_insert()
-            
-        if context.should_autocommit and not self.in_transaction():
+        
+        if self.__transaction is None and context.should_autocommit:
             self._commit_impl()
             
         return context.get_result_proxy()._autoclose()
