@@ -7,7 +7,8 @@ from sqlalchemy import MetaData
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 import sqlalchemy as sa
-from sqlalchemy.test import TestBase, ComparesTables, testing, engines
+from sqlalchemy.test import TestBase, ComparesTables, \
+                            testing, engines, AssertsCompiledSQL
 
 create_inspector = Inspector.from_engine
 
@@ -994,6 +995,31 @@ def dropViews(con, schema=None):
         query = "DROP VIEW %s" % view_name
         con.execute(sa.sql.text(query))
 
+
+class ReverseCasingReflectTest(TestBase, AssertsCompiledSQL):
+
+    @testing.requires.denormalized_names
+    def setup(self):
+        testing.db.execute("""
+        CREATE TABLE weird_casing(
+                col1 char(20),
+                "Col2" char(20),
+                "col3" char(20)
+        )
+        """)
+
+    @testing.requires.denormalized_names
+    def teardown(self):
+        testing.db.execute("drop table weird_casing")
+
+    @testing.requires.denormalized_names
+    def test_direct_quoting(self):
+        m = MetaData(testing.db)
+        t = Table("weird_casing", m, autoload=True)
+        self.assert_compile(
+            t.select(),
+            'SELECT weird_casing.col1, weird_casing."Col2", weird_casing."col3" FROM weird_casing'
+        )
 
 class ComponentReflectionTest(TestBase):
 

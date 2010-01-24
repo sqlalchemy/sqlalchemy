@@ -711,6 +711,11 @@ CHANGES
     
     - using types.BigInteger with Oracle will generate
       NUMBER(19) [ticket:1125]
+    
+    - "case sensitivity" feature will detect an all-lowercase
+      case-sensitive column name during reflect and add 
+      "quote=True" to the generated Column, so that proper
+      quoting is maintained.
       
 - firebird
     - the keys() method of RowProxy() now returns the result
@@ -722,6 +727,11 @@ CHANGES
 
     - using new dialect.initialize() feature to set up
       version-dependent behavior.
+
+    - "case sensitivity" feature will detect an all-lowercase
+      case-sensitive column name during reflect and add 
+      "quote=True" to the generated Column, so that proper
+      quoting is maintained.
 
 - mssql
     - MSSQL + Pyodbc + FreeTDS now works for the most part,

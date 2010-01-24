@@ -718,8 +718,8 @@ class OracleDialect(default.DefaultDialect):
                                table_name=table_name, owner=schema)
 
         for row in c:
-            (colname, coltype, length, precision, scale, nullable, default) = \
-                (self.normalize_name(row[0]), row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
+            (colname, orig_colname, coltype, length, precision, scale, nullable, default) = \
+                (self.normalize_name(row[0]), row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
             if coltype == 'NUMBER' :
                 coltype = NUMBER(precision, scale)
@@ -740,6 +740,9 @@ class OracleDialect(default.DefaultDialect):
                 'nullable': nullable,
                 'default': default,
             }
+            if orig_colname.lower() == orig_colname:
+                cdict['quote'] = True
+
             columns.append(cdict)
         return columns
 

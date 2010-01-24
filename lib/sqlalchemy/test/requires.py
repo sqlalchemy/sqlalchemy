@@ -9,8 +9,10 @@ from testing import \
      _block_unconditionally as no_support, \
      _chain_decorators_on, \
      exclude, \
-     emits_warning_on
+     emits_warning_on,\
+     skip_if
 
+import testing
 
 def deferrable_constraints(fn):
     """Target database must support derferable constraints."""
@@ -106,6 +108,11 @@ def savepoints(fn):
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
         )
 
+def denormalized_names(fn):
+    """Target database must have 'denormalized', i.e. UPPERCASE as case insensitive names."""
+    
+    return skip_if(lambda: not testing.db.dialect.requires_name_normalize)(fn)
+    
 def schemas(fn):
     """Target database must support external schemas, and have one named 'test_schema'."""
     

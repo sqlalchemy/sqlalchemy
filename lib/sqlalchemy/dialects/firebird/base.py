@@ -484,7 +484,8 @@ class FBDialect(default.DefaultDialect):
             if row is None:
                 break
             name = self.normalize_name(row['fname'])
-
+            orig_colname = row['fname']
+            
             # get the data type
             colspec = row['ftype'].rstrip()
             coltype = self.ischema_names.get(colspec)
@@ -523,6 +524,9 @@ class FBDialect(default.DefaultDialect):
                 'nullable' :  not bool(row['null_flag']),
                 'default' : defvalue
             }
+            
+            if orig_colname.lower() == orig_colname:
+                col_d['quote'] = True
 
             # if the PK is a single field, try to see if its linked to
             # a sequence thru a trigger
