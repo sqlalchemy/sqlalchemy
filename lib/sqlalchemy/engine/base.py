@@ -888,9 +888,9 @@ class Connection(Connectable):
 
         if self.__transaction is None:
             self.__transaction = RootTransaction(self)
+            return self.__transaction
         else:
             return Transaction(self, self.__transaction)
-        return self.__transaction
 
     def begin_nested(self):
         """Begin a nested transaction and return a Transaction handle.
