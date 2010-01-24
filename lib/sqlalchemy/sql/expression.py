@@ -2224,14 +2224,12 @@ class _TextClause(_Executable, ClauseElement):
     _hide_froms = []
 
     def __init__(self, text = "", bind=None, 
-                    bindparams=None, typemap=None, autocommit=PARSE_AUTOCOMMIT, execution_options=None):
+                    bindparams=None, typemap=None, 
+                    autocommit=PARSE_AUTOCOMMIT):
         self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
         self._autocommit = autocommit
-        self._execution_options = execution_options
-        if self._execution_options is None:
-            self._execution_options = {}
         if typemap is not None:
             for key in typemap.keys():
                 typemap[key] = sqltypes.to_instance(typemap[key])
@@ -3193,17 +3191,13 @@ class _SelectBaseMixin(_Executable):
             order_by=None,
             group_by=None,
             bind=None,
-            autocommit=False,
-            execution_options=None):
+            autocommit=False):
         self.use_labels = use_labels
         self.for_update = for_update
         self._autocommit = autocommit
         self._limit = limit
         self._offset = offset
         self._bind = bind
-        self._execution_options = execution_options
-        if self._execution_options is None:
-            self._execution_options = dict()
 
         self._order_by_clause = ClauseList(*util.to_list(order_by) or [])
         self._group_by_clause = ClauseList(*util.to_list(group_by) or [])

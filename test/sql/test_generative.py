@@ -795,15 +795,17 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         assert s2._execution_options == dict(foo='bar', bar='baz')
         assert s3._execution_options == dict(foo='not bar')
 
-    def test_execution_options_in_kwargs(self):
+    # this feature not available yet
+    def _NOTYET_test_execution_options_in_kwargs(self):
         s = select(execution_options=dict(foo='bar'))
         s2 = s.execution_options(bar='baz')
         # The original select should not be modified.
         assert s._execution_options == dict(foo='bar')
         # s2 should have its execution_options based on s, though.
         assert s2._execution_options == dict(foo='bar', bar='baz')
-
-    def test_execution_options_in_text(self):
+    
+    # this feature not available yet
+    def _NOTYET_test_execution_options_in_text(self):
         s = text('select 42', execution_options=dict(foo='bar'))
         assert s._execution_options == dict(foo='bar')
 

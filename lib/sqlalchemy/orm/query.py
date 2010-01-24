@@ -1950,7 +1950,9 @@ class Query(object):
 
             context.adapter = sql_util.ColumnAdapter(inner, equivs)
 
-            statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=labels, execution_options=self._execution_options)
+            statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=labels)
+            if self._execution_options:
+                statement = statement.execution_options(**self._execution_options)
 
             from_clause = inner
             for eager_join in eager_joins:
@@ -1982,9 +1984,10 @@ class Query(object):
                             for_update=for_update,
                             correlate=False,
                             order_by=context.order_by,
-                            execution_options=self._execution_options,
                             **self._select_args
                         )
+            if self._execution_options:
+                statement = statement.execution_options(**self._execution_options)
 
             if self._correlate:
                 statement = statement.correlate(*self._correlate)
