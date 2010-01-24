@@ -67,6 +67,29 @@ class VersioningTest(_base.MappedTest):
         class Foo(_base.ComparableEntity):
             pass
 
+    @engines.close_open_connections
+    @testing.resolve_artifact_names
+    def test_0notsane_warning(self):
+        # This test relies on an SAWarning being emitted, but the
+        # subsequent tests' emits_warning cause that SAWarning to be
+        # ignored forever. So it must run first
+        save = testing.db.dialect.supports_sane_rowcount
+        testing.db.dialect.supports_sane_rowcount = False
+        try:
+            mapper(Foo, version_table, 
+                    version_id_col=version_table.c.version_id)
+
+            s1 = create_session(autocommit=False)
+            f1 = Foo(value='f1')
+            f2 = Foo(value='f2')
+            s1.add_all((f1, f2))
+            s1.commit()
+
+            f1.value='f1rev2'
+            assert_raises(sa.exc.SAWarning, s1.commit)
+        finally:
+            testing.db.dialect.supports_sane_rowcount = save
+
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
     @testing.resolve_artifact_names
@@ -112,26 +135,6 @@ class VersioningTest(_base.MappedTest):
             assert_raises(sa.orm.exc.ConcurrentModificationError, s1.commit)
         else:
             s1.commit()
-
-    @engines.close_open_connections
-    @testing.resolve_artifact_names
-    def test_notsane_warning(self):
-        save = testing.db.dialect.supports_sane_rowcount
-        testing.db.dialect.supports_sane_rowcount = False
-        try:
-            mapper(Foo, version_table, 
-                    version_id_col=version_table.c.version_id)
-
-            s1 = create_session(autocommit=False)
-            f1 = Foo(value='f1')
-            f2 = Foo(value='f2')
-            s1.add_all((f1, f2))
-            s1.commit()
-
-            f1.value='f1rev2'
-            assert_raises(sa.exc.SAWarning, s1.commit)
-        finally:
-            testing.db.dialect.supports_sane_rowcount = save
 
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
