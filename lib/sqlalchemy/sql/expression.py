@@ -47,7 +47,7 @@ __all__ = [
     'modifier', 'collate',
     'insert', 'intersect', 'intersect_all', 'join', 'label', 'literal',
     'literal_column', 'not_', 'null', 'or_', 'outparam', 'outerjoin', 'select',
-    'subquery', 'table', 'text', 'union', 'union_all', 'update', ]
+    'subquery', 'table', 'text', 'tuple_', 'union', 'union_all', 'update', ]
 
 PARSE_AUTOCOMMIT = util._symbol('PARSE_AUTOCOMMIT')
 
@@ -662,6 +662,18 @@ def literal(value, type_=None):
     """
     return _BindParamClause(None, value, type_=type_, unique=True)
 
+def tuple_(*expr):
+    """Return a SQL tuple.   
+    
+    Main usage is to produce a composite IN construct::
+    
+        tuple_(table.c.col1, table.c.col2).in_(
+            [(1, 2), (5, 12), (10, 19)]
+        )
+    
+    """
+    return _Tuple(*expr)
+    
 def label(name, obj):
     """Return a :class:`_Label` object for the
     given :class:`ColumnElement`.
@@ -954,6 +966,13 @@ def _literal_as_binds(element, name=None, type_=None):
             return _BindParamClause(name, element, type_=type_, unique=True)
     else:
         return element
+
+def _type_from_args(args):
+    for a in args:
+        if not isinstance(a.type, sqltypes.NullType):
+            return a.type
+    else:
+        return sqltypes.NullType
 
 def _no_literals(element):
     if hasattr(element, '__clause_element__'):
@@ -1500,7 +1519,8 @@ class _CompareMixin(ColumnOperators):
             if not _is_literal(o):
                 if not isinstance( o, _CompareMixin):
                     raise exc.InvalidRequestError( 
-                        "in() function accepts either a list of non-selectable values, or a selectable: %r" % o)
+                        "in() function accepts either a list of non-selectable values, "
+                        "or a selectable: %r" % o)
             else:
                 o = self._bind_param(o)
             args.append(o)
@@ -2360,6 +2380,22 @@ class BooleanClauseList(ClauseList, ColumnElement):
     def _select_iterable(self):
         return (self, )
 
+class _Tuple(ClauseList, ColumnElement):
+    
+    def __init__(self, *clauses, **kw):
+        super(_Tuple, self).__init__(*clauses, **kw)
+        self.type = _type_from_args(clauses)
+
+    @property
+    def _select_iterable(self):
+        return (self, )
+
+    def _bind_param(self, obj):
+        return _Tuple(*[
+            _BindParamClause(None, o, type_=self.type, unique=True)
+            for o in obj
+        ]).self_group()
+    
 
 class _Case(ColumnElement):
     __visit_name__ = 'case'
@@ -3318,9 +3354,6 @@ class _ScalarSelect(_Grouping):
     def __init__(self, element):
         self.element = element
         cols = list(element.c)
-        if len(cols) != 1:
-            raise exc.InvalidRequestError("Scalar select can only be created "
-                    "from a Select object that has exactly one column expression.")
         self.type = cols[0].type
 
     @property

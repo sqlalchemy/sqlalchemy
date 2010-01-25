@@ -367,18 +367,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
 
     @testing.uses_deprecated('scalar option')
     def test_scalar_select(self):
-        try:
-            s = select([table1.c.myid, table1.c.name]).as_scalar()
-            assert False
-        except exc.InvalidRequestError, err:
-            assert str(err) == "Scalar select can only be created from a Select object that has exactly one column expression.", str(err)
-
-        try:
-            # generic function which will look at the type of expression
-            func.coalesce(select([table1.c.myid]))
-            assert False
-        except exc.InvalidRequestError, err:
-            assert str(err) == "Select objects don't have a type.  Call as_scalar() on this Select object to return a 'scalar' version of this Select.", str(err)
+        assert_raises_message(
+            exc.InvalidRequestError,
+            r"Select objects don't have a type\.  Call as_scalar\(\) "
+            "on this Select object to return a 'scalar' version of this Select\.",
+            func.coalesce, select([table1.c.myid])
+        )
 
         s = select([table1.c.myid], correlate=False).as_scalar()
         self.assert_compile(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid FROM mytable) AS anon_1 FROM mytable")
@@ -1356,80 +1350,93 @@ EXISTS (select yay from foo where boo = lar)",
         
         assert [str(c) for c in s.c] == ["id", "hoho"]
 
+        
     @testing.emits_warning('.*empty sequence.*')
     def test_in(self):
-        self.assert_compile(select([table1], table1.c.myid.in_(['a'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1)")
+        self.assert_compile(table1.c.myid.in_(['a']),
+        "mytable.myid IN (:myid_1)")
 
-        self.assert_compile(select([table1], ~table1.c.myid.in_(['a'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid NOT IN (:myid_1)")
+        self.assert_compile(~table1.c.myid.in_(['a']),
+        "mytable.myid NOT IN (:myid_1)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_(['a', 'b'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1, :myid_2)")
+        self.assert_compile(table1.c.myid.in_(['a', 'b']),
+        "mytable.myid IN (:myid_1, :myid_2)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_(iter(['a', 'b']))),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1, :myid_2)")
+        self.assert_compile(table1.c.myid.in_(iter(['a', 'b'])),
+        "mytable.myid IN (:myid_1, :myid_2)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal('a')])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1)")
+        self.assert_compile(table1.c.myid.in_([literal('a')]),
+        "mytable.myid IN (:param_1)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal('a'), 'b'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, :myid_1)")
+        self.assert_compile(table1.c.myid.in_([literal('a'), 'b']),
+        "mytable.myid IN (:param_1, :myid_1)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal('a'), literal('b')])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, :param_2)")
+        self.assert_compile(table1.c.myid.in_([literal('a'), literal('b')]),
+        "mytable.myid IN (:param_1, :param_2)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_(['a', literal('b')])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1, :param_1)")
+        self.assert_compile(table1.c.myid.in_(['a', literal('b')]),
+        "mytable.myid IN (:myid_1, :param_1)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal(1) + 'a'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 + :param_2)")
+        self.assert_compile(table1.c.myid.in_([literal(1) + 'a']),
+        "mytable.myid IN (:param_1 + :param_2)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal('a') +'a', 'b'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 || :param_2, :myid_1)")
+        self.assert_compile(table1.c.myid.in_([literal('a') +'a', 'b']),
+        "mytable.myid IN (:param_1 || :param_2, :myid_1)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal('a') + literal('a'), literal('b')])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 || :param_2, :param_3)")
+        self.assert_compile(table1.c.myid.in_([literal('a') + literal('a'), literal('b')]),
+        "mytable.myid IN (:param_1 || :param_2, :param_3)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([1, literal(3) + 4])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1, :param_1 + :param_2)")
+        self.assert_compile(table1.c.myid.in_([1, literal(3) + 4]),
+        "mytable.myid IN (:myid_1, :param_1 + :param_2)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal('a') < 'b'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1 < :param_2)")
+        self.assert_compile(table1.c.myid.in_([literal('a') < 'b']),
+        "mytable.myid IN (:param_1 < :param_2)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([table1.c.myid])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (mytable.myid)")
+        self.assert_compile(table1.c.myid.in_([table1.c.myid]),
+        "mytable.myid IN (mytable.myid)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_(['a', table1.c.myid])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1, mytable.myid)")
+        self.assert_compile(table1.c.myid.in_(['a', table1.c.myid]),
+        "mytable.myid IN (:myid_1, mytable.myid)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal('a'), table1.c.myid])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, mytable.myid)")
+        self.assert_compile(table1.c.myid.in_([literal('a'), table1.c.myid]),
+        "mytable.myid IN (:param_1, mytable.myid)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal('a'), table1.c.myid +'a'])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, mytable.myid + :myid_1)")
+        self.assert_compile(table1.c.myid.in_([literal('a'), table1.c.myid +'a']),
+        "mytable.myid IN (:param_1, mytable.myid + :myid_1)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([literal(1), 'a' + table1.c.myid])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:param_1, :myid_1 + mytable.myid)")
+        self.assert_compile(table1.c.myid.in_([literal(1), 'a' + table1.c.myid]),
+        "mytable.myid IN (:param_1, :myid_1 + mytable.myid)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_([1, 2, 3])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:myid_1, :myid_2, :myid_3)")
+        self.assert_compile(table1.c.myid.in_([1, 2, 3]),
+        "mytable.myid IN (:myid_1, :myid_2, :myid_3)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_(select([table2.c.otherid]))),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
+        self.assert_compile(table1.c.myid.in_(select([table2.c.otherid])),
+        "mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
 
-        self.assert_compile(select([table1], ~table1.c.myid.in_(select([table2.c.otherid]))),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid NOT IN (SELECT myothertable.otherid FROM myothertable)")
+        self.assert_compile(~table1.c.myid.in_(select([table2.c.otherid])),
+        "mytable.myid NOT IN (SELECT myothertable.otherid FROM myothertable)")
 
-        self.assert_compile(select([table1], table1.c.myid.in_(
+        # test empty in clause
+        self.assert_compile(table1.c.myid.in_([]),
+        "mytable.myid != mytable.myid")
+
+        self.assert_compile(
+            select([table1.c.myid.in_(select([table2.c.otherid]))]),
+            "SELECT mytable.myid IN (SELECT myothertable.otherid FROM myothertable) AS anon_1 FROM mytable"
+        )
+        self.assert_compile(
+            select([table1.c.myid.in_(select([table2.c.otherid]).as_scalar())]),
+            "SELECT mytable.myid IN (SELECT myothertable.otherid FROM myothertable) AS anon_1 FROM mytable"
+        )
+
+        self.assert_compile(table1.c.myid.in_(
             union(
                   select([table1.c.myid], table1.c.myid == 5),
                   select([table1.c.myid], table1.c.myid == 12),
             )
-        )), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable \
-WHERE mytable.myid IN (\
-SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 \
-UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
+        ), "mytable.myid IN ("\
+        "SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "\
+        "UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
 
         # test that putting a select in an IN clause does not blow away its ORDER BY clause
         self.assert_compile(
@@ -1444,19 +1451,27 @@ UNION SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_2)")
             "FROM myothertable ORDER BY myothertable.othername  LIMIT 10) ORDER BY mytable.myid"
         )
 
-        # test empty in clause
-        self.assert_compile(select([table1], table1.c.myid.in_([])),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != mytable.myid")
-
-        self.assert_compile(
-            select([table1.c.myid.in_(select([table2.c.otherid]))]),
-            "SELECT mytable.myid IN (SELECT myothertable.otherid FROM myothertable) AS anon_1 FROM mytable"
-        )
-        self.assert_compile(
-            select([table1.c.myid.in_(select([table2.c.otherid]).as_scalar())]),
-            "SELECT mytable.myid IN (SELECT myothertable.otherid FROM myothertable) AS anon_1 FROM mytable"
+    def test_tuple(self):
+        self.assert_compile(tuple_(table1.c.myid, table1.c.name).in_([(1, 'foo'), (5, 'bar')]),
+            "(mytable.myid, mytable.name) IN ((:param_1, :param_2), (:param_3, :param_4))"
         )
 
+        self.assert_compile(
+            tuple_(table1.c.myid, table1.c.name).in_(
+                        [tuple_(table2.c.otherid, table2.c.othername)]
+                    ),
+            "(mytable.myid, mytable.name) IN (myothertable.otherid, myothertable.othername)"
+        )
+        
+        self.assert_compile(
+            tuple_(table1.c.myid, table1.c.name).in_(
+                        select([table2.c.otherid, table2.c.othername])
+                    ),
+            "(mytable.myid, mytable.name) IN (SELECT "
+            "myothertable.otherid, myothertable.othername FROM myothertable)"
+        )
+        
+        
     def test_cast(self):
         tbl = table('casttest',
                     column('id', Integer),

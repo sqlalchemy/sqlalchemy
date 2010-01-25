@@ -42,6 +42,7 @@ from sqlalchemy.sql import (
     select,
     subquery,
     text,
+    tuple_,
     union,
     union_all,
     update,

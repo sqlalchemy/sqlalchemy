@@ -1,6 +1,6 @@
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql.expression import (
-    ClauseList, Function, _literal_as_binds, text
+    ClauseList, Function, _literal_as_binds, text, _type_from_args
     )
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import VisitableType
@@ -102,9 +102,3 @@ class sysdate(AnsiFunction):
 class user(AnsiFunction):
     __return_type__ = sqltypes.String
 
-def _type_from_args(args):
-    for a in args:
-        if not isinstance(a.type, sqltypes.NullType):
-            return a.type
-    else:
-        return sqltypes.NullType

@@ -293,7 +293,15 @@ CHANGES
       (or a "bytes" type in Python 3), instead of the built-
       in "buffer" type.  This allows symmetric round trips
       of binary data. [ticket:1524]
-      
+    
+    - Added a tuple_() construct, allows sets of expressions
+      to be compared to another set, typically with IN against
+      composite primary keys or similar.  Also accepts an 
+      IN with multiple columns.   The "scalar select can
+      have only one column" error message is removed - will
+      rely upon the database to report problems with 
+      col mismatch.
+        
     - User-defined "default" and "onupdate" callables which 
       accept a context should now call upon 
       "context.current_parameters" to get at the dictionary
