@@ -78,16 +78,6 @@ class VersioningTest(_base.MappedTest):
         except NameError:
             pass
 
-        #
-        #
-        # TODO: ???????
-        # works fine without the 0 for me, including
-        # forcing the emits_warning tests to the zero pos,
-        # emits_warning() resets the warnings filter after 
-        # running the test.   many emits_warnings() in other
-        # tests too
-        #
-        #
         save = testing.db.dialect.supports_sane_rowcount
         testing.db.dialect.supports_sane_rowcount = False
         try:
