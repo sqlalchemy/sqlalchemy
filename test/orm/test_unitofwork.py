@@ -69,10 +69,15 @@ class VersioningTest(_base.MappedTest):
 
     @engines.close_open_connections
     @testing.resolve_artifact_names
-    def test_0notsane_warning(self):
-        # This test relies on an SAWarning being emitted, but the
-        # subsequent tests' emits_warning cause that SAWarning to be
-        # ignored forever. So it must run first
+    def test_notsane_warning(self):
+        # clear the warning module's ignores to force the SAWarning this
+        # test relies on to be emitted (it may have already been ignored
+        # forever by other VersioningTests)
+        try:
+            del __warningregistry__
+        except NameError:
+            pass
+
         #
         #
         # TODO: ???????

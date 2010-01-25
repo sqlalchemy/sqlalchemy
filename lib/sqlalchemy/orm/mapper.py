@@ -1443,7 +1443,8 @@ class Mapper(object):
                         
                 elif mapper.version_id_col is not None:
                     util.warn("Dialect %s does not support updated rowcount "
-                            "- versioning cannot be verified." % c.dialect.dialect_description)
+                            "- versioning cannot be verified." % c.dialect.dialect_description,
+                              stacklevel=12)
                     
             if insert:
                 statement = table.insert()

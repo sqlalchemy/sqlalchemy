@@ -1523,17 +1523,17 @@ class WeakIdentityMapping(weakref.WeakKeyDictionary):
         return self._keyed_weakref(object, self._cleanup)
 
 
-def warn(msg):
+def warn(msg, stacklevel=3):
     if isinstance(msg, basestring):
-        warnings.warn(msg, exc.SAWarning, stacklevel=3)
+        warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)
     else:
-        warnings.warn(msg, stacklevel=3)
+        warnings.warn(msg, stacklevel=stacklevel)
 
-def warn_deprecated(msg):
-    warnings.warn(msg, exc.SADeprecationWarning, stacklevel=3)
+def warn_deprecated(msg, stacklevel=3):
+    warnings.warn(msg, exc.SADeprecationWarning, stacklevel=stacklevel)
 
-def warn_pending_deprecation(msg):
-    warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=3)
+def warn_pending_deprecation(msg, stacklevel=3):
+    warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=stacklevel)
 
 def deprecated(message=None, add_deprecation_to_docstring=True):
     """Decorates a function and issues a deprecation warning on use.
