@@ -267,7 +267,22 @@ CHANGES
       version in use supports it (a version number check is
       performed). This occurs if no end-user returning() was
       specified.
-
+    
+    - union(), intersect(), except() and other "compound" types
+      of statements have more consistent behavior w.r.t. 
+      parenthesizing.   Each compound element embedded within 
+      another will now be grouped with parenthesis - previously,
+      the first compound element in the list would not be grouped,
+      as SQLite doesn't like a statement to start with 
+      parenthesis.   However, Postgresql in particular has
+      precedence rules regarding INTERSECT, and it is 
+      more consistent for parenthesis to be applied equally
+      to all sub-elements.   So now, the workaround for SQLite
+      is also what the workaround for PG was previously -
+      when nesting compound elements, the first one usually needs
+      ".alias().select()" called on it to wrap it inside
+      of a subquery.  [ticket:1665]
+      
     - insert() and update() constructs can now embed bindparam()
       objects using names that match the keys of columns.  These
       bind parameters will circumvent the usual route to those 

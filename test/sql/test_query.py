@@ -1116,6 +1116,7 @@ class CompoundTest(TestBase):
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
+    @testing.fails_on('sqlite', "Can't handle this style of nesting")
     def test_except_style1(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -1126,7 +1127,7 @@ class CompoundTest(TestBase):
         wanted = [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'),
                   ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
 
-        found = self._fetchall_sorted(e.alias('bar').select().execute())
+        found = self._fetchall_sorted(e.alias().select().execute())
         eq_(found, wanted)
 
     @testing.crashes('firebird', 'Does not support except')
@@ -1134,11 +1135,14 @@ class CompoundTest(TestBase):
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     def test_except_style2(self):
+        # same as style1, but add alias().select() to the except_().
+        # sqlite can handle it now.
+        
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
             select([t2.c.col3, t2.c.col4]),
             select([t3.c.col3, t3.c.col4]),
-        ).alias('foo').select(), select([t2.c.col3, t2.c.col4]))
+        ).alias().select(), select([t2.c.col3, t2.c.col4]))
 
         wanted = [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'),
                   ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
@@ -1146,14 +1150,14 @@ class CompoundTest(TestBase):
         found1 = self._fetchall_sorted(e.execute())
         eq_(found1, wanted)
 
-        found2 = self._fetchall_sorted(e.alias('bar').select().execute())
+        found2 = self._fetchall_sorted(e.alias().select().execute())
         eq_(found2, wanted)
 
     @testing.crashes('firebird', 'Does not support except')
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
-    @testing.fails_on('sqlite', 'FIXME: unknown')
+    @testing.fails_on('sqlite', "Can't handle this style of nesting")
     def test_except_style3(self):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(
@@ -1167,16 +1171,73 @@ class CompoundTest(TestBase):
         eq_(e.alias('foo').select().execute().fetchall(),
                           [('ccc',)])
 
+    @testing.crashes('firebird', 'Does not support except')
+    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
+    @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
+    @testing.fails_on('mysql', 'FIXME: unknown')
+    def test_except_style4(self):
+        # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
+        e = except_(
+            select([t1.c.col3]), # aaa, bbb, ccc
+            except_(
+                select([t2.c.col3]), # aaa, bbb, ccc
+                select([t3.c.col3], t3.c.col3 == 'ccc'), #ccc
+            ).alias().select()
+        )
+        
+        eq_(e.execute().fetchall(), [('ccc',)])
+        eq_(
+            e.alias().select().execute().fetchall(),
+            [('ccc',)]
+        )
+
     @testing.crashes('firebird', 'Does not support intersect')
     @testing.fails_on('mysql', 'FIXME: unknown')
-    def test_composite(self):
+    @testing.fails_on('sqlite', "sqlite can't handle leading parenthesis")
+    def test_intersect_unions(self):
+        u = intersect(
+            union(
+                select([t1.c.col3, t1.c.col4]),
+                select([t3.c.col3, t3.c.col4]),
+            ),
+            union(
+                select([t2.c.col3, t2.c.col4]),
+                select([t3.c.col3, t3.c.col4]),
+            ).alias().select()
+        )
+        wanted = [('aaa', 'ccc'), ('bbb', 'aaa'), ('ccc', 'bbb')]
+        found = self._fetchall_sorted(u.execute())
+
+        eq_(found, wanted)
+
+    @testing.crashes('firebird', 'Does not support intersect')
+    @testing.fails_on('mysql', 'FIXME: unknown')
+    def test_intersect_unions_2(self):
+        u = intersect(
+            union(
+                select([t1.c.col3, t1.c.col4]),
+                select([t3.c.col3, t3.c.col4]),
+            ).alias().select(),
+            union(
+                select([t2.c.col3, t2.c.col4]),
+                select([t3.c.col3, t3.c.col4]),
+            ).alias().select()
+        )
+        wanted = [('aaa', 'ccc'), ('bbb', 'aaa'), ('ccc', 'bbb')]
+        found = self._fetchall_sorted(u.execute())
+
+        eq_(found, wanted)
+    
+    @testing.crashes('firebird', 'Does not support intersect')
+    @testing.fails_on('mysql', 'FIXME: unknown')
+    def test_intersect(self):
         u = intersect(
             select([t2.c.col3, t2.c.col4]),
             union(
                 select([t1.c.col3, t1.c.col4]),
                 select([t2.c.col3, t2.c.col4]),
                 select([t3.c.col3, t3.c.col4]),
-            ).alias('foo').select()
+            ).alias().select()
         )
         wanted = [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         found = self._fetchall_sorted(u.execute())
@@ -1192,8 +1253,8 @@ class CompoundTest(TestBase):
                 select([t1.c.col3, t1.c.col4]),
                 select([t2.c.col3, t2.c.col4]),
                 select([t3.c.col3, t3.c.col4]),
-            ).alias('foo').select()
-        ).alias('bar')
+            ).alias().select()
+        ).alias()
 
         wanted = [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         found = self._fetchall_sorted(ua.select().execute())

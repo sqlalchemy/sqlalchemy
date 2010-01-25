@@ -3362,11 +3362,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                         (1, len(self.selects[0].c), n+1, len(s.c))
                 )
 
-            # unions group from left to right, so don't group first select
-            if n:
-                self.selects.append(s.self_group(self))
-            else:
-                self.selects.append(s)
+            self.selects.append(s.self_group(self))
 
         _SelectBaseMixin.__init__(self, **kwargs)
 

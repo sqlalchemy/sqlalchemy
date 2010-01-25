@@ -268,8 +268,9 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
             self.isdelete = compiled.isdelete
-            self.execution_options =\
-                    compiled.statement._execution_options.union(self.execution_options)
+            if compiled.statement._execution_options:
+                self.execution_options =\
+                        compiled.statement._execution_options.union(self.execution_options)
 
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]

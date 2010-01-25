@@ -63,25 +63,25 @@ Next, to tell the ``MetaData`` we'd actually like to create our selection of tab
 
     {sql}>>> metadata.create_all(engine) #doctest: +NORMALIZE_WHITESPACE
     PRAGMA table_info("users")
-    {}
+    ()
     PRAGMA table_info("addresses")
-    {}
+    ()
     CREATE TABLE users (
         id INTEGER NOT NULL, 
         name VARCHAR, 
         fullname VARCHAR, 
         PRIMARY KEY (id)
     )
-    {}
+    ()
     COMMIT
     CREATE TABLE addresses (
         id INTEGER NOT NULL, 
         user_id INTEGER, 
         email_address VARCHAR NOT NULL, 
         PRIMARY KEY (id), 
-         FOREIGN KEY(user_id) REFERENCES users (id)
+        FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    {}
+    ()
     COMMIT
 
 Users familiar with the syntax of CREATE TABLE may notice that the VARCHAR columns were generated without a length; on SQLite, this is a valid datatype, but on most databases it's not allowed.  So if running this tutorial on a database such as PostgreSQL or MySQL, and you wish to use SQLAlchemy to generate the tables, a "length" may be provided to the ``String`` type as below::
@@ -792,7 +792,7 @@ SQL functions are created using the ``func`` keyword, which generates functions 
     
 By "generates", we mean that **any** SQL function is created based on the word you choose::
 
-    >>> print func.xyz_my_goofy_function()
+    >>> print func.xyz_my_goofy_function() # doctest: +NORMALIZE_WHITESPACE
     xyz_my_goofy_function()    
     
 Certain function names are known by SQLAlchemy, allowing special behavioral rules to be applied.   Some for example are "ANSI" functions, which mean they don't get the parenthesis added after them, such as CURRENT_TIMESTAMP:
@@ -851,7 +851,6 @@ See also :attr:`sqlalchemy.sql.expression.func`.
 Unions and Other Set Operations 
 -------------------------------
 
-
 Unions come in two flavors, UNION and UNION ALL, which are available via module level functions:
 
 .. sourcecode:: pycon+sql
@@ -889,6 +888,33 @@ Also available, though not supported on all databases, are ``intersect()``, ``in
     WHERE addresses.email_address LIKE ?
     ['%@%.com', '%@msn.com']
     {stop}[(1, 1, u'jack@yahoo.com'), (4, 2, u'wendy@aol.com')]
+
+A common issue with so-called "compound" selectables arises due to the fact that they nest with parenthesis.  SQLite in particular doesn't like a statement that starts with parenthesis.  So when nesting a "compound" inside a "compound", it's often necessary to apply
+``.alias().select()`` to the first element of the outermost compound, if that element is also a compount.  For example, to nest a "union" and a "select" inside of "except\_", SQLite will want
+the "union" to be stated as a subquery:
+
+.. sourcecode:: pycon+sql
+
+    >>> u = except_(
+    ...    union(
+    ...         addresses.select(addresses.c.email_address.like('%@yahoo.com')),
+    ...         addresses.select(addresses.c.email_address.like('%@msn.com'))
+    ...     ).alias().select(),   # apply subquery here
+    ...    addresses.select(addresses.c.email_address.like('%@msn.com'))
+    ... )
+    {sql}>>> print conn.execute(u).fetchall()   # doctest: +NORMALIZE_WHITESPACE
+    SELECT anon_1.id, anon_1.user_id, anon_1.email_address 
+    FROM (SELECT addresses.id AS id, addresses.user_id AS user_id, 
+    addresses.email_address AS email_address FROM addresses 
+    WHERE addresses.email_address LIKE ? UNION SELECT addresses.id AS id, 
+    addresses.user_id AS user_id, addresses.email_address AS email_address 
+    FROM addresses WHERE addresses.email_address LIKE ?) AS anon_1 EXCEPT 
+    SELECT addresses.id, addresses.user_id, addresses.email_address 
+    FROM addresses 
+    WHERE addresses.email_address LIKE ?
+    ['%@yahoo.com', '%@msn.com', '%@msn.com']
+    {stop}[(1, 1, u'jack@yahoo.com')]
+
 
 Scalar Selects 
 --------------
