@@ -107,7 +107,7 @@ class Oracle_zxjdbcExecutionContext(OracleExecutionContext):
 
     def create_cursor(self):
         cursor = self._connection.connection.cursor()
-        cursor.cursor.datahandler = self.dialect.DataHandler(cursor.cursor.datahandler)
+        cursor.datahandler = self.dialect.DataHandler(cursor.datahandler)
         return cursor
 
 
