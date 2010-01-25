@@ -1488,6 +1488,53 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                 Engineer(name='vlad'), Engineer(name='wally')
             ]
         )
+    
+    def test_concrete_inline_non_polymorphic(self):
+        """test the example from the declarative docs."""
+        
+        class Person(Base, ComparableEntity):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        class Engineer(Person):
+            __tablename__ = 'engineers'
+            __mapper_args__ = {'concrete':True}
+            id = Column(Integer, primary_key=True)
+            primary_language = Column(String(50))
+            name = Column(String(50))
+
+        class Manager(Person):
+            __tablename__ = 'manager'
+            __mapper_args__ = {'concrete':True}
+            id = Column(Integer, primary_key=True)
+            golf_swing = Column(String(50))
+            name = Column(String(50))
+
+        Base.metadata.create_all()
+        sess = create_session()
+
+        e1 = Engineer(name="dilbert", primary_language="java")
+        e2 = Engineer(name="wally", primary_language="c++")
+        m1 = Manager(name="dogbert", golf_swing="fore!")
+        e3 = Engineer(name="vlad", primary_language="cobol") 
+
+        sess.add_all([e1, e2, m1, e3])
+        sess.flush()
+        sess.expunge_all()
+        eq_(
+            sess.query(Engineer).order_by(Engineer.name).all(),
+            [
+                Engineer(name='dilbert'), 
+                Engineer(name='vlad'), Engineer(name='wally')
+            ]
+        )
+        eq_(
+            sess.query(Manager).all(),
+            [
+                Manager(name='dogbert'), 
+            ]
+        )
         
         
 def _produce_test(inline, stringbased):
