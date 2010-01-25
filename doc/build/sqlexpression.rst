@@ -890,7 +890,7 @@ Also available, though not supported on all databases, are ``intersect()``, ``in
     {stop}[(1, 1, u'jack@yahoo.com'), (4, 2, u'wendy@aol.com')]
 
 A common issue with so-called "compound" selectables arises due to the fact that they nest with parenthesis.  SQLite in particular doesn't like a statement that starts with parenthesis.  So when nesting a "compound" inside a "compound", it's often necessary to apply
-``.alias().select()`` to the first element of the outermost compound, if that element is also a compount.  For example, to nest a "union" and a "select" inside of "except\_", SQLite will want
+``.alias().select()`` to the first element of the outermost compound, if that element is also a compound.  For example, to nest a "union" and a "select" inside of "except\_", SQLite will want
 the "union" to be stated as a subquery:
 
 .. sourcecode:: pycon+sql
