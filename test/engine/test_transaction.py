@@ -768,8 +768,8 @@ class TLTransactionTest(TestBase):
     def test_result_closing(self):
         """tests that contextual_connect is threadlocal"""
         
-        r1 = tlengine.execute("select 1")
-        r2 = tlengine.execute("select 1")
+        r1 = tlengine.execute(select([1]))
+        r2 = tlengine.execute(select([1]))
         row1 = r1.fetchone()
         row2 = r2.fetchone()
         r1.close()
@@ -791,9 +791,9 @@ class TLTransactionTest(TestBase):
     
     def test_dispose(self):
         eng = create_engine(testing.db.url, strategy='threadlocal')
-        result = eng.execute("select 1")
+        result = eng.execute(select([1]))
         eng.dispose()
-        eng.execute("select 1")
+        eng.execute(select([1]))
         
         
     @testing.requires.two_phase_transactions

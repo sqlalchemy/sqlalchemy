@@ -76,7 +76,7 @@ class PoolTest(PoolTestBase):
     def test_cursor_iterable(self):
         conn = testing.db.raw_connection()
         cursor = conn.cursor()
-        cursor.execute("select 1")
+        cursor.execute(select([1]).compile(testing.db))
         expected = [(1,)]
         for row in cursor:
             eq_(row, expected.pop(0))

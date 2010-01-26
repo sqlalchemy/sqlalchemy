@@ -279,6 +279,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                 ('mysql','oursql'),
                 ('mysql','zxjdbc'),
                 ('sqlite','pysqlite'),
+                ('oracle','zxjdbc'),
             )), \
             "name: %s driver %s returns_unicode_strings=%s" % \
                                         (testing.db.name, 

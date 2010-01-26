@@ -92,6 +92,7 @@ class ExecuteTest(TestBase):
         ])
 
 class ProxyConnectionTest(TestBase):
+
     @testing.fails_on('firebird', 'Data type unknown')
     def test_proxy(self):
         
@@ -185,10 +186,10 @@ class ProxyConnectionTest(TestBase):
         engine = engines.testing_engine(options={'proxy':TrackProxy()})
         conn = engine.connect()
         trans = conn.begin()
-        conn.execute("select 1")
+        conn.execute(select([1]))
         trans.rollback()
         trans = conn.begin()
-        conn.execute("select 1")
+        conn.execute(select([1]))
         trans.commit()
         
         eq_(track, ['begin', 'execute', 'cursor_execute', 
@@ -211,15 +212,15 @@ class ProxyConnectionTest(TestBase):
         
         trans = conn.begin()
         trans2 = conn.begin_nested()
-        conn.execute("select 1")
+        conn.execute(select([1]))
         trans2.rollback()
         trans2 = conn.begin_nested()
-        conn.execute("select 1")
+        conn.execute(select([1]))
         trans2.commit()
         trans.rollback()
         
         trans = conn.begin_twophase()
-        conn.execute("select 1")
+        conn.execute(select([1]))
         trans.prepare()
         trans.commit()
 
