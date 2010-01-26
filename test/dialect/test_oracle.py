@@ -599,7 +599,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
         metadata = MetaData()
         t = Table("z_test", metadata, Column('id', Integer, primary_key=True), 
-                 Column('data', Text), Column('bindata', Binary))
+                 Column('data', Text), Column('bindata', LargeBinary))
         t.create(engine)
         try:
             engine.execute(t.insert(), id=1, data='this is text', bindata='this is binary')
@@ -649,7 +649,7 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
         meta = MetaData(testing.db)
         binary_table = Table('binary_table', meta, 
            Column('id', Integer, primary_key=True),
-           Column('data', Binary)
+           Column('data', LargeBinary)
         )
         meta.create_all()
         stream = os.path.join(os.path.dirname(__file__), "..", 'binary_data_one.dat')
