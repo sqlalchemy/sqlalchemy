@@ -1,7 +1,7 @@
 from sqlalchemy.test.testing import eq_
 import re
 from sqlalchemy.interfaces import ConnectionProxy
-from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, bindparam
+from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, bindparam, select
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 import sqlalchemy as tsa
