@@ -279,6 +279,16 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.assert_compile(s, "SELECT t.a WHERE t.a = t2.d")
         
     def test_exists(self):
+        s = select([table1.c.myid]).where(table1.c.myid==5)
+        
+        self.assert_compile(exists(s), 
+                    "EXISTS (SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1)"
+                )
+        
+        self.assert_compile(exists(s.as_scalar()), 
+                    "EXISTS (SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1)"
+                )
+        
         self.assert_compile(exists([table1.c.myid], table1.c.myid==5).select(), "SELECT EXISTS (SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1)", params={'mytable_myid':5})
 
         self.assert_compile(select([table1, exists([1], from_obj=table2)]), "SELECT mytable.myid, mytable.name, mytable.description, EXISTS (SELECT 1 FROM myothertable) FROM mytable", params={})

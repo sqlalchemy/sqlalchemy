@@ -2680,7 +2680,7 @@ class _Exists(_UnaryExpression):
     _from_objects = []
 
     def __init__(self, *args, **kwargs):
-        if args and isinstance(args[0], _SelectBaseMixin):
+        if args and isinstance(args[0], (_SelectBaseMixin, _ScalarSelect)):
             s = args[0]
         else:
             if not args:
