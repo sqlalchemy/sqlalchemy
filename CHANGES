@@ -8,7 +8,7 @@ CHANGES
 =====
 - firebird
     - Fix reflection of default values with spurious spaces
-      (backport of r6257). [ticket:1582]
+      (backport of r6257 and r6699). [ticket:1582 and ticket:1663]
 
 0.5.8
 =====
