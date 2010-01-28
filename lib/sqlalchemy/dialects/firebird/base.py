@@ -249,14 +249,14 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
 
     def visit_create_sequence(self, create):
         """Generate a ``CREATE GENERATOR`` statement for the sequence."""
-        
+
         # no syntax for these
         # http://www.firebirdsql.org/manual/generatorguide-sqlsyntax.html
         if create.element.start is not None:
             raise NotImplemented("Firebird SEQUENCE doesn't support START WITH")
         if create.element.increment is not None:
             raise NotImplemented("Firebird SEQUENCE doesn't support INCREMENT BY")
-            
+
         if self.dialect._version_two:
             return "CREATE SEQUENCE %s" % self.preparer.format_sequence(create.element)
         else:
@@ -299,13 +299,13 @@ class FBDialect(default.DefaultDialect):
     sequences_optional = False
     supports_default_values = True
     postfetch_lastrowid = False
-    
+
     supports_native_boolean = False
-    
+
     requires_name_normalize = True
     supports_empty_insert = False
 
-    
+
     statement_compiler = FBCompiler
     ddl_compiler = FBDDLCompiler
     preparer = FBIdentifierPreparer
@@ -485,7 +485,7 @@ class FBDialect(default.DefaultDialect):
                 break
             name = self.normalize_name(row['fname'])
             orig_colname = row['fname']
-            
+
             # get the data type
             colspec = row['ftype'].rstrip()
             coltype = self.ischema_names.get(colspec)
@@ -511,9 +511,10 @@ class FBDialect(default.DefaultDialect):
             defvalue = None
             if row['fdefault'] is not None:
                 # the value comes down as "DEFAULT 'value'": there may be
-                # more than one space around the "DEFAULT" keyword
+                # more than one whitespace around the "DEFAULT" keyword
+                # (see also http://tracker.firebirdsql.org/browse/CORE-356)
                 defexpr = row['fdefault'].lstrip()
-                assert defexpr.startswith('DEFAULT '), "Unrecognized default value: %s" % defexpr
+                assert defexpr[:8].rstrip()=='DEFAULT', "Unrecognized default value: %s" % defexpr
                 defvalue = defexpr[8:].strip()
                 if defvalue == 'NULL':
                     # Redundant
@@ -524,7 +525,7 @@ class FBDialect(default.DefaultDialect):
                 'nullable' :  not bool(row['null_flag']),
                 'default' : defvalue
             }
-            
+
             if orig_colname.lower() == orig_colname:
                 col_d['quote'] = True
 

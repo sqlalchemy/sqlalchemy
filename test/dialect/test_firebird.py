@@ -51,7 +51,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con.execute('DROP GENERATOR gen_testtable_id')
 
     def test_table_is_reflected(self):
-        from sqlalchemy.types import Integer, Text, Binary, String, Date, Time, DateTime
+        from sqlalchemy.types import Integer, Text, BLOB, String, Date, Time, DateTime
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
         eq_(set(table.columns.keys()),
@@ -59,7 +59,8 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
                  'photo', 'd', 't', 'dt', 'redundant']),
             "Columns of reflected table didn't equal expected columns")
         eq_(table.c.question.primary_key, True)
-        eq_(table.c.question.sequence.name, 'gen_testtable_id')
+        # disabled per http://www.sqlalchemy.org/trac/ticket/1660
+        # eq_(table.c.question.sequence.name, 'gen_testtable_id')
         assert isinstance(table.c.question.type, Integer)
         eq_(table.c.question.server_default.arg.text, "42")
         assert isinstance(table.c.answer.type, String)
@@ -67,12 +68,134 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         eq_(table.c.answer.server_default.arg.text, "'no answer'")
         assert isinstance(table.c.remark.type, Text)
         eq_(table.c.remark.server_default.arg.text, "''")
-        assert isinstance(table.c.photo.type, Binary)
+        assert isinstance(table.c.photo.type, BLOB)
         assert table.c.redundant.server_default is None
         # The following assume a Dialect 3 database
         assert isinstance(table.c.d.type, Date)
         assert isinstance(table.c.t.type, Time)
         assert isinstance(table.c.dt.type, DateTime)
+
+
+class BuggyDomainReflectionTest(TestBase, AssertsExecutionResults):
+    "Test Firebird domains, see [ticket:1663] and http://tracker.firebirdsql.org/browse/CORE-356"
+
+    __only_on__ = 'firebird'
+
+    # NB: spacing and newlines are *significant* here!
+    # PS: this test is superfluous on recent FB, where the issue 356 is probably fixed...
+
+    AUTOINC_DM = """\
+CREATE DOMAIN AUTOINC_DM
+AS
+NUMERIC(18,0)
+"""
+
+    MONEY_DM = """\
+CREATE DOMAIN MONEY_DM
+AS
+NUMERIC(15,2)
+DEFAULT 0
+CHECK (VALUE BETWEEN -
+9999999999999.99 AND +9999999999999.99)
+"""
+
+    NOSI_DM = """\
+CREATE DOMAIN
+NOSI_DM AS
+CHAR(1)
+DEFAULT 'N'
+NOT NULL
+CHECK (VALUE IN
+('S', 'N'))
+"""
+
+    RIT_TESORERIA_CAPITOLO_DM = """\
+CREATE DOMAIN RIT_TESORERIA_CAPITOLO_DM
+AS
+VARCHAR(6)
+CHECK ((VALUE IS NULL) OR (VALUE =
+UPPER(VALUE)))
+"""
+
+    DEF_ERROR_TB = """\
+CREATE TABLE DEF_ERROR (
+RITENUTAMOV_ID AUTOINC_DM
+NOT NULL,
+RITENUTA MONEY_DM,
+INTERESSI MONEY_DM
+DEFAULT
+0,
+STAMPATO_MODULO NOSI_DM DEFAULT 'S',
+TESORERIA_CAPITOLO
+RIT_TESORERIA_CAPITOLO_DM)
+"""
+
+    DEF_ERROR_NODOM_TB = """\
+CREATE TABLE
+DEF_ERROR_NODOM (
+RITENUTAMOV_ID INTEGER NOT NULL,
+RITENUTA NUMERIC(15,2) DEFAULT 0,
+INTERESSI NUMERIC(15,2)
+DEFAULT
+0,
+STAMPATO_MODULO CHAR(1) DEFAULT 'S',
+TESORERIA_CAPITOLO
+CHAR(1))
+"""
+
+    DOM_ID = """
+CREATE DOMAIN DOM_ID INTEGER NOT NULL
+"""
+
+    TABLE_A = """\
+CREATE TABLE A (
+ID DOM_ID /* INTEGER NOT NULL */ DEFAULT 0 )
+"""
+
+    @classmethod
+    def setup_class(cls):
+        con = testing.db.connect()
+        con.execute(cls.AUTOINC_DM)
+        con.execute(cls.MONEY_DM)
+        con.execute(cls.NOSI_DM)
+        con.execute(cls.RIT_TESORERIA_CAPITOLO_DM)
+        con.execute(cls.DEF_ERROR_TB)
+        con.execute(cls.DEF_ERROR_NODOM_TB)
+
+        con.execute(cls.DOM_ID)
+        con.execute(cls.TABLE_A)
+
+    @classmethod
+    def teardown_class(cls):
+        con = testing.db.connect()
+        con.execute('DROP TABLE a')
+        con.execute('DROP DOMAIN dom_id')
+        con.execute('DROP TABLE def_error_nodom')
+        con.execute('DROP TABLE def_error')
+        con.execute('DROP DOMAIN rit_tesoreria_capitolo_dm')
+        con.execute('DROP DOMAIN nosi_dm')
+        con.execute('DROP DOMAIN money_dm')
+        con.execute('DROP DOMAIN autoinc_dm')
+
+    def test_tables_are_reflected_same_way(self):
+        metadata = MetaData(testing.db)
+
+        table_dom = Table('def_error', metadata, autoload=True)
+        table_nodom = Table('def_error_nodom', metadata, autoload=True)
+
+        eq_(table_dom.c.interessi.server_default.arg.text,
+            table_nodom.c.interessi.server_default.arg.text)
+        eq_(table_dom.c.ritenuta.server_default.arg.text,
+            table_nodom.c.ritenuta.server_default.arg.text)
+        eq_(table_dom.c.stampato_modulo.server_default.arg.text,
+            table_nodom.c.stampato_modulo.server_default.arg.text)
+
+    def test_intermixed_comment(self):
+        metadata = MetaData(testing.db)
+
+        table_a = Table('a', metadata, autoload=True)
+
+        eq_(table_a.c.id.server_default.arg.text, "0")
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
