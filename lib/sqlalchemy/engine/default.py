@@ -229,7 +229,6 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.dialect = dialect
         self._connection = self.root_connection = connection
         self.engine = connection.engine
-        self.execution_options = connection._execution_options
         
         if compiled_ddl is not None:
             self.compiled = compiled = compiled_ddl
@@ -268,9 +267,6 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
             self.isdelete = compiled.isdelete
-            if compiled.statement._execution_options:
-                self.execution_options =\
-                        compiled.statement._execution_options.union(self.execution_options)
 
             if not parameters:
                 self.compiled_parameters = [compiled.construct_params()]
@@ -301,18 +297,24 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.cursor = self.create_cursor()
 
     @util.memoized_property
-    def should_autocommit(self):
+    def execution_options(self):
         
         if self.compiled:
-            autocommit = self.compiled.statement._autocommit
-            if autocommit is expression.PARSE_AUTOCOMMIT:
+            return self.compiled.statement._execution_options.union(
+                            self._connection._execution_options)
+        else:
+            return self._connection._execution_options
+            
+    @util.memoized_property
+    def should_autocommit(self):
+        autocommit = self.execution_options.get('autocommit', expression.PARSE_AUTOCOMMIT)
+        if autocommit is expression.PARSE_AUTOCOMMIT:
+            if self.statement:
                 return self.should_autocommit_text(self.statement)
             else:
-                return autocommit
-        elif self.statement:
-            return self.should_autocommit_text(self.statement)
+                return False
         else:
-            return False
+            return autocommit
             
     @util.memoized_property
     def _is_explicit_returning(self):

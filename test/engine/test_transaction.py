@@ -369,7 +369,6 @@ class AutoRollbackTest(TestBase):
         users.drop(conn2)
         conn2.close()
 
-foo = None
 class ExplicitAutoCommitTest(TestBase):
     """test the 'autocommit' flag on select() and text() objects.
 
@@ -382,9 +381,13 @@ class ExplicitAutoCommitTest(TestBase):
     def setup_class(cls):
         global metadata, foo
         metadata = MetaData(testing.db)
-        foo = Table('foo', metadata, Column('id', Integer, primary_key=True), Column('data', String(100)))
+        foo = Table('foo', metadata, 
+                        Column('id', Integer, primary_key=True), 
+                        Column('data', String(100))
+                    )
         metadata.create_all()
-        testing.db.execute("create function insert_foo(varchar) returns integer as 'insert into foo(data) values ($1);select 1;' language sql")
+        testing.db.execute("create function insert_foo(varchar) returns integer "
+                            "as 'insert into foo(data) values ($1);select 1;' language sql")
 
     def teardown(self):
         foo.delete().execute().close()
@@ -417,6 +420,67 @@ class ExplicitAutoCommitTest(TestBase):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
 
+        conn1.execute(select([func.insert_foo('data1')]).execution_options(autocommit=True))
+        assert conn2.execute(select([foo.c.data])).fetchall() == [('data1',)]
+
+        conn1.close()
+        conn2.close()
+
+    def test_explicit_connection(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+
+        conn1.execution_options(autocommit=True).\
+                        execute(select([func.insert_foo('data1')]))
+        eq_(
+            conn2.execute(select([foo.c.data])).fetchall(),
+            [('data1',), ]
+        )
+
+        # connection supercedes statement
+        conn1.execution_options(autocommit=False).\
+                        execute(
+                            select([func.insert_foo('data2')]).
+                                execution_options(autocommit=True)
+                        )
+        eq_(
+            conn2.execute(select([foo.c.data])).fetchall(),
+            [('data1',), ]
+        )
+        
+        # ditto
+        conn1.execution_options(autocommit=True).\
+                        execute(
+                            select([func.insert_foo('data3')]).
+                                execution_options(autocommit=False)
+                        )
+        eq_(
+            conn2.execute(select([foo.c.data])).fetchall(),
+            [('data1',), ('data2', ), ('data3',)] 
+        )
+
+        conn1.close()
+        conn2.close()
+
+    def test_explicit_text(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+
+        conn1.execute(
+                    text("select insert_foo('moredata')").
+                    execution_options(autocommit=True)
+                )
+        assert conn2.execute(select([foo.c.data])).fetchall() == [('moredata',)]
+
+        conn1.close()
+        conn2.close()
+
+    @testing.uses_deprecated(r'autocommit on select\(\) is deprecated',
+                            r'autocommit\(\) is deprecated')
+    def test_explicit_compiled_deprecated(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+
         conn1.execute(select([func.insert_foo('data1')], autocommit=True))
         assert conn2.execute(select([foo.c.data])).fetchall() == [('data1',)]
 
@@ -426,7 +490,8 @@ class ExplicitAutoCommitTest(TestBase):
         conn1.close()
         conn2.close()
 
-    def test_explicit_text(self):
+    @testing.uses_deprecated(r'autocommit on text\(\) is deprecated')
+    def test_explicit_text_deprecated(self):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
 

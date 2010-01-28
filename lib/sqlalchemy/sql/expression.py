@@ -164,9 +164,8 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       Additional parameters include:
 
       autocommit
-        indicates this SELECT statement modifies the database, and
-        should be subject to autocommit behavior if no transaction
-        has been started.
+        Deprecated.  Use .execution_options(autocommit=<True|False>)
+        to set the autocommit option.
 
       prefixes
         a list of strings or :class:`ClauseElement` objects to include
@@ -805,9 +804,8 @@ def text(text, bind=None, *args, **kwargs):
       an optional connection or engine to be used for this text query.
 
     autocommit=True
-      indicates this SELECT statement modifies the database, and
-      should be subject to autocommit behavior if no transaction
-      has been started.
+      Deprecated.  Use .execution_options(autocommit=<True|False>)
+      to set the autocommit option.
 
     bindparams
       a list of :func:`bindparam()` instances which can be used to define
@@ -2215,9 +2213,26 @@ class _Executable(object):
 
     @_generative
     def execution_options(self, **kw):
-        """ Set non-SQL options for the statement, such as dialect-specific options.
-
-        The options available are covered in the respective dialect's section.
+        """ Set non-SQL options for the statement which take effect during execution.
+        
+        Current options include:
+        
+        * autocommit - when True, a COMMIT will be invoked after execution 
+          when executed in 'autocommit' mode, i.e. when an explicit transaction
+          is not begun on the connection.   Note that DBAPI connections by
+          default are always in a transaction - SQLAlchemy uses rules applied
+          to different kinds of statements to determine if COMMIT will be invoked
+          in order to provide its "autocommit" feature.  Typically, all 
+          INSERT/UPDATE/DELETE statements as well as CREATE/DROP statements 
+          have autocommit behavior enabled; SELECT constructs do not.  Use this
+          option when invokving a SELECT or other specific SQL construct
+          where COMMIT is desired (typically when calling stored procedures
+          and such).
+          
+        * stream_results - indicate to the dialect that results should be 
+          "streamed" and not pre-buffered, if possible.  This is a limitation
+          of many DBAPIs.  The flag is currently understood only by the
+          psycopg2 dialect.
 
         """
         self._execution_options = self._execution_options.union(kw)
@@ -2233,7 +2248,8 @@ class _TextClause(_Executable, ClauseElement):
     __visit_name__ = 'textclause'
 
     _bind_params_regex = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
-
+    _execution_options = _Executable._execution_options.union({'autocommit':PARSE_AUTOCOMMIT})
+    
     @property
     def _select_iterable(self):
         return (self,)
@@ -2242,11 +2258,16 @@ class _TextClause(_Executable, ClauseElement):
 
     def __init__(self, text = "", bind=None, 
                     bindparams=None, typemap=None, 
-                    autocommit=PARSE_AUTOCOMMIT):
+                    autocommit=None):
         self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
-        self._autocommit = autocommit
+
+        if autocommit is not None:
+            util.warn_deprecated("autocommit on text() is deprecated.  "
+                                        "Use .execution_options(autocommit=True)")
+            self._execution_options = self._execution_options.union({'autocommit':autocommit})
+        
         if typemap is not None:
             for key in typemap.keys():
                 typemap[key] = sqltypes.to_instance(typemap[key])
@@ -2856,7 +2877,6 @@ class Alias(FromClause):
         self.original = baseselectable
         self.supports_execution = baseselectable.supports_execution
         if self.supports_execution:
-            self._autocommit = baseselectable._autocommit
             self._execution_options = baseselectable._execution_options
         self.element = selectable
         if alias is None:
@@ -3229,10 +3249,13 @@ class _SelectBaseMixin(_Executable):
             order_by=None,
             group_by=None,
             bind=None,
-            autocommit=False):
+            autocommit=None):
         self.use_labels = use_labels
         self.for_update = for_update
-        self._autocommit = autocommit
+        if autocommit is not None:
+            util.warn_deprecated("autocommit on select() is deprecated.  "
+                                        "Use .execution_options(autocommit=True)")
+            self._execution_options = self._execution_options.union({'autocommit':autocommit})
         self._limit = limit
         self._offset = offset
         self._bind = bind
@@ -3276,10 +3299,12 @@ class _SelectBaseMixin(_Executable):
         return self.as_scalar().label(name)
 
     @_generative
+    @util.deprecated(message="autocommit() is deprecated. "
+                        "Use .execution_options(autocommit=True)")
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to True."""
-
-        self._autocommit = True
+        
+        self._execution_options = self._execution_options.union({'autocommit':True})
 
     def _generate(self):
         s = self.__class__.__new__(self.__class__)
@@ -3864,7 +3889,7 @@ class _UpdateBase(_Executable, ClauseElement):
 
     __visit_name__ = 'update_base'
 
-    _autocommit = True
+    _execution_options = _Executable._execution_options.union({'autocommit':True})
     
     def _generate(self):
         s = self.__class__.__new__(self.__class__)
@@ -4118,7 +4143,7 @@ class Delete(_UpdateBase):
 
 class _IdentifiedClause(_Executable, ClauseElement):
     __visit_name__ = 'identified'
-    _autocommit = False
+    _execution_options = _Executable._execution_options.union({'autocommit':False})
     quote = None
 
     def __init__(self, ident):

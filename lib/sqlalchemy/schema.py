@@ -2035,7 +2035,8 @@ class SchemaVisitor(visitors.ClauseVisitor):
 class DDLElement(expression._Executable, expression.ClauseElement):
     """Base class for DDL expression constructs."""
     
-    _autocommit = True
+    _execution_options = expression._Executable.\
+                            _execution_options.union({'autocommit':True})
 
     target = None
     on = None
