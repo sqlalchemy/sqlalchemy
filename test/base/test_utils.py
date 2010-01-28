@@ -77,6 +77,26 @@ class OrderedSetTest(TestBase):
         eq_(o.intersection(iter([3,4, 6])), util.OrderedSet([3, 4]))
         eq_(o.union(iter([3,4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
 
+class FrozenDictTest(TestBase):
+    def test_serialize(self):
+        
+        picklers = set()
+        try:
+            import cPickle
+            picklers.add(cPickle)
+        except ImportError:
+            pass
+        import pickle
+        picklers.add(pickle)
+        
+        d = util.frozendict({1:2, 3:4})
+        
+        # yes, this thing needs this much testing
+        for pickle in picklers:
+            for protocol in -1, 0, 1, 2:
+                print pickle.loads(pickle.dumps(d, protocol))
+        
+        
 class ColumnCollectionTest(TestBase):
     def test_in(self):
         cc = sql.ColumnCollection()

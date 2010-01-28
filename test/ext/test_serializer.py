@@ -69,22 +69,22 @@ class SerializeTest(MappedTest):
         )
     
     def test_tables(self):
-        assert serializer.loads(serializer.dumps(users), users.metadata, Session) is users
+        assert serializer.loads(serializer.dumps(users, -1), users.metadata, Session) is users
 
     def test_columns(self):
-        assert serializer.loads(serializer.dumps(users.c.name), users.metadata, Session) is users.c.name
+        assert serializer.loads(serializer.dumps(users.c.name, -1), users.metadata, Session) is users.c.name
         
     def test_mapper(self):
         user_mapper = class_mapper(User)
-        assert serializer.loads(serializer.dumps(user_mapper), None, None) is user_mapper
+        assert serializer.loads(serializer.dumps(user_mapper, -1), None, None) is user_mapper
     
     def test_attribute(self):
-        assert serializer.loads(serializer.dumps(User.name), None, None) is User.name
+        assert serializer.loads(serializer.dumps(User.name, -1), None, None) is User.name
     
     def test_expression(self):
         
         expr = select([users]).select_from(users.join(addresses)).limit(5)
-        re_expr = serializer.loads(serializer.dumps(expr), users.metadata, None)
+        re_expr = serializer.loads(serializer.dumps(expr, -1), users.metadata, None)
         eq_(
             str(expr), 
             str(re_expr)
@@ -100,7 +100,7 @@ class SerializeTest(MappedTest):
         q = Session.query(User).filter(User.name=='ed').options(eagerload(User.addresses))
         eq_(q.all(), [User(name='ed', addresses=[Address(id=2), Address(id=3), Address(id=4)])])
         
-        q2 = serializer.loads(serializer.dumps(q), users.metadata, Session)
+        q2 = serializer.loads(serializer.dumps(q, -1), users.metadata, Session)
         def go():
             eq_(q2.all(), [User(name='ed', addresses=[Address(id=2), Address(id=3), Address(id=4)])])
         self.assert_sql_count(testing.db, go, 1)
@@ -110,12 +110,12 @@ class SerializeTest(MappedTest):
         u1 = Session.query(User).get(8)
         
         q = Session.query(Address).filter(Address.user==u1).order_by(desc(Address.email))
-        q2 = serializer.loads(serializer.dumps(q), users.metadata, Session)
+        q2 = serializer.loads(serializer.dumps(q, -1), users.metadata, Session)
         
         eq_(q2.all(), [Address(email='ed@wood.com'), Address(email='ed@lala.com'), Address(email='ed@bettyboop.com')])
         
         q = Session.query(User).join(User.addresses).filter(Address.email.like('%fred%'))
-        q2 = serializer.loads(serializer.dumps(q), users.metadata, Session)
+        q2 = serializer.loads(serializer.dumps(q, -1), users.metadata, Session)
         eq_(q2.all(), [User(name='fred')])
         
         eq_(list(q2.values(User.id, User.name)), [(9, u'fred')])
@@ -128,13 +128,13 @@ class SerializeTest(MappedTest):
         q = Session.query(User, ualias).join((ualias, User.id < ualias.id)).filter(User.id<9).order_by(User.id, ualias.id)
         eq_(list(q.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9), (u8, u10)])
 
-        q2 = serializer.loads(serializer.dumps(q), users.metadata, Session)
+        q2 = serializer.loads(serializer.dumps(q, -1), users.metadata, Session)
         
         eq_(list(q2.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9), (u8, u10)])
 
     def test_any(self):
         r = User.addresses.any(Address.email=='x')
-        ser = serializer.dumps(r)
+        ser = serializer.dumps(r, -1)
         x = serializer.loads(ser, users.metadata)
         eq_(str(r), str(x))
         

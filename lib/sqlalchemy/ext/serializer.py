@@ -131,9 +131,9 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
     unpickler.persistent_load = persistent_load
     return unpickler
 
-def dumps(obj):
+def dumps(obj, protocol=0):
     buf = byte_buffer()
-    pickler = Serializer(buf)
+    pickler = Serializer(buf, protocol)
     pickler.dump(obj)
     return buf.getvalue()
     

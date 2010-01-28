@@ -154,6 +154,9 @@ class frozendict(dict):
     def __init__(self, *args):
         pass
 
+    def __reduce__(self):
+        return frozendict, (dict(self), )
+
     def union(self, d):
         if not self:
             return frozendict(d)
