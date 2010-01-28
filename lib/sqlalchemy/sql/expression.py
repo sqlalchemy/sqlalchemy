@@ -2598,7 +2598,7 @@ class _UnaryExpression(ColumnElement):
         else:
             return super(_UnaryExpression, self)._negate()
 
-    def self_group(self, against):
+    def self_group(self, against=None):
         if self.operator and operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
