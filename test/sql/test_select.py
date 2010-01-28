@@ -81,7 +81,11 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
         self.assert_compile(select([table1, table2]), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, \
 myothertable.othername FROM mytable, myothertable")
-
+    
+    def test_invalid_col_argument(self):
+        assert_raises(exc.ArgumentError, select, table1)
+        assert_raises(exc.ArgumentError, select, table1.c.myid)
+        
     def test_from_subquery(self):
         """tests placing select statements in the column clause of another select, for the
         purposes of selecting from the exported columns of that select."""

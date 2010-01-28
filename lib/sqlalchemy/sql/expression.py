@@ -3488,8 +3488,14 @@ class Select(_SelectBaseMixin, FromClause):
 
         self._correlate = set()
         self._froms = util.OrderedSet()
-
-        if columns:
+        
+        try:
+            cols_present = bool(columns)
+        except TypeError:
+            raise exc.ArgumentError("columns argument to select() must "
+                                "be a Python list or other iterable")
+            
+        if cols_present:
             self._raw_columns = []
             for c in columns:
                 c = _literal_as_column(c)
