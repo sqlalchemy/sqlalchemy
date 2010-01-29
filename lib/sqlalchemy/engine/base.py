@@ -732,7 +732,7 @@ class Connection(Connectable):
         self.engine = engine
         self.__connection = connection or engine.raw_connection()
         self.__transaction = None
-        self.__close_with_result = close_with_result
+        self.should_close_with_result = close_with_result
         self.__savepoint_seq = 0
         self.__branch = _branch
         self.__invalid = False
@@ -797,14 +797,6 @@ class Connection(Connectable):
                 self.__invalid = False
                 return self.__connection
             raise exc.InvalidRequestError("This Connection is closed")
-
-    @property
-    def should_close_with_result(self):
-        """Indicates if this Connection should be closed when a corresponding
-        ResultProxy is closed; this is essentially an auto-release mode.
-        """
-
-        return self.__close_with_result
 
     @property
     def info(self):
@@ -1080,7 +1072,7 @@ class Connection(Connectable):
     def _execute_default(self, default, multiparams, params):
         ctx = self.__create_execution_context()
         ret = ctx._exec_default(default)
-        if self.__close_with_result:
+        if self.should_close_with_result:
             self.close()
         return ret
 
@@ -1161,7 +1153,7 @@ class Connection(Connectable):
                 if cursor:
                     cursor.close()
                 self._autorollback()
-                if self.__close_with_result:
+                if self.should_close_with_result:
                     self.close()
             # Py3K
             #raise exc.DBAPIError.instance(statement, parameters, e, connection_invalidated=is_disconnect) from e

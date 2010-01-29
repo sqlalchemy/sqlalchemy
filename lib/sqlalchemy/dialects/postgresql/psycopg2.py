@@ -112,22 +112,20 @@ SERVER_SIDE_CURSOR_RE = re.compile(
 class PostgreSQL_psycopg2ExecutionContext(PGExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
-        stream_results_option = self.execution_options.get('stream_results')
-        is_server_side = (
-            # Enabled for this statement ...
-            (stream_results_option or
-             # ... or enabled for all statements
-             (self.dialect.server_side_cursors and
-              # ... and not explicitly disabled for this one.
-              (stream_results_option or stream_results_option is None))
-             ) and (
-                # But don't use SS-cursors when autocommit is on ...
-                (not self.should_autocommit and
-                 self.compiled and isinstance(self.compiled.statement, expression.Selectable))
-                or (
-                    # ... or if it's not even a SELECT.
-                    (not self.compiled or isinstance(self.compiled.statement, expression._TextClause))
-                    and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement))))
+        
+        if self.dialect.server_side_cursors:
+            is_server_side = \
+                self.execution_options.get('stream_results', True) and (
+                    (self.compiled and isinstance(self.compiled.statement, expression.Selectable) \
+                    or \
+                    (
+                        (not self.compiled or 
+                        isinstance(self.compiled.statement, expression._TextClause)) 
+                        and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement))
+                    )
+                )
+        else:
+            is_server_side = self.execution_options.get('stream_results', False)
 
         self.__is_server_side = is_server_side
         if is_server_side:

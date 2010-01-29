@@ -388,9 +388,9 @@ def to_instance(typeobj):
     if typeobj is None:
         return NULLTYPE
 
-    try:
+    if util.callable(typeobj):
         return typeobj()
-    except TypeError:
+    else:
         return typeobj
 
 def adapt_type(typeobj, colspecs):

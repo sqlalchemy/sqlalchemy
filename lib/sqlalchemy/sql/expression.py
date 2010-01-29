@@ -3925,7 +3925,8 @@ class _UpdateBase(_Executable, ClauseElement):
             if m:
                 self._returning = kwargs.pop(k)
                 util.warn_deprecated(
-                    "The %r argument is deprecated.  Please use statement.returning(col1, col2, ...)" % k
+                    "The %r argument is deprecated.  Please "
+                    "use statement.returning(col1, col2, ...)" % k
                 )
         return kwargs
     
@@ -4007,6 +4008,8 @@ class Insert(_ValuesBase):
     
     _prefixes = ()
     
+    kwargs = util.frozendict()
+    
     def __init__(self, 
                 table, 
                 values=None, 
@@ -4022,8 +4025,9 @@ class Insert(_ValuesBase):
         self._returning = returning
         if prefixes:
             self._prefixes = tuple([_literal_as_text(p) for p in prefixes])
-            
-        self.kwargs = self._process_deprecated_kw(kwargs)
+        
+        if kwargs:
+            self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self.select is not None:
