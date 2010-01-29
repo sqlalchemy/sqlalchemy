@@ -425,7 +425,12 @@ CHANGES
         result.inserted_primary_key
       * dialect.get_default_schema_name(connection) is now
         public via dialect.default_schema_name.
-            
+      * the "connection" argument from engine.transaction() and
+        engine.run_callable() is removed - Connection itself
+        now has those methods.   All four methods accept
+        *args and **kwargs which are passed to the given callable, 
+        as well as the operating connection.
+        
 - schema
     - the `__contains__()` method of `MetaData` now accepts
       strings or `Table` objects as arguments.  If given

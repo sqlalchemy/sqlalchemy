@@ -1,6 +1,7 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 import sys, time, threading
-from sqlalchemy import create_engine, MetaData, INT, VARCHAR, Sequence, select, Integer, String, func, text
+from sqlalchemy import create_engine, MetaData, INT, VARCHAR, Sequence, \
+                            select, Integer, String, func, text, exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 from sqlalchemy.test import TestBase, testing
@@ -73,7 +74,24 @@ class TransactionTest(TestBase):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
-
+    
+    def test_transaction_container(self):
+        
+        def go(conn, table, data):
+            for d in data:
+                conn.execute(table.insert(), d)
+            
+        testing.db.transaction(go, users, [dict(user_id=1, user_name='user1')])
+        eq_(testing.db.execute(users.select()).fetchall(), [(1, 'user1')])
+        
+        assert_raises(exc.DBAPIError, 
+            testing.db.transaction, go, users, [
+                {'user_id':2, 'user_name':'user2'},
+                {'user_id':1, 'user_name':'user3'},
+            ]
+        )
+        eq_(testing.db.execute(users.select()).fetchall(), [(1, 'user1')])
+        
     def test_nested_rollback(self):
         connection = testing.db.connect()
 

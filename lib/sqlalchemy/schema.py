@@ -397,9 +397,7 @@ class Table(SchemaItem, expression.TableClause):
         if bind is None:
             bind = _bind_or_error(self)
 
-        def do(conn):
-            return conn.dialect.has_table(conn, self.name, schema=self.schema)
-        return bind.run_callable(do)
+        return bind.run_callable(bind.dialect.has_table, self.name, schema=self.schema)
 
     def create(self, bind=None, checkfirst=False):
         """Issue a ``CREATE`` statement for this table.

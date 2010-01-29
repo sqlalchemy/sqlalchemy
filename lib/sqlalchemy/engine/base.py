@@ -1220,8 +1220,28 @@ class Connection(Connectable):
     def default_schema_name(self):
         return self.engine.dialect.get_default_schema_name(self)
 
-    def run_callable(self, callable_):
-        return callable_(self)
+    def transaction(self, callable_, *args, **kwargs):
+        """Execute the given function within a transaction boundary.
+
+        This is a shortcut for explicitly calling `begin()` and `commit()`
+        and optionally `rollback()` when exceptions are raised.  The
+        given `*args` and `**kwargs` will be passed to the function.
+        
+        See also transaction() on engine.
+        
+        """
+
+        trans = self.begin()
+        try:
+            ret = self.run_callable(callable_, *args, **kwargs)
+            trans.commit()
+            return ret
+        except:
+            trans.rollback()
+            raise
+
+    def run_callable(self, callable_, *args, **kwargs):
+        return callable_(self, *args, **kwargs)
 
 
 class Transaction(object):
@@ -1406,42 +1426,31 @@ class Engine(Connectable):
             if connection is None:
                 conn.close()
 
-    def transaction(self, callable_, connection=None, *args, **kwargs):
+    def transaction(self, callable_, *args, **kwargs):
         """Execute the given function within a transaction boundary.
 
         This is a shortcut for explicitly calling `begin()` and `commit()`
         and optionally `rollback()` when exceptions are raised.  The
-        given `*args` and `**kwargs` will be passed to the function, as
-        well as the Connection used in the transaction.
+        given `*args` and `**kwargs` will be passed to the function.
+        
+        The connection used is that of contextual_connect().
+        
+        See also the similar method on Connection itself.
+        
         """
-
-        if connection is None:
-            conn = self.contextual_connect()
-        else:
-            conn = connection
+        
+        conn = self.contextual_connect()
         try:
-            trans = conn.begin()
-            try:
-                ret = callable_(conn, *args, **kwargs)
-                trans.commit()
-                return ret
-            except:
-                trans.rollback()
-                raise
+            return conn.transaction(callable_, *args, **kwargs)
         finally:
-            if connection is None:
-                conn.close()
+            conn.close()
 
-    def run_callable(self, callable_, connection=None, *args, **kwargs):
-        if connection is None:
-            conn = self.contextual_connect()
-        else:
-            conn = connection
+    def run_callable(self, callable_, *args, **kwargs):
+        conn = self.contextual_connect()
         try:
-            return callable_(conn, *args, **kwargs)
+            return conn.run_callable(callable_, *args, **kwargs)
         finally:
-            if connection is None:
-                conn.close()
+            conn.close()
 
     def execute(self, statement, *multiparams, **params):
         connection = self.contextual_connect(close_with_result=True)
@@ -1506,7 +1515,7 @@ class Engine(Connectable):
                 conn.close()
 
     def has_table(self, table_name, schema=None):
-        return self.run_callable(lambda c: self.dialect.has_table(c, table_name, schema=schema))
+        return self.run_callable(self.dialect.has_table, table_name, schema)
 
     def raw_connection(self):
         """Return a DB-API connection."""
