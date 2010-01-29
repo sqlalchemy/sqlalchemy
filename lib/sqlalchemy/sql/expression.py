@@ -3890,6 +3890,7 @@ class _UpdateBase(_Executable, ClauseElement):
     __visit_name__ = 'update_base'
 
     _execution_options = _Executable._execution_options.union({'autocommit':True})
+    kwargs = util.frozendict()
     
     def _generate(self):
         s = self.__class__.__new__(self.__class__)
@@ -4008,8 +4009,6 @@ class Insert(_ValuesBase):
     
     _prefixes = ()
     
-    kwargs = util.frozendict()
-    
     def __init__(self, 
                 table, 
                 values=None, 
@@ -4075,7 +4074,8 @@ class Update(_ValuesBase):
             self._whereclause = None
         self.inline = inline
 
-        self.kwargs = self._process_deprecated_kw(kwargs)
+        if kwargs:
+            self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:
@@ -4124,7 +4124,8 @@ class Delete(_UpdateBase):
         else:
             self._whereclause = None
 
-        self.kwargs = self._process_deprecated_kw(kwargs)
+        if kwargs:
+            self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:
