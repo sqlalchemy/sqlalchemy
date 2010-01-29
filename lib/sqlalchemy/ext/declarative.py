@@ -585,14 +585,16 @@ class _GetColumns(object):
     def __init__(self, cls):
         self.cls = cls
     def __getattr__(self, key):
+        
         mapper = class_mapper(self.cls, compile=False)
-        if not mapper:
-            return getattr(self.cls, key)
-        else:
+        if mapper:
             prop = mapper.get_property(key)
             if not isinstance(prop, ColumnProperty):
-                raise exceptions.InvalidRequestError("Property %r is not an instance of ColumnProperty (i.e. does not correspnd directly to a Column)." % key)
-            return prop.columns[0]
+                raise exceptions.InvalidRequestError(
+                                        "Property %r is not an instance of"
+                                        " ColumnProperty (i.e. does not correspond"
+                                        " directly to a Column)." % key)
+        return getattr(self.cls, key)
 
 
 def _deferred_relation(cls, prop):

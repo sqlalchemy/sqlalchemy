@@ -156,6 +156,25 @@ class DeclarativeTest(DeclarativeTestBase):
             rel = relation("User", primaryjoin="User.addresses==Foo.id")
         assert_raises_message(exc.InvalidRequestError, "'addresses' is not an instance of ColumnProperty", compile_mappers)
 
+    def test_string_dependency_resolution_no_magic(self):
+        """test that full tinkery expressions work as written"""
+        
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+            addresses = relation("Address", 
+                primaryjoin="User.id==Address.user_id.prop.columns[0]")
+        
+        class Address(Base, ComparableEntity):
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True)
+            user_id = Column(Integer, ForeignKey('users.id'))
+        
+        compile_mappers()
+        eq_(
+            str(User.addresses.prop.primaryjoin), "users.id = addresses.user_id"
+        )
+        
     def test_string_dependency_resolution_in_backref(self):
         class User(Base, ComparableEntity):
             __tablename__ = 'users'
