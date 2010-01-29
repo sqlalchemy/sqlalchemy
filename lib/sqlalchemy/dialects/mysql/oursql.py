@@ -147,9 +147,8 @@ class MySQL_oursql(MySQLDialect):
 
         # FOUND_ROWS must be set in CLIENT_FLAGS to enable
         # supports_sane_rowcount.
-        opts['found_rows'] = True
-        # And sqlalchemy assumes that you get an exception when mysql reports a warning.
-        opts['raise_on_warnings'] = True
+        opts.setdefault('found_rows', True)
+
         return [[], opts]
     
     def _get_server_version_info(self, connection):
