@@ -728,6 +728,10 @@ CHANGES
 
     - an NCLOB type is added to the base types.
     
+    - use_ansi=False won't leak into the FROM/WHERE clause of
+      a statement that's selecting from a subquery that also
+      uses JOIN/OUTERJOIN.
+      
     - added native INTERVAL type to the dialect.  This supports
       only the DAY TO SECOND interval type so far due to lack 
       of support in cx_oracle for YEAR TO MONTH. [ticket:1467]

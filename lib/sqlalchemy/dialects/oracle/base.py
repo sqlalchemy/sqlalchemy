@@ -351,9 +351,14 @@ class OracleCompiler(compiler.SQLCompiler):
                 clauses.append(visitors.cloned_traverse(join.onclause, {}, {'binary':visit_binary}))
             else:
                 clauses.append(join.onclause)
-
+            
+            for j in join.left, join.right:
+                if isinstance(j, expression.Join):
+                    visit_join(j)
+                
         for f in froms:
-            visitors.traverse(f, {}, {'join':visit_join})
+            if isinstance(f, expression.Join):
+                visit_join(f)
         return sql.and_(*clauses)
 
     def visit_outer_join_column(self, vc):
@@ -404,7 +409,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     existingfroms = self.stack[-1]['from']
                 else:
                     existingfroms = None
-
+                
                 froms = select._get_display_froms(existingfroms)
                 whereclause = self._get_nonansi_join_whereclause(froms)
                 if whereclause is not None:

@@ -203,6 +203,24 @@ AND mytable.myid = myothertable.otherid(+)",
             "mytable.myid = myothertable.otherid ORDER BY mytable.name) WHERE "
             "ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1", dialect=oracle.dialect(use_ansi=False))
 
+        subq = select([table1]).\
+                    select_from(table1.outerjoin(table2, table1.c.myid==table2.c.otherid)).alias()
+        q = select([table3]).select_from(table3.outerjoin(subq, table3.c.userid==subq.c.myid))
+
+        self.assert_compile(q, "SELECT thirdtable.userid, thirdtable.otherstuff "
+                        "FROM thirdtable LEFT OUTER JOIN (SELECT mytable.myid AS myid, mytable.name"
+                        " AS name, mytable.description AS description "
+                        "FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = "           
+                        "myothertable.otherid) anon_1 ON thirdtable.userid = anon_1.myid",
+                                dialect=oracle.dialect(use_ansi=True))
+    
+        self.assert_compile(q, "SELECT thirdtable.userid, thirdtable.otherstuff "
+                            "FROM thirdtable, (SELECT mytable.myid AS myid, mytable.name AS name, "
+                            "mytable.description AS description FROM mytable, myothertable "
+                            "WHERE mytable.myid = myothertable.otherid(+)) anon_1 "
+                            "WHERE thirdtable.userid = anon_1.myid(+)", 
+                            dialect=oracle.dialect(use_ansi=False))
+        
     def test_alias_outer_join(self):
         address_types = table('address_types',
                     column('id'),
