@@ -1227,13 +1227,17 @@ class History(tuple):
         return self != HISTORY_BLANK
     
     def sum(self):
-        return self.added + self.unchanged + self.deleted
+        return (self.added or []) +\
+                (self.unchanged or []) +\
+                (self.deleted or [])
     
     def non_deleted(self):
-        return self.added + self.unchanged
+        return (self.added or []) +\
+                (self.unchanged or [])
     
     def non_added(self):
-        return self.unchanged + self.deleted
+        return (self.unchanged or []) +\
+                (self.deleted or [])
     
     def has_changes(self):
         return bool(self.added or self.deleted)

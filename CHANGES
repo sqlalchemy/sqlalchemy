@@ -91,6 +91,11 @@ CHANGES
        example of how to integrate Beaker with SQLAlchemy.  See
        the notes in the "examples" note below.
   
+  - the "save-update" cascade will now cascade the pending *removed*
+    values from a scalar or collection attribute into the new session 
+    during an add() operation.  This so that the flush() operation
+    will also delete or modify rows of those disconnected items.
+    
   - Using a "dynamic" loader with a "secondary" table now produces
     a query where the "secondary" table is *not* aliased.  This
     allows the secondary Table object to be used in the "order_by"

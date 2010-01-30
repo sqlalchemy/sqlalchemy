@@ -1049,7 +1049,8 @@ class Session(object):
         self._cascade_save_or_update(state)
 
     def _cascade_save_or_update(self, state):
-        for state, mapper in _cascade_unknown_state_iterator('save-update', state, halt_on=lambda c:c in self):
+        for state, mapper in _cascade_unknown_state_iterator(
+                                    'save-update', state, halt_on=lambda c:c in self):
             self._save_or_update_impl(state)
 
     def delete(self, instance):

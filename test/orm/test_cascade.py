@@ -2,7 +2,7 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, exc as sa_exc
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session, class_mapper, backref
+from sqlalchemy.orm import mapper, relation, create_session, sessionmaker, class_mapper, backref
 from sqlalchemy.orm import attributes, exc as orm_exc
 from sqlalchemy.test import testing
 from sqlalchemy.test.testing import eq_
@@ -56,7 +56,26 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         sess.add(o5)
         assert_raises_message(orm_exc.FlushError, "is an orphan", sess.flush)
 
-
+    @testing.resolve_artifact_names
+    def test_save_update_sends_pending(self):
+        """test that newly added and deleted collection items are cascaded on save-update"""
+        
+        sess = sessionmaker(expire_on_commit=False)()
+        o1, o2, o3 = Order(description='o1'), Order(description='o2'), Order(description='o3')
+        u = User(name='jack', orders=[o1, o2])
+        sess.add(u)
+        sess.commit()
+        sess.close()
+        
+        u.orders.append(o3)
+        u.orders.remove(o1)
+        
+        sess.add(u)
+        assert o1 in sess
+        assert o2 in sess
+        assert o3 in sess
+        sess.commit()
+        
     @testing.resolve_artifact_names
     def test_delete(self):
         sess = create_session()
@@ -400,6 +419,26 @@ class M2OCascadeTest(_base.MappedTest):
         sess.flush()
         assert prefs.count().scalar() == 2
         assert extra.count().scalar() == 2
+
+    @testing.resolve_artifact_names
+    def test_save_update_sends_pending(self):
+        """test that newly added and deleted scalar items are cascaded on save-update"""
+
+        sess = sessionmaker(expire_on_commit=False)()
+        p1, p2 = Pref(data='p1'), Pref(data='p2')
+        
+        
+        u = User(name='jack', pref=p1)
+        sess.add(u)
+        sess.commit()
+        sess.close()
+
+        u.pref = p2
+        
+        sess.add(u)
+        assert p1 in sess
+        assert p2 in sess
+        sess.commit()
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names

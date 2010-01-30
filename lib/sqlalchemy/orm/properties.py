@@ -694,17 +694,24 @@ class RelationProperty(StrategizedProperty):
         else:
             passive = attributes.PASSIVE_OFF
 
-        mapper = self.mapper.primary_mapper()
-        instances = state.value_as_iterable(self.key, passive=passive)
+        if type_ == 'save-update':
+            instances = attributes.get_state_history(state, self.key, passive=passive).sum()
+        else:
+            instances = state.value_as_iterable(self.key, passive=passive)
+        
         if instances:
             for c in instances:
-                if c is not None and c not in visited_instances and (halt_on is None or not halt_on(c)):
+                if c is not None and c not in visited_instances and \
+                                        (halt_on is None or not halt_on(c)):
                     if not isinstance(c, self.mapper.class_):
                         raise AssertionError("Attribute '%s' on class '%s' doesn't handle objects "
-                                    "of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
+                                    "of type '%s'" % (self.key, 
+                                                        str(self.parent.class_), 
+                                                        str(c.__class__)))
                     visited_instances.add(c)
 
-                    # cascade using the mapper local to this object, so that its individual properties are located
+                    # cascade using the mapper local to this 
+                    # object, so that its individual properties are located
                     instance_mapper = object_mapper(c)
                     yield (c, instance_mapper, attributes.instance_state(c))
 
