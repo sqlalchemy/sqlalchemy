@@ -1766,7 +1766,7 @@ When ``passive_deletes`` is applied, the ``children`` relation will not be loade
 Mutable Primary Keys / Update Cascades 
 ---------------------------------------
 
-When the primary key of an entity changes, related items which reference the primary key must also be updated as well.  For databases which enforce referential integrity, it's required to use the database's ON UPDATE CASCADE functionality in order to propagate primary key changes.  For those which don't, the ``passive_cascades`` flag can be set to ``False`` which instructs SQLAlchemy to issue UPDATE statements individually.  The ``passive_cascades`` flag can also be ``False`` in conjunction with ON UPDATE CASCADE functionality, although in that case it issues UPDATE statements unnecessarily.
+When the primary key of an entity changes, related items which reference the primary key must also be updated as well.  For databases which enforce referential integrity, it's required to use the database's ON UPDATE CASCADE functionality in order to propagate primary key changes.  For those which don't, the ``passive_updates`` flag can be set to ``False`` which instructs SQLAlchemy to issue UPDATE statements individually.  The ``passive_updates`` flag can also be ``False`` in conjunction with ON UPDATE CASCADE functionality, although in that case it issues UPDATE statements unnecessarily.
 
 A typical mutable primary key setup might look like:
 
