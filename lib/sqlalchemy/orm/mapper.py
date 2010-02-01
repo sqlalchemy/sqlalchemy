@@ -1400,16 +1400,25 @@ class Mapper(object):
                                     value_params[col] = history.added[0]
                                 else:
                                     params[col.key] = prop.get_col_value(col, history.added[0])
+
                                 if col in pks:
+                                    # TODO: there is one case we want to use history.added for
+                                    # the PK value - when we know that the PK has already been
+                                    # updated via CASCADE.   This information needs to get here
+                                    # somehow.  see [ticket:1671]
+                                    
                                     if history.deleted:
-                                        params[col._label] = prop.get_col_value(col, history.deleted[0])
+                                        # PK is changing - use the old value to locate the row
+                                        params[col._label] = \
+                                                prop.get_col_value(col, history.deleted[0])
                                         hasdata = True
                                     else:
                                         # row switch logic can reach us here
                                         # remove the pk from the update params so the update doesn't
                                         # attempt to include the pk in the update statement
                                         del params[col.key]
-                                        params[col._label] = prop.get_col_value(col, history.added[0])
+                                        params[col._label] = \
+                                                    prop.get_col_value(col, history.added[0])
                                 else:
                                     hasdata = True
                             elif col in pks:

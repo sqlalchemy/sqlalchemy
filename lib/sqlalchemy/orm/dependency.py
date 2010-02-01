@@ -267,7 +267,8 @@ class OneToManyDP(DependencyProcessor):
                                     isdelete=True)
                 if self._pks_changed(uowcommit, state):
                     if not history:
-                        history = uowcommit.get_attribute_history(state, self.key, passive=self.passive_updates)
+                        history = uowcommit.get_attribute_history(
+                                            state, self.key, passive=self.passive_updates)
                     if history:
                         for child in history.unchanged:
                             if child is not None:
