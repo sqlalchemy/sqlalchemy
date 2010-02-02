@@ -1206,11 +1206,11 @@ class Boolean(TypeEngine, SchemaType):
         """Construct a Boolean.
         
         :param create_constraint: defaults to True.  If the boolean 
-        is generated as an int/smallint, also create a CHECK constraint
-        on the table that ensures 1 or 0 as a value.
+          is generated as an int/smallint, also create a CHECK constraint
+          on the table that ensures 1 or 0 as a value.
         
         :param name: if a CHECK constraint is generated, specify
-        the name of the constraint.
+          the name of the constraint.
         
         """
         self.create_constraint = create_constraint
