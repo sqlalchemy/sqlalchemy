@@ -954,6 +954,12 @@ CHANGES
       can also be invoked deep within an object graph when lazily
       loading related objects.  See /examples/beaker_caching/README.
     
+0.5.9
+=====
+- sql
+    - Fixed erroneous self_group() call in expression package.
+      [ticket:1661]
+    
 0.5.8
 =====
 - sql
