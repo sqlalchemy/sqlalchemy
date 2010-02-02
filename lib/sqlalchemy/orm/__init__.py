@@ -358,6 +358,11 @@ def relation(argument, secondary=None, **kwargs):
       are expected and the database in use doesn't support CASCADE
       (i.e. SQLite, MySQL MyISAM tables).
 
+      Also see the passive_updates flag on ``mapper()``.
+      
+      A future SQLAlchemy release will provide a "detect" feature for
+      this flag.
+
     :param post_update:
       this indicates that the relationship should be handled by a
       second UPDATE statement after an INSERT or before a
@@ -671,6 +676,35 @@ def mapper(class_, local_table=None, *args, **params):
         Construct a ``Mapper`` that will define only the selection of
         instances, not their persistence.  Any number of non_primary mappers
         may be created for a particular class.
+
+      passive_updates
+        Indicates UPDATE behavior of foreign keys when a primary key changes 
+        on a joined-table inheritance or other joined table mapping.
+
+        When True, it is assumed that ON UPDATE CASCADE is configured on
+        the foreign key in the database, and that the database will
+        handle propagation of an UPDATE from a source column to
+        dependent rows.  Note that with databases which enforce
+        referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
+        ON UPDATE CASCADE is required for this operation.  The
+        relation() will update the value of the attribute on related
+        items which are locally present in the session during a flush.
+
+        When False, it is assumed that the database does not enforce
+        referential integrity and will not be issuing its own CASCADE
+        operation for an update.  The relation() will issue the
+        appropriate UPDATE statements to the database in response to the
+        change of a referenced key, and items locally present in the
+        session during a flush will also be refreshed.
+
+        This flag should probably be set to False if primary key changes
+        are expected and the database in use doesn't support CASCADE
+        (i.e. SQLite, MySQL MyISAM tables).
+        
+        Also see the passive_updates flag on ``relation()``.
+
+        A future SQLAlchemy release will provide a "detect" feature for
+        this flag.
 
       polymorphic_on
         Used with mappers in an inheritance relationship, a ``Column`` which

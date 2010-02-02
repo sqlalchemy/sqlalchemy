@@ -732,6 +732,7 @@ class DistinctPKTest(_base.MappedTest):
 
 class SyncCompileTest(_base.MappedTest):
     """test that syncrules compile properly on custom inherit conds"""
+    
     @classmethod
     def define_tables(cls, metadata):
         global _a_table, _b_table, _c_table
@@ -754,7 +755,8 @@ class SyncCompileTest(_base.MappedTest):
 
     def test_joins(self):
         for j1 in (None, _b_table.c.a_id==_a_table.c.id, _a_table.c.id==_b_table.c.a_id):
-            for j2 in (None, _b_table.c.a_id==_c_table.c.b_a_id, _c_table.c.b_a_id==_b_table.c.a_id):
+            for j2 in (None, _b_table.c.a_id==_c_table.c.b_a_id,
+                                    _c_table.c.b_a_id==_b_table.c.a_id):
                 self._do_test(j1, j2)
                 for t in reversed(_a_table.metadata.sorted_tables):
                     t.delete().execute().close()

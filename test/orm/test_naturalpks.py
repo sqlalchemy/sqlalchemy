@@ -587,13 +587,13 @@ class CascadeToFKPKTest(_base.MappedTest):
         class Address(_base.ComparableEntity):
             pass
     
-        
-    @testing.fails_on_everything_except('sqlite') # Ticket #1671
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_onetomany_passive(self):
         self._test_onetomany(True)
 
-    @testing.fails_on_everything_except('sqlite') # Ticket #1671
+    # PG etc. need passive=True to allow PK->PK cascade
+    @testing.fails_on_everything_except('sqlite')
     def test_onetomany_nonpassive(self):
         self._test_onetomany(False)
         
@@ -657,3 +657,115 @@ class CascadeToFKPKTest(_base.MappedTest):
         eq_(a1.username, 'jack')
         eq_(a2.username, 'jack')
         eq_(sa.select([addresses.c.username]).execute().fetchall(), [('jack',), ('jack', )])
+
+
+class JoinedInheritanceTest(_base.MappedTest):
+    """Test cascades of pk->pk/fk on joined table inh."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        if testing.against('oracle'):
+            fk_args = dict(deferrable=True, initially='deferred')
+        else:
+            fk_args = dict(onupdate='cascade')
+
+        Table('person', metadata,
+            Column('name', String(50), primary_key=True),
+            Column('type', String(50), nullable=False),
+            test_needs_fk=True)
+        
+        Table('engineer', metadata,
+            Column('name', String(50), ForeignKey('person.name', **fk_args), primary_key=True),
+            Column('primary_language', String(50)),
+            Column('boss_name', String(50), ForeignKey('manager.name', **fk_args)),
+            test_needs_fk=True
+        )
+
+        Table('manager', metadata,
+            Column('name', String(50), ForeignKey('person.name', **fk_args), primary_key=True),
+            Column('paperwork', String(50)),
+            test_needs_fk=True
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Person(_base.ComparableEntity):
+            pass
+        class Engineer(Person):
+            pass
+        class Manager(Person):
+            pass
+
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    def test_pk_passive(self):
+        self._test_pk(True)
+
+    # PG etc. need passive=True to allow PK->PK cascade
+    @testing.fails_on_everything_except('sqlite')
+    def test_pk_nonpassive(self):
+        self._test_pk(False)
+        
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    def test_fk_passive(self):
+        self._test_fk(True)
+        
+    # PG etc. need passive=True to allow PK->PK cascade
+    @testing.fails_on_everything_except('sqlite')
+    def test_fk_nonpassive(self):
+        self._test_fk(False)
+
+    @testing.resolve_artifact_names
+    def _test_pk(self, passive_updates):
+        mapper(Person, person, polymorphic_on=person.c.type, 
+                polymorphic_identity='person', passive_updates=passive_updates)
+        mapper(Engineer, engineer, inherits=Person, polymorphic_identity='engineer', properties={
+            'boss':relation(Manager, 
+                        primaryjoin=manager.c.name==engineer.c.boss_name,
+                        passive_updates=passive_updates
+                        )
+        })
+        mapper(Manager, manager, inherits=Person, polymorphic_identity='manager')
+
+        sess = sa.orm.sessionmaker()()
+
+        e1 = Engineer(name='dilbert', primary_language='java')
+        sess.add(e1)
+        sess.commit()
+        e1.name = 'wally'
+        e1.primary_language = 'c++'
+        sess.commit()
+        
+    @testing.resolve_artifact_names
+    def _test_fk(self, passive_updates):
+        mapper(Person, person, polymorphic_on=person.c.type, 
+                polymorphic_identity='person', passive_updates=passive_updates)
+        mapper(Engineer, engineer, inherits=Person, polymorphic_identity='engineer', properties={
+            'boss':relation(Manager, 
+                        primaryjoin=manager.c.name==engineer.c.boss_name,
+                        passive_updates=passive_updates
+                        )
+        })
+        mapper(Manager, manager, inherits=Person, polymorphic_identity='manager')
+        
+        sess = sa.orm.sessionmaker()()
+        
+        m1 = Manager(name='dogbert', paperwork='lots')
+        e1, e2 = \
+                Engineer(name='dilbert', primary_language='java', boss=m1),\
+                Engineer(name='wally', primary_language='c++', boss=m1)
+        sess.add_all([
+            e1, e2, m1
+        ])
+        sess.commit()
+        
+        m1.name = 'pointy haired'
+        e1.primary_language = 'scala'
+        e2.primary_language = 'cobol'
+        sess.commit()
+        
+    
+    
+    
+    

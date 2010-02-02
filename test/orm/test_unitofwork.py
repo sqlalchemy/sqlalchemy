@@ -2365,6 +2365,14 @@ class InheritingRowSwitchTest(_base.MappedTest):
         self.assert_sql_execution(testing.db, sess.flush,
             CompiledSQL("UPDATE parent SET pdata=:pdata WHERE parent.id = :parent_id",
                 {'pdata':'c2', 'parent_id':1}
+            ),
+            
+            # this fires as of [ticket:1362], since we synchronzize
+            # PK/FKs on UPDATES.  c2 is new so the history shows up as
+            # pure added, update occurs.  If a future change limits the
+            # sync operation during _save_obj().update, this is safe to remove again.
+            CompiledSQL("UPDATE child SET pid=:pid WHERE child.id = :child_id",
+                {'pid':1, 'child_id':1}
             )
         )
         

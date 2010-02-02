@@ -91,6 +91,17 @@ CHANGES
        example of how to integrate Beaker with SQLAlchemy.  See
        the notes in the "examples" note below.
   
+  - Primary key values can now be changed on a joined-table inheritance
+    object, and ON UPDATE CASCADE will be taken into account when
+    the flush happens.  Set the new "passive_updates" flag to False
+    on mapper() when using SQLite or MySQL/MyISAM. [ticket:1362]
+    
+  - flush() now detects when a primary key column was updated by
+    an ON UPDATE CASCADE operation from another primary key, and
+    can then locate the row for a subsequent UPDATE on the new PK
+    value.  This occurs when a relation() is there to establish
+    the relationship as well as passive_updates=True.  [ticket:1671]
+    
   - the "save-update" cascade will now cascade the pending *removed*
     values from a scalar or collection attribute into the new session 
     during an add() operation.  This so that the flush() operation

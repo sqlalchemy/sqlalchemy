@@ -229,7 +229,7 @@ class OneToManyDP(DependencyProcessor):
                     if self._pks_changed(uowcommit, state):
                         for child in history.unchanged:
                             self._synchronize(state, child, None, False, uowcommit)
-
+                            
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         if delete:
             # head object is being deleted, and we manage its list of child objects
@@ -237,7 +237,8 @@ class OneToManyDP(DependencyProcessor):
             if not self.post_update:
                 should_null_fks = not self.cascade.delete and not self.passive_deletes == 'all'
                 for state in deplist:
-                    history = uowcommit.get_attribute_history(state, self.key, passive=self.passive_deletes)
+                    history = uowcommit.get_attribute_history(
+                                                state, self.key, passive=self.passive_deletes)
                     if history:
                         for child in history.deleted:
                             if child is not None and self.hasparent(child) is False:
@@ -283,7 +284,9 @@ class OneToManyDP(DependencyProcessor):
         if clearkeys:
             sync.clear(dest, self.mapper, self.prop.synchronize_pairs)
         else:
-            sync.populate(source, self.parent, dest, self.mapper, self.prop.synchronize_pairs)
+            sync.populate(source, self.parent, dest, self.mapper, 
+                                    self.prop.synchronize_pairs, uowcommit,
+                                    self.passive_updates)
 
     def _pks_changed(self, uowcommit, state):
         return sync.source_modified(uowcommit, state, self.parent, self.prop.synchronize_pairs)
@@ -329,7 +332,10 @@ class DetectKeySwitch(DependencyProcessor):
                     attributes.instance_state(elem.dict[self.key]) in switchers
                 ]:
                 uowcommit.register_object(s)
-                sync.populate(attributes.instance_state(s.dict[self.key]), self.mapper, s, self.parent, self.prop.synchronize_pairs)
+                sync.populate(
+                            attributes.instance_state(s.dict[self.key]), 
+                            self.mapper, s, self.parent, self.prop.synchronize_pairs, 
+                            uowcommit, self.passive_updates)
 
     def _pks_changed(self, uowcommit, state):
         return sync.source_modified(uowcommit, state, self.mapper, self.prop.synchronize_pairs)
@@ -412,7 +418,10 @@ class ManyToOneDP(DependencyProcessor):
             sync.clear(state, self.parent, self.prop.synchronize_pairs)
         else:
             self._verify_canload(child)
-            sync.populate(child, self.mapper, state, self.parent, self.prop.synchronize_pairs)
+            sync.populate(child, self.mapper, state, 
+                            self.parent, self.prop.synchronize_pairs, uowcommit,
+                            self.passive_updates
+                            )
 
 class ManyToManyDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
@@ -517,8 +526,10 @@ class ManyToManyDP(DependencyProcessor):
             return
         self._verify_canload(child)
         
-        sync.populate_dict(state, self.parent, associationrow, self.prop.synchronize_pairs)
-        sync.populate_dict(child, self.mapper, associationrow, self.prop.secondary_synchronize_pairs)
+        sync.populate_dict(state, self.parent, associationrow, 
+                                        self.prop.synchronize_pairs)
+        sync.populate_dict(child, self.mapper, associationrow,
+                                        self.prop.secondary_synchronize_pairs)
 
     def _pks_changed(self, uowcommit, state):
         return sync.source_modified(uowcommit, state, self.parent, self.prop.synchronize_pairs)

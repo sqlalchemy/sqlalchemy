@@ -99,7 +99,7 @@ class UOWTransaction(object):
         self.attributes = {}
         
         self.processors = set()
-        
+    
     def get_attribute_history(self, state, key, passive=True):
         hashkey = ("history", state, key)
 
