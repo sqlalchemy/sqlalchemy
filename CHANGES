@@ -3,7 +3,12 @@
 =======
 CHANGES
 =======
-
+0.5.9
+=====
+- sql
+    - Fixed erroneous self_group() call in expression package.
+      [ticket:1661]
+      
 0.5.9
 =====
 - firebird
