@@ -829,6 +829,12 @@ class TLTransactionTest(TestBase):
         tlengine.begin()
         tlengine.execute(users.insert(), user_id=3, user_name='user3')
         tlengine.rollback()
+        
+        # TODO: removing this line, the test still tends to pass in most
+        # cases, except sporadically on PG.  this should be nailed down
+        # in TLEngine - removing this line should be guaranteed fail.
+        tlengine.rollback()
+        
         tlengine.execute(users.insert(), user_id=4, user_name='user4')
         tlengine.commit()
         tlengine.close()
