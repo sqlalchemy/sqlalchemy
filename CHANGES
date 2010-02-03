@@ -10,8 +10,8 @@ CHANGES
     http://www.sqlalchemy.org/trac/wiki/06Migration .
     This document is a work in progress.
 
-  - All bug fixes and feature enhancements from 0.5.6 and 
-    below are also included within 0.6.
+  - All bug fixes and feature enhancements from the most
+    recent 0.5 version and below are also included within 0.6.
 
   - Platforms targeted now include Python 2.4/2.5/2.6, Python
     3.1, Jython2.5.
