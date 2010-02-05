@@ -31,6 +31,11 @@ Main Documentation
 * :ref:`types` - Datatypes included with SQLAlchemy, their functions, as well as how to create your own types.
 * :ref:`plugins` - Included addons for SQLAlchemy
 
+Code Examples
+=============
+
+Working code examples are included in the SQLAlchemy distribution, and there are also usage recipes on the SQLAlchemy wiki.   A description of all the included example applications is at :ref:`examples_toplevel`.
+
 API Reference
 =============
 

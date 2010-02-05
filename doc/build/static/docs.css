@@ -149,6 +149,21 @@ li.toctree-l1 ul li li
 }
 
 
+div.note  {
+    background-color:#EEFFEF;
+}
+
+div.admonition {
+    border:1px solid #CCCCCC;
+    margin:5px 5px 5px 5px;
+    padding:5px 5px 5px 35px;
+    font-size:.9em;
+}
+
+div.admonition .admonition-title {
+    font-weight:bold;
+}
+
 .bottomnav {
     background-color:#FBFBEE;
     border:1px solid #CCCCCC;

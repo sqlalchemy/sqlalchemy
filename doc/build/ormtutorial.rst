@@ -56,11 +56,34 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
     ()
     COMMIT
 
-Users familiar with the syntax of CREATE TABLE may notice that the VARCHAR columns were generated without a length; on SQLite, this is a valid datatype, but on most databases it's not allowed.  So if running this tutorial on a database such as PostgreSQL or MySQL, and you wish to use SQLAlchemy to generate the tables, a "length" may be provided to the ``String`` type as below::
+.. note:: Users familiar with the syntax of CREATE TABLE may notice that the
+    VARCHAR columns were generated without a length; on SQLite and Postgresql,
+    this is a valid datatype, but on others, it's not allowed. So if running
+    this tutorial on one of those databases, and you wish to use SQLAlchemy to
+    issue CREATE TABLE, a "length" may be provided to the ``String`` type as
+    below::
 
-    Column('name', String(50))
+        Column('name', String(50))
 
-The length field on ``String``, as well as similar precision/scale fields available on ``Integer``, ``Numeric``, etc. are not referenced by SQLAlchemy other than when creating tables.
+    The length field on ``String``, as well as similar precision/scale fields
+    available on ``Integer``, ``Numeric``, etc. are not referenced by
+    SQLAlchemy other than when creating tables.
+
+    Additionally, Firebird and Oracle require sequences to generate new
+    primary key identifiers, and SQLAlchemy doesn't generate or assume these
+    without being instructed. For that, you use the ``Sequence`` construct::
+
+        from sqlalchemy import Sequence
+        Column('id', Integer, Sequence('user_id_seq'), primary_key=True)
+
+    A full, foolproof ``Table`` is therefore::
+
+        users_table = Table('users', metadata,
+           Column('id', Integer, Sequence('user_id_seq'), primary_key=True),
+           Column('name', String(50)),
+           Column('fullname', String(50)),
+           Column('password', String(12))
+        )
 
 Define a Python Class to be Mapped
 ===================================
