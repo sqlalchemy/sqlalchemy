@@ -1363,6 +1363,9 @@ class ColumnOperators(Operators):
     def __ge__(self, other):
         return self.operate(operators.ge, other)
 
+    def __neg__(self):
+        return self.operate(operators.neg)
+
     def concat(self, other):
         return self.operate(operators.concat_op, other)
 
@@ -1537,6 +1540,9 @@ class _CompareMixin(ColumnOperators):
 
         return self.__compare(op, ClauseList(*args).self_group(against=op), negate=negate_op)
 
+    def __neg__(self):
+        return _UnaryExpression(self, operator=operators.neg)
+        
     def startswith(self, other, escape=None):
         """Produce the clause ``LIKE '<other>%'``"""
 

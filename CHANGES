@@ -3,6 +3,10 @@
 =======
 CHANGES
 =======
+0.6beta2
+- sql
+  - Added math negation operator support, -x.
+
 0.6beta1
 ========
 - Major Release

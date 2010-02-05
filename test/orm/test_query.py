@@ -480,6 +480,10 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
     def test_in_on_relation_not_supported(self):
         assert_raises(NotImplementedError, Address.user.in_, [User(id=5)])
+    
+    def test_neg(self):
+        self._test(-User.id, "-users.id")
+        self._test(User.id + -User.id, "users.id + -users.id")
         
     def test_between(self):
         self._test(User.id.between('a', 'b'),

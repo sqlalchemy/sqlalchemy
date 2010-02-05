@@ -4,7 +4,7 @@
 """Defines operators used in SQL expressions."""
 
 from operator import (
-    and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq
+    and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg
     )
     
 # Py2K
@@ -98,6 +98,7 @@ _PRECEDENCE = {
     div: 7,
     # end Py2K
     mod: 7,
+    neg: 7,
     add: 6,
     sub: 6,
     concat_op: 6,

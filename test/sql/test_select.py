@@ -568,7 +568,20 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                 self.assert_(compiled == fwd_sql or compiled == rev_sql,
                              "\n'" + compiled + "'\n does not match\n'" +
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
-
+        
+        for (py_op, op) in (
+            (operator.neg, '-'),
+            (operator.inv, 'NOT '),
+        ):
+            for expr, sql in (
+                (table1.c.myid, "mytable.myid"),
+                (literal("foo"), ":param_1"),
+            ):
+            
+                compiled = str(py_op(expr))
+                sql = "%s%s" % (op, sql)
+                eq_(compiled, sql)
+        
         self.assert_compile(
          table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')),
          "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :myid_1 AND mytable.name != :name_1"

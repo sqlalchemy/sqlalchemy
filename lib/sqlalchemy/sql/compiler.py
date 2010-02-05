@@ -73,6 +73,7 @@ OPERATORS =  {
     # end Py2K
     operators.mod : ' % ',
     operators.truediv : ' / ',
+    operators.neg : '-',
     operators.lt : ' < ',
     operators.le : ' <= ',
     operators.ne : ' != ',
