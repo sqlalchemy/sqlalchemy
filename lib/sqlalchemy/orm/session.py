@@ -280,13 +280,13 @@ class SessionTransaction(object):
     def _restore_snapshot(self):
         assert self._is_transaction_boundary
 
+        for s in set(self._new).union(self.session._new):
+            self.session._expunge_state(s)
+
         for s in set(self._deleted).union(self.session._deleted):
             self.session._update_impl(s)
 
         assert not self.session._deleted
-
-        for s in set(self._new).union(self.session._new):
-            self.session._expunge_state(s)
 
         for s in self.session.identity_map.all_states():
             _expire_state(s, None, instance_dict=self.session.identity_map)

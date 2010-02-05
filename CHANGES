@@ -4,6 +4,15 @@
 CHANGES
 =======
 0.6beta2
+- orm
+  - Fixed bug in session.rollback() which involved not removing
+    formerly "pending" objects from the session before
+    re-integrating "deleted" objects, typically occured with
+    natural primary keys. If there was a primary key conflict
+    between them, the attach of the deleted would fail
+    internally. The formerly "pending" objects are now expunged
+    first. [ticket:1674]
+    
 - sql
   - Added math negation operator support, -x.
 
