@@ -557,7 +557,7 @@ class NonPKCascadeTest(_base.MappedTest):
         eq_(User(username='fred', fullname='jack'), u1)
 
 
-class CascadeToFKPKTest(_base.MappedTest):
+class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     """A primary key mutation cascades onto a foreign key that is itself a primary key."""
     
     @classmethod
@@ -577,6 +577,7 @@ class CascadeToFKPKTest(_base.MappedTest):
                        primary_key=True
                        ),
               Column('email', String(50), primary_key=True),
+              Column('etc', String(50)),
                  test_needs_fk=True
                  )
 
@@ -626,6 +627,40 @@ class CascadeToFKPKTest(_base.MappedTest):
         a1.username = 'jack'
         sess.flush()
         
+    @testing.resolve_artifact_names
+    def test_rowswitch_doesntfire(self):
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user':relation(User, passive_updates=True)
+        })
+
+        sess = create_session()
+        u1 = User(username='ed')
+        a1 = Address(user=u1, email='ed@host1')
+        
+        sess.add(u1)
+        sess.add(a1)
+        sess.flush()
+        
+        sess.delete(u1)
+        sess.delete(a1)
+
+        u2 = User(username='ed')
+        a2 = Address(user=u2, email='ed@host1', etc='foo')
+        sess.add(u2)
+        sess.add(a2)
+
+        from sqlalchemy.test.assertsql import CompiledSQL
+        
+        # test that the primary key columns of addresses are not
+        # being updated as well, since this is a row switch.
+        self.assert_sql_execution(testing.db,
+                        sess.flush,
+                        CompiledSQL("UPDATE addresses SET etc=:etc WHERE "
+                                        "addresses.username = :addresses_username AND"
+                                        " addresses.email = :addresses_email",
+                         {'etc': 'foo', 'addresses_username':'ed', 'addresses_email':'ed@host1'} ),
+                    )
         
         
     @testing.resolve_artifact_names

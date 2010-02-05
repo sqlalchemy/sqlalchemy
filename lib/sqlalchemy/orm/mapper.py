@@ -1408,19 +1408,18 @@ class Mapper(object):
                                     params[col.key] = prop.get_col_value(col, history.added[0])
 
                                 if col in pks:
-                                    # if passive_updates and sync detected this was a 
-                                    # pk->pk sync, use the new value to locate the row, 
-                                    # since the DB would already have set this
-                                    if ("pk_cascaded", state, col) in \
-                                                    uowtransaction.attributes:
-                                        params[col._label] = \
-                                                prop.get_col_value(col, history.added[0])
-                                        hasdata = True
-                                        
-                                    elif history.deleted:
-                                        # PK is changing - use the old value to locate the row
-                                        params[col._label] = \
-                                                prop.get_col_value(col, history.deleted[0])
+                                    if history.deleted:
+                                        # if passive_updates and sync detected this was a 
+                                        # pk->pk sync, use the new value to locate the row, 
+                                        # since the DB would already have set this
+                                        if ("pk_cascaded", state, col) in \
+                                                        uowtransaction.attributes:
+                                            params[col._label] = \
+                                                    prop.get_col_value(col, history.added[0])
+                                        else:
+                                            # use the old value to locate the row
+                                            params[col._label] = \
+                                                    prop.get_col_value(col, history.deleted[0])
                                         hasdata = True
                                     else:
                                         # row switch logic can reach us here

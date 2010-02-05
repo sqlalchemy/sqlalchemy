@@ -13,6 +13,11 @@ CHANGES
     internally. The formerly "pending" objects are now expunged
     first. [ticket:1674]
     
+  - Slight improvement to the fix for [ticket:1362] to not issue 
+    needless updates of the primary key column during a so-called
+    "row switch" operation, i.e. add + delete of two objects
+    with the same PK.
+    
 - sql
   - Added math negation operator support, -x.
 
