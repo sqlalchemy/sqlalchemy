@@ -21,6 +21,9 @@ CHANGES
 - sql
   - Added math negation operator support, -x.
 
+- mssql
+  - Re-established initial support for pymssql.
+  
 0.6beta1
 ========
 - Major Release
