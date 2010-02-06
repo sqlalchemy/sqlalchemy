@@ -22,7 +22,7 @@ class MSDialect_pymssql(MSDialect):
         return module
 
     def __init__(self, **params):
-        super(MSSQLDialect_pymssql, self).__init__(**params)
+        super(MSDialect_pymssql, self).__init__(**params)
         self.use_scope_identity = True
 
 
