@@ -6,11 +6,11 @@
 
 """sqlalchemy.orm.interfaces.LoaderStrategy implementations, and related MapperOptions."""
 
-import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import sql, util, log
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors, expression, operators
-from sqlalchemy.orm import mapper, attributes, interfaces
+from sqlalchemy.orm import mapper, attributes, interfaces, exc as orm_exc
 from sqlalchemy.orm.interfaces import (
     LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
     serialize_path, deserialize_path, StrategizedProperty
@@ -291,7 +291,7 @@ class LoadDeferredColumns(object):
 
         session = sessionlib._state_session(state)
         if session is None:
-            raise sa_exc.UnboundExecutionError(
+            raise orm_exc.DetachedInstanceError(
                         "Parent instance %s is not bound to a Session; "
                         "deferred load operation of attribute '%s' cannot proceed" % 
                         (mapperutil.state_str(state), self.key)
@@ -556,7 +556,7 @@ class LoadLazyAttribute(object):
 
         session = sessionlib._state_session(state)
         if session is None:
-            raise sa_exc.UnboundExecutionError(
+            raise orm_exc.DetachedInstanceError(
                 "Parent instance %s is not bound to a Session; "
                 "lazy load operation of attribute '%s' cannot proceed" % 
                 (mapperutil.state_str(state), self.key)

@@ -7,7 +7,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session, attributes, deferred
+from sqlalchemy.orm import mapper, relation, create_session, attributes, deferred, exc as orm_exc
 from test.orm import _base, _fixtures
 
 
@@ -59,7 +59,7 @@ class ExpireTest(_fixtures.FixtureTest):
         u = s.query(User).get(7)
         s.expunge_all()
 
-        assert_raises_message(sa.exc.InvalidRequestError, r"is not persistent within this Session", s.expire, u)
+        assert_raises_message(sa_exc.InvalidRequestError, r"is not persistent within this Session", s.expire, u)
 
     @testing.resolve_artifact_names
     def test_get_refreshes(self):
@@ -190,7 +190,7 @@ class ExpireTest(_fixtures.FixtureTest):
 
         sess.expire(u, attribute_names=['name'])
         sess.expunge(u)
-        assert_raises(sa.exc.UnboundExecutionError, getattr, u, 'name')
+        assert_raises(orm_exc.DetachedInstanceError, getattr, u, 'name')
 
     @testing.resolve_artifact_names
     def test_pending_raises(self):
@@ -200,7 +200,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess = create_session()
         u = User(id=15)
         sess.add(u)
-        assert_raises(sa.exc.InvalidRequestError, sess.expire, u, ['name'])
+        assert_raises(sa_exc.InvalidRequestError, sess.expire, u, ['name'])
 
     @testing.resolve_artifact_names
     def test_no_instance_key(self):
@@ -843,7 +843,7 @@ class RefreshTest(_fixtures.FixtureTest):
         s = create_session()
         u = s.query(User).get(7)
         s.expunge_all()
-        assert_raises_message(sa.exc.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
+        assert_raises_message(sa_exc.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
 
     @testing.resolve_artifact_names
     def test_refresh_expired(self):

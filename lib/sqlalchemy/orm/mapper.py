@@ -22,7 +22,7 @@ deque = __import__('collections').deque
 
 from sqlalchemy import sql, util, log, exc as sa_exc
 from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
-from sqlalchemy.orm import attributes, exc, sync
+from sqlalchemy.orm import attributes, sync, exc as orm_exc
 from sqlalchemy.orm.interfaces import (
     MapperProperty, EXT_CONTINUE, PropComparator
     )
@@ -1123,9 +1123,9 @@ class Mapper(object):
         except KeyError:
             prop = self._props.get(column.key, None)
             if prop:
-                raise exc.UnmappedColumnError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
+                raise orm_exc.UnmappedColumnError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
             else:
-                raise exc.UnmappedColumnError("No column %s is configured on mapper %s..." % (column, self))
+                raise orm_exc.UnmappedColumnError("No column %s is configured on mapper %s..." % (column, self))
 
     # TODO: improve names?
     def _get_state_attr_by_column(self, state, column):
@@ -1319,7 +1319,7 @@ class Mapper(object):
                     instance = uowtransaction.session.identity_map[instance_key]
                     existing = attributes.instance_state(instance)
                     if not uowtransaction.is_deleted(existing):
-                        raise exc.FlushError(
+                        raise orm_exc.FlushError(
                             "New instance %s with identity key %s conflicts with persistent instance %s" % 
                             (state_str(state), instance_key, state_str(existing)))
                     if self._should_log_debug:
@@ -1460,7 +1460,7 @@ class Mapper(object):
 
                 if connection.dialect.supports_sane_rowcount:
                     if rows != len(update):
-                        raise exc.ConcurrentModificationError(
+                        raise orm_exc.ConcurrentModificationError(
                                 "Updated rowcount %d does not match number of objects updated %d" %
                                 (rows, len(update)))
                         
@@ -1600,7 +1600,7 @@ class Mapper(object):
                 statement = table.delete(clause)
                 c = connection.execute(statement, del_objects)
                 if c.supports_sane_multi_rowcount() and c.rowcount != len(del_objects):
-                    raise exc.ConcurrentModificationError("Deleted rowcount %d does not match "
+                    raise orm_exc.ConcurrentModificationError("Deleted rowcount %d does not match "
                             "number of objects deleted %d" % (c.rowcount, len(del_objects)))
 
         for state, mapper, connection in tups:
@@ -1725,7 +1725,7 @@ class Mapper(object):
 
                 if not currentload and version_id_col is not None and context.version_check and \
                         self._get_state_attr_by_column(state, self.version_id_col) != row[version_id_col]:
-                    raise exc.ConcurrentModificationError(
+                    raise orm_exc.ConcurrentModificationError(
                             "Instance '%s' version of %s does not match %s" 
                             % (state_str(state), self._get_state_attr_by_column(state, self.version_id_col), row[version_id_col]))
             elif refresh_state:
@@ -1928,7 +1928,7 @@ def _load_scalar_attributes(state, attribute_names):
     mapper = _state_mapper(state)
     session = _state_session(state)
     if not session:
-        raise sa_exc.UnboundExecutionError("Instance %s is not bound to a Session; "
+        raise orm_exc.DetachedInstanceError("Instance %s is not bound to a Session; "
                     "attribute refresh operation cannot proceed" % (state_str(state)))
 
     has_key = _state_has_identity(state)
@@ -1948,4 +1948,4 @@ def _load_scalar_attributes(state, attribute_names):
 
     # if instance is pending, a refresh operation may not complete (even if PK attributes are assigned)
     if has_key and result is None:
-        raise exc.ObjectDeletedError("Instance '%s' has been deleted." % state_str(state))
+        raise orm_exc.ObjectDeletedError("Instance '%s' has been deleted." % state_str(state))

@@ -3,7 +3,7 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import datetime
 from sqlalchemy import exc as sa_exc
-from sqlalchemy.orm import attributes
+from sqlalchemy.orm import attributes, exc as orm_exc
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, SmallInteger
@@ -39,7 +39,7 @@ class LazyTest(_fixtures.FixtureTest):
         q = sess.query(User)
         u = q.filter(users.c.id == 7).first()
         sess.expunge(u)
-        assert_raises(sa_exc.InvalidRequestError, getattr, u, 'addresses')
+        assert_raises(orm_exc.DetachedInstanceError, getattr, u, 'addresses')
 
     @testing.resolve_artifact_names
     def test_orderby(self):

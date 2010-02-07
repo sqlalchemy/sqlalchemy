@@ -23,7 +23,9 @@ class FlushError(sa.exc.SQLAlchemyError):
 class UnmappedError(sa.exc.InvalidRequestError):
     """TODO"""
 
-
+class DetachedInstanceError(sa.exc.SQLAlchemyError):
+    """An attempt to access unloaded attributes on a mapped instance that is detached."""
+    
 class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""
 

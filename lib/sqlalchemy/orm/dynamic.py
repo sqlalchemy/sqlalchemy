@@ -12,7 +12,8 @@ basic add/delete mutation.
 """
 
 from sqlalchemy import log, util
-import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import exc as sa_exc
+from sqlalchemy.orm import exc as sa_exc
 from sqlalchemy.sql import operators
 from sqlalchemy.orm import (
     attributes, object_session, util as mapperutil, strategies, object_mapper
@@ -234,7 +235,7 @@ class AppenderMixin(object):
         if sess is None:
             sess = object_session(instance)
             if sess is None:
-                raise sa_exc.UnboundExecutionError(
+                raise orm_exc.DetachedInstanceError(
                     "Parent instance %s is not bound to a Session, and no "
                     "contextual session is established; lazy load operation "
                     "of attribute '%s' cannot proceed" % (

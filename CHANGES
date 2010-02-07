@@ -17,6 +17,11 @@ CHANGES
     needless updates of the primary key column during a so-called
     "row switch" operation, i.e. add + delete of two objects
     with the same PK.
+
+  - Now uses sqlalchemy.orm.exc.DetachedInstanceError when an 
+    attribute load or refresh action fails due to object
+    being detached from any Session.   UnboundExecutionError
+    is specific to engines bound to sessions and statements.
     
 - sql
   - Added math negation operator support, -x.
