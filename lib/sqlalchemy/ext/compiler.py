@@ -131,6 +131,14 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
   "column-like" elements. Anything that you'd place in the "columns" clause of
   a SELECT statement (as well as order by and group by) can derive from this -
   the object will automatically have Python "comparison" behavior.
+  
+  :class:`~sqlalchemy.sql.expression.ColumnElement` classes want to have a
+  ``type`` member which is expression's return type.  This can be established
+  at the instance level in the constructor, or at the class level if its
+  generally constant::
+  
+      class timestamp(ColumnElement):
+          type = TIMESTAMP()
  
 * :class:`~sqlalchemy.sql.expression.FunctionElement` - This is a hybrid of a
   ``ColumnElement`` and a "from clause" like object, and represents a SQL
