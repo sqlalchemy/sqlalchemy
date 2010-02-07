@@ -809,7 +809,7 @@ class SQLCompiler(engine.Compiled):
         
         need_pks = self.isinsert and \
                         not self.inline and \
-                        not self.statement._returning
+                        not stmt._returning
         
         implicit_returning = need_pks and \
                                 self.dialect.implicit_returning and \
