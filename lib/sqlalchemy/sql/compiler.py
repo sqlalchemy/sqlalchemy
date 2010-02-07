@@ -232,6 +232,10 @@ class SQLCompiler(engine.Compiled):
     def is_subquery(self):
         return len(self.stack) > 1
 
+    @property
+    def sql_compiler(self):
+        return self
+        
     def construct_params(self, params=None, _group_number=None):
         """return a dictionary of bind parameter keys and values"""
 

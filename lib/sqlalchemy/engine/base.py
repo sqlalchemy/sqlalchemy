@@ -628,6 +628,16 @@ class Compiled(object):
 
         self.string = self.process(self.statement)
 
+    @property
+    def sql_compiler(self):
+        """Return a Compiled that is capable of processing SQL expressions.
+        
+        If this compiler is one, it would likely just return 'self'.
+        
+        """
+        
+        raise NotImplementedError()
+        
     def process(self, obj, **kwargs):
         return obj._compiler_dispatch(self, **kwargs)
 
