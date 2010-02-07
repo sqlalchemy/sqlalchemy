@@ -20,7 +20,17 @@ CHANGES
     
 - sql
   - Added math negation operator support, -x.
-
+  
+  - FunctionElement subclasses are now directly executable the
+    same way any func.foo() construct is, with automatic 
+    SELECT being applied when passed to execute().
+    
+  - The "type" and "bind" keyword arguments of a func.foo() 
+    construct are now local to "func." constructs and are 
+    not part of the FunctionElement base class, allowing 
+    a "type" to be handled in a custom constructor or 
+    class-level variable.
+    
 - mssql
   - Re-established initial support for pymssql.
   

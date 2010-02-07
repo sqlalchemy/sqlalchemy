@@ -2481,15 +2481,13 @@ class _Case(ColumnElement):
 
 class FunctionElement(ColumnElement, FromClause):
     """Base for SQL function-oriented constructs."""
-
+    
     def __init__(self, *clauses, **kwargs):
-        self._bind = kwargs.get('bind', None)
         args = [_literal_as_binds(c, self.name) for c in clauses]
         self.clause_expr = ClauseList(
                                 operator=operators.comma_op,
                                  group_contents=True, *args).\
                                  self_group()
-        self.type = sqltypes.to_instance(kwargs.get('type_', None))
 
     @property
     def columns(self):
@@ -2535,6 +2533,9 @@ class Function(FunctionElement):
     def __init__(self, name, *clauses, **kw):
         self.packagenames = kw.pop('packagenames', None) or []
         self.name = name
+        self._bind = kw.get('bind', None)
+        self.type = sqltypes.to_instance(kw.get('type_', None))
+        
         FunctionElement.__init__(self, *clauses, **kw)
 
     def _bind_param(self, obj):

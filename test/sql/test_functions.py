@@ -196,15 +196,26 @@ class ExecuteTest(TestBase):
         assert isinstance(x.execute().scalar(), datetime.date)
 
     def test_conn_execute(self):
+        from sqlalchemy.sql.expression import FunctionElement
+        from sqlalchemy.ext.compiler import compiles
+        
+        class myfunc(FunctionElement):
+            type = DATE()
+        
+        @compiles(myfunc)
+        def compile(elem, compiler, **kw):
+            return compiler.process(func.current_date())
+
         conn = testing.db.connect()
         try:
             x = conn.execute(func.current_date()).scalar()
             y = conn.execute(func.current_date().select()).scalar()
             z = conn.scalar(func.current_date())
+            q = conn.scalar(myfunc())
         finally:
             conn.close()
-        assert (x == y == z) is True
-
+        assert (x == y == z == q) is True
+    
     @engines.close_first
     def test_update(self):
         """
