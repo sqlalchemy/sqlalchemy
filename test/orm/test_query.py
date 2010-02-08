@@ -586,9 +586,12 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         
         # this is actually not legal on most DBs since the subquery has no alias
         q1 = s.query(User).filter(User.name=='ed')
+
+
         self.assert_compile(
             select([q1]),
-            "SELECT id, name FROM (SELECT users.id AS id, users.name AS name FROM users WHERE users.name = :name_1)",
+            "SELECT users_id, users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users WHERE users.name = :name_1)",
             dialect=default.DefaultDialect()
         )
         
@@ -959,8 +962,27 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             [User(name='ed'), User(name='fred'), User(name='jack')]
         )
     
+    def test_statement_labels(self):
+        """test that label conflicts don't occur with joins etc."""
+        
+        s = create_session()
+        q1 = s.query(User, Address).join(User.addresses).\
+                                    filter(Address.email_address=="ed@wood.com")
+        q2 = s.query(User, Address).join(User.addresses).\
+                                    filter(Address.email_address=="jack@bean.com")
+        q3 = q1.union(q2).order_by(User.name)
+        
+        eq_(
+            q3.all(),
+            [
+                (User(name='ed'), Address(email_address="ed@wood.com")),
+                (User(name='jack'), Address(email_address="jack@bean.com")),
+            ]
+        )
+        
     def test_union_labels(self):
-        """test that column expressions translate during the _from_statement() portion of union(), others"""
+        """test that column expressions translate during 
+            the _from_statement() portion of union(), others"""
         
         s = create_session()
         q1 = s.query(User, literal("x"))
@@ -969,9 +991,10 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             q3,
-            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name, anon_1.anon_2 AS anon_1_anon_2 FROM "
-            "(SELECT users.id AS id, users.name AS name, :param_1 AS anon_2 FROM users "
-            "UNION SELECT users.id AS id, users.name AS name, 'y' FROM users) AS anon_1"
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name,"
+            " anon_1.anon_2 AS anon_1_anon_2 FROM (SELECT users.id AS users_id, users.name AS"
+            " users_name, :param_1 AS anon_2 FROM users UNION SELECT users.id AS users_id, "
+            "users.name AS users_name, 'y' FROM users) AS anon_1"
             , use_default_dialect = True
         )
 

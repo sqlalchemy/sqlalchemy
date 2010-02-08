@@ -355,7 +355,13 @@ class Query(object):
 
     @property
     def statement(self):
-        """The full SELECT statement represented by this Query."""
+        """The full SELECT statement represented by this Query.
+        
+        The statement by default will not have disambiguating labels
+        applied to the construct unless with_labels(True) is called
+        first.
+        
+        """
 
         return self._compile_context(labels=self._with_labels).\
                         statement._annotate({'_halt_adapt': True})
@@ -365,11 +371,15 @@ class Query(object):
 
         Eager JOIN generation within the query is disabled.
 
+        The statement by default will not have disambiguating labels
+        applied to the construct unless with_labels(True) is called
+        first.
+
         """
         return self.enable_eagerloads(False).statement.alias()
 
     def __clause_element__(self):
-        return self.enable_eagerloads(False).statement
+        return self.enable_eagerloads(False).with_labels().statement
 
     @_generative()
     def enable_eagerloads(self, value):
