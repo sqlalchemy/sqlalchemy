@@ -64,25 +64,25 @@ There are also third-party dialects available - currently IBM offers a DB2/Infor
 Downloads for each DBAPI at the time of this writing are as follows:
 
 * Supported Dialects
-  - PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_ `pg8000 <http://pybrary.net/pg8000/>`_
-  - PostgreSQL on Jython: `PostgreSQL JDBC Driver <http://jdbc.postgresql.org/>`_
-  - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) `pysqlite <http://initd.org/tracker/pysqlite>`_
-  - MySQL:   `MySQLdb (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_ `MySQL Connector/Python <https://launchpad.net/myconnpy>`_
-  - MySQL on Jython: `MySQL Connector/J JDBC driver <http://dev.mysql.com/downloads/connector/j/>`_
-  - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
-  - Oracle on Jython:  `Oracle JDBC Driver <http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html>`_
-  - Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
-  - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) `adodbapi <http://adodbapi.sourceforge.net/>`_  `pymssql <http://pymssql.sourceforge.net/>`_
-  - MS-SQL on Jython:  `jTDS JDBC Driver <http://jtds.sourceforge.net/>`_
+ - PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_ * `pg8000 <http://pybrary.net/pg8000/>`_
+ - PostgreSQL on Jython: `PostgreSQL JDBC Driver <http://jdbc.postgresql.org/>`_
+ - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) * `pysqlite <http://initd.org/tracker/pysqlite>`_
+ - MySQL:   `MySQLdb (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_ * `MySQL Connector/Python <https://launchpad.net/myconnpy>`_ * `OurSQL <http://packages.python.org/oursql/>`_
+ - MySQL on Jython: `MySQL Connector/J JDBC driver <http://dev.mysql.com/downloads/connector/j/>`_
+ - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
+ - Oracle on Jython:  `Oracle JDBC Driver <http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html>`_
+ - Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
+ - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) * `adodbapi <http://adodbapi.sourceforge.net/>`_ * `pymssql <http://pymssql.sourceforge.net/>`_
+ - MS-SQL on Jython:  `jTDS JDBC Driver <http://jtds.sourceforge.net/>`_
 
 * Experimental Dialects
-  - MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_
-  - Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
-  - Sybase:   TODO
-  - MAXDB:    `sapdb <http://www.sapdb.org/sapdbapi.html>`_
+ - MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_
+ - Informix:  `informixdb <http://informixdb.sourceforge.net/>`_
+ - Sybase:   TODO
+ - MAXDB:    `sapdb <http://www.sapdb.org/sapdbapi.html>`_
 
 * Third Party Dialects
-  - DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_
+ - DB2/Informix IDS: `ibm-db <http://code.google.com/p/ibm-db/>`_
 
 The SQLAlchemy Wiki contains a page of database notes, describing whatever quirks and behaviors have been observed.  Its a good place to check for issues with specific databases.  `Database Notes <http://www.sqlalchemy.org/trac/wiki/DatabaseNotes>`_
 
