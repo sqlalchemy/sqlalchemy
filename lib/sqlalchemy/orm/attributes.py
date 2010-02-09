@@ -590,7 +590,9 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
         if self.trackparent:
-            if previous is not value and previous not in (None, PASSIVE_NO_RESULT):
+            if (previous is not value and
+                previous is not None and
+                previous is not PASSIVE_NO_RESULT):
                 self.sethasparent(instance_state(previous), False)
 
         for ext in self.extensions:
@@ -823,7 +825,7 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
     def set(self, state, child, oldchild, initiator):
         if oldchild is child:
             return child
-        if oldchild not in (None, PASSIVE_NO_RESULT):
+        if oldchild is not None and oldchild is not PASSIVE_NO_RESULT:
             # With lazy=None, there's no guarantee that the full collection is
             # present when updating via a backref.
             old_state, old_dict = instance_state(oldchild), instance_dict(oldchild)
@@ -1244,10 +1246,16 @@ class History(tuple):
         
     def as_state(self):
         return History(
-            [c not in (None, PASSIVE_NO_RESULT) and instance_state(c) or None for c in self.added],
-            [c not in (None, PASSIVE_NO_RESULT) and instance_state(c) or None for c in self.unchanged],
-            [c not in (None, PASSIVE_NO_RESULT) and instance_state(c) or None for c in self.deleted],
-        )
+            [(c is not None and c is not PASSIVE_NO_RESULT)
+             and instance_state(c) or None
+             for c in self.added],
+            [(c is not None and c is not PASSIVE_NO_RESULT)
+             and instance_state(c) or None
+             for c in self.unchanged],
+            [(c is not None and c is not PASSIVE_NO_RESULT)
+             and instance_state(c) or None
+             for c in self.deleted],
+            )
     
     @classmethod
     def from_attribute(cls, attribute, state, current):
@@ -1271,7 +1279,9 @@ class History(tuple):
                 )
         else:
             if current is NO_VALUE:
-                if original not in [None, NEVER_SET, NO_VALUE]:
+                if (original is not None and
+                    original is not NEVER_SET and
+                    original is not NO_VALUE):
                     deleted = [original]
                 else:
                     deleted = ()

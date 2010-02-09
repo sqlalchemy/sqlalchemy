@@ -33,7 +33,10 @@ CHANGES
      returned statement, thus avoiding various SQL composition
      errors which can result from column name conflicts.
      [ticket:1676]
-     
+
+   - Fixed bug in attribute history that inadvertently invoked
+     __eq__ on mapped instances.
+
 - sql
   - Added math negation operator support, -x.
   
