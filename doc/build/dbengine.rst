@@ -71,7 +71,7 @@ Downloads for each DBAPI at the time of this writing are as follows:
  - MySQL on Jython: `MySQL Connector/J JDBC driver <http://dev.mysql.com/downloads/connector/j/>`_
  - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
  - Oracle on Jython:  `Oracle JDBC Driver <http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html>`_
- - Firebird:  `kinterbasdb <http://kinterbasdb.sourceforge.net/>`_
+ - Firebird:  `kinterbasdb <http://firebirdsql.org/index.php?op=devel&sub=python>`_
  - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) * `adodbapi <http://adodbapi.sourceforge.net/>`_ * `pymssql <http://pymssql.sourceforge.net/>`_
  - MS-SQL on Jython:  `jTDS JDBC Driver <http://jtds.sourceforge.net/>`_
 
