@@ -1084,7 +1084,7 @@ ischema_names = {
     'binary': BINARY,
     'bit': BIT,
     'blob': BLOB,
-    'boolean':BOOLEAN,
+    'boolean': BOOLEAN,
     'char': CHAR,
     'date': DATE,
     'datetime': DATETIME,
@@ -2154,7 +2154,6 @@ class MySQLTableDefinitionParser(object):
           Any column-bearing line from SHOW CREATE TABLE
         """
 
-        charset = state.charset
         spec = None
         m = self._re_column.match(line)
         if m:
@@ -2178,6 +2177,8 @@ class MySQLTableDefinitionParser(object):
         if type_ == 'tinyint' and args == '1':
             type_ = 'boolean'
             args = None
+            spec['unsigned'] = None
+            spec['zerofill'] = None
 
         try:
             col_type = self.dialect.ischema_names[type_]

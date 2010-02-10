@@ -359,12 +359,14 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                            Column('b1', BOOLEAN),
                            Column('b2', Boolean),
                            Column('b3', mysql.MSTinyInteger(1)),
-                           Column('b4', mysql.MSTinyInteger))
+                           Column('b4', mysql.MSTinyInteger(1, unsigned=True)),
+                           Column('b5', mysql.MSTinyInteger))
 
         eq_(colspec(bool_table.c.b1), 'b1 BOOL')
         eq_(colspec(bool_table.c.b2), 'b2 BOOL')
         eq_(colspec(bool_table.c.b3), 'b3 TINYINT(1)')
-        eq_(colspec(bool_table.c.b4), 'b4 TINYINT')
+        eq_(colspec(bool_table.c.b4), 'b4 TINYINT(1) UNSIGNED')
+        eq_(colspec(bool_table.c.b5), 'b5 TINYINT')
 
         for col in bool_table.c:
             self.assert_(repr(col))
@@ -389,22 +391,23 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 table.delete().execute().close()
 
 
-            roundtrip([None, None, None, None])
-            roundtrip([True, True, 1, 1])
-            roundtrip([False, False, 0, 0])
-            roundtrip([True, True, True, True], [True, True, 1, 1])
-            roundtrip([False, False, 0, 0], [False, False, 0, 0])
+            roundtrip([None, None, None, None, None])
+            roundtrip([True, True, 1, 1, 1])
+            roundtrip([False, False, 0, 0, 0])
+            roundtrip([True, True, True, True, True], [True, True, 1, 1, 1])
+            roundtrip([False, False, 0, 0, 0], [False, False, 0, 0, 0])
 
             meta2 = MetaData(testing.db)
             # replace with reflected
             table = Table('mysql_bool', meta2, autoload=True)
             eq_(colspec(table.c.b3), 'b3 BOOL')
+            eq_(colspec(table.c.b4), 'b4 BOOL')
 
-            roundtrip([None, None, None, None])
-            roundtrip([True, True, 1, 1], [True, True, True, 1])
-            roundtrip([False, False, 0, 0], [False, False, False, 0])
-            roundtrip([True, True, True, True], [True, True, True, 1])
-            roundtrip([False, False, 0, 0], [False, False, False, 0])
+            roundtrip([None, None, None, None, None])
+            roundtrip([True, True, 1, 1, 1], [True, True, True, True, 1])
+            roundtrip([False, False, 0, 0, 0], [False, False, False, False, 0])
+            roundtrip([True, True, True, True, True], [True, True, True, True, 1])
+            roundtrip([False, False, 0, 0, 0], [False, False, False, False, 0])
         finally:
             meta.drop_all()
 

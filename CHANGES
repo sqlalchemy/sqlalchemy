@@ -56,7 +56,10 @@ CHANGES
   - Fixed reflection bug whereby when COLLATE was present, 
     nullable flag and server defaults would not be reflected.
     [ticket:1655]
-    
+
+  - Fixed reflection of TINYINT(1) "boolean" columns defined with
+    integer flags like UNSIGNED.
+
 - mssql
   - Re-established initial support for pymssql.
   
