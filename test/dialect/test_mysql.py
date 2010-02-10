@@ -734,14 +734,14 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
 
     def test_default_reflection(self):
         """Test reflection of column defaults."""
-
+        from sqlalchemy.dialects.mysql import VARCHAR
+        
         def_table = Table('mysql_def', MetaData(testing.db),
-            Column('c1', String(10), DefaultClause('')),
+            Column('c1', VARCHAR(10, collation='utf8_unicode_ci'), DefaultClause(''), nullable=False),
             Column('c2', String(10), DefaultClause('0')),
             Column('c3', String(10), DefaultClause('abc')),
             Column('c4', TIMESTAMP, DefaultClause('2009-04-05 12:00:00')),
             Column('c5', TIMESTAMP),
-            
         )
 
         def_table.create()
