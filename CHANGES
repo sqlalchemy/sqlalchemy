@@ -49,7 +49,9 @@ CHANGES
     not part of the FunctionElement base class, allowing 
     a "type" to be handled in a custom constructor or 
     class-level variable.
-
+    
+  - Restored the keys() method to ResultProxy.
+  
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
     nullable flag and server defaults would not be reflected.

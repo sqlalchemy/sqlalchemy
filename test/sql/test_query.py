@@ -645,7 +645,9 @@ class QueryTest(TestBase):
 
     def test_keys(self):
         users.insert().execute(user_id=1, user_name='foo')
-        r = users.select().execute().first()
+        r = users.select().execute()
+        eq_([x.lower() for x in r.keys()], ['user_id', 'user_name'])
+        r = r.first()
         eq_([x.lower() for x in r.keys()], ['user_id', 'user_name'])
 
     def test_items(self):

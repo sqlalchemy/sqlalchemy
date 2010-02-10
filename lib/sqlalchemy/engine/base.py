@@ -1859,7 +1859,14 @@ class ResultProxy(object):
             self._metadata = None
         else:
             self._metadata = ResultMetaData(self, metadata)
-
+        
+    def keys(self):
+        """Return the current set of string keys for rows."""
+        if self._metadata:
+            return self._metadata.keys
+        else:
+            return []
+        
     @util.memoized_property
     def rowcount(self):
         """Return the 'rowcount' for this result.
