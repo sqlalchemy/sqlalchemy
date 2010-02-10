@@ -8,9 +8,10 @@ CHANGES
 - sql
     - Fixed erroneous self_group() call in expression package.
       [ticket:1661]
-      
-0.5.9
-=====
+
+- mysql
+    - backported collate reflection fix from [ticket:1655]
+
 - firebird
     - Fix reflection of default values with spurious spaces
       (backport of r6257 and r6699). [ticket:1582 and ticket:1663]

@@ -639,9 +639,10 @@ class TypesTest(TestBase, AssertsExecutionResults):
 
     def test_default_reflection(self):
         """Test reflection of column defaults."""
-
+        from sqlalchemy.databases.mysql import MSString
+        
         def_table = Table('mysql_def', MetaData(testing.db),
-            Column('c1', String(10), DefaultClause('')),
+            Column('c1', MSString(10, collation='utf8_unicode_ci'), DefaultClause(''), nullable=False),
             Column('c2', String(10), DefaultClause('0')),
             Column('c3', String(10), DefaultClause('abc')))
 
