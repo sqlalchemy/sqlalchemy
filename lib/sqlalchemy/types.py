@@ -524,28 +524,33 @@ class String(Concatenable, TypeEngine):
 
             if dialect.supports_unicode_binds and assert_unicode:
                 def process(value):
-                    if not isinstance(value, (unicode, NoneType)):
+                    if value is None or isinstance(value, unicode):
+                        return value
+                    else:
                         if assert_unicode == 'warn':
                             util.warn("Unicode type received non-unicode bind "
                                       "param value %r" % value)
                             return value
                         else:
-                            raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
-                    else:
-                        return value
+                            raise exc.InvalidRequestError(
+                                "Unicode type received non-unicode bind "
+                                "param value %r" % value)
             elif dialect.supports_unicode_binds and self.convert_unicode != 'force':
                 return None
             else:
+                encoder = codecs.getencoder(dialect.encoding)
                 def process(value):
                     if isinstance(value, unicode):
-                        return value.encode(dialect.encoding)
-                    elif assert_unicode and not isinstance(value, (unicode, NoneType)):
+                        return encoder(value)[0]
+                    elif assert_unicode and value is not None:
                         if assert_unicode == 'warn':
                             util.warn("Unicode type received non-unicode bind "
                                       "param value %r" % value)
                             return value
                         else:
-                            raise exc.InvalidRequestError("Unicode type received non-unicode bind param value %r" % value)
+                            raise exc.InvalidRequestError(
+                                "Unicode type received non-unicode bind "
+                                "param value %r" % value)
                     else:
                         return value
             return process
