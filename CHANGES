@@ -55,6 +55,23 @@ CHANGES
     
   - Restored the keys() method to ResultProxy.
   
+  - The type/expression system now does a more complete job
+    of determining the return type from an expression
+    as well as the adaptation of the Python operator into 
+    a SQL operator, based on the full left/right/operator
+    of the given expression.  In particular
+    the date/time/interval system created for Postgresql
+    EXTRACT in [ticket:1647] has now been generalized into
+    the type system.   The previous behavior which often
+    occured of an expression "column + literal" forcing
+    the type of "literal" to be the same as that of "column"
+    will now usually not occur - the type of 
+    "literal" is first derived from the Python type of the 
+    literal, assuming standard native Python types + date 
+    types, before falling back to that of the known type
+    on the other side of the expression.  Also part
+    of [ticket:1683].
+    
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
     nullable flag and server defaults would not be reflected.

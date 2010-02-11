@@ -113,6 +113,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
         for field in 'year', 'month', 'day', 'epoch', 'hour':
             for expr, compiled_expr in [
+
                 ( t.c.col1, "t.col1 :: timestamp" ),
                 ( t.c.col2, "t.col2 :: date" ),
                 ( t.c.col3, "t.col3 :: time" ),

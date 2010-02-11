@@ -57,6 +57,14 @@ class AdaptTest(TestBase):
             
 class TypeAffinityTest(TestBase):
     def test_type_affinity(self):
+        for type_, affin in [
+            (String(), String),
+            (VARCHAR(), String),
+            (Date(), Date),
+            (LargeBinary(), types._Binary)
+        ]:
+            eq_(type_._type_affinity, affin)
+            
         for t1, t2, comp in [
             (Integer(), SmallInteger(), True),
             (Integer(), String(), False),
@@ -536,7 +544,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
 class ExpressionTest(TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
-        global test_table, meta
+        global test_table, meta, MyCustomType
 
         class MyCustomType(types.UserDefinedType):
             def get_col_spec(self):
@@ -570,7 +578,10 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
     def test_control(self):
         assert testing.db.execute("select avalue from test").scalar() == 250
 
-        assert test_table.select().execute().fetchall() == [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
+        eq_(
+            test_table.select().execute().fetchall(),
+            [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
+        )
 
     def test_bind_adapt(self):
         expr = test_table.c.atimestamp == bindparam("thedate")
@@ -597,6 +608,12 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         expr = test_table.c.avalue + 40
         assert expr.type.__class__ is test_table.c.avalue.type.__class__
 
+        # value here is calculated as (250 - 40) / 10 = 21
+        # because "40" is an integer, not an "avalue"
+        assert testing.db.execute(select([expr.label('foo')])).scalar() == 21
+
+        expr = test_table.c.avalue + literal(40, type_=MyCustomType)
+        
         # + operator converted to -
         # value is calculated as: (250 - (40 * 10)) / 10 == -15
         assert testing.db.execute(select([expr.label('foo')])).scalar() == -15
@@ -604,6 +621,44 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         # this one relies upon anonymous labeling to assemble result
         # processing rules on the column.
         assert testing.db.execute(select([expr])).scalar() == -15
+    
+    def test_bind_typing(self):
+        from sqlalchemy.sql import column
+        
+        class MyFoobarType(types.UserDefinedType):
+            pass
+        
+        class Foo(object):
+            pass
+        
+        # unknown type + integer, right hand bind
+        # is an Integer
+        expr = column("foo", MyFoobarType) + 5
+        assert expr.right.type._type_affinity is types.Integer
+
+        # unknown type + unknown, right hand bind
+        # coerces to the left
+        expr = column("foo", MyFoobarType) + Foo()
+        assert expr.right.type._type_affinity is MyFoobarType
+        
+        # including for non-commutative ops
+        expr = column("foo", MyFoobarType) - Foo()
+        assert expr.right.type._type_affinity is MyFoobarType
+
+        expr = column("foo", MyFoobarType) - datetime.date(2010, 8, 25)
+        assert expr.right.type._type_affinity is types.Date
+        
+    def test_date_coercion(self):
+        from sqlalchemy.sql import column
+        
+        expr = column('bar', types.NULLTYPE) - column('foo', types.TIMESTAMP)
+        eq_(expr.type._type_affinity, types.NullType)
+        
+        expr = func.sysdate() - column('foo', types.TIMESTAMP)
+        eq_(expr.type._type_affinity, types.Interval)
+
+        expr = func.current_date() - column('foo', types.TIMESTAMP)
+        eq_(expr.type._type_affinity, types.Interval)
         
     def test_distinct(self):
         s = select([distinct(test_table.c.avalue)])

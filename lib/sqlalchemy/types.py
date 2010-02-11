@@ -26,12 +26,13 @@ from decimal import Decimal as _python_Decimal
 import codecs
 
 from sqlalchemy import exc, schema
-from sqlalchemy.sql import expression
+from sqlalchemy.sql import expression, operators
 import sys
 schema.types = expression.sqltypes =sys.modules['sqlalchemy.types']
 from sqlalchemy.util import pickle
 from sqlalchemy.sql.visitors import Visitable
 from sqlalchemy import util
+
 NoneType = type(None)
 if util.jython:
     import array
@@ -95,22 +96,23 @@ class AbstractType(Visitable):
         """
         return None
 
-    def adapt_operator(self, op):
-        """Given an operator from the sqlalchemy.sql.operators package,
-        translate it to a new operator based on the semantics of this type.
-
-        By default, returns the operator unchanged.
-
+    def _adapt_expression(self, op, othertype):
+        """evaluate the return type of <self> <op> <othertype>,
+        and apply any adaptations to the given operator.
+        
         """
-        return op
+        return op, self
         
     @util.memoized_property
     def _type_affinity(self):
         """Return a rudimental 'affinity' value expressing the general class of type."""
-        
-        for i, t in enumerate(self.__class__.__mro__):
+
+        typ = None
+        for t in self.__class__.__mro__:
             if t is TypeEngine or t is UserDefinedType:
-                return self.__class__.__mro__[i - 1]
+                return typ
+            elif issubclass(t, TypeEngine):
+                typ = t
         else:
             return self.__class__
         
@@ -205,6 +207,23 @@ class UserDefinedType(TypeEngine):
 
     """
     __visit_name__ = "user_defined"
+
+    def _adapt_expression(self, op, othertype):
+        """evaluate the return type of <self> <op> <othertype>,
+        and apply any adaptations to the given operator.
+        
+        """
+        return self.adapt_operator(op), self
+
+    def adapt_operator(self, op):
+        """A hook which allows the given operator to be adapted
+        to something new. 
+        
+        See also UserDefinedType._adapt_expression(), an as-yet-
+        semi-public method with greater capability in this regard.
+        
+        """
+        return op
 
 class TypeDecorator(AbstractType):
     """Allows the creation of types which add additional functionality
@@ -429,18 +448,41 @@ class NullType(TypeEngine):
     """
     __visit_name__ = 'null'
 
+    def _adapt_expression(self, op, othertype):
+        if othertype is NullType or not operators.is_commutative(op):
+            return op, self
+        else:
+            return othertype._adapt_expression(op, self)
+
 NullTypeEngine = NullType
 
 class Concatenable(object):
     """A mixin that marks a type as supporting 'concatenation', typically strings."""
 
-    def adapt_operator(self, op):
-        """Converts an add operator to concat."""
-        from sqlalchemy.sql import operators
-        if op is operators.add:
-            return operators.concat_op
+    def _adapt_expression(self, op, othertype):
+        if op is operators.add and isinstance(othertype, (Concatenable, NullType)):
+            return operators.concat_op, self
         else:
-            return op
+            return op, self
+
+class _DateAffinity(object):
+    """Mixin date/time specific expression adaptations.
+    
+    Rules are implemented within Date,Time,Interval,DateTime, Numeric, Integer.
+    Based on http://www.postgresql.org/docs/current/static/functions-datetime.html.
+    
+    """
+    
+    @property
+    def _expression_adaptations(self):
+        raise NotImplementedError()
+
+    _blank_dict = util.frozendict()
+    def _adapt_expression(self, op, othertype):
+        othertype = othertype._type_affinity
+        return op, \
+                self._expression_adaptations.get(op, self._blank_dict).\
+                get(othertype, NULLTYPE)
 
 class String(Concatenable, TypeEngine):
     """The base for all string and character types.
@@ -673,14 +715,24 @@ class UnicodeText(Text):
         super(UnicodeText, self).__init__(length=length, **kwargs)
 
 
-class Integer(TypeEngine):
+class Integer(_DateAffinity, TypeEngine):
     """A type for ``int`` integers."""
 
     __visit_name__ = 'integer'
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
-
+    
+    @util.memoized_property
+    def _expression_adaptations(self):
+        return {
+            operators.add:{
+                Date:Date,
+            },
+            operators.mul:{
+                Interval:Interval
+            },
+        }
 
 class SmallInteger(Integer):
     """A type for smaller ``int`` integers.
@@ -702,7 +754,7 @@ class BigInteger(Integer):
 
     __visit_name__ = 'big_integer'
 
-class Numeric(TypeEngine):
+class Numeric(_DateAffinity, TypeEngine):
     """A type for fixed precision numbers.
 
     Typically generates DECIMAL or NUMERIC.  Returns
@@ -776,6 +828,14 @@ class Numeric(TypeEngine):
         else:
             return None
 
+    @util.memoized_property
+    def _expression_adaptations(self):
+        return {
+            operators.mul:{
+                Interval:Interval
+            },
+        }
+
 
 class Float(Numeric):
     """A type for ``float`` numbers.  
@@ -804,7 +864,7 @@ class Float(Numeric):
         return impltype(precision=self.precision, asdecimal=self.asdecimal)
 
 
-class DateTime(TypeEngine):
+class DateTime(_DateAffinity, TypeEngine):
     """A type for ``datetime.datetime()`` objects.
 
     Date and time types return objects from the Python ``datetime``
@@ -826,8 +886,20 @@ class DateTime(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
+    @util.memoized_property
+    def _expression_adaptations(self):
+        return {
+            operators.add:{
+                Interval:DateTime,
+            },
+            operators.sub:{
+                Interval:DateTime,
+                DateTime:Interval,
+            },
+        }
+        
 
-class Date(TypeEngine):
+class Date(_DateAffinity,TypeEngine):
     """A type for ``datetime.date()`` objects."""
 
     __visit_name__ = 'date'
@@ -835,8 +907,32 @@ class Date(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
+    @util.memoized_property
+    def _expression_adaptations(self):
+        return {
+            operators.add:{
+                Integer:Date,
+                Interval:DateTime,
+                Time:DateTime,
+            },
+            operators.sub:{
+                # date - integer = date
+                Integer:Date,
+                
+                # date - date = integer.
+                Date:Integer,
 
-class Time(TypeEngine):
+                Interval:DateTime,
+                
+                # date - datetime = interval,
+                # this one is not in the PG docs 
+                # but works
+                DateTime:Interval,
+            },
+        }
+
+
+class Time(_DateAffinity,TypeEngine):
     """A type for ``datetime.time()`` objects."""
 
     __visit_name__ = 'time'
@@ -849,6 +945,20 @@ class Time(TypeEngine):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
+
+    @util.memoized_property
+    def _expression_adaptations(self):
+        return {
+            operators.add:{
+                Date:DateTime,
+                Interval:Time
+            },
+            operators.sub:{
+                Time:Interval,
+                Interval:Time,
+            },
+        }
+
 
 class _Binary(TypeEngine):
     """Define base behavior for binary types."""
@@ -1245,7 +1355,7 @@ class Boolean(TypeEngine, SchemaType):
                 return value and True or False
             return process
 
-class Interval(TypeDecorator):
+class Interval(_DateAffinity, TypeDecorator):
     """A type for ``datetime.timedelta()`` objects.
 
     The Interval type deals with ``datetime.timedelta`` objects.  In
@@ -1319,9 +1429,30 @@ class Interval(TypeDecorator):
                 return value - epoch
         return process
 
+    @util.memoized_property
+    def _expression_adaptations(self):
+        return {
+            operators.add:{
+                Date:DateTime,
+                Interval:Interval,
+                DateTime:DateTime,
+                Time:Time,
+            },
+            operators.sub:{
+                Interval:Interval
+            },
+            operators.mul:{
+                Numeric:Interval
+            },
+            operators.div: {
+                Numeric:Interval
+            }
+        }
+
     @property
     def _type_affinity(self):
         return Interval
+
 
 class FLOAT(Float):
     """The SQL FLOAT type."""
@@ -1440,22 +1571,23 @@ class BOOLEAN(Boolean):
     __visit_name__ = 'BOOLEAN'
 
 NULLTYPE = NullType()
+BOOLEANTYPE = Boolean()
 
 # using VARCHAR/NCHAR so that we dont get the genericized "String"
 # type which usually resolves to TEXT/CLOB
 type_map = {
-    str: String,
+    str: String(),
     # Py2K
-    unicode : String,
+    unicode : String(),
     # end Py2K
-    int : Integer,
-    float : Numeric,
-    bool: Boolean,
-    _python_Decimal : Numeric,
-    dt.date : Date,
-    dt.datetime : DateTime,
-    dt.time : Time,
-    dt.timedelta : Interval,
-    NoneType: NullType
+    int : Integer(),
+    float : Numeric(),
+    bool: BOOLEANTYPE,
+    _python_Decimal : Numeric(),
+    dt.date : Date(),
+    dt.datetime : DateTime(),
+    dt.time : Time(),
+    dt.timedelta : Interval(),
+    NoneType: NULLTYPE
 }
 

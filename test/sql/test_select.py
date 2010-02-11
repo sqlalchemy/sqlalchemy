@@ -645,7 +645,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             (table1.c.myid.match('somstr'), "CONTAINS (mytable.myid, :myid_1)", oracle.dialect()),            
         ]:
             self.assert_compile(expr, check, dialect=dialect)
-        
+
     def test_composed_string_comparators(self):
         self.assert_compile(
             table1.c.name.contains('jo'), "mytable.name LIKE '%%' || :name_1 || '%%'" , checkparams = {'name_1': u'jo'},
@@ -1377,7 +1377,7 @@ EXISTS (select yay from foo where boo = lar)",
         
         assert [str(c) for c in s.c] == ["id", "hoho"]
 
-        
+    
     @testing.emits_warning('.*empty sequence.*')
     def test_in(self):
         self.assert_compile(table1.c.myid.in_(['a']),
@@ -1547,7 +1547,7 @@ EXISTS (select yay from foo where boo = lar)",
             "SELECT dt.date FROM dt WHERE dt.date BETWEEN :date_1 AND :date_2", checkparams={'date_1':datetime.date(2006,6,1), 'date_2':datetime.date(2006,6,5)})
 
         self.assert_compile(table.select(sql.between(table.c.date, datetime.date(2006,6,1), datetime.date(2006,6,5))),
-            "SELECT dt.date FROM dt WHERE dt.date BETWEEN :param_1 AND :param_2", checkparams={'param_1':datetime.date(2006,6,1), 'param_2':datetime.date(2006,6,5)})
+            "SELECT dt.date FROM dt WHERE dt.date BETWEEN :date_1 AND :date_2", checkparams={'date_1':datetime.date(2006,6,1), 'date_2':datetime.date(2006,6,5)})
 
     def test_operator_precedence(self):
         table = Table('op', metadata,
