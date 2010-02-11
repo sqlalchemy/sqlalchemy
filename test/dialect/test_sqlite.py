@@ -51,7 +51,32 @@ class TestTypes(TestBase, AssertsExecutionResults):
         
         rp = sldt.result_processor(None, None)
         eq_(rp(bp(dt)), dt)
+    
+    def test_native_datetime(self):
+        dbapi = testing.db.dialect.dbapi
         
+        connect_args={'detect_types': dbapi.PARSE_DECLTYPES|dbapi.PARSE_COLNAMES}
+        engine = engines.testing_engine(options={'connect_args':connect_args, 'native_datetime':True})
+        
+        t = Table('datetest', MetaData(),
+                    Column('id', Integer, primary_key=True),
+                    Column('d1', Date),
+                    Column('d2', TIMESTAMP)
+        )
+        t.create(engine)
+        try:
+            engine.execute(t.insert(), {'d1':datetime.date(2010, 5, 10), 'd2':datetime.datetime(2010, 5, 10, 12, 15, 25)})
+            row = engine.execute(t.select()).first()
+            eq_(row, (1, datetime.date(2010, 5, 10), datetime.datetime(2010, 5, 10, 12, 15, 25)))
+            
+            r = engine.execute(func.current_date()).scalar()
+            assert isinstance(r, basestring)
+            
+        finally:
+            t.drop(engine)
+            engine.dispose()
+        
+
     def test_no_convert_unicode(self):
         """test no utf-8 encoding occurs"""
         

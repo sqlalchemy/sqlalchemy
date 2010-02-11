@@ -55,6 +55,37 @@ The sqlite ``:memory:`` identifier is the default if no filepath is present.  Sp
     # in-memory database
     e = create_engine('sqlite://')
 
+Compatibility with sqlite3 "native" date and datetime types
+-----------------------------------------------------------
+
+The pysqlite driver includes the sqlite3.PARSE_DECLTYPES and 
+sqlite3.PARSE_COLNAMES options, which have the effect of any column
+or expression explicitly cast as "date" or "timestamp" will be converted
+to a Python date or datetime object.  The date and datetime types provided 
+with the pysqlite dialect are not currently compatible with these options, 
+since they render the ISO date/datetime including microseconds, which 
+pysqlite's driver does not.   Additionally, SQLAlchemy does not at
+this time automatically render the "cast" syntax required for the 
+freestanding functions "current_timestamp" and "current_date" to return
+datetime/date types natively.   Unfortunately, pysqlite 
+does not provide the standard DBAPI types in `cursor.description`,
+leaving SQLAlchemy with no way to detect these types on the fly 
+without expensive per-row type checks.
+
+Usage of PARSE_DECLTYPES can be forced if one configures 
+"native_datetime=True" on create_engine()::
+
+    engine = create_engine('sqlite://', 
+                    connect_args={'detect_types': sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES},
+                    native_datetime=True
+                    )
+
+With this flag enabled, the DATE and TIMESTAMP types (but note - not the DATETIME
+or TIME types...confused yet ?) will not perform any bind parameter or result
+processing. Execution of "func.current_date()" will return a string.
+"func.current_timestamp()" is registered as returning a DATETIME type in
+SQLAlchemy, so this function still receives SQLAlchemy-level result processing.
+
 Threading Behavior
 ------------------
 
@@ -104,15 +135,50 @@ always represented by an actual database result string.
 
 """
 
-from sqlalchemy.dialects.sqlite.base import SQLiteDialect
+from sqlalchemy.dialects.sqlite.base import SQLiteDialect, DATETIME, DATE
 from sqlalchemy import schema, exc, pool
 from sqlalchemy.engine import default
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 
+
+class _SQLite_pysqliteTimeStamp(DATETIME):
+    def bind_processor(self, dialect):
+        if dialect.native_datetime:
+            return None
+        else:
+            return DATETIME.bind_processor(self, dialect)
+            
+    def result_processor(self, dialect, coltype):
+        if dialect.native_datetime:
+            return None
+        else:
+            return DATETIME.result_processor(self, dialect, coltype)
+
+class _SQLite_pysqliteDate(DATE):
+    def bind_processor(self, dialect):
+        if dialect.native_datetime:
+            return None
+        else:
+            return DATE.bind_processor(self, dialect)
+            
+    def result_processor(self, dialect, coltype):
+        if dialect.native_datetime:
+            return None
+        else:
+            return DATE.result_processor(self, dialect, coltype)
+
 class SQLite_pysqlite(SQLiteDialect):
     default_paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
+
+    colspecs = util.update_copy(
+        SQLiteDialect.colspecs,
+        {
+            sqltypes.Date:_SQLite_pysqliteDate,
+            sqltypes.TIMESTAMP:_SQLite_pysqliteTimeStamp,
+        }
+    )
     
     # Py3K
     #description_encoding = None
@@ -134,6 +200,7 @@ class SQLite_pysqlite(SQLiteDialect):
             if self.dbapi.sqlite_version_info < (3, 3, 8):
                 self.supports_default_values = False
         self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
+
 
     @classmethod
     def dbapi(cls):

@@ -65,7 +65,16 @@ CHANGES
 
 - mssql
   - Re-established initial support for pymssql.
-  
+ 
+- sqlite
+   - Added "native_datetime=True" flag to create_engine().
+     This will cause the DATE and TIMESTAMP types to skip 
+     all bind parameter and result row processing, under 
+     the assumption that PARSE_DECLTYPES has been enabled 
+     on the connection.  Note that this is not entirely
+     compatible with the "func.current_date()", which 
+     will be returned as a string. [ticket:1685]
+     
 0.6beta1
 ========
 - Major Release

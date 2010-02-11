@@ -76,19 +76,16 @@ class _SLNumeric(_NumericMixin, sqltypes.Numeric):
 class _SLFloat(_NumericMixin, sqltypes.Float):
     pass
 
-# since SQLite has no date types, we're assuming that SQLite via ODBC
-# or JDBC would similarly have no built in date support, so the "string" based logic
-# would apply to all implementing dialects.
 class _DateTimeMixin(object):
     _reg = None
     _storage_format = None
-
+    
     def __init__(self, storage_format=None, regexp=None, **kwargs):
         if regexp is not None:
             self._reg = re.compile(regexp)
         if storage_format is not None:
             self._storage_format = storage_format
-
+            
     def _result_processor(self, fn):
         rmatch = self._reg.match
         # Even on python2.6 datetime.strptime is both slower than this code
@@ -342,7 +339,7 @@ class SQLiteDialect(default.DefaultDialect):
     supports_default_values = True
     supports_empty_insert = False
     supports_cast = True
-
+    
     default_paramstyle = 'qmark'
     statement_compiler = SQLiteCompiler
     ddl_compiler = SQLiteDDLCompiler
@@ -352,7 +349,7 @@ class SQLiteDialect(default.DefaultDialect):
     colspecs = colspecs
     isolation_level = None
 
-    def __init__(self, isolation_level=None, **kwargs):
+    def __init__(self, isolation_level=None, native_datetime=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         if isolation_level and isolation_level not in ('SERIALIZABLE',
                 'READ UNCOMMITTED'):
@@ -360,7 +357,13 @@ class SQLiteDialect(default.DefaultDialect):
                 "Valid isolation levels for sqlite are 'SERIALIZABLE' and "
                 "'READ UNCOMMITTED'.")
         self.isolation_level = isolation_level
-
+        
+        # this flag used by pysqlite dialect, and perhaps others in the
+        # future, to indicate the driver is handling date/timestamp
+        # conversions (and perhaps datetime/time as well on some 
+        # hypothetical driver ?)
+        self.native_datetime = native_datetime
+        
     def visit_pool(self, pool):
         if self.isolation_level is not None:
             class SetIsolationLevel(object):
