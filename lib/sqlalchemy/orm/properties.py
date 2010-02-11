@@ -645,7 +645,10 @@ class RelationProperty(StrategizedProperty):
         if self.uselist:
             instances = source_state.get_impl(self.key).\
                             get(source_state, source_dict)
-            
+            if hasattr(instances, '_sa_adapter'):
+                # convert collections to adapters to get a true iterator
+                instances = instances._sa_adapter
+
             if load:
                 # for a full merge, pre-load the destination collection,
                 # so that individual _merge of each item pulls from identity

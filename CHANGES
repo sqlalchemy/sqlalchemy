@@ -37,6 +37,9 @@ CHANGES
    - Fixed bug in attribute history that inadvertently invoked
      __eq__ on mapped instances.
 
+   - Fixed bug in session.merge() which prevented dict-like
+     collections from merging.
+
 - sql
   - Added math negation operator support, -x.
   

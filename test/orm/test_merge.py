@@ -6,6 +6,7 @@ from sqlalchemy.test import testing
 from sqlalchemy.util import OrderedSet
 from sqlalchemy.orm import mapper, relation, create_session, PropComparator, \
                             synonym, comparable_property, sessionmaker, attributes
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.test.testing import eq_, ne_
 from test.orm import _base, _fixtures
@@ -245,7 +246,22 @@ class MergeTest(_fixtures.FixtureTest):
         sess.merge(u1)
         sess.flush()
         assert u1.address_id is u1.data is None
-        
+
+    @testing.resolve_artifact_names
+    def test_merge_irregular_collection(self):
+        mapper(User, users, properties={
+            'addresses': relation(
+                mapper(Address, addresses),
+                backref='user',
+                collection_class=attribute_mapped_collection('email_address')),
+            })
+        u1 = User(id=7, name='fred')
+        u1.addresses['foo@bar.com'] = Address(email_address='foo@bar.com')
+        sess = create_session()
+        sess.merge(u1)
+        sess.flush()
+        assert u1.addresses.keys() == ['foo@bar.com']
+
     @testing.resolve_artifact_names
     def test_attribute_cascade(self):
         """Merge of a persistent entity with two child persistent entities."""
