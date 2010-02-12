@@ -8,7 +8,7 @@ and collection caching.
 
 import environment
 from model import Person, Address, cache_address_bits
-from meta import Session, FromCache
+from meta import Session, FromCache, RelationCache
 from sqlalchemy.orm import eagerload
 
 def load_name_range(start, end, invalidate=False):
@@ -35,7 +35,7 @@ def load_name_range(start, end, invalidate=False):
 
     # have the "addresses" collection cached separately
     # each lazyload of Person.addresses loads from cache.
-    q = q.options(FromCache("default", "by_person", Person.addresses))
+    q = q.options(RelationCache("default", "by_person", Person.addresses))
     
     # alternatively, eagerly load the "addresses" collection, so that they'd
     # be cached together.   This issues a bigger SQL statement and caches

@@ -101,6 +101,13 @@ CHANGES
      on the connection.  Note that this is not entirely
      compatible with the "func.current_date()", which 
      will be returned as a string. [ticket:1685]
+
+- examples
+   - Changed the beaker cache example a bit to have a separate
+     RelationCache option for lazyload caching.  This object
+     does a lookup among any number of potential attributes
+     more efficiently by grouping several into a common structure.
+     Both FromCache and RelationCache are simpler individually.
      
 0.6beta1
 ========

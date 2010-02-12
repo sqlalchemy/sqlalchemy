@@ -10,7 +10,7 @@ City --(has a)--> Country
 """
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relation
-from meta import Base, FromCache, Session
+from meta import Base, FromCache, Session, RelationCache
 
 class Country(Base):
     __tablename__ = 'country'
@@ -92,12 +92,13 @@ class Person(Base):
     def format_full(self):
         return "\t".join([str(x) for x in [self] + list(self.addresses)])
         
-# Caching options.   A set of three FromCache options
+# Caching options.   A set of three RelationCache options
 # which can be applied to Query(), causing the "lazy load"
 # of these attributes to be loaded from cache.
-cache_address_bits = (
-                FromCache("default", "byid", PostalCode.city), 
-                FromCache("default", "byid", City.country), 
-                FromCache("default", "byid", Address.postal_code),
-            )
+cache_address_bits = RelationCache("default", "byid", PostalCode.city).\
+                and_(
+                    RelationCache("default", "byid", City.country)
+                ).and_(
+                    RelationCache("default", "byid", Address.postal_code)
+                )
 

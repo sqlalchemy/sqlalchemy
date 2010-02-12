@@ -22,7 +22,7 @@ E.g.::
     
     # specify that each Person's "addresses" collection comes from
     # cache too
-    q = q.options(FromCache("default", "by_person", Person.addresses))
+    q = q.options(RelationCache("default", "by_person", Person.addresses))
     
     # query
     print q.all()
@@ -35,7 +35,7 @@ exactly one SQL statement against two tables will be emitted - the
 displayed result however will utilize dozens of lazyloads that all
 pull from cache.
 
-Three endpoint scripts, in order of complexity, are run as follows::
+The demo scripts themselves, in order of complexity, are run as follows::
 
    python examples/beaker_caching/helloworld.py
 
