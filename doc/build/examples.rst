@@ -7,6 +7,8 @@ The SQLAlchemy distribution includes a variety of code examples illustrating a s
 
 Additional SQLAlchemy examples, some user contributed, are available on the wiki at `<http://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
 
+.. _examples_adjacencylist:
+
 Adjacency List
 --------------
 
@@ -112,6 +114,8 @@ Vertical Attribute Mapping
 Location: /examples/vertical
 
 .. automodule:: vertical
+
+.. _examples_xmlpersistence:
 
 XML Persistence
 ---------------

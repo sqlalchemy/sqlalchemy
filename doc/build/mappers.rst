@@ -825,6 +825,13 @@ example:
 
 The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the ``Query`` object can produce any kind of query that's desired.  It's recommended that a straight ``Query`` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a ``relation()`` of a parent mapper.
 
+Multiple "Persistence" Mappers for One Class 
+---------------------------------------------
+
+The non_primary mapper defines alternate mappers for the purposes of loading objects.  What if we want the same class to be *persisted* differently, such as to different tables ?   SQLAlchemy
+refers to this as the "entity name" pattern, and in Python one can use a recipe which creates
+anonymous subclasses which are distinctly mapped.  See the recipe at `Entity Name <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/EntityName>`_.
+
 Constructors and Object Initialization 
 ---------------------------------------
 
@@ -1136,7 +1143,7 @@ And the bi-directional version combines both:
         'children': relation(Node, backref=backref('parent', remote_side=[nodes.c.id]))
     })
 
-There are several examples included with SQLAlchemy illustrating self-referential strategies; these include `basic_tree.py <http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/adjacencytree/basic_tree.py>`_ and `optimized_al.py <http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/elementtree/optimized_al.py>`_, the latter of which illustrates how to persist and search XML documents in conjunction with `ElementTree <http://effbot.org/zone/element-index.htm>`_.
+There are several examples included with SQLAlchemy illustrating self-referential strategies; these include :ref:`examples_adjacencylist` and :ref:`examples_xmlpersistence`.
 
 Self-Referential Query Strategies 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
