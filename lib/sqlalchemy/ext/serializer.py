@@ -1,9 +1,11 @@
-"""Serializer/Deserializer objects for usage with SQLAlchemy structures.
+"""Serializer/Deserializer objects for usage with SQLAlchemy query structures, 
+allowing "contextual" deserialization.
 
-Any SQLAlchemy structure, including Tables, Columns, expressions, mappers,
-Query objects etc. can be serialized in a minimally-sized format,
-and deserialized when given a Metadata and optional ScopedSession object
-to use as context on the way out.
+Any SQLAlchemy query structure, either based on sqlalchemy.sql.*
+or sqlalchemy.orm.* can be used.  The mappers, Tables, Columns, Session
+etc. which are referenced by the structure are not persisted in serialized
+form, but are instead re-associated with the query structure
+when it is deserialized.
 
 Usage is nearly the same as that of the standard Python pickle module::
 
@@ -27,10 +29,17 @@ Similar restrictions as when using raw pickle apply; mapped classes must be
 themselves be pickleable, meaning they are importable from a module-level
 namespace.
 
-Note that instances of user-defined classes do not require this extension
-in order to be pickled; these contain no references to engines, sessions
-or expression constructs in the typical case and can be serialized directly.
-This module is specifically for ORM and expression constructs.
+The serializer module is only appropriate for query structures.  It is not
+needed for:
+
+* instances of user-defined classes.   These contain no references to engines, 
+sessions or expression constructs in the typical case and can be serialized directly.
+* Table metadata that is to be loaded entirely from the serialized structure (i.e. is
+not already declared in the application).   Regular pickle.loads()/dumps() can 
+be used to fully dump any ``MetaData`` object, typically one which was reflected 
+from an existing database at some previous point in time.  The serializer module
+is specifically for the opposite case, where the Table metadata is already present
+ in memory.
 
 """
 
