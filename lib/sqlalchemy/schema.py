@@ -2030,10 +2030,10 @@ class SchemaVisitor(visitors.ClauseVisitor):
     __traverse_options__ = {'schema_visitor':True}
 
 
-class DDLElement(expression._Executable, expression.ClauseElement):
+class DDLElement(expression.Executable, expression.ClauseElement):
     """Base class for DDL expression constructs."""
     
-    _execution_options = expression._Executable.\
+    _execution_options = expression.Executable.\
                             _execution_options.union({'autocommit':True})
 
     target = None

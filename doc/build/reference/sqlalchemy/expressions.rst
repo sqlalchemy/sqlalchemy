@@ -152,6 +152,10 @@ Classes
    :members: where
    :show-inheritance:
 
+.. autoclass:: Executable
+   :members:
+   :show-inheritance:
+
 .. autoclass:: FunctionElement
    :members:
    :show-inheritance:

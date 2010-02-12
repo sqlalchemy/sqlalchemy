@@ -2208,7 +2208,20 @@ class _TypeClause(ClauseElement):
     def __init__(self, type):
         self.type = type
 
-class _Executable(object):
+
+class _Generative(object):
+    """Allow a ClauseElement to generate itself via the
+    @_generative decorator.
+    
+    """
+    
+    def _generate(self):
+        s = self.__class__.__new__(self.__class__)
+        s.__dict__ = self.__dict__.copy()
+        return s
+
+
+class Executable(_Generative):
     """Mark a ClauseElement as supporting execution."""
 
     supports_execution = True
@@ -2240,8 +2253,10 @@ class _Executable(object):
         """
         self._execution_options = self._execution_options.union(kw)
 
+# legacy, some outside users may be calling this
+_Executable = Executable
     
-class _TextClause(_Executable, ClauseElement):
+class _TextClause(Executable, ClauseElement):
     """Represent a literal SQL text fragment.
 
     Public constructor is the :func:`text()` function.
@@ -2251,7 +2266,7 @@ class _TextClause(_Executable, ClauseElement):
     __visit_name__ = 'textclause'
 
     _bind_params_regex = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
-    _execution_options = _Executable._execution_options.union({'autocommit':PARSE_AUTOCOMMIT})
+    _execution_options = Executable._execution_options.union({'autocommit':PARSE_AUTOCOMMIT})
     
     @property
     def _select_iterable(self):
@@ -2292,11 +2307,6 @@ class _TextClause(_Executable, ClauseElement):
             return list(self.typemap)[0]
         else:
             return None
-
-    def _generate(self):
-        s = self.__class__.__new__(self.__class__)
-        s.__dict__ = self.__dict__.copy()
-        return s
 
     def _copy_internals(self, clone=_clone):
         self.bindparams = dict((b.key, clone(b))
@@ -2483,7 +2493,7 @@ class _Case(ColumnElement):
     def _from_objects(self):
         return list(itertools.chain(*[x._from_objects for x in self.get_children()]))
 
-class FunctionElement(ColumnElement, FromClause):
+class FunctionElement(Executable, ColumnElement, FromClause):
     """Base for SQL function-oriented constructs."""
     
     def __init__(self, *clauses, **kwargs):
@@ -2514,13 +2524,16 @@ class FunctionElement(ColumnElement, FromClause):
         util.reset_memoized(self, 'clauses')
 
     def select(self):
-        return select([self])
+        s = select([self])
+        if self._execution_options:
+            s = s.execution_options(**self._execution_options)
+        return s
 
     def scalar(self):
-        return select([self]).execute().scalar()
+        return self.select().execute().scalar()
 
     def execute(self):
-        return select([self]).execute()
+        return self.select().execute()
 
     def _bind_param(self, obj):
         return _BindParamClause(None, obj, _fallback_type=self.type, unique=True)
@@ -3243,7 +3256,7 @@ class TableClause(_Immutable, FromClause):
     def _from_objects(self):
         return [self]
 
-class _SelectBaseMixin(_Executable):
+class _SelectBaseMixin(Executable):
     """Base class for :class:`Select` and ``CompoundSelects``."""
 
     def __init__(self,
@@ -3312,6 +3325,8 @@ class _SelectBaseMixin(_Executable):
         self._execution_options = self._execution_options.union({'autocommit':True})
 
     def _generate(self):
+        """Override the default _generate() method to also clear out exported collections."""
+        
         s = self.__class__.__new__(self.__class__)
         s.__dict__ = self.__dict__.copy()
         s._reset_exported()
@@ -3889,19 +3904,14 @@ class Select(_SelectBaseMixin, FromClause):
         self._bind = bind
     bind = property(bind, _set_bind)
 
-class _UpdateBase(_Executable, ClauseElement):
+class _UpdateBase(Executable, ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
 
     __visit_name__ = 'update_base'
 
-    _execution_options = _Executable._execution_options.union({'autocommit':True})
+    _execution_options = Executable._execution_options.union({'autocommit':True})
     kwargs = util.frozendict()
     
-    def _generate(self):
-        s = self.__class__.__new__(self.__class__)
-        s.__dict__ = self.__dict__.copy()
-        return s
-
     def _process_colparams(self, parameters):
         if isinstance(parameters, (list, tuple)):
             pp = {}
@@ -4151,9 +4161,9 @@ class Delete(_UpdateBase):
         # TODO: coverage
         self._whereclause = clone(self._whereclause)
 
-class _IdentifiedClause(_Executable, ClauseElement):
+class _IdentifiedClause(Executable, ClauseElement):
     __visit_name__ = 'identified'
-    _execution_options = _Executable._execution_options.union({'autocommit':False})
+    _execution_options = Executable._execution_options.union({'autocommit':False})
     quote = None
 
     def __init__(self, ident):

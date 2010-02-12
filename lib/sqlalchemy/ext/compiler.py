@@ -64,7 +64,9 @@ in-progress compilation, including ``compiler.dialect``,
 and :class:`~sqlalchemy.sql.compiler.DDLCompiler` both include a ``process()``
 method which can be used for compilation of embedded attributes::
 
-    class InsertFromSelect(ClauseElement):
+    from sqlalchemy.sql.expression import Executable, ClauseElement
+    
+    class InsertFromSelect(Executable, ClauseElement):
         def __init__(self, table, select):
             self.table = table
             self.select = select
@@ -154,6 +156,11 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
   ``execute_at()`` method, allowing the construct to be invoked during CREATE
   TABLE and DROP TABLE sequences.
 
+* :class:`~sqlalchemy.sql.expression.Executable` - This is a mixin which should be
+  used with any expression class that represents a "standalone" SQL statement that
+  can be passed directly to an ``execute()`` method.  It is already implicit 
+  within ``DDLElement`` and ``FunctionElement``.
+  
 """
 
 def compiles(class_, *specs):

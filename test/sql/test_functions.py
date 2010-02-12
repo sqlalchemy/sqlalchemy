@@ -215,7 +215,21 @@ class ExecuteTest(TestBase):
         finally:
             conn.close()
         assert (x == y == z == q) is True
-    
+
+    def test_exec_options(self):
+        f = func.foo()
+        eq_(f._execution_options, {})
+        
+        f = f.execution_options(foo='bar')
+        eq_(f._execution_options, {'foo':'bar'})
+        s = f.select()
+        eq_(s._execution_options, {'foo':'bar'})
+        
+        ret = testing.db.execute(func.now().execution_options(foo='bar'))
+        eq_(ret.context.execution_options, {'foo':'bar'})
+        ret.close()
+        
+        
     @engines.close_first
     def test_update(self):
         """

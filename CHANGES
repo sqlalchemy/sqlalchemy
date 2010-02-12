@@ -71,6 +71,16 @@ CHANGES
     types, before falling back to that of the known type
     on the other side of the expression.  Also part
     of [ticket:1683].
+
+  - Made sqlalchemy.sql.expressions.Executable part of public 
+    API, used for any expression construct that can be sent to
+    execute().  FunctionElement now inherits Executable so that
+    it gains execution_options(), which are also propagated
+    to the select() that's generated within execute().
+    Executable in turn subclasses _Generative which marks
+    any ClauseElement that supports the @_generative
+    decorator - these may also become "public" for the benefit
+    of the compiler extension at some point.
     
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
