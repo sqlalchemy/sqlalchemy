@@ -701,21 +701,21 @@ class QueryTest(TestBase):
                          Column('shadow_name', VARCHAR(20)),
                          Column('parent', VARCHAR(20)),
                          Column('row', VARCHAR(40)),
-                         Column('__parent', VARCHAR(20)),
-                         Column('__row', VARCHAR(20)),
+                         Column('_parent', VARCHAR(20)),
+                         Column('_row', VARCHAR(20)),
         )
         shadowed.create(checkfirst=True)
         try:
-            shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', row='Without light there is no shadow', __parent='Hidden parent', __row='Hidden row')
+            shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', row='Without light there is no shadow', _parent='Hidden parent', _row='Hidden row')
             r = shadowed.select(shadowed.c.shadow_id==1).execute().first()
             self.assert_(r.shadow_id == r['shadow_id'] == r[shadowed.c.shadow_id] == 1)
             self.assert_(r.shadow_name == r['shadow_name'] == r[shadowed.c.shadow_name] == 'The Shadow')
             self.assert_(r.parent == r['parent'] == r[shadowed.c.parent] == 'The Light')
             self.assert_(r.row == r['row'] == r[shadowed.c.row] == 'Without light there is no shadow')
-            self.assert_(r['__parent'] == 'Hidden parent')
-            self.assert_(r['__row'] == 'Hidden row')
+            self.assert_(r['_parent'] == 'Hidden parent')
+            self.assert_(r['_row'] == 'Hidden row')
             try:
-                print r.__parent, r.__row
+                print r._parent, r._row
                 self.fail('Should not allow access to private attributes')
             except AttributeError:
                 pass # expected

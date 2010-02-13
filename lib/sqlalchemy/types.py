@@ -32,6 +32,7 @@ schema.types = expression.sqltypes =sys.modules['sqlalchemy.types']
 from sqlalchemy.util import pickle
 from sqlalchemy.sql.visitors import Visitable
 from sqlalchemy import util
+from sqlalchemy import processors
 
 NoneType = type(None)
 if util.jython:
@@ -608,14 +609,7 @@ class String(Concatenable, TypeEngine):
         if needs_convert:
             # note we *assume* that we do not have a unicode object
             # here, instead of an expensive isinstance() check.
-            decoder = codecs.getdecoder(dialect.encoding)
-            def process(value):
-                if value is not None:
-                    # decoder returns a tuple: (value, len)
-                    return decoder(value)[0]
-                else:
-                    return value
-            return process
+            return processors.to_unicode_processor_factory(dialect.encoding)
         else:
             return None
 
@@ -810,21 +804,15 @@ class Numeric(_DateAffinity, TypeEngine):
         return dbapi.NUMBER
 
     def bind_processor(self, dialect):
-        def process(value):
-            if value is not None:
-                return float(value)
-            else:
-                return value
-        return process
+        return processors.to_float
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            def process(value):
-                if value is not None:
-                    return _python_Decimal(str(value))
-                else:
-                    return value
-            return process
+            #XXX: use decimal from http://www.bytereef.org/libmpdec.html
+#            try:
+#                from fastdec import mpd as Decimal
+#            except ImportError:
+            return processors.to_decimal_processor_factory(_python_Decimal)
         else:
             return None
 
@@ -991,11 +979,7 @@ class _Binary(TypeEngine):
                 else:
                     return None
         else:
-            def process(value):
-                if value is not None:
-                    return str(value)
-                else:
-                    return None
+            process = processors.to_str
         return process
     # end Py2K
     
@@ -1349,11 +1333,7 @@ class Boolean(TypeEngine, SchemaType):
         if dialect.supports_native_boolean:
             return None
         else:
-            def process(value):
-                if value is None:
-                    return None
-                return value and True or False
-            return process
+            return processors.int_to_boolean
 
 class Interval(_DateAffinity, TypeDecorator):
     """A type for ``datetime.timedelta()`` objects.
@@ -1419,7 +1399,7 @@ class Interval(_DateAffinity, TypeDecorator):
         if impl_processor:
             def process(value):
                 value = impl_processor(value)
-                if value is None: 
+                if value is None:
                     return None
                 return value - epoch
         else:

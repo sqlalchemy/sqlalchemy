@@ -351,7 +351,8 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
           numeric.
 
         """
-        super(DECIMAL, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
+        super(DECIMAL, self).__init__(precision=precision, scale=scale,
+                                      asdecimal=asdecimal, **kw)
 
     
 class DOUBLE(_FloatType):
@@ -375,7 +376,8 @@ class DOUBLE(_FloatType):
           numeric.
 
         """
-        super(DOUBLE, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
+        super(DOUBLE, self).__init__(precision=precision, scale=scale,
+                                     asdecimal=asdecimal, **kw)
 
 class REAL(_FloatType):
     """MySQL REAL type."""
@@ -398,7 +400,8 @@ class REAL(_FloatType):
           numeric.
 
         """
-        super(REAL, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
+        super(REAL, self).__init__(precision=precision, scale=scale,
+                                   asdecimal=asdecimal, **kw)
 
 class FLOAT(_FloatType, sqltypes.FLOAT):
     """MySQL FLOAT type."""
@@ -421,7 +424,8 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
           numeric.
 
         """
-        super(FLOAT, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
+        super(FLOAT, self).__init__(precision=precision, scale=scale,
+                                    asdecimal=asdecimal, **kw)
 
     def bind_processor(self, dialect):
         return None
@@ -2459,6 +2463,7 @@ class _DecodingRowProxy(object):
     def __init__(self, rowproxy, charset):
         self.rowproxy = rowproxy
         self.charset = charset
+
     def __getitem__(self, index):
         item = self.rowproxy[index]
         if isinstance(item, _array):
@@ -2467,6 +2472,7 @@ class _DecodingRowProxy(object):
             return item.decode(self.charset)
         else:
             return item
+
     def __getattr__(self, attr):
         item = getattr(self.rowproxy, attr)
         if isinstance(item, _array):

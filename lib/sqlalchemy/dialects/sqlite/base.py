@@ -54,6 +54,7 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.sql import compiler, functions as sql_functions
 from sqlalchemy.util import NoneType
+from sqlalchemy import processors
 
 from sqlalchemy.types import BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL,\
                             FLOAT, INTEGER, NUMERIC, SMALLINT, TEXT, TIME,\
@@ -62,13 +63,10 @@ from sqlalchemy.types import BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL,\
 
 class _NumericMixin(object):
     def bind_processor(self, dialect):
-        type_ = self.asdecimal and str or float
-        def process(value):
-            if value is not None:
-                return type_(value)
-            else:
-                return value
-        return process
+        if self.asdecimal:
+            return processors.to_str
+        else:
+            return processors.to_float
 
 class _SLNumeric(_NumericMixin, sqltypes.Numeric):
     pass
@@ -86,19 +84,7 @@ class _DateTimeMixin(object):
         if storage_format is not None:
             self._storage_format = storage_format
             
-    def _result_processor(self, fn):
-        rmatch = self._reg.match
-        # Even on python2.6 datetime.strptime is both slower than this code
-        # and it does not support microseconds.
-        def process(value):
-            if value is not None:
-                return fn(*map(int, rmatch(value).groups(0)))
-            else:
-                return None
-        return process
-
 class DATETIME(_DateTimeMixin, sqltypes.DateTime):
-    _reg = re.compile(r"(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")
     _storage_format = "%04d-%02d-%02d %02d:%02d:%02d.%06d"
   
     def bind_processor(self, dialect):
@@ -121,10 +107,13 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
         return process
 
     def result_processor(self, dialect, coltype):
-        return self._result_processor(datetime.datetime)
+        if self._reg:
+            return processors.str_to_datetime_processor_factory(
+                self._reg, datetime.datetime)
+        else:
+            return processors.str_to_datetime
 
 class DATE(_DateTimeMixin, sqltypes.Date):
-    _reg = re.compile(r"(\d+)-(\d+)-(\d+)")
     _storage_format = "%04d-%02d-%02d"
 
     def bind_processor(self, dialect):
@@ -141,10 +130,13 @@ class DATE(_DateTimeMixin, sqltypes.Date):
         return process
   
     def result_processor(self, dialect, coltype):
-        return self._result_processor(datetime.date)
+        if self._reg:
+            return processors.str_to_datetime_processor_factory(
+                self._reg, datetime.date)
+        else:
+            return processors.str_to_date
 
 class TIME(_DateTimeMixin, sqltypes.Time):
-    _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
     _storage_format = "%02d:%02d:%02d.%06d"
 
     def bind_processor(self, dialect):
@@ -162,7 +154,11 @@ class TIME(_DateTimeMixin, sqltypes.Time):
         return process
   
     def result_processor(self, dialect, coltype):
-        return self._result_processor(datetime.time)
+        if self._reg:
+            return processors.str_to_datetime_processor_factory(
+                self._reg, datetime.time)
+        else:
+            return processors.str_to_time
 
 colspecs = {
     sqltypes.Date: DATE,

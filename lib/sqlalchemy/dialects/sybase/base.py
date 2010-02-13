@@ -115,24 +115,7 @@ class SybaseUniqueIdentifier(sqltypes.TypeEngine):
     __visit_name__ = "UNIQUEIDENTIFIER"
     
 class SybaseBoolean(sqltypes.Boolean):
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is None:
-                return None
-            return value and True or False
-        return process
-
-    def bind_processor(self, dialect):
-        def process(value):
-            if value is True:
-                return 1
-            elif value is False:
-                return 0
-            elif value is None:
-                return None
-            else:
-                return value and True or False
-        return process
+    pass
 
 class SybaseTypeCompiler(compiler.GenericTypeCompiler):
     def visit_large_binary(self, type_):

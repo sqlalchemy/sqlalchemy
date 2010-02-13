@@ -339,7 +339,7 @@ class ZooMarkTest(TestBase):
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
-    @profiling.function_call_count(13341, {'2.4': 7963})
+    @profiling.function_call_count(13341, {'2.4': 7963, '2.6+cextension':12447})
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
@@ -351,7 +351,7 @@ class ZooMarkTest(TestBase):
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
 
-    @profiling.function_call_count(2641, {'2.4': 1673})
+    @profiling.function_call_count(2641, {'2.4': 1673, '2.6+cextension':2502})
     def test_profile_7_multiview(self):
         self.test_baseline_7_multiview()
 

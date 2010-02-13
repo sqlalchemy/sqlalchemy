@@ -32,6 +32,9 @@ class _ZxJDBCDate(sqltypes.Date):
 class _ZxJDBCNumeric(sqltypes.Numeric):
 
     def result_processor(self, dialect, coltype):
+        #XXX: does the dialect return Decimal or not???
+        # if it does (in all cases), we could use a None processor as well as
+        # the to_float generic processor
         if self.asdecimal:
             def process(value):
                 if isinstance(value, decimal.Decimal):

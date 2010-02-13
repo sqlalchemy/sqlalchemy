@@ -59,6 +59,20 @@ CHANGES
       [ticket:1689]
       
 - sql
+  - Added an optional C extension to speed up the sql layer by
+    reimplementing RowProxy and the most common result processors.
+    The actual speedups will depend heavily on your DBAPI and
+    the mix of datatypes used in your tables, and can vary from
+    a 50% improvement to more than 200%.  It also provides a modest
+    (~20%) indirect improvement to ORM speed for large queries.
+    Note that it is *not* built/installed by default.
+    See README for installation instructions.
+
+  - The most common result processors conversion function were
+    moved to the new "processors" module.  Dialect authors are
+    encouraged to use those functions whenever they correspond
+    to their needs instead of implementing custom ones.
+
   - Added math negation operator support, -x.
   
   - FunctionElement subclasses are now directly executable the

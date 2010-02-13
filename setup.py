@@ -15,9 +15,11 @@ if sys.version_info >= (3, 0):
     )
 
 try:
-    from setuptools import setup
+    from setuptools import setup, Extension
 except ImportError:
-    from distutils.core import setup
+    from distutils.core import setup, Extension
+
+BUILD_CEXTENSIONS = False
 
 def find_packages(dir_):
     packages = []
@@ -46,6 +48,12 @@ setup(name = "SQLAlchemy",
       license = "MIT License",
       tests_require = ['nose >= 0.10'],
       test_suite = "nose.collector",
+      ext_modules = (BUILD_CEXTENSIONS and
+                     [Extension('sqlalchemy.cprocessors',
+                                sources=['lib/sqlalchemy/cextension/processors.c']),
+                      Extension('sqlalchemy.cresultproxy',
+                                sources=['lib/sqlalchemy/cextension/resultproxy.c'])
+                                ]),
       entry_points = {
           'nose.plugins.0.10': [
               'sqlalchemy = sqlalchemy.test.noseplugin:NoseSQLAlchemy',

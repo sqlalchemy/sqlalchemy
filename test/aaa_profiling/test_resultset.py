@@ -29,13 +29,13 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
     def teardown(self):
         metadata.drop_all()
         
-    @profiling.function_call_count(14416, versions={'2.4':13214})
+    @profiling.function_call_count(14416, versions={'2.4':13214, '2.6+cextension':409})
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
     # sqlite3 returns native unicode.  so shouldn't be an
     # increase here.
-    @profiling.function_call_count(14396, versions={'2.4':13214})
+    @profiling.function_call_count(14396, versions={'2.4':13214, '2.6+cextension':409})
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 

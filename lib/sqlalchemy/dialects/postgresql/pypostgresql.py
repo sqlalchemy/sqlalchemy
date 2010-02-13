@@ -12,6 +12,7 @@ import decimal
 from sqlalchemy import util
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, PGExecutionContext
+from sqlalchemy import processors
 
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -21,12 +22,7 @@ class PGNumeric(sqltypes.Numeric):
         if self.asdecimal:
             return None
         else:
-            def process(value):
-                if value is not None:
-                    return float(value)
-                else:
-                    return value
-            return process
+            return processors.to_float
 
 class PostgreSQL_pypostgresqlExecutionContext(PGExecutionContext):
     pass

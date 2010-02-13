@@ -17,23 +17,17 @@ This dialect is *not* tested on SQLAlchemy 0.6.
 from sqlalchemy import sql, schema, types, exc, pool
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy.engine import default, base
-
+from sqlalchemy import processors
 
 class AcNumeric(types.Numeric):
-    def result_processor(self, dialect, coltype):
-        return None
-
-    def bind_processor(self, dialect):
-        def process(value):
-            if value is None:
-                # Not sure that this exception is needed
-                return value
-            else:
-                return str(value)
-        return process
-
     def get_col_spec(self):
         return "NUMERIC"
+
+    def bind_processor(self, dialect):
+        return processors.to_str
+
+    def result_processor(self, dialect, coltype):
+        return None
 
 class AcFloat(types.Float):
     def get_col_spec(self):
@@ -41,11 +35,7 @@ class AcFloat(types.Float):
 
     def bind_processor(self, dialect):
         """By converting to string, we can use Decimal types round-trip."""
-        def process(value):
-            if not value is None:
-                return str(value)
-            return None
-        return process
+        return processors.to_str
 
 class AcInteger(types.Integer):
     def get_col_spec(self):
@@ -102,25 +92,6 @@ class AcBinary(types.LargeBinary):
 class AcBoolean(types.Boolean):
     def get_col_spec(self):
         return "YESNO"
-
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            if value is None:
-                return None
-            return value and True or False
-        return process
-
-    def bind_processor(self, dialect):
-        def process(value):
-            if value is True:
-                return 1
-            elif value is False:
-                return 0
-            elif value is None:
-                return None
-            else:
-                return value and True or False
-        return process
 
 class AcTimeStamp(types.TIMESTAMP):
     def get_col_spec(self):

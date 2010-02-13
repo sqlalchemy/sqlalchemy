@@ -233,11 +233,10 @@ from sqlalchemy.sql import select, compiler, expression, \
                             functions as sql_functions, util as sql_util
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
-from decimal import Decimal as _python_Decimal
+from sqlalchemy import processors
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
                                 FLOAT, TIMESTAMP, DATETIME, DATE, BINARY,\
                                 VARBINARY, BLOB
-            
 
 from sqlalchemy.dialects.mssql import information_schema as ischema
 
@@ -280,22 +279,12 @@ RESERVED_WORDS = set(
 class _MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            def process(value):
-                if value is not None:
-                    return _python_Decimal(str(value))
-                else:
-                    return value
-            return process
+            return processors.to_decimal_processor_factory(decimal.Decimal)
         else:
             #XXX: if the DBAPI returns a float (this is likely, given the
             # processor when asdecimal is True), this should be a None
             # processor instead.
-            def process(value):
-                if value is not None:
-                    return float(value)
-                else:
-                    return value
-            return process
+            return processors.to_float
 
     def bind_processor(self, dialect):
         def process(value):

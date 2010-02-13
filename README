@@ -35,6 +35,15 @@ To install::
 To use without installation, include the ``lib`` directory in your Python
 path.
 
+Installing the C extension
+--------------------------
+
+Edit "setup.py" and set ``BUILD_CEXTENSIONS`` to ``True``, then install it as
+above. If you want only to build the extension and not install it, you can do
+so with::
+
+  python setup.py build
+
 Running Tests
 -------------
 

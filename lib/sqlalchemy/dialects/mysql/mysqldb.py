@@ -28,6 +28,7 @@ from sqlalchemy.dialects.mysql.base import (DECIMAL, MySQLDialect, MySQLExecutio
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
+from sqlalchemy import processors
 
 class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
     
@@ -51,12 +52,7 @@ class _DecimalType(_NumericType):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             return None
-        def process(value):
-            if value is not None:
-                return float(value)
-            else:
-                return value
-        return process
+        return processors.to_float
 
 
 class _MySQLdbNumeric(_DecimalType, NUMERIC):

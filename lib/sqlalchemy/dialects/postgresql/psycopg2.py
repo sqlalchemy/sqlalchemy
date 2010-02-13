@@ -46,8 +46,11 @@ The following per-statement execution options are respected:
 
 """
 
-import decimal, random, re
+import random, re
+import decimal
+
 from sqlalchemy import util
+from sqlalchemy import processors
 from sqlalchemy.engine import base, default
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators as sql_operators
@@ -63,12 +66,7 @@ class _PGNumeric(sqltypes.Numeric):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             if coltype in (700, 701):
-                def process(value):
-                    if value is not None:
-                        return decimal.Decimal(str(value))
-                    else:
-                        return value
-                return process
+                return processors.to_decimal_processor_factory(decimal.Decimal)
             elif coltype == 1700:
                 # pg8000 returns Decimal natively for 1700
                 return None
@@ -79,12 +77,7 @@ class _PGNumeric(sqltypes.Numeric):
                 # pg8000 returns float natively for 701
                 return None
             elif coltype == 1700:
-                def process(value):
-                    if value is not None:
-                        return float(value)
-                    else:
-                        return value
-                return process
+                return processors.to_float
             else:
                 raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)
 
