@@ -1,6 +1,19 @@
 import os
 import sys
 import re
+
+extra = {}
+if sys.version_info >= (3, 0):
+    # monkeypatch our preprocessor
+    # onto the 2to3 tool.  
+    from sa2to3 import refactor_string
+    from lib2to3.refactor import RefactoringTool
+    RefactoringTool.refactor_string = refactor_string
+
+    extra.update(
+        use_2to3=True,
+    )
+
 try:
     from setuptools import setup
 except ImportError:
@@ -14,13 +27,13 @@ def find_packages(dir_):
             packages.append(fragment.replace(os.sep, '.'))
     return packages
 
-
 if sys.version_info < (2, 4):
     raise Exception("SQLAlchemy requires Python 2.4 or higher.")
 
 v = open(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(v.read()).group(1)
 v.close()
+
 
 setup(name = "SQLAlchemy",
       version = VERSION,
@@ -77,5 +90,6 @@ SVN version:
         "Programming Language :: Python :: 3",
         "Topic :: Database :: Front-Ends",
         "Operating System :: OS Independent",
-        ]
+        ],
+        **extra
       )

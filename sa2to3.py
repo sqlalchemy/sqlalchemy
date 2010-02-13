@@ -1,15 +1,9 @@
 """SQLAlchemy 2to3 tool.
 
-Relax !  This just calls the regular 2to3 tool with a preprocessor bolted onto it.
-
-
-I originally wanted to write a custom fixer to accomplish this
-but the Fixer classes seem like they can only understand 
-the grammar file included with 2to3, and the grammar does not
-seem to include Python comments (and of course, huge hacks needed
-to get out-of-package fixers in there).   While that may be
-an option later on this is a pretty simple approach for
-what is a pretty simple problem.
+This tool monkeypatches a preprocessor onto
+lib2to3.refactor.RefactoringTool, so that conditional
+sections can replace non-fixable Python 2 code sections
+for the appropriate Python 3 version before 2to3 is run.
 
 """
 
@@ -61,7 +55,7 @@ def preprocess(data):
 
     return "\n".join(consume_normal())
 
-old_refactor_string = main.StdoutRefactoringTool.refactor_string
+old_refactor_string = refactor.RefactoringTool.refactor_string
 
 def refactor_string(self, data, name):
     newdata = preprocess(data)
@@ -70,7 +64,9 @@ def refactor_string(self, data, name):
         if newdata != data:
             tree.was_changed = True
     return tree
-    
-main.StdoutRefactoringTool.refactor_string = refactor_string
 
-main.main("lib2to3.fixes")
+if __name__ == '__main__':
+    refactor.RefactoringTool.refactor_string = refactor_string
+    main.main("lib2to3.fixes")
+
+
