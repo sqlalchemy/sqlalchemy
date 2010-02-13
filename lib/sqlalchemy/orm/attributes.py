@@ -955,9 +955,6 @@ class ClassManager(dict):
             self.new_init = None
     
     def _create_instance_state(self, instance):
-        global state
-        if state is None:
-            from sqlalchemy.orm import state
         if self.mutable_attributes:
             return state.MutableAttrInstanceState(instance, self)
         else:

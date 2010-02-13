@@ -46,6 +46,15 @@ CHANGES
    - Fixed bug in session.merge() which prevented dict-like
      collections from merging.
 
+   - For those who might use debug logging on 
+     sqlalchemy.orm.strategies, most logging calls during row
+     loading have been removed.   These were never very helpful
+     and cluttered up the code.
+     
+   - Some internal streamlining of object loading grants a 
+     small speedup for large results, estimates are around 
+     10-15%.
+     
 - sql
   - Added math negation operator support, -x.
   

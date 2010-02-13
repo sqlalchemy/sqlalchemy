@@ -122,7 +122,9 @@ class WeakInstanceDict(IdentityMap):
     def add(self, state):
         if state.key in self:
             if dict.__getitem__(self, state.key) is not state:
-                raise AssertionError("A conflicting state is already present in the identity map for key %r" % (state.key, ))
+                raise AssertionError("A conflicting state is already "
+                                    "present in the identity map for key %r" 
+                                    % (state.key, ))
         else:
             dict.__setitem__(self, state.key, state)
             self._manage_incoming_state(state)

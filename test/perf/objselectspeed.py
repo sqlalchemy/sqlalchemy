@@ -1,9 +1,8 @@
-import testenv; testenv.simple_setup()
 import time, resource
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.test.util import gc_collect
-
+from sqlalchemy.test import profiling
 
 db = create_engine('sqlite://')
 metadata = MetaData(db)
@@ -51,6 +50,7 @@ def sql_select(entity_cls):
         person.age = row.age
         people.append(person)
 
+#@profiling.profiled(report=True, always=True)
 def orm_select():
     session = create_session()
     people = session.query(Person).all()

@@ -6,6 +6,9 @@ from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, PASSIVE_OFF, \
                                         ATTR_WAS_SET
 from sqlalchemy.orm import attributes, exc as orm_exc, interfaces
 
+import sys
+attributes.state = sys.modules['sqlalchemy.orm.state']
+
 class InstanceState(object):
     """tracks state information at the instance level."""
 
@@ -18,17 +21,29 @@ class InstanceState(object):
     insert_order = None
     mutable_dict = None
     _strong_obj = None
+    modified = False
+    expired = False
     
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
         self.manager = manager
         self.obj = weakref.ref(obj, self._cleanup)
-        self.modified = False
-        self.callables = {}
-        self.expired = False
-        self.committed_state = {}
-        self.pending = {}
-        self.parents = {}
+
+    @util.memoized_property
+    def committed_state(self):
+        return {}
+    
+    @util.memoized_property
+    def parents(self):
+        return {}
+
+    @util.memoized_property
+    def pending(self):
+        return {}
+
+    @util.memoized_property
+    def callables(self):
+        return {}
         
     def detach(self):
         if self.session_id:
@@ -123,7 +138,7 @@ class InstanceState(object):
 
     def _run_on_load(self, instance):
         self.manager.events.run('on_load', instance)
-
+    
     def __getstate__(self):
         d = {
             'instance':self.obj(),
@@ -133,7 +148,7 @@ class InstanceState(object):
             (k, self.__dict__[k]) for k in (
                 'committed_state', 'pending', 'parents', 'modified', 'expired', 
                 'callables'
-            ) if self.__dict__[k]
+            ) if self.__dict__.get(k, False)
         )
         
         d.update(

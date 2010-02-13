@@ -420,7 +420,8 @@ class MapperProperty(object):
         pass
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        """Return a 2-tuple consiting of two row processing functions and an instance post-processing function.
+        """Return a 2-tuple consiting of two row processing functions and 
+           an instance post-processing function.
 
         Input arguments are the query.SelectionContext and the *first*
         applicable row of a result set obtained within
@@ -435,16 +436,13 @@ class MapperProperty(object):
 
         Callables are of the following form::
 
-            def new_execute(state, dict_, row, **flags):
+            def new_execute(state, dict_, row, isnew):
                 # process incoming instance state and given row.  the instance is
                 # "new" and was just created upon receipt of this row.
-                # flags is a dictionary containing at least the following
-                # attributes:
-                #   isnew - indicates if the instance was newly created as a
-                #           result of reading this row
-                #   instancekey - identity key of the instance
+                "isnew" indicates if the instance was newly created as a
+                result of reading this row
 
-            def existing_execute(state, dict_, row, **flags):
+            def existing_execute(state, dict_, row):
                 # process incoming instance state and given row.  the instance is
                 # "existing" and was created based on a previous row.
 
