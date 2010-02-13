@@ -289,14 +289,14 @@ class SessionTransaction(object):
         assert not self.session._deleted
 
         for s in self.session.identity_map.all_states():
-            _expire_state(s, None, instance_dict=self.session.identity_map)
+            _expire_state(s, s.dict, None, instance_dict=self.session.identity_map)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
 
         if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
-                _expire_state(s, None, instance_dict=self.session.identity_map)
+                _expire_state(s, s.dict, None, instance_dict=self.session.identity_map)
 
     def _connection_for_bind(self, bind):
         self._assert_is_active()
@@ -915,7 +915,7 @@ class Session(object):
         """Expires all persistent instances within this Session."""
 
         for state in self.identity_map.all_states():
-            _expire_state(state, None, instance_dict=self.identity_map)
+            _expire_state(state, state.dict, None, instance_dict=self.identity_map)
 
     def expire(self, instance, attribute_names=None):
         """Expire the attributes on an instance.
@@ -936,14 +936,15 @@ class Session(object):
             raise exc.UnmappedInstanceError(instance)
         self._validate_persistent(state)
         if attribute_names:
-            _expire_state(state, attribute_names=attribute_names, instance_dict=self.identity_map)
+            _expire_state(state, state.dict, 
+                                attribute_names=attribute_names, instance_dict=self.identity_map)
         else:
             # pre-fetch the full cascade since the expire is going to
             # remove associations
             cascaded = list(_cascade_state_iterator('refresh-expire', state))
-            _expire_state(state, None, instance_dict=self.identity_map)
+            _expire_state(state, state.dict, None, instance_dict=self.identity_map)
             for (state, m, o) in cascaded:
-                _expire_state(state, None, instance_dict=self.identity_map)
+                _expire_state(state, state.dict, None, instance_dict=self.identity_map)
 
     def prune(self):
         """Remove unreferenced instances cached in the identity map.

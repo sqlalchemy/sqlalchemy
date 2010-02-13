@@ -121,7 +121,7 @@ class ColumnLoader(LoaderStrategy):
         else:
             def new_execute(state, dict_, row, isnew):
                 if isnew:
-                    state.expire_attributes([key])
+                    state.expire_attribute_pre_commit(dict_, key)
         return new_execute, None
 
 log.class_logger(ColumnLoader)
@@ -168,7 +168,7 @@ class CompositeColumnLoader(ColumnLoader):
             if c not in row:
                 def new_execute(state, dict_, row, isnew):
                     if isnew:
-                        state.expire_attributes([key])
+                        state.expire_attribute_pre_commit(dict_, key)
                 break
         else:
             def new_execute(state, dict_, row, isnew):

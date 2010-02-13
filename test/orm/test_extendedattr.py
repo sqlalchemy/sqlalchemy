@@ -161,21 +161,21 @@ class UserDefinedExtensionTest(_base.ORMTest):
             
             assert Foo in attributes.instrumentation_registry._state_finders
             f = Foo()
-            attributes.instance_state(f).expire_attributes(None)
+            attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 
             f.a = "this is some new a"
-            attributes.instance_state(f).expire_attributes(None)
+            attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 
-            attributes.instance_state(f).expire_attributes(None)
+            attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             f.a = "this is another new a"
             eq_(f.a, "this is another new a")
             eq_(f.b, 12)
 
-            attributes.instance_state(f).expire_attributes(None)
+            attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 

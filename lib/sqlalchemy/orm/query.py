@@ -1873,8 +1873,9 @@ class Query(object):
 
                     state.commit(dict_, list(to_evaluate))
 
-                    # expire attributes with pending changes (there was no autoflush, so they are overwritten)
-                    state.expire_attributes(set(evaluated_keys).difference(to_evaluate))
+                    # expire attributes with pending changes 
+                    # (there was no autoflush, so they are overwritten)
+                    state.expire_attributes(dict_, set(evaluated_keys).difference(to_evaluate))
 
         elif synchronize_session == 'fetch':
             target_mapper = self._mapper_zero()

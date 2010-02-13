@@ -1484,7 +1484,7 @@ class Mapper(object):
                 )
 
                 if readonly:
-                    _expire_state(state, readonly)
+                    _expire_state(state, state.dict, readonly)
 
                 # if specified, eagerly refresh whatever has
                 # been expired.
@@ -1524,7 +1524,7 @@ class Mapper(object):
         deferred_props = [prop.key for prop in [self._columntoproperty[c] for c in postfetch_cols]]
 
         if deferred_props:
-            _expire_state(state, deferred_props)
+            _expire_state(state, state.dict, deferred_props)
 
         # synchronize newly inserted ids from one table to the next
         # TODO: this still goes a little too often.  would be nice to

@@ -142,21 +142,21 @@ class AttributesTest(_base.ORMTest):
         attributes.register_attribute(Foo, 'b', uselist=False, useobject=False)
 
         f = Foo()
-        attributes.instance_state(f).expire_attributes(None)
+        attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
         eq_(f.a, "this is a")
         eq_(f.b, 12)
 
         f.a = "this is some new a"
-        attributes.instance_state(f).expire_attributes(None)
+        attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
         eq_(f.a, "this is a")
         eq_(f.b, 12)
 
-        attributes.instance_state(f).expire_attributes(None)
+        attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
         f.a = "this is another new a"
         eq_(f.a, "this is another new a")
         eq_(f.b, 12)
 
-        attributes.instance_state(f).expire_attributes(None)
+        attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
         eq_(f.a, "this is a")
         eq_(f.b, 12)
 
@@ -182,7 +182,7 @@ class AttributesTest(_base.ORMTest):
         attributes.register_attribute(MyTest, 'b', uselist=False, useobject=False)
 
         m = MyTest()
-        attributes.instance_state(m).expire_attributes(None)
+        attributes.instance_state(m).expire_attributes(attributes.instance_dict(m), None)
         assert 'a' not in m.__dict__
         m2 = pickle.loads(pickle.dumps(m))
         assert 'a' not in m2.__dict__
@@ -355,7 +355,7 @@ class AttributesTest(_base.ORMTest):
         x.bars
         b = Bar(id=4)
         b.foos.append(x)
-        attributes.instance_state(x).expire_attributes(['bars'])
+        attributes.instance_state(x).expire_attributes(attributes.instance_dict(x), ['bars'])
         assert_raises(AssertionError, b.foos.remove, x)
         
         
@@ -1294,7 +1294,7 @@ class HistoryTest(_base.ORMTest):
         eq_(attributes.get_state_history(attributes.instance_state(f), 'bars'), ([bar4], [], []))
 
         lazy_load = [bar1, bar2, bar3]
-        attributes.instance_state(f).expire_attributes(['bars'])
+        attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), ['bars'])
         eq_(attributes.get_state_history(attributes.instance_state(f), 'bars'), ((), [bar1, bar2, bar3], ()))
 
     def test_collections_via_lazyload(self):

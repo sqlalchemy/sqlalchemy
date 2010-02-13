@@ -115,7 +115,7 @@ class ColumnProperty(StrategizedProperty):
                 impl = dest_state.get_impl(self.key)
                 impl.set(dest_state, dest_dict, value, None)
         else:
-            dest_state.expire_attributes([self.key])
+            dest_state.expire_attributes(dest_dict, [self.key])
 
     def get_col_value(self, column, value):
         return value
@@ -636,7 +636,7 @@ class RelationProperty(StrategizedProperty):
                     return
 
         if not "merge" in self.cascade:
-            dest_state.expire_attributes([self.key])
+            dest_state.expire_attribute(dest_dict, [self.key])
             return
 
         if self.key not in source_dict:

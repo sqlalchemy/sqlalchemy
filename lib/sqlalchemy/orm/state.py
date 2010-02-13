@@ -239,9 +239,30 @@ class InstanceState(object):
         return set(
             key for key in self.manager.iterkeys()
             if key not in self.committed_state and key not in self.dict)
-
-    def expire_attributes(self, attribute_names, instance_dict=None):
-        self.expired_attributes = set(self.expired_attributes)
+    
+    def expire_attribute_pre_commit(self, dict_, key):
+        """a fast expire that can be called by column loaders during a load.
+        
+        The additional bookkeeping is finished up in commit_all().
+        
+        This method is actually called a lot with joined-table
+        loading, when the second table isn't present in the result.
+        
+        """
+        # TODO: yes, this is still a little too busy.
+        # need to more cleanly separate out handling 
+        # for the various AttributeImpls and the contracts 
+        # they wish to maintain with their strategies
+        if not self.expired_attributes:
+            self.expired_attributes = set(self.expired_attributes)
+            
+        dict_.pop(key, None)
+        self.callables[key] = self
+        self.expired_attributes.add(key)
+        
+    def expire_attributes(self, dict_, attribute_names, instance_dict=None):
+        if not self.expired_attributes:
+            self.expired_attributes = set(self.expired_attributes)
 
         if attribute_names is None:
             attribute_names = self.manager.keys()
@@ -258,7 +279,6 @@ class InstanceState(object):
             filter_deferred = True
         else:
             filter_deferred = False
-        dict_ = self.dict
         
         for key in attribute_names:
             impl = self.manager[key].impl
@@ -354,8 +374,7 @@ class InstanceState(object):
         
         self.committed_state = {}
         self.pending = {}
-        
-        # unexpire attributes which have loaded
+            
         if self.expired_attributes:
             for key in self.expired_attributes.intersection(dict_):
                 self.callables.pop(key, None)
