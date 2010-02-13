@@ -1,11 +1,12 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.test import *
+from sqlalchemy.test import profiling
 
 NUM = 500
 DIVISOR = 50
 
-meta = MetaData(testing.db)
+engine = create_engine('sqlite://')
+meta = MetaData(engine)
 items = Table('items', meta,
               Column('item_id', Integer, primary_key=True),
               Column('value', String(100)))

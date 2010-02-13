@@ -2,7 +2,6 @@
 when additional mappers are created while the existing
 collection is being compiled."""
 
-import testenv; testenv.simple_setup()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import thread, time
