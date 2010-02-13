@@ -54,7 +54,10 @@ CHANGES
    - Some internal streamlining of object loading grants a 
      small speedup for large results, estimates are around 
      10-15%.
-     
+
+    - Documentation clarification for query.delete()
+      [ticket:1689]
+      
 - sql
   - Added math negation operator support, -x.
   

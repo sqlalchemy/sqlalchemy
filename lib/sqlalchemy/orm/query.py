@@ -1682,7 +1682,8 @@ class Query(object):
 
             'evaluate' - Evaluate the query's criteria in Python straight on
             the objects in the session. If evaluation of the criteria isn't
-            implemented, the 'fetch' strategy will be used as a fallback.
+            implemented, an error is raised.  In that case you probably 
+            want to use the 'fetch' strategy as a fallback.
           
             The expression evaluator currently doesn't account for differing
             string collations between the database and Python.
@@ -1707,14 +1708,17 @@ class Query(object):
         #TODO: cascades need handling.
 
         if synchronize_session not in [False, 'evaluate', 'fetch']:
-            raise sa_exc.ArgumentError("Valid strategies for session synchronization are False, 'evaluate' and 'fetch'")
+            raise sa_exc.ArgumentError("Valid strategies for session "
+                                    "synchronization are False, 'evaluate' and 'fetch'")
         self._no_select_modifiers("delete")
 
         self = self.enable_eagerloads(False)
 
         context = self._compile_context()
-        if len(context.statement.froms) != 1 or not isinstance(context.statement.froms[0], schema.Table):
-            raise sa_exc.ArgumentError("Only deletion via a single table query is currently supported")
+        if len(context.statement.froms) != 1 or \
+                    not isinstance(context.statement.froms[0], schema.Table):
+            raise sa_exc.ArgumentError("Only deletion via a single table "
+                                        "query is currently supported")
         primary_table = context.statement.froms[0]
 
         session = self.session
