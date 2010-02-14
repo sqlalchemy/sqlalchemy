@@ -155,7 +155,7 @@ static int
 UnicodeResultProcessor_init(UnicodeResultProcessor *self, PyObject *args,
                             PyObject *kwds)
 {
-    PyObject *encoding, *errors;
+    PyObject *encoding, *errors = NULL;
     static char *kwlist[] = {"encoding", "errors", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "S|S:init", kwlist,
