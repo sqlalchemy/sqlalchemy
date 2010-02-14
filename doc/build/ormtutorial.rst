@@ -510,7 +510,7 @@ Here's a rundown of some of the most common operators used in ``filter()``:
 Returning Lists and Scalars
 ---------------------------
 
-The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue SQL and return a non-iterator value.  ``all()`` returns a list:
+The :meth:`~sqlalchemy.orm.query.Query.all()`, :meth:`~sqlalchemy.orm.query.Query.one()`, and :meth:`~sqlalchemy.orm.query.Query.first()` methods of :class:`~sqlalchemy.orm.query.Query` immediately issue SQL and return a non-iterator value.  :meth:`~sqlalchemy.orm.query.Query.all()` returns a list:
 
 .. sourcecode:: python+sql
 
@@ -522,7 +522,7 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
     ['%ed']
     {stop}[<User('ed','Ed Jones', 'f8s7ccs')>, <User('fred','Fred Flinstone', 'blah')>]
 
-``first()`` applies a limit of one and returns the first result as a scalar:
+:meth:`~sqlalchemy.orm.query.Query.first()` applies a limit of one and returns the first result as a scalar:
 
 .. sourcecode:: python+sql
 
@@ -534,7 +534,7 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
     ['%ed']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')>
 
-``one()``, fully fetches all rows, and if not exactly one object identity or composite row is present in the result, raises an error:
+:meth:`~sqlalchemy.orm.query.Query.one()`, fully fetches all rows, and if not exactly one object identity or composite row is present in the result, raises an error:
 
 .. sourcecode:: python+sql
 
@@ -565,7 +565,7 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
 Using Literal SQL
 -----------------
 
-Literal strings can be used flexibly with ``Query``.  Most methods accept strings in addition to SQLAlchemy clause constructs.  For example, ``filter()`` and ``order_by()``:
+Literal strings can be used flexibly with :class:`~sqlalchemy.orm.query.Query`.  Most methods accept strings in addition to SQLAlchemy clause constructs.  For example, :meth:`~sqlalchemy.orm.query.Query.filter()` and :meth:`~sqlalchemy.orm.query.Query.order_by()`:
 
 .. sourcecode:: python+sql
 
@@ -580,7 +580,7 @@ Literal strings can be used flexibly with ``Query``.  Most methods accept string
     mary
     fred
 
-Bind parameters can be specified with string-based SQL, using a colon.  To specify the values, use the ``params()`` method:
+Bind parameters can be specified with string-based SQL, using a colon.  To specify the values, use the :meth:`~sqlalchemy.orm.query.Query.params()` method:
 
 .. sourcecode:: python+sql
 
@@ -592,7 +592,7 @@ Bind parameters can be specified with string-based SQL, using a colon.  To speci
     [224, 'fred']
     {stop}<User('fred','Fred Flinstone', 'blah')>
 
-To use an entirely string-based statement, using ``from_statement()``; just ensure that the columns clause of the statement contains the column names normally used by the mapper (below illustrated using an asterisk):
+To use an entirely string-based statement, using :meth:`~sqlalchemy.orm.query.Query.from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (below illustrated using an asterisk):
 
 .. sourcecode:: python+sql
 
@@ -601,7 +601,7 @@ To use an entirely string-based statement, using ``from_statement()``; just ensu
     ['ed']
     {stop}[<User('ed','Ed Jones', 'f8s7ccs')>]
 
-You can use ``from_statement()`` to go completely "raw", using string names to identify desired columns:
+You can use :meth:`~sqlalchemy.orm.query.Query.from_statement()` to go completely "raw", using string names to identify desired columns:
 
 .. sourcecode:: python+sql
 
@@ -613,7 +613,7 @@ You can use ``from_statement()`` to go completely "raw", using string names to i
 Counting
 --------
 
-``Query`` includes a convenience method for counting called ``count()``:
+:class:`~sqlalchemy.orm.query.Query` includes a convenience method for counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
 
 .. sourcecode:: python+sql
 
@@ -624,7 +624,7 @@ Counting
     ['%ed']
     {stop}2
     
-The ``count()`` method is used to determine how many rows the SQL statement would return, and is mainly intended to return a simple count of a single type of entity, in this case ``User``.   For more complicated sets of columns or entities where the "thing to be counted" needs to be indicated more specifically, ``count()`` is probably not what you want.  Below, a query for individual columns does return the expected result:
+The :meth:`~sqlalchemy.orm.query.Query.count()` method is used to determine how many rows the SQL statement would return, and is mainly intended to return a simple count of a single type of entity, in this case ``User``.   For more complicated sets of columns or entities where the "thing to be counted" needs to be indicated more specifically, :meth:`~sqlalchemy.orm.query.Query.count()` is probably not what you want.  Below, a query for individual columns does return the expected result:
 
 .. sourcecode:: python+sql
 
@@ -681,9 +681,9 @@ Now let's consider a second table to be dealt with.  Users in our system also ca
     ...     def __repr__(self):
     ...         return "<Address('%s')>" % self.email_address
 
-The above class introduces a **foreign key** constraint which references the ``users`` table.  This defines for SQLAlchemy the relationship between the two tables at the database level.  The relationship between the ``User`` and ``Address`` classes is defined separately using the ``relation()`` function, which defines an attribute ``user`` to be placed on the ``Address`` class, as well as an ``addresses`` collection to be placed on the ``User`` class.  Such a relation is known as a **bidirectional** relationship.   Because of the placement of the foreign key, from ``Address`` to ``User`` it is **many to one**, and from ``User`` to ``Address`` it is **one to many**.  SQLAlchemy is automatically aware of many-to-one/one-to-many based on foreign keys.
+The above class introduces a **foreign key** constraint which references the ``users`` table.  This defines for SQLAlchemy the relationship between the two tables at the database level.  The relationship between the ``User`` and ``Address`` classes is defined separately using the :func:`~sqlalchemy.orm.relation()` function, which defines an attribute ``user`` to be placed on the ``Address`` class, as well as an ``addresses`` collection to be placed on the ``User`` class.  Such a relation is known as a **bidirectional** relationship.   Because of the placement of the foreign key, from ``Address`` to ``User`` it is **many to one**, and from ``User`` to ``Address`` it is **one to many**.  SQLAlchemy is automatically aware of many-to-one/one-to-many based on foreign keys.
 
-The ``relation()`` function is extremely flexible, and could just have easily been defined on the ``User`` class:
+The :func:`~sqlalchemy.orm.relation()` function is extremely flexible, and could just have easily been defined on the ``User`` class:
 
 .. sourcecode:: python+sql
 
@@ -691,9 +691,9 @@ The ``relation()`` function is extremely flexible, and could just have easily be
         # ....
         addresses = relation(Address, order_by=Address.id, backref="user")
 
-We are also free to not define a backref, and to define the :func:`relation()` only on one class and not the other.   It is also possible to define two separate :func:`relation` constructs for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
+We are also free to not define a backref, and to define the :func:`~sqlalchemy.orm.relation()` only on one class and not the other.   It is also possible to define two separate :func:`~sqlalchemy.orm.relation()` constructs for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
 
-When using the ``declarative`` extension, ``relation()`` gives us the option to use strings for most arguments that concern the target class, in the case that the target class has not yet been defined.  This **only** works in conjunction with ``declarative``:
+When using the ``declarative`` extension, :func:`~sqlalchemy.orm.relation()` gives us the option to use strings for most arguments that concern the target class, in the case that the target class has not yet been defined.  This **only** works in conjunction with ``declarative``:
 
 .. sourcecode:: python+sql
 
@@ -701,7 +701,7 @@ When using the ``declarative`` extension, ``relation()`` gives us the option to 
         ....
         addresses = relation("Address", order_by="Address.id", backref="user")
 
-When ``declarative`` is not in use, you typically define your ``mapper()`` well after the target classes and ``Table`` objects have been defined, so string expressions are not needed.
+When ``declarative`` is not in use, you typically define your :func:`~sqlalchemy.orm.mapper()` well after the target classes and ``Table`` objects have been defined, so string expressions are not needed.
 
 We'll need to create the ``addresses`` table in the database, so we will issue another CREATE from our metadata, which will skip over tables which have already been created:
 
@@ -815,7 +815,7 @@ SQLAlchemy has the ability to control exactly which attributes and how many leve
 Querying with Joins
 ====================
 
-While the eager load created a JOIN specifically to populate a collection, we can also work explicitly with joins in many ways.  For example, to construct a simple inner join between ``User`` and ``Address``, we can just ``filter()`` their related columns together.  Below we load the ``User`` and ``Address`` entities at once using this method:
+While the eager load created a JOIN specifically to populate a collection, we can also work explicitly with joins in many ways.  For example, to construct a simple inner join between ``User`` and ``Address``, we can just :meth:`~sqlalchemy.orm.query.Query.filter()` their related columns together.  Below we load the ``User`` and ``Address`` entities at once using this method:
 
 .. sourcecode:: python+sql
 
@@ -830,7 +830,7 @@ While the eager load created a JOIN specifically to populate a collection, we ca
     ['jack@google.com']
     {stop}<User('jack','Jack Bean', 'gjffdd')> <Address('jack@google.com')>
 
-Or we can make a real JOIN construct; one way to do so is to use the ORM ``join()`` function, and tell ``Query`` to "select from" this join:
+Or we can make a real JOIN construct; one way to do so is to use the ORM :func:`~sqlalchemy.orm.join()` function, and tell :class:`~sqlalchemy.orm.query.Query` to "select from" this join:
 
 .. sourcecode:: python+sql
 
@@ -843,7 +843,7 @@ Or we can make a real JOIN construct; one way to do so is to use the ORM ``join(
     ['jack@google.com']
     {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
-``join()`` knows how to join between ``User`` and ``Address`` because there's only one foreign key between them.  If there were no foreign keys, or several, ``join()`` would require a third argument indicating the ON clause of the join, in one of the following forms:
+:func:`~sqlalchemy.orm.join()` knows how to join between ``User`` and ``Address`` because there's only one foreign key between them.  If there were no foreign keys, or several, :func:`~sqlalchemy.orm.join()` would require a third argument indicating the ON clause of the join, in one of the following forms:
 
 .. sourcecode:: python+sql
 
@@ -851,7 +851,7 @@ Or we can make a real JOIN construct; one way to do so is to use the ORM ``join(
     join(User, Address, User.addresses)            # specify relation from left to right
     join(User, Address, 'addresses')               # same, using a string
 
-The functionality of ``join()`` is also available generatively from ``Query`` itself using ``Query.join``.  This is most easily used with just the "ON" clause portion of the join, such as:
+The functionality of :func:`~sqlalchemy.orm.join()` is also available generatively from :class:`~sqlalchemy.orm.query.Query` itself using :meth:`~sqlalchemy.orm.query.Query.join()`.  This is most easily used with just the "ON" clause portion of the join, such as:
 
 .. sourcecode:: python+sql
 
