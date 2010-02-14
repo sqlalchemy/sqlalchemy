@@ -130,6 +130,8 @@ CHANGES
   - Fixed reflection of TINYINT(1) "boolean" columns defined with
     integer flags like UNSIGNED.
 
+  - Further fixes for the mysql-connector dialect.  [ticket:1668]
+  
 - mssql
   - Re-established initial support for pymssql.
  

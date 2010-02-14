@@ -1201,8 +1201,19 @@ class MatchTest(TestBase, AssertsCompiledSQL):
     def teardown_class(cls):
         metadata.drop_all()
 
+    @testing.fails_on('mysql+mysqlconnector', 'uses pyformat')
     def test_expression(self):
         format = testing.db.dialect.paramstyle == 'format' and '%s' or '?'
+        self.assert_compile(
+            matchtable.c.title.match('somstr'),
+            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
+    
+    @testing.fails_on('mysql+mysqldb', 'uses format')
+    @testing.fails_on('mysql+oursql', 'uses format')
+    @testing.fails_on('mysql+pyodbc', 'uses format')
+    @testing.fails_on('mysql+zxjdbc', 'uses format')
+    def test_expression(self):
+        format = '%(title_1)s'
         self.assert_compile(
             matchtable.c.title.match('somstr'),
             "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)

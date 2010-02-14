@@ -286,6 +286,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                 ('postgresql','zxjdbc'),  
                 ('mysql','oursql'),
                 ('mysql','zxjdbc'),
+                ('mysql','mysqlconnector'),
                 ('sqlite','pysqlite'),
                 ('oracle','zxjdbc'),
             )), \
@@ -295,7 +296,9 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                                          testing.db.dialect.returns_unicode_strings)
         
     def test_round_trip(self):
-        unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand une drôle de petit voix m’a réveillé. Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
+        unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, "\
+                    u"quand une drôle de petit voix m’a réveillé. Elle "\
+                    u"disait: « S’il vous plaît… dessine-moi un mouton! »"
         
         unicode_table.insert().execute(unicode_varchar=unicodedata,unicode_text=unicodedata)
         
