@@ -1,3 +1,13 @@
+"""setup.py
+
+Please see README for basic installation instructions.
+
+"""
+
+# set this flag to True to compile
+# C extensions
+BUILD_CEXTENSIONS = False
+
 import os
 import sys
 import re
@@ -19,7 +29,6 @@ try:
 except ImportError:
     from distutils.core import setup, Extension
 
-BUILD_CEXTENSIONS = False
 
 def find_packages(dir_):
     packages = []
