@@ -91,5 +91,6 @@ if __name__ == '__main__':
     # that would change the results of a cached query, such as 
     # inserts, deletes, or modification to attributes that are 
     # part of query criterion, still require careful invalidation.
-    cache, key = q._get_cache_plus_key()
+    from meta import _get_cache_parameters
+    cache, key = _get_cache_parameters(q)
     assert person10 is cache.get(key)[0]
