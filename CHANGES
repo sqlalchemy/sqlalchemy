@@ -18,6 +18,14 @@ CHANGES
     between them, the attach of the deleted would fail
     internally. The formerly "pending" objects are now expunged
     first. [ticket:1674]
+
+  - query.one() no longer applies LIMIT to the query, this to
+    ensure that it fully counts all object identities present
+    in the result, even in the case where joins may conceal
+    multiple identities for two or more rows.  As a bonus,
+    one() can now also be called with a query that issued
+    from_statement() to start with since it no longer modifies
+    the query.  [ticket:1688]
     
   - Slight improvement to the fix for [ticket:1362] to not issue 
     needless updates of the primary key column during a so-called
@@ -29,34 +37,34 @@ CHANGES
     being detached from any Session.   UnboundExecutionError
     is specific to engines bound to sessions and statements.
     
-   - Query called in the context of an expression will render
-     disambiguating labels in all cases.    Note that this does
-     not apply to the existing .statement and .subquery()
-     accessor/method, which still honors the .with_labels()
-     setting that defaults to False.  
+  - Query called in the context of an expression will render
+    disambiguating labels in all cases.    Note that this does
+    not apply to the existing .statement and .subquery()
+    accessor/method, which still honors the .with_labels()
+    setting that defaults to False.  
      
-   - Query.union() retains disambiguating labels within the
-     returned statement, thus avoiding various SQL composition
-     errors which can result from column name conflicts.
-     [ticket:1676]
+  - Query.union() retains disambiguating labels within the
+    returned statement, thus avoiding various SQL composition
+    errors which can result from column name conflicts.
+    [ticket:1676]
 
-   - Fixed bug in attribute history that inadvertently invoked
-     __eq__ on mapped instances.
+  - Fixed bug in attribute history that inadvertently invoked
+    __eq__ on mapped instances.
 
-   - Fixed bug in session.merge() which prevented dict-like
-     collections from merging.
+  - Fixed bug in session.merge() which prevented dict-like
+    collections from merging.
 
-   - For those who might use debug logging on 
-     sqlalchemy.orm.strategies, most logging calls during row
-     loading have been removed.   These were never very helpful
-     and cluttered up the code.
+  - For those who might use debug logging on 
+    sqlalchemy.orm.strategies, most logging calls during row
+    loading have been removed.   These were never very helpful
+    and cluttered up the code.
      
-   - Some internal streamlining of object loading grants a 
-     small speedup for large results, estimates are around 
-     10-15%.
+  - Some internal streamlining of object loading grants a 
+    small speedup for large results, estimates are around 
+    10-15%.
 
-    - Documentation clarification for query.delete()
-      [ticket:1689]
+  - Documentation clarification for query.delete()
+    [ticket:1689]
       
 - sql
   - Added an optional C extension to speed up the sql layer by

@@ -2836,12 +2836,35 @@ class ImmediateTest(_fixtures.FixtureTest):
                            filter(Address.id == 99)).one)
 
         eq_((sess.query(User, Address).
-             join(User.addresses).
-             filter(Address.id == 4)).one(),
-            (User(id=8), Address(id=4)))
+            join(User.addresses).
+            filter(Address.id == 4)).one(),
+           (User(id=8), Address(id=4)))
 
         assert_raises(sa.orm.exc.MultipleResultsFound,
-                          sess.query(User, Address).join(User.addresses).one)
+                         sess.query(User, Address).join(User.addresses).one)
+
+        # this result returns multiple rows, the first
+        # two rows being the same.  but uniquing is 
+        # not applied for a column based result.
+        assert_raises(sa.orm.exc.MultipleResultsFound,
+                       sess.query(User.id).
+                       join(User.addresses).
+                       filter(User.id.in_([8, 9])).
+                       order_by(User.id).
+                       one)
+
+        # test that a join which ultimately returns 
+        # multiple identities across many rows still 
+        # raises, even though the first two rows are of 
+        # the same identity and unique filtering 
+        # is applied ([ticket:1688])
+        assert_raises(sa.orm.exc.MultipleResultsFound,
+                        sess.query(User).
+                        join(User.addresses).
+                        filter(User.id.in_([8, 9])).
+                        order_by(User.id).
+                        one)
+                        
 
     @testing.future
     def test_getslice(self):

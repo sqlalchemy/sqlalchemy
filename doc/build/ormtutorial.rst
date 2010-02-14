@@ -534,7 +534,7 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
     ['%ed']
     {stop}<User('ed','Ed Jones', 'f8s7ccs')>
 
-``one()``, applies a limit of *two*, and if not exactly one row returned, raises an error:
+``one()``, fully fetches all rows, and if not exactly one object identity or composite row is present in the result, raises an error:
 
 .. sourcecode:: python+sql
 

@@ -287,7 +287,9 @@ class Query(object):
         if self._criterion is not None or self._statement is not None or self._from_obj or \
                 self._limit is not None or self._offset is not None or \
                 self._group_by:
-            raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
+            raise sa_exc.InvalidRequestError(
+                                "Query.%s() being called on a "
+                                "Query with existing criterion. " % meth)
 
         self._from_obj = ()
         self._statement = self._criterion = None
@@ -297,7 +299,9 @@ class Query(object):
         if not self._enable_assertions:
             return
         if self._order_by:
-            raise sa_exc.InvalidRequestError("Query.%s() being called on a Query with existing criterion. " % meth)
+            raise sa_exc.InvalidRequestError(
+                                "Query.%s() being called on a "
+                                "Query with existing criterion. " % meth)
         self._no_criterion_condition(meth)
 
     def _no_statement_condition(self, meth):
@@ -1284,9 +1288,10 @@ class Query(object):
         self._statement = statement
 
     def first(self):
-        """Return the first result of this ``Query`` or None if the result doesn't contain any row.
+        """Return the first result of this ``Query`` or 
+           None if the result doesn't contain any row.
 
-        This results in an execution of the underlying query.
+        Calling ``first()`` results in an execution of the underlying query.
 
         """
         if self._statement is not None:
@@ -1301,23 +1306,29 @@ class Query(object):
     def one(self):
         """Return exactly one result or raise an exception.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects no rows.
-        Raises ``sqlalchemy.orm.exc.MultipleResultsFound`` if multiple rows are
-        selected.
+        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects 
+        no rows.  Raises ``sqlalchemy.orm.exc.MultipleResultsFound`` 
+        if multiple object identities are returned, or if multiple
+        rows are returned for a query that does not return object
+        identities.
+        
+        Note that an entity query, that is, one which selects one or
+        more mapped classes as opposed to individual column attributes,
+        may ultimately represent many rows but only one row of 
+        unique entity or entities - this is a successful result for one().
 
-        This results in an execution of the underlying query.
+        Calling ``one()`` results in an execution of the underlying query.
+        As of 0.6, ``one()`` fully fetches all results instead of applying 
+        any kind of limit, so that the "unique"-ing of entities does not 
+        conceal multiple object identities.
 
         """
-        if self._statement:
-            raise sa_exc.InvalidRequestError(
-                "one() not available when from_statement() is used; "
-                "use `first()` instead.")
-
-        ret = list(self[0:2])
-
-        if len(ret) == 1:
+        ret = list(self)
+        
+        l = len(ret)
+        if l == 1:
             return ret[0]
-        elif len(ret) == 0:
+        elif l == 0:
             raise orm_exc.NoResultFound("No row was found for one()")
         else:
             raise orm_exc.MultipleResultsFound(
@@ -1500,8 +1511,10 @@ class Query(object):
                                         only_load_props=None, passive=None):
         lockmode = lockmode or self._lockmode
         
-        if not self._populate_existing and not refresh_state and \
-                not self._mapper_zero().always_refresh and lockmode is None:
+        if not self._populate_existing and \
+                not refresh_state and \
+                not self._mapper_zero().always_refresh and \
+                lockmode is None:
             instance = self.session.identity_map.get(key)
             if instance:
                 state = attributes.instance_state(instance)
@@ -1567,10 +1580,10 @@ class Query(object):
             only_load_props=only_load_props,
             refresh_state=refresh_state)
         q._order_by = None
+
         try:
-            # call using all() to avoid LIMIT compilation complexity
-            return q.all()[0]
-        except IndexError:
+            return q.one()
+        except orm_exc.NoResultFound:
             return None
 
     @property
@@ -1887,7 +1900,10 @@ class Query(object):
             for primary_key in matched_rows:
                 identity_key = target_mapper.identity_key_from_primary_key(list(primary_key))
                 if identity_key in session.identity_map:
-                    session.expire(session.identity_map[identity_key], [expression._column_as_key(k) for k in values])
+                    session.expire(
+                                session.identity_map[identity_key], 
+                                [expression._column_as_key(k) for k in values]
+                                )
 
         for ext in session.extensions:
             ext.after_bulk_update(session, self, context, result)
@@ -1907,7 +1923,7 @@ class Query(object):
                               'update_nowait': 'nowait',
                               None: False}[self._lockmode]
             except KeyError:
-                raise sa_exc.ArgumentError("Unknown lockmode '%s'" % self._lockmode)
+                raise sa_exc.ArgumentError("Unknown lockmode %r" % self._lockmode)
         else:
             for_update = False
 
@@ -1931,17 +1947,25 @@ class Query(object):
 
         if not context.primary_columns:
             if self._only_load_props:
-                raise sa_exc.InvalidRequestError("No column-based properties specified for refresh operation."
-                " Use session.expire() to reload collections and related items.")
+                raise sa_exc.InvalidRequestError(
+                                "No column-based properties specified for refresh operation."
+                                " Use session.expire() to reload collections and related items.")
             else:
-                raise sa_exc.InvalidRequestError("Query contains no columns with which to SELECT from.")
+                raise sa_exc.InvalidRequestError(
+                                "Query contains no columns with which to SELECT from.")
 
         if context.multi_row_eager_loaders and self._should_nest_selectable:
-            # for eager joins present and LIMIT/OFFSET/DISTINCT, wrap the query inside a select,
+            # for eager joins present and LIMIT/OFFSET/DISTINCT, 
+            # wrap the query inside a select,
             # then append eager joins onto that
 
             if context.order_by:
-                order_by_col_expr = list(chain(*[sql_util.find_columns(o) for o in context.order_by]))
+                order_by_col_expr = list(
+                                        chain(*[
+                                            sql_util.find_columns(o) 
+                                            for o in context.order_by
+                                        ])
+                                    )
             else:
                 context.order_by = None
                 order_by_col_expr = []
@@ -1965,7 +1989,11 @@ class Query(object):
 
             context.adapter = sql_util.ColumnAdapter(inner, equivs)
 
-            statement = sql.select([inner] + context.secondary_columns, for_update=for_update, use_labels=labels)
+            statement = sql.select(
+                                [inner] + context.secondary_columns, 
+                                for_update=for_update, 
+                                use_labels=labels)
+                                
             if self._execution_options:
                 statement = statement.execution_options(**self._execution_options)
 
@@ -1986,7 +2014,12 @@ class Query(object):
                 context.order_by = None
 
             if self._distinct and context.order_by:
-                order_by_col_expr = list(chain(*[sql_util.find_columns(o) for o in context.order_by]))
+                order_by_col_expr = list(
+                                        chain(*[
+                                            sql_util.find_columns(o) 
+                                            for o in context.order_by
+                                        ])
+                                    )
                 context.primary_columns += order_by_col_expr
 
             froms += tuple(context.eager_joins.values())
