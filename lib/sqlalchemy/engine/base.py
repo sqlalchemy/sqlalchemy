@@ -1596,21 +1596,16 @@ def _proxy_connection_cls(cls, proxy):
 
 # This reconstructor is necessary so that pickles with the C extension or
 # without use the same Binary format.
-# We need a different reconstructor on the C extension so that we can
-# add extra checks that fields have correctly been initialized by
-# __setstate__.
 try:
-    from sqlalchemy.cresultproxy import rowproxy_reconstructor
+    # We need a different reconstructor on the C extension so that we can
+    # add extra checks that fields have correctly been initialized by
+    # __setstate__.
+    from sqlalchemy.cresultproxy import safe_rowproxy_reconstructor
 
-    # this is a hack so that the reconstructor function is pickled with the
-    # same name as without the C extension.
-    # BUG: It fails for me if I run the "python" interpreter and 
-    # then say "import sqlalchemy":
-    # TypeError: 'builtin_function_or_method' object has only read-only attributes (assign to .__module__)
-    # However, if I run the tests with nosetests, it succeeds !  
-    # I've verified with pdb etc. that this is the case.
-    #rowproxy_reconstructor.__module__ = 'sqlalchemy.engine.base'
-
+    # The extra function embedding is needed so that the reconstructor function
+    # has the same signature whether or not the extension is present.
+    def rowproxy_reconstructor(cls, state):
+        return safe_rowproxy_reconstructor(cls, state)
 except ImportError:
     def rowproxy_reconstructor(cls, state):
         obj = cls.__new__(cls)

@@ -26,7 +26,7 @@ typedef struct {
  ****************/
 
 static PyObject *
-rowproxy_reconstructor(PyObject *self, PyObject *args)
+safe_rowproxy_reconstructor(PyObject *self, PyObject *args)
 {
     PyObject *cls, *state, *tmp;
     BaseRowProxy *obj;
@@ -560,7 +560,7 @@ static PyTypeObject BaseRowProxyType = {
 
 
 static PyMethodDef module_methods[] = {
-    {"rowproxy_reconstructor", rowproxy_reconstructor, METH_VARARGS,
+    {"safe_rowproxy_reconstructor", safe_rowproxy_reconstructor, METH_VARARGS,
      "reconstruct a RowProxy instance from its pickled form."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

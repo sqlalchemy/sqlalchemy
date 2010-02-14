@@ -67,15 +67,6 @@ CHANGES
     [ticket:1689]
       
 - sql
-  - Added an optional C extension to speed up the sql layer by
-    reimplementing RowProxy and the most common result processors.
-    The actual speedups will depend heavily on your DBAPI and
-    the mix of datatypes used in your tables, and can vary from
-    a 30% improvement to more than 200%.  It also provides a modest
-    (~15-20%) indirect improvement to ORM speed for large queries.
-    Note that it is *not* built/installed by default.
-    See README for installation instructions.
-
   - The most common result processors conversion function were
     moved to the new "processors" module.  Dialect authors are
     encouraged to use those functions whenever they correspond
@@ -121,7 +112,17 @@ CHANGES
     any ClauseElement that supports the @_generative
     decorator - these may also become "public" for the benefit
     of the compiler extension at some point.
-    
+
+- engines
+  - Added an optional C extension to speed up the sql layer by
+    reimplementing RowProxy and the most common result processors.
+    The actual speedups will depend heavily on your DBAPI and
+    the mix of datatypes used in your tables, and can vary from
+    a 30% improvement to more than 200%.  It also provides a modest
+    (~15-20%) indirect improvement to ORM speed for large queries.
+    Note that it is *not* built/installed by default.
+    See README for installation instructions.
+
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
     nullable flag and server defaults would not be reflected.
@@ -545,11 +546,13 @@ CHANGES
     the parent ResultProxy instead, or use autoclose.
     
   - ResultProxy internals have been overhauled to greatly reduce
-    method call counts when fetching columns that have no 
-    type-level processing applied.   Provides a 100% speed
-    improvement when fetching large result sets with no unicode
-    conversion as tuples.  Many thanks to Elixir's Gaëtan de Menten
-    for this dramatic improvement !  [ticket:1586]
+    method call counts when fetching columns.  Can provide a large 
+    speed improvement (up to more than 100%) when fetching large 
+    result sets.  The improvement is larger when fetching columns 
+    that have no type-level processing applied and when using 
+    results as tuples (instead of as dictionaries).  Many 
+    thanks to Elixir's Gaëtan de Menten for this dramatic 
+    improvement !  [ticket:1586]
 
   - Databases which rely upon postfetch of "last inserted id"
     to get at a generated sequence value (i.e. MySQL, MS-SQL)
@@ -1027,6 +1030,15 @@ CHANGES
       is a Python unicode.   This allows vast performance
       increases for native-unicode DBAPIs, including
       pysqlite/sqlite3, psycopg2, and pg8000.
+
+    - Most types result processors have been checked for possible speed
+      improvements. Specifically, the following generic types have been 
+      optimized, resulting in varying speed improvements: 
+      Unicode, PickleType, Interval, TypeDecorator, Binary. 
+      Also the following dbapi-specific implementations have been improved:
+      Time, Date and DateTime on Sqlite, ARRAY on Postgresql,
+      Time on MySQL, Numeric(as_decimal=False) on MySQL, oursql and 
+      pypostgresql, DateTime on cx_oracle and LOB-based types on cx_oracle.
       
     - Reflection of types now returns the exact UPPERCASE
       type within types.py, or the UPPERCASE type within
