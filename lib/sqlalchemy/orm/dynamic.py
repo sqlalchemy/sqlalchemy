@@ -94,7 +94,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if self.key not in state.committed_state:
             state.committed_state[self.key] = CollectionHistory(self, state)
 
-        state.modified_event(dict_, self, False, attributes.NEVER_SET, passive=attributes.PASSIVE_NO_INITIALIZE)
+        state.modified_event(dict_, 
+                                self, 
+                                False, 
+                                attributes.NEVER_SET, 
+                                passive=attributes.PASSIVE_NO_INITIALIZE)
 
         # this is a hack to allow the _base.ComparableEntity fixture
         # to work

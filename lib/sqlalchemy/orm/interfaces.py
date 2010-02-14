@@ -634,9 +634,10 @@ class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect
     loading behavior.
 
-    There is a single default strategy selected by default.  Alternate
+    There is a single strategy selected by default.  Alternate
     strategies can be selected at Query time through the usage of
     ``StrategizedOption`` objects via the Query.options() method.
+    
     """
 
     def __get_context_strategy(self, context, path):
@@ -661,10 +662,12 @@ class StrategizedProperty(MapperProperty):
         return strategy
 
     def setup(self, context, entity, path, adapter, **kwargs):
-        self.__get_context_strategy(context, path + (self.key,)).setup_query(context, entity, path, adapter, **kwargs)
+        self.__get_context_strategy(context, path + (self.key,)).\
+                    setup_query(context, entity, path, adapter, **kwargs)
 
     def create_row_processor(self, context, path, mapper, row, adapter):
-        return self.__get_context_strategy(context, path + (self.key,)).create_row_processor(context, path, mapper, row, adapter)
+        return self.__get_context_strategy(context, path + (self.key,)).\
+                    create_row_processor(context, path, mapper, row, adapter)
 
     def do_init(self):
         self.__all_strategies = {}
@@ -835,7 +838,8 @@ class PropertyOption(MapperOption):
                     mappers.append(prop.parent)
                     key = prop.key
                 else:
-                    raise sa_exc.ArgumentError("mapper option expects string key or list of attributes")
+                    raise sa_exc.ArgumentError("mapper option expects string key "
+                                                "or list of attributes")
 
                 if current_path and key == current_path[1]:
                     current_path = current_path[2:]

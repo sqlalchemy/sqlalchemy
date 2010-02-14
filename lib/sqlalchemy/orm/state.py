@@ -15,7 +15,6 @@ class InstanceState(object):
     session_id = None
     key = None
     runid = None
-    expired_attributes = EMPTY_SET
     load_options = EMPTY_SET
     load_path = ()
     insert_order = None
@@ -67,6 +66,8 @@ class InstanceState(object):
                 instance_dict.remove(self)
             except AssertionError:
                 pass
+        # remove possible cycles
+        self.__dict__.pop('callables', None)
         self.dispose()
     
     def obj(self):
@@ -140,20 +141,12 @@ class InstanceState(object):
         self.manager.events.run('on_load', instance)
     
     def __getstate__(self):
-        d = {
-            'instance':self.obj(),
-        }
+        d = {'instance':self.obj()}
 
         d.update(
             (k, self.__dict__[k]) for k in (
                 'committed_state', 'pending', 'parents', 'modified', 'expired', 
-                'callables'
-            ) if self.__dict__.get(k, False)
-        )
-        
-        d.update(
-            (k, self.__dict__[k]) for k in (
-                'key', 'load_options', 'expired_attributes', 'mutable_dict'
+                'callables', 'key', 'load_options', 'mutable_dict'
             ) if k in self.__dict__ 
         )
         if self.load_path:
@@ -179,13 +172,13 @@ class InstanceState(object):
         self.modified = state.get('modified', False)
         self.expired = state.get('expired', False)
         self.callables = state.get('callables', {})
-        
+            
         if self.modified:
             self._strong_obj = state['instance']
             
         self.__dict__.update([
             (k, state[k]) for k in (
-                'key', 'load_options', 'expired_attributes', 'mutable_dict'
+                'key', 'load_options', 'mutable_dict'
             ) if k in state 
         ])
 
@@ -193,11 +186,75 @@ class InstanceState(object):
             self.load_path = interfaces.deserialize_path(state['load_path'])
 
     def initialize(self, key):
+        """Set this attribute to an empty value or collection, 
+           based on the AttributeImpl in use."""
+        
         self.manager.get_impl(key).initialize(self, self.dict)
 
-    def set_callable(self, key, callable_):
-        self.dict.pop(key, None)
+    def reset(self, dict_, key):
+        """Remove the given attribute and any 
+           callables associated with it."""
+
+        dict_.pop(key, None)
+        self.callables.pop(key, None)
+
+    def expire_attribute_pre_commit(self, dict_, key):
+        """a fast expire that can be called by column loaders during a load.
+
+        The additional bookkeeping is finished up in commit_all().
+
+        This method is actually called a lot with joined-table
+        loading, when the second table isn't present in the result.
+
+        """
+        dict_.pop(key, None)
+        self.callables[key] = self
+
+    def set_callable(self, dict_, key, callable_):
+        """Remove the given attribute and set the given callable
+           as a loader."""
+           
+        dict_.pop(key, None)
         self.callables[key] = callable_
+    
+    def expire_attributes(self, dict_, attribute_names, instance_dict=None):
+        """Expire all or a group of attributes.
+        
+        If all attributes are expired, the "expired" flag is set to True.
+        
+        """
+        if attribute_names is None:
+            attribute_names = self.manager.keys()
+            self.expired = True
+            if self.modified:
+                if not instance_dict:
+                    instance_dict = self._instance_dict()
+                    if instance_dict:
+                        instance_dict._modified.discard(self)
+                else:
+                    instance_dict._modified.discard(self)
+
+            self.modified = False
+            filter_deferred = True
+        else:
+            filter_deferred = False
+
+        to_clear = (
+            self.__dict__.get('pending', None),
+            self.__dict__.get('committed_state', None),
+            self.mutable_dict
+        )
+        
+        for key in attribute_names:
+            impl = self.manager[key].impl
+            if impl.accepts_scalar_loader and \
+                (not filter_deferred or impl.expire_missing or key in dict_):
+                self.callables[key] = self
+            dict_.pop(key, None)
+            
+            for d in to_clear:
+                if d is not None:
+                    d.pop(key, None)
 
     def __call__(self, **kw):
         """__call__ allows the InstanceState to act as a deferred
@@ -209,96 +266,49 @@ class InstanceState(object):
         if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
             return attributes.PASSIVE_NO_RESULT
         
-        unmodified = self.unmodified
-        class_manager = self.manager
-        class_manager.deferred_scalar_loader(self, [
-            attr.impl.key for attr in class_manager.attributes if
-                attr.impl.accepts_scalar_loader and
-                attr.impl.key in self.expired_attributes and
-                attr.impl.key in unmodified
-            ])
-        for k in self.expired_attributes:
-            self.callables.pop(k, None)
-        del self.expired_attributes
+        toload = self.expired_attributes.\
+                        intersection(self.unmodified)
+        
+        self.manager.deferred_scalar_loader(self, toload)
+
+        # if the loader failed, or this 
+        # instance state didn't have an identity,
+        # the attributes still might be in the callables
+        # dict.  ensure they are removed.
+        for k in toload.intersection(self.callables):
+            del self.callables[k]
+            
         return ATTR_WAS_SET
 
     @property
     def unmodified(self):
-        """a set of keys which have no uncommitted changes"""
+        """Return the set of keys which have no uncommitted changes"""
         
         return set(self.manager).difference(self.committed_state)
 
     @property
     def unloaded(self):
-        """a set of keys which do not have a loaded value.
+        """Return the set of keys which do not have a loaded value.
 
         This includes expired attributes and any other attribute that
         was never populated or modified.
 
         """
-        return set(
-            key for key in self.manager.iterkeys()
-            if key not in self.committed_state and key not in self.dict)
-    
-    def expire_attribute_pre_commit(self, dict_, key):
-        """a fast expire that can be called by column loaders during a load.
-        
-        The additional bookkeeping is finished up in commit_all().
-        
-        This method is actually called a lot with joined-table
-        loading, when the second table isn't present in the result.
-        
+        return set(self.manager).\
+                    difference(self.committed_state).\
+                    difference(self.dict)
+
+    @property
+    def expired_attributes(self):
+        """Return the set of keys which are 'expired' to be loaded by
+           the manager's deferred scalar loader, assuming no pending 
+           changes.  
+           
+           see also the ``unmodified`` collection which is intersected
+           against this set when a refresh operation occurs.
+           
         """
-        # TODO: yes, this is still a little too busy.
-        # need to more cleanly separate out handling 
-        # for the various AttributeImpls and the contracts 
-        # they wish to maintain with their strategies
-        if not self.expired_attributes:
-            self.expired_attributes = set(self.expired_attributes)
-            
-        dict_.pop(key, None)
-        self.callables[key] = self
-        self.expired_attributes.add(key)
-        
-    def expire_attributes(self, dict_, attribute_names, instance_dict=None):
-        if not self.expired_attributes:
-            self.expired_attributes = set(self.expired_attributes)
-
-        if attribute_names is None:
-            attribute_names = self.manager.keys()
-            self.expired = True
-            if self.modified:
-                if not instance_dict:
-                    instance_dict = self._instance_dict()
-                    if instance_dict:
-                        instance_dict._modified.discard(self)
-                else:
-                    instance_dict._modified.discard(self)
-                    
-            self.modified = False
-            filter_deferred = True
-        else:
-            filter_deferred = False
-        
-        for key in attribute_names:
-            impl = self.manager[key].impl
-            if not filter_deferred or \
-                impl.expire_missing or \
-                key in dict_:
-                self.expired_attributes.add(key)
-                if impl.accepts_scalar_loader:
-                    self.callables[key] = self
-            dict_.pop(key, None)
-            self.pending.pop(key, None)
-            self.committed_state.pop(key, None)
-            if self.mutable_dict:
-                self.mutable_dict.pop(key, None)
-                
-    def reset(self, key, dict_):
-        """remove the given attribute and any callables associated with it."""
-
-        dict_.pop(key, None)
-        self.callables.pop(key, None)
+        return set([k for k, v in self.callables.items() if v is self])
 
     def _instance_dict(self):
         return None
@@ -345,17 +355,17 @@ class InstanceState(object):
         class_manager = self.manager
         for key in keys:
             if key in dict_ and key in class_manager.mutable_attributes:
-                class_manager[key].impl.commit_to_state(self, dict_, self.committed_state)
+                self.committed_state[key] = self.manager[key].impl.copy(dict_[key])
             else:
                 self.committed_state.pop(key, None)
-
+        
         self.expired = False
-        # unexpire attributes which have loaded
-        for key in self.expired_attributes.intersection(keys):
-            if key in dict_:
-                self.expired_attributes.remove(key)
-                self.callables.pop(key, None)
-
+        
+        for key in set(self.callables).\
+                            intersection(keys).\
+                            intersection(dict_):
+            del self.callables[key]
+    
     def commit_all(self, dict_, instance_dict=None):
         """commit all attributes unconditionally.
 
@@ -365,28 +375,29 @@ class InstanceState(object):
          - all attributes are marked as "committed"
          - the "strong dirty reference" is removed
          - the "modified" flag is set to False
-         - any "expired" markers/callables are removed.
+         - any "expired" markers/callables for attributes loaded are removed.
 
         Attributes marked as "expired" can potentially remain "expired" after this step
         if a value was not populated in state.dict.
 
         """
         
-        self.committed_state = {}
-        self.pending = {}
-            
-        if self.expired_attributes:
-            for key in self.expired_attributes.intersection(dict_):
-                self.callables.pop(key, None)
-            self.expired_attributes.difference_update(dict_)
+        self.__dict__.pop('committed_state', None)
+        self.__dict__.pop('pending', None)
+
+        if 'callables' in self.__dict__:
+            callables = self.callables
+            for key in list(callables):
+                if key in dict_ and callables[key] is self:
+                    del callables[key]
 
         for key in self.manager.mutable_attributes:
             if key in dict_:
-                self.manager[key].impl.commit_to_state(self, dict_, self.committed_state)
-
+                self.committed_state[key] = self.manager[key].impl.copy(dict_[key])
+                
         if instance_dict and self.modified:
             instance_dict._modified.discard(self)
-
+        
         self.modified = self.expired = False
         self._strong_obj = None
 
@@ -398,9 +409,10 @@ class MutableAttrInstanceState(InstanceState):
     for changes upon dereference, resurrecting if needed.
     
     """
-    def __init__(self, obj, manager):
-        self.mutable_dict = {}
-        InstanceState.__init__(self, obj, manager)
+    
+    @util.memoized_property
+    def mutable_dict(self):
+        return {}
         
     def _get_modified(self, dict_=None):
         if self.__dict__.get('modified', False):
@@ -424,11 +436,12 @@ class MutableAttrInstanceState(InstanceState):
         """a set of keys which have no uncommitted changes"""
 
         dict_ = self.dict
-        return set(
-            key for key in self.manager.iterkeys()
+        
+        return set([
+            key for key in self.manager
             if (key not in self.committed_state or
                 (key in self.manager.mutable_attributes and
-                 not self.manager[key].impl.check_mutable_modified(self, dict_))))
+                 not self.manager[key].impl.check_mutable_modified(self, dict_)))])
 
     def _is_really_none(self):
         """do a check modified/resurrect.
@@ -445,9 +458,9 @@ class MutableAttrInstanceState(InstanceState):
         else:
             return None
 
-    def reset(self, key, dict_):
+    def reset(self, dict_, key):
         self.mutable_dict.pop(key, None)
-        InstanceState.reset(self, key, dict_)
+        InstanceState.reset(self, dict_, key)
     
     def _cleanup(self, ref):
         """weakref callback.

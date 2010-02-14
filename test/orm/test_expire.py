@@ -7,7 +7,9 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session, attributes, deferred, exc as orm_exc
+from sqlalchemy.orm import mapper, relation, create_session, \
+                        attributes, deferred, exc as orm_exc, defer, undefer,\
+                        strategies, state, lazyload
 from test.orm import _base, _fixtures
 
 
@@ -59,7 +61,8 @@ class ExpireTest(_fixtures.FixtureTest):
         u = s.query(User).get(7)
         s.expunge_all()
 
-        assert_raises_message(sa_exc.InvalidRequestError, r"is not persistent within this Session", s.expire, u)
+        assert_raises_message(sa_exc.InvalidRequestError, 
+                        r"is not persistent within this Session", s.expire, u)
 
     @testing.resolve_artifact_names
     def test_get_refreshes(self):
@@ -674,6 +677,131 @@ class ExpireTest(_fixtures.FixtureTest):
         eq_(self.static.user_address_result, userlist)
         assert len(list(sess)) == 9
 
+    @testing.resolve_artifact_names
+    def test_state_change_col_to_deferred(self):
+        """Behavioral test to verify the current activity of loader callables."""
+
+        mapper(User, users)
+        
+        sess = create_session()
+        
+        # deferred attribute option, gets the LoadDeferredColumns
+        # callable
+        u1 = sess.query(User).options(defer(User.name)).first()
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    strategies.LoadDeferredColumns
+                )
+                
+        # expire the attr, it gets the InstanceState callable
+        sess.expire(u1, ['name'])
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    state.InstanceState
+                )
+                
+        # load it, callable is gone
+        u1.name
+        assert 'name' not in attributes.instance_state(u1).callables
+
+        # same for expire all
+        sess.expunge_all()
+        u1 = sess.query(User).options(defer(User.name)).first()
+        sess.expire(u1)
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    state.InstanceState
+                )
+        
+        # load over it.  everything normal.
+        sess.query(User).first()
+        assert 'name' not in attributes.instance_state(u1).callables
+        
+        sess.expunge_all()
+        u1 = sess.query(User).first()
+        # for non present, still expires the same way
+        del u1.name
+        sess.expire(u1)
+        assert 'name' in attributes.instance_state(u1).callables
+        
+    @testing.resolve_artifact_names
+    def test_state_deferred_to_col(self):
+        """Behavioral test to verify the current activity of loader callables."""
+        
+        mapper(User, users, properties={'name':deferred(users.c.name)})
+
+        sess = create_session()
+        u1 = sess.query(User).options(undefer(User.name)).first()
+        assert 'name' not in attributes.instance_state(u1).callables
+        
+        # mass expire, the attribute was loaded, 
+        # the attribute gets the callable
+        sess.expire(u1)
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    state.InstanceState
+                )
+
+        # load it, callable is gone
+        u1.name
+        assert 'name' not in attributes.instance_state(u1).callables
+        
+        # mass expire, attribute was loaded but then deleted,
+        # the callable goes away - the state wants to flip 
+        # it back to its "deferred" loader.
+        sess.expunge_all()
+        u1 = sess.query(User).options(undefer(User.name)).first()
+        del u1.name
+        sess.expire(u1)
+        assert 'name' not in attributes.instance_state(u1).callables
+
+        # single attribute expire, the attribute gets the callable
+        sess.expunge_all()
+        u1 = sess.query(User).options(undefer(User.name)).first()
+        sess.expire(u1, ['name'])
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    state.InstanceState
+                )
+
+    @testing.resolve_artifact_names
+    def test_state_noload_to_lazy(self):
+        """Behavioral test to verify the current activity of loader callables."""
+
+        mapper(User, users, properties={'addresses':relation(Address, lazy=None)})
+        mapper(Address, addresses)
+        
+        sess = create_session()
+        u1 = sess.query(User).options(lazyload(User.addresses)).first()
+        assert isinstance(
+                    attributes.instance_state(u1).callables['addresses'],
+                    strategies.LoadLazyAttribute
+                )
+        # expire, it stays
+        sess.expire(u1)
+        assert isinstance(
+                    attributes.instance_state(u1).callables['addresses'],
+                    strategies.LoadLazyAttribute
+                )
+        
+        # load over it.  callable goes away.
+        sess.query(User).first()
+        assert 'addresses' not in attributes.instance_state(u1).callables
+        
+        sess.expunge_all()
+        u1 = sess.query(User).options(lazyload(User.addresses)).first()
+        sess.expire(u1, ['addresses'])
+        assert isinstance(
+                    attributes.instance_state(u1).callables['addresses'],
+                    strategies.LoadLazyAttribute
+                )
+        
+        # load the attr, goes away
+        u1.addresses
+        assert 'addresses' not in attributes.instance_state(u1).callables
+        
+        
+        
 class PolymorphicExpireTest(_base.MappedTest):
     run_inserts = 'once'
     run_deletes = None

@@ -400,7 +400,10 @@ class AttributesTest(_base.ORMTest):
         
         
     def test_lazytrackparent(self):
-        """test that the "hasparent" flag works properly when lazy loaders and backrefs are used"""
+        """test that the "hasparent" flag works properly 
+           when lazy loaders and backrefs are used
+           
+        """
 
         class Post(object):pass
         class Blog(object):pass
@@ -408,14 +411,20 @@ class AttributesTest(_base.ORMTest):
         attributes.register_class(Blog)
 
         # set up instrumented attributes with backrefs
-        attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
-        attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
+        attributes.register_attribute(Post, 'blog', uselist=False,
+                                        extension=attributes.GenericBackrefExtension('posts'),
+                                        trackparent=True, useobject=True)
+        attributes.register_attribute(Blog, 'posts', uselist=True,
+                                        extension=attributes.GenericBackrefExtension('blog'),
+                                        trackparent=True, useobject=True)
 
         # create objects as if they'd been freshly loaded from the database (without history)
         b = Blog()
         p1 = Post()
-        attributes.instance_state(b).set_callable('posts', lambda **kw:[p1])
-        attributes.instance_state(p1).set_callable('blog', lambda **kw:b)
+        attributes.instance_state(b).set_callable(attributes.instance_dict(b), 
+                                                    'posts', lambda **kw:[p1])
+        attributes.instance_state(p1).set_callable(attributes.instance_dict(p1), 
+                                                    'blog', lambda **kw:b)
         p1, attributes.instance_state(b).commit_all(attributes.instance_dict(b))
 
         # no orphans (called before the lazy loaders fire off)
@@ -443,17 +452,17 @@ class AttributesTest(_base.ORMTest):
         attributes.register_class(Bar)
 
         def func1(**kw):
-            print "func1"
             return "this is the foo attr"
         def func2(**kw):
-            print "func2"
             return "this is the bar attr"
         def func3(**kw):
-            print "func3"
             return "this is the shared attr"
-        attributes.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1, useobject=True)
-        attributes.register_attribute(Foo, 'element2', uselist=False, callable_=lambda o:func3, useobject=True)
-        attributes.register_attribute(Bar, 'element', uselist=False, callable_=lambda o:func2, useobject=True)
+        attributes.register_attribute(Foo, 'element', uselist=False, 
+                                            callable_=lambda o:func1, useobject=True)
+        attributes.register_attribute(Foo, 'element2', uselist=False, 
+                                            callable_=lambda o:func3, useobject=True)
+        attributes.register_attribute(Bar, 'element', uselist=False, 
+                                            callable_=lambda o:func2, useobject=True)
 
         x = Foo()
         y = Bar()

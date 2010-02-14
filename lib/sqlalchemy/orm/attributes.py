@@ -494,9 +494,6 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         return History.from_attribute(
             self, state, v)
 
-    def commit_to_state(self, state, dict_, dest):
-        dest[self.key] = self.copy(dict_[self.key])
-
     def check_mutable_modified(self, state, dict_):
         (added, unchanged, deleted) = self.get_history(state, dict_, passive=PASSIVE_NO_INITIALIZE)
         return bool(added or deleted)

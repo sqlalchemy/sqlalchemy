@@ -185,6 +185,7 @@ class DeferredColumnLoader(LoaderStrategy):
         col = self.columns[0]
         if adapter:
             col = adapter.columns[col]
+            
         if col in row:
             return self.parent_property._get_strategy(ColumnLoader).\
                         create_row_processor(
@@ -192,12 +193,12 @@ class DeferredColumnLoader(LoaderStrategy):
 
         elif not self.is_class_level:
             def new_execute(state, dict_, row, isnew):
-                state.set_callable(self.key, LoadDeferredColumns(state, self.key))
+                state.set_callable(dict_, self.key, LoadDeferredColumns(state, self.key))
         else:
             def new_execute(state, dict_, row, isnew):
                 # reset state on the key so that deferred callables
                 # fire off on next access.
-                state.reset(self.key, dict_)
+                state.reset(dict_, self.key)
 
         return new_execute, None
 
@@ -223,7 +224,8 @@ class DeferredColumnLoader(LoaderStrategy):
             (self.group is not None and context.attributes.get(('undefer', self.group), False)) or \
             (only_load_props and self.key in only_load_props):
             
-            self.parent_property._get_strategy(ColumnLoader).setup_query(context, entity, path, adapter, **kwargs)
+            self.parent_property._get_strategy(ColumnLoader).\
+                            setup_query(context, entity, path, adapter, **kwargs)
     
     def _class_level_loader(self, state):
         if not mapperutil._state_has_identity(state):
@@ -303,6 +305,7 @@ class UndeferGroupOption(MapperOption):
 
     def __init__(self, group):
         self.group = group
+        
     def process_query(self, query):
         query._attributes[('undefer', self.group)] = True
 
@@ -310,14 +313,10 @@ class AbstractRelationLoader(LoaderStrategy):
     """LoaderStratgies which deal with related objects as opposed to scalars."""
 
     def init(self):
-        for attr in ['mapper', 'target', 'table', 'uselist']:
-            setattr(self, attr, getattr(self.parent_property, attr))
-        
-    def _init_instance_attribute(self, state, callable_=None):
-        if callable_:
-            state.set_callable(self.key, callable_)
-        else:
-            state.initialize(self.key)
+        self.mapper = self.parent_property.mapper
+        self.target = self.parent_property.target
+        self.table = self.parent_property.table
+        self.uselist = self.parent_property.uselist
 
 class NoLoader(AbstractRelationLoader):
     """Strategize a relation() that doesn't load data automatically."""
@@ -333,7 +332,7 @@ class NoLoader(AbstractRelationLoader):
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         def new_execute(state, dict_, row, isnew):
-            self._init_instance_attribute(state)
+            state.initialize(self.key)
         return new_execute, None
 
 log.class_logger(NoLoader)
@@ -343,7 +342,9 @@ class LazyLoader(AbstractRelationLoader):
 
     def init(self):
         super(LazyLoader, self).init()
-        (self.__lazywhere, self.__bind_to_col, self._equated_columns) = self._create_lazy_clause(self.parent_property)
+        self.__lazywhere, \
+        self.__bind_to_col, \
+        self._equated_columns = self._create_lazy_clause(self.parent_property)
         
         self.logger.info("%s lazy loading clause %s", self, self.__lazywhere)
 
@@ -436,14 +437,14 @@ class LazyLoader(AbstractRelationLoader):
                 # this currently only happens when using a "lazyload" option on a "no load"
                 # attribute - "eager" attributes always have a class-level lazyloader
                 # installed.
-                self._init_instance_attribute(state, callable_=LoadLazyAttribute(state, self.key))
+                state.set_callable(dict_, self.key, LoadLazyAttribute(state, self.key))
         else:
             def new_execute(state, dict_, row, isnew):
                 # we are the primary manager for this attribute on this class - reset its
                 # per-instance attribute state, so that the class-level lazy loader is
                 # executed when next referenced on this instance.  this is needed in
                 # populate_existing() types of scenarios to reset any existing state.
-                state.reset(self.key, dict_)
+                state.reset(dict_, self.key)
 
         return new_execute, None
             

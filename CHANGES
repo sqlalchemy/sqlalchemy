@@ -61,7 +61,9 @@ CHANGES
      
   - Some internal streamlining of object loading grants a 
     small speedup for large results, estimates are around 
-    10-15%.
+    10-15%.   Gave the "state" internals a good solid 
+    cleanup with less complexity, datamembers, 
+    method calls, blank dictionary creates.
 
   - Documentation clarification for query.delete()
     [ticket:1689]
