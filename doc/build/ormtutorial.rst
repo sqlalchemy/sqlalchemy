@@ -546,7 +546,6 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name LIKE ? ORDER BY users.id
-     LIMIT 2 OFFSET 0
     ['%ed']
     {stop}Multiple rows were found for one()
 
@@ -560,7 +559,6 @@ The ``all()``, ``one()``, and ``first()`` methods of ``Query`` immediately issue
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name LIKE ? AND users.id = ? ORDER BY users.id
-     LIMIT 2 OFFSET 0
     ['%ed', 99]
     {stop}No row was found for one()
 
@@ -591,7 +589,6 @@ Bind parameters can be specified with string-based SQL, using a colon.  To speci
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE id<? and name=? ORDER BY users.id
-    LIMIT 2 OFFSET 0
     [224, 'fred']
     {stop}<User('fred','Fred Flinstone', 'blah')>
 
@@ -775,7 +772,6 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name = ?
-     LIMIT 2 OFFSET 0
     ['jack']
 
     {stop}>>> jack
@@ -801,15 +797,11 @@ If you want to reduce the number of queries (dramatically, in many cases), we ca
     >>> from sqlalchemy.orm import eagerload
 
     {sql}>>> jack = session.query(User).options(eagerload('addresses')).filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
-    SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name,
-    anon_1.users_fullname AS anon_1_users_fullname, anon_1.users_password AS anon_1_users_password,
-    addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
-    addresses_1.user_id AS addresses_1_user_id
-    FROM (SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-    users.password AS users_password
-    FROM users WHERE users.name = ?
-    LIMIT 2 OFFSET 0) AS anon_1 LEFT OUTER JOIN addresses AS addresses_1
-    ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
+    users.password AS users_password, addresses_1.id AS addresses_1_id, addresses_1.email_address 
+    AS addresses_1_email_address, addresses_1.user_id AS addresses_1_user_id 
+    FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id 
+    WHERE users.name = ? ORDER BY addresses_1.id
     ['jack']
 
     {stop}>>> jack
@@ -1293,7 +1285,6 @@ Usage is not too different from what we've been doing.  Let's give Wendy some bl
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name = ?
-     LIMIT 2 OFFSET 0
     ['wendy']
     {stop}
     >>> post = BlogPost("Wendy's Blog Post", "This is a test", wendy)
@@ -1318,7 +1309,7 @@ We can now look up all blog posts with the keyword 'firstpost'.   We'll use the 
     INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
     [2, "Wendy's Blog Post", 'This is a test']
     INSERT INTO post_keywords (post_id, keyword_id) VALUES (?, ?)
-    [[1, 2], [1, 1]]
+    [[1, 1], [1, 2]]
     SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body 
     FROM posts 
     WHERE EXISTS (SELECT 1 
