@@ -7,9 +7,21 @@ from sqlalchemy import create_engine, or_, desc, select, func, exc, Table,\
 from sqlalchemy.orm import scoped_session, sessionmaker
 import datetime
 
+
 class SQLSoupTest(TestBase):
-    __skip_if__ = (lambda: util.jython,)
-    
+    __skip_if__ = (lambda: not SQLSoupTest._has_sqlite(),)
+
+    @classmethod
+    def _has_sqlite(cls):
+        try:
+            import sqlite3
+        except ImportError:
+            try:
+                import pysqlite2
+            except ImportError:
+                return False
+        return True
+        
     @classmethod
     def setup_class(cls):
         global engine

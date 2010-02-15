@@ -66,7 +66,7 @@ class MergeTest(_base.MappedTest):
 
         # third call, merge object already present.
         # almost no calls.
-        @profiling.function_call_count(12, variance=0.001)
+        @profiling.function_call_count(12, variance=0.001, versions={'2.4':8})
         def go():
             return sess2.merge(p2, load=False)
             

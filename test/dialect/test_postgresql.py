@@ -208,7 +208,8 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
             return round(x, 9)
         elif isinstance(x, decimal.Decimal):
             # really ?
-            x = x.shift(decimal.Decimal(9)).to_integral() / pow(10, 9)
+            # (can also use shift() here but that is 2.6 only)
+            x = (x * decimal.Decimal("1000000000")).to_integral() / pow(10, 9)
         return x
     @testing.resolve_artifact_names
     def test_float_coercion(self):

@@ -185,3 +185,4 @@ def unicode_ddl(fn):
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
         )
+
