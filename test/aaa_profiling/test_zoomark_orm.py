@@ -299,11 +299,11 @@ class ZooMarkTest(TestBase):
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
-    @profiling.function_call_count(6783)
+    @profiling.function_call_count(6783, {'2.6.4':7194})
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
-    @profiling.function_call_count(22510)
+    @profiling.function_call_count(22510, {'2.6.4':24055})
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
