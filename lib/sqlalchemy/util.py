@@ -498,10 +498,11 @@ def class_hierarchy(cls):
     return list(hier)
 
 def iterate_attributes(cls):
-    """iterate all the keys and attributes associated with a class, without using getattr().
+    """iterate all the keys and attributes associated 
+       with a class, without using getattr().
 
-    Does not use getattr() so that class-sensitive descriptors (i.e. property.__get__())
-    are not called.
+       Does not use getattr() so that class-sensitive 
+       descriptors (i.e. property.__get__()) are not called.
 
     """
     keys = dir(cls)
@@ -600,9 +601,13 @@ def assert_arg_type(arg, argtype, name):
         return arg
     else:
         if isinstance(argtype, tuple):
-            raise exc.ArgumentError("Argument '%s' is expected to be one of type %s, got '%s'" % (name, ' or '.join("'%s'" % str(a) for a in argtype), str(type(arg))))
+            raise exc.ArgumentError(
+                            "Argument '%s' is expected to be one of type %s, got '%s'" % 
+                            (name, ' or '.join("'%s'" % a for a in argtype), type(arg)))
         else:
-            raise exc.ArgumentError("Argument '%s' is expected to be of type '%s', got '%s'" % (name, str(argtype), str(type(arg))))
+            raise exc.ArgumentError(
+                            "Argument '%s' is expected to be of type '%s', got '%s'" % 
+                            (name, argtype, type(arg)))
 
 _creation_order = 1
 def set_creation_order(instance):
