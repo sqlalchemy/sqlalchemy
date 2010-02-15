@@ -442,7 +442,7 @@ class PGDialect(default.DefaultDialect):
         return [row[0] for row in resultset]
 
     def get_default_schema_name(self, connection):
-        return connection.scalar("select current_schema()", None)
+        return connection.scalar("select current_schema()")
     get_default_schema_name = base.connection_memoize(
         ('dialect', 'default_schema_name'))(get_default_schema_name)
 
