@@ -207,7 +207,24 @@ def _block_unconditionally(db, reason):
         return function_named(maybe, fn_name)
     return decorate
 
-
+def only_on(db, reason):
+    carp = _should_carp_about_exclusion(reason)
+    spec = db_spec(db)
+    def decorate(fn):
+        fn_name = fn.__name__
+        def maybe(*args, **kw):
+            if spec(config.db):
+                return fn(*args, **kw)
+            else:
+                msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
+                    fn_name, config.db.name, config.db.driver, reason)
+                print msg
+                if carp:
+                    print >> sys.stderr, msg
+                return True
+        return function_named(maybe, fn_name)
+    return decorate
+    
 def exclude(db, op, spec, reason):
     """Mark a test as unsupported by specific database server versions.
 
