@@ -192,14 +192,20 @@ class UnicodeTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
+        if testing.against('mysql+oursql'):
+            from sqlalchemy.dialects.mysql import VARCHAR
+            uni_type = VARCHAR(50, collation='utf8_unicode_ci')
+        else:
+            uni_type = sa.Unicode(50)
+        
         Table('uni_t1', metadata,
             Column('id',  Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('txt', sa.Unicode(50), unique=True))
+            Column('txt', uni_type, unique=True))
         Table('uni_t2', metadata,
             Column('id',  Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('txt', sa.Unicode(50), ForeignKey('uni_t1')))
+            Column('txt', uni_type, ForeignKey('uni_t1')))
 
     @classmethod
     def setup_classes(cls):
@@ -208,7 +214,6 @@ class UnicodeTest(_base.MappedTest):
         class Test2(_base.BasicEntity):
             pass
 
-    @testing.fails_on('mysql+oursql', 'raises a warning')
     @testing.resolve_artifact_names
     def test_basic(self):
         mapper(Test, uni_t1)
@@ -223,7 +228,6 @@ class UnicodeTest(_base.MappedTest):
 
         self.assert_(t1.txt == txt)
     
-    @testing.fails_on('mysql+oursql', 'raises a warning')
     @testing.resolve_artifact_names
     def test_relation(self):
         mapper(Test, uni_t1, properties={

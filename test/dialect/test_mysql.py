@@ -289,6 +289,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         charset_table.drop()
 
     @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
+    @testing.fails_on('mysql+oursql', 'some round trips fail, oursql bug ?')
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""
 
