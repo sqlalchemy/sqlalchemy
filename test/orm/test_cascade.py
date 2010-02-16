@@ -75,7 +75,8 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         assert o2 in sess
         assert o3 in sess
         sess.commit()
-        
+
+    
     @testing.resolve_artifact_names
     def test_delete(self):
         sess = create_session()
@@ -375,8 +376,14 @@ class M2OCascadeTest(_base.MappedTest):
         Table('users', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(40)),
-            Column('pref_id', Integer, ForeignKey('prefs.id')))
+            Column('pref_id', Integer, ForeignKey('prefs.id')),
+            Column('foo_id', Integer, ForeignKey('foo.id'))
+            )
 
+        Table('foo', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', String(40))
+        )
     @classmethod
     def setup_classes(cls):
         class User(_fixtures.Base):
@@ -385,7 +392,9 @@ class M2OCascadeTest(_base.MappedTest):
             pass
         class Extra(_fixtures.Base):
             pass
-
+        class Foo(_fixtures.Base):
+            pass
+            
     @classmethod
     @testing.resolve_artifact_names
     def setup_mappers(cls):
@@ -394,8 +403,10 @@ class M2OCascadeTest(_base.MappedTest):
             extra = relation(Extra, cascade="all, delete")
         ))
         mapper(User, users, properties = dict(
-            pref = relation(Pref, lazy=False, cascade="all, delete-orphan", single_parent=True  )
+            pref = relation(Pref, lazy=False, cascade="all, delete-orphan", single_parent=True  ),
+            foo = relation(Foo) # straight m2o
         ))
+        mapper(Foo, foo)
 
     @classmethod
     @testing.resolve_artifact_names
@@ -419,6 +430,31 @@ class M2OCascadeTest(_base.MappedTest):
         sess.flush()
         assert prefs.count().scalar() == 2
         assert extra.count().scalar() == 2
+
+    @testing.resolve_artifact_names
+    def test_cascade_on_deleted(self):
+        """test a bug introduced by r6711"""
+
+        sess = sessionmaker(expire_on_commit=True)()
+        
+        
+        u1 = User(name='jack', foo=Foo(data='f1'))
+        sess.add(u1)
+        sess.commit()
+
+        u1.foo = None
+
+        # the error condition relies upon
+        # these things being true
+        assert User.foo.impl.active_history is False
+        eq_(
+            attributes.get_history(u1, 'foo'),
+            ([None], (), [attributes.PASSIVE_NO_RESULT])
+        )
+        
+        sess.add(u1)
+        assert u1 in sess
+        sess.commit()
 
     @testing.resolve_artifact_names
     def test_save_update_sends_pending(self):

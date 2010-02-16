@@ -704,13 +704,19 @@ class RelationProperty(StrategizedProperty):
         
         if instances:
             for c in instances:
-                if c is not None and c not in visited_instances and \
-                                        (halt_on is None or not halt_on(c)):
+                if c is not None and \
+                    c is not attributes.PASSIVE_NO_RESULT and \
+                    c not in visited_instances and \
+                    (halt_on is None or not halt_on(c)):
+                    
                     if not isinstance(c, self.mapper.class_):
-                        raise AssertionError("Attribute '%s' on class '%s' doesn't handle objects "
-                                    "of type '%s'" % (self.key, 
-                                                        str(self.parent.class_), 
-                                                        str(c.__class__)))
+                        raise AssertionError("Attribute '%s' on class '%s' "
+                                            "doesn't handle objects "
+                                            "of type '%s'" % (
+                                                self.key, 
+                                                str(self.parent.class_), 
+                                                str(c.__class__)
+                                            ))
                     visited_instances.add(c)
 
                     # cascade using the mapper local to this 

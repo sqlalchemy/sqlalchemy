@@ -67,7 +67,11 @@ CHANGES
 
   - Documentation clarification for query.delete()
     [ticket:1689]
-      
+
+  - Fixed cascade bug in many-to-one relation() when attribute
+    was set to None, introduced in r6711 (cascade deleted
+    items into session during add()).
+    
 - sql
   - The most common result processors conversion function were
     moved to the new "processors" module.  Dialect authors are

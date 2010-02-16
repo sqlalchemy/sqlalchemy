@@ -113,16 +113,22 @@ class DependencyProcessor(object):
         raise NotImplementedError()
 
     def _verify_canload(self, state):
-        if state is not None and not self.mapper._canload(state, allow_subtypes=not self.enable_typechecks):
+        if state is not None and \
+            not self.mapper._canload(state, allow_subtypes=not self.enable_typechecks):
             if self.mapper._canload(state, allow_subtypes=True):
-                raise exc.FlushError("Attempting to flush an item of type %s on collection '%s', "
-                                "which is not the expected type %s.  Configure mapper '%s' to load this "
-                                "subtype polymorphically, or set enable_typechecks=False to allow subtypes.  "
-                                "Mismatched typeloading may cause bi-directional relationships (backrefs) "
-                                "to not function properly." % (state.class_, self.prop, self.mapper.class_, self.mapper))
+                raise exc.FlushError(
+                    "Attempting to flush an item of type %s on collection '%s', "
+                    "which is not the expected type %s.  Configure mapper '%s' to "
+                    "load this subtype polymorphically, or set "
+                    "enable_typechecks=False to allow subtypes. "
+                    "Mismatched typeloading may cause bi-directional relationships "
+                    "(backrefs) to not function properly." % 
+                    (state.class_, self.prop, self.mapper.class_, self.mapper))
             else:
-                raise exc.FlushError("Attempting to flush an item of type %s on collection '%s', "
-                                "whose mapper does not inherit from that of %s." % (state.class_, self.prop, self.mapper.class_))
+                raise exc.FlushError(
+                    "Attempting to flush an item of type %s on collection '%s', "
+                    "whose mapper does not inherit from that of %s." % 
+                    (state.class_, self.prop, self.mapper.class_))
             
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         """Called during a flush to synchronize primary key identifier
