@@ -782,7 +782,10 @@ class SQLCompiler(engine.Compiled):
         self.returning = []
 
         # get the keys of explicitly constructed bindparam() objects
-        bind_names = set(b.key for b in visitors.iterate(stmt, {}) if b.__visit_name__ == 'bindparam')
+        # TODO: ouch
+        bind_names = set(b.key for b in visitors.iterate(stmt, {}) 
+                            if b.__visit_name__ == 'bindparam')
+        
         if stmt.parameters:
             bind_names.update(stmt.parameters)
 
@@ -821,6 +824,9 @@ class SQLCompiler(engine.Compiled):
         
         postfetch_lastrowid = need_pks and self.dialect.postfetch_lastrowid
         
+        # iterating through columns at the top to maintain ordering.
+        # otherwise we might iterate through individual sets of 
+        # "defaults", "primary key cols", etc.
         for c in stmt.table.columns:
             if c.key in parameters:
                 value = parameters[c.key]
@@ -830,69 +836,72 @@ class SQLCompiler(engine.Compiled):
                     self.postfetch.append(c)
                     value = self.process(value.self_group())
                 values.append((c, value))
-            else:
-                if self.isinsert:
-                    if c.primary_key and \
-                        need_pks and \
-                        (
-                            not postfetch_lastrowid or 
-                            c is not stmt.table._autoincrement_column
-                        ):
-                        
-                        if implicit_returning:
-                            if c.default is not None and c.default.is_sequence:
+                
+            elif self.isinsert:
+                if c.primary_key and \
+                    need_pks and \
+                    (
+                        not postfetch_lastrowid or 
+                        c is not stmt.table._autoincrement_column
+                    ):
+                    
+                    if implicit_returning:
+                        if c.default is not None:
+                            if c.default.is_sequence:
                                 proc = self.process(c.default)
                                 if proc is not None:
                                     values.append((c, proc))
                                 self.returning.append(c)
-                            elif c.default is not None and c.default.is_clause_element:
+                            elif c.default.is_clause_element:
                                 values.append((c, self.process(c.default.arg.self_group())))
                                 self.returning.append(c)
-                            elif c.default is not None:
-                                values.append((c, self._create_crud_bind_param(c, None)))
-                                self.prefetch.append(c)
                             else:
-                                self.returning.append(c)
-                        else:
-                            if (
-                                c.default is not None and \
-                                    (
-                                        self.dialect.supports_sequences or 
-                                        not c.default.is_sequence
-                                    )
-                                ) or self.dialect.preexecute_autoincrement_sequences:
-
                                 values.append((c, self._create_crud_bind_param(c, None)))
                                 self.prefetch.append(c)
+                        else:
+                            self.returning.append(c)
+                    else:
+                        if (
+                            c.default is not None and \
+                                (
+                                    self.dialect.supports_sequences or 
+                                    not c.default.is_sequence
+                                )
+                            ) or self.dialect.preexecute_autoincrement_sequences:
 
-                    elif c.default is not None and c.default.is_sequence:
+                            values.append((c, self._create_crud_bind_param(c, None)))
+                            self.prefetch.append(c)
+                
+                elif c.default is not None:
+                    if c.default.is_sequence:
                         proc = self.process(c.default)
                         if proc is not None:
                             values.append((c, proc))
                             if not c.primary_key:
                                 self.postfetch.append(c)
-                    elif c.default is not None and c.default.is_clause_element:
+                    elif c.default.is_clause_element:
                         values.append((c, self.process(c.default.arg.self_group())))
-                        
+                    
                         if not c.primary_key:
                             # dont add primary key column to postfetch
                             self.postfetch.append(c)
-                    elif c.default is not None:
+                    else:
                         values.append((c, self._create_crud_bind_param(c, None)))
                         self.prefetch.append(c)
-                    elif c.server_default is not None:
-                        if not c.primary_key:
-                            self.postfetch.append(c)
-                elif self.isupdate:
-                    if c.onupdate is not None and not c.onupdate.is_sequence:
-                        if c.onupdate.is_clause_element:
-                            values.append((c, self.process(c.onupdate.arg.self_group())))
-                            self.postfetch.append(c)
-                        else:
-                            values.append((c, self._create_crud_bind_param(c, None)))
-                            self.prefetch.append(c)
-                    elif c.server_onupdate is not None:
+                elif c.server_default is not None:
+                    if not c.primary_key:
                         self.postfetch.append(c)
+                        
+            elif self.isupdate:
+                if c.onupdate is not None and not c.onupdate.is_sequence:
+                    if c.onupdate.is_clause_element:
+                        values.append((c, self.process(c.onupdate.arg.self_group())))
+                        self.postfetch.append(c)
+                    else:
+                        values.append((c, self._create_crud_bind_param(c, None)))
+                        self.prefetch.append(c)
+                elif c.server_onupdate is not None:
+                    self.postfetch.append(c)
         return values
 
     def visit_delete(self, delete_stmt):
