@@ -52,11 +52,7 @@ class InstanceState(object):
                 pass
 
     def dispose(self):
-        if self.session_id:
-            try:
-                del self.session_id
-            except AttributeError:
-                pass
+        self.detach()
         del self.obj
     
     def _cleanup(self, ref):
