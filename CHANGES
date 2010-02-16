@@ -115,6 +115,13 @@ CHANGES
     decorator - these may also become "public" for the benefit
     of the compiler extension at some point.
 
+  - A change to the solution for [ticket:1579] - an end-user
+    defined bind parameter name that directly conflicts with 
+    a column-named bind generated directly from the SET or
+    VALUES clause of an update/insert generates a compile error.
+    This reduces call counts and eliminates some cases where
+    undesirable name conflicts could still occur.
+    
 - engines
   - Added an optional C extension to speed up the sql layer by
     reimplementing RowProxy and the most common result processors.

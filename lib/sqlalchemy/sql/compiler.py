@@ -482,10 +482,19 @@ class SQLCompiler(engine.Compiled):
         name = self._truncate_bindparam(bindparam)
         if name in self.binds:
             existing = self.binds[name]
-            if existing is not bindparam and (existing.unique or bindparam.unique):
-                raise exc.CompileError(
-                        "Bind parameter '%s' conflicts with unique bind parameter of the same name" % bindparam.key
-                    )
+            if existing is not bindparam:
+                if existing.unique or bindparam.unique:
+                    raise exc.CompileError(
+                            "Bind parameter '%s' conflicts with "
+                            "unique bind parameter of the same name" % bindparam.key
+                        )
+                elif getattr(existing, '_is_crud', False):
+                    raise exc.CompileError(
+                            "Bind parameter name '%s' is reserved "
+                            "for the VALUES or SET clause of this insert/update statement." 
+                            % bindparam.key
+                        )
+                    
         self.binds[bindparam.key] = self.binds[name] = bindparam
         return self.bindparam_string(name)
 
@@ -696,8 +705,9 @@ class SQLCompiler(engine.Compiled):
         if not colparams and \
                 not self.dialect.supports_default_values and \
                 not self.dialect.supports_empty_insert:
-            raise exc.CompileError(
-                "The version of %s you are using does not support empty inserts." % self.dialect.name)
+            raise exc.CompileError("The version of %s you are using does "
+                                    "not support empty inserts." % 
+                                    self.dialect.name)
 
         preparer = self.preparer
         supports_default_values = self.dialect.supports_default_values
@@ -763,6 +773,14 @@ class SQLCompiler(engine.Compiled):
 
     def _create_crud_bind_param(self, col, value, required=False):
         bindparam = sql.bindparam(col.key, value, type_=col.type, required=required)
+        bindparam._is_crud = True
+        if col.key in self.binds:
+            raise exc.CompileError(
+                    "Bind parameter name '%s' is reserved "
+                    "for the VALUES or SET clause of this insert/update statement." 
+                    % col.key
+                )
+            
         self.binds[col.key] = bindparam
         return self.bindparam_string(self._truncate_bindparam(bindparam))
         
@@ -781,20 +799,12 @@ class SQLCompiler(engine.Compiled):
         self.prefetch = []
         self.returning = []
 
-        # get the keys of explicitly constructed bindparam() objects
-        # TODO: ouch
-        bind_names = set(b.key for b in visitors.iterate(stmt, {}) 
-                            if b.__visit_name__ == 'bindparam')
-        
-        if stmt.parameters:
-            bind_names.update(stmt.parameters)
-
         # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
         if self.column_keys is None and stmt.parameters is None:
             return [
                         (c, self._create_crud_bind_param(c, None, required=True)) 
-                        for c in stmt.table.columns if c.key not in bind_names
+                        for c in stmt.table.columns
                     ]
 
         required = object()
@@ -805,7 +815,8 @@ class SQLCompiler(engine.Compiled):
             parameters = {}
         else:
             parameters = dict((sql._column_as_key(key), required)
-                              for key in self.column_keys if key not in bind_names)
+                              for key in self.column_keys 
+                              if not stmt.parameters or key not in stmt.parameters)
 
         if stmt.parameters is not None:
             for k, v in stmt.parameters.iteritems():
