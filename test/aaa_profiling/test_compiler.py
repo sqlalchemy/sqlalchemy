@@ -15,15 +15,15 @@ class CompileTest(TestBase, AssertsExecutionResults):
             Column('c1', Integer, primary_key=True),
             Column('c2', String(30)))
 
-    @profiling.function_call_count(72, {'2.4': 49, '3.0':77, '3.1':77})
+    @profiling.function_call_count(69, {'2.4': 44, '3.0':77, '3.1':77})
     def test_insert(self):
         t1.insert().compile()
 
-    @profiling.function_call_count(72, {'2.4': 50})
+    @profiling.function_call_count(69, {'2.4': 45})
     def test_update(self):
         t1.update().compile()
 
-    @profiling.function_call_count(128, {'2.4': 90})
+    @profiling.function_call_count(122, {'2.4': 81})
     def test_update_whereclause(self):
         t1.update().where(t1.c.c2==12).compile()
 
