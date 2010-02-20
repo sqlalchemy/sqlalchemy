@@ -38,10 +38,11 @@ class ParseConnectTest(TestBase):
 
 class DialectImportTest(TestBase):
     def test_import_base_dialects(self):
+        # the globals() somehow makes it for the exec() + nose3.
         for name in ('mysql', 'firebird', 'postgresql', 'sqlite', 'oracle', 'mssql'):
             exec("from sqlalchemy.dialects import %s\n"
                 "dialect = %s.dialect()"
-             % (name, name))
+             % (name, name), globals())
             eq_(dialect.name, name)
     
 class CreateEngineTest(TestBase):
