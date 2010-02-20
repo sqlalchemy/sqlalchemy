@@ -408,23 +408,34 @@ def _class_for_table(session, engine, selectable, **mapper_kwargs):
         klass = TableClassType(mapname, (object,), {})
     else:
         klass = SelectableClassType(mapname, (object,), {})
-    
-    def __cmp__(self, o):
-        L = self.__class__.c.keys()
+
+    def _compare(self, o):
+        L = list(self.__class__.c.keys())
         L.sort()
         t1 = [getattr(self, k) for k in L]
         try:
             t2 = [getattr(o, k) for k in L]
         except AttributeError:
             raise TypeError('unable to compare with %s' % o.__class__)
-        return cmp(t1, t2)
+        return t1, t2
+    
+    # python2/python3 compatible system of 
+    # __cmp__ - __lt__ + __eq__
+    
+    def __lt__(self, o):
+        t1, t2 = _compare(self, o)
+        return t1 < t2
 
+    def __eq__(self, o):
+        t1, t2 = _compare(self, o)
+        return t1 == t2
+    
     def __repr__(self):
         L = ["%s=%r" % (key, getattr(self, key, ''))
              for key in self.__class__.c.keys()]
         return '%s(%s)' % (self.__class__.__name__, ','.join(L))
         
-    for m in ['__cmp__', '__repr__']:
+    for m in ['__eq__', '__repr__', '__lt__']:
         setattr(klass, m, eval(m))
     klass._table = selectable
     klass.c = expression.ColumnCollection()
