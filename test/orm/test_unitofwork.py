@@ -360,20 +360,26 @@ class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
     @testing.resolve_artifact_names
     def test_binary_equality(self):
         
+        # Py3K
+        #data = b"this is some data"
+        # Py2K
+        data = "this is some data"
+        # end Py2K
+        
         mapper(Foo, t1)
         
         s = create_session()
         
-        f1 = Foo(data="this is some data")
+        f1 = Foo(data=data)
         s.add(f1)
         s.flush()
         s.expire_all()
         f1 = s.query(Foo).first()
-        assert f1.data == "this is some data"
-        f1.data = "this is some data"
+        assert f1.data == data
+        f1.data = data
         eq_(
             sa.orm.attributes.get_history(f1, "data"),
-            ((), ["this is some data"], ())
+            ((), [data], ())
         )
         def go():
             s.flush()
