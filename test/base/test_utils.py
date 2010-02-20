@@ -81,11 +81,13 @@ class FrozenDictTest(TestBase):
     def test_serialize(self):
         
         picklers = set()
+        # Py2K
         try:
             import cPickle
             picklers.add(cPickle)
         except ImportError:
             pass
+        # end Py2K
         import pickle
         picklers.add(pickle)
         
