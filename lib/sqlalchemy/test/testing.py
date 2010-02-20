@@ -623,21 +623,11 @@ class AssertsCompiledSQL(object):
             
         c = clause.compile(dialect=dialect, **kw)
 
+        param_str = repr(getattr(c, 'params', {}))
         # Py3K
-        ## I kid you not.
-        ##
-        ## 1. Doesn't work:
-        ## http://mail.python.org/pipermail/python-3000/2008-February/012144.html
-        ##
-        ## 2. no more setdefaultencoding(). (although this is undocumented)
-        ##
-        ## 3. Therefore:
-        ## http://docs.python.org/3.1/library/sys.html#sys.stdin
-        ## 
-        #sys.stdout.buffer.write(("\nSQL String:\n" + str(c) + repr(getattr(c, 'params', {}))).encode('utf-8'))
-        # Py2K
-        print "\nSQL String:\n" + str(c) + repr(getattr(c, 'params', {}))
-        # end Py2K
+        #param_str = param_str.encode('utf-8').decode('ascii', 'ignore')
+        
+        print "\nSQL String:\n" + str(c) + param_str
         
         cc = re.sub(r'[\n\t]', '', str(c))
         
