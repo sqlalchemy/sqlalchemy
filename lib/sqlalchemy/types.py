@@ -1424,9 +1424,14 @@ class Interval(_DateAffinity, TypeDecorator):
             operators.mul:{
                 Numeric:Interval
             },
+            operators.truediv: {
+                Numeric:Interval
+            },
+            # Py2K
             operators.div: {
                 Numeric:Interval
             }
+            # end Py2K
         }
 
     @property
