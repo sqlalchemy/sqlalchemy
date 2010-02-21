@@ -308,13 +308,18 @@ def _server_version(bind=None):
 def skip_if(predicate, reason=None):
     """Skip a test if predicate is true."""
     reason = reason or predicate.__name__
+    carp = _should_carp_about_exclusion(reason)
+    
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
             if predicate():
                 msg = "'%s' skipped on DB %s version '%s': %s" % (
                     fn_name, config.db.name, _server_version(), reason)
-                raise SkipTest(msg)
+                print msg
+                if carp:
+                    print >> sys.stderr, msg
+                return True
             else:
                 return fn(*args, **kw)
         return function_named(maybe, fn_name)

@@ -282,6 +282,8 @@ class CustomSetupTeardownTest(_fixtures.FixtureTest):
 class UnpickleSA05Test(_fixtures.FixtureTest):
     """test loading picklestrings from SQLA 0.5."""
     
+    __requires__ = ('python2',)
+    
     @testing.resolve_artifact_names
     def test_one(self):
         mapper(User, users, properties={

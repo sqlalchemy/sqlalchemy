@@ -112,6 +112,7 @@ class NoseSQLAlchemy(Plugin):
     def __should_skip_for(self, cls):
         if hasattr(cls, '__requires__'):
             def test_suite(): return 'ok'
+            test_suite.__name__ = cls.__name__
             for requirement in cls.__requires__:
                 check = getattr(requires, requirement)
                 if check(test_suite)() != 'ok':
@@ -124,6 +125,7 @@ class NoseSQLAlchemy(Plugin):
                 print "'%s' unsupported on DB implementation '%s'" % (
                      cls.__class__.__name__, testing.db.name)
                 return True
+                
         if getattr(cls, '__only_on__', None):
             spec = testing.db_spec(*util.to_list(cls.__only_on__))
             if not spec(testing.db):
@@ -137,6 +139,7 @@ class NoseSQLAlchemy(Plugin):
                     print "'%s' skipped by %s" % (
                         cls.__class__.__name__, c.__name__)
                     return True
+                    
         for rule in getattr(cls, '__excluded_on__', ()):
             if testing._is_excluded(*rule):
                 print "'%s' unsupported on DB %s version %s" % (

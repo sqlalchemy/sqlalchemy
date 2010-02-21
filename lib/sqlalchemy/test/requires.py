@@ -13,6 +13,7 @@ from testing import \
      skip_if
 
 import testing
+import sys
 
 def deferrable_constraints(fn):
     """Target database must support derferable constraints."""
@@ -111,7 +112,10 @@ def savepoints(fn):
 def denormalized_names(fn):
     """Target database must have 'denormalized', i.e. UPPERCASE as case insensitive names."""
     
-    return skip_if(lambda: not testing.db.dialect.requires_name_normalize)(fn)
+    return skip_if(
+                lambda: not testing.db.dialect.requires_name_normalize,
+                "Backend does not require denomralized names."
+            )(fn)
     
 def schemas(fn):
     """Target database must support external schemas, and have one named 'test_schema'."""
@@ -185,4 +189,27 @@ def unicode_ddl(fn):
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
         )
+
+def python2(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(
+            lambda: sys.version_info >= (3,),
+            "Python version 2.xx is required."
+            )
+    )
+    
+def _has_sqlite():
+    from sqlalchemy import create_engine
+    try:
+        e = create_engine('sqlite://')
+        return True
+    except ImportError:
+        return False
+
+def sqlite(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not _has_sqlite())
+    )
 

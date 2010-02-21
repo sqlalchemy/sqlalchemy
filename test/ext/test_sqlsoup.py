@@ -9,19 +9,8 @@ import datetime
 
 
 class SQLSoupTest(TestBase):
-    __skip_if__ = (lambda: not SQLSoupTest._has_sqlite(),)
+    __requires__ = ('sqlite', )
 
-    @classmethod
-    def _has_sqlite(cls):
-        try:
-            import sqlite3
-        except ImportError:
-            try:
-                import pysqlite2
-            except ImportError:
-                return False
-        return True
-        
     @classmethod
     def setup_class(cls):
         global engine
