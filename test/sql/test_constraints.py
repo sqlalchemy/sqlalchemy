@@ -316,10 +316,36 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
                 Column('b', Integer)
         )
         
-        constraint = CheckConstraint('a < b',name="my_test_constraint", deferrable=True,initially='DEFERRED', table=t)
+        constraint = CheckConstraint('a < b',name="my_test_constraint",
+                                        deferrable=True,initially='DEFERRED', table=t)
+
+        
+        # before we create an AddConstraint,
+        # the CONSTRAINT comes out inline
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl ("
+            "a INTEGER, "
+            "b INTEGER, "
+            "CONSTRAINT my_test_constraint CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+            ")"
+        )
+
         self.assert_compile(
             schema.AddConstraint(constraint),
-            "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+            "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint "
+                    "CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+        )
+
+        # once we make an AddConstraint,
+        # inline compilation of the CONSTRAINT
+        # is disabled
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl ("
+            "a INTEGER, "
+            "b INTEGER"
+            ")"
         )
 
         self.assert_compile(

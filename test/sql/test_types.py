@@ -10,6 +10,7 @@ import sqlalchemy.engine.url as url
 from sqlalchemy.databases import *
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.test import *
+from sqlalchemy.test.util import picklers
 
 
 class AdaptTest(TestBase):
@@ -77,8 +78,36 @@ class TypeAffinityTest(TestBase):
             (PickleType(), PickleType(), True),
         ]:
             eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
-        
-    
+
+class PickleMetadataTest(TestBase):
+    def testmeta(self):
+        for loads, dumps in picklers():
+            column_types = [
+                Column('Boo', Boolean()),
+                Column('Str', String()),
+                Column('Tex', Text()),
+                Column('Uni', Unicode()),
+                Column('Int', Integer()),
+                Column('Sma', SmallInteger()),
+                Column('Big', BigInteger()),
+                Column('Num', Numeric()),
+                Column('Flo', Float()),
+                Column('Dat', DateTime()),
+                Column('Dat', Date()),
+                Column('Tim', Time()),
+                Column('Lar', LargeBinary()),
+                Column('Pic', PickleType()),
+                Column('Int', Interval()),
+                Column('Enu', Enum('x','y','z', name="somename")),
+            ]
+            for column_type in column_types:
+                #print column_type
+                meta = MetaData()
+                Table('foo', meta, column_type)
+                ct = loads(dumps(column_type))
+                mt = loads(dumps(meta))
+                
+
 class UserDefinedTest(TestBase):
     """tests user-defined types."""
 

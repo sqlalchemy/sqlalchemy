@@ -78,6 +78,10 @@ CHANGES
     encouraged to use those functions whenever they correspond
     to their needs instead of implementing custom ones.
 
+  - SchemaType and subclasses Boolean, Enum are now serializable,
+    including their ddl listener and other event callables.
+    [ticket:1694] [ticket:1698]
+    
   - Added math negation operator support, -x.
   
   - FunctionElement subclasses are now directly executable the

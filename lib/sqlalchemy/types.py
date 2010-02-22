@@ -1038,22 +1038,36 @@ class SchemaType(object):
         self.schema = kw.pop('schema', None)
         self.metadata = kw.pop('metadata', None)
         if self.metadata:
-            self.metadata.append_ddl_listener('before-create',
-                                                self._on_metadata_create)
-            self.metadata.append_ddl_listener('after-drop',
-                                                self._on_metadata_drop)
+            self.metadata.append_ddl_listener(
+                                    'before-create',
+                                    util.portable_instancemethod(self._on_metadata_create)
+                                    )
+            self.metadata.append_ddl_listener(
+                                    'after-drop',
+                                    util.portable_instancemethod(self._on_metadata_drop)
+                                    )
             
     def _set_parent(self, column):
-        column._on_table_attach(self._set_table)
+        column._on_table_attach(util.portable_instancemethod(self._set_table))
         
     def _set_table(self, table, column):
-        table.append_ddl_listener('before-create', self._on_table_create)
-        table.append_ddl_listener('after-drop', self._on_table_drop)
+        table.append_ddl_listener(
+                            'before-create', 
+                            util.portable_instancemethod(self._on_table_create)
+                            )
+        table.append_ddl_listener(
+                            'after-drop', 
+                            util.portable_instancemethod(self._on_table_drop)
+                            )
         if self.metadata is None:
-            table.metadata.append_ddl_listener('before-create',
-                                                self._on_metadata_create)
-            table.metadata.append_ddl_listener('after-drop',
-                                                self._on_metadata_drop)
+            table.metadata.append_ddl_listener(
+                            'before-create',
+                            util.portable_instancemethod(self._on_metadata_create)
+                            )
+            table.metadata.append_ddl_listener(
+                            'after-drop',
+                            util.portable_instancemethod(self._on_metadata_drop)
+                            )
     
     @property
     def bind(self):
@@ -1178,19 +1192,20 @@ class Enum(String, SchemaType):
                         assert_unicode=assert_unicode
                         )
         SchemaType.__init__(self, **kw)
+
+    def _should_create_constraint(self, compiler):
+        return not self.native_enum or \
+                    not compiler.dialect.supports_native_enum
     
     def _set_table(self, table, column):
         if self.native_enum:
             SchemaType._set_table(self, table, column)
             
-        def should_create_constraint(compiler):
-            return not self.native_enum or \
-                        not compiler.dialect.supports_native_enum
 
         e = schema.CheckConstraint(
                         column.in_(self.enums),
                         name=self.name,
-                        _create_rule=should_create_constraint
+                        _create_rule=util.portable_instancemethod(self._should_create_constraint)
                     )
         table.append_constraint(e)
         
@@ -1314,18 +1329,18 @@ class Boolean(TypeEngine, SchemaType):
         """
         self.create_constraint = create_constraint
         self.name = name
+    
+    def _should_create_constraint(self, compiler):
+        return not compiler.dialect.supports_native_boolean
         
     def _set_table(self, table, column):
         if not self.create_constraint:
             return
             
-        def should_create_constraint(compiler):
-            return not compiler.dialect.supports_native_boolean
-
         e = schema.CheckConstraint(
                         column.in_([0, 1]),
                         name=self.name,
-                        _create_rule=should_create_constraint
+                        _create_rule=util.portable_instancemethod(self._should_create_constraint)
                     )
         table.append_constraint(e)
     

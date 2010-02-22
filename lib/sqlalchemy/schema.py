@@ -1426,7 +1426,8 @@ class CheckConstraint(Constraint):
     Can be included in the definition of a Table or Column.
     """
 
-    def __init__(self, sqltext, name=None, deferrable=None, initially=None, table=None, _create_rule=None):
+    def __init__(self, sqltext, name=None, deferrable=None, 
+                    initially=None, table=None, _create_rule=None):
         """Construct a CHECK constraint.
 
         sqltext
@@ -2291,6 +2292,16 @@ class _CreateDropBase(DDLElement):
         self.on = on
         self.bind = bind
 
+    def _create_rule_disable(self, compiler):
+        """Allow disable of _create_rule using a callable.
+        
+        Pass to _create_rule using 
+        util.portable_instancemethod(self._create_rule_disable)
+        to retain serializability.
+        
+        """
+        return False
+
 class CreateTable(_CreateDropBase):
     """Represent a CREATE TABLE statement."""
     
@@ -2332,7 +2343,7 @@ class AddConstraint(_CreateDropBase):
 
     def __init__(self, element, *args, **kw):
         super(AddConstraint, self).__init__(element, *args, **kw)
-        element._create_rule = lambda compiler: False
+        element._create_rule = util.portable_instancemethod(self._create_rule_disable)
         
 class DropConstraint(_CreateDropBase):
     """Represent an ALTER TABLE DROP CONSTRAINT statement."""
@@ -2342,7 +2353,7 @@ class DropConstraint(_CreateDropBase):
     def __init__(self, element, cascade=False, **kw):
         self.cascade = cascade
         super(DropConstraint, self).__init__(element, **kw)
-        element._create_rule = lambda compiler: False
+        element._create_rule = util.portable_instancemethod(self._create_rule_disable)
 
 def _bind_or_error(schemaitem, msg=None):
     bind = schemaitem.bind

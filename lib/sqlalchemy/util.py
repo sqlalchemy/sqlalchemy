@@ -453,6 +453,18 @@ def unbound_method_to_callable(func_or_cls):
     else:
         return func_or_cls
 
+class portable_instancemethod(object):
+    """Turn an instancemethod into a (parent, name) pair
+    to produce a serializable callable.
+    
+    """
+    def __init__(self, meth):
+        self.target = meth.im_self
+        self.name = meth.__name__
+
+    def __call__(self, *arg, **kw):
+        return getattr(self.target, self.name)(*arg, **kw)
+        
 def class_hierarchy(cls):
     """Return an unordered sequence of all classes related to cls.
 
