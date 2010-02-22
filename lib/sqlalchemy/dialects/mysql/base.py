@@ -1269,6 +1269,26 @@ class MySQLCompiler(compiler.SQLCompiler):
 #       creation of foreign key constraints fails."
 
 class MySQLDDLCompiler(compiler.DDLCompiler):
+    def create_table_constraints(self, table):
+        """Get table constraints."""
+        constraint_string = super(MySQLDDLCompiler, self).create_table_constraints(table)
+        
+        is_innodb = table.kwargs.has_key('mysql_engine') and \
+                    table.kwargs['mysql_engine'].lower() == 'innodb'
+
+        auto_inc_column = table._autoincrement_column
+
+        if is_innodb and \
+                auto_inc_column is not None and \
+                auto_inc_column is not list(table.primary_key)[0]:
+            if constraint_string:
+                constraint_string += ", \n\t"
+            constraint_string += "KEY `idx_autoinc_%s`(`%s`)" % (auto_inc_column.name, \
+                            self.preparer.format_column(auto_inc_column))
+        
+        return constraint_string
+
+
     def get_column_specification(self, column, **kw):
         """Builds column DDL."""
 

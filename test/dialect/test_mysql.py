@@ -1123,6 +1123,38 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             select([extract('milliseconds', t.c.col1)]),
             "SELECT EXTRACT(millisecond FROM t.col1) AS anon_1 FROM t")
 
+    def test_innodb_autoincrement(self):
+        t1 = Table('sometable', MetaData(),
+                Column('assigned_id', Integer(), primary_key=True, autoincrement=False),
+                Column('id', Integer(), primary_key=True, autoincrement=True),
+                mysql_engine='InnoDB'
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE sometable ("
+            "assigned_id INTEGER NOT NULL, "
+            "id INTEGER NOT NULL AUTO_INCREMENT, "
+            "PRIMARY KEY (assigned_id, id), "
+            "KEY `idx_autoinc_id`(`id`)"
+            ")ENGINE=InnoDB"
+        )
+
+        t1 = Table('sometable', MetaData(),
+                Column('assigned_id', Integer(), primary_key=True, autoincrement=True),
+                Column('id', Integer(), primary_key=True, autoincrement=False),
+                mysql_engine='InnoDB'
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE sometable ("
+            "assigned_id INTEGER NOT NULL AUTO_INCREMENT, "
+            "id INTEGER NOT NULL, "
+            "PRIMARY KEY (assigned_id, id)"
+            ")ENGINE=InnoDB"
+        )
+
 
 class RawReflectionTest(TestBase):
     def setup(self):

@@ -146,6 +146,10 @@ CHANGES
 
   - Further fixes for the mysql-connector dialect.  [ticket:1668]
   
+  - Composite PK table on InnoDB where the "autoincrement" column
+    isn't first will emit an explicit "KEY" phrase within 
+    CREATE TABLE thereby avoiding errors, [ticket:1496]
+    
 - mssql
   - Re-established initial support for pymssql.
  

@@ -1004,17 +1004,26 @@ class DDLCompiler(engine.Compiled):
             if const:
                 text += " " + const
 
+        const = self.create_table_constraints(table)
+        if const:
+            text += ", \n\t" + const
+
+        text += "\n)%s\n\n" % self.post_create_table(table)
+        return text
+
+    def create_table_constraints(self, table):
+        
         # On some DB order is significant: visit PK first, then the
         # other constraints (engine.ReflectionTest.testbasic failed on FB2)
+        constraints = []
         if table.primary_key:
-            pk = self.process(table.primary_key)
-            if pk:
-                text += ", \n\t" + pk
+            constraints.append(table.primary_key)
+            
+        constraints.extend([c for c in table.constraints if c is not table.primary_key])
         
-        const = ", \n\t".join(p for p in 
-                        (self.process(constraint) for constraint in table.constraints 
-                        if constraint is not table.primary_key
-                        and (
+        return ", \n\t".join(p for p in
+                        (self.process(constraint) for constraint in constraints 
+                        if (
                             constraint._create_rule is None or
                             constraint._create_rule(self))
                         and (
@@ -1022,11 +1031,6 @@ class DDLCompiler(engine.Compiled):
                             not getattr(constraint, 'use_alter', False)
                         )) if p is not None
                 )
-        if const:
-            text += ", \n\t" + const
-        
-        text += "\n)%s\n\n" % self.post_create_table(table)
-        return text
         
     def visit_drop_table(self, drop):
         ret = "\nDROP TABLE " + self.preparer.format_table(drop.element)
