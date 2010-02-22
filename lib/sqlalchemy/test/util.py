@@ -22,3 +22,21 @@ else:
         pass
 
 
+
+def picklers():
+    picklers = set()
+    # Py2K
+    try:
+        import cPickle
+        picklers.add(cPickle)
+    except ImportError:
+        pass
+    # end Py2K
+    import pickle
+    picklers.add(pickle)
+    
+    # yes, this thing needs this much testing
+    for pickle in picklers:
+        for protocol in -1, 0, 1, 2:
+            yield pickle.loads, lambda d:pickle.dumps(d, protocol)
+    

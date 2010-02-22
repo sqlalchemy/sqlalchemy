@@ -3,7 +3,7 @@ import copy, threading
 from sqlalchemy import util, sql, exc
 from sqlalchemy.test import TestBase
 from sqlalchemy.test.testing import eq_, is_, ne_
-from sqlalchemy.test.util import gc_collect
+from sqlalchemy.test.util import gc_collect, picklers
 
 class OrderedDictTest(TestBase):
     def test_odict(self):
@@ -79,24 +79,9 @@ class OrderedSetTest(TestBase):
 
 class FrozenDictTest(TestBase):
     def test_serialize(self):
-        
-        picklers = set()
-        # Py2K
-        try:
-            import cPickle
-            picklers.add(cPickle)
-        except ImportError:
-            pass
-        # end Py2K
-        import pickle
-        picklers.add(pickle)
-        
         d = util.frozendict({1:2, 3:4})
-        
-        # yes, this thing needs this much testing
-        for pickle in picklers:
-            for protocol in -1, 0, 1, 2:
-                print pickle.loads(pickle.dumps(d, protocol))
+        for loads, dumps in picklers():
+            print loads(dumps(d))
         
         
 class ColumnCollectionTest(TestBase):
