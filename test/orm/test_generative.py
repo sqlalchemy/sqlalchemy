@@ -93,7 +93,7 @@ class GenerativeQueryTest(_base.MappedTest):
     def test_aggregate_2(self):
         query = create_session().query(func.avg(foo.c.bar))
         avg = query.filter(foo.c.bar < 30).one()[0]
-        eq_(round(avg, 1), 14.5)
+        eq_(float(round(avg, 1)), 14.5)
 
     @testing.fails_on('mssql', 'AVG produces an average as the original column type on mssql.')
     @testing.resolve_artifact_names
