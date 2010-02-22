@@ -37,7 +37,9 @@ class PostgreSQL_pypostgresql(PGDialect):
     
     default_paramstyle = 'format'
     
-    supports_sane_rowcount = False  # alas....posting a bug now
+    # requires trunk version to support sane rowcounts
+    # TODO: use dbapi version information to set this flag appropariately
+    supports_sane_rowcount = True
     
     supports_sane_multi_rowcount = False
     
