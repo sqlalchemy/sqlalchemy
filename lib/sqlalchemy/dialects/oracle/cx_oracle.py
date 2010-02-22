@@ -79,6 +79,7 @@ from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.engine import base
 from sqlalchemy import types as sqltypes, util
 from datetime import datetime
+import random
 
 class _OracleDate(sqltypes.Date):
     def bind_processor(self, dialect):
