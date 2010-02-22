@@ -377,7 +377,7 @@ Wow, surprise !  This is neither a ``True`` nor a ``False``.  Well what is it ?
     >>> str(users.c.id==addresses.c.user_id)
     'users.id = addresses.user_id'
 
-As you can see, the ``==`` operator is producing an object that is very much like the ``Insert`` and ``select()`` objects we've made so far, thanks to Python's ``__eq__()`` builtin; you call ``str()`` on it and it produces SQL.  By now, one can that everything we are working with is ultimately the same type of object.  SQLAlchemy terms the base class of all of these expressions as ``sqlalchemy.sql.ClauseElement``.
+As you can see, the ``==`` operator is producing an object that is very much like the ``Insert`` and ``select()`` objects we've made so far, thanks to Python's ``__eq__()`` builtin; you call ``str()`` on it and it produces SQL.  By now, one can see that everything we are working with is ultimately the same type of object.  SQLAlchemy terms the base class of all of these expressions as ``sqlalchemy.sql.ClauseElement``.
 
 Operators 
 ==========
