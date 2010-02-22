@@ -56,7 +56,7 @@ class ExecuteTest(TestBase):
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
     @testing.skip_if(lambda: testing.against('mysql+mysqldb'), 'db-api flaky')
-    @testing.fails_on_everything_except('postgresql+psycopg2')
+    @testing.fails_on_everything_except('postgresql+psycopg2', 'postgresql+pypostgresql')
     def test_raw_python(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':1, 'name':'jack'})
