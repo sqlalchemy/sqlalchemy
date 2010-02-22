@@ -16,7 +16,7 @@ from sqlalchemy import processors
 
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
-        return None
+        return processors.to_str
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
