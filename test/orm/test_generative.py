@@ -105,14 +105,14 @@ class GenerativeQueryTest(_base.MappedTest):
         # Py2K
         avg_f = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).next()[0]
         # end Py2K
-        assert round(avg_f, 1) == 14.5
+        assert float(round(avg_f, 1)) == 14.5
 
         # Py3K
         #avg_o = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).__next__()[0]
         # Py2K
         avg_o = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).next()[0]
         # end Py2K
-        assert round(avg_o, 1) == 14.5
+        assert float(round(avg_o, 1)) == 14.5
 
     @testing.resolve_artifact_names
     def test_filter(self):
