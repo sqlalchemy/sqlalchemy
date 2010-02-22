@@ -468,11 +468,11 @@ def _as_declarative(cls, classname, dict_):
                 del our_stuff[key]
 
     table = None
-    if '__table__' not in cls.__dict__:
-        if '__tablename__' in cls.__dict__:
+    if '__table__' not in dict_:
+        if '__tablename__' in dict_:
             tablename = cls.__tablename__
             
-            table_args = cls.__dict__.get('__table_args__')
+            table_args = dict_.get('__table_args__')
             if isinstance(table_args, dict):
                 args, table_kw = (), table_args
             elif isinstance(table_args, tuple):
@@ -486,7 +486,7 @@ def _as_declarative(cls, classname, dict_):
             else:
                 args, table_kw = (), {}
 
-            autoload = cls.__dict__.get('__autoload__')
+            autoload = dict_.get('__autoload__')
             if autoload:
                 table_kw['autoload'] = True
 
@@ -497,7 +497,8 @@ def _as_declarative(cls, classname, dict_):
         if cols:
             for c in cols:
                 if not table.c.contains_column(c):
-                    raise exceptions.ArgumentError("Can't add additional column %r when specifying __table__" % key)
+                    raise exceptions.ArgumentError(
+                                "Can't add additional column %r when specifying __table__" % key)
             
     mapper_args = getattr(cls, '__mapper_args__', {})
     if 'inherits' not in mapper_args:
@@ -557,8 +558,8 @@ class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
         if '_decl_class_registry' in cls.__dict__:
             return type.__init__(cls, classname, bases, dict_)
-        
-        _as_declarative(cls, classname, dict_)
+
+        _as_declarative(cls, classname, cls.__dict__)
         return type.__init__(cls, classname, bases, dict_)
 
     def __setattr__(cls, key, value):

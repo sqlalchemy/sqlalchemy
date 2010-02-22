@@ -140,6 +140,14 @@ CHANGES
     Note that it is *not* built/installed by default.
     See README for installation instructions.
 
+- declarative
+  - DeclarativeMeta exclusively uses cls.__dict__ (not dict_) 
+    as the source of class information; _as_declarative exclusively 
+    uses the  dict_ passed to it as the source of class information 
+    (which when using DeclarativeMeta is cls.__dict__).  This should 
+    in theory make it easier for custom metaclasses to modify
+    the state passed into _as_declarative.
+    
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
     nullable flag and server defaults would not be reflected.

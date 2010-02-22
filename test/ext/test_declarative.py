@@ -280,7 +280,8 @@ class DeclarativeTest(DeclarativeTestBase):
         # hasattr() on a compile-loaded attribute
         hasattr(User.addresses, 'property')
         # the exeption is preserved
-        assert_raises_message(sa.exc.InvalidRequestError, r"suppressed within a hasattr\(\)", compile_mappers)
+        assert_raises_message(sa.exc.InvalidRequestError, 
+                                r"suppressed within a hasattr\(\)", compile_mappers)
 
     def test_custom_base(self):
         class MyBase(object):
