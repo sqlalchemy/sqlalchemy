@@ -71,6 +71,12 @@ CHANGES
   - Fixed cascade bug in many-to-one relation() when attribute
     was set to None, introduced in r6711 (cascade deleted
     items into session during add()).
+
+  - The "allow_null_pks" flag is now called "allow_partial_pks",
+    defaults to True, acts like it did in 0.5 again.  Except,
+    it also is implemented within merge() such that a SELECT
+    won't be issued for an incoming instance with partially
+    NULL primary key if the flag is False.  [ticket:1680]
     
 - sql
   - The most common result processors conversion function were

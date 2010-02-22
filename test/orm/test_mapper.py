@@ -574,6 +574,28 @@ class MapperTest(_fixtures.FixtureTest):
             User(id=10, address_id=None)])
 
     @testing.resolve_artifact_names
+    def test_mapping_to_outerjoin_no_partial_pks(self):
+        """test the allow_partial_pks=False flag."""
+
+
+        mapper(User, users.outerjoin(addresses),
+                allow_partial_pks=False,
+               primary_key=[users.c.id, addresses.c.id],
+               properties=dict(
+            address_id=addresses.c.id))
+
+        session = create_session()
+        l = session.query(User).order_by(User.id, User.address_id).all()
+
+        eq_(l, [
+            User(id=7, address_id=1),
+            User(id=8, address_id=2),
+            User(id=8, address_id=3),
+            User(id=8, address_id=4),
+            User(id=9, address_id=5),
+            None])
+
+    @testing.resolve_artifact_names
     def test_custom_join(self):
         """select_from totally replace the FROM parameters."""
 

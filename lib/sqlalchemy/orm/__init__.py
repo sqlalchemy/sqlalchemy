@@ -626,9 +626,17 @@ def mapper(class_, local_table=None, *args, **params):
         :class:`~sqlalchemy.orm.query.Query`.
 
       allow_null_pks
-        This flag is deprecated - allow_null_pks is now "on" in all cases.
-        Rows which contain NULL for some (but not all) of its primary key
-        columns will be considered to have a valid primary key.
+        This flag is deprecated - this is stated as allow_partial_pks
+        which defaults to True.
+    
+      allow_partial_pks
+        Defaults to True.  Indicates that a composite primary key with
+        some NULL values should be considered as possibly existing
+        within the database.   This affects whether a mapper will assign
+        an incoming row to an existing identity, as well as if 
+        session.merge() will check the database first for a particular
+        primary key value.  A "partial primary key" can occur if one 
+        has mapped to an OUTER JOIN, for example.
 
       batch
         Indicates that save operations of multiple entities can be batched

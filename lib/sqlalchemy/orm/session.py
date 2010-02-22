@@ -1153,8 +1153,10 @@ class Session(object):
             merged_state.key = key
             self._update_impl(merged_state)
             new_instance = True
-
-        elif not _none_set.issuperset(key[1]):
+        
+        elif not _none_set.issubset(key[1]) or \
+                    (mapper.allow_partial_pks and 
+                    not _none_set.issuperset(key[1])):
             merged = self.query(mapper.class_).get(key[1])
         else:
             merged = None

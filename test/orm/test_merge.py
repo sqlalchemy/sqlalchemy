@@ -1,6 +1,6 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
-from sqlalchemy import Integer, PickleType
+from sqlalchemy import Integer, PickleType, String
 import operator
 from sqlalchemy.test import testing
 from sqlalchemy.util import OrderedSet
@@ -430,8 +430,6 @@ class MergeTest(_fixtures.FixtureTest):
             ((), [u1], ())
         )
         assert a2 not in sess2.dirty
-        
-        
         
     @testing.resolve_artifact_names
     def test_many_to_many_cascade(self):
@@ -925,5 +923,39 @@ class MutableMergeTest(_base.MappedTest):
         
         
         
+class CompositeNullPksTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("data", metadata, 
+            Column('pk1', String(10), primary_key=True),
+            Column('pk2', String(10), primary_key=True),
+        )
+    
+    @classmethod
+    def setup_classes(cls):
+        class Data(_base.ComparableEntity):
+            pass
+    
+    @testing.resolve_artifact_names
+    def test_merge_allow_partial(self):
+        mapper(Data, data)
+        sess = sessionmaker()()
         
+        d1 = Data(pk1="someval", pk2=None)
+        
+        def go():
+            return sess.merge(d1)
+        self.assert_sql_count(testing.db, go, 1)
+
+    @testing.resolve_artifact_names
+    def test_merge_disallow_partial(self):
+        mapper(Data, data, allow_partial_pks=False)
+        sess = sessionmaker()()
+
+        d1 = Data(pk1="someval", pk2=None)
+
+        def go():
+            return sess.merge(d1)
+        self.assert_sql_count(testing.db, go, 0)
+    
 

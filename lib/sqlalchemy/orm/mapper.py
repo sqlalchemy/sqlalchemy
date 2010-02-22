@@ -90,6 +90,7 @@ class Mapper(object):
                  concrete=False,
                  with_polymorphic=None,
                  allow_null_pks=None,
+                 allow_partial_pks=True,
                  batch=True,
                  column_prefix=None,
                  include_properties=None,
@@ -139,8 +140,12 @@ class Mapper(object):
 
         if allow_null_pks:
             util.warn_deprecated('the allow_null_pks option to Mapper() is '
-                                'deprecated.  It is now on in all cases.')
-            
+                                'deprecated.  It is now allow_partial_pks=False|True, '
+                                'defaults to True.')
+            allow_partial_pks = allow_null_pks
+        
+        self.allow_partial_pks = allow_partial_pks
+        
         if with_polymorphic == '*':
             self.with_polymorphic = ('*', None)
         elif isinstance(with_polymorphic, (tuple, list)):
@@ -1681,7 +1686,11 @@ class Mapper(object):
         populate_instance = extension.get('populate_instance', None)
         append_result = extension.get('append_result', None)
         populate_existing = context.populate_existing or self.always_refresh
-
+        if self.allow_partial_pks:
+            is_not_primary_key = _none_set.issuperset
+        else:
+            is_not_primary_key = _none_set.issubset
+        
         def _instance(row, result):
             if translate_row:
                 ret = translate_row(self, context, row)
@@ -1740,9 +1749,9 @@ class Mapper(object):
             else:
                 # check for non-NULL values in the primary key columns,
                 # else no entity is returned for the row
-                if _none_set.issuperset(identitykey[1]):
+                if is_not_primary_key(identitykey[1]):
                     return None
-                    
+
                 isnew = True
                 currentload = True
                 loaded_instance = True
