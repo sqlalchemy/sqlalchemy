@@ -282,6 +282,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             ((testing.db.name, testing.db.driver) in \
             (
                 ('postgresql','psycopg2'),
+                ('postgresql','pypostgresql'),
                 ('postgresql','pg8000'),
                 ('postgresql','zxjdbc'),  
                 ('mysql','oursql'),
