@@ -40,12 +40,15 @@ Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: Boolean
   :show-inheritance:
+  :members:
 
 .. autoclass:: Date
  :show-inheritance:
+ :members:
 
 .. autoclass:: DateTime
    :show-inheritance:
+   :members:
 
 .. autoclass:: Enum
   :show-inheritance:
@@ -57,12 +60,15 @@ Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: Integer
   :show-inheritance:
+  :members:
 
 .. autoclass:: Interval
  :show-inheritance:
+ :members:
 
 .. autoclass:: LargeBinary
  :show-inheritance:
+ :members:
 
 .. autoclass:: Numeric
   :show-inheritance:
@@ -70,6 +76,7 @@ Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: PickleType
  :show-inheritance:
+ :members:
 
 .. autoclass:: SchemaType
   :show-inheritance:
@@ -78,21 +85,27 @@ Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: SmallInteger
  :show-inheritance:
+ :members:
 
 .. autoclass:: String
    :show-inheritance:
+   :members:
 
 .. autoclass:: Text
    :show-inheritance:
+   :members:
 
 .. autoclass:: Time
   :show-inheritance:
+  :members:
 
 .. autoclass:: Unicode
   :show-inheritance:
+  :members:
 
 .. autoclass:: UnicodeText
    :show-inheritance:
+   :members:
 
 SQL Standard Types
 ------------------

@@ -706,7 +706,10 @@ class Unicode(String):
           *length* for use in DDL, and will raise an exception when
           the ``CREATE TABLE`` DDL is issued.  Whether the value is
           interpreted as bytes or characters is database specific.
-
+        
+        :param \**kwargs: passed through to the underlying ``String``
+          type.
+          
         """
         kwargs.setdefault('convert_unicode', True)
         kwargs.setdefault('assert_unicode', 'warn')
@@ -1402,17 +1405,17 @@ class Interval(_DateAffinity, TypeDecorator):
         """Construct an Interval object.
         
         :param native: when True, use the actual
-        INTERVAL type provided by the database, if
-        supported (currently Postgresql, Oracle).  
-        Otherwise, represent the interval data as 
-        an epoch value regardless.
+          INTERVAL type provided by the database, if
+          supported (currently Postgresql, Oracle).  
+          Otherwise, represent the interval data as 
+          an epoch value regardless.
         
         :param second_precision: For native interval types
-        which support a "fractional seconds precision" parameter,
-        i.e. Oracle and Postgresql
+          which support a "fractional seconds precision" parameter,
+          i.e. Oracle and Postgresql
         
         :param day_precision: for native interval types which 
-        support a "day precision" parameter, i.e. Oracle.
+          support a "day precision" parameter, i.e. Oracle.
         
         """
         super(Interval, self).__init__()
