@@ -1327,12 +1327,22 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         for k in table.kwargs:
             if k.startswith('mysql_'):
                 opt = k[6:].upper()
+
+                arg = table.kwargs[k]
+                if opt in _options_of_type_string:
+                    arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
+
+                if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
+                           'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 'DEFAULT_CHARSET',
+                           'DEFAULT_COLLATE'):
+                    opt = opt.replace('_', ' ')
+
                 joiner = '='
                 if opt in ('TABLESPACE', 'DEFAULT CHARACTER SET',
                            'CHARACTER SET', 'COLLATE'):
                     joiner = ' '
 
-                table_opts.append(joiner.join((opt, table.kwargs[k])))
+                table_opts.append(joiner.join((opt, arg)))
         return ' '.join(table_opts)
 
     def visit_drop_index(self, drop):
@@ -2099,8 +2109,7 @@ class MySQLTableDefinitionParser(object):
     def _parse_constraints(self, line):
         """Parse a KEY or CONSTRAINT line.
 
-        line
-          A line of SHOW CREATE TABLE output
+        :param line: A line of SHOW CREATE TABLE output
         """
 
         # KEY
@@ -2135,8 +2144,7 @@ class MySQLTableDefinitionParser(object):
     def _parse_table_name(self, line, state):
         """Extract the table name.
 
-        line
-          The first line of SHOW CREATE TABLE
+        :param line: The first line of SHOW CREATE TABLE
         """
 
         regex, cleanup = self._pr_name
@@ -2147,8 +2155,7 @@ class MySQLTableDefinitionParser(object):
     def _parse_table_options(self, line, state):
         """Build a dictionary of all reflected table-level options.
 
-        line
-          The final line of SHOW CREATE TABLE output.
+        :param line: The final line of SHOW CREATE TABLE output.
         """
 
         options = {}
@@ -2157,19 +2164,18 @@ class MySQLTableDefinitionParser(object):
             pass
 
         else:
-            r_eq_trim = self._re_options_util['=']
-
+            rest_of_line = line[:]
             for regex, cleanup in self._pr_options:
-                m = regex.search(line)
+                m = regex.search(rest_of_line)
                 if not m:
                     continue
                 directive, value = m.group('directive'), m.group('val')
-                directive = r_eq_trim.sub('', directive).lower()
                 if cleanup:
                     value = cleanup(value)
-                options[directive] = value
+                options[directive.lower()] = value
+                rest_of_line = regex.sub('', rest_of_line)
 
-        for nope in ('auto_increment', 'data_directory', 'index_directory'):
+        for nope in ('auto_increment', 'data directory', 'index directory'):
             options.pop(nope, None)
 
         for opt, val in options.items():
@@ -2180,8 +2186,7 @@ class MySQLTableDefinitionParser(object):
 
         Falls back to a 'minimal support' variant if full parse fails.
 
-        line
-          Any column-bearing line from SHOW CREATE TABLE
+        :param line: Any column-bearing line from SHOW CREATE TABLE
         """
 
         spec = None
@@ -2270,9 +2275,9 @@ class MySQLTableDefinitionParser(object):
         reflecting views for runtime use.  This method formats DDL
         for columns only- keys are omitted.
 
-        `columns` is a sequence of DESCRIBE or SHOW COLUMNS 6-tuples.
-        SHOW FULL COLUMNS FROM rows must be rearranged for use with
-        this function.
+        :param columns: A sequence of DESCRIBE or SHOW COLUMNS 6-tuples.
+          SHOW FULL COLUMNS FROM rows must be rearranged for use with
+          this function.
         """
 
         buffer = []
@@ -2318,7 +2323,6 @@ class MySQLTableDefinitionParser(object):
 
         self._re_columns = []
         self._pr_options = []
-        self._re_options_util = {}
 
         _final = self.preparer.final_quote
 
@@ -2434,6 +2438,10 @@ class MySQLTableDefinitionParser(object):
             r'(?:SUB)?PARTITION')
 
         # Table-level options (COLLATE, ENGINE, etc.)
+        # Do the string options first, since they have quoted strings we need to get rid of.
+        for option in _options_of_type_string:
+            self._add_option_string(option)
+
         for option in ('ENGINE', 'TYPE', 'AUTO_INCREMENT',
                        'AVG_ROW_LENGTH', 'CHARACTER SET',
                        'DEFAULT CHARSET', 'CHECKSUM',
@@ -2442,32 +2450,34 @@ class MySQLTableDefinitionParser(object):
                        'KEY_BLOCK_SIZE'):
             self._add_option_word(option)
 
-        for option in (('COMMENT', 'DATA_DIRECTORY', 'INDEX_DIRECTORY',
-                        'PASSWORD', 'CONNECTION')):
-            self._add_option_string(option)
-
         self._add_option_regex('UNION', r'\([^\)]+\)')
         self._add_option_regex('TABLESPACE', r'.*? STORAGE DISK')
         self._add_option_regex('RAID_TYPE',
           r'\w+\s+RAID_CHUNKS\s*\=\s*\w+RAID_CHUNKSIZE\s*=\s*\w+')
-        self._re_options_util['='] = _re_compile(r'\s*=\s*$')
+
+    _optional_equals = r'(?:\s*(?:=\s*)|\s+)'
 
     def _add_option_string(self, directive):
-        regex = (r'(?P<directive>%s\s*(?:=\s*)?)'
-                 r'(?:\x27.(?P<val>.*?)\x27(?!\x27)\x27)' %
-                 re.escape(directive))
+        regex = (r'(?P<directive>%s)%s'
+                 r"'(?P<val>(?:[^']|'')*?)'(?!')" %
+                 (re.escape(directive), self._optional_equals))
         self._pr_options.append(
-            _pr_compile(regex, lambda v: v.replace("''", "'")))
+            _pr_compile(regex, lambda v: v.replace("\\\\","\\").replace("''", "'")))
 
     def _add_option_word(self, directive):
-        regex = (r'(?P<directive>%s\s*(?:=\s*)?)'
-                 r'(?P<val>\w+)' % re.escape(directive))
+        regex = (r'(?P<directive>%s)%s'
+                 r'(?P<val>\w+)' %
+                 (re.escape(directive), self._optional_equals))
         self._pr_options.append(_pr_compile(regex))
 
     def _add_option_regex(self, directive, regex):
-        regex = (r'(?P<directive>%s\s*(?:=\s*)?)'
-                 r'(?P<val>%s)' % (re.escape(directive), regex))
+        regex = (r'(?P<directive>%s)%s'
+                 r'(?P<val>%s)' %
+                 (re.escape(directive), self._optional_equals, regex))
         self._pr_options.append(_pr_compile(regex))
+
+_options_of_type_string = ('COMMENT', 'DATA DIRECTORY', 'INDEX DIRECTORY',
+                           'PASSWORD', 'CONNECTION')
 
 log.class_logger(MySQLTableDefinitionParser)
 log.class_logger(MySQLDialect)

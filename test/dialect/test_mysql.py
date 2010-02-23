@@ -775,7 +775,48 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
         assert str(reflected2.c.c2.server_default.arg) == "'0'"
         assert str(reflected2.c.c3.server_default.arg) == "'abc'"
         assert str(reflected2.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
-            
+
+    def test_reflection_with_table_options(self):
+        comment = r"""Comment types type speedily ' " \ '' Fun!"""
+
+        def_table = Table('mysql_def', MetaData(testing.db),
+            Column('c1', Integer()),
+            mysql_engine='MEMORY',
+            mysql_comment=comment,
+            mysql_default_charset='utf8',
+            mysql_auto_increment='5',
+            mysql_avg_row_length='3',
+            mysql_password='secret',
+            mysql_connection='fish',
+        )
+
+        def_table.create()
+        try:
+            reflected = Table('mysql_def', MetaData(testing.db),
+                          autoload=True)
+        finally:
+            def_table.drop()
+
+        assert def_table.kwargs['mysql_engine'] == 'MEMORY'
+        assert def_table.kwargs['mysql_comment'] == comment
+        assert def_table.kwargs['mysql_default_charset'] == 'utf8'
+        assert def_table.kwargs['mysql_auto_increment'] == '5'
+        assert def_table.kwargs['mysql_avg_row_length'] == '3'
+        assert def_table.kwargs['mysql_password'] == 'secret'
+        assert def_table.kwargs['mysql_connection'] == 'fish'
+
+        assert reflected.kwargs['mysql_engine'] == 'MEMORY'
+        assert reflected.kwargs['mysql_comment'] == comment
+        assert reflected.kwargs['mysql_default charset'] == 'utf8'
+        assert reflected.kwargs['mysql_avg_row_length'] == '3'
+        assert reflected.kwargs['mysql_connection'] == 'fish'
+
+        # This field doesn't seem to be returned by mysql itself.
+        #assert reflected.kwargs['mysql_password'] == 'secret'
+
+        # This is explicitly ignored when reflecting schema.
+        #assert reflected.kwargs['mysql_auto_increment'] == '5'
+
     def test_reflection_on_include_columns(self):
         """Test reflection of include_columns to be sure they respect case."""
 
