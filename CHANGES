@@ -204,7 +204,11 @@ CHANGES
      does a lookup among any number of potential attributes
      more efficiently by grouping several into a common structure.
      Both FromCache and RelationCache are simpler individually.
-     
+
+- documentation
+   - Major cleanup work in the docs to link class names into
+     the API docs. [ticket:1700/1702]
+
 0.6beta1
 ========
 - Major Release

@@ -25,8 +25,8 @@ Main Documentation
 
 * :ref:`datamapping_toplevel` - A comprehensive walkthrough of major ORM patterns and techniques.
 * :ref:`session_toplevel` - A detailed description of SQLAlchemy's Session object
-* :ref:`engines_toplevel` - Describes SQLAlchemy's database-connection facilities, including connection documentation and working with connections and transactions. 
-* :ref:`metadata_toplevel` - All about schema management using ``MetaData`` and ``Table`` objects; reading database schemas into your application, creating and dropping tables, constraints, defaults, sequences, indexes.
+* :ref:`engines_toplevel` - Describes SQLAlchemy's database-connection facilities, including connection documentation and working with connections and transactions.
+* :ref:`metadata_toplevel` - All about schema management using :class:`~sqlalchemy.schema.MetaData` and :class:`~sqlalchemy.schema.Table` objects; reading database schemas into your application, creating and dropping tables, constraints, defaults, sequences, indexes.
 * :ref:`pooling_toplevel` - Further detail about SQLAlchemy's connection pool library.
 * :ref:`types` - Datatypes included with SQLAlchemy, their functions, as well as how to create your own types.
 * :ref:`plugins` - Included addons for SQLAlchemy
@@ -45,7 +45,7 @@ Installing SQLAlchemy
 ======================
 
 Installing SQLAlchemy from scratch is most easily achieved with `setuptools <http://pypi.python.org/pypi/setuptools/>`_. Assuming it's installed, just run this from the command-line:
-    
+
 .. sourcecode:: none
 
     # easy_install SQLAlchemy
@@ -62,7 +62,7 @@ Otherwise, you can install from the distribution using the ``setup.py`` script:
 
     # python setup.py install
 
-Installing a Database API 
+Installing a Database API
 ==========================
 
 SQLAlchemy is designed to operate with a `DB-API <http://www.python.org/doc/peps/pep-0249/>`_ implementation built for a particular database, and includes support for the most popular databases.  The current list is at :ref:`supported_dbapis`.
@@ -78,7 +78,7 @@ This documentation covers SQLAlchemy version 0.6.  If you're working on a system
      >>> sqlalchemy.__version__ # doctest: +SKIP
      0.6.0
 
-0.5 to 0.6 Migration 
+0.5 to 0.6 Migration
 =====================
 
 Notes on what's changed from 0.5 to 0.6 is available on the SQLAlchemy wiki at `06Migration <http://www.sqlalchemy.org/trac/wiki/06Migration>`_.
