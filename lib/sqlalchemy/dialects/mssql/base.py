@@ -1079,7 +1079,6 @@ class MSDialect(default.DefaultDialect):
     supports_default_values = True
     supports_empty_insert = False
     execution_ctx_cls = MSExecutionContext
-    text_as_varchar = False
     use_scope_identity = True
     max_identifier_length = 128
     schema_name = "dbo"

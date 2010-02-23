@@ -188,7 +188,9 @@ CHANGES
     
 - mssql
   - Re-established initial support for pymssql.
- 
+
+  - Removed the text_as_varchar option.
+
 - sqlite
    - Added "native_datetime=True" flag to create_engine().
      This will cause the DATE and TIMESTAMP types to skip 
