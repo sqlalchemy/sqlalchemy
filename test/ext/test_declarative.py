@@ -924,13 +924,15 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __tablename__ = 'people'
             id = Column(Integer, primary_key=True)
             discriminator = Column('type', String(50))
-            __mapper_args__ = {'polymorphic_on': discriminator}
+            __mapper_args__ = {'polymorphic_on': discriminator,'polymorphic_identity':'person'}
             
         class Engineer(Person):
             primary_language = Column(String(50))
 
         assert 'inherits' not in Person.__mapper_args__
-    
+        assert class_mapper(Engineer).polymorphic_on is None
+        
+        
     def test_custom_join_condition(self):
         class Foo(Base):
             __tablename__ = 'foo'

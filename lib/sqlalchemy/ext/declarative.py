@@ -499,8 +499,11 @@ def _as_declarative(cls, classname, dict_):
                 if not table.c.contains_column(c):
                     raise exceptions.ArgumentError(
                                 "Can't add additional column %r when specifying __table__" % key)
-            
-    mapper_args = dict(getattr(cls, '__mapper_args__', {}))
+    
+    if '__mapper_args__' in dict_:
+        mapper_args = dict(dict_['__mapper_args__'])
+    else:
+        mapper_args = {}
     if 'inherits' not in mapper_args:
         for c in cls.__bases__:
             if _is_mapped_class(c):

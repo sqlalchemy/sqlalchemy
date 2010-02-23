@@ -166,9 +166,11 @@ CHANGES
     in theory make it easier for custom metaclasses to modify
     the state passed into _as_declarative.
 
-   - the __mapper_args__ dict is copied when propagating to a subclass.
-     Still need to decide how the argument propagation should
-     work in the bigger picture.  [ticket:1393]
+   - the __mapper_args__ dict is copied when propagating to a subclass,
+     and is taken straight off the class __dict__ to avoid any
+     propagation from the parent.  mapper inheritance already
+     propagates the things you want from the parent mapper.
+     [ticket:1393]
      
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
