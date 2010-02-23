@@ -980,3 +980,25 @@ class TestClassHierarchy(TestBase):
         eq_(set(util.class_hierarchy(A)), set((A, B, object)))
     # end Py2K
         
+
+class TestClassProperty(TestBase):
+
+    def test_simple(self):
+
+        from sqlalchemy.util import classproperty
+
+        class A(object):
+            something = {'foo':1}
+
+        class B(A):
+
+            @classproperty
+            def something(cls):
+                d = dict(super(B,cls).something)
+                d.update({'bazz':2})
+                return d
+
+        eq_(B.something,{
+                'foo':1,
+                'bazz':2,
+                })

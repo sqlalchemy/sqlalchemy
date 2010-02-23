@@ -1639,3 +1639,13 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
     decorated = warned(func)
     decorated.__doc__ = doc
     return decorated
+
+class classproperty(property):
+    """A decorator that behaves like @property except that operates
+    on classes rather than instances.
+
+    This is helpful when you need to compute __table_args__ and/or
+    __mapper_args__ when using declarative."""
+    def __get__(desc, self, cls):
+        return desc.fget(cls)
+
