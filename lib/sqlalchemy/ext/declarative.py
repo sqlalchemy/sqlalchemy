@@ -424,7 +424,9 @@ def instrument_declarative(cls, registry, metadata):
     
     """
     if '_decl_class_registry' in cls.__dict__:
-        raise exceptions.InvalidRequestError("Class %r already has been instrumented declaratively" % cls)
+        raise exceptions.InvalidRequestError(
+                            "Class %r already has been "
+                            "instrumented declaratively" % cls)
     cls._decl_class_registry = registry
     cls.metadata = metadata
     _as_declarative(cls, cls.__name__, cls.__dict__)

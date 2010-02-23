@@ -816,7 +816,8 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self.cursor.execute("SELECT scope_identity() AS lastrowid")
             else:
                 self.cursor.execute("SELECT @@identity AS lastrowid")
-            row = self.cursor.fetchall()[0]   # fetchall() ensures the cursor is consumed without closing it
+            # fetchall() ensures the cursor is consumed without closing it
+            row = self.cursor.fetchall()[0]   
             self._lastrowid = int(row[0])
 
         if (self.isinsert or self.isupdate or self.isdelete) and self.compiled.returning:
