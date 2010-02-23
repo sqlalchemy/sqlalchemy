@@ -43,6 +43,15 @@ To run all tests:
 
     $ nosetests
 
+If you're running the tests on Microsoft Windows, then there is an additional
+argument that must be passed to nosetests:
+
+    > nosetests --first-package-wins=True
+
+This is required because nose’s importer will normally evict a package from
+sys.modules if it sees a package with the same name in a different location.
+Setting this argument disables that behavior.
+
 Assuming all tests pass, this is a very unexciting output.  To make it more 
 intersesting:
 
