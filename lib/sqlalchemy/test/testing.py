@@ -33,7 +33,7 @@ db = None
 # more sugar, installed by __init__
 requires = None
 
-def fails_if(callable_):
+def fails_if(callable_, reason=None):
     """Mark a test as expected to fail if callable_ returns True.
 
     If the callable returns false, the test is run and reported as normal.

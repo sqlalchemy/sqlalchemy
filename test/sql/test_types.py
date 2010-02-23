@@ -421,7 +421,11 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         # end Py2K
         
         eq_(uni(unicodedata), unicodedata.encode('utf-8'))
-
+    
+    @testing.fails_if(
+                        lambda: testing.db_spec("postgresql+pg8000")(testing.db) and util.py3k,
+                        "pg8000 appropriately does not accept 'bytes' for a VARCHAR column."
+                        )
     def test_ignoring_unicode_error(self):
         """checks String(unicode_error='ignore') is passed to underlying codec."""
         
@@ -488,7 +492,9 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             result.close()
             
             x = ascii_row['plain_varchar_no_coding_error']
-            a = hexlify(x)
+            # on python3 "x" comes back as string (i.e. unicode),
+            # hexlify requires bytes
+            a = hexlify(x.encode('utf-8'))
             b = hexlify(asciidata)
             eq_(a, b)
 
