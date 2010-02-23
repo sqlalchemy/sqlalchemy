@@ -211,6 +211,7 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
             # (can also use shift() here but that is 2.6 only)
             x = (x * decimal.Decimal("1000000000")).to_integral() / pow(10, 9)
         return x
+
     @testing.resolve_artifact_names
     def test_float_coercion(self):
         for type_, result in [
@@ -1251,6 +1252,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             warnings.warn = capture_warnings._orig_showwarning
             m1.drop_all()
 
+    @testing.fails_on('postgresql+pypostgresql', 'pypostgresql bombs on multiple calls')
     def test_set_isolation_level(self):
         """Test setting the isolation level with create_engine"""
         eng = create_engine(testing.db.url)
@@ -1364,6 +1366,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         eq_(results[0]['intarr'], [1,2,3])
 
     @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
+    @testing.fails_on('postgresql+pypostgresql', 'pypostgresql fails in coercing an array')
     @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_concat(self):
         arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
