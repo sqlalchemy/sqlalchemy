@@ -918,6 +918,19 @@ class DeclarativeTest(DeclarativeTestBase):
 
 
 class DeclarativeInheritanceTest(DeclarativeTestBase):
+    
+    def test_we_must_copy_mapper_args(self):
+        class Person(Base):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on': discriminator}
+            
+        class Engineer(Person):
+            primary_language = Column(String(50))
+
+        assert 'inherits' not in Person.__mapper_args__
+    
     def test_custom_join_condition(self):
         class Foo(Base):
             __tablename__ = 'foo'

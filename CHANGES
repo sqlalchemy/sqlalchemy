@@ -165,7 +165,11 @@ CHANGES
     (which when using DeclarativeMeta is cls.__dict__).  This should 
     in theory make it easier for custom metaclasses to modify
     the state passed into _as_declarative.
-    
+
+   - the __mapper_args__ dict is copied when propagating to a subclass.
+     Still need to decide how the argument propagation should
+     work in the bigger picture.  [ticket:1393]
+     
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
     nullable flag and server defaults would not be reflected.

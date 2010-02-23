@@ -500,7 +500,7 @@ def _as_declarative(cls, classname, dict_):
                     raise exceptions.ArgumentError(
                                 "Can't add additional column %r when specifying __table__" % key)
             
-    mapper_args = getattr(cls, '__mapper_args__', {})
+    mapper_args = dict(getattr(cls, '__mapper_args__', {}))
     if 'inherits' not in mapper_args:
         for c in cls.__bases__:
             if _is_mapped_class(c):
