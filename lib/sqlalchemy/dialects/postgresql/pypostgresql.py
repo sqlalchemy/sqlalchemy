@@ -31,18 +31,15 @@ class PostgreSQL_pypostgresql(PGDialect):
     driver = 'pypostgresql'
 
     supports_unicode_statements = True
-    
     supports_unicode_binds = True
     description_encoding = None
-    
-    default_paramstyle = 'format'
-    
+    default_paramstyle = 'pyformat'
+
     # requires trunk version to support sane rowcounts
     # TODO: use dbapi version information to set this flag appropariately
     supports_sane_rowcount = True
-    
     supports_sane_multi_rowcount = False
-    
+
     execution_ctx_cls = PostgreSQL_pypostgresqlExecutionContext
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -51,7 +48,7 @@ class PostgreSQL_pypostgresql(PGDialect):
             sqltypes.Float: sqltypes.Float,  # prevents PGNumeric from being used
         }
     )
-    
+
     @classmethod
     def dbapi(cls):
         from postgresql.driver import dbapi20

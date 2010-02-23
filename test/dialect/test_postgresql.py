@@ -1651,6 +1651,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%(title_1)s)")
 
     @testing.fails_on('postgresql+psycopg2', 'uses pyformat')
+    @testing.fails_on('postgresql+pypostgresql', 'uses pyformat')
     @testing.fails_on('postgresql+zxjdbc', 'uses qmark')
     def test_expression_positional(self):
         self.assert_compile(matchtable.c.title.match('somstr'), "matchtable.title @@ to_tsquery(%s)")
