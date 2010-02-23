@@ -224,7 +224,7 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
                     func.stddev_pop(data_table.c.data, type_=type_)
                 ])
             ).scalar()
-            
+
             eq_(self._round(ret), result)
 
             ret = testing.db.execute(
@@ -853,6 +853,8 @@ class InsertTest(TestBase, AssertsExecutionResults):
         
         if self.engine.driver == 'pg8000':
             exception_cls = exc.ProgrammingError
+        elif self.engine.driver == 'pypostgresql':
+            exception_cls = Exception
         else:
             exception_cls = exc.IntegrityError
         
