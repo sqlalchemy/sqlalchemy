@@ -4,7 +4,7 @@ from sqlalchemy import Integer, String, UniqueConstraint, CheckConstraint,\
                         ForeignKey, MetaData, Sequence, ForeignKeyConstraint,\
                         ColumnDefault
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy import schema
+from sqlalchemy import schema, exc
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, ComparesTables, AssertsCompiledSQL, testing, engines
 from sqlalchemy.test.testing import eq_
@@ -241,27 +241,4 @@ class TableOptionsTest(TestBase, AssertsCompiledSQL):
         for t in (t1, t2, t3):
             t.info['bar'] = 'zip'
             assert t.info['bar'] == 'zip'
-
-class ColumnOptionsTest(TestBase):
-    
-    def test_default_generators(self):
-        g1, g2 = Sequence('foo_id_seq'), ColumnDefault('f5')
-        assert Column(default=g1).default is g1
-        assert Column(onupdate=g1).onupdate is g1
-        assert Column(default=g2).default is g2
-        assert Column(onupdate=g2).onupdate is g2
-        
-        
-    def test_column_info(self):
-        
-        c1 = Column('foo', info={'x':'y'})
-        c2 = Column('bar', info={})
-        c3 = Column('bat')
-        assert c1.info == {'x':'y'}
-        assert c2.info == {}
-        assert c3.info == {}
-        
-        for c in (c1, c2, c3):
-            c.info['bar'] = 'zip'
-            assert c.info['bar'] == 'zip'
 

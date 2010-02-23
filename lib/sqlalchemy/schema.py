@@ -636,7 +636,9 @@ class Column(SchemaItem, expression.ColumnClause):
                     raise exc.ArgumentError(
                         "May not pass type_ positionally and as a keyword.")
                 type_ = args.pop(0)
-
+        
+        no_type = type_ is None
+        
         super(Column, self).__init__(name, None, type_)
         self.key = kwargs.pop('key', name)
         self.primary_key = kwargs.pop('primary_key', False)
@@ -686,6 +688,9 @@ class Column(SchemaItem, expression.ColumnClause):
                                             for_update=True))
         self._init_items(*args)
 
+        if not self.foreign_keys and no_type:
+            raise exc.ArgumentError("'type' is required on Column objects "
+                                        "which have no foreign keys.")
         util.set_creation_order(self)
 
         if 'info' in kwargs:

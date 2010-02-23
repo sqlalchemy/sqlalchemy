@@ -160,6 +160,10 @@ CHANGES
     VALUES clause of an update/insert generates a compile error.
     This reduces call counts and eliminates some cases where
     undesirable name conflicts could still occur.
+
+  - Column() requires a type if it has no foreign keys (this is 
+    not new).  An error is now raised if a Column() has no type
+    and no foreign keys.  [ticket:1705]
     
 - engines
   - Added an optional C extension to speed up the sql layer by
@@ -207,6 +211,11 @@ CHANGES
 
   - Removed the text_as_varchar option.
 
+- oracle
+   - "out" parameters require a type that is supported by
+     cx_oracle.  An error will be raised if no cx_oracle
+     type can be found.
+     
 - sqlite
    - Added "native_datetime=True" flag to create_engine().
      This will cause the DATE and TIMESTAMP types to skip 
