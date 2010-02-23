@@ -500,7 +500,7 @@ class String(Concatenable, TypeEngine):
 
     __visit_name__ = 'string'
 
-    def __init__(self, length=None, convert_unicode=False, assert_unicode=None):
+    def __init__(self, length=None, convert_unicode=False, assert_unicode=None, unicode_error=None):
         """
         Create a string-holding type.
 
@@ -530,7 +530,8 @@ class String(Concatenable, TypeEngine):
           rationale here is that isinstance() calls are enormously
           expensive at the level of column-fetching.  To
           force the check to occur regardless, set 
-          convert_unicode='force'.
+          convert_unicode='force'.   This will incur significant
+          performance overhead when fetching unicode result columns.
           
           Similarly, if the dialect is known to accept bind parameters
           as unicode objects, no translation from unicode to bytestring
@@ -547,10 +548,28 @@ class String(Concatenable, TypeEngine):
 
           If true, will raise an :exc:`sqlalchemy.exc.InvalidRequestError`.
 
+        :param unicode_error: Optional, a method to use to handle Unicode
+          conversion errors. Behaves like the 'errors' keyword argument to
+          the standard library's string.decode() functions.   This flag
+          requires that `convert_unicode` is set to `"force"` - otherwise,
+          SQLAlchemy is not guaranteed to handle the task of unicode
+          conversion.   Note that this flag adds significant performance
+          overhead to row-fetching operations for backends that already
+          return unicode objects natively (which most DBAPIs do).  This
+          flag should only be used as an absolute last resort for reading
+          strings from a column with varied or corrupted encodings,
+          which only applies to databases that accept invalid encodings 
+          in the first place (i.e. MySQL.  *not* PG, Sqlite, etc.)
+
         """
+        if unicode_error is not None and convert_unicode != 'force':
+            raise exc.ArgumentError("convert_unicode must be 'force' "
+                                        "when unicode_error is set.")
         self.length = length
         self.convert_unicode = convert_unicode
         self.assert_unicode = assert_unicode
+        self.unicode_error = unicode_error
+        
         
     def adapt(self, impltype):
         return impltype(
@@ -564,7 +583,7 @@ class String(Concatenable, TypeEngine):
                 assert_unicode = dialect.assert_unicode
             else:
                 assert_unicode = self.assert_unicode
-
+            
             if dialect.supports_unicode_binds and assert_unicode:
                 def process(value):
                     if value is None or isinstance(value, unicode):
@@ -584,7 +603,7 @@ class String(Concatenable, TypeEngine):
                 encoder = codecs.getencoder(dialect.encoding)
                 def process(value):
                     if isinstance(value, unicode):
-                        return encoder(value)[0]
+                        return encoder(value, self.unicode_error)[0]
                     elif assert_unicode and value is not None:
                         if assert_unicode == 'warn':
                             util.warn("Unicode type received non-unicode bind "
@@ -607,9 +626,23 @@ class String(Concatenable, TypeEngine):
                         self.convert_unicode == 'force')
         
         if needs_convert:
-            # note we *assume* that we do not have a unicode object
-            # here, instead of an expensive isinstance() check.
-            return processors.to_unicode_processor_factory(dialect.encoding)
+            to_unicode = processors.to_unicode_processor_factory(
+                                    dialect.encoding, self.unicode_error)
+            
+            if dialect.returns_unicode_strings:
+                # we wouldn't be here unless convert_unicode='force'
+                # was specified.   since we will be getting back unicode
+                # in most cases, we check for it (decode will fail).   
+                def process(value):
+                    if isinstance(value, unicode):
+                        return value
+                    else:
+                        return to_unicode(value)
+                return process
+            else:
+                # here, we assume that the object is not unicode,
+                # avoiding expensive isinstance() check.
+                return to_unicode
         else:
             return None
 

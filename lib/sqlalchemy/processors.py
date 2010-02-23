@@ -32,14 +32,18 @@ try:
                                        str_to_datetime, str_to_time, \
                                        str_to_date
 
-    def to_unicode_processor_factory(encoding):
-        return UnicodeResultProcessor(encoding).process
+    def to_unicode_processor_factory(encoding, error=None):
+        # TODO: this is cumbersome
+        if error is not None:
+            return UnicodeResultProcessor(encoding, error).process
+        else:
+            return UnicodeResultProcessor(encoding).process
 
     def to_decimal_processor_factory(target_class):
         return DecimalResultProcessor(target_class).process
 
 except ImportError:
-    def to_unicode_processor_factory(encoding):
+    def to_unicode_processor_factory(encoding, error=None):
         decoder = codecs.getdecoder(encoding)
 
         def process(value):
@@ -50,7 +54,7 @@ except ImportError:
                 # len part is safe: it is done that way in the normal
                 # 'xx'.decode(encoding) code path.
                 # cfr python-source/Python/codecs.c:PyCodec_Decode
-                return decoder(value)[0]
+                return decoder(value, error)[0]
         return process
 
     def to_decimal_processor_factory(target_class):

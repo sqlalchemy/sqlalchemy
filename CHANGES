@@ -99,7 +99,20 @@ CHANGES
   - SchemaType and subclasses Boolean, Enum are now serializable,
     including their ddl listener and other event callables.
     [ticket:1694] [ticket:1698]
-    
+
+  - Added "unicode_errors" parameter to String, Unicode, etc.
+    Behaves like the 'errors' keyword argument to
+    the standard library's string.decode() functions.   This flag
+    requires that `convert_unicode` is set to `"force"` - otherwise,
+    SQLAlchemy is not guaranteed to handle the task of unicode
+    conversion.   Note that this flag adds significant performance
+    overhead to row-fetching operations for backends that already
+    return unicode objects natively (which most DBAPIs do).  This
+    flag should only be used as an absolute last resort for reading
+    strings from a column with varied or corrupted encodings,
+    which only applies to databases that accept invalid encodings 
+    in the first place (i.e. MySQL. *not* PG, Sqlite, etc.)
+
   - Added math negation operator support, -x.
   
   - FunctionElement subclasses are now directly executable the
