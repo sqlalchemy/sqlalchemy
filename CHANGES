@@ -19,6 +19,18 @@ CHANGES
     internally. The formerly "pending" objects are now expunged
     first. [ticket:1674]
 
+  - session.merge() will not expire existing scalar attributes
+    on an existing target if the target has a value for that
+    attribute, even if the incoming merged doesn't have
+    a value for the attribute.  This prevents unnecessary loads
+    on existing items.  Will still mark the attr as expired
+    if the destination doesn't have the attr, though, which
+    fulfills some contracts of deferred cols.  [ticket:1681]
+
+  - session.merge() works with relations that specifically
+    don't include "merge" in their cascade options - the target
+    is ignored completely.
+    
   - query.one() no longer applies LIMIT to the query, this to
     ensure that it fully counts all object identities present
     in the result, even in the case where joins may conceal

@@ -241,12 +241,67 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_merge_empty_attributes(self):
         mapper(User, dingalings)
-        u1 = User(id=1)
+        
         sess = create_session()
-        sess.merge(u1)
+        
+        # merge empty stuff.  goes in as NULL.
+        # not sure what this was originally trying to 
+        # test.
+        u1 = sess.merge(User(id=1))
         sess.flush()
-        assert u1.address_id is u1.data is None
+        assert u1.data is None
 
+        # save another user with "data"
+        u2 = User(id=2, data="foo")
+        sess.add(u2)
+        sess.flush()
+        
+        # merge User on u2's pk with
+        # no "data".
+        # value isn't whacked from the destination
+        # dict.
+        u3 = sess.merge(User(id=2))
+        eq_(u3.__dict__['data'], "foo")
+        
+        # make a change.
+        u3.data = 'bar'
+        
+        # merge another no-"data" user.
+        # attribute maintains modified state.
+        # (usually autoflush would have happened
+        # here anyway).
+        u4 = sess.merge(User(id=2))
+        eq_(u3.__dict__['data'], "bar")
+
+        sess.flush()
+        # and after the flush.
+        eq_(u3.data, "bar")
+
+        # new row.
+        u5 = User(id=3, data="foo")
+        sess.add(u5)
+        sess.flush()
+        
+        # blow it away from u5, but don't
+        # mark as expired.  so it would just 
+        # be blank.
+        del u5.data
+        
+        # the merge adds expiry to the
+        # attribute so that it loads.
+        # not sure if I like this - it currently is needed
+        # for test_pickled:PickleTest.test_instance_deferred_cols
+        u6 = sess.merge(User(id=3))
+        assert 'data' not in u6.__dict__
+        assert u6.data == "foo"
+
+        # set it to None.  this is actually
+        # a change so gets preserved.
+        u6.data = None
+        u7 = sess.merge(User(id=3))
+        assert u6.__dict__['data'] is None
+        
+        
     @testing.resolve_artifact_names
     def test_merge_irregular_collection(self):
         mapper(User, users, properties={
@@ -358,6 +413,41 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(u2.addresses[1].email_address, 'afafds')
         eq_(on_load.called, 21)
 
+    @testing.resolve_artifact_names
+    def test_no_relation_cascade(self):
+        """test that merge doesn't interfere with a relation()
+           target that specifically doesn't include 'merge' cascade.
+        """
+        mapper(Address, addresses, properties={
+            'user':relation(User, cascade="save-update")
+        })
+        mapper(User, users)
+        sess = create_session()
+        u1 = User(name="fred")
+        a1 = Address(email_address="asdf", user=u1)
+        sess.add(a1)
+        sess.flush()
+        
+        a2 = Address(id=a1.id, email_address="bar", user=User(name="hoho"))
+        a2 = sess.merge(a2)
+        sess.flush()
+        
+        # no expire of the attribute
+        
+        assert a2.__dict__['user'] is u1
+        
+        # merge succeeded
+        eq_(
+            sess.query(Address).all(),
+            [Address(id=a1.id, email_address="bar")]
+        )
+        
+        # didn't touch user
+        eq_(
+            sess.query(User).all(),
+            [User(name="fred")]
+        )
+        
     @testing.resolve_artifact_names
     def test_one_to_many_cascade(self):
 
