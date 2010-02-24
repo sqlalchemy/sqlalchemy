@@ -154,7 +154,7 @@ BaseRowProxy_processvalues(PyObject *values, PyObject *processors, int astuple)
     num_processors = Py_SIZE(processors);
     if (num_values != num_processors) {
         PyErr_SetString(PyExc_RuntimeError,
-            "number of values in row difer from number of column processors");
+            "number of values in row differ from number of column processors");
         return NULL;
     }
 
