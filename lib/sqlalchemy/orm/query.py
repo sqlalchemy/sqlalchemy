@@ -957,7 +957,9 @@ class Query(object):
         aliased, from_joinpoint = kwargs.pop('aliased', False), kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" % ','.join(kwargs.iterkeys()))
-        return self._join(props, outerjoin=False, create_aliases=aliased, from_joinpoint=from_joinpoint)
+        return self._join(props, 
+                            outerjoin=False, create_aliases=aliased, 
+                            from_joinpoint=from_joinpoint)
 
     @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def outerjoin(self, *props, **kwargs):
@@ -970,7 +972,9 @@ class Query(object):
         aliased, from_joinpoint = kwargs.pop('aliased', False), kwargs.pop('from_joinpoint', False)
         if kwargs:
             raise TypeError("unknown arguments: %s" % ','.join(kwargs.iterkeys()))
-        return self._join(props, outerjoin=True, create_aliases=aliased, from_joinpoint=from_joinpoint)
+        return self._join(props, 
+                            outerjoin=True, create_aliases=aliased, 
+                            from_joinpoint=from_joinpoint)
 
     @_generative(_no_statement_condition, _no_limit_offset)
     def _join(self, keys, outerjoin, create_aliases, from_joinpoint):
@@ -1032,7 +1036,10 @@ class Query(object):
                 # TODO: no coverage here
                 raise NotImplementedError("query.join(a==b) not supported.")
             
-            self._join_left_to_right(left_entity, right_entity, onclause, outerjoin, create_aliases, prop)
+            self._join_left_to_right(
+                                left_entity, 
+                                right_entity, onclause, 
+                                outerjoin, create_aliases, prop)
 
     def _join_left_to_right(self, left, right, onclause, outerjoin, create_aliases, prop):
         """append a JOIN to the query's from clause."""
@@ -1045,7 +1052,8 @@ class Query(object):
 
         if right_mapper and prop and not right_mapper.common_parent(prop.mapper):
             raise sa_exc.InvalidRequestError(
-                "Join target %s does not correspond to the right side of join condition %s" % (right, onclause)
+                    "Join target %s does not correspond to "
+                    "the right side of join condition %s" % (right, onclause)
             )
 
         if not right_mapper and prop:
@@ -1126,17 +1134,22 @@ class Query(object):
                                 )
                             )
         
-        join_to_left = not is_aliased_class
+        join_to_left = not is_aliased_class and not left_is_aliased
 
         if self._from_obj:
-            replace_clause_index, clause = sql_util.find_join_source(self._from_obj, left_selectable)
+            replace_clause_index, clause = sql_util.find_join_source(
+                                                    self._from_obj, 
+                                                    left_selectable)
             if clause is not None:
                 # the entire query's FROM clause is an alias of itself (i.e. from_self(), similar).
                 # if the left clause is that one, ensure it aliases to the left side.
                 if self._from_obj_alias and clause is self._from_obj[0]:
                     join_to_left = True
 
-                clause = orm_join(clause, right, onclause, isouter=outerjoin, join_to_left=join_to_left)
+                clause = orm_join(clause, 
+                                    right, 
+                                    onclause, isouter=outerjoin, 
+                                    join_to_left=join_to_left)
 
                 self._from_obj = \
                         self._from_obj[:replace_clause_index] + \
@@ -1223,7 +1236,9 @@ class Query(object):
 
     @_generative(_no_statement_condition)
     def slice(self, start, stop):
-        """apply LIMIT/OFFSET to the ``Query`` based on a range and return the newly resulting ``Query``."""
+        """apply LIMIT/OFFSET to the ``Query`` based on a "
+        "range and return the newly resulting ``Query``."""
+        
         if start is not None and stop is not None:
             self._offset = (self._offset or 0) + start
             self._limit = stop - start

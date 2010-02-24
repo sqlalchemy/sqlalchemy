@@ -38,6 +38,12 @@ CHANGES
     one() can now also be called with a query that issued
     from_statement() to start with since it no longer modifies
     the query.  [ticket:1688]
+
+  - A major fix in query.join(), when the "on" clause is an
+    attribute of an aliased() construct, but there is already
+    an existing join made out to a compatible target, query properly
+    joins to the right aliased() construct instead of sticking
+    onto the right side of the existing join.  [ticket:1706]
     
   - Slight improvement to the fix for [ticket:1362] to not issue 
     needless updates of the primary key column during a so-called

@@ -1600,6 +1600,32 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             , use_default_dialect=True
         )
         
+        # test #1 for [ticket:1706]
+        ualias = aliased(User)
+        self.assert_compile(
+            sess.query(ualias).
+                    join((oalias1, ualias.orders)).\
+                    join((Address, ualias.addresses)),
+            "SELECT users_1.id AS users_1_id, users_1.name AS "
+            "users_1_name FROM users AS users_1 JOIN orders AS orders_1 "
+            "ON users_1.id = orders_1.user_id JOIN addresses ON users_1.id "
+            "= addresses.user_id"
+            , use_default_dialect=True
+        )
+        
+        # test #2 for [ticket:1706]
+        ualias2 = aliased(User)
+        self.assert_compile(
+            sess.query(ualias).
+                    join((Address, ualias.addresses)).
+                    join((ualias2, Address.user)).
+                    join((Order, ualias.orders)),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM users "
+            "AS users_1 JOIN addresses ON users_1.id = addresses.user_id JOIN users AS users_2 "
+            "ON users_2.id = addresses.user_id JOIN orders ON users_1.id = orders.user_id"
+            , use_default_dialect=True
+        )
+        
     def test_overlapping_paths(self):
         for aliased in (True,False):
             # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
