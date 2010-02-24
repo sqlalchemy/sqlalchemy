@@ -871,10 +871,12 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
             # column type, args, kwargs, expected ddl
             (mssql.MSBinary, [], {},
              'BINARY'),
-            (types.Binary, [10], {},
+            (mssql.MSBinary, [10], {},
              'BINARY(10)'),
 
-            (mssql.MSBinary, [10], {},
+            (types.BINARY, [], {},
+             'BINARY'),
+            (types.BINARY, [10], {},
              'BINARY(10)'),
 
             (mssql.MSVarBinary, [], {},
@@ -882,14 +884,19 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
             (mssql.MSVarBinary, [10], {},
              'VARBINARY(10)'),
 
+            (types.VARBINARY, [], {},
+             'VARBINARY'),
+            (types.VARBINARY, [10], {},
+             'VARBINARY(10)'),
+
             (mssql.MSImage, [], {},
              'IMAGE'),
 
-            (types.Binary, [], {},
+            (mssql.IMAGE, [], {},
              'IMAGE'),
-            (types.Binary, [10], {},
-             'BINARY(10)')
-            ]
+
+            (types.LargeBinary, [], {},
+             'IMAGE'),
 
         table_args = ['test_mssql_binary', metadata]
         for index, spec in enumerate(columns):
