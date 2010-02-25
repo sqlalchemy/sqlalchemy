@@ -55,6 +55,8 @@ class MySQL_oursqlExecutionContext(MySQLExecutionContext):
 
 class MySQL_oursql(MySQLDialect):
     driver = 'oursql'
+# Py3K
+#    description_encoding = None
     supports_unicode_statements = True
     supports_unicode_binds = True
     supports_sane_rowcount = True
@@ -77,6 +79,19 @@ class MySQL_oursql(MySQLDialect):
     def do_execute(self, cursor, statement, parameters, context=None):
         """Provide an implementation of *cursor.execute(statement, parameters)*."""
         
+# Py3K
+#        if context is not None:
+#            charset = self._detect_charset(context.connection)
+#            if charset is not None:
+#                statement = statement.encode(charset)
+#                encoded_parameters = []
+#                for p in parameters:
+#                    if isinstance(p, str):
+#                        encoded_parameters.append(p.encode(charset))
+#                    else:
+#                        encoded_parameters.append(p)
+#                parameters = encoded_parameters
+
         if context and context.plain_query:
             cursor.execute(statement, plain_query=True)
         else:
@@ -86,7 +101,13 @@ class MySQL_oursql(MySQLDialect):
         connection.cursor().execute('BEGIN', plain_query=True)
 
     def _xa_query(self, connection, query, xid):
-        connection.execution_options(_oursql_plain_query=True).execute(query % connection.connection._escape_string(xid))
+# Py2K
+        arg = connection.connection._escape_string(xid)
+# end Py2K
+# Py3K
+#        charset = connection.connection.charset
+#        arg = connection.connection._escape_string(xid.encode(charset)).decode(charset)
+        connection.execution_options(_oursql_plain_query=True).execute(query % arg)
 
     # Because mysql is bad, these methods have to be reimplemented to use _PlainQuery. Basically, some queries
     # refuse to return any data if they're run through the parameterized query API, or refuse to be parameterized
@@ -115,13 +136,18 @@ class MySQL_oursql(MySQLDialect):
 
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):
-        return MySQLDialect._show_create_table(self, 
+        sql = MySQLDialect._show_create_table(self,
             connection.contextual_connect(close_with_result=True).execution_options(_oursql_plain_query=True), 
             table, charset, full_name)
+# Py3K
+#        charset = self._detect_charset(connection)
+#        if charset is not None:
+#            sql = sql.decode(charset)
+        return sql
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.ProgrammingError):  # if underlying connection is closed, this is the error you get
-            return e.errno is None and e[1].endswith('closed')
+            return e.errno is None and e.args[1].endswith('closed')
         else:
             return e.errno in (2006, 2013, 2014, 2045, 2055)
 
@@ -139,6 +165,7 @@ class MySQL_oursql(MySQLDialect):
             opts['charset'] = None
         else:
             util.coerce_kw_type(opts, 'charset', str)
+        opts['use_unicode'] = opts.get('use_unicode', True)
         util.coerce_kw_type(opts, 'use_unicode', bool)
 
         # FOUND_ROWS must be set in CLIENT_FLAGS to enable
@@ -166,7 +193,14 @@ class MySQL_oursql(MySQLDialect):
 
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
-        return connection.connection.charset
+        if hasattr(connection, 'connection'):
+            if hasattr(connection.connection, 'use_unicode') and connection.connection.use_unicode:
+                return None
+            else:
+                return connection.connection.charset
+        else:
+            return None
+
     
     def _compat_fetchall(self, rp, charset=None):
         """oursql isn't super-broken like MySQLdb, yaaay."""

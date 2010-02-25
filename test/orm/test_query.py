@@ -167,7 +167,7 @@ class GetTest(QueryTest):
         try:
             metadata.create_all()
             # Py3K
-            #ustring = 'petit voix m\xe2\x80\x99a'
+            #ustring = b'petit voix m\xe2\x80\x99a'.decode('utf-8')
             # Py2K
             ustring = 'petit voix m\xe2\x80\x99a'.decode('utf-8')
             # end Py2K

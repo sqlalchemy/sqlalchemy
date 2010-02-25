@@ -467,6 +467,9 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             # the row that we put in was stored as hexlified ascii
             row = engine.execute(utf8_table.select()).first()
             x = row['plain_varchar_no_coding_error']
+            connect_opts = engine.dialect.create_connect_args(testing.db.url)[1]
+            if connect_opts.get('use_unicode', False):
+                x = x.encode('utf-8')
             a = hexlify(x)
             b = hexlify(asciidata)
             eq_(a, b)

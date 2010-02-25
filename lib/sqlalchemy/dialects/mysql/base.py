@@ -281,13 +281,18 @@ class _StringType(sqltypes.String):
     """Base for MySQL string types."""
 
     def __init__(self, charset=None, collation=None,
-                 ascii=False, unicode=False, binary=False,
+                 ascii=False, binary=False,
                  national=False, **kw):
         self.charset = charset
         # allow collate= or collation=
         self.collation = kw.pop('collate', collation)
         self.ascii = ascii
-        self.unicode = unicode
+        # We have to munge the 'unicode' param strictly as a dict
+        # otherwise 2to3 will turn it into str.
+        self.__dict__['unicode'] = kw.get('unicode', False)
+        # sqltypes.String does not accept the 'unicode' arg at all.
+        if 'unicode' in kw:
+            del kw['unicode']
         self.binary = binary
         self.national = national
         super(_StringType, self).__init__(**kw)

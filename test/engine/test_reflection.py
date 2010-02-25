@@ -1203,7 +1203,6 @@ class ComponentReflectionTest(TestBase):
             # so there may be more indexes than expected.
             insp = Inspector(meta.bind)
             indexes = insp.get_indexes('users', schema=schema)
-            indexes.sort()
             expected_indexes = [
                 {'unique': False,
                  'column_names': ['test1', 'test2'],
