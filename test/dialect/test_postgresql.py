@@ -1329,7 +1329,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         arrtable = Table('arrtable', metadata,
             Column('id', Integer, primary_key=True),
             Column('intarr', postgresql.PGArray(Integer)),
-            Column('strarr', postgresql.PGArray(Unicode(assert_unicode=False)), nullable=False)
+            Column('strarr', postgresql.PGArray(Unicode()), nullable=False)
         )
         metadata.create_all()
 

@@ -500,7 +500,8 @@ class String(Concatenable, TypeEngine):
 
     __visit_name__ = 'string'
 
-    def __init__(self, length=None, convert_unicode=False, assert_unicode=None, unicode_error=None):
+    def __init__(self, length=None, convert_unicode=False, 
+                        assert_unicode=None, unicode_error=None):
         """
         Create a string-holding type.
 
@@ -511,42 +512,36 @@ class String(Concatenable, TypeEngine):
           the ``CREATE TABLE`` DDL is issued.  Whether the value is
           interpreted as bytes or characters is database specific.
 
-        :param convert_unicode: defaults to False.  If True, convert
-          ``unicode`` data sent to the database to a ``str``
-          bytestring, and convert bytestrings coming back from the
-          database into ``unicode``.   
+        :param convert_unicode: defaults to False.  If True, the 
+          type will do what is necessary in order to accept 
+          Python Unicode objects as bind parameters, and to return
+          Python Unicode objects in result rows.   This may
+          require SQLAlchemy to explicitly coerce incoming Python 
+          unicodes into an encoding, and from an encoding 
+          back to Unicode, or it may not require any interaction
+          from SQLAlchemy at all, depending on the DBAPI in use.
 
-          Bytestrings are encoded using the dialect's
+          When SQLAlchemy performs the encoding/decoding, 
+          the encoding used is configured via
           :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which
           defaults to `utf-8`.
 
-          If False, may be overridden by
-          :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
+          The "convert_unicode" behavior can also be turned on
+          for all String types by setting 
+          :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`
+          on create_engine().
           
-          If the DBAPI in use has been detected to return unicode 
-          strings from a VARCHAR result column, the String object will
-          assume all subsequent results are already unicode objects, and no
-          type detection will be done to verify this.  The 
-          rationale here is that isinstance() calls are enormously
-          expensive at the level of column-fetching.  To
-          force the check to occur regardless, set 
-          convert_unicode='force'.   This will incur significant
+          To instruct SQLAlchemy to perform Unicode encoding/decoding
+          even on a platform that already handles Unicode natively,
+          set convert_unicode='force'.  This will incur significant
           performance overhead when fetching unicode result columns.
           
-          Similarly, if the dialect is known to accept bind parameters
-          as unicode objects, no translation from unicode to bytestring
-          is performed on binds.  Again, encoding to a bytestring can be 
-          forced for special circumstances by setting convert_unicode='force'.
-
-        :param assert_unicode:
-
-          If None (the default), no assertion will take place unless
-          overridden by :attr:`sqlalchemy.engine.base.Dialect.assert_unicode`.
-
-          If 'warn', will issue a runtime warning if a ``str``
-          instance is used as a bind value.
-
-          If true, will raise an :exc:`sqlalchemy.exc.InvalidRequestError`.
+        :param assert_unicode: Deprecated.  A warning is raised in all cases when a non-Unicode
+          object is passed when SQLAlchemy would coerce into an encoding
+          (note: but **not** when the DBAPI handles unicode objects natively).
+          To suppress or raise this warning to an 
+          error, use the Python warnings filter documented at:
+          http://docs.python.org/library/warnings.html
 
         :param unicode_error: Optional, a method to use to handle Unicode
           conversion errors. Behaves like the 'errors' keyword argument to
@@ -565,56 +560,37 @@ class String(Concatenable, TypeEngine):
         if unicode_error is not None and convert_unicode != 'force':
             raise exc.ArgumentError("convert_unicode must be 'force' "
                                         "when unicode_error is set.")
+        
+        if assert_unicode:
+            util.warn_deprecated("assert_unicode is deprecated. "
+                                "SQLAlchemy emits a warning in all cases where it "
+                                "would otherwise like to encode a Python unicode object "
+                                "into a specific encoding but a plain bytestring is received. "
+                                "This does *not* apply to DBAPIs that coerce Unicode natively."
+                                )
         self.length = length
         self.convert_unicode = convert_unicode
-        self.assert_unicode = assert_unicode
         self.unicode_error = unicode_error
         
         
     def adapt(self, impltype):
         return impltype(
                     length=self.length,
-                    convert_unicode=self.convert_unicode,
-                    assert_unicode=self.assert_unicode)
+                    convert_unicode=self.convert_unicode)
 
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
-            if self.assert_unicode is None:
-                assert_unicode = dialect.assert_unicode
-            else:
-                assert_unicode = self.assert_unicode
-            
-            if dialect.supports_unicode_binds and assert_unicode:
-                def process(value):
-                    if value is None or isinstance(value, unicode):
-                        return value
-                    else:
-                        if assert_unicode == 'warn':
-                            util.warn("Unicode type received non-unicode bind "
-                                      "param value %r" % value)
-                            return value
-                        else:
-                            raise exc.InvalidRequestError(
-                                "Unicode type received non-unicode bind "
-                                "param value %r" % value)
-            elif dialect.supports_unicode_binds and self.convert_unicode != 'force':
+            if dialect.supports_unicode_binds and self.convert_unicode != 'force':
                 return None
             else:
                 encoder = codecs.getencoder(dialect.encoding)
                 def process(value):
                     if isinstance(value, unicode):
                         return encoder(value, self.unicode_error)[0]
-                    elif assert_unicode and value is not None:
-                        if assert_unicode == 'warn':
-                            util.warn("Unicode type received non-unicode bind "
-                                      "param value %r" % value)
-                            return value
-                        else:
-                            raise exc.InvalidRequestError(
-                                "Unicode type received non-unicode bind "
-                                "param value %r" % value)
-                    else:
-                        return value
+                    elif value is not None:
+                        util.warn("Unicode type received non-unicode bind "
+                                  "param value %r" % value)
+                    return value
             return process
         else:
             return None
@@ -669,7 +645,7 @@ class Unicode(String):
     database back into Python ``unicode`` objects.
     
     It's roughly equivalent to using a ``String`` object with
-    ``convert_unicode=True`` and ``assert_unicode='warn'``, however
+    ``convert_unicode=True``, however
     the type has other significances in that it implies the usage 
     of a unicode-capable type being used on the backend, such as NVARCHAR.
     This may affect what type is emitted when issuing CREATE TABLE
@@ -712,7 +688,6 @@ class Unicode(String):
           
         """
         kwargs.setdefault('convert_unicode', True)
-        kwargs.setdefault('assert_unicode', 'warn')
         super(Unicode, self).__init__(length=length, **kwargs)
 
 class UnicodeText(Text):
@@ -741,7 +716,6 @@ class UnicodeText(Text):
 
         """
         kwargs.setdefault('convert_unicode', True)
-        kwargs.setdefault('assert_unicode', 'warn')
         super(UnicodeText, self).__init__(length=length, **kwargs)
 
 
@@ -1170,9 +1144,6 @@ class Enum(String, SchemaType):
         :param \*enums: string or unicode enumeration labels. If unicode labels
             are present, the `convert_unicode` flag is auto-enabled.
 
-        :param assert_unicode: Enable unicode asserts for bind parameter values.
-            This flag is equivalent to that of ``String``.
-
         :param convert_unicode: Enable unicode-aware bind parameter and result-set
             processing for this Enum's data. This is set automatically based on
             the presence of unicode label strings.
@@ -1209,7 +1180,6 @@ class Enum(String, SchemaType):
         self.enums = enums
         self.native_enum = kw.pop('native_enum', True)
         convert_unicode= kw.pop('convert_unicode', None)
-        assert_unicode = kw.pop('assert_unicode', None)
         if convert_unicode is None:
             for e in enums:
                 if isinstance(e, unicode):
@@ -1225,7 +1195,6 @@ class Enum(String, SchemaType):
         String.__init__(self, 
                         length =length,
                         convert_unicode=convert_unicode, 
-                        assert_unicode=assert_unicode
                         )
         SchemaType.__init__(self, **kw)
 
@@ -1251,7 +1220,6 @@ class Enum(String, SchemaType):
                         schema=self.schema, 
                         metadata=self.metadata,
                         convert_unicode=self.convert_unicode,
-                        assert_unicode=self.assert_unicode,
                         *self.enums
                         )
 

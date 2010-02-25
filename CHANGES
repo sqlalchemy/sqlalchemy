@@ -181,6 +181,11 @@ CHANGES
     Note that it is *not* built/installed by default.
     See README for installation instructions.
 
+  - The assert_unicode flag is deprecated.  SQLAlchemy will raise
+    a warning in all cases where it is asked to encode a non-unicode
+    Python string, and will do nothing for DBAPIs that already 
+    accept Python unicode objects.
+    
 - metadata
   - Added the ability to strip schema information when using
     "tometadata" by passing "schema=None" as an argument. If schema

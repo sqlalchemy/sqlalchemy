@@ -119,12 +119,12 @@ def create_engine(*args, **kwargs):
     are unique to that dialect.   Here, we describe the parameters
     that are common to most ``create_engine()`` usage.
     
-    :param assert_unicode=False: When set to ``True`` alongside
-        convert_unicode=``True``, asserts that incoming string bind
-        parameters are instances of ``unicode``, otherwise raises an
-        error. Only takes effect when ``convert_unicode==True``. This
-        flag is also available on the ``String`` type and its
-        descendants. New in 0.4.2.
+    :param assert_unicode:  Deprecated.  A warning is raised in all cases when a non-Unicode
+      object is passed when SQLAlchemy would coerce into an encoding
+      (note: but **not** when the DBAPI handles unicode objects natively).
+      To suppress or raise this warning to an 
+      error, use the Python warnings filter documented at:
+      http://docs.python.org/library/warnings.html
 
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as

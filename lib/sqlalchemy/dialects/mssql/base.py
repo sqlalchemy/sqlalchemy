@@ -489,16 +489,6 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
           If False, may be overridden by
           :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
 
-        :param assert_unicode:
-
-          If None (the default), no assertion will take place unless
-          overridden by :attr:`sqlalchemy.engine.base.Dialect.assert_unicode`.
-
-          If 'warn', will issue a runtime warning if a ``str``
-          instance is used as a bind value.
-
-          If true, will raise an :exc:`sqlalchemy.exc.InvalidRequestError`.
-
         :param collation: Optional, a column-level collation for this string
           value. Accepts a Windows Collation Name or a SQL Collation Name.
 
@@ -545,16 +535,6 @@ class CHAR(_StringType, sqltypes.CHAR):
 
           If False, may be overridden by
           :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
-
-        :param assert_unicode:
-
-          If None (the default), no assertion will take place unless
-          overridden by :attr:`sqlalchemy.engine.base.Dialect.assert_unicode`.
-
-          If 'warn', will issue a runtime warning if a ``str``
-          instance is used as a bind value.
-
-          If true, will raise an :exc:`sqlalchemy.exc.InvalidRequestError`.
 
         :param collation: Optional, a column-level collation for this string
           value. Accepts a Windows Collation Name or a SQL Collation Name.

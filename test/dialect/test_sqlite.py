@@ -86,10 +86,10 @@ class TestTypes(TestBase, AssertsExecutionResults):
                 CHAR(convert_unicode=True),
                 Unicode(),
                 UnicodeText(),
-                String(assert_unicode=True, convert_unicode=True),
-                CHAR(assert_unicode=True, convert_unicode=True),
-                Unicode(assert_unicode=True),
-                UnicodeText(assert_unicode=True)
+                String(convert_unicode=True),
+                CHAR(convert_unicode=True),
+                Unicode(),
+                UnicodeText()
             ):
 
             bindproc = t.dialect_impl(dialect).bind_processor(dialect)

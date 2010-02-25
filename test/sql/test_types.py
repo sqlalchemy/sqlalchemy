@@ -384,39 +384,23 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         unicode_table.insert().execute(unicode_varchar=u'')
         assert select([unicode_table.c.unicode_varchar]).scalar() == u''
 
-    def test_parameters(self):
-        """test the dialect convert_unicode parameters."""
+    def test_unicode_warnings(self):
+        """test the warnings raised when SQLA must coerce unicode binds."""
 
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
                         u"une drôle de petit voix m’a réveillé. "\
                         u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
 
-        u = Unicode(assert_unicode=True)
-        uni = u.dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
-        # Py3K
-        #assert_raises(exc.InvalidRequestError, uni, b'x')
-        # Py2K
-        assert_raises(exc.InvalidRequestError, uni, 'x')
-        # end Py2K
-
-        u = Unicode()
-        uni = u.dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
-        # Py3K
-        #assert_raises(exc.SAWarning, uni, b'x')
-        # Py2K
-        assert_raises(exc.SAWarning, uni, 'x')
-        # end Py2K
-
-        unicode_engine = engines.utf8_engine(options={'convert_unicode':True,'assert_unicode':True})
+        unicode_engine = engines.utf8_engine(options={'convert_unicode':True,})
         unicode_engine.dialect.supports_unicode_binds = False
         
         s = String()
         uni = s.dialect_impl(unicode_engine.dialect).bind_processor(unicode_engine.dialect)
         # Py3K
-        #assert_raises(exc.InvalidRequestError, uni, b'x')
+        #assert_raises(exc.SAWarning, uni, b'x')
         #assert isinstance(uni(unicodedata), bytes)
         # Py2K
-        assert_raises(exc.InvalidRequestError, uni, 'x')
+        assert_raises(exc.SAWarning, uni, 'x')
         assert isinstance(uni(unicodedata), str)
         # end Py2K
         
@@ -1169,7 +1153,7 @@ class CallableTest(TestBase):
         meta.drop_all()
 
     def test_callable_as_arg(self):
-        ucode = util.partial(Unicode, assert_unicode=None)
+        ucode = util.partial(Unicode)
 
         thing_table = Table('thing', meta,
             Column('name', ucode(20))
@@ -1178,7 +1162,7 @@ class CallableTest(TestBase):
         thing_table.create()
 
     def test_callable_as_kwarg(self):
-        ucode = util.partial(Unicode, assert_unicode=None)
+        ucode = util.partial(Unicode)
 
         thang_table = Table('thang', meta,
             Column('name', type_=ucode(20), primary_key=True)
