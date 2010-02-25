@@ -285,9 +285,9 @@ class ReflectionTest(TestBase, ComparesTables):
                    ForeignKey('engine_users.user_id')),
             Column('test6', types.DateTime, nullable=False),
             Column('test7', types.Text),
-            Column('test8', types.Binary),
+            Column('test8', types.LargeBinary),
             Column('test_passivedefault2', types.Integer, server_default='5'),
-            Column('test9', types.Binary(100)),
+            Column('test9', types.BINARY(100)),
             Column('test_numeric', types.Numeric()),
             test_needs_fk=True,
         )
@@ -1162,7 +1162,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         Column('primary_id', Integer, Sequence('binary_id_seq', optional=True), primary_key=True),
         Column('data', mssql.MSVarBinary(8000)),
         Column('data_image', mssql.MSImage),
-        Column('data_slice', Binary(100)),
+        Column('data_slice', types.BINARY(100)),
         Column('misc', String(30)),
         # construct PickleType with non-native pickle module, since cPickle uses relative module
         # loading and confuses this test's parent package 'sql' with the 'sqlalchemy.sql' package relative
@@ -1199,7 +1199,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
             binary_table.select(order_by=binary_table.c.primary_id),
             text("select * from binary_table order by binary_table.primary_id",
                  typemap=dict(data=mssql.MSVarBinary(8000), data_image=mssql.MSImage,
-                              data_slice=Binary(100), pickled=PickleType, mypickle=MyPickleType),
+                              data_slice=types.BINARY(100), pickled=PickleType, mypickle=MyPickleType),
                  bind=testing.db)
         ):
             l = stmt.execute().fetchall()
