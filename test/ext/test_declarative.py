@@ -8,7 +8,7 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey, ForeignKeyConstrai
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
 from sqlalchemy.test.testing import eq_
-
+from sqlalchemy.util import classproperty
 
 from test.orm._base import ComparableEntity, MappedTest
 
@@ -1473,7 +1473,10 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             class Engineer(Person):
                 __mapper_args__ = {'polymorphic_identity':'engineer'}
                 primary_language = Column('primary_language', String(50))
-                __table_args__ = ()
+                # this should be on the Person class, as this is single
+                # table inheritance, which is why we test that this
+                # throws an exception!
+                __table_args__ = {'mysql_engine':'InnoDB'}
         assert_raises_message(sa.exc.ArgumentError, "place __table_args__", go)
         
     def test_concrete(self):
@@ -1789,3 +1792,171 @@ class DeclarativeReflectionTest(testing.TestBase):
         eq_(a1, IMHandle(network='lol', handle='zomg'))
         eq_(a1.user, User(name='u1'))
 
+class DeclarativeMixinTest(DeclarativeTestBase):
+    
+    def test_simple(self):
+
+        class MyMixin(object):
+            id =  Column(Integer, primary_key=True)
+
+            def foo(self):
+                return 'bar'+str(self.id)
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            name = Column(String(1000), nullable=False, index=True)
+
+        Base.metadata.create_all()
+        
+        session = create_session()
+        session.add(MyModel(name='testing'))
+        session.flush()
+        session.expunge_all()
+
+        obj = session.query(MyModel).one()
+        eq_(obj.id,1)
+        eq_(obj.name,'testing')
+        eq_(obj.foo(),'bar1')
+        
+    def test_hierarchical_bases(self):
+
+        class MyMixinParent:
+            id =  Column(Integer, primary_key=True)
+
+            def foo(self):
+                return 'bar'+str(self.id)
+
+        class MyMixin(MyMixinParent):
+            baz = Column(String(1000), nullable=False, index=True)
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            name = Column(String(1000), nullable=False, index=True)
+
+        Base.metadata.create_all()
+        
+        session = create_session()
+        session.add(MyModel(name='testing',baz='fu'))
+        session.flush()
+        session.expunge_all()
+
+        obj = session.query(MyModel).one()
+        eq_(obj.id,1)
+        eq_(obj.name,'testing')
+        eq_(obj.foo(),'bar1')
+        eq_(obj.baz,'fu')
+        
+    def test_table_args_inherited(self):
+        
+        class MyMixin:
+            __table_args__ = {'mysql_engine':'InnoDB'}             
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            id =  Column(Integer, primary_key=True)
+
+        eq_(MyModel.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+    
+    def test_table_args_overridden(self):
+        
+        class MyMixin:
+            __table_args__ = {'mysql_engine':'Foo'}             
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            __table_args__ = {'mysql_engine':'InnoDB'}             
+            id =  Column(Integer, primary_key=True)
+
+        eq_(MyModel.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+
+    def test_table_args_composite(self):
+
+        class MyMixin1:
+            __table_args__ = {'info':{'baz':'bob'}} 
+
+        class MyMixin2:
+            __table_args__ = {'info':{'foo':'bar'}}
+
+        class MyModel(Base,MyMixin1,MyMixin2):
+            __tablename__='test'
+
+            @classproperty
+            def __table_args__(self):
+                info = {}
+                args = dict(info=info)
+                info.update(MyMixin1.__table_args__['info'])
+                info.update(MyMixin2.__table_args__['info'])
+                return args
+                
+            id =  Column(Integer, primary_key=True)
+
+        eq_(MyModel.__table__.info,{
+                'foo': 'bar',
+                'baz': 'bob',
+                })
+    
+    def test_mapper_args_inherited(self):
+        
+        class MyMixin:
+            __mapper_args__=dict(always_refresh=True)
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            id =  Column(Integer, primary_key=True)
+
+        eq_(MyModel.__mapper__.always_refresh,True)
+    
+    
+    def test_mapper_args_polymorphic_on_inherited(self):
+
+        class MyMixin:
+            type_ = Column(String(50))
+            __mapper_args__=dict(polymorphic_on=type_)
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            id =  Column(Integer, primary_key=True)
+
+        col = MyModel.__mapper__.polymorphic_on
+        eq_(col.name,'type_')
+        assert col.table is not None
+    
+    
+    def test_mapper_args_overridden(self):
+        
+        class MyMixin:
+            __mapper_args__=dict(always_refresh=True)
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            __mapper_args__=dict(always_refresh=False)
+            id =  Column(Integer, primary_key=True)
+
+        eq_(MyModel.__mapper__.always_refresh,False)
+
+    def test_mapper_args_composite(self):
+
+        class MyMixin1:
+            type_ = Column(String(50))
+            __mapper_args__=dict(polymorphic_on=type_)
+
+        class MyMixin2:
+            __mapper_args__=dict(always_refresh=True)
+
+        class MyModel(Base,MyMixin1,MyMixin2):
+            __tablename__='test'
+
+            @classproperty
+            def __mapper_args__(self):
+                args = {}
+                args.update(MyMixin1.__mapper_args__)
+                args.update(MyMixin2.__mapper_args__)
+                return args
+            
+            id =  Column(Integer, primary_key=True)
+ 
+        col = MyModel.__mapper__.polymorphic_on
+        eq_(col.name,'type_')
+        assert col.table is not None
+        
+        eq_(MyModel.__mapper__.always_refresh,True)

@@ -201,11 +201,21 @@ CHANGES
     in theory make it easier for custom metaclasses to modify
     the state passed into _as_declarative.
 
-   - the __mapper_args__ dict is copied when propagating to a subclass,
-     and is taken straight off the class __dict__ to avoid any
-     propagation from the parent.  mapper inheritance already
-     propagates the things you want from the parent mapper.
-     [ticket:1393]
+  - declarative now accepts mixin classes directly, as a means
+    to provide common functional and column-based elements on
+    all subclasses, as well as a means to propagate a fixed
+    set of __table_args__ or __mapper_args__ to subclasses.  
+    For custom combinations of __table_args__/__mapper_args__ from
+    an inherited mixin to local, descriptors can now be used.
+    New details are all up in the Declarative documentation.
+    Thanks to Chris Withers for putting up with my strife 
+    on this. [ticket:1707]
+    
+  - the __mapper_args__ dict is copied when propagating to a subclass,
+    and is taken straight off the class __dict__ to avoid any
+    propagation from the parent.  mapper inheritance already
+    propagates the things you want from the parent mapper.
+    [ticket:1393]
      
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 

@@ -37,7 +37,7 @@ Next we want to tell SQLAlchemy about our tables.  We will start with just a sin
     ...     Column('password', String)
     ... )
 
-All about how to define :class:`~sqlalchemy.schema.Table` objects, as well as how to load their definition from an existing database (known as **reflection**), is described in :ref:`metadata_toplevel`.
+:ref:`metadata_toplevel` covers all about how to define :class:`~sqlalchemy.schema.Table` objects, as well as how to load their definition from an existing database (known as **reflection**).
 
 Next, we can issue CREATE TABLE statements derived from our table metadata, by calling ``create_all()`` and passing it the ``engine`` instance which points to our database.  This will check for the presence of a table first before creating, so it's safe to call multiple times:
 
@@ -124,7 +124,15 @@ Since we have not yet told SQLAlchemy to persist ``Ed Jones`` within the databas
 
 Creating Table, Class and Mapper All at Once Declaratively
 ===========================================================
-The preceding approach to configuration involving a :class:`~sqlalchemy.schema.Table`, user-defined class, and ``mapper()`` call illustrate classical SQLAlchemy usage, which values the highest separation of concerns possible.  A large number of applications don't require this degree of separation, and for those SQLAlchemy offers an alternate "shorthand" configurational style called **declarative**.  For many applications, this is the only style of configuration needed.  Our above example using this style is as follows::
+The preceding approach to configuration involved a
+:class:`~sqlalchemy.schema.Table`, a user-defined class, and
+a call to``mapper()``.  This illustrates classical SQLAlchemy usage, which values
+the highest separation of concerns possible.  
+A large number of applications don't require this degree of
+separation, and for those SQLAlchemy offers an alternate "shorthand"
+configurational style called :mod:`~sqlalchemy.ext.declarative`.  
+For many applications, this is the only style of configuration needed.
+Our above example using this style is as follows:: 
 
     >>> from sqlalchemy.ext.declarative import declarative_base
 
@@ -145,15 +153,24 @@ The preceding approach to configuration involving a :class:`~sqlalchemy.schema.T
     ...     def __repr__(self):
     ...        return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
 
-Above, the ``declarative_base()`` function defines a new class which we name ``Base``, from which all of our ORM-enabled classes will derive.  Note that we define :class:`~sqlalchemy.schema.Column` objects with no "name" field, since it's inferred from the given attribute name.
+Above, the ``declarative_base()`` function defines a new class which
+we name ``Base``, from which all of our ORM-enabled classes will
+derive.  Note that we define :class:`~sqlalchemy.schema.Column`
+objects with no "name" field, since it's inferred from the given
+attribute name. 
 
-The underlying :class:`~sqlalchemy.schema.Table` object created by our ``declarative_base()`` version of ``User`` is accessible via the ``__table__`` attribute::
+The underlying :class:`~sqlalchemy.schema.Table` object created by our
+``declarative_base()`` version of ``User`` is accessible via the
+``__table__`` attribute:: 
 
     >>> users_table = User.__table__
 
-and the owning :class:`~sqlalchemy.schema.MetaData` object is available as well::
+The owning :class:`~sqlalchemy.schema.MetaData` object is available as well::
 
     >>> metadata = Base.metadata
+
+Full documentation for :mod:`~sqlalchemy.ext.declarative` can be found
+in the :doc:`reference/index` section for :doc:`reference/ext/declarative`.
 
 Yet another "declarative" method is available for SQLAlchemy as a third party library called `Elixir <http://elixir.ematia.de/>`_.  This is a full-featured configurational product which also includes many higher level mapping configurations built in.  Like declarative, once classes and mappings are defined, ORM usage is the same as with a classical SQLAlchemy configuration.
 

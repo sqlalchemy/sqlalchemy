@@ -52,7 +52,7 @@ Installing SQLAlchemy from scratch is most easily achieved with `setuptools <htt
 
 This command will download the latest version of SQLAlchemy from the `Python Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
 
-* `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_
+* setuptools_ 
 * `install setuptools <http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions>`_
 * `pypi <http://pypi.python.org/pypi/SQLAlchemy>`_
 
