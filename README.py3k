@@ -32,14 +32,9 @@ To convert all files in the source distribution, run
 SQLAlchemys "sa2to3.py" script, which monkeypatches a preprocessor
 onto the 2to3 tool:
 
-    python sa2to3.py ./lib/ ./test/ ./examples/ -w
+    python3 sa2to3.py --no-diffs -w lib test examples
 
 The above will rewrite all files in-place in Python 3 format.
-
-NOTE: at the time of this writing, Python3's 2to3 tool does not appear
-to properly handle source files with non-ascii encoding.   Some SQLAlchemy
-tests necessarily have utf-8 encoded strings embedded, so a Python2.6
-interpreter is necessary in order to run a full 2to3.
 
 Running Tests
 -------------
