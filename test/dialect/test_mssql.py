@@ -897,6 +897,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
 
             (types.LargeBinary, [], {},
              'IMAGE'),
+        ]
 
         table_args = ['test_mssql_binary', metadata]
         for index, spec in enumerate(columns):
