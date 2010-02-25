@@ -43,6 +43,8 @@ __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
            ]
 __all__.sort()
 
+RETAIN_SCHEMA = util.symbol('retain_schema')
+
 class SchemaItem(visitors.Visitable):
     """Base class for items that define a database schema."""
 
@@ -413,11 +415,11 @@ class Table(SchemaItem, expression.TableClause):
         """
         self.metadata.drop_all(bind=bind, checkfirst=checkfirst, tables=[self])
 
-    def tometadata(self, metadata, schema=None):
+    def tometadata(self, metadata, schema=RETAIN_SCHEMA):
         """Return a copy of this ``Table`` associated with a different ``MetaData``."""
 
         try:
-            if not schema:
+            if schema is RETAIN_SCHEMA:
                 schema = self.schema
             key = _get_table_key(self.name, schema)
             return metadata.tables[key]

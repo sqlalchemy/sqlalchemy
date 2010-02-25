@@ -203,8 +203,57 @@ class MetaDataTest(TestBase, ComparesTables):
 
         eq_(str(table_c.join(table2_c).onclause), str(table_c.c.myid == table2_c.c.myid))
         eq_(str(table_c.join(table2_c).onclause), "someschema.mytable.myid = someschema.othertable.myid")
-        
-        
+
+    def test_tometadata_default_schema(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+            Column('myid', Integer, primary_key=True),
+            Column('name', String(40), nullable=True),
+            Column('description', String(30), CheckConstraint("description='hi'")),
+            UniqueConstraint('name'),
+            test_needs_fk=True,
+            schema='myschema',
+        )
+
+        table2 = Table('othertable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('myid', Integer, ForeignKey('myschema.mytable.myid')),
+            test_needs_fk=True,
+            schema='myschema',
+            )
+
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2)
+        table2_c = table2.tometadata(meta2)
+
+        eq_(str(table_c.join(table2_c).onclause), str(table_c.c.myid == table2_c.c.myid))
+        eq_(str(table_c.join(table2_c).onclause), "myschema.mytable.myid = myschema.othertable.myid")
+
+    def test_tometadata_strip_schema(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+            Column('myid', Integer, primary_key=True),
+            Column('name', String(40), nullable=True),
+            Column('description', String(30), CheckConstraint("description='hi'")),
+            UniqueConstraint('name'),
+            test_needs_fk=True,
+        )
+
+        table2 = Table('othertable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('myid', Integer, ForeignKey('mytable.myid')),
+            test_needs_fk=True,
+            )
+
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2, schema=None)
+        table2_c = table2.tometadata(meta2, schema=None)
+
+        eq_(str(table_c.join(table2_c).onclause), str(table_c.c.myid == table2_c.c.myid))
+        eq_(str(table_c.join(table2_c).onclause), "mytable.myid = othertable.myid")
+
     def test_nonexistent(self):
         assert_raises(tsa.exc.NoSuchTableError, Table,
                           'fake_table',

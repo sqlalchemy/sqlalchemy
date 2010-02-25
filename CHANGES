@@ -181,6 +181,12 @@ CHANGES
     Note that it is *not* built/installed by default.
     See README for installation instructions.
 
+- metadata
+  - Added the ability to strip schema information when using
+    "tometadata" by passing "schema=None" as an argument. If schema
+    is not specified then the table's schema is retained.
+    [ticket: 1673]
+
 - declarative
   - DeclarativeMeta exclusively uses cls.__dict__ (not dict_) 
     as the source of class information; _as_declarative exclusively 
