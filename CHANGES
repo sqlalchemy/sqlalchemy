@@ -183,8 +183,9 @@ CHANGES
 
   - The assert_unicode flag is deprecated.  SQLAlchemy will raise
     a warning in all cases where it is asked to encode a non-unicode
-    Python string, and will do nothing for DBAPIs that already 
-    accept Python unicode objects.
+    Python string, as well as when a Unicode or UnicodeType type
+    is explicitly passed a bytestring.  The String type will do nothing 
+    for DBAPIs that already accept Python unicode objects.
     
 - metadata
   - Added the ability to strip schema information when using

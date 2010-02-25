@@ -391,6 +391,29 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                         u"une drôle de petit voix m’a réveillé. "\
                         u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
 
+        u = Unicode()
+        uni = u.dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
+        if testing.db.dialect.supports_unicode_binds:
+            # Py3K
+            #assert_raises(exc.SAWarning, uni, b'x')
+            #assert isinstance(uni(unicodedata), str)
+            # Py2K
+            assert_raises(exc.SAWarning, uni, 'x')
+            assert isinstance(uni(unicodedata), unicode)
+            # end Py2K
+
+            eq_(uni(unicodedata), unicodedata)
+        else:
+            # Py3K
+            #assert_raises(exc.SAWarning, uni, b'x')
+            #assert isinstance(uni(unicodedata), bytes)
+            # Py2K
+            assert_raises(exc.SAWarning, uni, 'x')
+            assert isinstance(uni(unicodedata), str)
+            # end Py2K
+        
+            eq_(uni(unicodedata), unicodedata.encode('utf-8'))
+        
         unicode_engine = engines.utf8_engine(options={'convert_unicode':True,})
         unicode_engine.dialect.supports_unicode_binds = False
         

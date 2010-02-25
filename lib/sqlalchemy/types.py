@@ -501,7 +501,9 @@ class String(Concatenable, TypeEngine):
     __visit_name__ = 'string'
 
     def __init__(self, length=None, convert_unicode=False, 
-                        assert_unicode=None, unicode_error=None):
+                        assert_unicode=None, unicode_error=None,
+                        _warn_on_bytestring=False
+                        ):
         """
         Create a string-holding type.
 
@@ -571,17 +573,27 @@ class String(Concatenable, TypeEngine):
         self.length = length
         self.convert_unicode = convert_unicode
         self.unicode_error = unicode_error
-        
+        self._warn_on_bytestring = _warn_on_bytestring
         
     def adapt(self, impltype):
         return impltype(
                     length=self.length,
-                    convert_unicode=self.convert_unicode)
+                    convert_unicode=self.convert_unicode,
+                    _warn_on_bytestring=True,
+                    )
 
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
             if dialect.supports_unicode_binds and self.convert_unicode != 'force':
-                return None
+                if self._warn_on_bytestring:
+                    def process(value):
+                        if isinstance(value, str):
+                            util.warn("Unicode type received non-unicode bind "
+                                      "param value %r" % value)
+                        return value
+                    return process
+                else:
+                    return None
             else:
                 encoder = codecs.getencoder(dialect.encoding)
                 def process(value):
@@ -671,7 +683,7 @@ class Unicode(String):
     """
 
     __visit_name__ = 'unicode'
-
+    
     def __init__(self, length=None, **kwargs):
         """
         Create a Unicode-converting String type.
@@ -688,7 +700,7 @@ class Unicode(String):
           
         """
         kwargs.setdefault('convert_unicode', True)
-        super(Unicode, self).__init__(length=length, **kwargs)
+        super(Unicode, self).__init__(length=length, _warn_on_bytestring=True, **kwargs)
 
 class UnicodeText(Text):
     """An unbounded-length Unicode string.
@@ -716,7 +728,7 @@ class UnicodeText(Text):
 
         """
         kwargs.setdefault('convert_unicode', True)
-        super(UnicodeText, self).__init__(length=length, **kwargs)
+        super(UnicodeText, self).__init__(length=length, _warn_on_bytestring=True, **kwargs)
 
 
 class Integer(_DateAffinity, TypeEngine):
