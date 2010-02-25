@@ -587,7 +587,11 @@ class String(Concatenable, TypeEngine):
             if dialect.supports_unicode_binds and self.convert_unicode != 'force':
                 if self._warn_on_bytestring:
                     def process(value):
+                        # Py3K
+                        #if isinstance(value, bytes):
+                        # Py2K
                         if isinstance(value, str):
+                        # end Py2K
                             util.warn("Unicode type received non-unicode bind "
                                       "param value %r" % value)
                         return value
