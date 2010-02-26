@@ -171,6 +171,11 @@ CHANGES
     not new).  An error is now raised if a Column() has no type
     and no foreign keys.  [ticket:1705]
     
+  - the "scale" argument of the Numeric() type is honored when 
+    coercing a returned floating point value into a string 
+    on its way to Decimal - this allows accuracy to function
+    on SQLite, MySQL.  [ticket:1717]
+    
 - engines
   - Added an optional C extension to speed up the sql layer by
     reimplementing RowProxy and the most common result processors.

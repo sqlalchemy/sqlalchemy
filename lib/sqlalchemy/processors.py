@@ -38,9 +38,10 @@ try:
             return UnicodeResultProcessor(encoding, errors).process
         else:
             return UnicodeResultProcessor(encoding).process
-
-    def to_decimal_processor_factory(target_class):
-        return DecimalResultProcessor(target_class).process
+    
+    # TODO: add scale argument
+    #def to_decimal_processor_factory(target_class):
+    #    return DecimalResultProcessor(target_class).process
 
 except ImportError:
     def to_unicode_processor_factory(encoding, errors=None):
@@ -57,13 +58,14 @@ except ImportError:
                 return decoder(value, errors)[0]
         return process
 
-    def to_decimal_processor_factory(target_class):
-        def process(value):
-            if value is None:
-                return None
-            else:
-                return target_class(str(value))
-        return process
+    # TODO: add scale argument
+    #def to_decimal_processor_factory(target_class):
+    #    def process(value):
+    #        if value is None:
+    #            return None
+    #        else:
+    #            return target_class(str(value))
+    #    return process
 
     def to_float(value):
         if value is None:
@@ -92,3 +94,13 @@ except ImportError:
     str_to_time = str_to_datetime_processor_factory(TIME_RE, datetime.time)
     str_to_date = str_to_datetime_processor_factory(DATE_RE, datetime.date)
 
+
+def to_decimal_processor_factory(target_class, scale=10):
+    fstring = "%%.%df" % scale
+    
+    def process(value):
+        if value is None:
+            return None
+        else:
+            return target_class(fstring % value)
+    return process

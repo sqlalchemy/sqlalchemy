@@ -9,6 +9,7 @@ from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.engine.strategies import MockEngineStrategy
 from sqlalchemy.test import *
+from sqlalchemy.test.util import round_decimal
 from sqlalchemy.sql import table, column
 from sqlalchemy.test.testing import eq_
 from test.engine._base import TablesTest
@@ -203,15 +204,6 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
             {'data':9},
         )
     
-    def _round(self, x):
-        if isinstance(x, float):
-            return round(x, 9)
-        elif isinstance(x, decimal.Decimal):
-            # really ?
-            # (can also use shift() here but that is 2.6 only)
-            x = (x * decimal.Decimal("1000000000")).to_integral() / pow(10, 9)
-        return x
-
     @testing.resolve_artifact_names
     def test_float_coercion(self):
         for type_, result in [
@@ -226,14 +218,14 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
                 ])
             ).scalar()
 
-            eq_(self._round(ret), result)
+            eq_(round_decimal(ret, 9), result)
 
             ret = testing.db.execute(
                 select([
                     cast(func.stddev_pop(data_table.c.data), type_)
                 ])
             ).scalar()
-            eq_(self._round(ret), result)
+            eq_(round_decimal(ret, 9), result)
     
     
         

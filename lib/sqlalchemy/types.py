@@ -838,7 +838,7 @@ class Numeric(_DateAffinity, TypeEngine):
 #            try:
 #                from fastdec import mpd as Decimal
 #            except ImportError:
-            return processors.to_decimal_processor_factory(_python_Decimal)
+            return processors.to_decimal_processor_factory(_python_Decimal, self.scale)
         else:
             return None
 
@@ -876,6 +876,16 @@ class Float(Numeric):
 
     def adapt(self, impltype):
         return impltype(precision=self.precision, asdecimal=self.asdecimal)
+
+    def result_processor(self, dialect, coltype):
+        if self.asdecimal:
+            #XXX: use decimal from http://www.bytereef.org/libmpdec.html
+#            try:
+#                from fastdec import mpd as Decimal
+#            except ImportError:
+            return processors.to_decimal_processor_factory(_python_Decimal)
+        else:
+            return None
 
 
 class DateTime(_DateAffinity, TypeEngine):

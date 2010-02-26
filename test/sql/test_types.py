@@ -1024,6 +1024,34 @@ class NumericTest(TestBase, AssertsExecutionResults):
             (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
         ])
 
+    @testing.fails_if(_missing_decimal)
+    def test_precision_decimal(self):
+        from decimal import Decimal
+        from sqlalchemy.test.util import round_decimal
+            
+        t = Table('t', MetaData(), Column('x', Numeric(precision=18, scale=12)))
+        t.create(testing.db)
+        try:
+            numbers = set(
+            [
+                decimal.Decimal("54.234246451650"),
+                decimal.Decimal("876734.594069654000"),
+                decimal.Decimal("0.004354"), 
+                decimal.Decimal("900.0"), 
+            ])
+
+            testing.db.execute(t.insert(), [{'x':x} for x in numbers])
+
+            ret = set([row[0] for row in testing.db.execute(t.select()).fetchall()])
+            
+            numbers = set(round_decimal(n, 11) for n in numbers)
+            ret = set(round_decimal(n, 11) for n in ret)
+            
+            eq_(numbers, ret)
+        finally:
+            t.drop(testing.db)
+            
+
     def test_decimal_fallback(self):
         from decimal import Decimal
 
