@@ -52,6 +52,8 @@ class ScopedSession(object):
             return self.registry()
 
     def remove(self):
+        """Dispose of the current contextual session."""
+        
         if self.registry.has():
             self.registry().close()
         self.registry.clear()
