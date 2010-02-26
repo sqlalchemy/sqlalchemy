@@ -1350,7 +1350,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
 
     @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_insert_array(self):
-        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
+        arrtable.insert().execute(intarr=[1,2,3], strarr=[u'abc', u'def'])
         results = arrtable.select().execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1,2,3])
@@ -1359,8 +1359,8 @@ class ArrayTest(TestBase, AssertsExecutionResults):
     @testing.fails_on('postgresql+pg8000', 'pg8000 has poor support for PG arrays')
     @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_where(self):
-        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
-        arrtable.insert().execute(intarr=[4,5,6], strarr='ABC')
+        arrtable.insert().execute(intarr=[1,2,3], strarr=[u'abc', u'def'])
+        arrtable.insert().execute(intarr=[4,5,6], strarr=u'ABC')
         results = arrtable.select().where(arrtable.c.intarr == [1,2,3]).execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1,2,3])
@@ -1369,7 +1369,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
     @testing.fails_on('postgresql+pypostgresql', 'pypostgresql fails in coercing an array')
     @testing.fails_on('postgresql+zxjdbc', 'zxjdbc has no support for PG arrays')
     def test_array_concat(self):
-        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
+        arrtable.insert().execute(intarr=[1,2,3], strarr=[u'abc', u'def'])
         results = select([arrtable.c.intarr + [4,5,6]]).execute().fetchall()
         eq_(len(results), 1)
         eq_(results[0][0], [1,2,3,4,5,6])
