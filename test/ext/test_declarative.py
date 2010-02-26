@@ -1804,7 +1804,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class MyModel(Base,MyMixin):
             __tablename__='test'
-            name = Column(String(1000), nullable=False, index=True)
+            name = Column(String(100), nullable=False, index=True)
 
         Base.metadata.create_all()
         
@@ -1827,16 +1827,16 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 return 'bar'+str(self.id)
 
         class MyMixin(MyMixinParent):
-            baz = Column(String(1000), nullable=False, index=True)
+            baz = Column(String(100), nullable=False, index=True)
 
         class MyModel(Base,MyMixin):
             __tablename__='test'
-            name = Column(String(1000), nullable=False, index=True)
+            name = Column(String(100), nullable=False, index=True)
 
         Base.metadata.create_all()
         
         session = create_session()
-        session.add(MyModel(name='testing',baz='fu'))
+        session.add(MyModel(name='testing', baz='fu'))
         session.flush()
         session.expunge_all()
 
