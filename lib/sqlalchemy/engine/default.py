@@ -419,7 +419,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                         param.append(processors[key](compiled_params[key]))
                     else:
                         param.append(compiled_params[key])
-                parameters.append(param)
+                parameters.append(tuple(param))
         else:
             encode = not self.dialect.supports_unicode_statements
             for compiled_params in compiled_parameters:
@@ -438,7 +438,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                         else:
                             param[key] = compiled_params[key]
                 parameters.append(param)
-        return parameters
+        return tuple(parameters)
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_REGEXP.match(statement)
