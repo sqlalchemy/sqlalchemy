@@ -1641,7 +1641,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         matchtable.insert().execute([
             {'id': 1, 'title': 'Agile Web Development with Rails', 'category_id': 2},
             {'id': 2, 'title': 'Dive Into Python', 'category_id': 1},
-            {'id': 3, 'title': 'Programming Matz''s Ruby', 'category_id': 2},
+            {'id': 3, 'title': "Programming Matz's Ruby", 'category_id': 2},
             {'id': 4, 'title': 'The Definitive Guide to Django', 'category_id': 1},
             {'id': 5, 'title': 'Python in a Nutshell', 'category_id': 1}
         ])
@@ -1666,7 +1666,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         eq_([2, 5], [r.id for r in results])
 
     def test_simple_match_with_apostrophe(self):
-        results = matchtable.select().where(matchtable.c.title.match("Matz''s")).execute().fetchall()
+        results = matchtable.select().where(matchtable.c.title.match("Matz's")).execute().fetchall()
         eq_([3], [r.id for r in results])
 
     def test_simple_derivative_match(self):

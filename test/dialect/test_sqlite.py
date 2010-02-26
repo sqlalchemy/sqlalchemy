@@ -516,7 +516,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         matchtable.insert().execute([
             {'id': 1, 'title': 'Agile Web Development with Rails', 'category_id': 2},
             {'id': 2, 'title': 'Dive Into Python', 'category_id': 1},
-            {'id': 3, 'title': 'Programming Matz''s Ruby', 'category_id': 2},
+            {'id': 3, 'title': "Programming Matz's Ruby", 'category_id': 2},
             {'id': 4, 'title': 'The Definitive Guide to Django', 'category_id': 1},
             {'id': 5, 'title': 'Python in a Nutshell', 'category_id': 1}
         ])

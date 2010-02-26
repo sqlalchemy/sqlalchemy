@@ -1261,7 +1261,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
              'title': 'Dive Into Python',
              'category_id': 1},
             {'id': 3,
-             'title': 'Programming Matz''s Ruby',
+             'title': "Programming Matz's Ruby",
              'category_id': 2},
             {'id': 4,
              'title': 'The Definitive Guide to Django',
@@ -1302,7 +1302,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
 
     def test_simple_match_with_apostrophe(self):
         results = (matchtable.select().
-                   where(matchtable.c.title.match('"Matz''s"')).
+                   where(matchtable.c.title.match("Matz's")).
                    execute().
                    fetchall())
         eq_([3], [r.id for r in results])
