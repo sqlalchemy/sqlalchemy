@@ -191,6 +191,9 @@ CHANGES
     Python string, as well as when a Unicode or UnicodeType type
     is explicitly passed a bytestring.  The String type will do nothing 
     for DBAPIs that already accept Python unicode objects.
+
+  - Bind parameters are sent as a tuple instead of a list. Some
+    backend drivers will not accept bind parameters as a list.
     
 - metadata
   - Added the ability to strip schema information when using
