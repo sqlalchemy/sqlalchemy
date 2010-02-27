@@ -11,11 +11,12 @@ class MxODBCConnector(Connector):
 
     @classmethod
     def dbapi(cls):
-        if 'win32' in sys.platform:
+        platform = sys.platform
+        if platform == 'win32':
             from mx.ODBC import Windows as module
-        elif 'linux' in sys.platform:
+        elif platform == 'linux':
             from mx.ODBC import unixODBC as module
-        elif 'darwin' in sys.platform:
+        elif platform == 'darwin':
             from mx.ODBC import iODBC as module
         else:
             raise ImportError, "Unrecognized platform for mxODBC import"
@@ -27,20 +28,20 @@ class MxODBCConnector(Connector):
             conn.datetimeformat = self.dbapi.PYDATETIME_DATETIMEFORMAT
             #conn.bindmethod = self.dbapi.BIND_USING_PYTHONTYPE
             #conn.bindmethod = self.dbapi.BIND_USING_SQLTYPE
-        
+
         pool.add_listener({'connect':connect})
 
     def create_connect_args(self, url):
         """ Return a tuple of *args,**kwargs for creating a connection.
-        
+
         The mxODBC 3.x connection constructor looks like this:
-        
+
             connect(dsn, user='', password='',
                     clear_auto_commit=1, errorhandler=None)
-        
+
         This method translates the values in the provided uri
         into args and kwargs needed to instantiate an mxODBC Connection.
-        
+
         The arg 'errorhandler' is not used by SQLAlchemy and will
         not be populated.
         """
@@ -48,7 +49,7 @@ class MxODBCConnector(Connector):
         opts.update(url.query)
         args = opts['host'],
         kwargs = {'user':opts['user'],
-                  'password': opts['password']} 
+                  'password': opts['password']}
         return args, kwargs
 
     def is_disconnect(self, e):
