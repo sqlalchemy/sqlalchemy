@@ -14,7 +14,8 @@ class MxODBCConnector(Connector):
         platform = sys.platform
         if platform == 'win32':
             from mx.ODBC import Windows as module
-        elif platform == 'linux':
+        # this can be the string "linux2", and possibly others
+        elif 'linux' in platform:
             from mx.ODBC import unixODBC as module
         elif platform == 'darwin':
             from mx.ODBC import iODBC as module
