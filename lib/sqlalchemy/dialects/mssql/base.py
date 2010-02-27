@@ -279,16 +279,22 @@ RESERVED_WORDS = set(
 class _MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            if getattr(self, 'scale', None) is not None and dialect.supports_native_decimal:
+            # TODO: factor this down into the sqltypes.Numeric class,
+            # use dialect flags
+            if getattr(self, 'scale', None) is None:
+                # we're a "float".  return a default decimal factory
+                return processors.to_decimal_processor_factory(decimal.Decimal)
+            elif dialect.supports_native_decimal:
+                # we're a "numeric", DBAPI will give us Decimal directly
                 return None
             else:
-                return processors.to_decimal_processor_factory(decimal.Decimal)
+                # we're a "numeric", DBAPI returns floats, convert.
+                return processors.to_decimal_processor_factory(decimal.Decimal, self.scale)
         else:
             #XXX: if the DBAPI returns a float (this is likely, given the
             # processor when asdecimal is True), this should be a None
             # processor instead.
             return processors.to_float
-            return None
             
     def bind_processor(self, dialect):
         def process(value):
