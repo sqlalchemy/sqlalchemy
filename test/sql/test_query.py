@@ -536,7 +536,18 @@ class QueryTest(TestBase):
                         use_labels=labels,
                         order_by=[users.c.user_id.desc()]),
                  [(3,), (2,), (1,)])
+    
+    @testing.fails_on("+pyodbc", "pyodbc row doesn't seem to accept slices")
+    def test_column_slices(self):
+        users.insert().execute(user_id=1, user_name='john')
+        users.insert().execute(user_id=2, user_name='jack')
+        addresses.insert().execute(address_id=1, user_id=2, address='foo@bar.com')
 
+        r = text("select * from query_addresses", bind=testing.db).execute().first()
+        self.assert_(r[0:1] == (1,))
+        self.assert_(r[1:] == (2, 'foo@bar.com'))
+        self.assert_(r[:-1] == (1, 2))
+        
     def test_column_accessor(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
@@ -550,15 +561,11 @@ class QueryTest(TestBase):
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
         
-        # test slices
-        r = text("select * from query_addresses", bind=testing.db).execute().first()
-        self.assert_(r[0:1] == (1,))
-        self.assert_(r[1:] == (2, 'foo@bar.com'))
-        self.assert_(r[:-1] == (1, 2))
-        
-        # test a little sqlite weirdness - with the UNION, cols come back as "query_users.user_id" in cursor.description
+        # test a little sqlite weirdness - with the UNION, 
+        # cols come back as "query_users.user_id" in cursor.description
         r = text("select query_users.user_id, query_users.user_name from query_users "
-            "UNION select query_users.user_id, query_users.user_name from query_users", bind=testing.db).execute().first()
+            "UNION select query_users.user_id, query_users.user_name from query_users",
+            bind=testing.db).execute().first()
         self.assert_(r['user_id']) == 1
         self.assert_(r['user_name']) == "john"
 

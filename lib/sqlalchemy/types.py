@@ -1607,8 +1607,10 @@ BOOLEANTYPE = Boolean()
 # type which usually resolves to TEXT/CLOB
 type_map = {
     str: String(),
+    # Py3K
+    #bytes : LargeBinary(),
     # Py2K
-    unicode : String(),
+    unicode : Unicode(),
     # end Py2K
     int : Integer(),
     float : Numeric(),

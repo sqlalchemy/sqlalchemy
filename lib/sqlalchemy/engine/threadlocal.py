@@ -94,6 +94,8 @@ class TLEngine(base.Engine):
     def close(self):
         if not self.closed:
             self.contextual_connect().close()
+            connection = self._connections.conn()
+            connection._force_close()
             del self._connections.conn
             self._connections.trans = []
         

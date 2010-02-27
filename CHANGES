@@ -194,6 +194,16 @@ CHANGES
 
   - Bind parameters are sent as a tuple instead of a list. Some
     backend drivers will not accept bind parameters as a list.
+
+  - threadlocal engine wasn't properly closing the connection
+    upon close() - fixed that.
+
+  - Transaction object doesn't rollback or commit if it isn't 
+    "active", allows more accurate nesting of begin/rollback/commit.
+
+  - Python unicode objects as binds result in the Unicode type, 
+    not string, thus eliminating a certain class of unicode errors
+    on drivers that don't support unicode binds.
     
 - metadata
   - Added the ability to strip schema information when using
@@ -245,6 +255,8 @@ CHANGES
 - mssql
   - Re-established initial support for pymssql.
 
+  - Added basic support for mxODBC [ticket:1710].
+  
   - Removed the text_as_varchar option.
 
 - oracle

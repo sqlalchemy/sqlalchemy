@@ -1287,8 +1287,8 @@ class Transaction(object):
     def rollback(self):
         if not self._parent.is_active:
             return
-        self.is_active = False
         self._do_rollback()
+        self.is_active = False
 
     def _do_rollback(self):
         self._parent.rollback()
@@ -1318,10 +1318,12 @@ class RootTransaction(Transaction):
         self.connection._begin_impl()
 
     def _do_rollback(self):
-        self.connection._rollback_impl()
+        if self.is_active:
+            self.connection._rollback_impl()
 
     def _do_commit(self):
-        self.connection._commit_impl()
+        if self.is_active:
+            self.connection._commit_impl()
 
 
 class NestedTransaction(Transaction):
@@ -1330,10 +1332,12 @@ class NestedTransaction(Transaction):
         self._savepoint = self.connection._savepoint_impl()
 
     def _do_rollback(self):
-        self.connection._rollback_to_savepoint_impl(self._savepoint, self._parent)
+        if self.is_active:
+            self.connection._rollback_to_savepoint_impl(self._savepoint, self._parent)
 
     def _do_commit(self):
-        self.connection._release_savepoint_impl(self._savepoint, self._parent)
+        if self.is_active:
+            self.connection._release_savepoint_impl(self._savepoint, self._parent)
 
 
 class TwoPhaseTransaction(Transaction):
