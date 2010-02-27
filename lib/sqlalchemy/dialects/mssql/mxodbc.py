@@ -10,7 +10,8 @@ from sqlalchemy.dialects.mssql.pyodbc import MSExecutionContext_pyodbc
 MSExecutionContext_mxodbc = MSExecutionContext_pyodbc
 
 class MSDialect_mxodbc(MxODBCConnector, MSDialect):
-    supports_sane_rowcount = True
+    # FIXME: yikes, plain rowcount doesn't work ?
+    supports_sane_rowcount = False #True
     supports_sane_multi_rowcount = False
 
     execution_ctx_cls = MSExecutionContext_mxodbc

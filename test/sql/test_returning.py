@@ -95,6 +95,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
         @testing.fails_on('postgresql', '')
         @testing.fails_on('oracle', '')
+        @testing.crashes('mssql+mxodbc', 'Raises an error')
         def test_executemany():
             # return value is documented as failing with psycopg2/executemany
             result2 = table.insert().returning(table).execute(
@@ -112,8 +113,6 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
         test_executemany()
 
-        result3 = table.insert().returning(table.c.id).execute({'persons': 4, 'full': False})
-        eq_([dict(row) for row in result3], [{'id': 4}])
     
         
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')

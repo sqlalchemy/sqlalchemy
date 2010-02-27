@@ -852,6 +852,7 @@ class SQLCompiler(engine.Compiled):
                 if c.primary_key and \
                     need_pks and \
                     (
+                        implicit_returning or 
                         not postfetch_lastrowid or 
                         c is not stmt.table._autoincrement_column
                     ):

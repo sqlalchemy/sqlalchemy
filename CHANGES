@@ -255,6 +255,10 @@ CHANGES
 - mssql
   - Re-established initial support for pymssql.
 
+  - Various fixes for implicit returning, reflection,
+    etc. - the MS-SQL dialects aren't quite complete
+    in 0.6 yet (but are close)
+  
   - Added basic support for mxODBC [ticket:1710].
   
   - Removed the text_as_varchar option.

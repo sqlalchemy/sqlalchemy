@@ -190,6 +190,12 @@ def unicode_ddl(fn):
         exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
         )
 
+def sane_rowcount(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not testing.db.dialect.supports_sane_rowcount)
+    )
+    
 def python2(fn):
     return _chain_decorators_on(
         fn,

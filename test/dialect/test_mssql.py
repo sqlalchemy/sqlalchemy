@@ -214,7 +214,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
 class IdentityInsertTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'mssql'
-    __dialect__ = mssql.MSSQLDialect()
+    __dialect__ = mssql.MSDialect()
 
     @classmethod
     def setup_class(cls):
@@ -322,7 +322,8 @@ class ReflectionTest(TestBase, ComparesTables):
         meta2 = MetaData(testing.db)
         try:
             table2 = Table('identity_test', meta2, autoload=True)
-            sequence = isinstance(table2.c['col1'].default, schema.Sequence) and table2.c['col1'].default
+            sequence = isinstance(table2.c['col1'].default, schema.Sequence) \
+                                    and table2.c['col1'].default
             assert sequence.start == 2
             assert sequence.increment == 3
         finally:
@@ -704,7 +705,8 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
                       '0.0000000000000000002', '0.2', '-0.0000000000000000002', '-2E-2',
                       '156666.458923543', '-156666.458923543', '1', '-1', '-1234', '1234',
                       '2E-12', '4E8', '3E-6', '3E-7', '4.1', '1E-1', '1E-2', '1E-3',
-                      '1E-4', '1E-5', '1E-6', '1E-7', '1E-1', '1E-8', '0.2732E2', '-0.2432E2', '4.35656E2',
+                      '1E-4', '1E-5', '1E-6', '1E-7', '1E-1', '1E-8', '0.2732E2', 
+                      '-0.2432E2', '4.35656E2',
                       '-02452E-2', '45125E-2',
                       '1234.58965E-2', '1.521E+15', '-1E-25', '1E-25', '1254E-25', '-1203E-25',
                       '0', '-0.00', '-0', '4585E12', '000000000000000000012', '000000000000.32E12',
@@ -714,7 +716,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
             numeric_table.insert().execute(numericcol=value)
 
         for value in select([numeric_table.c.numericcol]).execute():
-            assert value[0] in test_items, "%s not in test_items" % value[0]
+            assert value[0] in test_items, "%r not in test_items" % value[0]
 
     def test_float(self):
         float_table = Table('float_table', metadata,
@@ -1071,16 +1073,17 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
         testing.eq_(gen.get_column_specification(t.c.t), "t %s" % expected)
         self.assert_(repr(t.c.t))
         t.create(checkfirst=True)
-        
+    
+    @testing.crashes("+mxodbc", "mxODBC doesn't do scope_identity() with DEFAULT VALUES")
     def test_autoincrement(self):
         Table('ai_1', metadata,
                Column('int_y', Integer, primary_key=True),
                Column('int_n', Integer, DefaultClause('0'),
-                      primary_key=True))
+                      primary_key=True, autoincrement=False))
         Table('ai_2', metadata,
                Column('int_y', Integer, primary_key=True),
                Column('int_n', Integer, DefaultClause('0'),
-                      primary_key=True))
+                      primary_key=True, autoincrement=False))
         Table('ai_3', metadata,
                Column('int_n', Integer, DefaultClause('0'),
                       primary_key=True, autoincrement=False),
@@ -1117,11 +1120,14 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
 
         for name in table_names:
             tbl = Table(name, mr, autoload=True)
+            tbl = metadata.tables[name]
             for c in tbl.c:
                 if c.name.startswith('int_y'):
-                    assert c.autoincrement
+                    assert c.autoincrement, name
+                    assert tbl._autoincrement_column is c, name
                 elif c.name.startswith('int_n'):
-                    assert not c.autoincrement
+                    assert not c.autoincrement, name
+                    assert tbl._autoincrement_column is not c, name
             
             for counter, engine in enumerate([
                 engines.testing_engine(options={'implicit_returning':False}),

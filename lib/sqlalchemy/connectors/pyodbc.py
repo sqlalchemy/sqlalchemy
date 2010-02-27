@@ -12,6 +12,7 @@ class PyODBCConnector(Connector):
     # PyODBC unicode is broken on UCS-4 builds
     supports_unicode = sys.maxunicode == 65535
     supports_unicode_statements = supports_unicode
+    supports_native_decimal = True
     default_paramstyle = 'named'
     
     # for non-DSN connections, this should

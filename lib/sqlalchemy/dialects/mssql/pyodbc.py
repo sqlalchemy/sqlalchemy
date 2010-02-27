@@ -35,7 +35,8 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
             # We may have to skip over a number of result sets with no data (due to triggers, etc.)
             while True:
                 try:
-                    # fetchall() ensures the cursor is consumed without closing it (FreeTDS particularly)
+                    # fetchall() ensures the cursor is consumed 
+                    # without closing it (FreeTDS particularly)
                     row = self.cursor.fetchall()[0]  
                     break
                 except self.dialect.dbapi.Error, e:

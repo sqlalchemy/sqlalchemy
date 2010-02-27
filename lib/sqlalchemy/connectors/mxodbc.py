@@ -1,5 +1,7 @@
 
 import sys
+import re
+
 from sqlalchemy.connectors import Connector
 
 class MxODBCConnector(Connector):
@@ -8,7 +10,8 @@ class MxODBCConnector(Connector):
     supports_sane_multi_rowcount = False
     supports_unicode_statements = False
     supports_unicode_binds = False
-
+    supports_native_decimal = False
+    
     @classmethod
     def dbapi(cls):
         platform = sys.platform
@@ -61,4 +64,14 @@ class MxODBCConnector(Connector):
         else:
             return False
 
-
+    def _get_server_version_info(self, connection):
+        dbapi_con = connection.connection
+        version = []
+        r = re.compile('[.\-]')
+        # 18 == pyodbc.SQL_DBMS_VER
+        for n in r.split(dbapi_con.getinfo(18)[1]):
+            try:
+                version.append(int(n))
+            except ValueError:
+                version.append(n)
+        return tuple(version)

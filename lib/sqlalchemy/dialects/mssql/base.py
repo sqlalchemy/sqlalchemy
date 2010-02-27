@@ -279,13 +279,17 @@ RESERVED_WORDS = set(
 class _MSNumeric(sqltypes.Numeric):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            return processors.to_decimal_processor_factory(decimal.Decimal)
+            if getattr(self, 'scale', None) is not None and dialect.supports_native_decimal:
+                return None
+            else:
+                return processors.to_decimal_processor_factory(decimal.Decimal)
         else:
             #XXX: if the DBAPI returns a float (this is likely, given the
             # processor when asdecimal is True), this should be a None
             # processor instead.
             return processors.to_float
-
+            return None
+            
     def bind_processor(self, dialect):
         def process(value):
             if isinstance(value, decimal.Decimal):
@@ -797,14 +801,18 @@ class MSExecutionContext(default.DefaultExecutionContext):
             else:
                 self.cursor.execute("SELECT @@identity AS lastrowid")
             # fetchall() ensures the cursor is consumed without closing it
-            row = self.cursor.fetchall()[0]   
+            row = self.cursor.fetchall()[0]
             self._lastrowid = int(row[0])
 
         if (self.isinsert or self.isupdate or self.isdelete) and self.compiled.returning:
             self._result_proxy = base.FullyBufferedResultProxy(self)
             
         if self._enable_identity_insert:
-            self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
+            self.cursor.execute(
+                        "SET IDENTITY_INSERT %s OFF" %  
+                                self.dialect.identifier_preparer.
+                                    format_table(self.compiled.statement.table)
+                        )
         
     def get_lastrowid(self):
         return self._lastrowid
@@ -1080,7 +1088,7 @@ class MSDialect(default.DefaultDialect):
                  query_timeout=None,
                  use_scope_identity=True,
                  max_identifier_length=None,
-                 schema_name="dbo", **opts):
+                 schema_name=u"dbo", **opts):
         self.query_timeout = int(query_timeout or 0)
         self.schema_name = schema_name
 
@@ -1099,7 +1107,8 @@ class MSDialect(default.DefaultDialect):
     
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)
-        if self.server_version_info >= MS_2005_VERSION and 'implicit_returning' not in self.__dict__:
+        if self.server_version_info >= MS_2005_VERSION and \
+                    'implicit_returning' not in self.__dict__:
             self.implicit_returning = True
         
     def _get_default_schema_name(self, connection):
@@ -1115,7 +1124,7 @@ class MSDialect(default.DefaultDialect):
             try:
                 default_schema_name = connection.scalar(query, [user_name])
                 if default_schema_name is not None:
-                    return default_schema_name
+                    return unicode(default_schema_name)
             except:
                 pass
         return self.schema_name
@@ -1282,34 +1291,34 @@ class MSDialect(default.DefaultDialect):
                                     name='%s_identity' % col_name)
                 break
         cursor.close()
-        if ic is not None:
-            try:
-                # is this table_fullname reliable?
-                table_fullname = "%s.%s" % (current_schema, tablename)
-                cursor = connection.execute(
-                    sql.text("select ident_seed(:seed), ident_incr(:incr)"), 
-                    {'seed':table_fullname, 'incr':table_fullname}
+
+        if ic is not None and self.server_version_info >= MS_2005_VERSION:
+            table_fullname = "%s.%s" % (current_schema, tablename)
+            cursor = connection.execute(
+                sql.text("select ident_seed(:tname), ident_incr(:tname)",
+                    bindparams=[
+                                    sql.bindparam('tname', table_fullname)
+                    ]
                 )
-                row = cursor.first()
-                if not row is None:
-                    colmap[ic]['sequence'].update({
-                        'start' : int(row[0]),
-                        'increment' : int(row[1])
-                    })
-            except:
-                # ignoring it, works just like before
-                pass
+            )
+            row = cursor.first()
+            if not row is None:
+                colmap[ic]['sequence'].update({
+                    'start' : int(row[0]),
+                    'increment' : int(row[1])
+                })
         return cols
 
     @reflection.cache
     def get_primary_keys(self, connection, tablename, schema=None, **kw):
         current_schema = schema or self.default_schema_name
         pkeys = []
-        # Add constraints
-        RR = ischema.ref_constraints    #information_schema.referential_constraints
-        TC = ischema.constraints        #information_schema.table_constraints
-        C  = ischema.key_constraints.alias('C') #information_schema.constraint_column_usage: the constrained column
-        R  = ischema.key_constraints.alias('R') #information_schema.constraint_column_usage: the referenced column
+        RR = ischema.ref_constraints    # information_schema.referential_constraints
+        TC = ischema.constraints        # information_schema.table_constraints
+        C  = ischema.key_constraints.alias('C') # information_schema.constraint_column_usage: 
+                                                # the constrained column
+        R  = ischema.key_constraints.alias('R') # information_schema.constraint_column_usage: 
+                                                # the referenced column
 
         # Primary key constraints
         s = sql.select([C.c.column_name, TC.c.constraint_type],
@@ -1329,13 +1338,16 @@ class MSDialect(default.DefaultDialect):
         # Add constraints
         RR = ischema.ref_constraints    #information_schema.referential_constraints
         TC = ischema.constraints        #information_schema.table_constraints
-        C  = ischema.key_constraints.alias('C') #information_schema.constraint_column_usage: the constrained column
-        R  = ischema.key_constraints.alias('R') #information_schema.constraint_column_usage: the referenced column
+        C  = ischema.key_constraints.alias('C') # information_schema.constraint_column_usage: 
+                                                # the constrained column
+        R  = ischema.key_constraints.alias('R') # information_schema.constraint_column_usage: 
+                                                # the referenced column
 
         # Foreign key constraints
         s = sql.select([C.c.column_name,
                         R.c.table_schema, R.c.table_name, R.c.column_name,
-                        RR.c.constraint_name, RR.c.match_option, RR.c.update_rule, RR.c.delete_rule],
+                        RR.c.constraint_name, RR.c.match_option, RR.c.update_rule,
+                        RR.c.delete_rule],
                        sql.and_(C.c.table_name == tablename,
                                 C.c.table_schema == current_schema,
                                 C.c.constraint_name == RR.c.constraint_name,
@@ -1378,6 +1390,3 @@ class MSDialect(default.DefaultDialect):
 
         return fkeys.values()
 
-
-# fixme.  I added this for the tests to run. -Randall
-MSSQLDialect = MSDialect

@@ -78,6 +78,13 @@ class QueryTest(TestBase):
             detects rows that had defaults and post-fetches.
             """
 
+            # verify implicit_returning is working
+            if engine.dialect.implicit_returning:
+                ins = table.insert()
+                comp = ins.compile(engine, column_keys=list(values))
+                if not set(values).issuperset(c.key for c in table.primary_key):
+                    assert comp.returning
+            
             result = engine.execute(table.insert(), **values)
             ret = values.copy()
             
@@ -85,13 +92,17 @@ class QueryTest(TestBase):
                 ret[col.key] = id
 
             if result.lastrow_has_defaults():
-                criterion = and_(*[col==id for col, id in zip(table.primary_key, result.inserted_primary_key)])
+                criterion = and_(*[col==id for col, id in 
+                                    zip(table.primary_key, result.inserted_primary_key)])
                 row = engine.execute(table.select(criterion)).first()
                 for c in table.c:
                     ret[c.key] = row[c]
             return ret
 
         if testing.against('firebird', 'postgresql', 'oracle', 'mssql'):
+            assert testing.db.dialect.implicit_returning
+            
+        if testing.db.dialect.implicit_returning:
             test_engines = [
                 engines.testing_engine(options={'implicit_returning':False}),
                 engines.testing_engine(options={'implicit_returning':True}),

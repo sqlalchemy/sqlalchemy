@@ -39,6 +39,11 @@ class DefaultDialect(base.Dialect):
     supports_native_enum = False
     supports_native_boolean = False
     
+    # if the NUMERIC type
+    # returns decimal.Decimal.
+    # *not* the FLOAT type however.
+    supports_native_decimal = False
+    
     # Py3K
     #supports_unicode_statements = True
     #supports_unicode_binds = True

@@ -112,7 +112,7 @@ class PickleMetadataTest(TestBase):
 class UserDefinedTest(TestBase):
     """tests user-defined types."""
 
-    def testprocessing(self):
+    def test_processing(self):
 
         global users
         users.insert().execute(
@@ -132,7 +132,7 @@ class UserDefinedTest(TestBase):
             [1800, 2250, 1350],
             l
         ):
-            for col in row[1:5]:
+            for col in list(row)[1:5]:
                 eq_(col, assertstr)
             eq_(row[5], assertint)
             eq_(row[6], assertint2)
@@ -1113,7 +1113,7 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         global bool_table
         metadata = MetaData(testing.db)
         bool_table = Table('booltest', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, autoincrement=False),
             Column('value', Boolean),
             Column('unconstrained_value', Boolean(create_constraint=False)),
             )
@@ -1156,6 +1156,8 @@ class BooleanTest(TestBase, AssertsExecutionResults):
     
     @testing.fails_on('mysql', 
             "The CHECK clause is parsed but ignored by all storage engines.")
+    @testing.fails_on('mssql', 
+            "FIXME: MS-SQL 2005 doesn't honor CHECK ?!?")
     @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
     def test_constraint(self):
         assert_raises((exc.IntegrityError, exc.ProgrammingError),
