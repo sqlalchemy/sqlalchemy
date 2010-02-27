@@ -80,6 +80,11 @@ class MySQL_oursql(MySQLDialect):
         """Provide an implementation of *cursor.execute(statement, parameters)*."""
         
 # Py3K
+#       TODO: this isn't right.   the supports_unicode_binds
+#       and supports_unicode_statements flags should be used for this one.
+#       also, don't call _detect_charset - use self._connection_charset
+#       which is already configured (uses _detect_charset just once).
+#
 #        if context is not None:
 #            charset = self._detect_charset(context.connection)
 #            if charset is not None:
@@ -134,6 +139,8 @@ class MySQL_oursql(MySQLDialect):
     def has_table(self, connection, table_name, schema=None):
         return MySQLDialect.has_table(self, connection.execution_options(_oursql_plain_query=True), table_name, schema)
 
+    # TODO: don't do this.   just have base _show_create_table return
+    # unicode.  don't reuse _detect_charset(), use _connection_charset.
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):
         sql = MySQLDialect._show_create_table(self,
