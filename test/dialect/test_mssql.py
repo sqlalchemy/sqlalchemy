@@ -692,6 +692,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
     def teardown(self):
         metadata.drop_all()
 
+    @testing.fails_on_everything_except('mssql+pyodbc', 'this is some pyodbc-specific feature')
     def test_decimal_notation(self):
         import decimal
         numeric_table = Table('numeric_table', metadata,
@@ -1074,7 +1075,6 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
         self.assert_(repr(t.c.t))
         t.create(checkfirst=True)
     
-    @testing.crashes("+mxodbc", "mxODBC doesn't do scope_identity() with DEFAULT VALUES")
     def test_autoincrement(self):
         Table('ai_1', metadata,
                Column('int_y', Integer, primary_key=True),
@@ -1129,11 +1129,16 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
                     assert not c.autoincrement, name
                     assert tbl._autoincrement_column is not c, name
             
-            for counter, engine in enumerate([
-                engines.testing_engine(options={'implicit_returning':False}),
-                engines.testing_engine(options={'implicit_returning':True}),
-                ]
-            ):
+            # mxodbc can't handle scope_identity() with DEFAULT VALUES
+            if testing.db.driver == 'mxodbc':
+                eng = [engines.testing_engine(options={'implicit_returning':True})]
+            else:
+                eng = [
+                    engines.testing_engine(options={'implicit_returning':False}),
+                    engines.testing_engine(options={'implicit_returning':True}),
+                    ]
+                    
+            for counter, engine in enumerate(eng):
                 engine.execute(tbl.insert())
                 if 'int_y' in tbl.c:
                     assert engine.scalar(select([tbl.c.int_y])) == counter + 1

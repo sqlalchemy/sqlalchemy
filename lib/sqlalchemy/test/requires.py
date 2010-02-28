@@ -66,6 +66,15 @@ def identity(fn):
         no_support('sybase', 'not supported by database'),
         )
 
+def independent_cursors(fn):
+    """Target must support simultaneous, independent database cursors on a single connection."""
+
+    return _chain_decorators_on(
+        fn,
+        no_support('mssql+pyodbc', 'no driver support'),
+        no_support('mssql+mxodbc', 'no driver support'),
+        )
+
 def independent_connections(fn):
     """Target must support simultaneous, independent database connections."""
 

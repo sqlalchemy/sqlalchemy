@@ -850,7 +850,8 @@ class TLTransactionTest(TestBase):
         c2.close()
         assert not c1.closed
         assert not tlengine.closed
-        
+
+    @testing.requires.independent_cursors
     def test_result_closing(self):
         """tests that contextual_connect is threadlocal"""
         

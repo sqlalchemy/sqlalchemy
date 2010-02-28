@@ -73,6 +73,7 @@ class PoolTest(PoolTestBase):
         self.assert_(connection.cursor() is not None)
         self.assert_(connection is not connection2)
 
+    @testing.fails_on('+pyodbc', "pyodbc cursor doesn't implement tuple __eq__")
     def test_cursor_iterable(self):
         conn = testing.db.raw_connection()
         cursor = conn.cursor()

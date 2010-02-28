@@ -803,9 +803,9 @@ class MSExecutionContext(default.DefaultExecutionContext):
         
         if self._select_lastrowid:
             if self.dialect.use_scope_identity:
-                self.cursor.execute("SELECT scope_identity() AS lastrowid")
+                self.cursor.execute("SELECT scope_identity() AS lastrowid", ())
             else:
-                self.cursor.execute("SELECT @@identity AS lastrowid")
+                self.cursor.execute("SELECT @@identity AS lastrowid", ())
             # fetchall() ensures the cursor is consumed without closing it
             row = self.cursor.fetchall()[0]
             self._lastrowid = int(row[0])
