@@ -444,7 +444,7 @@ and filtering results, which is accomplished either with :func:`~sqlalchemy.orm.
     ('Ed Jones',)
     {stop}ed
 
-...or ``filter()``, which uses more flexible SQL expression language constructs.  These allow you to use regular Python operators with the class-level attributes on your mapped class:
+...or :func:`~sqlalchemy.orm.query.Query.filter`, which uses more flexible SQL expression language constructs.  These allow you to use regular Python operators with the class-level attributes on your mapped class:
 
 .. sourcecode:: python+sql
 
@@ -455,7 +455,7 @@ and filtering results, which is accomplished either with :func:`~sqlalchemy.orm.
     ('Ed Jones',)
     {stop}ed
 
-The :class:`~sqlalchemy.orm.query.Query` object is fully *generative*, meaning that most method calls return a new :class:`~sqlalchemy.orm.query.Query` object upon which further criteria may be added.  For example, to query for users named "ed" with a full name of "Ed Jones", you can call ``filter()`` twice, which joins criteria using ``AND``:
+The :class:`~sqlalchemy.orm.query.Query` object is fully *generative*, meaning that most method calls return a new :class:`~sqlalchemy.orm.query.Query` object upon which further criteria may be added.  For example, to query for users named "ed" with a full name of "Ed Jones", you can call :func:`~sqlalchemy.orm.query.Query.filter` twice, which joins criteria using ``AND``:
 
 .. sourcecode:: python+sql
 
@@ -471,7 +471,7 @@ The :class:`~sqlalchemy.orm.query.Query` object is fully *generative*, meaning t
 Common Filter Operators
 -----------------------
 
-Here's a rundown of some of the most common operators used in ``filter()``:
+Here's a rundown of some of the most common operators used in :func:`~sqlalchemy.orm.query.Query.filter`:
 
 * equals::
 
@@ -1244,7 +1244,7 @@ Above, the many-to-many relation is ``BlogPost.keywords``.  The defining feature
 
 The many-to-many relation is also bi-directional using the ``backref`` keyword.  This is the one case where usage of ``backref`` is generally required, since if a separate ``posts`` relation were added to the ``Keyword`` entity, both relations would independently add and remove rows from the ``post_keywords`` table and produce conflicts.
 
-We would also like our ``BlogPost`` class to have an ``author`` field.  We will add this as another bidirectional relationship, except one issue we'll have is that a single user might have lots of blog posts.  When we access ``User.posts``, we'd like to be able to filter results further so as not to load the entire collection.  For this we use a setting accepted by :func:`~sqlalchemy.orm.relation` called ``lazy='dynamic'``, which configures an alternate **loader strategy** on the attribute.  To use it on the "reverse" side of a :func:`~sqlalchemy.orm.relation`, we use the ``backref()`` function:
+We would also like our ``BlogPost`` class to have an ``author`` field.  We will add this as another bidirectional relationship, except one issue we'll have is that a single user might have lots of blog posts.  When we access ``User.posts``, we'd like to be able to filter results further so as not to load the entire collection.  For this we use a setting accepted by :func:`~sqlalchemy.orm.relation` called ``lazy='dynamic'``, which configures an alternate **loader strategy** on the attribute.  To use it on the "reverse" side of a :func:`~sqlalchemy.orm.relation`, we use the :func:`~sqlalchemy.orm.backref` function:
 
 .. sourcecode:: python+sql
 

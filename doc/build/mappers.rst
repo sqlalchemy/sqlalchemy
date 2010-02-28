@@ -227,7 +227,7 @@ Above, comparisons on the ``email`` column are wrapped in the SQL lower() functi
     >>> str(EmailAddress.email == 'SomeAddress@foo.com')
     lower(addresses.email) = lower(:lower_1)
 
-The ``__clause_element__()`` method is provided by the base ``Comparator`` class in use, and represents the SQL element which best matches what this attribute represents.  For a column-based attribute, it's the mapped column.  For a composite attribute, it's a :class:`~sqlalchemy.sql.expression.ClauseList` consisting of each column represented.  For a relation, it's the table mapped by the local mapper (not the remote mapper).  ``__clause_element__()`` should be honored by the custom comparator class in most cases since the resulting element will be applied any translations which are in effect, such as the correctly aliased member when using an ``aliased()`` construct or certain ``with_polymorphic()`` scenarios.
+The ``__clause_element__()`` method is provided by the base ``Comparator`` class in use, and represents the SQL element which best matches what this attribute represents.  For a column-based attribute, it's the mapped column.  For a composite attribute, it's a :class:`~sqlalchemy.sql.expression.ClauseList` consisting of each column represented.  For a relation, it's the table mapped by the local mapper (not the remote mapper).  ``__clause_element__()`` should be honored by the custom comparator class in most cases since the resulting element will be applied any translations which are in effect, such as the correctly aliased member when using an ``aliased()`` construct or certain :func:`~sqlalchemy.orm.query.Query.with_polymorphic` scenarios.
 
 There are four kinds of ``Comparator`` classes which may be subclassed, as according to the type of mapper property configured:
 
@@ -238,7 +238,7 @@ There are four kinds of ``Comparator`` classes which may be subclassed, as accor
 
 When using :func:`~sqlalchemy.orm.comparable_property`, which is a mapper property that isn't tied to any column or mapped table, the ``__clause_element__()`` method of :class:`~sqlalchemy.orm.interfaces.PropComparator` should also be implemented.
 
-The ``comparator_factory`` argument is accepted by all ``MapperProperty``-producing functions:  :func:`~sqlalchemy.orm.column_property`, :func:`~sqlalchemy.orm.composite`, :func:`~sqlalchemy.orm.comparable_property`, :func:`~sqlalchemy.orm.synonym`, :func:`~sqlalchemy.orm.relation`, ``backref()``, :func:`~sqlalchemy.orm.deferred`, and :func:`~sqlalchemy.orm.dynamic_loader`.
+The ``comparator_factory`` argument is accepted by all ``MapperProperty``-producing functions:  :func:`~sqlalchemy.orm.column_property`, :func:`~sqlalchemy.orm.composite`, :func:`~sqlalchemy.orm.comparable_property`, :func:`~sqlalchemy.orm.synonym`, :func:`~sqlalchemy.orm.relation`, :func:`~sqlalchemy.orm.backref`, :func:`~sqlalchemy.orm.deferred`, and :func:`~sqlalchemy.orm.dynamic_loader`.
 
 Composite Column Types
 -----------------------
@@ -410,7 +410,7 @@ And that's it.  Querying against ``Employee`` will return a combination of ``Emp
 Controlling Which Tables are Queried
 +++++++++++++++++++++++++++++++++++++
 
-The ``with_polymorphic()`` method of :class:`~sqlalchemy.orm.query.Query` affects the specific subclass tables which the Query selects from.  Normally, a query such as this:
+The :func:`~sqlalchemy.orm.query.Query.with_polymorphic` method of :class:`~sqlalchemy.orm.query.Query` affects the specific subclass tables which the Query selects from.  Normally, a query such as this:
 
 .. sourcecode:: python+sql
 
@@ -457,7 +457,7 @@ produces a query which joins the ``employees`` table to both the ``engineers`` a
     FROM employees LEFT OUTER JOIN engineers ON employees.employee_id = engineers.employee_id LEFT OUTER JOIN managers ON employees.employee_id = managers.employee_id
     []
 
-``with_polymorphic()`` accepts a single class or mapper, a list of classes/mappers, or the string ``'*'`` to indicate all subclasses:
+:func:`~sqlalchemy.orm.query.Query.with_polymorphic` accepts a single class or mapper, a list of classes/mappers, or the string ``'*'`` to indicate all subclasses:
 
 .. sourcecode:: python+sql
 
@@ -477,14 +477,14 @@ It also accepts a second argument ``selectable`` which replaces the automatic jo
     # custom selectable
     query.with_polymorphic([Engineer, Manager], employees.outerjoin(managers).outerjoin(engineers))
 
-``with_polymorphic()`` is also needed when you wish to add filter criterion that is specific to one or more subclasses, so that those columns are available to the WHERE clause:
+:func:`~sqlalchemy.orm.query.Query.with_polymorphic` is also needed when you wish to add filter criterion that is specific to one or more subclasses, so that those columns are available to the WHERE clause:
 
 .. sourcecode:: python+sql
 
     session.query(Employee).with_polymorphic([Engineer, Manager]).\
         filter(or_(Engineer.engineer_info=='w', Manager.manager_data=='q'))
 
-Note that if you only need to load a single subtype, such as just the ``Engineer`` objects, ``with_polymorphic()`` is not needed since you would query against the ``Engineer`` class directly.
+Note that if you only need to load a single subtype, such as just the ``Engineer`` objects, :func:`~sqlalchemy.orm.query.Query.with_polymorphic` is not needed since you would query against the ``Engineer`` class directly.
 
 The mapper also accepts ``with_polymorphic`` as a configurational argument so that the joined-style load will be issued automatically.  This argument may be the string ``'*'``, a list of classes, or a tuple consisting of either, followed by a selectable.
 
@@ -497,7 +497,7 @@ The mapper also accepts ``with_polymorphic`` as a configurational argument so th
 
 The above mapping will produce a query similar to that of ``with_polymorphic('*')`` for every query of ``Employee`` objects.
 
-Using ``with_polymorphic()`` with :class:`~sqlalchemy.orm.query.Query` will override the mapper-level ``with_polymorphic`` setting.
+Using :func:`~sqlalchemy.orm.query.Query.with_polymorphic` with :class:`~sqlalchemy.orm.query.Query` will override the mapper-level ``with_polymorphic`` setting.
 
 Creating Joins to Specific Subtypes
 ++++++++++++++++++++++++++++++++++++
@@ -1566,7 +1566,7 @@ The default **loader strategy** for any :func:`~sqlalchemy.orm.relation` is conf
         'children': relation(Child, lazy=False)
     })
 
-The loader strategy can be changed from lazy to eager as well as eager to lazy using the ``eagerload()`` and ``lazyload()`` query options:
+The loader strategy can be changed from lazy to eager as well as eager to lazy using the :func:`~sqlalchemy.orm.eagerload` and :func:`~sqlalchemy.orm.lazyload` query options:
 
 .. sourcecode:: python+sql
 
@@ -1582,7 +1582,7 @@ To reference a relation that is deeper than one level, separate the names by per
 
     session.query(Parent).options(eagerload('foo.bar.bat')).all()
 
-When using dot-separated names with ``eagerload()``, option applies **only** to the actual attribute named, and **not** its ancestors.  For example, suppose a mapping from ``A`` to ``B`` to ``C``, where the relations, named ``atob`` and ``btoc``, are both lazy-loading.  A statement like the following:
+When using dot-separated names with :func:`~sqlalchemy.orm.eagerload`, option applies **only** to the actual attribute named, and **not** its ancestors.  For example, suppose a mapping from ``A`` to ``B`` to ``C``, where the relations, named ``atob`` and ``btoc``, are both lazy-loading.  A statement like the following:
 
 .. sourcecode:: python+sql
 
@@ -1596,7 +1596,7 @@ Therefore, to modify the eager load to load both ``atob`` as well as ``btoc``, p
 
     session.query(A).options(eagerload('atob'), eagerload('atob.btoc')).all()
 
-or more simply just use ``eagerload_all()``:
+or more simply just use :func:`~sqlalchemy.orm.eagerload_all`:
 
 .. sourcecode:: python+sql
 
@@ -1629,7 +1629,7 @@ It works just as well with an inline ``Query.join()`` or ``Query.outerjoin()``::
 
     session.query(User).outerjoin(User.addresses).options(contains_eager(User.addresses)).all()
 
-If the "eager" portion of the statement is "aliased", the ``alias`` keyword argument to ``contains_eager()`` may be used to indicate it.  This is a string alias name or reference to an actual :class:`~sqlalchemy.sql.expression.Alias` (or other selectable) object:
+If the "eager" portion of the statement is "aliased", the ``alias`` keyword argument to :func:`~sqlalchemy.orm.contains_eager` may be used to indicate it.  This is a string alias name or reference to an actual :class:`~sqlalchemy.sql.expression.Alias` (or other selectable) object:
 
 .. sourcecode:: python+sql
 
@@ -1663,7 +1663,7 @@ The ``alias`` argument is used only as a source of columns to match up to the re
                 "from users left outer join addresses on users.user_id=addresses.user_id").\
         options(contains_eager(User.addresses, alias=eager_columns))
 
-The path given as the argument to ``contains_eager()`` needs to be a full path from the starting entity.  For example if we were loading ``Users->orders->Order->items->Item``, the string version would look like::
+The path given as the argument to :func:`~sqlalchemy.orm.contains_eager` needs to be a full path from the starting entity.  For example if we were loading ``Users->orders->Order->items->Item``, the string version would look like::
 
     query(User).options(contains_eager('orders', 'items'))
 
@@ -1671,7 +1671,7 @@ Or using the class-bound descriptor::
 
     query(User).options(contains_eager(User.orders, Order.items))
 
-A variant on ``contains_eager()`` is the ``contains_alias()`` option, which is used in the rare case that the parent object is loaded from an alias within a user-defined SELECT statement::
+A variant on :func:`~sqlalchemy.orm.contains_eager` is the ``contains_alias()`` option, which is used in the rare case that the parent object is loaded from an alias within a user-defined SELECT statement::
 
     # define an aliased UNION called 'ulist'
     statement = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist')
@@ -1697,7 +1697,7 @@ Dynamic Relation Loaders
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-The most useful by far is the :func:`~sqlalchemy.orm.dynamic_loader` relation.  This is a variant of :func:`~sqlalchemy.orm.relation` which returns a :class:`~sqlalchemy.orm.query.Query` object in place of a collection when accessed.  ``filter()`` criterion may be applied as well as limits and offsets, either explicitly or via array slices:
+The most useful by far is the :func:`~sqlalchemy.orm.dynamic_loader` relation.  This is a variant of :func:`~sqlalchemy.orm.relation` which returns a :class:`~sqlalchemy.orm.query.Query` object in place of a collection when accessed.  :func:`~sqlalchemy.orm.query.Query.filter` criterion may be applied as well as limits and offsets, either explicitly or via array slices:
 
 .. sourcecode:: python+sql
 
