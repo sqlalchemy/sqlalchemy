@@ -51,14 +51,18 @@ class MySQL_oursqlExecutionContext(MySQLExecutionContext):
     @property
     def plain_query(self):
         return self.execution_options.get('_oursql_plain_query', False)
-
-
+    
 class MySQL_oursql(MySQLDialect):
     driver = 'oursql'
 # Py3K
 #    description_encoding = None
-    supports_unicode_statements = True
+#    supports_unicode_binds = False
+#    supports_unicode_statements = False
+# Py2K
     supports_unicode_binds = True
+    supports_unicode_statements = True
+# end Py2K
+
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
     execution_ctx_cls = MySQL_oursqlExecutionContext
@@ -77,24 +81,7 @@ class MySQL_oursql(MySQLDialect):
         return __import__('oursql')
 
     def do_execute(self, cursor, statement, parameters, context=None):
-        """Provide an implementation of *cursor.execute(statement, parameters)*.
-#       TODO: this isn't right.   the supports_unicode_binds
-#       and supports_unicode_statements flags should be used for this one.
-#       also, don't call _detect_charset - use self._connection_charset
-#       which is already configured (uses _detect_charset just once)."""
-
-# Py3K
-#        if context is not None:
-#            charset = self._detect_charset(context.connection)
-#            if charset is not None:
-#                statement = statement.encode(charset)
-#                encoded_parameters = []
-#                for p in parameters:
-#                    if isinstance(p, str):
-#                        encoded_parameters.append(p.encode(charset))
-#                    else:
-#                        encoded_parameters.append(p)
-#                parameters = encoded_parameters
+        """Provide an implementation of *cursor.execute(statement, parameters)*."""
 
         if context and context.plain_query:
             cursor.execute(statement, plain_query=True)
@@ -109,12 +96,14 @@ class MySQL_oursql(MySQLDialect):
         arg = connection.connection._escape_string(xid)
 # end Py2K
 # Py3K
-#        charset = connection.connection.charset
+#        charset = self._connection_charset
 #        arg = connection.connection._escape_string(xid.encode(charset)).decode(charset)
         connection.execution_options(_oursql_plain_query=True).execute(query % arg)
 
-    # Because mysql is bad, these methods have to be reimplemented to use _PlainQuery. Basically, some queries
-    # refuse to return any data if they're run through the parameterized query API, or refuse to be parameterized
+    # Because mysql is bad, these methods have to be 
+    # reimplemented to use _PlainQuery. Basically, some queries
+    # refuse to return any data if they're run through 
+    # the parameterized query API, or refuse to be parameterized
     # in the first place.
     def do_begin_twophase(self, connection, xid):
         self._xa_query(connection, 'XA BEGIN "%s"', xid)
@@ -134,26 +123,72 @@ class MySQL_oursql(MySQLDialect):
         if not is_prepared:
             self.do_prepare_twophase(connection, xid)
         self._xa_query(connection, 'XA COMMIT "%s"', xid)
-
+    
+    # Q: why didn't we need all these "plain_query" overrides earlier ?
+    # am i on a newer/older version of OurSQL ?
     def has_table(self, connection, table_name, schema=None):
-        return MySQLDialect.has_table(self, connection.execution_options(_oursql_plain_query=True), table_name, schema)
+        return MySQLDialect.has_table(self, 
+                                        connection.connect().\
+                                            execution_options(_oursql_plain_query=True),
+                                        table_name, schema)
+    
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        return MySQLDialect.get_table_options(self,
+                                            connection.connect().\
+                                                execution_options(_oursql_plain_query=True),
+                                            table_name,
+                                            schema = schema,
+                                            **kw
+        )
 
-    # TODO: don't do this.   just have base _show_create_table return
-    # unicode.  don't reuse _detect_charset(), use _connection_charset.
+
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        return MySQLDialect.get_columns(self,
+                                        connection.connect().\
+                                                    execution_options(_oursql_plain_query=True),
+                                        table_name,
+                                        schema=schema,
+                                        **kw
+        )
+        
+    def get_view_names(self, connection, schema=None, **kw):
+        return MySQLDialect.get_view_names(self,
+                                            connection.connect().\
+                                                    execution_options(_oursql_plain_query=True),
+                                            schema=schema,
+                                            **kw
+        )
+        
+    def table_names(self, connection, schema):
+        return MySQLDialect.table_names(self,
+                            connection.connect().\
+                                        execution_options(_oursql_plain_query=True),
+                            schema
+        )
+        
+    def get_schema_names(self, connection, **kw):
+        return MySQLDialect.get_schema_names(self,
+                                    connection.connect().\
+                                                execution_options(_oursql_plain_query=True),
+                                    **kw
+        )
+        
+    def initialize(self, connection):
+        return MySQLDialect.initialize(
+                            self, 
+                            connection.execution_options(_oursql_plain_query=True)
+                            )
+        
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):
-        sql = MySQLDialect._show_create_table(self,
-            connection.contextual_connect(close_with_result=True).execution_options(_oursql_plain_query=True),
-            table, charset, full_name)
-# Py3K
-#        charset = self._detect_charset(connection)
-#        if charset is not None:
-#            sql = sql.decode(charset)
-        return sql
+        return MySQLDialect._show_create_table(self,
+                                connection.contextual_connect(close_with_result=True).
+                                execution_options(_oursql_plain_query=True),
+                                table, charset, full_name)
 
     def is_disconnect(self, e):
-        if isinstance(e, self.dbapi.ProgrammingError):  # if underlying connection is closed, this is the error you get
-            return e.errno is None and e.args[1].endswith('closed')
+        if isinstance(e, self.dbapi.ProgrammingError):  
+            return e.errno is None and 'cursor' not in e.args[1] and e.args[1].endswith('closed')
         else:
             return e.errno in (2006, 2013, 2014, 2045, 2055)
 
@@ -199,13 +234,8 @@ class MySQL_oursql(MySQLDialect):
 
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
-        if hasattr(connection, 'connection'):
-            if hasattr(connection.connection, 'use_unicode') and connection.connection.use_unicode:
-                return None
-            else:
-                return connection.connection.charset
-        else:
-            return None
+    
+        return connection.connection.charset
 
     def _compat_fetchall(self, rp, charset=None):
         """oursql isn't super-broken like MySQLdb, yaaay."""
@@ -214,6 +244,9 @@ class MySQL_oursql(MySQLDialect):
     def _compat_fetchone(self, rp, charset=None):
         """oursql isn't super-broken like MySQLdb, yaaay."""
         return rp.fetchone()
+
+    def _compat_first(self, rp, charset=None):
+        return rp.first()
 
 
 dialect = MySQL_oursql

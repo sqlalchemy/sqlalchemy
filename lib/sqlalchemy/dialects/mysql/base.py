@@ -1132,15 +1132,6 @@ ischema_names = {
 }
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
-    def post_exec(self):
-        # TODO: i think this 'charset' in the info thing 
-        # is out
-        
-        if (not self.isupdate and not self.should_autocommit and
-              self.statement and SET_RE.match(self.statement)):
-            # This misses if a user forces autocommit on text('SET NAMES'),
-            # which is probably a programming error anyhow.
-            self.connection.info.pop(('mysql', 'charset'), None)
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_RE.match(statement)
@@ -1725,13 +1716,6 @@ class MySQLDialect(default.DefaultDialect):
     def _get_default_schema_name(self, connection):
         return connection.execute('SELECT DATABASE()').scalar()
 
-    def table_names(self, connection, schema):
-        """Return a Unicode SHOW TABLES from a given schema."""
-
-        charset = self._connection_charset
-        rp = connection.execute("SHOW TABLES FROM %s" %
-            self.identifier_preparer.quote_identifier(schema))
-        return [row[0] for row in self._compat_fetchall(rp, charset=charset)]
 
     def has_table(self, connection, table_name, schema=None):
         # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
@@ -1782,17 +1766,28 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
-        if schema is None:
-            schema = self.default_schema_name
-        if self.server_version_info < (5, 0, 2):
-            return self.table_names(connection, schema)
-        charset = self._connection_charset
-        rp = connection.execute("SHOW FULL TABLES FROM %s" %
-                self.identifier_preparer.quote_identifier(schema))
-        
-        return [row[0] for row in self._compat_fetchall(rp, charset=charset)\
-                                                    if row[1] == 'BASE TABLE']
+        if schema is not None:
+            current_schema = schema
+        else:
+            current_schema = self.default_schema_name
+        table_names = self.table_names(connection, current_schema)
+        return table_names
 
+    def table_names(self, connection, schema):
+        """Return a Unicode SHOW TABLES from a given schema."""
+
+        charset = self._connection_charset
+        if self.server_version_info < (5, 0, 2):
+            rp = connection.execute("SHOW TABLES FROM %s" %
+                self.identifier_preparer.quote_identifier(schema))
+            return [row[0] for row in self._compat_fetchall(rp, charset=charset)]
+        else:
+            rp = connection.execute("SHOW FULL TABLES FROM %s" %
+                    self.identifier_preparer.quote_identifier(schema))
+
+            return [row[0] for row in self._compat_fetchall(rp, charset=charset)\
+                                                        if row[1] == 'BASE TABLE']
+            
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
         charset = self._connection_charset

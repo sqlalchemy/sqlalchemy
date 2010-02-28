@@ -115,12 +115,6 @@ class DefaultDialect(base.Dialect):
 
         if not hasattr(self, 'description_encoding'):
             self.description_encoding = getattr(self, 'description_encoding', encoding)
-
-        # Py3K
-        ## work around dialects that might change these values
-        #self.supports_unicode_statements = True
-        #self.supports_unicode_binds = True
-        #self.returns_unicode_strings = True
     
     @property
     def dialect_description(self):
@@ -136,9 +130,7 @@ class DefaultDialect(base.Dialect):
         except NotImplementedError:
             self.default_schema_name = None
 
-        # Py2K
         self.returns_unicode_strings = self._check_unicode_returns(connection)
-        # end Py2K
     
     def _check_unicode_returns(self, connection):
         cursor = connection.connection.cursor()
@@ -268,9 +260,10 @@ class DefaultExecutionContext(base.ExecutionContext):
                                                     )
 
             if not dialect.supports_unicode_statements:
-                self.statement = unicode(compiled).encode(self.dialect.encoding)
+                self.unicode_statement = unicode(compiled)
+                self.statement = self.unicode_statement.encode(self.dialect.encoding)
             else:
-                self.statement = unicode(compiled)
+                self.statement = self.unicode_statement = unicode(compiled)
                 
             self.cursor = self.create_cursor()
             self.compiled_parameters = []
@@ -302,9 +295,10 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.result_map = compiled.result_map
 
             if not dialect.supports_unicode_statements:
-                self.statement = unicode(compiled).encode(self.dialect.encoding)
+                self.unicode_statement = unicode(compiled)
+                self.statement = self.unicode_statement.encode(self.dialect.encoding)
             else:
-                self.statement = unicode(compiled)
+                self.statement = self.unicode_statement = unicode(compiled)
 
             self.isinsert = compiled.isinsert
             self.isupdate = compiled.isupdate
@@ -322,16 +316,20 @@ class DefaultExecutionContext(base.ExecutionContext):
             if self.isinsert or self.isupdate:
                 self.__process_defaults()
             self.parameters = self.__convert_compiled_params(self.compiled_parameters)
+            
         elif statement is not None:
             # plain text statement
             if connection._execution_options:
                 self.execution_options = self.execution_options.union(connection._execution_options)
             self.parameters = self.__encode_param_keys(parameters)
             self.executemany = len(parameters) > 1
+            
             if isinstance(statement, unicode) and not dialect.supports_unicode_statements:
+                self.unicode_statement = statement
                 self.statement = statement.encode(self.dialect.encoding)
             else:
-                self.statement = statement
+                self.statement = self.unicode_statement = statement
+                
             self.cursor = self.create_cursor()
         else:
             # no statement. used for standalone ColumnDefault execution.
@@ -349,7 +347,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                                                 or False)
                                                 
         if autocommit is expression.PARSE_AUTOCOMMIT:
-            return self.should_autocommit_text(self.statement)
+            return self.should_autocommit_text(self.unicode_statement)
         else:
             return autocommit
             
@@ -374,7 +372,8 @@ class DefaultExecutionContext(base.ExecutionContext):
     def _execute_scalar(self, stmt):
         """Execute a string statement on the current cursor, returning a scalar result.
         
-        Used to fire off sequences, default phrases, and "select lastrowid" types of statements individually
+        Used to fire off sequences, default phrases, and "select lastrowid" 
+        types of statements individually
         or in the context of a parent INSERT or UPDATE statement.
         
         """

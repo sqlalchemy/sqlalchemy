@@ -63,7 +63,7 @@ class ExactSQL(SQLMatchRule):
         if not context:
             return
             
-        _received_statement = _process_engine_statement(statement, context)
+        _received_statement = _process_engine_statement(context.unicode_statement, context)
         _received_parameters = context.compiled_parameters
         
         # TODO: remove this step once all unit tests
@@ -101,7 +101,7 @@ class RegexSQL(SQLMatchRule):
         if not context:
             return
 
-        _received_statement = _process_engine_statement(statement, context)
+        _received_statement = _process_engine_statement(context.unicode_statement, context)
         _received_parameters = context.compiled_parameters
 
         equivalent = bool(self.regex.match(_received_statement))
