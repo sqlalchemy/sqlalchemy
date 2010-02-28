@@ -32,7 +32,7 @@ To represent a table, use the :class:`~sqlalchemy.schema.Table` class.  Its two 
 
 Above, a table called ``user`` is described, which contains four columns.   The primary key of the table consists of the ``user_id`` column.   Multiple columns may be assigned the ``primary_key=True`` flag which denotes a multi-column primary key, known as a *composite* primary key.
 
-Note also that each column describes its datatype using objects corresponding to genericized types, such as ``Integer`` and ``String``.    SQLAlchemy features dozens of types of varying levels of specificity as well as the ability to create custom types.   Documentation on the type system can be found at :ref:`types`.
+Note also that each column describes its datatype using objects corresponding to genericized types, such as :class:`~sqlalchemy.types.Integer` and :class:`~sqlalchemy.types.String`.    SQLAlchemy features dozens of types of varying levels of specificity as well as the ability to create custom types.   Documentation on the type system can be found at :ref:`types`.
 
 Accessing Tables and Columns
 ----------------------------
@@ -109,7 +109,7 @@ Creating and Dropping Database Tables
 
 Once you've defined some :class:`~sqlalchemy.schema.Table` objects, assuming you're working with a brand new database one thing you might want to do is issue CREATE statements for those tables and their related constructs (as an aside, it's also quite possible that you *don't* want to do this, if you already have some preferred methodology such as tools included with your database or an existing scripting system - if that's the case, feel free to skip this section - SQLAlchemy has no requirement that it be used to create your tables).
 
-The usual way to issue CREATE is to use ``create_all()`` on the :class:`~sqlalchemy.schema.MetaData` object.  This method will issue queries that first check for the existence of each individual table, and if not found will issue the CREATE statements:
+The usual way to issue CREATE is to use :func:`~sqlalchemy.schema.MetaData.create_all` on the :class:`~sqlalchemy.schema.MetaData` object.  This method will issue queries that first check for the existence of each individual table, and if not found will issue the CREATE statements:
 
     .. sourcecode:: python+sql
 
@@ -147,9 +147,9 @@ The usual way to issue CREATE is to use ``create_all()`` on the :class:`~sqlalch
                 pref_value VARCHAR(100)
         )
 
-``create_all()`` creates foreign key constraints between tables usually inline with the table definition itself, and for this reason it also generates the tables in order of their dependency.   There are options to change this behavior such that ``ALTER TABLE`` is used instead.
+:func:`~sqlalchemy.schema.MetaData.create_all` creates foreign key constraints between tables usually inline with the table definition itself, and for this reason it also generates the tables in order of their dependency.   There are options to change this behavior such that ``ALTER TABLE`` is used instead.
 
-Dropping all tables is similarly achieved using the ``drop_all()`` method.  This method does the exact opposite of ``create_all()`` - the presence of each table is checked first, and tables are dropped in reverse order of dependency.
+Dropping all tables is similarly achieved using the :func:`~sqlalchemy.schema.MetaData.drop_all` method.  This method does the exact opposite of :func:`~sqlalchemy.schema.MetaData.create_all` - the presence of each table is checked first, and tables are dropped in reverse order of dependency.
 
 Creating and dropping individual tables can be done via the ``create()`` and ``drop()`` methods of :class:`~sqlalchemy.schema.Table`.  These methods by default issue the CREATE or DROP regardless of the table being present:
 
@@ -199,7 +199,7 @@ Notice in the previous section the creator/dropper methods accept an argument fo
     # bind to an engine
     meta.bind = engine
 
-We can now call methods like ``create_all()`` without needing to pass the :class:`~sqlalchemy.engine.base.Engine`::
+We can now call methods like :func:`~sqlalchemy.schema.MetaData.create_all` without needing to pass the :class:`~sqlalchemy.engine.base.Engine`::
 
     meta.create_all()
 
@@ -281,7 +281,7 @@ which are part of the primary key or have foreign key constraints::
 Reflecting All Tables at Once
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :class:`~sqlalchemy.schema.MetaData` object can also get a listing of tables and reflect the full set.  This is achieved by using the ``reflect()`` method.  After calling it, all located tables are present within the :class:`~sqlalchemy.schema.MetaData` object's dictionary of tables::
+The :class:`~sqlalchemy.schema.MetaData` object can also get a listing of tables and reflect the full set.  This is achieved by using the :func:`~sqlalchemy.schema.MetaData.reflect` method.  After calling it, all located tables are present within the :class:`~sqlalchemy.schema.MetaData` object's dictionary of tables::
 
     meta = MetaData()
     meta.reflect(bind=someengine)
@@ -438,7 +438,7 @@ The above SQL functions are usually executed "inline" with the INSERT or UPDATE 
 
 * the statement is a single execution, i.e. only supplies one set of parameters and doesn't use "executemany" behavior
 
-* the ``inline=True`` flag is not set on the ``Insert()`` or ``Update()`` construct, and the statement has not defined an explicit `returning()` clause.
+* the ``inline=True`` flag is not set on the :class:`~sqlalchemy.sql.expression.Insert()` or :class:`~sqlalchemy.sql.expression.Update()` construct, and the statement has not defined an explicit `returning()` clause.
 
 Whether or not the default generation clause "pre-executes" is not something that normally needs to be considered, unless it is being addressed for performance reasons.
 
@@ -551,7 +551,7 @@ It's important to note that the :class:`~sqlalchemy.schema.ForeignKeyConstraint`
 Creating/Dropping Foreign Key Constraints via ALTER
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In all the above examples, the :class:`~sqlalchemy.schema.ForeignKey` object causes the "REFERENCES" keyword to be added inline to a column definition within a "CREATE TABLE" statement when ``create_all()`` is issued, and :class:`~sqlalchemy.schema.ForeignKeyConstraint` invokes the "CONSTRAINT" keyword inline with "CREATE TABLE".    There are some cases where this is undesireable, particularly when two tables reference each other mutually, each with a foreign key referencing the other.   In such a situation at least one of the foreign key constraints must be generated after both tables have been built.  To support such a scheme, :class:`~sqlalchemy.schema.ForeignKey` and :class:`~sqlalchemy.schema.ForeignKeyConstraint` offer the flag ``use_alter=True``.  When using this flag, the constraint will be generated using a definition similar to "ALTER TABLE <tablename> ADD CONSTRAINT <name> ...".   Since a name is required, the ``name`` attribute must also be specified.  For example::
+In all the above examples, the :class:`~sqlalchemy.schema.ForeignKey` object causes the "REFERENCES" keyword to be added inline to a column definition within a "CREATE TABLE" statement when :func:`~sqlalchemy.schema.MetaData.create_all` is issued, and :class:`~sqlalchemy.schema.ForeignKeyConstraint` invokes the "CONSTRAINT" keyword inline with "CREATE TABLE".    There are some cases where this is undesireable, particularly when two tables reference each other mutually, each with a foreign key referencing the other.   In such a situation at least one of the foreign key constraints must be generated after both tables have been built.  To support such a scheme, :class:`~sqlalchemy.schema.ForeignKey` and :class:`~sqlalchemy.schema.ForeignKeyConstraint` offer the flag ``use_alter=True``.  When using this flag, the constraint will be generated using a definition similar to "ALTER TABLE <tablename> ADD CONSTRAINT <name> ...".   Since a name is required, the ``name`` attribute must also be specified.  For example::
 
     node = Table('node', meta,
         Column('node_id', Integer, primary_key=True),
@@ -703,7 +703,7 @@ The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` 
 Customizing DDL
 ===============
 
-In the preceding sections we've discussed a variety of schema constructs including :class:`~sqlalchemy.schema.Table`, :class:`~sqlalchemy.schema.ForeignKeyConstraint`, :class:`~sqlalchemy.schema.CheckConstraint`, and :class:`~sqlalchemy.schema.Sequence`.   Throughout, we've relied upon the ``create()`` and ``create_all()`` methods of :class:`~sqlalchemy.schema.Table` and :class:`~sqlalchemy.schema.MetaData` in order to issue data definition language (DDL) for all constructs.   When issued, a pre-determined order of operations is invoked, and DDL to create each table is created unconditionally including all constraints and other objects associated with it.   For more complex scenarios where database-specific DDL is required, SQLAlchemy offers two techniques which can be used to add any DDL based on any condition, either accompanying the standard generation of tables or by itself.
+In the preceding sections we've discussed a variety of schema constructs including :class:`~sqlalchemy.schema.Table`, :class:`~sqlalchemy.schema.ForeignKeyConstraint`, :class:`~sqlalchemy.schema.CheckConstraint`, and :class:`~sqlalchemy.schema.Sequence`.   Throughout, we've relied upon the ``create()`` and :func:`~sqlalchemy.schema.MetaData.create_all` methods of :class:`~sqlalchemy.schema.Table` and :class:`~sqlalchemy.schema.MetaData` in order to issue data definition language (DDL) for all constructs.   When issued, a pre-determined order of operations is invoked, and DDL to create each table is created unconditionally including all constraints and other objects associated with it.   For more complex scenarios where database-specific DDL is required, SQLAlchemy offers two techniques which can be used to add any DDL based on any condition, either accompanying the standard generation of tables or by itself.
 
 Controlling DDL Sequences
 -------------------------
@@ -723,7 +723,7 @@ The ``sqlalchemy.schema`` package contains SQL expression constructs that provid
         col6 INTEGER
     ){stop}
 
-Above, the ``CreateTable`` construct works like any other expression construct (such as ``select()``, ``table.insert()``, etc.).  A full reference of available constructs is in :ref:`schema_api_ddl`.
+Above, the :class:`~sqlalchemy.schema.CreateTable` construct works like any other expression construct (such as ``select()``, ``table.insert()``, etc.).  A full reference of available constructs is in :ref:`schema_api_ddl`.
 
 The DDL constructs all extend a common base class which provides the capability to be associated with an individual :class:`~sqlalchemy.schema.Table` or :class:`~sqlalchemy.schema.MetaData` object, to be invoked upon create/drop events.   Consider the example of a table which contains a CHECK constraint:
 

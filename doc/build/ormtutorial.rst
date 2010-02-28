@@ -17,7 +17,7 @@ A quick check to verify that we are on at least **version 0.6** of SQLAlchemy::
 Connecting
 ==========
 
-For this tutorial we will use an in-memory-only SQLite database.  To connect we use ``create_engine()``::
+For this tutorial we will use an in-memory-only SQLite database.  To connect we use :func:`~sqlalchemy.create_engine`::
 
     >>> from sqlalchemy import create_engine
     >>> engine = create_engine('sqlite:///:memory:', echo=True)
@@ -39,7 +39,7 @@ Next we want to tell SQLAlchemy about our tables.  We will start with just a sin
 
 :ref:`metadata_toplevel` covers all about how to define :class:`~sqlalchemy.schema.Table` objects, as well as how to load their definition from an existing database (known as **reflection**).
 
-Next, we can issue CREATE TABLE statements derived from our table metadata, by calling ``create_all()`` and passing it the ``engine`` instance which points to our database.  This will check for the presence of a table first before creating, so it's safe to call multiple times:
+Next, we can issue CREATE TABLE statements derived from our table metadata, by calling :func:`~sqlalchemy.schema.MetaData.create_all` and passing it the ``engine`` instance which points to our database.  This will check for the presence of a table first before creating, so it's safe to call multiple times:
 
 .. sourcecode:: python+sql
 
@@ -60,13 +60,13 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
     VARCHAR columns were generated without a length; on SQLite and Postgresql,
     this is a valid datatype, but on others, it's not allowed. So if running
     this tutorial on one of those databases, and you wish to use SQLAlchemy to
-    issue CREATE TABLE, a "length" may be provided to the ``String`` type as
+    issue CREATE TABLE, a "length" may be provided to the :class:`~sqlalchemy.types.String` type as
     below::
 
         Column('name', String(50))
 
-    The length field on ``String``, as well as similar precision/scale fields
-    available on ``Integer``, ``Numeric``, etc. are not referenced by
+    The length field on :class:`~sqlalchemy.types.String`, as well as similar precision/scale fields
+    available on :class:`~sqlalchemy.types.Integer`, :class:`~sqlalchemy.types.Numeric`, etc. are not referenced by
     SQLAlchemy other than when creating tables.
 
     Additionally, Firebird and Oracle require sequences to generate new
@@ -153,14 +153,14 @@ Our above example using this style is as follows::
     ...     def __repr__(self):
     ...        return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
 
-Above, the ``declarative_base()`` function defines a new class which
+Above, the :func:`~sqlalchemy.ext.declarative.declarative_base` function defines a new class which
 we name ``Base``, from which all of our ORM-enabled classes will
 derive.  Note that we define :class:`~sqlalchemy.schema.Column`
 objects with no "name" field, since it's inferred from the given
 attribute name. 
 
 The underlying :class:`~sqlalchemy.schema.Table` object created by our
-``declarative_base()`` version of ``User`` is accessible via the
+:func:`~sqlalchemy.ext.declarative.declarative_base` version of ``User`` is accessible via the
 ``__table__`` attribute:: 
 
     >>> users_table = User.__table__
@@ -177,7 +177,7 @@ Yet another "declarative" method is available for SQLAlchemy as a third party li
 Creating a Session
 ==================
 
-We're now ready to start talking to the database.  The ORM's "handle" to the database is the :class:`~sqlalchemy.orm.session.Session`.  When we first set up the application, at the same level as our ``create_engine()`` statement, we define a :class:`~sqlalchemy.orm.session.Session` class which will serve as a factory for new :class:`~sqlalchemy.orm.session.Session` objects:
+We're now ready to start talking to the database.  The ORM's "handle" to the database is the :class:`~sqlalchemy.orm.session.Session`.  When we first set up the application, at the same level as our :func:`~sqlalchemy.create_engine` statement, we define a :class:`~sqlalchemy.orm.session.Session` class which will serve as a factory for new :class:`~sqlalchemy.orm.session.Session` objects:
 
 .. sourcecode:: python+sql
 
@@ -190,13 +190,13 @@ In the case where your application does not yet have an :class:`~sqlalchemy.engi
 
     >>> Session = sessionmaker()
 
-Later, when you create your engine with ``create_engine()``, connect it to the :class:`~sqlalchemy.orm.session.Session` using ``configure()``:
+Later, when you create your engine with :func:`~sqlalchemy.create_engine`, connect it to the :class:`~sqlalchemy.orm.session.Session` using ``configure()``:
 
 .. sourcecode:: python+sql
 
     >>> Session.configure(bind=engine)  # once engine is available
 
-This custom-made :class:`~sqlalchemy.orm.session.Session` class will create new :class:`~sqlalchemy.orm.session.Session` objects which are bound to our database.  Other transactional characteristics may be defined when calling ``sessionmaker()`` as well; these are described in a later chapter.  Then, whenever you need to have a conversation with the database, you instantiate a :class:`~sqlalchemy.orm.session.Session`::
+This custom-made :class:`~sqlalchemy.orm.session.Session` class will create new :class:`~sqlalchemy.orm.session.Session` objects which are bound to our database.  Other transactional characteristics may be defined when calling :func:`~sqlalchemy.orm.sessionmaker` as well; these are described in a later chapter.  Then, whenever you need to have a conversation with the database, you instantiate a :class:`~sqlalchemy.orm.session.Session`::
 
     >>> session = Session()
 
@@ -235,7 +235,7 @@ In fact, the :class:`~sqlalchemy.orm.session.Session` has identified that the ro
 
 The ORM concept at work here is known as an **identity map** and ensures that all operations upon a particular row within a :class:`~sqlalchemy.orm.session.Session` operate upon the same set of data.  Once an object with a particular primary key is present in the :class:`~sqlalchemy.orm.session.Session`, all SQL queries on that :class:`~sqlalchemy.orm.session.Session` will always return the same Python object for that particular primary key; it also will raise an error if an attempt is made to place a second, already-persisted object with the same primary key within the session.
 
-We can add more ``User`` objects at once using ``add_all()``:
+We can add more ``User`` objects at once using :func:`~sqlalchemy.orm.session.Session.add_all`:
 
 .. sourcecode:: python+sql
 
@@ -361,7 +361,7 @@ issuing a SELECT illustrates the changes made to the database:
 Querying
 ========
 
-A :class:`~sqlalchemy.orm.query.Query` is created using the ``query()`` function on :class:`~sqlalchemy.orm.session.Session`.  This function takes a variable number of arguments, which can be any combination of classes and class-instrumented descriptors.  Below, we indicate a :class:`~sqlalchemy.orm.query.Query` which loads ``User`` instances.  When evaluated in an iterative context, the list of ``User`` objects present is returned:
+A :class:`~sqlalchemy.orm.query.Query` is created using the :class:`~sqlalchemy.orm.session.Session.query()` function on :class:`~sqlalchemy.orm.session.Session`.  This function takes a variable number of arguments, which can be any combination of classes and class-instrumented descriptors.  Below, we indicate a :class:`~sqlalchemy.orm.query.Query` which loads ``User`` instances.  When evaluated in an iterative context, the list of ``User`` objects present is returned:
 
 .. sourcecode:: python+sql
 
@@ -376,7 +376,7 @@ A :class:`~sqlalchemy.orm.query.Query` is created using the ``query()`` function
     mary Mary Contrary
     fred Fred Flinstone
 
-The :class:`~sqlalchemy.orm.query.Query` also accepts ORM-instrumented descriptors as arguments.  Any time multiple class entities or column-based entities are expressed as arguments to the ``query()`` function, the return result is expressed as tuples:
+The :class:`~sqlalchemy.orm.query.Query` also accepts ORM-instrumented descriptors as arguments.  Any time multiple class entities or column-based entities are expressed as arguments to the :class:`~sqlalchemy.orm.session.Session.query()` function, the return result is expressed as tuples:
 
 .. sourcecode:: python+sql
 
@@ -433,7 +433,7 @@ Basic operations with :class:`~sqlalchemy.orm.query.Query` include issuing LIMIT
     <User('wendy','Wendy Williams', 'foobar')>
     <User('mary','Mary Contrary', 'xxg527')>
 
-and filtering results, which is accomplished either with ``filter_by()``, which uses keyword arguments:
+and filtering results, which is accomplished either with :func:`~sqlalchemy.orm.query.Query.filter_by`, which uses keyword arguments:
 
 .. sourcecode:: python+sql
 
@@ -1244,7 +1244,7 @@ Above, the many-to-many relation is ``BlogPost.keywords``.  The defining feature
 
 The many-to-many relation is also bi-directional using the ``backref`` keyword.  This is the one case where usage of ``backref`` is generally required, since if a separate ``posts`` relation were added to the ``Keyword`` entity, both relations would independently add and remove rows from the ``post_keywords`` table and produce conflicts.
 
-We would also like our ``BlogPost`` class to have an ``author`` field.  We will add this as another bidirectional relationship, except one issue we'll have is that a single user might have lots of blog posts.  When we access ``User.posts``, we'd like to be able to filter results further so as not to load the entire collection.  For this we use a setting accepted by ``relation()`` called ``lazy='dynamic'``, which configures an alternate **loader strategy** on the attribute.  To use it on the "reverse" side of a ``relation()``, we use the ``backref()`` function:
+We would also like our ``BlogPost`` class to have an ``author`` field.  We will add this as another bidirectional relationship, except one issue we'll have is that a single user might have lots of blog posts.  When we access ``User.posts``, we'd like to be able to filter results further so as not to load the entire collection.  For this we use a setting accepted by :func:`~sqlalchemy.orm.relation` called ``lazy='dynamic'``, which configures an alternate **loader strategy** on the attribute.  To use it on the "reverse" side of a :func:`~sqlalchemy.orm.relation`, we use the ``backref()`` function:
 
 .. sourcecode:: python+sql
 

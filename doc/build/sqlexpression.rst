@@ -22,7 +22,7 @@ Connecting
 ==========
 
 
-For this tutorial we will use an in-memory-only SQLite database.   This is an easy way to test things without needing to have an actual database defined anywhere.  To connect we use ``create_engine()``:
+For this tutorial we will use an in-memory-only SQLite database.   This is an easy way to test things without needing to have an actual database defined anywhere.  To connect we use :func:`~sqlalchemy.create_engine`:
 
 .. sourcecode:: pycon+sql
 
@@ -57,7 +57,7 @@ We define our tables all within a catalog called :class:`~sqlalchemy.schema.Meta
 
 All about how to define :class:`~sqlalchemy.schema.Table` objects, as well as how to create them from an existing database automatically, is described in :ref:`metadata_toplevel`.
 
-Next, to tell the :class:`~sqlalchemy.schema.MetaData` we'd actually like to create our selection of tables for real inside the SQLite database, we use ``create_all()``, passing it the ``engine`` instance which points to our database.  This will check for the presence of each table first before creating, so it's safe to call multiple times:
+Next, to tell the :class:`~sqlalchemy.schema.MetaData` we'd actually like to create our selection of tables for real inside the SQLite database, we use :func:`~sqlalchemy.schema.MetaData.create_all`, passing it the ``engine`` instance which points to our database.  This will check for the presence of each table first before creating, so it's safe to call multiple times:
 
 .. sourcecode:: pycon+sql
 
@@ -88,13 +88,13 @@ Next, to tell the :class:`~sqlalchemy.schema.MetaData` we'd actually like to cre
     VARCHAR columns were generated without a length; on SQLite and Postgresql,
     this is a valid datatype, but on others, it's not allowed. So if running
     this tutorial on one of those databases, and you wish to use SQLAlchemy to
-    issue CREATE TABLE, a "length" may be provided to the ``String`` type as
+    issue CREATE TABLE, a "length" may be provided to the :class:`~sqlalchemy.types.String` type as
     below::
 
         Column('name', String(50))
 
-    The length field on ``String``, as well as similar precision/scale fields
-    available on ``Integer``, ``Numeric``, etc. are not referenced by
+    The length field on :class:`~sqlalchemy.types.String`, as well as similar precision/scale fields
+    available on :class:`~sqlalchemy.types.Integer`, :class:`~sqlalchemy.types.Numeric`, etc. are not referenced by
     SQLAlchemy other than when creating tables.
 
     Additionally, Firebird and Oracle require sequences to generate new
@@ -253,7 +253,7 @@ We began with inserts just so that our test database had some data in it.  The m
     FROM users
     []
 
-Above, we issued a basic ``select()`` call, placing the ``users`` table within the COLUMNS clause of the select, and then executing.  SQLAlchemy expanded the ``users`` table into the set of each of its columns, and also generated a FROM clause for us.  The result returned is again a :class:`~sqlalchemy.engine.base.ResultProxy` object, which acts much like a DBAPI cursor, including methods such as ``fetchone()`` and ``fetchall()``.  The easiest way to get rows from it is to just iterate:
+Above, we issued a basic ``select()`` call, placing the ``users`` table within the COLUMNS clause of the select, and then executing.  SQLAlchemy expanded the ``users`` table into the set of each of its columns, and also generated a FROM clause for us.  The result returned is again a :class:`~sqlalchemy.engine.base.ResultProxy` object, which acts much like a DBAPI cursor, including methods such as :func:`~sqlalchemy.engine.base.ResultProxy.fetchone` and :func:`~sqlalchemy.engine.base.ResultProxy.fetchall`.  The easiest way to get rows from it is to just iterate:
 
 .. sourcecode:: pycon+sql
 
@@ -426,7 +426,7 @@ If we add two integer columns together, we get an addition expression:
     >>> print users.c.id + addresses.c.id
     users.id + addresses.id
 
-Interestingly, the type of the :class:`~sqlalchemy.schema.Column` is important !  If we use ``+`` with two string based columns (recall we put types like ``Integer`` and ``String`` on our :class:`~sqlalchemy.schema.Column` objects at the beginning), we get something different:
+Interestingly, the type of the :class:`~sqlalchemy.schema.Column` is important !  If we use ``+`` with two string based columns (recall we put types like :class:`~sqlalchemy.types.Integer` and :class:`~sqlalchemy.types.String` on our :class:`~sqlalchemy.schema.Column` objects at the beginning), we get something different:
 
 .. sourcecode:: pycon+sql
 
@@ -718,7 +718,7 @@ Let's bake for .0001 seconds and see what rises:
     ['jack', '%@msn.com']
     {stop}[(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com'), (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com')]
 
-So we started small, added one little thing at a time, and at the end we have a huge statement..which actually works.  Now let's do one more thing; the searching function wants to add another ``email_address`` criterion on, however it doesn't want to construct an alias of the ``addresses`` table; suppose many parts of the application are written to deal specifically with the ``addresses`` table, and to change all those functions to support receiving an arbitrary alias of the address would be cumbersome.  We can actually *convert* the ``addresses`` table within the *existing* statement to be an alias of itself, using ``replace_selectable()``:
+So we started small, added one little thing at a time, and at the end we have a huge statement..which actually works.  Now let's do one more thing; the searching function wants to add another ``email_address`` criterion on, however it doesn't want to construct an alias of the ``addresses`` table; suppose many parts of the application are written to deal specifically with the ``addresses`` table, and to change all those functions to support receiving an arbitrary alias of the address would be cumbersome.  We can actually *convert* the ``addresses`` table within the *existing* statement to be an alias of itself, using :func:`~sqlalchemy.sql.expression.FromClause.replace_selectable`:
 
 .. sourcecode:: pycon+sql
 
@@ -851,7 +851,7 @@ Databases such as PostgreSQL and Oracle which support functions that return whol
     FROM calculate(:x, :y))
     WHERE users.id > z
 
-If we wanted to use our ``calculate`` statement twice with different bind parameters, the ``unique_params()`` function will create copies for us, and mark the bind parameters as "unique" so that conflicting names are isolated.  Note we also make two separate aliases of our selectable:
+If we wanted to use our ``calculate`` statement twice with different bind parameters, the :func:`~sqlalchemy.sql.expression.ClauseElement.unique_params` function will create copies for us, and mark the bind parameters as "unique" so that conflicting names are isolated.  Note we also make two separate aliases of our selectable:
 
 .. sourcecode:: pycon+sql
 
@@ -943,7 +943,7 @@ Scalar Selects
 --------------
 
 
-To embed a SELECT in a column expression, use ``as_scalar()``:
+To embed a SELECT in a column expression, use :func:`~sqlalchemy.sql.expression._SelectBaseMixin.as_scalar`:
 
 .. sourcecode:: pycon+sql
 

@@ -176,7 +176,7 @@ The most customizable connection method of all is to pass a ``creator`` argument
 Database Engine Options
 ========================
 
-Keyword options can also be specified to ``create_engine()``, following the string URL as follows:
+Keyword options can also be specified to :func:`~sqlalchemy.create_engine`, following the string URL as follows:
 
 .. sourcecode:: python+sql
 
@@ -432,7 +432,7 @@ So remember - if you're not sure if you need to use ``strategy="threadlocal"`` o
 Configuring Logging
 ====================
 
-Python's standard `logging <http://www.python.org/doc/lib/module-logging.html>`_ module is used to implement informational and debug log output with SQLAlchemy.  This allows SQLAlchemy's logging to integrate in a standard way with other applications and libraries.  The ``echo`` and ``echo_pool`` flags that are present on ``create_engine()``, as well as the ``echo_uow`` flag used on :class:`~sqlalchemy.orm.session.Session`, all interact with regular loggers.
+Python's standard `logging <http://www.python.org/doc/lib/module-logging.html>`_ module is used to implement informational and debug log output with SQLAlchemy.  This allows SQLAlchemy's logging to integrate in a standard way with other applications and libraries.  The ``echo`` and ``echo_pool`` flags that are present on :func:`~sqlalchemy.create_engine`, as well as the ``echo_uow`` flag used on :class:`~sqlalchemy.orm.session.Session`, all interact with regular loggers.
 
 This section assumes familiarity with the above linked logging module.  All logging performed by SQLAlchemy exists underneath the ``sqlalchemy`` namespace, as used by ``logging.getLogger('sqlalchemy')``.  When logging has been configured (i.e. such as via ``logging.basicConfig()``), the general namespace of SA loggers that can be turned on is as follows:
 
@@ -457,4 +457,4 @@ For example, to log SQL queries as well as unit of work debugging:
 
 By default, the log level is set to ``logging.ERROR`` within the entire ``sqlalchemy`` namespace so that no log operations occur, even within an application that has logging enabled otherwise.
 
-The ``echo`` flags present as keyword arguments to ``create_engine()`` and others as well as the ``echo`` property on :class:`~sqlalchemy.engine.base.Engine`, when set to ``True``, will first attempt to ensure that logging is enabled.  Unfortunately, the ``logging`` module provides no way of determining if output has already been configured (note we are referring to if a logging configuration has been set up, not just that the logging level is set).  For this reason, any ``echo=True`` flags will result in a call to ``logging.basicConfig()`` using sys.stdout as the destination.  It also sets up a default format using the level name, timestamp, and logger name.  Note that this configuration has the affect of being configured **in addition** to any existing logger configurations.  Therefore, **when using Python logging, ensure all echo flags are set to False at all times**, to avoid getting duplicate log lines.
+The ``echo`` flags present as keyword arguments to :func:`~sqlalchemy.create_engine` and others as well as the ``echo`` property on :class:`~sqlalchemy.engine.base.Engine`, when set to ``True``, will first attempt to ensure that logging is enabled.  Unfortunately, the ``logging`` module provides no way of determining if output has already been configured (note we are referring to if a logging configuration has been set up, not just that the logging level is set).  For this reason, any ``echo=True`` flags will result in a call to ``logging.basicConfig()`` using sys.stdout as the destination.  It also sets up a default format using the level name, timestamp, and logger name.  Note that this configuration has the affect of being configured **in addition** to any existing logger configurations.  Therefore, **when using Python logging, ensure all echo flags are set to False at all times**, to avoid getting duplicate log lines.

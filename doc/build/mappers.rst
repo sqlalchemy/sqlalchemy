@@ -181,7 +181,7 @@ A more comprehensive way to produce modified behavior for an attribute is to use
         '_email': addresses_table.c.email
     })
 
-However, the approach above is not complete.  While our ``EmailAddress`` object will shuttle the value through the ``email`` descriptor and into the ``_email`` mapped attribute, the class level ``EmailAddress.email`` attribute does not have the usual expression semantics usable with :class:`~sqlalchemy.orm.query.Query`.  To provide these, we instead use the ``synonym()`` function as follows:
+However, the approach above is not complete.  While our ``EmailAddress`` object will shuttle the value through the ``email`` descriptor and into the ``_email`` mapped attribute, the class level ``EmailAddress.email`` attribute does not have the usual expression semantics usable with :class:`~sqlalchemy.orm.query.Query`.  To provide these, we instead use the :func:`~sqlalchemy.orm.synonym` function as follows:
 
 .. sourcecode:: python+sql
 
@@ -200,7 +200,7 @@ The ``email`` attribute is now usable in the same way as any other mapped attrib
 
     q = session.query(EmailAddress).filter_by(email='some other address')
 
-If the mapped class does not provide a property, the ``synonym()`` construct will create a default getter/setter object automatically.
+If the mapped class does not provide a property, the :func:`~sqlalchemy.orm.synonym` construct will create a default getter/setter object automatically.
 
 .. _custom_comparators:
 
@@ -231,14 +231,14 @@ The ``__clause_element__()`` method is provided by the base ``Comparator`` class
 
 There are four kinds of ``Comparator`` classes which may be subclassed, as according to the type of mapper property configured:
 
-  * ``column_property()`` attribute - ``sqlalchemy.orm.properties.ColumnProperty.Comparator``
-  * ``composite()`` attribute - ``sqlalchemy.orm.properties.CompositeProperty.Comparator``
-  * ``relation()`` attribute - ``sqlalchemy.orm.properties.RelationProperty.Comparator``
-  * ``comparable_property()`` attribute - ``sqlalchemy.orm.interfaces.PropComparator``
+  * :func:`~sqlalchemy.orm.column_property` attribute - ``sqlalchemy.orm.properties.ColumnProperty.Comparator``
+  * :func:`~sqlalchemy.orm.composite` attribute - ``sqlalchemy.orm.properties.CompositeProperty.Comparator``
+  * :func:`~sqlalchemy.orm.relation` attribute - ``sqlalchemy.orm.properties.RelationProperty.Comparator``
+  * :func:`~sqlalchemy.orm.comparable_property` attribute - ``sqlalchemy.orm.interfaces.PropComparator``
 
-When using ``comparable_property()``, which is a mapper property that isn't tied to any column or mapped table, the ``__clause_element__()`` method of :class:`~sqlalchemy.orm.interfaces.PropComparator` should also be implemented.
+When using :func:`~sqlalchemy.orm.comparable_property`, which is a mapper property that isn't tied to any column or mapped table, the ``__clause_element__()`` method of :class:`~sqlalchemy.orm.interfaces.PropComparator` should also be implemented.
 
-The ``comparator_factory`` argument is accepted by all ``MapperProperty``-producing functions:  ``column_property()``, ``composite()``, ``comparable_property()``, ``synonym()``, ``relation()``, ``backref()``, ``deferred()``, and ``dynamic_loader()``.
+The ``comparator_factory`` argument is accepted by all ``MapperProperty``-producing functions:  :func:`~sqlalchemy.orm.column_property`, :func:`~sqlalchemy.orm.composite`, :func:`~sqlalchemy.orm.comparable_property`, :func:`~sqlalchemy.orm.synonym`, :func:`~sqlalchemy.orm.relation`, ``backref()``, :func:`~sqlalchemy.orm.deferred`, and :func:`~sqlalchemy.orm.dynamic_loader`.
 
 Composite Column Types
 -----------------------
@@ -314,7 +314,7 @@ Controlling Ordering
 
 The ORM does not generate ordering for any query unless explicitly configured.
 
-The "default" ordering for a collection, which applies to list-based collections, can be configured using the ``order_by`` keyword argument on ``relation()``::
+The "default" ordering for a collection, which applies to list-based collections, can be configured using the ``order_by`` keyword argument on :func:`~sqlalchemy.orm.relation`::
 
     mapper(Address, addresses_table)
 
@@ -323,7 +323,7 @@ The "default" ordering for a collection, which applies to list-based collections
         'addresses': relation(Address, order_by=addresses_table.c.address_id)
     })
 
-Note that when using eager loaders with relations, the tables used by the eager load's join are anonymously aliased.  You can only order by these columns if you specify it at the ``relation()`` level.  To control ordering at the query level based on a related table, you ``join()`` to that relation, then order by it::
+Note that when using eager loaders with relations, the tables used by the eager load's join are anonymously aliased.  You can only order by these columns if you specify it at the :func:`~sqlalchemy.orm.relation` level.  To control ordering at the query level based on a related table, you ``join()`` to that relation, then order by it::
 
     session.query(User).join('addresses').order_by(Address.street)
 
@@ -502,7 +502,7 @@ Using ``with_polymorphic()`` with :class:`~sqlalchemy.orm.query.Query` will over
 Creating Joins to Specific Subtypes
 ++++++++++++++++++++++++++++++++++++
 
-The ``of_type()`` method is a helper which allows the construction of joins along ``relation`` paths while narrowing the criterion to specific subclasses.  Suppose the ``employees`` table represents a collection of employees which are associated with a ``Company`` object.  We'll add a ``company_id`` column to the ``employees`` table and a new table ``companies``:
+The :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` method is a helper which allows the construction of joins along ``relation`` paths while narrowing the criterion to specific subclasses.  Suppose the ``employees`` table represents a collection of employees which are associated with a ``Company`` object.  We'll add a ``company_id`` column to the ``employees`` table and a new table ``companies``:
 
 .. sourcecode:: python+sql
 
@@ -525,7 +525,7 @@ The ``of_type()`` method is a helper which allows the construction of joins alon
         'employees': relation(Employee)
     })
 
-When querying from ``Company`` onto the ``Employee`` relation, the ``join()`` method as well as the ``any()`` and ``has()`` operators will create a join from ``companies`` to ``employees``, without including ``engineers`` or ``managers`` in the mix.  If we wish to have criterion which is specifically against the ``Engineer`` class, we can tell those methods to join or subquery against the joined table representing the subclass using the ``of_type()`` operator:
+When querying from ``Company`` onto the ``Employee`` relation, the ``join()`` method as well as the ``any()`` and ``has()`` operators will create a join from ``companies`` to ``employees``, without including ``engineers`` or ``managers`` in the mix.  If we wish to have criterion which is specifically against the ``Engineer`` class, we can tell those methods to join or subquery against the joined table representing the subclass using the :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` operator:
 
 .. sourcecode:: python+sql
 
@@ -537,14 +537,14 @@ A longhand version of this would involve spelling out the full target selectable
 
     session.query(Company).join((employees.join(engineers), Company.employees)).filter(Engineer.engineer_info=='someinfo')
 
-Currently, ``of_type()`` accepts a single class argument.  It may be expanded later on to accept multiple classes.  For now, to join to any group of subclasses, the longhand notation allows this flexibility:
+Currently, :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` accepts a single class argument.  It may be expanded later on to accept multiple classes.  For now, to join to any group of subclasses, the longhand notation allows this flexibility:
 
 .. sourcecode:: python+sql
 
     session.query(Company).join((employees.outerjoin(engineers).outerjoin(managers), Company.employees)).\
         filter(or_(Engineer.engineer_info=='someinfo', Manager.manager_data=='somedata'))
 
-The ``any()`` and ``has()`` operators also can be used with ``of_type()`` when the embedded criterion is in terms of a subclass:
+The ``any()`` and ``has()`` operators also can be used with :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` when the embedded criterion is in terms of a subclass:
 
 .. sourcecode:: python+sql
 
@@ -808,7 +808,7 @@ Above, the "customers" table is joined against the "orders" table to produce a f
 Multiple Mappers for One Class
 -------------------------------
 
-The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well on the "load side" - these are called **secondary mappers**.   This is a mapper that must be constructed with the keyword argument ``non_primary=True``, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new ``relation()`` objects to a non-primary mapper. To use this mapper with the Session, specify it to the ``query`` method:
+The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well on the "load side" - these are called **secondary mappers**.   This is a mapper that must be constructed with the keyword argument ``non_primary=True``, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new :func:`~sqlalchemy.orm.relation` objects to a non-primary mapper. To use this mapper with the Session, specify it to the :class:`~sqlalchemy.orm.session.Session.query` method:
 
 example:
 
@@ -823,7 +823,7 @@ example:
     # select
     result = session.query(othermapper).select()
 
-The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the :class:`~sqlalchemy.orm.query.Query` object can produce any kind of query that's desired.  It's recommended that a straight :class:`~sqlalchemy.orm.query.Query` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a ``relation()`` of a parent mapper.
+The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the :class:`~sqlalchemy.orm.query.Query` object can produce any kind of query that's desired.  It's recommended that a straight :class:`~sqlalchemy.orm.query.Query` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a :func:`~sqlalchemy.orm.relation` of a parent mapper.
 
 Multiple "Persistence" Mappers for One Class
 ---------------------------------------------
@@ -989,7 +989,7 @@ Many To Many
 ~~~~~~~~~~~~~
 
 
-Many to Many adds an association table between two classes.  The association table is indicated by the ``secondary`` argument to ``relation()``.
+Many to Many adds an association table between two classes.  The association table is indicated by the ``secondary`` argument to :func:`~sqlalchemy.orm.relation`.
 
 .. sourcecode:: python+sql
 
@@ -1081,7 +1081,7 @@ Working with the association pattern in its direct form requires that child obje
 
 To enhance the association object pattern such that direct access to the ``Association`` object is optional, SQLAlchemy provides the :ref:`associationproxy`.
 
-**Important Note**:  it is strongly advised that the ``secondary`` table argument not be combined with the Association Object pattern, unless the ``relation()`` which contains the ``secondary`` argument is marked ``viewonly=True``.  Otherwise, SQLAlchemy may persist conflicting data to the underlying association table since it is represented by two conflicting mappings.  The Association Proxy pattern should be favored in the case where access to the underlying association data is only sometimes needed.
+**Important Note**:  it is strongly advised that the ``secondary`` table argument not be combined with the Association Object pattern, unless the :func:`~sqlalchemy.orm.relation` which contains the ``secondary`` argument is marked ``viewonly=True``.  Otherwise, SQLAlchemy may persist conflicting data to the underlying association table since it is represented by two conflicting mappings.  The Association Proxy pattern should be favored in the case where access to the underlying association data is only sometimes needed.
 
 Adjacency List Relationships
 -----------------------------
@@ -1214,7 +1214,7 @@ Eager loading of relations occurs using joins or outerjoins from parent to child
 Specifying Alternate Join Conditions to relation()
 ---------------------------------------------------
 
-The ``relation()`` function uses the foreign key relationship between the parent and child tables to formulate the **primary join condition** between parent and child; in the case of a many-to-many relationship it also formulates the **secondary join condition**::
+The :func:`~sqlalchemy.orm.relation` function uses the foreign key relationship between the parent and child tables to formulate the **primary join condition** between parent and child; in the case of a many-to-many relationship it also formulates the **secondary join condition**::
 
       one to many/many to one:
       ------------------------
@@ -1269,7 +1269,7 @@ Specifying Foreign Keys
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-When using ``primaryjoin`` and ``secondaryjoin``, SQLAlchemy also needs to be aware of which columns in the relation reference the other.  In most cases, a :class:`~sqlalchemy.schema.Table` construct will have :class:`~sqlalchemy.schema.ForeignKey` constructs which take care of this; however, in the case of reflected tables on a database that does not report FKs (like MySQL ISAM) or when using join conditions on columns that don't have foreign keys, the ``relation()`` needs to be told specifically which columns are "foreign" using the ``foreign_keys`` collection:
+When using ``primaryjoin`` and ``secondaryjoin``, SQLAlchemy also needs to be aware of which columns in the relation reference the other.  In most cases, a :class:`~sqlalchemy.schema.Table` construct will have :class:`~sqlalchemy.schema.ForeignKey` constructs which take care of this; however, in the case of reflected tables on a database that does not report FKs (like MySQL ISAM) or when using join conditions on columns that don't have foreign keys, the :func:`~sqlalchemy.orm.relation` needs to be told specifically which columns are "foreign" using the ``foreign_keys`` collection:
 
 .. sourcecode:: python+sql
 
@@ -1284,7 +1284,7 @@ Building Query-Enabled Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-Very ambitious custom join conditions may fail to be directly persistable, and in some cases may not even load correctly.  To remove the persistence part of the equation, use the flag ``viewonly=True`` on the ``relation()``, which establishes it as a read-only attribute (data written to the collection will be ignored on flush()).  However, in extreme cases, consider using a regular Python property in conjunction with :class:`~sqlalchemy.orm.query.Query` as follows:
+Very ambitious custom join conditions may fail to be directly persistable, and in some cases may not even load correctly.  To remove the persistence part of the equation, use the flag ``viewonly=True`` on the :func:`~sqlalchemy.orm.relation`, which establishes it as a read-only attribute (data written to the collection will be ignored on flush()).  However, in extreme cases, consider using a regular Python property in conjunction with :class:`~sqlalchemy.orm.query.Query` as follows:
 
 .. sourcecode:: python+sql
 
@@ -1334,11 +1334,11 @@ Or::
     widget_id     name        favorite_entry_id             entry_id      name      widget_id
        1       'somewidget'          5                         5       'someentry'     1
 
-In the first case, a row points to itself.  Technically, a database that uses sequences such as PostgreSQL or Oracle can INSERT the row at once using a previously generated value, but databases which rely upon autoincrement-style primary key identifiers cannot.  The ``relation()`` always assumes a "parent/child" model of row population during flush, so unless you are populating the primary key/foreign key columns directly, ``relation()`` needs to use two statements.
+In the first case, a row points to itself.  Technically, a database that uses sequences such as PostgreSQL or Oracle can INSERT the row at once using a previously generated value, but databases which rely upon autoincrement-style primary key identifiers cannot.  The :func:`~sqlalchemy.orm.relation` always assumes a "parent/child" model of row population during flush, so unless you are populating the primary key/foreign key columns directly, :func:`~sqlalchemy.orm.relation` needs to use two statements.
 
-In the second case, the "widget" row must be inserted before any referring "entry" rows, but then the "favorite_entry_id" column of that "widget" row cannot be set until the "entry" rows have been generated.  In this case, it's typically impossible to insert the "widget" and "entry" rows using just two INSERT statements; an UPDATE must be performed in order to keep foreign key constraints fulfilled.   The exception is if the foreign keys are configured as "deferred until commit" (a feature some databases support) and if the identifiers were populated manually (again essentially bypassing ``relation()``).
+In the second case, the "widget" row must be inserted before any referring "entry" rows, but then the "favorite_entry_id" column of that "widget" row cannot be set until the "entry" rows have been generated.  In this case, it's typically impossible to insert the "widget" and "entry" rows using just two INSERT statements; an UPDATE must be performed in order to keep foreign key constraints fulfilled.   The exception is if the foreign keys are configured as "deferred until commit" (a feature some databases support) and if the identifiers were populated manually (again essentially bypassing :func:`~sqlalchemy.orm.relation`).
 
-To enable the UPDATE after INSERT / UPDATE before DELETE behavior on ``relation()``, use the ``post_update`` flag on *one* of the relations, preferably the many-to-one side::
+To enable the UPDATE after INSERT / UPDATE before DELETE behavior on :func:`~sqlalchemy.orm.relation`, use the ``post_update`` flag on *one* of the relations, preferably the many-to-one side::
 
     mapper(Widget, widget, properties={
         'entries':relation(Entry, primaryjoin=widget.c.widget_id==entry.c.widget_id),
@@ -1365,7 +1365,7 @@ Mapping a one-to-many or many-to-many relationship results in a collection of va
     parent.children.append(Child())
     print parent.children[0]
 
-Collections are not limited to lists.  Sets, mutable sequences and almost any other Python object that can act as a container can be used in place of the default list, by specifying the ``collection_class`` option on ``relation()``.
+Collections are not limited to lists.  Sets, mutable sequences and almost any other Python object that can act as a container can be used in place of the default list, by specifying the ``collection_class`` option on :func:`~sqlalchemy.orm.relation`.
 
 .. sourcecode:: python+sql
 
@@ -1546,7 +1546,7 @@ In the :ref:`ormtutorial_toplevel`, we introduced the concept of **Eager Loading
     WHERE users.name = ?
     ['jack']
 
-By default, all inter-object relationships are **lazy loading**.  The scalar or collection attribute associated with a ``relation()`` contains a trigger which fires the first time the attribute is accessed, which issues a SQL call at that point:
+By default, all inter-object relationships are **lazy loading**.  The scalar or collection attribute associated with a :func:`~sqlalchemy.orm.relation` contains a trigger which fires the first time the attribute is accessed, which issues a SQL call at that point:
 
 .. sourcecode:: python+sql
 
@@ -1557,7 +1557,7 @@ By default, all inter-object relationships are **lazy loading**.  The scalar or 
     [5]
     {stop}[<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
 
-The default **loader strategy** for any ``relation()`` is configured by the ``lazy`` keyword argument, which defaults to ``True``.  Below we set it as ``False`` so that the ``children`` relation is eager loading:
+The default **loader strategy** for any :func:`~sqlalchemy.orm.relation` is configured by the ``lazy`` keyword argument, which defaults to ``True``.  Below we set it as ``False`` so that the ``children`` relation is eager loading:
 
 .. sourcecode:: python+sql
 
@@ -1691,13 +1691,13 @@ A variant on ``contains_eager()`` is the ``contains_alias()`` option, which is u
 Working with Large Collections
 -------------------------------
 
-The default behavior of ``relation()`` is to fully load the collection of items in, as according to the loading strategy of the relation.  Additionally, the Session by default only knows how to delete objects which are actually present within the session.  When a parent instance is marked for deletion and flushed, the Session loads its full list of child items in so that they may either be deleted as well, or have their foreign key value set to null; this is to avoid constraint violations.  For large collections of child items, there are several strategies to bypass full loading of child items both at load time as well as deletion time.
+The default behavior of :func:`~sqlalchemy.orm.relation` is to fully load the collection of items in, as according to the loading strategy of the relation.  Additionally, the Session by default only knows how to delete objects which are actually present within the session.  When a parent instance is marked for deletion and flushed, the Session loads its full list of child items in so that they may either be deleted as well, or have their foreign key value set to null; this is to avoid constraint violations.  For large collections of child items, there are several strategies to bypass full loading of child items both at load time as well as deletion time.
 
 Dynamic Relation Loaders
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-The most useful by far is the ``dynamic_loader()`` relation.  This is a variant of ``relation()`` which returns a :class:`~sqlalchemy.orm.query.Query` object in place of a collection when accessed.  ``filter()`` criterion may be applied as well as limits and offsets, either explicitly or via array slices:
+The most useful by far is the :func:`~sqlalchemy.orm.dynamic_loader` relation.  This is a variant of :func:`~sqlalchemy.orm.relation` which returns a :class:`~sqlalchemy.orm.query.Query` object in place of a collection when accessed.  ``filter()`` criterion may be applied as well as limits and offsets, either explicitly or via array slices:
 
 .. sourcecode:: python+sql
 
