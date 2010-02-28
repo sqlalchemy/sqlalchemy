@@ -3,20 +3,20 @@
 Character Sets
 --------------
 
-oursql defaults to using ``utf8`` as the connection charset, but other 
-encodings may be used instead. Like the MySQL-Python driver, unicode support 
+oursql defaults to using ``utf8`` as the connection charset, but other
+encodings may be used instead. Like the MySQL-Python driver, unicode support
 can be completely disabled::
 
-  # oursql sets the connection charset to utf8 automatically; all strings come 
+  # oursql sets the connection charset to utf8 automatically; all strings come
   # back as utf8 str
   create_engine('mysql+oursql:///mydb?use_unicode=0')
 
-To not automatically use ``utf8`` and instead use whatever the connection 
+To not automatically use ``utf8`` and instead use whatever the connection
 defaults to, there is a separate parameter::
 
   # use the default connection charset; all strings come back as unicode
   create_engine('mysql+oursql:///mydb?default_charset=1')
-  
+
   # use latin1 as the connection charset; all strings come back as unicode
   create_engine('mysql+oursql:///mydb?charset=latin1')
 """
@@ -47,7 +47,7 @@ class _oursqlBIT(BIT):
 
 
 class MySQL_oursqlExecutionContext(MySQLExecutionContext):
-    
+
     @property
     def plain_query(self):
         return self.execution_options.get('_oursql_plain_query', False)
@@ -62,7 +62,7 @@ class MySQL_oursql(MySQLDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
     execution_ctx_cls = MySQL_oursqlExecutionContext
-    
+
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {
@@ -71,20 +71,19 @@ class MySQL_oursql(MySQLDialect):
             BIT: _oursqlBIT,
         }
     )
-    
+
     @classmethod
     def dbapi(cls):
         return __import__('oursql')
 
     def do_execute(self, cursor, statement, parameters, context=None):
-        """Provide an implementation of *cursor.execute(statement, parameters)*."""
-        
-# Py3K
+        """Provide an implementation of *cursor.execute(statement, parameters)*.
 #       TODO: this isn't right.   the supports_unicode_binds
 #       and supports_unicode_statements flags should be used for this one.
 #       also, don't call _detect_charset - use self._connection_charset
-#       which is already configured (uses _detect_charset just once).
-#
+#       which is already configured (uses _detect_charset just once)."""
+
+# Py3K
 #        if context is not None:
 #            charset = self._detect_charset(context.connection)
 #            if charset is not None:
@@ -144,7 +143,7 @@ class MySQL_oursql(MySQLDialect):
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):
         sql = MySQLDialect._show_create_table(self,
-            connection.contextual_connect(close_with_result=True).execution_options(_oursql_plain_query=True), 
+            connection.contextual_connect(close_with_result=True).execution_options(_oursql_plain_query=True),
             table, charset, full_name)
 # Py3K
 #        charset = self._detect_charset(connection)
@@ -180,7 +179,7 @@ class MySQL_oursql(MySQLDialect):
         opts.setdefault('found_rows', True)
 
         return [[], opts]
-    
+
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []
@@ -208,7 +207,6 @@ class MySQL_oursql(MySQLDialect):
         else:
             return None
 
-    
     def _compat_fetchall(self, rp, charset=None):
         """oursql isn't super-broken like MySQLdb, yaaay."""
         return rp.fetchall()
