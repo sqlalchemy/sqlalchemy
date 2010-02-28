@@ -5,7 +5,7 @@ Primary key changing capabilities and passive/non-passive cascading updates.
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy.test import testing
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, Unicode
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relation, create_session
 from sqlalchemy.test.testing import eq_
@@ -375,7 +375,7 @@ class ReversePKsTest(_base.MappedTest):
             'user', metadata,
             Column('code', Integer, primary_key=True),
             Column('status', Integer, primary_key=True),
-            Column('username', String(50), nullable=False),
+            Column('username', Unicode(50), nullable=False),
             )
     
     @classmethod

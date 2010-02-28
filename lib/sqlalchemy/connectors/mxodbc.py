@@ -6,7 +6,7 @@ from sqlalchemy.connectors import Connector
 
 class MxODBCConnector(Connector):
     driver='mxodbc'
-    supports_sane_rowcount = False
+    
     supports_sane_multi_rowcount = False
     supports_unicode_statements = False
     supports_unicode_binds = False

@@ -50,8 +50,6 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 
 
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
-    supports_sane_rowcount = True
-    supports_sane_multi_rowcount = False
 
     execution_ctx_cls = MSExecutionContext_pyodbc
 

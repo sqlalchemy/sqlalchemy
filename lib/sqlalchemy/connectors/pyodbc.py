@@ -7,7 +7,7 @@ import urllib
 
 class PyODBCConnector(Connector):
     driver='pyodbc'
-    supports_sane_rowcount = False
+
     supports_sane_multi_rowcount = False
     # PyODBC unicode is broken on UCS-4 builds
     supports_unicode = sys.maxunicode == 65535
