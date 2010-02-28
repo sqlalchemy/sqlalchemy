@@ -2319,10 +2319,6 @@ class DropTable(_CreateDropBase):
 
     __visit_name__ = "drop_table"
 
-    def __init__(self, element, cascade=False, **kw):
-        self.cascade = cascade
-        super(DropTable, self).__init__(element, **kw)
-
 class CreateSequence(_CreateDropBase):
     """Represent a CREATE SEQUENCE statement."""
     
