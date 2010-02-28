@@ -429,6 +429,8 @@ Calling ``close()`` on the "contextual" connection does not release the connecti
 
 So remember - if you're not sure if you need to use ``strategy="threadlocal"`` or not, the answer is **no** !  It's driven by a specific programming pattern that is generally not the norm.
 
+.. _dbengine_logging:
+
 Configuring Logging
 ====================
 
