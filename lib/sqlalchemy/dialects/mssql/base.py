@@ -826,7 +826,11 @@ class MSExecutionContext(default.DefaultExecutionContext):
     def handle_dbapi_exception(self, e):
         if self._enable_identity_insert:
             try:
-                self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.identifier_preparer.format_table(self.compiled.statement.table))
+                self.cursor.execute("SET IDENTITY_INSERT %s OFF" % 
+                                    self.dialect.\
+                                    identifier_preparer.\
+                                    format_table(self.compiled.statement.table)
+                                )
             except:
                 pass
 

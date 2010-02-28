@@ -190,6 +190,11 @@ CHANGES
     Note that it is *not* built/installed by default.
     See README for installation instructions.
 
+  - the execution sequence pulls all rowcount/last inserted ID
+    info from the cursor before commit() is called on the 
+    DBAPI connection in an "autocommit" scenario.  This helps 
+    mxodbc with rowcount and is probably a good idea overall.
+    
   - Opened up logging a bit such that isEnabledFor() is called 
     more often, so that changes to the log level for engine/pool
     will be reflected on next connect.   This adds a small 

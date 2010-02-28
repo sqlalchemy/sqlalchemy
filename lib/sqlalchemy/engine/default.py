@@ -30,6 +30,10 @@ class DefaultDialect(base.Dialect):
     preparer = compiler.IdentifierPreparer
     supports_alter = True
 
+    # most DBAPIs happy with this for execute().
+    # not cx_oracle.  
+    execute_sequence_format = tuple
+    
     supports_sequences = False
     sequences_optional = False
     preexecute_autoincrement_sequences = False
@@ -365,7 +369,7 @@ class DefaultExecutionContext(base.ExecutionContext):
     @util.memoized_property
     def _default_params(self):
         if self.dialect.positional:
-            return ()
+            return self.dialect.execute_sequence_format()
         else:
             return {}
         
@@ -392,21 +396,23 @@ class DefaultExecutionContext(base.ExecutionContext):
         """Apply string encoding to the keys of dictionary-based bind parameters.
 
         This is only used executing textual, non-compiled SQL expressions.
+        
         """
-
-        if self.dialect.positional or self.dialect.supports_unicode_statements:
-            if params:
+        
+        if not params:
+            return [self._default_params]
+        elif isinstance(params[0], self.dialect.execute_sequence_format):
+            return params
+        elif isinstance(params[0], dict):
+            if self.dialect.supports_unicode_statements:
                 return params
             else:
-                return [self._default_params]
+                def proc(d):
+                    return dict((k.encode(self.dialect.encoding), d[k]) for k in d)
+                return [proc(d) for d in params] or [{}]
         else:
-            def proc(d):
-                # sigh, sometimes we get positional arguments with a dialect
-                # that doesnt specify positional (because of execute_text())
-                if not isinstance(d, dict):
-                    return d
-                return dict((k.encode(self.dialect.encoding), d[k]) for k in d)
-            return [proc(d) for d in params] or [{}]
+            return [self.dialect.execute_sequence_format(p) for p in params]
+        
 
     def __convert_compiled_params(self, compiled_parameters):
         """Convert the dictionary of bind parameter values into a dict or list
@@ -423,7 +429,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                         param.append(processors[key](compiled_params[key]))
                     else:
                         param.append(compiled_params[key])
-                parameters.append(tuple(param))
+                parameters.append(self.dialect.execute_sequence_format(param))
         else:
             encode = not self.dialect.supports_unicode_statements
             for compiled_params in compiled_parameters:
@@ -442,7 +448,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                         else:
                             param[key] = compiled_params[key]
                 parameters.append(param)
-        return tuple(parameters)
+        return self.dialect.execute_sequence_format(parameters)
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_REGEXP.match(statement)
@@ -514,7 +520,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             
     def _fetch_implicit_returning(self, resultproxy):
         table = self.compiled.statement.table
-        row = resultproxy.first()
+        row = resultproxy.fetchone()
 
         self._inserted_primary_key = [v is not None and v or row[c] 
             for c, v in zip(table.primary_key, self._inserted_primary_key)

@@ -77,6 +77,10 @@ class Dialect(object):
     execution_ctx_cls
       a :class:`ExecutionContext` class used to handle statement execution
 
+    execute_sequence_format
+      either the 'tuple' or 'list' type, depending on what cursor.execute()
+      accepts for the second argument (they vary).
+      
     preparer
       a :class:`~sqlalchemy.sql.compiler.IdentifierPreparer` class used to
       quote identifiers.
@@ -1055,6 +1059,7 @@ class Connection(Connectable):
 
         In the case of 'raw' execution which accepts positional parameters,
         it may be a list of tuples or lists.
+        
         """
 
         if not multiparams:
@@ -1104,7 +1109,9 @@ class Connection(Connectable):
             keys = []
 
         context = self.__create_execution_context(
-                        compiled_sql=elem.compile(dialect=self.dialect, column_keys=keys, inline=len(params) > 1),
+                        compiled_sql=elem.compile(
+                                        dialect=self.dialect, column_keys=keys, 
+                                        inline=len(params) > 1),
                         parameters=params
                     )
         return self.__execute_context(context)
@@ -1128,9 +1135,15 @@ class Connection(Connectable):
             context.pre_exec()
             
         if context.executemany:
-            self._cursor_executemany(context.cursor, context.statement, context.parameters, context=context)
+            self._cursor_executemany(
+                            context.cursor, 
+                            context.statement, 
+                            context.parameters, context=context)
         else:
-            self._cursor_execute(context.cursor, context.statement, context.parameters[0], context=context)
+            self._cursor_execute(
+                            context.cursor, 
+                            context.statement, 
+                            context.parameters[0], context=context)
             
         if context.compiled:
             context.post_exec()
@@ -1138,10 +1151,17 @@ class Connection(Connectable):
             if context.isinsert and not context.executemany:
                 context.post_insert()
         
+        # create a resultproxy, get rowcount/implicit RETURNING
+        # rows, close cursor if no further results pending
+        r = context.get_result_proxy()._autoclose()
+
         if self.__transaction is None and context.should_autocommit:
             self._commit_impl()
-            
-        return context.get_result_proxy()._autoclose()
+        
+        if r.closed and self.should_close_with_result:
+            self.close()
+        
+        return r
         
     def _handle_dbapi_exception(self, e, statement, parameters, cursor, context):
         if getattr(self, '_reentrant_error', False):
@@ -1893,6 +1913,7 @@ class ResultProxy(object):
 
     _process_row = RowProxy
     out_parameters = None
+    _can_close_connection = False
     
     def __init__(self, context):
         self.context = context
@@ -1904,7 +1925,6 @@ class ResultProxy(object):
                         context.engine._should_log_debug()
         self._init_metadata()
 
-    
     def _init_metadata(self):
         metadata = self._cursor_description()
         if metadata is None:
@@ -1962,21 +1982,26 @@ class ResultProxy(object):
         return self.cursor.description
             
     def _autoclose(self):
+        """called by the Connection to autoclose cursors that have no pending results
+        beyond those used by an INSERT/UPDATE/DELETE with no explicit RETURNING clause.
+        
+        """
         if self.context.isinsert:
             if self.context._is_implicit_returning:
                 self.context._fetch_implicit_returning(self)
-                self.close()
+                self.close(_autoclose_connection=False)
             elif not self.context._is_explicit_returning:
-                self.close()
+                self.close(_autoclose_connection=False)
         elif self._metadata is None:
             # no results, get rowcount 
-            # (which requires open cursor on some DB's such as firebird),
+            # (which requires open cursor on some drivers
+            # such as kintersbasdb, mxodbc),
             self.rowcount
-            self.close() # autoclose
-            
+            self.close(_autoclose_connection=False)
+        
         return self
-            
-    def close(self):
+    
+    def close(self, _autoclose_connection=True):
         """Close this ResultProxy.
 
         Closes the underlying DBAPI cursor corresponding to the execution.
@@ -1992,12 +2017,14 @@ class ResultProxy(object):
 
         * all result rows are exhausted using the fetchXXX() methods.
         * cursor.description is None.
+        
         """
 
         if not self.closed:
             self.closed = True
             self.cursor.close()
-            if self.connection.should_close_with_result:
+            if _autoclose_connection and \
+                self.connection.should_close_with_result:
                 self.connection.close()
 
     def __iter__(self):

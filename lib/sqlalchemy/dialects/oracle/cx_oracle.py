@@ -307,6 +307,8 @@ class Oracle_cx_oracle(OracleDialect):
     driver = "cx_oracle"
     colspecs = colspecs
     
+    execute_sequence_format = list
+    
     def __init__(self, 
                 auto_setinputsizes=True, 
                 auto_convert_lobs=True, 
