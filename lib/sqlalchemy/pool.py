@@ -207,24 +207,21 @@ class _ConnectionRecord(object):
 
     def close(self):
         if self.connection is not None:
-            if self.__pool._should_log_debug:
-                self.__pool.logger.debug("Closing connection %r", self.connection)
+            self.__pool.logger.debug("Closing connection %r", self.connection)
             try:
                 self.connection.close()
             except (SystemExit, KeyboardInterrupt):
                 raise
             except:
-                if self.__pool._should_log_debug:
-                    self.__pool.logger.debug("Exception closing connection %r",
-                                    self.connection)
+                self.__pool.logger.debug("Exception closing connection %r",
+                                self.connection)
 
     def invalidate(self, e=None):
-        if self.__pool._should_log_info:
-            if e is not None:
-                self.__pool.logger.info("Invalidate connection %r (reason: %s:%s)",
-                                self.connection, e.__class__.__name__, e)
-            else:
-                self.__pool.logger.info("Invalidate connection %r", self.connection)
+        if e is not None:
+            self.__pool.logger.info("Invalidate connection %r (reason: %s:%s)",
+                            self.connection, e.__class__.__name__, e)
+        else:
+            self.__pool.logger.info("Invalidate connection %r", self.connection)
         self.__close()
         self.connection = None
 
@@ -236,9 +233,8 @@ class _ConnectionRecord(object):
                 for l in self.__pool._on_connect:
                     l.connect(self.connection, self)
         elif (self.__pool._recycle > -1 and time.time() - self.starttime > self.__pool._recycle):
-            if self.__pool._should_log_info:
-                self.__pool.logger.info("Connection %r exceeded timeout; recycling",
-                                self.connection)
+            self.__pool.logger.info("Connection %r exceeded timeout; recycling",
+                            self.connection)
             self.__close()
             self.connection = self.__connect()
             self.info.clear()
@@ -249,13 +245,11 @@ class _ConnectionRecord(object):
 
     def __close(self):
         try:
-            if self.__pool._should_log_debug:
-                self.__pool.logger.debug("Closing connection %r", self.connection)
+            self.__pool.logger.debug("Closing connection %r", self.connection)
             self.connection.close()
         except Exception, e:
-            if self.__pool._should_log_debug:
-                self.__pool.logger.debug("Connection %r threw an error on close: %s" %
-                                (self.connection, e))
+            self.__pool.logger.debug("Connection %r threw an error on close: %s",
+                            self.connection, e)
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
 
@@ -263,12 +257,10 @@ class _ConnectionRecord(object):
         try:
             self.starttime = time.time()
             connection = self.__pool._creator()
-            if self.__pool._should_log_debug:
-                self.__pool.logger.debug("Created new connection %r", connection)
+            self.__pool.logger.debug("Created new connection %r", connection)
             return connection
         except Exception, e:
-            if self.__pool._should_log_debug:
-                self.__pool.logger.debug("Error on connect(): %s", e)
+            self.__pool.logger.debug("Error on connect(): %s", e)
             raise
 
 
@@ -292,8 +284,7 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
                 raise
     if connection_record is not None:
         connection_record.fairy = None
-        if pool._should_log_debug:
-            pool.logger.debug("Connection %r being returned to pool", connection)
+        pool.logger.debug("Connection %r being returned to pool", connection)
         if pool._on_checkin:
             for l in pool._on_checkin:
                 l.checkin(connection, connection_record)
@@ -318,9 +309,8 @@ class _ConnectionFairy(object):
             self.connection = None # helps with endless __getattr__ loops later on
             self._connection_record = None
             raise
-        if self._pool._should_log_debug:
-            self._pool.logger.debug("Connection %r checked out from pool" %
-                           self.connection)
+        self._pool.logger.debug("Connection %r checked out from pool" %
+                       self.connection)
 
     @property
     def _logger(self):
@@ -386,15 +376,13 @@ class _ConnectionFairy(object):
                     l.checkout(self.connection, self._connection_record, self)
                 return self
             except exc.DisconnectionError, e:
-                if self._pool._should_log_info:
-                    self._pool.logger.info(
-                    "Disconnection detected on checkout: %s", e)
+                self._pool.logger.info(
+                "Disconnection detected on checkout: %s", e)
                 self._connection_record.invalidate(e)
                 self.connection = self._connection_record.get_connection()
                 attempts -= 1
 
-        if self._pool._should_log_info:
-            self._pool.logger.info("Reconnection attempts exhausted on checkout")
+        self._pool.logger.info("Reconnection attempts exhausted on checkout")
         self.invalidate()
         raise exc.InvalidRequestError("This connection is closed")
 
@@ -452,7 +440,7 @@ class _CursorFairy(object):
                 ex_text = str(e)
             except TypeError:
                 ex_text = repr(e)
-            self.__parent._logger.warn("Error closing cursor: " + ex_text)
+            self.__parent._logger.warn("Error closing cursor: %s", ex_text)
 
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
@@ -673,8 +661,7 @@ class QueuePool(Pool):
                 break
 
         self._overflow = 0 - self.size()
-        if self._should_log_info:
-            self.logger.info("Pool disposed. " + self.status())
+        self.logger.info("Pool disposed. %s", self.status())
 
     def status(self):
         tup = (self.size(), self.checkedin(), self.overflow(), self.checkedout())

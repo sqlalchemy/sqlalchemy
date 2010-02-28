@@ -390,13 +390,9 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
                     sql = "SELECT CURRENT_SCHEMA.%s.CURRVAL FROM DUAL" % (
                         self.compiled.preparer.format_table(table))
 
-                if self.connection.engine._should_log_info:
-                    self.connection.engine.logger.info(sql)
                 rs = self.cursor.execute(sql)
                 id = rs.fetchone()[0]
 
-                if self.connection.engine._should_log_debug:
-                    self.connection.engine.logger.debug([id])
                 if not self._last_inserted_ids:
                     # This shouldn't ever be > 1?  Right?
                     self._last_inserted_ids = \

@@ -747,6 +747,7 @@ class Connection(Connectable):
         self.__savepoint_seq = 0
         self.__branch = _branch
         self.__invalid = False
+        self._echo = self.engine._should_log_info()
         if _execution_options:
             self._execution_options = self._execution_options.union(_execution_options)
 
@@ -941,7 +942,7 @@ class Connection(Connectable):
         return self.__transaction is not None
 
     def _begin_impl(self):
-        if self.engine._should_log_info:
+        if self._echo:
             self.engine.logger.info("BEGIN")
         try:
             self.engine.dialect.do_begin(self.connection)
@@ -952,8 +953,9 @@ class Connection(Connectable):
     def _rollback_impl(self):
         # use getattr() for is_valid to support exceptions raised in dialect initializer, 
         # where we do not yet have the pool wrappers plugged in
-        if not self.closed and not self.invalidated and getattr(self.__connection, 'is_valid', False):
-            if self.engine._should_log_info:
+        if not self.closed and not self.invalidated and \
+                        getattr(self.__connection, 'is_valid', False):
+            if self._echo:
                 self.engine.logger.info("ROLLBACK")
             try:
                 self.engine.dialect.do_rollback(self.connection)
@@ -965,7 +967,7 @@ class Connection(Connectable):
             self.__transaction = None
 
     def _commit_impl(self):
-        if self.engine._should_log_info:
+        if self._echo:
             self.engine.logger.info("COMMIT")
         try:
             self.engine.dialect.do_commit(self.connection)
@@ -1184,7 +1186,7 @@ class Connection(Connectable):
             raise
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):
-        if self.engine._should_log_info:
+        if self._echo:
             self.engine.logger.info(statement)
             self.engine.logger.info("%r", parameters)
         try:
@@ -1194,7 +1196,7 @@ class Connection(Connectable):
             raise
 
     def _cursor_executemany(self, cursor, statement, parameters, context=None):
-        if self.engine._should_log_info:
+        if self._echo:
             self.engine.logger.info(statement)
             self.engine.logger.info("%r", parameters)
         try:
@@ -1898,9 +1900,11 @@ class ResultProxy(object):
         self.closed = False
         self.cursor = context.cursor
         self.connection = context.root_connection
-        self._echo = context.engine._should_log_info
+        self._echo = self.connection._echo and \
+                        context.engine._should_log_debug()
         self._init_metadata()
 
+    
     def _init_metadata(self):
         metadata = self._cursor_description()
         if metadata is None:

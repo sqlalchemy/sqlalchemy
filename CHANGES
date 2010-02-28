@@ -19,6 +19,10 @@ CHANGES
     internally. The formerly "pending" objects are now expunged
     first. [ticket:1674]
 
+  - Removed a lot of logging that nobody really cares about,
+    logging that remains will respond to live changes in the
+    log level.  No significant overhead is added.  [ticket:1719]
+    
   - session.merge() will not expire existing scalar attributes
     on an existing target if the target has a value for that
     attribute, even if the incoming merged doesn't have
@@ -186,6 +190,14 @@ CHANGES
     Note that it is *not* built/installed by default.
     See README for installation instructions.
 
+  - Opened up logging a bit such that isEnabledFor() is called 
+    more often, so that changes to the log level for engine/pool
+    will be reflected on next connect.   This adds a small 
+    amount of method call overhead.  It's negligible and will make
+    life a lot easier for all those situations when logging 
+    just happens to be configured after create_engine() is called.
+    [ticket:1719]
+    
   - The assert_unicode flag is deprecated.  SQLAlchemy will raise
     a warning in all cases where it is asked to encode a non-unicode
     Python string, as well as when a Unicode or UnicodeType type

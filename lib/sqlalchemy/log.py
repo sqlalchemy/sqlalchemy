@@ -53,17 +53,11 @@ def class_logger(cls, enable=False):
         logger.setLevel(logging.DEBUG)
     elif enable == 'info':
         logger.setLevel(logging.INFO)
-    cls._should_log_debug = logger.isEnabledFor(logging.DEBUG)
-    cls._should_log_info = logger.isEnabledFor(logging.INFO)
+    cls._should_log_debug = lambda self: logger.isEnabledFor(logging.DEBUG)
+    cls._should_log_info = lambda self: logger.isEnabledFor(logging.INFO)
     cls.logger = logger
     _logged_classes.add(cls)
     
-def _refresh_class_loggers():
-    for cls in _logged_classes:
-        logger = logging.getLogger(cls.__module__ + "." + cls.__name__)
-        cls._should_log_debug = logger.isEnabledFor(logging.DEBUG)
-        cls._should_log_info = logger.isEnabledFor(logging.INFO)
-        
 def instance_logger(instance, echoflag=None):
     """create a logger for an instance.
     
@@ -93,8 +87,8 @@ def instance_logger(instance, echoflag=None):
             l.setLevel(logging.WARN)
     else:
         l = logging.getLogger(name)
-    instance._should_log_debug = l.isEnabledFor(logging.DEBUG)
-    instance._should_log_info = l.isEnabledFor(logging.INFO)
+    instance._should_log_debug = lambda: l.isEnabledFor(logging.DEBUG)
+    instance._should_log_info = lambda: l.isEnabledFor(logging.INFO)
     return l
 
 class echo_property(object):

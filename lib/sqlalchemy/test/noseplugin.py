@@ -85,8 +85,6 @@ class NoseSQLAlchemy(Plugin):
         for fn in post_configure:
             fn(self.options, file_config)
         
-        sqla_log._refresh_class_loggers()
-        
     def describeTest(self, test):
         return ""
         

@@ -18,7 +18,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
                          use_threadlocal=True)
 
 
-    @profiling.function_call_count(54, {'2.4': 36, '3.0':57, '3.1':57})
+    @profiling.function_call_count(64, {'2.4': 36, '3.0':57, '3.1':57})
     def test_first_connect(self):
         conn = pool.connect()
 
@@ -26,7 +26,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
         conn = pool.connect()
         conn.close()
 
-        @profiling.function_call_count(29, {'2.4': 21})
+        @profiling.function_call_count(32, {'2.4': 21})
         def go():
             conn2 = pool.connect()
             return conn2

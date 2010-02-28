@@ -267,7 +267,7 @@ class LoadDeferredColumns(object):
         # narrow the keys down to just those which have no history
         group = [k for k in toload if k in state.unmodified]
 
-        if strategy._should_log_debug:
+        if strategy._should_log_debug():
             strategy.logger.debug(
                     "deferred load %s group %s",
                     (mapperutil.state_attribute_str(state, self.key), 
@@ -513,7 +513,7 @@ class LoadLazyAttribute(object):
         if kw.get('passive') is attributes.PASSIVE_NO_FETCH and not strategy.use_get:
             return attributes.PASSIVE_NO_RESULT
 
-        if strategy._should_log_debug:
+        if strategy._should_log_debug():
             strategy.logger.debug("loading %s", 
                                     mapperutil.state_attribute_str(state, self.key))
         

@@ -1091,13 +1091,12 @@ class RelationProperty(StrategizedProperty):
         
         
     def _post_init(self):
-        if self._should_log_info:
-            self.logger.info("%s setup primary join %s", self, self.primaryjoin)
-            self.logger.info("%s setup secondary join %s", self, self.secondaryjoin)
-            self.logger.info("%s synchronize pairs [%s]", self, ",".join("(%s => %s)" % (l, r) for l, r in self.synchronize_pairs))
-            self.logger.info("%s secondary synchronize pairs [%s]", self, ",".join(("(%s => %s)" % (l, r) for l, r in self.secondary_synchronize_pairs or [])))
-            self.logger.info("%s local/remote pairs [%s]", self, ",".join("(%s / %s)" % (l, r) for l, r in self.local_remote_pairs))
-            self.logger.info("%s relation direction %s", self, self.direction)
+        self.logger.info("%s setup primary join %s", self, self.primaryjoin)
+        self.logger.info("%s setup secondary join %s", self, self.secondaryjoin)
+        self.logger.info("%s synchronize pairs [%s]", self, ",".join("(%s => %s)" % (l, r) for l, r in self.synchronize_pairs))
+        self.logger.info("%s secondary synchronize pairs [%s]", self, ",".join(("(%s => %s)" % (l, r) for l, r in self.secondary_synchronize_pairs or [])))
+        self.logger.info("%s local/remote pairs [%s]", self, ",".join("(%s / %s)" % (l, r) for l, r in self.local_remote_pairs))
+        self.logger.info("%s relation direction %s", self, self.direction)
         
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE

@@ -458,7 +458,7 @@ class Mapper(object):
                     "key columns for mapped table '%s'" % (self, self.mapped_table.description))
 
             self.primary_key = primary_key
-            self._log("Identified primary key columns: " + str(primary_key))
+            self._log("Identified primary key columns: %s", primary_key)
 
     def _configure_properties(self):
         
@@ -523,7 +523,7 @@ class Mapper(object):
             self._configure_property(key, ConcreteInheritedProperty(), init=init, setparent=True)
             
     def _configure_property(self, key, prop, init=True, setparent=True):
-        self._log("_configure_property(%s, %s)" % (key, prop.__class__.__name__))
+        self._log("_configure_property(%s, %s)", key, prop.__class__.__name__)
 
         if not isinstance(prop, MapperProperty):
             # we were passed a Column or a list of Columns; generate a ColumnProperty
@@ -727,7 +727,7 @@ class Mapper(object):
         self._log("_post_configure_properties() started")
         l = [(key, prop) for key, prop in self._props.iteritems()]
         for key, prop in l:
-            self._log("initialize prop " + key)
+            self._log("initialize prop %s", key)
             
             if prop.parent is self and not prop._compile_started:
                 prop.init()
@@ -1242,7 +1242,8 @@ class Mapper(object):
             ret[t] = table_to_mapper[t]
         return ret
 
-    def _save_obj(self, states, uowtransaction, postupdate=False, post_update_cols=None, single=False):
+    def _save_obj(self, states, uowtransaction, postupdate=False, 
+                                post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
 
         This is called within the context of a UOWTransaction during a
@@ -1256,9 +1257,6 @@ class Mapper(object):
         mapper which does not inherit from any other mapper.
         
         """
-        if self._should_log_debug:
-            self._log_debug("_save_obj() start, " + (single and "non-batched" or "batched"))
-
         # if batch=false, call _save_obj separately for each object
         if not single and not self.batch:
             for state in _sort_states(states):
@@ -1316,13 +1314,13 @@ class Mapper(object):
                     existing = attributes.instance_state(instance)
                     if not uowtransaction.is_deleted(existing):
                         raise orm_exc.FlushError(
-                            "New instance %s with identity key %s conflicts with persistent instance %s" % 
+                            "New instance %s with identity key %s conflicts "
+                            "with persistent instance %s" % 
                             (state_str(state), instance_key, state_str(existing)))
                             
-                    if self._should_log_debug:
-                        self._log_debug(
-                            "detected row switch for identity %s.  will update %s, remove %s from "
-                            "transaction", instance_key, state_str(state), state_str(existing))
+                    self._log_debug(
+                        "detected row switch for identity %s.  will update %s, remove %s from "
+                        "transaction", instance_key, state_str(state), state_str(existing))
                             
                     # remove the "delete" flag from the existing element
                     uowtransaction.set_row_switch(existing)
@@ -1340,10 +1338,6 @@ class Mapper(object):
                     
                 pks = mapper._pks_by_table[table]
                 
-                if self._should_log_debug:
-                    self._log_debug("_save_obj() table '%s' instance %s identity %s",
-                                    table.name, state_str(state), str(instance_key))
-
                 isinsert = not has_identity and not postupdate and state not in row_switches
                 
                 params = {}
@@ -1550,9 +1544,6 @@ class Mapper(object):
         flush operation.
 
         """
-        if self._should_log_debug:
-            self._log_debug("_delete_obj() start")
-
         if 'connection_callable' in uowtransaction.mapper_flush_opts:
             connection_callable = uowtransaction.mapper_flush_opts['connection_callable']
             tups = [(state, _state_mapper(state), connection_callable(self, state.obj())) for state in _sort_states(states)]
