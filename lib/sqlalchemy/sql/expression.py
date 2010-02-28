@@ -2424,6 +2424,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
 class _Tuple(ClauseList, ColumnElement):
     
     def __init__(self, *clauses, **kw):
+        clauses = [_literal_as_binds(c) for c in clauses]
         super(_Tuple, self).__init__(*clauses, **kw)
         self.type = _type_from_args(clauses)
 

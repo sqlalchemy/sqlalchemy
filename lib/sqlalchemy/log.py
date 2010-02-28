@@ -112,7 +112,8 @@ class echo_property(object):
         if instance is None:
             return self
         else:
-            return instance._should_log_debug and 'debug' or (instance._should_log_info and True or False)
+            return instance._should_log_debug and 'debug' or \
+                            (instance._should_log_info and True or False)
 
     def __set__(self, instance, value):
         instance_logger(instance, echoflag=value)
