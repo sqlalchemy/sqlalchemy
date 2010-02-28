@@ -143,6 +143,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
     PyObject *type;
+    PyObject *format;
 } DecimalResultProcessor;
 
 
@@ -158,7 +159,7 @@ UnicodeResultProcessor_init(UnicodeResultProcessor *self, PyObject *args,
     PyObject *encoding, *errors = NULL;
     static char *kwlist[] = {"encoding", "errors", NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "S|S:init", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "S|S:__init__", kwlist,
                                      &encoding, &errors))
         return -1;
 
@@ -252,13 +253,16 @@ static int
 DecimalResultProcessor_init(DecimalResultProcessor *self, PyObject *args,
                             PyObject *kwds)
 {
-    PyObject *type;
+    PyObject *type, *format;
 
-    if (!PyArg_ParseTuple(args, "O", &type))
+    if (!PyArg_ParseTuple(args, "OS", &type, &format))
         return -1;
 
     Py_INCREF(type);
     self->type = type;
+
+    Py_INCREF(format);
+    self->format = format;
 
     return 0;
 }
@@ -266,16 +270,21 @@ DecimalResultProcessor_init(DecimalResultProcessor *self, PyObject *args,
 static PyObject *
 DecimalResultProcessor_process(DecimalResultProcessor *self, PyObject *value)
 {
-    PyObject *str, *result;
+    PyObject *str, *result, *args;
 
     if (value == Py_None)
         Py_RETURN_NONE;
 
     if (PyFloat_CheckExact(value)) {
         /* Decimal does not accept float values directly */
-        str = PyObject_Str(value);
+        args = PyTuple_Pack(1, value);
+        if (args == NULL)
+            return NULL;
+
+        str = PyString_Format(self->format, args);
         if (str == NULL)
             return NULL;
+
         result = PyObject_CallFunctionObjArgs(self->type, str, NULL);
         Py_DECREF(str);
         return result;
