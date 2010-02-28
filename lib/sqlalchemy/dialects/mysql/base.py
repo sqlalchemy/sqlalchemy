@@ -2504,7 +2504,11 @@ class _DecodingRowProxy(object):
         item = self.rowproxy[index]
         if isinstance(item, _array):
             item = item.tostring()
+        # Py2K
         if self.charset and isinstance(item, str):
+        # end Py2K
+        # Py3K
+        #if self.charset and isinstance(item, bytes):
             return item.decode(self.charset)
         else:
             return item
@@ -2513,7 +2517,11 @@ class _DecodingRowProxy(object):
         item = getattr(self.rowproxy, attr)
         if isinstance(item, _array):
             item = item.tostring()
+        # Py2K
         if self.charset and isinstance(item, str):
+        # end Py2K
+        # Py3K
+        #if self.charset and isinstance(item, bytes):
             return item.decode(self.charset)
         else:
             return item

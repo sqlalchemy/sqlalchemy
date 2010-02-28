@@ -49,11 +49,10 @@ class _myconnpyBIT(BIT):
 
 class MySQL_mysqlconnector(MySQLDialect):
     driver = 'mysqlconnector'
-    supports_unicode_statements = False
+    supports_unicode_statements = True
     supports_unicode_binds = True
-    supports_sane_rowcount = False
+    supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
-    description_encoding = None
 
     default_paramstyle = 'format'
     execution_ctx_cls = MySQL_mysqlconnectorExecutionContext

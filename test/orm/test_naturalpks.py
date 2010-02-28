@@ -594,7 +594,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         self._test_onetomany(True)
 
     # PG etc. need passive=True to allow PK->PK cascade
-    @testing.fails_on_everything_except('sqlite')
+    @testing.fails_on_everything_except('sqlite', 'mysql+mysqlconnector')
     def test_onetomany_nonpassive(self):
         self._test_onetomany(False)
         
@@ -737,7 +737,7 @@ class JoinedInheritanceTest(_base.MappedTest):
         self._test_pk(True)
 
     # PG etc. need passive=True to allow PK->PK cascade
-    @testing.fails_on_everything_except('sqlite')
+    @testing.fails_on_everything_except('sqlite', 'mysql+mysqlconnector')
     def test_pk_nonpassive(self):
         self._test_pk(False)
         
@@ -747,7 +747,7 @@ class JoinedInheritanceTest(_base.MappedTest):
         self._test_fk(True)
         
     # PG etc. need passive=True to allow PK->PK cascade
-    @testing.fails_on_everything_except('sqlite')
+    @testing.fails_on_everything_except('sqlite', 'mysql+mysqlconnector')
     def test_fk_nonpassive(self):
         self._test_fk(False)
 
