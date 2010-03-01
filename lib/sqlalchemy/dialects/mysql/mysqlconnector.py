@@ -8,7 +8,7 @@ import re
 
 from sqlalchemy.dialects.mysql.base import (MySQLDialect,
     MySQLExecutionContext, MySQLCompiler, MySQLIdentifierPreparer,
-    BIT, NUMERIC)
+    BIT, NUMERIC, _NumericType)
 
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
@@ -28,18 +28,20 @@ class MySQL_mysqlconnectorCompiler(MySQLCompiler):
     def post_process_text(self, text):
         return text.replace('%', '%%')
 
+class _DecimalType(_NumericType):
+    def result_processor(self, dialect, coltype):
+        if self.asdecimal:
+            return None
+        return processors.to_float
+
+class _myconnpyNumeric(_DecimalType, NUMERIC):
+    pass
 
 class MySQL_mysqlconnectorIdentifierPreparer(MySQLIdentifierPreparer):
 
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace("%", "%%")
-
-class _myconnpyNumeric(NUMERIC):
-    def result_processor(self, dialect, coltype):
-        if self.asdecimal:
-            return None
-        return processors.to_float
 
 class _myconnpyBIT(BIT):
     def result_processor(self, dialect, coltype):
@@ -82,6 +84,16 @@ class MySQL_mysqlconnector(MySQLDialect):
         opts['buffered'] = True
         opts['raise_on_warnings'] = True
 
+        # FOUND_ROWS must be set in ClientFlag to enable
+        # supports_sane_rowcount.
+        if self.dbapi is not None:
+            try:
+                from mysql.connector.constants import ClientFlag
+                client_flags = opts.get('client_flags', ClientFlag.get_default())
+                client_flags |= ClientFlag.FOUND_ROWS
+                opts['client_flags'] = client_flags
+            except:
+                pass
         return [[], opts]
 
     def _get_server_version_info(self, connection):
