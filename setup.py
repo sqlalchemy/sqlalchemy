@@ -55,7 +55,7 @@ setup(name = "SQLAlchemy",
       packages = find_packages('lib'),
       package_dir = {'':'lib'},
       license = "MIT License",
-      tests_require = ['nose >= 0.10'],
+      tests_require = ['nose >= 0.11'],
       test_suite = "nose.collector",
       ext_modules = (BUILD_CEXTENSIONS and
                      [Extension('sqlalchemy.cprocessors',
