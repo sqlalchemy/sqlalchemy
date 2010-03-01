@@ -15,6 +15,16 @@ class CompileTest(TestBase, AssertsExecutionResults):
             Column('c1', Integer, primary_key=True),
             Column('c2', String(30)))
 
+        # go through all the TypeEngine
+        # objects in use and pre-load their _type_affinity
+        # entries.
+        for t in (t1, t2):
+            for c in t.c:
+                c.type._type_affinity
+        from sqlalchemy import types
+        for t in types.type_map.values():
+            t._type_affinity
+            
     @profiling.function_call_count(69, {'2.4': 44, '3.0':77, '3.1':77})
     def test_insert(self):
         t1.insert().compile()
