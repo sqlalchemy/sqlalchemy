@@ -502,7 +502,7 @@ Using :func:`~sqlalchemy.orm.query.Query.with_polymorphic` with :class:`~sqlalch
 Creating Joins to Specific Subtypes
 ++++++++++++++++++++++++++++++++++++
 
-The :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` method is a helper which allows the construction of joins along ``relation`` paths while narrowing the criterion to specific subclasses.  Suppose the ``employees`` table represents a collection of employees which are associated with a ``Company`` object.  We'll add a ``company_id`` column to the ``employees`` table and a new table ``companies``:
+The :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` method is a helper which allows the construction of joins along :func:`~sqlalchemy.orm.relation` paths while narrowing the criterion to specific subclasses.  Suppose the ``employees`` table represents a collection of employees which are associated with a ``Company`` object.  We'll add a ``company_id`` column to the ``employees`` table and a new table ``companies``:
 
 .. sourcecode:: python+sql
 
@@ -619,7 +619,7 @@ Notice in this case there is no ``type`` column.  If polymorphic loading is not 
     mapper(Manager, managers_table)
     mapper(Engineer, engineers_table)
 
-To load polymorphically, the ``with_polymorphic`` argument is required, along with a selectable indicating how rows should be loaded.  In this case we must construct a UNION of all three tables.  SQLAlchemy includes a helper function to create these called ``polymorphic_union``, which will map all the different columns into a structure of selects with the same numbers and names of columns, and also generate a virtual ``type`` column for each subselect:
+To load polymorphically, the ``with_polymorphic`` argument is required, along with a selectable indicating how rows should be loaded.  In this case we must construct a UNION of all three tables.  SQLAlchemy includes a helper function to create these called :func:`~sqlalchemy.orm.util.polymorphic_union`, which will map all the different columns into a structure of selects with the same numbers and names of columns, and also generate a virtual ``type`` column for each subselect:
 
 .. sourcecode:: python+sql
 
@@ -861,14 +861,14 @@ recreating transient properties that are normally assigned in your ``__init__``:
 When ``obj = MyMappedClass()`` is executed, Python calls the ``__init__`` method as normal and the ``data`` argument is required. When instances are loaded
 during a :class:`~sqlalchemy.orm.query.Query` operation as in ``query(MyMappedClass).one()``, ``init_on_load`` is called instead.
 
-Any method may be tagged as the ``reconstructor``, even the ``__init__`` method. SQLAlchemy will call the reconstructor method with no arguments. Scalar
+Any method may be tagged as the :func:`~sqlalchemy.orm.reconstructor`, even the ``__init__`` method. SQLAlchemy will call the reconstructor method with no arguments. Scalar
 (non-collection) database-mapped attributes of the instance will be available for use within the function. Eagerly-loaded collections are generally not yet
 available and will usually only contain the first element. ORM state changes made to objects at this stage will not be recorded for the next flush()
 operation, so the activity within a reconstructor should be conservative.
 
 While the ORM does not call your ``__init__`` method, it will modify the class's ``__init__`` slightly. The method is lightly wrapped to act as a trigger for
-the ORM, allowing mappers to be compiled automatically and will fire a ``init_instance`` event that :class:`~sqlalchemy.orm.interfaces.MapperExtension` objects may listen for.
-:class:`~sqlalchemy.orm.interfaces.MapperExtension` objects can also listen for a ``reconstruct_instance`` event, analogous to the ``reconstructor`` decorator above.
+the ORM, allowing mappers to be compiled automatically and will fire a :func:`~sqlalchemy.orm.interfaces.MapperExtension.init_instance` event that :class:`~sqlalchemy.orm.interfaces.MapperExtension` objects may listen for.
+:class:`~sqlalchemy.orm.interfaces.MapperExtension` objects can also listen for a ``reconstruct_instance`` event, analogous to the :func:`~sqlalchemy.orm.reconstructor` decorator above.
 
 .. _extending_mapper:
 

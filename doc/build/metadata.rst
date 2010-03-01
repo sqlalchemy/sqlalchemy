@@ -827,7 +827,7 @@ Adapting Tables to Alternate Metadata
 ======================================
 
 
-A :class:`~sqlalchemy.schema.Table` object created against a specific :class:`~sqlalchemy.schema.MetaData` object can be re-created against a new MetaData using the ``tometadata`` method:
+A :class:`~sqlalchemy.schema.Table` object created against a specific :class:`~sqlalchemy.schema.MetaData` object can be re-created against a new MetaData using the :func:`~sqlalchemy.schema.Table.tometadata` method:
 
 .. sourcecode:: python+sql
 

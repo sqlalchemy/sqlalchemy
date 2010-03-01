@@ -156,7 +156,7 @@ Custom arguments used when issuing the ``connect()`` call to the underlying DBAP
 
 If SQLAlchemy's database connector is aware of a particular query argument, it may convert its type from string to its proper type.
 
-``create_engine`` also takes an argument ``connect_args`` which is an additional dictionary that will be passed to ``connect()``.  This can be used when arguments of a type other than string are required, and SQLAlchemy's database connector has no type conversion logic present for that parameter:
+:func:`~sqlalchemy.create_engine` also takes an argument ``connect_args`` which is an additional dictionary that will be passed to ``connect()``.  This can be used when arguments of a type other than string are required, and SQLAlchemy's database connector has no type conversion logic present for that parameter:
 
 .. sourcecode:: python+sql
 
