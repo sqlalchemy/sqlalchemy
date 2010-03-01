@@ -546,6 +546,9 @@ def _as_declarative(cls, classname, dict_):
                     dict_[name]=column_copies[obj]=obj.copy()
             mapper_args = mapper_args or getattr(base,'__mapper_args__',mapper_args)
             table_args = table_args or getattr(base,'__table_args__',None)
+            tablename = getattr(base,'__tablename__',None)
+            if tablename:
+                dict_['__tablename__']=tablename
 
     # make sure that column copies are used rather than the original columns
     # from any mixins

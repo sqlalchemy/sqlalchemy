@@ -1846,6 +1846,49 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.foo(),'bar1')
         eq_(obj.baz,'fu')
         
+    def test_table_name_inherited(self):
+        
+        class MyMixin:
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()
+            id =  Column(Integer, primary_key=True)
+
+        class MyModel(Base,MyMixin):
+            pass
+
+        eq_(MyModel.__table__.name,'mymodel')
+    
+    def test_table_name_not_inherited(self):
+        
+        class MyMixin:
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()
+            id =  Column(Integer, primary_key=True)
+
+        class MyModel(Base,MyMixin):
+            __tablename__ = 'overridden'
+
+        eq_(MyModel.__table__.name,'overridden')
+    
+    def test_table_name_inheritance_order(self):
+        
+        class MyMixin1:
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()+'1'
+
+        class MyMixin2:
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()+'2'
+            
+        class MyModel(Base,MyMixin1,MyMixin2):
+            id =  Column(Integer, primary_key=True)
+
+        eq_(MyModel.__table__.name,'mymodel1')
+    
     def test_table_args_inherited(self):
         
         class MyMixin:
