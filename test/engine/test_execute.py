@@ -201,7 +201,8 @@ class ProxyConnectionTest(TestBase):
                 
             assert_stmts(compiled, stmts)
             assert_stmts(cursor, cursor_stmts)
-    
+   
+    @testing.fails_on('mysql+oursql', 'oursql dialect has some extra steps here') 
     def test_transactional(self):
         track = []
         class TrackProxy(ConnectionProxy):
