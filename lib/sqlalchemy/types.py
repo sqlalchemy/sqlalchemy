@@ -704,7 +704,8 @@ class Unicode(String):
           
         """
         kwargs.setdefault('convert_unicode', True)
-        super(Unicode, self).__init__(length=length, _warn_on_bytestring=True, **kwargs)
+        kwargs.setdefault('_warn_on_bytestring', True)
+        super(Unicode, self).__init__(length=length, **kwargs)
 
 class UnicodeText(Text):
     """An unbounded-length Unicode string.
@@ -732,7 +733,8 @@ class UnicodeText(Text):
 
         """
         kwargs.setdefault('convert_unicode', True)
-        super(UnicodeText, self).__init__(length=length, _warn_on_bytestring=True, **kwargs)
+        kwargs.setdefault('_warn_on_bytestring', True)
+        super(UnicodeText, self).__init__(length=length, **kwargs)
 
 
 class Integer(_DateAffinity, TypeEngine):
@@ -838,7 +840,10 @@ class Numeric(_DateAffinity, TypeEngine):
 #            try:
 #                from fastdec import mpd as Decimal
 #            except ImportError:
-            return processors.to_decimal_processor_factory(_python_Decimal, self.scale)
+            if self.scale is not None:
+                return processors.to_decimal_processor_factory(_python_Decimal, self.scale)
+            else:
+                return processors.to_decimal_processor_factory(_python_Decimal)
         else:
             return None
 

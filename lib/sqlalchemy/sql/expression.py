@@ -2155,6 +2155,8 @@ class _BindParamClause(ColumnElement):
         
         if type_ is None:
             self.type = sqltypes.type_map.get(type(value), _fallback_type or sqltypes.NULLTYPE)
+            if _fallback_type and _fallback_type._type_affinity == self.type._type_affinity:
+                self.type = _fallback_type
         elif isinstance(type_, type):
             self.type = type_()
         else:

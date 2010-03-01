@@ -4,7 +4,7 @@ import decimal
 import datetime, os, re
 from sqlalchemy import *
 from sqlalchemy import exc, types, util, schema
-from sqlalchemy.sql import operators
+from sqlalchemy.sql import operators, column
 from sqlalchemy.test.testing import eq_
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import *
@@ -734,8 +734,9 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         )
 
     def test_bind_adapt(self):
+        # test an untyped bind gets the left side's type
         expr = test_table.c.atimestamp == bindparam("thedate")
-        assert expr.right.type.__class__ == test_table.c.atimestamp.type.__class__
+        eq_(expr.right.type._type_affinity, Date)
 
         eq_(
             testing.db.execute(
@@ -745,13 +746,31 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         )
 
         expr = test_table.c.avalue == bindparam("somevalue")
-        eq_(expr.right.type.__class__, test_table.c.avalue.type.__class__)
+        eq_(expr.right.type._type_affinity, MyCustomType)
         
         eq_(
             testing.db.execute(test_table.select().where(expr), {"somevalue":25}).fetchall(),
             [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
         )
+    
+    def test_literal_adapt(self):
+        # literals get typed based on the types dictionary, unless compatible
+        # with the left side type
 
+        expr = column('foo', String) == 5
+        eq_(expr.right.type._type_affinity, Integer)
+
+        expr = column('foo', String) == "asdf"
+        eq_(expr.right.type._type_affinity, String)
+
+        expr = column('foo', CHAR) == 5
+        eq_(expr.right.type._type_affinity, Integer)
+
+        expr = column('foo', CHAR) == "asdf"
+        eq_(expr.right.type.__class__, CHAR)
+        
+        
+        
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
     def test_operator_adapt(self):
         """test type-based overloading of operators"""
