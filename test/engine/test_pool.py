@@ -531,6 +531,8 @@ class QueuePoolTest(PoolTestBase):
                                         + repr(timeouts)
 
     def _test_overflow(self, thread_count, max_overflow):
+        gc_collect()
+        
         def creator():
             time.sleep(.05)
             return mock_dbapi.connect()
