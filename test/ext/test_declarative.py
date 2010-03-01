@@ -1857,6 +1857,23 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         eq_(MyModel.__table__.kwargs,{'mysql_engine': 'InnoDB'})
     
+    def test_table_args_inherited_single_table_inheritance(self):
+        
+        class MyMixin:
+            __table_args__ = {'mysql_engine':'InnoDB'}             
+
+        class General(Base,MyMixin):
+            __tablename__='test'
+            id =  Column(Integer, primary_key=True)
+            type_ = Column(String(50))
+            __mapper__args = {'polymorphic_on':type_}
+
+        class Specific(General):
+            __mapper_args__ = {'polymorphic_identity':'specific'}
+
+        eq_(General.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+        eq_(Specific.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+    
     def test_table_args_overridden(self):
         
         class MyMixin:
