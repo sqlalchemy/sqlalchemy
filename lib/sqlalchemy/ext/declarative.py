@@ -528,9 +528,10 @@ def instrument_declarative(cls, registry, metadata):
     
 def _as_declarative(cls, classname, dict_):
 
-    # this spelling enables these attributes to be descriptors
-    mapper_args = '__mapper_args__' in dict_ and cls.__mapper_args__ or {}
-    table_args = '__table_args__' in dict_ and cls.__table_args__ or None
+    # doing it this way enables these attributes to be descriptors,
+    # see below...
+    get_mapper_args = '__mapper_args__' in dict_
+    get_table_args = '__table_args__' in dict_
     
     # dict_ will be a dictproxy, which we can't write to, and we need to!
     dict_ = dict(dict_)
@@ -544,12 +545,20 @@ def _as_declarative(cls, classname, dict_):
                 obj = getattr(base,name)
                 if isinstance(obj, Column):
                     dict_[name]=column_copies[obj]=obj.copy()
-            mapper_args = mapper_args or getattr(base,'__mapper_args__',mapper_args)
-            table_args = table_args or getattr(base,'__table_args__',None)
+            get_mapper_args = get_mapper_args or getattr(base,'__mapper_args__',None)
+            get_table_args = get_table_args or getattr(base,'__table_args__',None)
             tablename = getattr(base,'__tablename__',None)
             if tablename:
+                # subtle: if tablename is a descriptor here, we actually
+                # put the wrong value in, but it serves as a marker to get
+                # the right value value...
                 dict_['__tablename__']=tablename
 
+    # now that we know whether or not to get these, get them from the class
+    # if we should, enabling them to be decorators
+    mapper_args = get_mapper_args and cls.__mapper_args__ or {}
+    table_args = get_table_args and cls.__table_args__ or None
+    
     # make sure that column copies are used rather than the original columns
     # from any mixins
     for k, v in mapper_args.iteritems():
@@ -595,6 +604,8 @@ def _as_declarative(cls, classname, dict_):
     table = None
     if '__table__' not in dict_:
         if '__tablename__' in dict_:
+            # see above: if __tablename__ is a descriptor, this
+            # means we get the right value used!
             tablename = cls.__tablename__
             
             if isinstance(table_args, dict):

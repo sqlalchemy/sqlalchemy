@@ -1900,6 +1900,19 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         eq_(MyModel.__table__.kwargs,{'mysql_engine': 'InnoDB'})
     
+    def test_table_args_inherited_descriptor(self):
+        
+        class MyMixin:
+            @classproperty
+            def __table_args__(cls):
+                return {'info':cls.__name__} 
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            id =  Column(Integer, primary_key=True)
+
+        eq_(MyModel.__table__.info,'MyModel')
+    
     def test_table_args_inherited_single_table_inheritance(self):
         
         class MyMixin:
@@ -1966,6 +1979,23 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         eq_(MyModel.__mapper__.always_refresh,True)
     
+    
+    def test_mapper_args_inherited_descriptor(self):
+        
+        class MyMixin:
+            @classproperty
+            def __mapper_args__(cls):
+                # tenuous, but illustrates the problem!
+                if cls.__name__=='MyModel':
+                    return dict(always_refresh=True)
+                else:
+                    return dict(always_refresh=False)
+
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            id =  Column(Integer, primary_key=True)
+
+        eq_(MyModel.__mapper__.always_refresh,True)
     
     def test_mapper_args_polymorphic_on_inherited(self):
 
