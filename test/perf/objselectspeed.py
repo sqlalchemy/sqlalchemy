@@ -44,10 +44,10 @@ def sql_select(entity_cls):
     people = []
     for row in Person_table.select().execute().fetchall():
         person = entity_cls()
-        person.id = row.id
-        person.name = row.name
-        person.sex = row.sex
-        person.age = row.age
+        person.id = row['id']
+        person.name = row['name']
+        person.sex = row['sex']
+        person.age = row['age']
         people.append(person)
 
 def orm_select():
