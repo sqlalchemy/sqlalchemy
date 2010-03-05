@@ -38,11 +38,13 @@ path.
 Installing the C extension
 --------------------------
 
-Edit "setup.py" and set ``BUILD_CEXTENSIONS`` to ``True``, then install it as
-above. If you want only to build the extension and not install it, you can do
-so with::
+If installing with Setuptools or Distribute, the C extensions are built 
+and installed using the --with-cextensions flag:
 
-  python setup.py build
+  python setup.py --with-cextensions install
+
+If using plain Distutils, change the BUILD_CEXTENSIONS flag in setup.py
+to "True".
 
 Running Tests
 -------------

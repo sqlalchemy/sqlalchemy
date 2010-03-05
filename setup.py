@@ -4,8 +4,9 @@ Please see README for basic installation instructions.
 
 """
 
-# set this flag to True to compile
-# C extensions
+# If using distutils (not distribute/setuptools),
+# set this flag to True to compile C extensions.
+# Otherwise use --with-cextensions
 BUILD_CEXTENSIONS = False
 
 import os
@@ -25,10 +26,33 @@ if sys.version_info >= (3, 0):
     )
 
 try:
-    from setuptools import setup, Extension
+    from setuptools import setup, Extension, Feature
 except ImportError:
     from distutils.core import setup, Extension
+    Feature = None
 
+if Feature:
+    extra.update(
+        features = {'cextensions' : Feature(
+            "optional C speed-enhancements",
+            standard = False,
+            ext_modules = [
+                Extension('sqlalchemy.cprocessors',
+                       sources=['lib/sqlalchemy/cextension/processors.c']),
+                Extension('sqlalchemy.cresultproxy',
+                       sources=['lib/sqlalchemy/cextension/resultproxy.c'])
+            ],
+        )}
+    )
+elif BUILD_CEXTENSIONS:
+    extra.update(
+        ext_modules = [
+                Extension('sqlalchemy.cprocessors',
+                      sources=['lib/sqlalchemy/cextension/processors.c']),
+                Extension('sqlalchemy.cresultproxy',
+                      sources=['lib/sqlalchemy/cextension/resultproxy.c'])
+            ]
+    )
 
 def find_packages(dir_):
     packages = []
@@ -45,7 +69,6 @@ v = open(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy', '__init__.
 VERSION = re.compile(r".*__version__ = '(.*?)'", re.S).match(v.read()).group(1)
 v.close()
 
-
 setup(name = "SQLAlchemy",
       version = VERSION,
       description = "Database Abstraction Library",
@@ -57,12 +80,6 @@ setup(name = "SQLAlchemy",
       license = "MIT License",
       tests_require = ['nose >= 0.11'],
       test_suite = "nose.collector",
-      ext_modules = (BUILD_CEXTENSIONS and
-                     [Extension('sqlalchemy.cprocessors',
-                                sources=['lib/sqlalchemy/cextension/processors.c']),
-                      Extension('sqlalchemy.cresultproxy',
-                                sources=['lib/sqlalchemy/cextension/resultproxy.c'])
-                                ]),
       entry_points = {
           'nose.plugins.0.10': [
               'sqlalchemy = sqlalchemy.test.noseplugin:NoseSQLAlchemy',
