@@ -4,8 +4,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""private module containing functions used for copying data between instances
-based on join conditions.
+"""private module containing functions used for copying data 
+between instances based on join conditions.
 """
 
 from sqlalchemy.orm import exc, util as mapperutil
@@ -35,7 +35,11 @@ def populate(source, source_mapper, dest, dest_mapper,
 def clear(dest, dest_mapper, synchronize_pairs):
     for l, r in synchronize_pairs:
         if r.primary_key:
-            raise AssertionError("Dependency rule tried to blank-out primary key column '%s' on instance '%s'" % (r, mapperutil.state_str(dest)))
+            raise AssertionError(
+                                "Dependency rule tried to blank-out primary key "
+                                "column '%s' on instance '%s'" % 
+                                (r, mapperutil.state_str(dest))
+                            )
         try:
             dest_mapper._set_state_attr_by_column(dest, r, None)
         except exc.UnmappedColumnError:
@@ -61,8 +65,8 @@ def populate_dict(source, source_mapper, dict_, synchronize_pairs):
         dict_[r.key] = value
 
 def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
-    """return true if the source object has changes from an old to a new value on the given
-    synchronize pairs
+    """return true if the source object has changes from an old to a 
+    new value on the given synchronize pairs
     
     """
     for l, r in synchronize_pairs:
@@ -78,6 +82,17 @@ def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
 
 def _raise_col_to_prop(isdest, source_mapper, source_column, dest_mapper, dest_column):
     if isdest:
-        raise exc.UnmappedColumnError("Can't execute sync rule for destination column '%s'; mapper '%s' does not map this column.  Try using an explicit `foreign_keys` collection which does not include this column (or use a viewonly=True relation)." % (dest_column, source_mapper))
+        raise exc.UnmappedColumnError(
+                                "Can't execute sync rule for destination column '%s'; "
+                                "mapper '%s' does not map this column.  Try using an explicit"
+                                " `foreign_keys` collection which does not include this column "
+                                "(or use a viewonly=True relation)." % (dest_column, source_mapper)
+                                )
     else:
-        raise exc.UnmappedColumnError("Can't execute sync rule for source column '%s'; mapper '%s' does not map this column.  Try using an explicit `foreign_keys` collection which does not include destination column '%s' (or use a viewonly=True relation)." % (source_column, source_mapper, dest_column))
+        raise exc.UnmappedColumnError(
+                                "Can't execute sync rule for source column '%s'; mapper '%s' "
+                                "does not map this column.  Try using an explicit `foreign_keys`"
+                                " collection which does not include destination column '%s' (or "
+                                "use a viewonly=True relation)." % 
+                                (source_column, source_mapper, dest_column)
+                                )
