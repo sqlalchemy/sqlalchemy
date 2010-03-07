@@ -883,14 +883,16 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
 class Events(object):
     def __init__(self):
         self.original_init = object.__init__
+        # Initialize to tuples instead of lists to minimize the memory 
+        # footprint
         self.on_init = ()
         self.on_init_failure = ()
         self.on_load = ()
         self.on_resurrect = ()
 
-    def run(self, event, *args, **kwargs):
+    def run(self, event, *args):
         for fn in getattr(self, event):
-            fn(*args, **kwargs)
+            fn(*args)
 
     def add_listener(self, event, listener):
         # not thread safe... problem?  mb: nope
