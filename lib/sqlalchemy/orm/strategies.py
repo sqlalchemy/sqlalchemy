@@ -116,12 +116,11 @@ class ColumnLoader(LoaderStrategy):
             col = adapter.columns[col]
             
         if col is not None and col in row:
-            def new_execute(state, dict_, row, isnew):
+            def new_execute(state, dict_, row):
                 dict_[key] = row[col]
         else:
-            def new_execute(state, dict_, row, isnew):
-                if isnew:
-                    state.expire_attribute_pre_commit(dict_, key)
+            def new_execute(state, dict_, row):
+                state.expire_attribute_pre_commit(dict_, key)
         return new_execute, None
 
 log.class_logger(ColumnLoader)
@@ -166,12 +165,11 @@ class CompositeColumnLoader(ColumnLoader):
             
         for c in columns:
             if c not in row:
-                def new_execute(state, dict_, row, isnew):
-                    if isnew:
-                        state.expire_attribute_pre_commit(dict_, key)
+                def new_execute(state, dict_, row):
+                    state.expire_attribute_pre_commit(dict_, key)
                 break
         else:
-            def new_execute(state, dict_, row, isnew):
+            def new_execute(state, dict_, row):
                 dict_[key] = composite_class(*[row[c] for c in columns])
 
         return new_execute, None
@@ -185,20 +183,21 @@ class DeferredColumnLoader(LoaderStrategy):
         col = self.columns[0]
         if adapter:
             col = adapter.columns[col]
-            
+
+        key = self.key
         if col in row:
             return self.parent_property._get_strategy(ColumnLoader).\
                         create_row_processor(
                                 selectcontext, path, mapper, row, adapter)
 
         elif not self.is_class_level:
-            def new_execute(state, dict_, row, isnew):
-                state.set_callable(dict_, self.key, LoadDeferredColumns(state, self.key))
+            def new_execute(state, dict_, row):
+                state.set_callable(dict_, key, LoadDeferredColumns(state, key))
         else:
-            def new_execute(state, dict_, row, isnew):
+            def new_execute(state, dict_, row):
                 # reset state on the key so that deferred callables
                 # fire off on next access.
-                state.reset(dict_, self.key)
+                state.reset(dict_, key)
 
         return new_execute, None
 
@@ -331,7 +330,7 @@ class NoLoader(AbstractRelationLoader):
         )
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        def new_execute(state, dict_, row, isnew):
+        def new_execute(state, dict_, row):
             state.initialize(self.key)
         return new_execute, None
 
@@ -430,21 +429,22 @@ class LazyLoader(AbstractRelationLoader):
         return LoadLazyAttribute(state, self.key)
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
+        key = self.key
         if not self.is_class_level:
-            def new_execute(state, dict_, row, isnew):
+            def new_execute(state, dict_, row):
                 # we are not the primary manager for this attribute on this class - set up a
                 # per-instance lazyloader, which will override the class-level behavior.
                 # this currently only happens when using a "lazyload" option on a "no load"
                 # attribute - "eager" attributes always have a class-level lazyloader
                 # installed.
-                state.set_callable(dict_, self.key, LoadLazyAttribute(state, self.key))
+                state.set_callable(dict_, key, LoadLazyAttribute(state, key))
         else:
-            def new_execute(state, dict_, row, isnew):
+            def new_execute(state, dict_, row):
                 # we are the primary manager for this attribute on this class - reset its
                 # per-instance attribute state, so that the class-level lazy loader is
                 # executed when next referenced on this instance.  this is needed in
                 # populate_existing() types of scenarios to reset any existing state.
-                state.reset(dict_, self.key)
+                state.reset(dict_, key)
 
         return new_execute, None
             
@@ -761,39 +761,47 @@ class EagerLoader(AbstractRelationLoader):
                                             eager_adapter)
             
             if not self.uselist:
-                def execute(state, dict_, row, isnew):
-                    if isnew:
-                        # set a scalar object instance directly on the
-                        # parent object, bypassing InstrumentedAttribute
-                        # event handlers.
-                        dict_[key] = _instance(row, None)
-                    else:
-                        # call _instance on the row, even though the object has been created,
-                        # so that we further descend into properties
-                        existing = _instance(row, None)
-                        if existing is not None \
-                            and key in dict_ \
-                            and existing is not dict_[key]:
-                            util.warn(
-                                "Multiple rows returned with "
-                                "uselist=False for eagerly-loaded attribute '%s' " % self)
+                def new_execute(state, dict_, row):
+                    # set a scalar object instance directly on the parent
+                    # object, bypassing InstrumentedAttribute event handlers.
+                    dict_[key] = _instance(row, None)
+
+                def existing_execute(state, dict_, row):
+                    # call _instance on the row, even though the object has
+                    # been created, so that we further descend into properties
+                    existing = _instance(row, None)
+                    if existing is not None \
+                        and key in dict_ \
+                        and existing is not dict_[key]:
+                        util.warn(
+                            "Multiple rows returned with "
+                            "uselist=False for eagerly-loaded attribute '%s' "
+                            % self)
+                return new_execute, existing_execute
             else:
-                def execute(state, dict_, row, isnew):
-                    if isnew or (state, key) not in context.attributes:
-                        # appender_key can be absent from context.attributes with isnew=False
-                        # when self-referential eager loading is used; the same instance 
-                        # may be present in two distinct sets of result columns
-
-                        collection = attributes.init_state_collection(state, dict_, key)
-                        appender = util.UniqueAppender(collection, 'append_without_event')
-
-                        context.attributes[(state, key)] = appender
-
-                    result_list = context.attributes[(state, key)]
-                    
+                def new_execute(state, dict_, row):
+                    collection = attributes.init_state_collection(state, dict_,
+                                                                  key)
+                    result_list = util.UniqueAppender(collection,
+                                                      'append_without_event')
+                    context.attributes[(state, key)] = result_list
                     _instance(row, result_list)
 
-            return execute, execute
+                def existing_execute(state, dict_, row):
+                    if (state, key) in context.attributes:
+                        result_list = context.attributes[(state, key)]
+                    else:
+                        # appender_key can be absent from context.attributes
+                        # with isnew=False when self-referential eager loading
+                        # is used; the same instance may be present in two
+                        # distinct sets of result columns
+                        collection = attributes.init_state_collection(state,
+                                        dict_, key)
+                        result_list = util.UniqueAppender(collection,
+                                                        'append_without_event')
+                        context.attributes[(state, key)] = result_list
+                    _instance(row, result_list)
+            return new_execute, existing_execute
         else:
             return self.parent_property._get_strategy(LazyLoader).\
                                 create_row_processor(context, path, mapper, row, adapter)
