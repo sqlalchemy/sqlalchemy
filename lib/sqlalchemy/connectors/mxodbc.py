@@ -3,6 +3,7 @@ import sys
 import re
 
 from sqlalchemy.connectors import Connector
+from mx.ODBC import InterfaceError
 
 class MxODBCConnector(Connector):
     driver='mxodbc'
@@ -75,3 +76,17 @@ class MxODBCConnector(Connector):
             except ValueError:
                 version.append(n)
         return tuple(version)
+    
+    def do_execute(self, cursor, statement, parameters, context=None):
+        """ Override the default do_execute for all dialects using mxODBC.
+        
+        This is needed because mxODBC expects a sequence of sequences
+        (usually a tuple of tuples) for the bind parameters, and 
+        SQLAlchemy commonly sends a list containing a string,
+        which mxODBC interprets as a sequence and breaks out the 
+        individual characters.
+        """
+        try:
+            cursor.execute(statement, tuple(parameters))
+        except InterfaceError:
+            cursor.executedirect(statement, tuple(parameters))
