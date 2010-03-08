@@ -116,6 +116,13 @@ class AbstractType(Visitable):
                 typ = t
         else:
             return self.__class__
+    
+    def _coerce_compared_value(self, op, value):
+        _coerced_type = type_map.get(type(value), NULLTYPE)
+        if _coerced_type._type_affinity == self._type_affinity:
+            return self
+        else:
+            return _coerced_type
         
     def _compare_type_affinity(self, other):
         return self._type_affinity is other._type_affinity
@@ -239,7 +246,7 @@ class TypeDecorator(AbstractType):
           # strips it off on the way out.
 
           impl = types.Unicode
-
+          
           def process_bind_param(self, value, dialect):
               return "PREFIX:" + value
 
@@ -254,6 +261,44 @@ class TypeDecorator(AbstractType):
     can be used to provide different type classes based on the dialect
     given; in this case, the "impl" variable can reference
     ``TypeEngine`` as a placeholder.
+
+    Types that receive a Python type that isn't similar to the 
+    ultimate type used may want to define the :meth:`TypeDecorator.coerce_compared_value`
+    method=.  This is used to give the expression system a hint 
+    when coercing Python objects
+    into bind parameters within expressions.  Consider this expression::
+    
+        mytable.c.somecol + datetime.date(2009, 5, 15)
+        
+    Above, if "somecol" is an ``Integer`` variant, it makes sense that 
+    we doing date arithmetic, where above is usually interpreted
+    by databases as adding a number of days to the given date. 
+    The expression system does the right thing by not attempting to
+    coerce the "date()" value into an integer-oriented bind parameter.
+    
+    However, suppose "somecol" is a ``TypeDecorator`` that is wrapping
+    an ``Integer``, and our ``TypeDecorator`` is actually storing dates
+    as an "epoch", i.e. a total number of days from a fixed starting
+    date.  So in this case, we *do* want the expression system to wrap 
+    the date() into our ``TypeDecorator`` type's system of coercing 
+    dates into integers.   So we would want to define::
+    
+        class MyEpochType(types.TypeDecorator):
+            impl = types.Integer
+            
+            epoch = datetime.date(1970, 1, 1)
+            
+            def process_bind_param(self, value, dialect):
+                return (value - self.epoch).days
+            
+            def process_result_value(self, value, dialect):
+                return self.epoch + timedelta(days=value)
+                
+            def coerce_compared_value(self, op, value):
+                if isinstance(value, datetime.date):
+                    return Date
+                else:
+                    raise ValueError("Python date expected.")
 
     The reason that type behavior is modified using class decoration
     instead of subclassing is due to the way dialect specific types
@@ -365,7 +410,13 @@ class TypeDecorator(AbstractType):
             return process
         else:
             return self.impl.result_processor(dialect, coltype)
+    
+    def coerce_compared_value(self, op, value):
+        return self.impl._coerce_compared_value(op, value)
 
+    def _coerce_compared_value(self, op, value):
+        return self.coerce_compared_value(op, value)
+        
     def copy(self):
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
@@ -383,6 +434,11 @@ class TypeDecorator(AbstractType):
 
     def is_mutable(self):
         return self.impl.is_mutable()
+
+    def _adapt_expression(self, op, othertype):
+        return self.impl._adapt_expression(op, othertype)
+
+
 
 class MutableType(object):
     """A mixin that marks a Type as holding a mutable object.
@@ -461,7 +517,7 @@ class Concatenable(object):
     """A mixin that marks a type as supporting 'concatenation', typically strings."""
 
     def _adapt_expression(self, op, othertype):
-        if op is operators.add and isinstance(othertype, (Concatenable, NullType)):
+        if op is operators.add and issubclass(othertype._type_affinity, (Concatenable, NullType)):
             return operators.concat_op, self
         else:
             return op, self
