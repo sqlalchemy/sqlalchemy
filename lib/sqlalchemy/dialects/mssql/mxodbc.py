@@ -3,12 +3,11 @@ import sys
 
 from sqlalchemy import types as sqltypes
 from sqlalchemy.connectors.mxodbc import MxODBCConnector
-from sqlalchemy.dialects.mssql.base import MSDialect
 from sqlalchemy.dialects.mssql.pyodbc import MSExecutionContext_pyodbc
+from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
 
-# The pyodbc execution context seems to work for mxODBC; reuse it here
 
-class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
+class MSExecutionContext_mxodbc(MSExecutionContext):
     pass
 
 class MSDialect_mxodbc(MxODBCConnector, MSDialect):
