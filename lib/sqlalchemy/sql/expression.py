@@ -1558,7 +1558,9 @@ class _CompareMixin(ColumnOperators):
         # use __radd__ to force string concat behavior
         return self.__compare(
             operators.like_op,
-            literal_column("'%'", type_=sqltypes.String).__radd__(self._check_literal(operators.like_op, other)),
+            literal_column("'%'", type_=sqltypes.String).__radd__(
+                                self._check_literal(operators.like_op, other)
+                            ),
             escape=escape)
 
     def endswith(self, other, escape=None):
@@ -1566,7 +1568,8 @@ class _CompareMixin(ColumnOperators):
 
         return self.__compare(
             operators.like_op,
-            literal_column("'%'", type_=sqltypes.String) + self._check_literal(operators.like_op, other),
+            literal_column("'%'", type_=sqltypes.String) + 
+                self._check_literal(operators.like_op, other),
             escape=escape)
 
     def contains(self, other, escape=None):
@@ -1652,11 +1655,16 @@ class _CompareMixin(ColumnOperators):
         return lambda other: self.__operate(operator, other)
 
     def _bind_param(self, operator, obj):
-        return _BindParamClause(None, obj, _compared_to_operator=operator, _compared_to_type=self.type, unique=True)
+        return _BindParamClause(None, obj, 
+                                    _compared_to_operator=operator, 
+                                    _compared_to_type=self.type, unique=True)
 
     def _check_literal(self, operator, other):
         if isinstance(other, _BindParamClause) and \
             isinstance(other.type, sqltypes.NullType):
+            # TODO: perhaps we should not mutate the incoming bindparam()
+            # here and instead make a copy of it.  this might
+            # be the only place that we're mutating an incoming construct.
             other.type = self.type
             return other
         elif hasattr(other, '__clause_element__'):

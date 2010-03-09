@@ -1181,7 +1181,8 @@ class IntervalTest(TestBase, AssertsExecutionResults):
         eq_(row['native_interval'], None)
         eq_(row['native_interval_args'], None)
         eq_(row['non_native_interval'], None)
-
+    
+        
 class BooleanTest(TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):

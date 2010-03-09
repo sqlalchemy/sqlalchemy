@@ -236,14 +236,19 @@ class UserDefinedType(TypeEngine):
 class TypeDecorator(AbstractType):
     """Allows the creation of types which add additional functionality
     to an existing type.
+    
+    This method is preferred to direct subclassing of SQLAlchemy's
+    built-in types as it ensures that all required functionality of 
+    the underlying type is kept in place.
 
     Typical usage::
 
       import sqlalchemy.types as types
 
       class MyType(types.TypeDecorator):
-          # Prefixes Unicode values with "PREFIX:" on the way in and
-          # strips it off on the way out.
+          '''Prefixes Unicode values with "PREFIX:" on the way in and
+          strips it off on the way out.
+          '''
 
           impl = types.Unicode
           
@@ -264,14 +269,14 @@ class TypeDecorator(AbstractType):
 
     Types that receive a Python type that isn't similar to the 
     ultimate type used may want to define the :meth:`TypeDecorator.coerce_compared_value`
-    method=.  This is used to give the expression system a hint 
-    when coercing Python objects
-    into bind parameters within expressions.  Consider this expression::
+    method.  This is used to give the expression system a hint 
+    when coercing Python objects into bind parameters within expressions.  
+    Consider this expression::
     
         mytable.c.somecol + datetime.date(2009, 5, 15)
         
     Above, if "somecol" is an ``Integer`` variant, it makes sense that 
-    we doing date arithmetic, where above is usually interpreted
+    we're doing date arithmetic, where above is usually interpreted
     by databases as adding a number of days to the given date. 
     The expression system does the right thing by not attempting to
     coerce the "date()" value into an integer-oriented bind parameter.
@@ -296,18 +301,9 @@ class TypeDecorator(AbstractType):
                 
             def coerce_compared_value(self, op, value):
                 if isinstance(value, datetime.date):
-                    return Date
+                    return self
                 else:
                     raise ValueError("Python date expected.")
-
-    The reason that type behavior is modified using class decoration
-    instead of subclassing is due to the way dialect specific types
-    are used.  Such as with the example above, when using the mysql
-    dialect, the actual type in use will be a
-    ``sqlalchemy.databases.mysql.MSString`` instance.
-    ``TypeDecorator`` handles the mechanics of passing the values
-    between user-defined ``process_`` methods and the current
-    dialect-specific type in use.
 
     """
 
@@ -1449,6 +1445,13 @@ class Interval(_DateAffinity, TypeDecorator):
     value is stored as a date which is relative to the "epoch"
     (Jan. 1, 1970).
 
+    Note that the ``Interval`` type does not currently provide 
+    date arithmetic operations on platforms which do not support 
+    interval types natively.   Such operations usually require
+    transformation of both sides of the expression (such as, conversion
+    of both sides into integer epoch values first) which currently
+    is a manual procedure (such as via :attr:`~sqlalchemy.sql.expression.func`).
+    
     """
 
     impl = DateTime
@@ -1477,7 +1480,7 @@ class Interval(_DateAffinity, TypeDecorator):
         self.native = native
         self.second_precision = second_precision
         self.day_precision = day_precision
-        
+
     def adapt(self, cls):
         if self.native:
             return cls._adapt_from_generic_interval(self)
