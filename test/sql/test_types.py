@@ -869,6 +869,13 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         # is an Integer
         expr = column("foo", MyFoobarType) + 5
         assert expr.right.type._type_affinity is types.Integer
+        
+        # untyped bind - it gets assigned MyFoobarType
+        expr = column("foo", MyFoobarType) + bindparam("foo")
+        assert expr.right.type._type_affinity is MyFoobarType
+
+        expr = column("foo", MyFoobarType) + bindparam("foo", type_=Integer)
+        assert expr.right.type._type_affinity is types.Integer
 
         # unknown type + unknown, right hand bind
         # coerces to the left

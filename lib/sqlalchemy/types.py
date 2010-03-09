@@ -119,7 +119,7 @@ class AbstractType(Visitable):
     
     def _coerce_compared_value(self, op, value):
         _coerced_type = type_map.get(type(value), NULLTYPE)
-        if _coerced_type._type_affinity == self._type_affinity:
+        if _coerced_type is NULLTYPE or _coerced_type._type_affinity is self._type_affinity:
             return self
         else:
             return _coerced_type
@@ -281,12 +281,10 @@ class TypeDecorator(AbstractType):
     The expression system does the right thing by not attempting to
     coerce the "date()" value into an integer-oriented bind parameter.
     
-    However, suppose "somecol" is a ``TypeDecorator`` that is wrapping
-    an ``Integer``, and our ``TypeDecorator`` is actually storing dates
-    as an "epoch", i.e. a total number of days from a fixed starting
-    date.  So in this case, we *do* want the expression system to wrap 
-    the date() into our ``TypeDecorator`` type's system of coercing 
-    dates into integers.   So we would want to define::
+    However, in the case of ``TypeDecorator``, we are usually changing
+    an incoming Python type to something new - ``TypeDecorator`` by 
+    default will "coerce" the non-typed side to be the same type as itself.
+    Such as below, we define an "epoch" type that stores a date value as an integer::
     
         class MyEpochType(types.TypeDecorator):
             impl = types.Integer
@@ -298,12 +296,20 @@ class TypeDecorator(AbstractType):
             
             def process_result_value(self, value, dialect):
                 return self.epoch + timedelta(days=value)
-                
-            def coerce_compared_value(self, op, value):
-                if isinstance(value, datetime.date):
-                    return self
-                else:
-                    raise ValueError("Python date expected.")
+
+    Our expression of ``somecol + date`` with the above type will coerce the
+    "date" on the right side to also be treated as ``MyEpochType``.  
+    
+    This behavior can be overridden via the :meth:`~TypeDecorator.coerce_compared_value`
+    method, which returns a type that should be used for the value of the expression.
+    Below we set it such that an integer value will be treated as an ``Integer``,
+    and any other value is assumed to be a date and will be treated as a ``MyEpochType``::
+    
+        def coerce_compared_value(self, op, value):
+            if isinstance(value, int):
+                return Integer()
+            else:
+                return self
 
     """
 
@@ -408,7 +414,22 @@ class TypeDecorator(AbstractType):
             return self.impl.result_processor(dialect, coltype)
     
     def coerce_compared_value(self, op, value):
-        return self.impl._coerce_compared_value(op, value)
+        """Suggest a type for a 'coerced' Python value in an expression.
+        
+        By default, returns self.   This method is called by
+        the expression system when an object using this type is 
+        on the left or right side of an expression against a plain Python
+        object which does not yet have a SQLAlchemy type assigned::
+        
+            expr = table.c.somecolumn + 35
+            
+        Where above, if ``somecolumn`` uses this type, this method will
+        be called with the value ``operator.add``
+        and ``35``.  The return value is whatever SQLAlchemy type should
+        be used for ``35`` for this particular operation.
+        
+        """
+        return self
 
     def _coerce_compared_value(self, op, value):
         return self.coerce_compared_value(op, value)
@@ -1546,6 +1567,9 @@ class Interval(_DateAffinity, TypeDecorator):
     @property
     def _type_affinity(self):
         return Interval
+
+    def _coerce_compared_value(self, op, value):
+        return self.impl._coerce_compared_value(op, value)
 
 
 class FLOAT(Float):
