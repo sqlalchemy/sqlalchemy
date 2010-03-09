@@ -357,13 +357,17 @@ class QueryTest(TestBase):
 
     def test_fetchid_trigger(self):
         """
-        Verify the identity return value when inserting to a table
-        with an insert trigger, which triggers another insert to
-        a different table.
+        Verify identity return value on inserting to a trigger table.
         
-        The OUTPUT INSERTED clause which is normally used
-        to return the identity value won't work for this case,
-        because of the following error:
+        MSSQL's OUTPUT INSERTED clause does not work for the
+        case of a table having an identity (autoincrement)
+        primary key column, and which also has a trigger configured
+        to fire upon each insert and subsequently perform an
+        insert into a different table. 
+        
+        SQLALchemy's MSSQL dialect by default will attempt to
+        use an OUTPUT_INSERTED clause, which in this case will
+        raise the following error:
         
         ProgrammingError: (ProgrammingError) ('42000', 334, 
         "[Microsoft][SQL Server Native Client 10.0][SQL Server]The 
@@ -372,12 +376,17 @@ class QueryTest(TestBase):
         INTO clause.", 7748) 'INSERT INTO t1 (descr) OUTPUT inserted.id
         VALUES (?)' ('hello',)
         
-        This means the connector needs a backup plan; the execution
-        should use SCOPE_IDENTITY()
-
-        todo: this same test needs to be tried in a multithreaded context
-        with multiple threads inserting to the same table.
+        This test verifies a workaround, which is to rely on the
+        older SCOPE_IDENTITY() call, which still works for this scenario.
+        To enable the workaround, the Table must be instantiated
+        with the init parameter 'implicit_returning = False'.
         """
+
+        #todo: this same test needs to be tried in a multithreaded context
+        #      with multiple threads inserting to the same table.
+        #todo: check whether this error also occurs with clients other
+        #      than the SQL Server Native Client. Maybe an assert_raises
+        #      test should be written.
         meta = MetaData(testing.db)
         t1 = Table('t1', meta,
                 Column('id', Integer, Sequence('fred', 100, 1), primary_key=True),
