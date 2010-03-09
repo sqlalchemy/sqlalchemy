@@ -106,7 +106,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
         self.assert_compile(schema.CreateIndex(idx), 
             "CREATE INDEX test_idx1 ON testtbl (data) WHERE data > 5 AND data < 10", dialect=postgresql.dialect())
-
+    
     def test_extract(self):
         t = table('t', column('col1', DateTime), column('col2', Date), column('col3', Time),
                     column('col4', postgresql.INTERVAL)
