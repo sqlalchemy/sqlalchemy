@@ -2235,7 +2235,13 @@ class _Generative(object):
 
 
 class Executable(_Generative):
-    """Mark a ClauseElement as supporting execution."""
+    """Mark a ClauseElement as supporting execution.
+    
+    :class:`Executable` is a superclass for all "statement" types
+    of objects, including :func:`select`, :func:`delete`, :func:`update`,
+    :func:`insert`, :func:`text`.
+     
+    """
 
     supports_execution = True
     _execution_options = util.frozendict()
@@ -2263,6 +2269,12 @@ class Executable(_Generative):
           of many DBAPIs.  The flag is currently understood only by the
           psycopg2 dialect.
 
+        See also:
+        
+            :meth:`sqlalchemy.engine.base.Connection.execution_options()`
+
+            :meth:`sqlalchemy.orm.query.Query.execution_options()`
+            
         """
         self._execution_options = self._execution_options.union(kw)
 
