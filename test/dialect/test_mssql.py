@@ -356,11 +356,37 @@ class QueryTest(TestBase):
     __only_on__ = 'mssql'
 
     def test_fetchid_trigger(self):
+        """
+        Verify the identity return value when inserting to a table
+        with an insert trigger, which triggers another insert to
+        a different table.
+        
+        The OUTPUT INSERTED clause which is normally used
+        to return the identity value won't work for this case,
+        because of the following error:
+        
+        ProgrammingError: (ProgrammingError) ('42000', 334, 
+        "[Microsoft][SQL Server Native Client 10.0][SQL Server]The 
+        target table 't1' of the DML statement cannot have any enabled
+        triggers if the statement contains an OUTPUT clause without
+        INTO clause.", 7748) 'INSERT INTO t1 (descr) OUTPUT inserted.id
+        VALUES (?)' ('hello',)
+        
+        This means the connector needs a backup plan; the execution
+        should use SCOPE_IDENTITY()
+
+        todo: this same test needs to be tried in a multithreaded context
+        with multiple threads inserting to the same table.
+        """
         meta = MetaData(testing.db)
         t1 = Table('t1', meta,
                 Column('id', Integer, Sequence('fred', 100, 1), primary_key=True),
                 Column('descr', String(200)),
-                implicit_returning = False
+                # the following flag will prevent the MSSQLCompiler.returning_clause
+                # from getting called, though the ExecutionContext will still have
+                # a _select_lastrowid, so the SELECT SCOPE_IDENTITY() will hopefully
+                # be called instead.
+                implicit_returning = False 
                 )
         t2 = Table('t2', meta,
                 Column('id', Integer, Sequence('fred', 200, 1), primary_key=True),
