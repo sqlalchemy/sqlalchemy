@@ -116,6 +116,13 @@ class AbstractType(Visitable):
                 typ = t
         else:
             return self.__class__
+    
+    def _coerce_compared_value(self, op, value):
+        _coerced_type = type_map.get(type(value), NULLTYPE)
+        if _coerced_type is NULLTYPE or _coerced_type._type_affinity is self._type_affinity:
+            return self
+        else:
+            return _coerced_type
         
     def _compare_type_affinity(self, other):
         return self._type_affinity is other._type_affinity
@@ -229,17 +236,22 @@ class UserDefinedType(TypeEngine):
 class TypeDecorator(AbstractType):
     """Allows the creation of types which add additional functionality
     to an existing type.
+    
+    This method is preferred to direct subclassing of SQLAlchemy's
+    built-in types as it ensures that all required functionality of 
+    the underlying type is kept in place.
 
     Typical usage::
 
       import sqlalchemy.types as types
 
       class MyType(types.TypeDecorator):
-          # Prefixes Unicode values with "PREFIX:" on the way in and
-          # strips it off on the way out.
+          '''Prefixes Unicode values with "PREFIX:" on the way in and
+          strips it off on the way out.
+          '''
 
           impl = types.Unicode
-
+          
           def process_bind_param(self, value, dialect):
               return "PREFIX:" + value
 
@@ -255,14 +267,49 @@ class TypeDecorator(AbstractType):
     given; in this case, the "impl" variable can reference
     ``TypeEngine`` as a placeholder.
 
-    The reason that type behavior is modified using class decoration
-    instead of subclassing is due to the way dialect specific types
-    are used.  Such as with the example above, when using the mysql
-    dialect, the actual type in use will be a
-    ``sqlalchemy.databases.mysql.MSString`` instance.
-    ``TypeDecorator`` handles the mechanics of passing the values
-    between user-defined ``process_`` methods and the current
-    dialect-specific type in use.
+    Types that receive a Python type that isn't similar to the 
+    ultimate type used may want to define the :meth:`TypeDecorator.coerce_compared_value`
+    method.  This is used to give the expression system a hint 
+    when coercing Python objects into bind parameters within expressions.  
+    Consider this expression::
+    
+        mytable.c.somecol + datetime.date(2009, 5, 15)
+        
+    Above, if "somecol" is an ``Integer`` variant, it makes sense that 
+    we're doing date arithmetic, where above is usually interpreted
+    by databases as adding a number of days to the given date. 
+    The expression system does the right thing by not attempting to
+    coerce the "date()" value into an integer-oriented bind parameter.
+    
+    However, in the case of ``TypeDecorator``, we are usually changing
+    an incoming Python type to something new - ``TypeDecorator`` by 
+    default will "coerce" the non-typed side to be the same type as itself.
+    Such as below, we define an "epoch" type that stores a date value as an integer::
+    
+        class MyEpochType(types.TypeDecorator):
+            impl = types.Integer
+            
+            epoch = datetime.date(1970, 1, 1)
+            
+            def process_bind_param(self, value, dialect):
+                return (value - self.epoch).days
+            
+            def process_result_value(self, value, dialect):
+                return self.epoch + timedelta(days=value)
+
+    Our expression of ``somecol + date`` with the above type will coerce the
+    "date" on the right side to also be treated as ``MyEpochType``.  
+    
+    This behavior can be overridden via the :meth:`~TypeDecorator.coerce_compared_value`
+    method, which returns a type that should be used for the value of the expression.
+    Below we set it such that an integer value will be treated as an ``Integer``,
+    and any other value is assumed to be a date and will be treated as a ``MyEpochType``::
+    
+        def coerce_compared_value(self, op, value):
+            if isinstance(value, int):
+                return Integer()
+            else:
+                return self
 
     """
 
@@ -365,7 +412,28 @@ class TypeDecorator(AbstractType):
             return process
         else:
             return self.impl.result_processor(dialect, coltype)
+    
+    def coerce_compared_value(self, op, value):
+        """Suggest a type for a 'coerced' Python value in an expression.
+        
+        By default, returns self.   This method is called by
+        the expression system when an object using this type is 
+        on the left or right side of an expression against a plain Python
+        object which does not yet have a SQLAlchemy type assigned::
+        
+            expr = table.c.somecolumn + 35
+            
+        Where above, if ``somecolumn`` uses this type, this method will
+        be called with the value ``operator.add``
+        and ``35``.  The return value is whatever SQLAlchemy type should
+        be used for ``35`` for this particular operation.
+        
+        """
+        return self
 
+    def _coerce_compared_value(self, op, value):
+        return self.coerce_compared_value(op, value)
+        
     def copy(self):
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
@@ -383,6 +451,11 @@ class TypeDecorator(AbstractType):
 
     def is_mutable(self):
         return self.impl.is_mutable()
+
+    def _adapt_expression(self, op, othertype):
+        return self.impl._adapt_expression(op, othertype)
+
+
 
 class MutableType(object):
     """A mixin that marks a Type as holding a mutable object.
@@ -461,7 +534,7 @@ class Concatenable(object):
     """A mixin that marks a type as supporting 'concatenation', typically strings."""
 
     def _adapt_expression(self, op, othertype):
-        if op is operators.add and isinstance(othertype, (Concatenable, NullType)):
+        if op is operators.add and issubclass(othertype._type_affinity, (Concatenable, NullType)):
             return operators.concat_op, self
         else:
             return op, self
@@ -1393,6 +1466,13 @@ class Interval(_DateAffinity, TypeDecorator):
     value is stored as a date which is relative to the "epoch"
     (Jan. 1, 1970).
 
+    Note that the ``Interval`` type does not currently provide 
+    date arithmetic operations on platforms which do not support 
+    interval types natively.   Such operations usually require
+    transformation of both sides of the expression (such as, conversion
+    of both sides into integer epoch values first) which currently
+    is a manual procedure (such as via :attr:`~sqlalchemy.sql.expression.func`).
+    
     """
 
     impl = DateTime
@@ -1421,7 +1501,7 @@ class Interval(_DateAffinity, TypeDecorator):
         self.native = native
         self.second_precision = second_precision
         self.day_precision = day_precision
-        
+
     def adapt(self, cls):
         if self.native:
             return cls._adapt_from_generic_interval(self)
@@ -1487,6 +1567,9 @@ class Interval(_DateAffinity, TypeDecorator):
     @property
     def _type_affinity(self):
         return Interval
+
+    def _coerce_compared_value(self, op, value):
+        return self.impl._coerce_compared_value(op, value)
 
 
 class FLOAT(Float):
