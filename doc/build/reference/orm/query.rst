@@ -23,6 +23,8 @@ ORM-Specific Query Constructs
 
 .. autoclass:: aliased
 
+.. autoclass:: sqlalchemy.orm.util.AliasedClass
+
 .. autofunction:: join
 
 .. autofunction:: outerjoin

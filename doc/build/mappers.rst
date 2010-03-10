@@ -1197,7 +1197,6 @@ To add criterion to multiple points along a longer join, use ``from_joinpoint=Tr
 Configuring Eager Loading
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
 Eager loading of relations occurs using joins or outerjoins from parent to child table during a normal query operation, such that the parent and its child collection can be populated from a single SQL statement.  SQLAlchemy's eager loading uses aliased tables in all cases when joining to related items, so it is compatible with self-referential joining.  However, to use eager loading with a self-referential relation, SQLAlchemy needs to be told how many levels deep it should join; otherwise the eager load will not take place.  This depth setting is configured via ``join_depth``:
 
 .. sourcecode:: python+sql

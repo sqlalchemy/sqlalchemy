@@ -895,7 +895,7 @@ def extension(ext):
     ``MapperExtension`` to the beginning of the list of extensions
     that will be called in the context of the ``Query``.
 
-    Used with ``query.options()``.
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     """
     return ExtensionOption(ext)
@@ -905,7 +905,7 @@ def eagerload(*keys, **kw):
     """Return a ``MapperOption`` that will convert the property of the given
     name into an eager load.
 
-    Used with ``query.options()``.
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     examples::
     
@@ -920,8 +920,15 @@ def eagerload(*keys, **kw):
         # to eagerload across both, use eagerload_all()
         query(Order).options(eagerload_all(Order.items, Item.keywords))
 
-    The keyword arguments accept a flag `innerjoin=True|False` which will 
-    override the value of the `innerjoin` flag specified on the relation().
+    :func:`eagerload` also accepts a keyword argument `innerjoin=True` which
+    indicates using an inner join instead of an outer::
+    
+        query(Order).options(eagerload(Order.user, innerjoin=True))
+        
+    Note that the join created by :func:`eagerload` is aliased such that
+    no other aspects of the query will affect what it loads.  To use eager
+    loading with a join that is constructed manually using :meth:`~sqlalchemy.orm.query.Query.join`
+    or :func:`~sqlalchemy.orm.join`, see :func:`contains_eager`.
     
     """
     innerjoin = kw.pop('innerjoin', None)
@@ -938,7 +945,7 @@ def eagerload_all(*keys, **kw):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path into an eager load.
 
-    Used with ``query.options()``.
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     For example::
 
@@ -969,7 +976,7 @@ def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
     name into a lazy load.
 
-    Used with ``query.options()``.
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     """
     return strategies.EagerLazyOption(keys, lazy=True)
@@ -978,7 +985,7 @@ def noload(*keys):
     """Return a ``MapperOption`` that will convert the property of the
     given name into a non-load.
 
-    Used with ``query.options()``.
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     """
     return strategies.EagerLazyOption(keys, lazy=None)
@@ -996,29 +1003,52 @@ def contains_alias(alias):
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def contains_eager(*keys, **kwargs):
     """Return a ``MapperOption`` that will indicate to the query that
-    the given attribute will be eagerly loaded.
+    the given attribute should be eagerly loaded from columns currently
+    in the query.
 
-    Used when feeding SQL result sets directly into ``query.instances()``.
-    Also bundles an ``EagerLazyOption`` to turn on eager loading in case it
-    isn't already.
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
-    `alias` is the string name of an alias, **or** an ``sql.Alias`` object,
-    which represents the aliased columns in the query.  This argument is
-    optional.
+    The option is used in conjunction with an explicit join that loads 
+    the desired rows, i.e.::
+    
+        sess.query(Order).\\
+                join(Order.user).\\
+                options(contains_eager(Order.user))
+                
+    The above query would join from the ``Order`` entity to its related
+    ``User`` entity, and the returned ``Order`` objects would have the
+    ``Order.user`` attribute pre-populated.
+
+    :func:`contains_eager` also accepts an `alias` argument, which
+    is the string name of an alias, an :func:`~sqlalchemy.sql.expression.alias`
+    construct, or an :func:`~sqlalchemy.orm.aliased` construct.  Use this
+    when the eagerly-loaded rows are to come from an aliased table::
+    
+        user_alias = aliased(User)
+        sess.query(Order).\\
+                join((user_alias, Order.user)).\\
+                options(contains_eager(Order.user, alias=user_alias))
+
+    See also :func:`eagerload` for the "automatic" version of this 
+    functionality.
 
     """
     alias = kwargs.pop('alias', None)
     if kwargs:
         raise exceptions.ArgumentError("Invalid kwargs for contains_eager: %r" % kwargs.keys())
 
-    return (strategies.EagerLazyOption(keys, lazy=False, propagate_to_loaders=False), strategies.LoadEagerFromAliasOption(keys, alias=alias))
+    return (
+            strategies.EagerLazyOption(keys, lazy=False, propagate_to_loaders=False), 
+            strategies.LoadEagerFromAliasOption(keys, alias=alias)
+        )
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def defer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the
     given name into a deferred load.
 
-    Used with ``query.options()``
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+
     """
     return strategies.DeferredOption(keys, defer=True)
 
@@ -1027,7 +1057,7 @@ def undefer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the
     given name into a non-deferred (regular column) load.
 
-    Used with ``query.options()``.
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     """
     return strategies.DeferredOption(keys, defer=False)
@@ -1036,7 +1066,7 @@ def undefer_group(name):
     """Return a ``MapperOption`` that will convert the given group of deferred
     column properties into a non-deferred (regular column) load.
 
-    Used with ``query.options()``.
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     """
     return strategies.UndeferGroupOption(name)
