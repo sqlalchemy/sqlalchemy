@@ -134,7 +134,7 @@ class ColumnProperty(StrategizedProperty):
 
         def reverse_operate(self, op, other, **kwargs):
             col = self.__clause_element__()
-            return op(col._bind_param(other), col, **kwargs)
+            return op(col._bind_param(op, other), col, **kwargs)
     
     # TODO: legacy..do we need this ? (0.5)
     ColumnComparator = Comparator

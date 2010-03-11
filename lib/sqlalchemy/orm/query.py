@@ -691,14 +691,14 @@ class Query(object):
 
     @_generative()
     def execution_options(self, **kwargs):
-        """ Set non-SQL options for the resulting statement, 
-        such as dialect-specific options.
+        """ Set non-SQL options which take effect during execution.
         
-        The only option currently understood is ``stream_results=True``, 
-        only used by Psycopg2 to enable "server side cursors".  This option
-        only has a useful effect if used in conjunction with
-        :meth:`~sqlalchemy.orm.query.Query.yield_per()`,
-        which currently sets ``stream_results`` to ``True`` automatically.
+        The options are the same as those accepted by 
+        :meth:`sqlalchemy.sql.expression.Executable.execution_options`.
+        
+        Note that the ``stream_results`` execution option is enabled
+        automatically if the :meth:`~sqlalchemy.orm.query.Query.yield_per()`
+        method is used.
 
         """
         _execution_options = self._execution_options.copy()

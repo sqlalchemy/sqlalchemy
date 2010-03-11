@@ -177,7 +177,8 @@ class _OracleRaw(oracle.RAW):
     pass
 
 colspecs = {
-    sqltypes.Date : _OracleDate,
+    sqltypes.Date : _OracleDate, # generic type, assume datetime.date is desired
+    oracle.DATE: oracle.DATE,  # non generic type - passthru
     sqltypes.LargeBinary : _OracleBinary,
     sqltypes.Boolean : oracle._OracleBoolean,
     sqltypes.Interval : _OracleInterval,

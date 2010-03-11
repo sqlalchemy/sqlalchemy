@@ -767,15 +767,20 @@ class Connection(Connectable):
         return self.engine.Connection(self.engine, self.__connection, _branch=True)
     
     def execution_options(self, **opt):
-        """Add keyword options to a Connection generatively.
+        """ Set non-SQL options for the connection which take effect during execution.
         
-        Experimental.  May change the name/signature at 
-        some point.
+        The method returns a copy of this :class:`Connection` which references
+        the same underlying DBAPI connection, but also defines the given execution
+        options which will take effect for a call to :meth:`execute`.  As the new 
+        :class:`Connection` references the same underlying resource, it is probably
+        best to ensure that the copies would be discarded immediately, which
+        is implicit if used as in::
         
-        If made public, strongly consider the name
-        "options()" so as to be consistent with
-        orm.Query.options().
-        
+            result = connection.execution_options(stream_results=True).execute(stmt)
+            
+        The options are the same as those accepted by 
+        :meth:`sqlalchemy.sql.expression.Executable.execution_options`.
+
         """
         return self.engine.Connection(
                     self.engine, self.__connection,

@@ -4,7 +4,7 @@ import decimal
 import datetime, os, re
 from sqlalchemy import *
 from sqlalchemy import exc, types, util, schema
-from sqlalchemy.sql import operators, column
+from sqlalchemy.sql import operators, column, table
 from sqlalchemy.test.testing import eq_
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import *
@@ -687,10 +687,10 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         f = os.path.join(os.path.dirname(__file__), "..", name)
         return open(f, mode='rb').read()
 
-class ExpressionTest(TestBase, AssertsExecutionResults):
+class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     @classmethod
     def setup_class(cls):
-        global test_table, meta, MyCustomType
+        global test_table, meta, MyCustomType, MyTypeDec
 
         class MyCustomType(types.UserDefinedType):
             def get_col_spec(self):
@@ -705,13 +705,24 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
                 return process
             def adapt_operator(self, op):
                 return {operators.add:operators.sub, operators.sub:operators.add}.get(op, op)
+        
+        class MyTypeDec(types.TypeDecorator):
+            impl = String
+            
+            def process_bind_param(self, value, dialect):
+                return "BIND_IN" + str(value)
 
+            def process_result_value(self, value, dialect):
+                return value + "BIND_OUT"
+            
         meta = MetaData(testing.db)
         test_table = Table('test', meta,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
             Column('atimestamp', Date),
-            Column('avalue', MyCustomType))
+            Column('avalue', MyCustomType),
+            Column('bvalue', MyTypeDec),
+            )
 
         meta.create_all()
 
@@ -719,7 +730,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
                                         'id':1, 
                                         'data':'somedata', 
                                         'atimestamp':datetime.date(2007, 10, 15), 
-                                        'avalue':25})
+                                        'avalue':25, 'bvalue':'foo'})
 
     @classmethod
     def teardown_class(cls):
@@ -730,7 +741,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
 
         eq_(
             test_table.select().execute().fetchall(),
-            [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
+            [(1, 'somedata', datetime.date(2007, 10, 15), 25, "BIND_INfooBIND_OUT")]
         )
 
     def test_bind_adapt(self):
@@ -740,17 +751,26 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
 
         eq_(
             testing.db.execute(
-                            test_table.select().where(expr), 
+                            select([test_table.c.id, test_table.c.data, test_table.c.atimestamp])
+                            .where(expr), 
                             {"thedate":datetime.date(2007, 10, 15)}).fetchall(),
-            [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
+            [(1, 'somedata', datetime.date(2007, 10, 15))]
         )
 
         expr = test_table.c.avalue == bindparam("somevalue")
         eq_(expr.right.type._type_affinity, MyCustomType)
-        
+
         eq_(
             testing.db.execute(test_table.select().where(expr), {"somevalue":25}).fetchall(),
-            [(1, 'somedata', datetime.date(2007, 10, 15), 25)]
+            [(1, 'somedata', datetime.date(2007, 10, 15), 25, 'BIND_INfooBIND_OUT')]
+        )
+
+        expr = test_table.c.bvalue == bindparam("somevalue")
+        eq_(expr.right.type._type_affinity, String)
+        
+        eq_(
+            testing.db.execute(test_table.select().where(expr), {"somevalue":"foo"}).fetchall(),
+            [(1, 'somedata', datetime.date(2007, 10, 15), 25, 'BIND_INfooBIND_OUT')]
         )
     
     def test_literal_adapt(self):
@@ -799,7 +819,43 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         # this one relies upon anonymous labeling to assemble result
         # processing rules on the column.
         assert testing.db.execute(select([expr])).scalar() == -15
-    
+
+    def test_typedec_operator_adapt(self):
+        expr = test_table.c.bvalue + "hi"
+        
+        assert expr.type.__class__ is String
+
+        eq_(
+            testing.db.execute(select([expr.label('foo')])).scalar(),
+            "BIND_INfooBIND_INhiBIND_OUT"
+        )
+
+    def test_typedec_righthand_coercion(self):
+        class MyTypeDec(types.TypeDecorator):
+            impl = String
+            
+            def process_bind_param(self, value, dialect):
+                return "BIND_IN" + str(value)
+
+            def process_result_value(self, value, dialect):
+                return value + "BIND_OUT"
+
+        tab = table('test', column('bvalue', MyTypeDec))
+        expr = tab.c.bvalue + 6
+        
+        self.assert_compile(
+            expr,
+            "test.bvalue || :bvalue_1",
+            use_default_dialect=True
+        )
+        
+        assert expr.type.__class__ is String
+        eq_(
+            testing.db.execute(select([expr.label('foo')])).scalar(),
+            "BIND_INfooBIND_IN6BIND_OUT"
+        )
+        
+        
     def test_bind_typing(self):
         from sqlalchemy.sql import column
         
@@ -812,6 +868,13 @@ class ExpressionTest(TestBase, AssertsExecutionResults):
         # unknown type + integer, right hand bind
         # is an Integer
         expr = column("foo", MyFoobarType) + 5
+        assert expr.right.type._type_affinity is types.Integer
+        
+        # untyped bind - it gets assigned MyFoobarType
+        expr = column("foo", MyFoobarType) + bindparam("foo")
+        assert expr.right.type._type_affinity is MyFoobarType
+
+        expr = column("foo", MyFoobarType) + bindparam("foo", type_=Integer)
         assert expr.right.type._type_affinity is types.Integer
 
         # unknown type + unknown, right hand bind
@@ -1125,7 +1188,8 @@ class IntervalTest(TestBase, AssertsExecutionResults):
         eq_(row['native_interval'], None)
         eq_(row['native_interval_args'], None)
         eq_(row['non_native_interval'], None)
-
+    
+        
 class BooleanTest(TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):

@@ -275,16 +275,20 @@ class ORMAdapter(sql_util.ColumnAdapter):
             return None
 
 class AliasedClass(object):
-    """Represents an 'alias'ed form of a mapped class for usage with Query.
+    """Represents an "aliased" form of a mapped class for usage with Query.
 
-    The ORM equivalent of a :class:`~sqlalchemy.sql.expression.Alias`
-    object, this object mimics the mapped class using a
+    The ORM equivalent of a :func:`sqlalchemy.sql.expression.alias`
+    construct, this object mimics the mapped class using a
     __getattr__ scheme and maintains a reference to a
-    real Alias object.   It indicates to Query that the
-    selectable produced for this class should be aliased,
-    and also adapts PropComparators produced by the class'
-    InstrumentedAttributes so that they adapt the
-    "local" side of SQL expressions against the alias.
+    real :class:`~sqlalchemy.sql.expression.Alias` object.   
+    
+    Usage is via the :class:`~sqlalchemy.orm.aliased()` synonym::
+
+        # find all pairs of users with the same name
+        user_alias = aliased(User)
+        session.query(User, user_alias).\\
+                        join((user_alias, User.id > user_alias.id)).\\
+                        filter(User.name==user_alias.name)
 
     """
     def __init__(self, cls, alias=None, name=None):

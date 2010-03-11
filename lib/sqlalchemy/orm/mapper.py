@@ -1665,7 +1665,7 @@ class Mapper(object):
                 populators = [p for p in populators if p[0] in only_load_props]
 
             for key, populator in populators:
-                populator(state, dict_, row, isnew)
+                populator(state, dict_, row)
 
         session_identity_map = context.session.identity_map
 
