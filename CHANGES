@@ -34,6 +34,10 @@ CHANGES
   - session.merge() works with relations that specifically
     don't include "merge" in their cascade options - the target
     is ignored completely.
+
+  - fixed internal error which would occur if calling has()
+    or similar complex expression on a single-table inheritance
+    relation(). [ticket:1731]
     
   - query.one() no longer applies LIMIT to the query, this to
     ensure that it fully counts all object identities present
@@ -184,6 +188,10 @@ CHANGES
     coercing a returned floating point value into a string 
     on its way to Decimal - this allows accuracy to function
     on SQLite, MySQL.  [ticket:1717]
+
+  - the copy() method of Column now copies over uninitialized
+    "on table attach" events.  Helps with the new declarative
+    "mixin" capability.
     
 - engines
   - Added an optional C extension to speed up the sql layer by

@@ -286,6 +286,11 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         assert u2.compile().params == {'id_param':7}
         assert u3.compile().params == {'id_param':10}
     
+    def test_in(self):
+        expr = t1.c.col1.in_(['foo', 'bar'])
+        expr2 = CloningVisitor().traverse(expr)
+        assert str(expr) == str(expr2)
+        
     def test_adapt_union(self):
         u = union(t1.select().where(t1.c.col1==4), t1.select().where(t1.c.col1==5)).alias()
         
