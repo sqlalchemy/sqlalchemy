@@ -1,9 +1,11 @@
 
 import sys
 import re
+import warnings
 
 from sqlalchemy.connectors import Connector
 from mx.ODBC import InterfaceError
+from mx.ODBC.Error import Warning as MxOdbcWarning
 
 class MxODBCConnector(Connector):
     driver='mxodbc'
@@ -31,6 +33,8 @@ class MxODBCConnector(Connector):
         def connect(conn, rec):
             conn.stringformat = self.dbapi.MIXED_STRINGFORMAT
             conn.datetimeformat = self.dbapi.PYDATETIME_DATETIMEFORMAT
+            conn.errorhandler = error_handler
+            # Alternatives to experiment with:
             #conn.bindmethod = self.dbapi.BIND_USING_PYTHONTYPE
             #conn.bindmethod = self.dbapi.BIND_USING_SQLTYPE
 
@@ -90,3 +94,17 @@ class MxODBCConnector(Connector):
             cursor.execute(statement, tuple(parameters))
         except InterfaceError:
             cursor.executedirect(statement, tuple(parameters))
+
+            
+def error_handler(connection, cursor, errorclass, errorvalue):
+    """
+    Adjust mxODBC's raised Warnings to emit Python standard warnings.
+    """
+    if issubclass(errorclass, MxOdbcWarning):
+        errorclass.__bases__ = (Warning,)
+        warnings.warn(message=str(errorvalue),
+                  category=errorclass,
+                  stacklevel=2)
+    else:
+        raise errorclass, errorvalue
+
