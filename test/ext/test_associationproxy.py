@@ -1017,12 +1017,12 @@ class ComparatorTest(_base.MappedTest):
 
         Table(
             'users', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(64)))
 
         Table(
             'keywords', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('keyword', String(64)))
 
     @classmethod
