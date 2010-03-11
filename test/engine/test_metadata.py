@@ -54,7 +54,20 @@ class MetaDataTest(TestBase, ComparesTables):
             for a1, a2 in zip(col.foreign_keys, c2.foreign_keys):
                 assert a1 is not a2
                 eq_(a2._colspec, 'bat.blah')
-            
+
+    def test_uninitialized_column_copy_events(self):
+        msgs = []
+        def write(t, c):
+            msgs.append("attach %s.%s" % (t.name, c.name))
+        c1 = Column('foo', String())
+        c1._on_table_attach(write)
+        m = MetaData()
+        for i in xrange(3):
+            cx = c1.copy()
+            t = Table('foo%d' % i, m, cx)
+        eq_(msgs, ['attach foo0.foo', 'attach foo1.foo', 'attach foo2.foo'])
+        
+        
     def test_dupe_tables(self):
         metadata = MetaData()
         t1 = Table('table1', metadata, Column('col1', Integer, primary_key=True),

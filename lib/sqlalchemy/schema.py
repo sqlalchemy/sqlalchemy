@@ -813,7 +813,7 @@ class Column(SchemaItem, expression.ColumnClause):
             [c.copy(**kw) for c in self.constraints] + \
             [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
             
-        return Column(
+        c = Column(
                 name=self.name, 
                 type_=self.type, 
                 key = self.key, 
@@ -828,7 +828,10 @@ class Column(SchemaItem, expression.ColumnClause):
                 server_onupdate=self.server_onupdate,
                 *args
                 )
-
+        if hasattr(self, '_table_events'):
+            c._table_events = list(self._table_events)
+        return c
+        
     def _make_proxy(self, selectable, name=None):
         """Create a *proxy* for this column.
 

@@ -188,6 +188,10 @@ CHANGES
     coercing a returned floating point value into a string 
     on its way to Decimal - this allows accuracy to function
     on SQLite, MySQL.  [ticket:1717]
+
+  - the copy() method of Column now copies over uninitialized
+    "on table attach" events.  Helps with the new declarative
+    "mixin" capability.
     
 - engines
   - Added an optional C extension to speed up the sql layer by
