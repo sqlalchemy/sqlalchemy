@@ -460,6 +460,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             (oracle.OracleRaw(), cx_oracle._OracleRaw),
             (String(), String),
             (VARCHAR(), VARCHAR),
+            (DATE(), DATE),
             (String(50), String),
             (Unicode(), Unicode),
             (Text(), cx_oracle._OracleText),

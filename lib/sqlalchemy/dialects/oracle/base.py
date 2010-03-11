@@ -211,7 +211,6 @@ ischema_names = {
     'NVARCHAR2' : NVARCHAR,
     'CHAR' : CHAR,
     'DATE' : DATE,
-    'DATETIME' : DATETIME,
     'NUMBER' : NUMBER,
     'BLOB' : BLOB,
     'BFILE' : BFILE,
