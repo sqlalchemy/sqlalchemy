@@ -721,7 +721,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             Column('data', String(30)),
             Column('atimestamp', Date),
             Column('avalue', MyCustomType),
-            Column('bvalue', MyTypeDec),
+            Column('bvalue', MyTypeDec(50)),
             )
 
         meta.create_all()
