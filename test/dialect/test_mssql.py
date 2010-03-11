@@ -1,6 +1,6 @@
 # -*- encoding: utf-8
 from sqlalchemy.test.testing import eq_
-import datetime, os, re
+import datetime, os, re, warnings
 from sqlalchemy import *
 from sqlalchemy import types, exc, schema
 from sqlalchemy.orm import *
@@ -9,7 +9,7 @@ from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import pyodbc
 from sqlalchemy.engine import url
 from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, emits_warning_on
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
@@ -808,6 +808,8 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
             raise
         money_table.drop()
 
+    # todo this should suppress warnings, but it does not
+    @emits_warning_on('mssql+mxodbc', r'.*does not have any indexes.*')
     def test_dates(self):
         "Exercise type specification for date types."
 
@@ -869,9 +871,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
             testing.eq_(gen.get_column_specification(col),
                            "%s %s" % (col.name, columns[index][3]))
             self.assert_(repr(col))
-
         dates_table.create(checkfirst=True)
-
         reflected_dates = Table('test_mssql_dates', MetaData(testing.db), autoload=True)
         for col in reflected_dates.c:
             self.assert_types_base(col, dates_table.c[col.key])
@@ -902,6 +902,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
 
         eq_(select([t.c.adate, t.c.atime, t.c.adatetime], t.c.adate==d1).execute().fetchall(), [(d1, t1, d2)])
 
+    @emits_warning_on('mssql+mxodbc', r'.*does not have any indexes.*')
     def test_binary(self):
         "Exercise type specification for binary types."
 
@@ -953,7 +954,6 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
             self.assert_(repr(col))
 
         metadata.create_all()
-
         reflected_binary = Table('test_mssql_binary', MetaData(testing.db), autoload=True)
         for col in reflected_binary.c:
             c1 =testing.db.dialect.type_descriptor(col.type).__class__
