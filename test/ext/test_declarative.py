@@ -1532,20 +1532,20 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         
         class Person(Base, ComparableEntity):
             __tablename__ = 'people'
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column(String(50))
 
         class Engineer(Person):
             __tablename__ = 'engineers'
             __mapper_args__ = {'concrete':True}
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
             primary_language = Column(String(50))
             name = Column(String(50))
 
         class Manager(Person):
             __tablename__ = 'manager'
             __mapper_args__ = {'concrete':True}
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
             golf_swing = Column(String(50))
             name = Column(String(50))
 
@@ -1797,7 +1797,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_simple(self):
 
         class MyMixin(object):
-            id =  Column(Integer, primary_key=True)
+            id =  Column(Integer, primary_key=True, test_needs_autoincrement=True)
 
             def foo(self):
                 return 'bar'+str(self.id)
@@ -1821,7 +1821,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_hierarchical_bases(self):
 
         class MyMixinParent:
-            id =  Column(Integer, primary_key=True)
+            id =  Column(Integer, primary_key=True, test_needs_autoincrement=True)
 
             def foo(self):
                 return 'bar'+str(self.id)
