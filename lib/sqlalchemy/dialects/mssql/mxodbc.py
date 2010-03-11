@@ -7,8 +7,15 @@ from sqlalchemy.dialects.mssql.pyodbc import MSExecutionContext_pyodbc
 from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
 
 
-class MSExecutionContext_mxodbc(MSExecutionContext):
-    pass
+class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
+    """
+    The pyodbc execution context is useful for enabling
+    SELECT SCOPE_IDENTITY in cases where OUTPUT clause
+    does not work (tables with insert triggers).
+    """
+    #todo - investigate whether the pyodbc execution context
+    #       is really only being used in cases where OUTPUT
+    #       won't work.
 
 class MSDialect_mxodbc(MxODBCConnector, MSDialect):
 
