@@ -873,7 +873,7 @@ Note that when :meth:`~sqlalchemy.orm.query.Query.join` is called with an explic
     session.query(Foo).join(
                             Foo.bars, 
                             (Bat, bar.bats),
-                            (Widget, (Bat.widget_id==Widget.id))
+                            (Widget, Bat.widget_id==Widget.id)
                             )
 
 The above would produce SQL something like ``foo JOIN bars ON <onclause> JOIN bats ON <onclause> JOIN widgets ON <onclause>``.

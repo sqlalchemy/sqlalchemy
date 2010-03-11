@@ -1308,7 +1308,7 @@ class Query(object):
 
     def first(self):
         """Return the first result of this ``Query`` or 
-           None if the result doesn't contain any row.
+        None if the result doesn't contain any row.
            
         first() applies a limit of one within the generated SQL, so that
         only one primary entity row is generated on the server side 
@@ -1360,8 +1360,8 @@ class Query(object):
 
     def scalar(self):
         """Return the first element of the first result or None
-           if no rows present.  If multiple rows are returned,
-           raises MultipleResultsFound.
+        if no rows present.  If multiple rows are returned,
+        raises MultipleResultsFound.
 
           >>> session.query(Item).scalar()
           <Item>
@@ -1400,7 +1400,7 @@ class Query(object):
 
     def instances(self, cursor, __context=None):
         """Given a ResultProxy cursor as returned by connection.execute(),
-          return an ORM result as an iterator.
+        return an ORM result as an iterator.
 
         e.g.::
 
