@@ -34,6 +34,10 @@ CHANGES
   - session.merge() works with relations that specifically
     don't include "merge" in their cascade options - the target
     is ignored completely.
+
+  - fixed internal error which would occur if calling has()
+    or similar complex expression on a single-table inheritance
+    relation(). [ticket:1731]
     
   - query.one() no longer applies LIMIT to the query, this to
     ensure that it fully counts all object identities present

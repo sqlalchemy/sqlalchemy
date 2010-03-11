@@ -276,7 +276,9 @@ def _deep_annotate(element, annotations, exclude=None):
     def clone(elem):
         # check if element is present in the exclude list.
         # take into account proxying relationships.
-        if exclude and elem.proxy_set.intersection(exclude):
+        if exclude and \
+                    hasattr(elem, 'proxy_set') and \
+                    elem.proxy_set.intersection(exclude):
             elem = elem._clone()
         elif annotations != elem._annotations:
             elem = elem._annotate(annotations.copy())

@@ -549,6 +549,20 @@ class AnnotationsTest(TestBase):
         b5 = visitors.cloned_traverse(b3, {}, {'binary':visit_binary})
         assert str(b5) == ":bar = table1.col2"
     
+    def test_annotate_expressions(self):
+        table1 = table('table1', column("col1"), column("col2"))
+        
+        for expr, expected in [
+            (table1.c.col1, "table1.col1"),
+            (table1.c.col1 == 5, "table1.col1 = :col1_1"),
+            (table1.c.col1.in_([2,3,4]), "table1.col1 IN (:col1_1, :col1_2, :col1_3)")
+        ]:
+            eq_(str(expr), expected)
+            eq_(str(expr._annotate({})), expected)
+            eq_(str(sql_util._deep_annotate(expr, {})), expected)
+            eq_(str(sql_util._deep_annotate(expr, {}, exclude=[table1.c.col1])), expected)
+        
+        
     def test_deannotate(self):
         table1 = table('table1', column("col1"), column("col2"))
         
