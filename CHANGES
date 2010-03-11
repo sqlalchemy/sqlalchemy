@@ -103,6 +103,11 @@ CHANGES
     it also is implemented within merge() such that a SELECT
     won't be issued for an incoming instance with partially
     NULL primary key if the flag is False.  [ticket:1680]
+
+  - Calling query.order_by() or query.distinct() before calling
+    query.select_from(), query.with_polymorphic(), or
+    query.from_statement() raises an exception now instead of 
+    silently dropping those criterion. [ticket:1736]
     
 - sql
   - The most common result processors conversion function were

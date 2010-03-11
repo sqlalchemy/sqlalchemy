@@ -281,12 +281,16 @@ class Query(object):
             equivs.update(ent.mapper._equivalent_columns)
         return equivs
 
+    def _get_condition(self):
+        self._order_by = self._distinct = False
+        return self._no_criterion_condition("get")
+        
     def _no_criterion_condition(self, meth):
         if not self._enable_assertions:
             return
         if self._criterion is not None or self._statement is not None or self._from_obj or \
                 self._limit is not None or self._offset is not None or \
-                self._group_by:
+                self._group_by or self._order_by or self._distinct:
             raise sa_exc.InvalidRequestError(
                                 "Query.%s() being called on a "
                                 "Query with existing criterion. " % meth)
@@ -1554,7 +1558,7 @@ class Query(object):
 
         if refresh_state is None:
             q = self._clone()
-            q._no_criterion_condition("get")
+            q._get_condition()
         else:
             q = self._clone()
 
