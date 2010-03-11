@@ -909,6 +909,11 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         expr = func.current_date() - column('foo', types.TIMESTAMP)
         eq_(expr.type._type_affinity, types.Interval)
+    
+    def test_expression_typing(self):
+        expr = column('bar', Integer) - 3
+        
+        eq_(expr.type._type_affinity, Integer)
         
     def test_distinct(self):
         s = select([distinct(test_table.c.avalue)])

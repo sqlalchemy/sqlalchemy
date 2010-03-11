@@ -33,6 +33,7 @@ from sqlalchemy.util import pickle
 from sqlalchemy.sql.visitors import Visitable
 from sqlalchemy import util
 from sqlalchemy import processors
+import collections
 
 NoneType = type(None)
 if util.jython:
@@ -820,12 +821,32 @@ class Integer(_DateAffinity, TypeEngine):
     
     @util.memoized_property
     def _expression_adaptations(self):
+        # TODO: need a dictionary object that will
+        # handle operators generically here, this is incomplete
         return {
             operators.add:{
                 Date:Date,
+                Integer:Integer,
+                Numeric:Numeric,
             },
             operators.mul:{
-                Interval:Interval
+                Interval:Interval,
+                Integer:Integer,
+                Numeric:Numeric,
+            },
+            # Py2K
+            operators.div:{
+                Integer:Integer,
+                Numeric:Numeric,
+            },
+            # end Py2K
+            operators.truediv:{
+                Integer:Integer,
+                Numeric:Numeric,
+            },
+            operators.sub:{
+                Integer:Integer,
+                Numeric:Numeric,
             },
         }
 
