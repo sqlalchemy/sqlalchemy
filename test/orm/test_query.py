@@ -2924,7 +2924,10 @@ class ImmediateTest(_fixtures.FixtureTest):
         eq_(sess.query(User.id).filter_by(id=0).scalar(), None)
         eq_(sess.query(User).filter_by(id=7).scalar(),
             sess.query(User).filter_by(id=7).one())
-
+        
+        assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User).scalar)
+        assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User.id, User.name).scalar)
+        
     @testing.resolve_artifact_names
     def test_value(self):
         sess = create_session()

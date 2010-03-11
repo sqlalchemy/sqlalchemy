@@ -109,6 +109,10 @@ CHANGES
     query.from_statement() raises an exception now instead of 
     silently dropping those criterion. [ticket:1736]
     
+  - query.scalar() now raises an exception if more than one 
+    row is returned.  All other behavior remains the same.
+    [ticket:1735]
+    
 - sql
   - The most common result processors conversion function were
     moved to the new "processors" module.  Dialect authors are

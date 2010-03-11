@@ -1309,6 +1309,11 @@ class Query(object):
     def first(self):
         """Return the first result of this ``Query`` or 
            None if the result doesn't contain any row.
+           
+        first() applies a limit of one within the generated SQL, so that
+        only one primary entity row is generated on the server side 
+        (note this may consist of multiple result rows if eagerly loaded
+        collections are present).
 
         Calling ``first()`` results in an execution of the underlying query.
 
@@ -1354,7 +1359,9 @@ class Query(object):
                 "Multiple rows were found for one()")
 
     def scalar(self):
-        """Return the first element of the first result or None.
+        """Return the first element of the first result or None
+           if no rows present.  If multiple rows are returned,
+           raises MultipleResultsFound.
 
           >>> session.query(Item).scalar()
           <Item>
@@ -1371,11 +1378,11 @@ class Query(object):
 
         """
         try:
-            ret = list(self)[0]
+            ret = self.one()
             if not isinstance(ret, tuple):
                 return ret
             return ret[0]
-        except IndexError:
+        except orm_exc.NoResultFound:
             return None
 
     def __iter__(self):
