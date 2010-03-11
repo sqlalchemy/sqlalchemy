@@ -50,10 +50,8 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         assert row[table.c.persons] == row['persons'] == 5
         assert row[table.c.full] == row['full'] == True
 
-        @testing.fails_on('oracle+cx_oracle', 'unknown DBAPI issue')
-        def test():
-            assert row[table.c.goofy] == row['goofy'] == "FOOsomegoofyBAR"
-        test()
+        eq_(row[table.c.goofy], row['goofy'])
+        eq_(row['goofy'], "FOOsomegoofyBAR")
     
     @testing.fails_on('firebird', "fb can't handle returning x AS y")
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
@@ -66,7 +64,6 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
     @testing.fails_on('firebird', "fb/kintersbasdb can't handle the bind params")
     @testing.fails_on('oracle+zxjdbc', "JDBC driver bug")
-    @testing.fails_on('oracle+cx_oracle', "unknown DBAPI issue")
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_anon_expressions(self):

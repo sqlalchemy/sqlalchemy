@@ -213,7 +213,13 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
                     del param[fromname]
 
         if self.dialect.auto_setinputsizes:
-            self.set_input_sizes(quoted_bind_names)
+            # cx_oracle really has issues when you setinputsizes 
+            # on String, including that outparams/RETURNING
+            # breaks for varchars
+            self.set_input_sizes(quoted_bind_names, 
+                                     exclude_types=[
+                                              self.dialect.dbapi.STRING, 
+                                              self.dialect.dbapi.UNICODE])
             
         if len(self.compiled_parameters) == 1:
             for key in self.compiled.binds:
