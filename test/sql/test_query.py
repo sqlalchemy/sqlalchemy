@@ -769,6 +769,10 @@ class QueryTest(TestBase):
 
     @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
+    @testing.fails_if(lambda: 
+                         (testing.db.name, testing.db.driver == 'mssql', 'pyodbc')
+                         and not testing.db.dialect.freetds,
+                         "not supported by Windows ODBC driver")
     def test_bind_in(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
