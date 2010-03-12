@@ -306,12 +306,18 @@ CHANGES
    - "out" parameters require a type that is supported by
      cx_oracle.  An error will be raised if no cx_oracle
      type can be found.
+
    - Oracle 'DATE' now does not perform any result processing,
      as the DATE type in Oracle stores full date+time objects,
      that's what you'll get.  Note that the generic types.Date
      type *will* still call value.date() on incoming values, 
      however.  When reflecting a table, the reflected type
      will be 'DATE'.
+
+   - Added preliminary support for Oracle's WITH_UNICODE
+     mode.  At the very least this establishes initial
+     support for cx_Oracle with Python 3.
+     [ticket:1670]
      
 - sqlite
    - Added "native_datetime=True" flag to create_engine().
