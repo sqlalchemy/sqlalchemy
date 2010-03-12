@@ -329,35 +329,37 @@ class Oracle_cx_oracle(OracleDialect):
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
         
-        def vers(num):
-            return tuple([int(x) for x in num.split('.')])
-
         if hasattr(self.dbapi, 'version'):
-            cx_oracle_ver = vers(self.dbapi.version)
+            cx_oracle_ver = tuple([int(x) for x in self.dbapi.version.split('.')])
             self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
             self._cx_oracle_native_nvarchar = cx_oracle_ver >= (5, 0)
-           
-        if self.dbapi is not None and not hasattr(self.dbapi, 'UNICODE'):
-             # cx_Oracle WITH_UNICODE mode.  *only* python
-             # unicode objects accepted for anything
-             self._cx_oracle_string_types = set([self.dbapi.STRING, self.dbapi.NCLOB])
-             self.supports_unicode_statements = True
-             self.supports_unicode_binds = True
-             self._cx_oracle_with_unicode = True
-        else:
-             self._cx_oracle_with_unicode = False
-             if self.dbapi is not None:
-                 self._cx_oracle_string_types = set([self.dbapi.UNICODE, self.dbapi.NCLOB, self.dbapi.STRING])
-                 self._cx_oracle_unicode_types = set([self.dbapi.UNICODE, self.dbapi.NCLOB])
-             else:
-                 self._cx_oracle_string_types = set()
+        else:  
+           cx_oracle_ver = None
+            
+        def types(*names):
+            return set([getattr(self.dbapi, name, None) for name in names]).difference([None])
 
-	 
-        if self.dbapi is None or \
+        self._cx_oracle_string_types = types("STRING", "UNICODE", "NCLOB", "CLOB")
+        self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
+        self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB") 
+
+        if cx_oracle_ver is None:
+            # this occurs in tests with mock DBAPIs
+            self._cx_oracle_string_types = set()
+            self._cx_oracle_with_unicode = False
+        elif not hasattr(self.dbapi, 'UNICODE'):
+            # cx_Oracle WITH_UNICODE mode.  *only* python
+            # unicode objects accepted for anything
+            self.supports_unicode_statements = True
+            self.supports_unicode_binds = True
+            self._cx_oracle_with_unicode = True
+        else:
+            self._cx_oracle_with_unicode = False
+
+        if cx_oracle_ver is None or \
                     not self.auto_convert_lobs or \
                     not hasattr(self.dbapi, 'CLOB'):
             self.dbapi_type_map = {}
-            self._cx_oracle_binary_types = set()
         else:
             # only use this for LOB objects.  using it for strings, dates
             # etc. leads to a little too much magic, reflection doesn't know if it should
@@ -368,9 +370,6 @@ class Oracle_cx_oracle(OracleDialect):
                 self.dbapi.BLOB: oracle.BLOB(),
                 self.dbapi.BINARY: oracle.RAW(),
             }
-            self._cx_oracle_binary_types = set([getattr(self.dbapi, k) for k in 
-                                          ["BFILE", "CLOB", "NCLOB", "BLOB"] 
-                                          if hasattr(self.dbapi, k)])
     
     @classmethod
     def dbapi(cls):

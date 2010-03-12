@@ -137,7 +137,6 @@ class DefaultDialect(base.Dialect):
         self.returns_unicode_strings = self._check_unicode_returns(connection)
     
     def _check_unicode_returns(self, connection):
-        cursor = connection.connection.cursor()
         # Py2K
         if self.supports_unicode_statements:
             cast_to = unicode
@@ -147,24 +146,27 @@ class DefaultDialect(base.Dialect):
         # Py3K
         #cast_to = str
         def check_unicode(type_):
-            cursor.execute(
-                cast_to(
-                    expression.select( 
-                    [expression.cast(
-                        expression.literal_column("'test unicode returns'"), type_)
-                    ]).compile(dialect=self)
+            cursor = connection.connection.cursor()
+            try:
+                cursor.execute(
+                    cast_to(
+                        expression.select( 
+                        [expression.cast(
+                            expression.literal_column("'test unicode returns'"), type_)
+                        ]).compile(dialect=self)
+                    )
                 )
-            )
-        
-            row = cursor.fetchone()
-            return isinstance(row[0], unicode)
-        
+                row = cursor.fetchone()
+                
+                return isinstance(row[0], unicode)
+            finally:
+                cursor.close()
+                
         # detect plain VARCHAR
         unicode_for_varchar = check_unicode(sqltypes.VARCHAR(60))
         
         # detect if there's an NVARCHAR type with different behavior available
         unicode_for_unicode = check_unicode(sqltypes.Unicode(60))
-        cursor.close()
        
         if unicode_for_unicode and not unicode_for_varchar:
             return "conditional"
