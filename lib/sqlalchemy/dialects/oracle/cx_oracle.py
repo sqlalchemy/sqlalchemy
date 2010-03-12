@@ -100,19 +100,11 @@ class _LOBMixin(object):
             # return the cx_oracle.LOB directly.
             return None
             
-        super_process = super(_LOBMixin, self).result_processor(dialect, coltype)
-        if super_process:
-            def process(value):
-                if value is not None:
-                    return super_process(value.read())
-                else:
-                    return super_process(value)
-        else:
-            def process(value):
-                if value is not None:
-                    return value.read()
-                else:
-                    return value
+        def process(value):
+            if value is not None:
+                return value.read()
+            else:
+                return value
         return process
 
 class _NativeUnicodeMixin(object):
@@ -123,7 +115,7 @@ class _NativeUnicodeMixin(object):
             return None
         elif self.convert_unicode != 'force' and \
                     dialect._cx_oracle_native_nvarchar and \
-                    coltype == dialect.dbapi.UNICODE:
+                    coltype in dialect._cx_oracle_unicode_types:
             return None
         else:
             return super(_NativeUnicodeMixin, self).result_processor(dialect, coltype)
@@ -143,27 +135,23 @@ class _OracleText(_LOBMixin, sqltypes.Text):
 class _OracleString(_NativeUnicodeMixin, sqltypes.String):
     pass
 
-class _OracleUnicodeText(_NativeUnicodeMixin, sqltypes.UnicodeText):
+class _OracleUnicodeText(_LOBMixin, _NativeUnicodeMixin, sqltypes.UnicodeText):
     def get_dbapi_type(self, dbapi):
         return dbapi.NCLOB
 
     def result_processor(self, dialect, coltype):
-        if not dialect.auto_convert_lobs:
-            # return the cx_oracle.LOB directly.
+        lob_processor = _LOBMixin.result_processor(self, dialect, coltype)
+        if lob_processor is None:
             return None
 
-        if dialect._cx_oracle_native_nvarchar:
-            def process(value):
-                if value is not None:
-                    return value.read()
-                else:
-                    return value
-            return process
+        string_processor = _NativeUnicodeMixin.result_processor(self, dialect, coltype)
+
+        if string_processor is None:
+            return lob_processor
         else:
-            # TODO: this is wrong - we are getting a LOB here
-            # no matter what version of oracle, so process() 
-            # is still needed
-            return super(_OracleUnicodeText, self).result_processor(dialect, coltype)
+            def process(value):
+                return string_processor(lob_processor(value))
+            return process
 
 class _OracleInteger(sqltypes.Integer):
     def result_processor(self, dialect, coltype):
@@ -352,17 +340,19 @@ class Oracle_cx_oracle(OracleDialect):
         if self.dbapi is not None and not hasattr(self.dbapi, 'UNICODE'):
              # cx_Oracle WITH_UNICODE mode.  *only* python
              # unicode objects accepted for anything
-             self._cx_oracle_string_types = set([self.dbapi.STRING])
+             self._cx_oracle_string_types = set([self.dbapi.STRING, self.dbapi.NCLOB])
              self.supports_unicode_statements = True
              self.supports_unicode_binds = True
              self._cx_oracle_with_unicode = True
         else:
              self._cx_oracle_with_unicode = False
              if self.dbapi is not None:
-                 self._cx_oracle_string_types = set([self.dbapi.UNICODE, self.dbapi.STRING])
+                 self._cx_oracle_string_types = set([self.dbapi.UNICODE, self.dbapi.NCLOB, self.dbapi.STRING])
+                 self._cx_oracle_unicode_types = set([self.dbapi.UNICODE, self.dbapi.NCLOB])
              else:
                  self._cx_oracle_string_types = set()
- 
+
+	 
         if self.dbapi is None or \
                     not self.auto_convert_lobs or \
                     not hasattr(self.dbapi, 'CLOB'):
