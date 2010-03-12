@@ -148,9 +148,25 @@ class DefaultDialect(base.Dialect):
         )
         
         row = cursor.fetchone()
-        result = isinstance(row[0], unicode)
+        unicode_for_varchar = isinstance(row[0], unicode)
+
+        cursor.execute(
+            str(
+                expression.select( 
+                [expression.cast(
+                    expression.literal_column("'test unicode returns'"),sqltypes.VARCHAR(60))
+                ]).compile(dialect=self)
+            )
+        )
+        
+        row = cursor.fetchone()
+        unicode_for_unicode = isinstance(row[0], unicode)
         cursor.close()
-        return result
+        
+        if unicode_for_unicode and not unicode_for_varchar:
+            return "conditional"
+        else:
+            return unicode_for_varchar
         
     def type_descriptor(self, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given

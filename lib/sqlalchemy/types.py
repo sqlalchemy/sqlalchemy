@@ -688,7 +688,7 @@ class String(Concatenable, TypeEngine):
     def result_processor(self, dialect, coltype):
         wants_unicode = self.convert_unicode or dialect.convert_unicode
         needs_convert = wants_unicode and \
-                        (not dialect.returns_unicode_strings or 
+                        (dialect.returns_unicode_strings is not True or 
                         self.convert_unicode == 'force')
         
         if needs_convert:
@@ -697,7 +697,8 @@ class String(Concatenable, TypeEngine):
             
             if dialect.returns_unicode_strings:
                 # we wouldn't be here unless convert_unicode='force'
-                # was specified.   since we will be getting back unicode
+                # was specified, or the driver has erratic unicode-returning
+                # habits.  since we will be getting back unicode
                 # in most cases, we check for it (decode will fail).   
                 def process(value):
                     if isinstance(value, unicode):
