@@ -138,29 +138,24 @@ class DefaultDialect(base.Dialect):
     
     def _check_unicode_returns(self, connection):
         cursor = connection.connection.cursor()
-        cursor.execute(
-            str(
-                expression.select( 
-                [expression.cast(
-                    expression.literal_column("'test unicode returns'"),sqltypes.VARCHAR(60))
-                ]).compile(dialect=self)
+        def check_unicode(type_):
+            cursor.execute(
+                str(
+                    expression.select( 
+                    [expression.cast(
+                        expression.literal_column("'test unicode returns'"), type_)
+                    ]).compile(dialect=self)
+                )
             )
-        )
         
-        row = cursor.fetchone()
-        unicode_for_varchar = isinstance(row[0], unicode)
-
-        cursor.execute(
-            str(
-                expression.select( 
-                [expression.cast(
-                    expression.literal_column("'test unicode returns'"),sqltypes.Unicode(60))
-                ]).compile(dialect=self)
-            )
-        )
+            row = cursor.fetchone()
+            return isinstance(row[0], unicode)
         
-        row = cursor.fetchone()
-        unicode_for_unicode = isinstance(row[0], unicode)
+        # detect plain VARCHAR
+        unicode_for_varchar = check_unicode(sqltypes.VARCHAR(60))
+        
+        # detect if there's an NVARCHAR type with different behavior available
+        unicode_for_unicode = check_unicode(sqltypes.Unicode(60))
         cursor.close()
        
         if unicode_for_unicode and not unicode_for_varchar:
