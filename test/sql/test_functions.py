@@ -200,7 +200,7 @@ class ExecuteTest(TestBase):
         from sqlalchemy.ext.compiler import compiles
         
         class myfunc(FunctionElement):
-            type = DATE()
+            type = Date()
         
         @compiles(myfunc)
         def compile(elem, compiler, **kw):

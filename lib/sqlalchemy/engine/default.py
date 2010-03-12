@@ -138,19 +138,30 @@ class DefaultDialect(base.Dialect):
     
     def _check_unicode_returns(self, connection):
         cursor = connection.connection.cursor()
-        cursor.execute(
-            str(
-                expression.select( 
-                [expression.cast(
-                    expression.literal_column("'test unicode returns'"),sqltypes.VARCHAR(60))
-                ]).compile(dialect=self)
+        def check_unicode(type_):
+            cursor.execute(
+                str(
+                    expression.select( 
+                    [expression.cast(
+                        expression.literal_column("'test unicode returns'"), type_)
+                    ]).compile(dialect=self)
+                )
             )
-        )
         
-        row = cursor.fetchone()
-        result = isinstance(row[0], unicode)
+            row = cursor.fetchone()
+            return isinstance(row[0], unicode)
+        
+        # detect plain VARCHAR
+        unicode_for_varchar = check_unicode(sqltypes.VARCHAR(60))
+        
+        # detect if there's an NVARCHAR type with different behavior available
+        unicode_for_unicode = check_unicode(sqltypes.Unicode(60))
         cursor.close()
-        return result
+       
+        if unicode_for_unicode and not unicode_for_varchar:
+            return "conditional"
+        else:
+            return unicode_for_varchar
         
     def type_descriptor(self, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given

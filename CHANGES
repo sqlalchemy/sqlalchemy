@@ -34,6 +34,10 @@ CHANGES
   - session.merge() works with relations that specifically
     don't include "merge" in their cascade options - the target
     is ignored completely.
+
+  - fixed internal error which would occur if calling has()
+    or similar complex expression on a single-table inheritance
+    relation(). [ticket:1731]
     
   - query.one() no longer applies LIMIT to the query, this to
     ensure that it fully counts all object identities present
@@ -99,6 +103,15 @@ CHANGES
     it also is implemented within merge() such that a SELECT
     won't be issued for an incoming instance with partially
     NULL primary key if the flag is False.  [ticket:1680]
+
+  - Calling query.order_by() or query.distinct() before calling
+    query.select_from(), query.with_polymorphic(), or
+    query.from_statement() raises an exception now instead of 
+    silently dropping those criterion. [ticket:1736]
+    
+  - query.scalar() now raises an exception if more than one 
+    row is returned.  All other behavior remains the same.
+    [ticket:1735]
     
 - sql
   - The most common result processors conversion function were
@@ -184,6 +197,10 @@ CHANGES
     coercing a returned floating point value into a string 
     on its way to Decimal - this allows accuracy to function
     on SQLite, MySQL.  [ticket:1717]
+
+  - the copy() method of Column now copies over uninitialized
+    "on table attach" events.  Helps with the new declarative
+    "mixin" capability.
     
 - engines
   - Added an optional C extension to speed up the sql layer by

@@ -115,24 +115,33 @@ class _LOBMixin(object):
                     return value
         return process
 
-class _OracleChar(sqltypes.CHAR):
+class _NativeUnicodeMixin(object):
+    def result_processor(self, dialect, coltype):
+        # if we know cx_Oracle will return unicode,
+        # don't process results
+        if self.convert_unicode != 'force' and \
+                    dialect._cx_oracle_native_nvarchar and \
+                    coltype == dialect.dbapi.UNICODE:
+            return None
+        else:
+            return super(_NativeUnicodeMixin, self).result_processor(dialect, coltype)
+    
+class _OracleChar(_NativeUnicodeMixin, sqltypes.CHAR):
     def get_dbapi_type(self, dbapi):
         return dbapi.FIXED_CHAR
 
-class _OracleNVarChar(sqltypes.NVARCHAR):
+class _OracleNVarChar(_NativeUnicodeMixin, sqltypes.NVARCHAR):
     def get_dbapi_type(self, dbapi):
         return dbapi.UNICODE
-    def result_processor(self, dialect, coltype):
-        if dialect._cx_oracle_native_nvarchar:
-            return None
-        else:
-            return sqltypes.NVARCHAR.result_processor(self, dialect, coltype)
         
 class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
         return dbapi.CLOB
 
-class _OracleUnicodeText(sqltypes.UnicodeText):
+class _OracleString(_NativeUnicodeMixin, sqltypes.String):
+    pass
+
+class _OracleUnicodeText(_NativeUnicodeMixin, sqltypes.UnicodeText):
     def get_dbapi_type(self, dbapi):
         return dbapi.NCLOB
 
@@ -184,6 +193,7 @@ colspecs = {
     sqltypes.Interval : _OracleInterval,
     oracle.INTERVAL : _OracleInterval,
     sqltypes.Text : _OracleText,
+    sqltypes.String : _OracleString,
     sqltypes.UnicodeText : _OracleUnicodeText,
     sqltypes.CHAR : _OracleChar,
     sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
@@ -213,7 +223,13 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
                     del param[fromname]
 
         if self.dialect.auto_setinputsizes:
-            self.set_input_sizes(quoted_bind_names)
+            # cx_oracle really has issues when you setinputsizes 
+            # on String, including that outparams/RETURNING
+            # breaks for varchars
+            self.set_input_sizes(quoted_bind_names, 
+                                     exclude_types=[
+                                              self.dialect.dbapi.STRING, 
+                                              self.dialect.dbapi.UNICODE])
             
         if len(self.compiled_parameters) == 1:
             for key in self.compiled.binds:

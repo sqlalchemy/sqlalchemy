@@ -281,12 +281,16 @@ class Query(object):
             equivs.update(ent.mapper._equivalent_columns)
         return equivs
 
+    def _get_condition(self):
+        self._order_by = self._distinct = False
+        return self._no_criterion_condition("get")
+        
     def _no_criterion_condition(self, meth):
         if not self._enable_assertions:
             return
         if self._criterion is not None or self._statement is not None or self._from_obj or \
                 self._limit is not None or self._offset is not None or \
-                self._group_by:
+                self._group_by or self._order_by or self._distinct:
             raise sa_exc.InvalidRequestError(
                                 "Query.%s() being called on a "
                                 "Query with existing criterion. " % meth)
@@ -1304,7 +1308,12 @@ class Query(object):
 
     def first(self):
         """Return the first result of this ``Query`` or 
-           None if the result doesn't contain any row.
+        None if the result doesn't contain any row.
+           
+        first() applies a limit of one within the generated SQL, so that
+        only one primary entity row is generated on the server side 
+        (note this may consist of multiple result rows if eagerly loaded
+        collections are present).
 
         Calling ``first()`` results in an execution of the underlying query.
 
@@ -1350,7 +1359,9 @@ class Query(object):
                 "Multiple rows were found for one()")
 
     def scalar(self):
-        """Return the first element of the first result or None.
+        """Return the first element of the first result or None
+        if no rows present.  If multiple rows are returned,
+        raises MultipleResultsFound.
 
           >>> session.query(Item).scalar()
           <Item>
@@ -1367,11 +1378,11 @@ class Query(object):
 
         """
         try:
-            ret = list(self)[0]
+            ret = self.one()
             if not isinstance(ret, tuple):
                 return ret
             return ret[0]
-        except IndexError:
+        except orm_exc.NoResultFound:
             return None
 
     def __iter__(self):
@@ -1389,7 +1400,7 @@ class Query(object):
 
     def instances(self, cursor, __context=None):
         """Given a ResultProxy cursor as returned by connection.execute(),
-          return an ORM result as an iterator.
+        return an ORM result as an iterator.
 
         e.g.::
 
@@ -1554,7 +1565,7 @@ class Query(object):
 
         if refresh_state is None:
             q = self._clone()
-            q._no_criterion_condition("get")
+            q._get_condition()
         else:
             q = self._clone()
 

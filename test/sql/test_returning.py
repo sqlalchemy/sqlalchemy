@@ -49,7 +49,9 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         row = result.first()
         assert row[table.c.persons] == row['persons'] == 5
         assert row[table.c.full] == row['full'] == True
-        assert row[table.c.goofy] == row['goofy'] == "FOOsomegoofyBAR"
+
+        eq_(row[table.c.goofy], row['goofy'])
+        eq_(row['goofy'], "FOOsomegoofyBAR")
     
     @testing.fails_on('firebird', "fb can't handle returning x AS y")
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')

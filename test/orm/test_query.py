@@ -283,6 +283,25 @@ class InvalidGenerationsTest(QueryTest):
         s = create_session()
         q = s.query(User)
         assert_raises(sa_exc.InvalidRequestError, q.add_column, object())
+    
+    def test_distinct(self):
+        """test that a distinct() call is not valid before 'clauseelement' conditions."""
+        
+        s = create_session()
+        q = s.query(User).distinct()
+        assert_raises(sa_exc.InvalidRequestError, q.select_from, User)
+        assert_raises(sa_exc.InvalidRequestError, q.from_statement, text("select * from table"))
+        assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
+
+    def test_order_by(self):
+        """test that an order_by() call is not valid before 'clauseelement' conditions."""
+
+        s = create_session()
+        q = s.query(User).order_by(User.id)
+        assert_raises(sa_exc.InvalidRequestError, q.select_from, User)
+        assert_raises(sa_exc.InvalidRequestError, q.from_statement, text("select * from table"))
+        assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
+        
         
     def test_mapper_zero(self):
         s = create_session()
@@ -2905,7 +2924,10 @@ class ImmediateTest(_fixtures.FixtureTest):
         eq_(sess.query(User.id).filter_by(id=0).scalar(), None)
         eq_(sess.query(User).filter_by(id=7).scalar(),
             sess.query(User).filter_by(id=7).one())
-
+        
+        assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User).scalar)
+        assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User.id, User.name).scalar)
+        
     @testing.resolve_artifact_names
     def test_value(self):
         sess = create_session()
