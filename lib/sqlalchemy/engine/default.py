@@ -138,9 +138,17 @@ class DefaultDialect(base.Dialect):
     
     def _check_unicode_returns(self, connection):
         cursor = connection.connection.cursor()
+        # Py2K
+        if self.supports_unicode_statements:
+            cast_to = unicode
+        else:
+            cast_to = str
+        # end Py2K
+        # Py3K
+        #cast_to = str
         def check_unicode(type_):
             cursor.execute(
-                str(
+                cast_to(
                     expression.select( 
                     [expression.cast(
                         expression.literal_column("'test unicode returns'"), type_)

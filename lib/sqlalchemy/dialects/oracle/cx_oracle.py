@@ -119,7 +119,9 @@ class _NativeUnicodeMixin(object):
     def result_processor(self, dialect, coltype):
         # if we know cx_Oracle will return unicode,
         # don't process results
-        if self.convert_unicode != 'force' and \
+        if dialect._cx_oracle_with_unicode:
+            return None
+        elif self.convert_unicode != 'force' and \
                     dialect._cx_oracle_native_nvarchar and \
                     coltype == dialect.dbapi.UNICODE:
             return None
@@ -227,9 +229,8 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
             # on String, including that outparams/RETURNING
             # breaks for varchars
             self.set_input_sizes(quoted_bind_names, 
-                                     exclude_types=[
-                                              self.dialect.dbapi.STRING, 
-                                              self.dialect.dbapi.UNICODE])
+                                     exclude_types=self.dialect._cx_oracle_string_types
+                                )
             
         if len(self.compiled_parameters) == 1:
             for key in self.compiled.binds:
@@ -266,7 +267,7 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
         if self.cursor.description is not None:
             for column in self.cursor.description:
                 type_code = column[1]
-                if type_code in self.dialect.ORACLE_BINARY_TYPES:
+                if type_code in self.dialect._cx_oracle_binary_types:
                     result = base.BufferedColumnResultProxy(self)
         
         if result is None:
@@ -347,10 +348,26 @@ class Oracle_cx_oracle(OracleDialect):
             cx_oracle_ver = vers(self.dbapi.version)
             self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
             self._cx_oracle_native_nvarchar = cx_oracle_ver >= (5, 0)
-            
-        if self.dbapi is None or not self.auto_convert_lobs or not 'CLOB' in self.dbapi.__dict__:
+           
+        if self.dbapi is not None and not hasattr(self.dbapi, 'UNICODE'):
+             # cx_Oracle WITH_UNICODE mode.  *only* python
+             # unicode objects accepted for anything
+             self._cx_oracle_string_types = set([self.dbapi.STRING])
+             self.supports_unicode_statements = True
+             self.supports_unicode_binds = True
+             self._cx_oracle_with_unicode = True
+        else:
+             self._cx_oracle_with_unicode = False
+             if self.dbapi is not None:
+                 self._cx_oracle_string_types = set([self.dbapi.UNICODE, self.dbapi.STRING])
+             else:
+                 self._cx_oracle_string_types = set()
+ 
+        if self.dbapi is None or \
+                    not self.auto_convert_lobs or \
+                    not hasattr(self.dbapi, 'CLOB'):
             self.dbapi_type_map = {}
-            self.ORACLE_BINARY_TYPES = []
+            self._cx_oracle_binary_types = set()
         else:
             # only use this for LOB objects.  using it for strings, dates
             # etc. leads to a little too much magic, reflection doesn't know if it should
@@ -361,7 +378,9 @@ class Oracle_cx_oracle(OracleDialect):
                 self.dbapi.BLOB: oracle.BLOB(),
                 self.dbapi.BINARY: oracle.RAW(),
             }
-            self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB"] if hasattr(self.dbapi, k)]
+            self._cx_oracle_binary_types = set([getattr(self.dbapi, k) for k in 
+                                          ["BFILE", "CLOB", "NCLOB", "BLOB"] 
+                                          if hasattr(self.dbapi, k)])
     
     @classmethod
     def dbapi(cls):
@@ -395,6 +414,14 @@ class Oracle_cx_oracle(OracleDialect):
             threaded=self.threaded,
             twophase=self.allow_twophase,
             )
+
+        # Py2K
+        if self._cx_oracle_with_unicode:
+            for k, v in opts.items():
+                if isinstance(v, str):
+                    opts[k] = unicode(v)
+        # end Py2K
+
         if 'mode' in url.query:
             opts['mode'] = url.query['mode']
             if isinstance(opts['mode'], basestring):
