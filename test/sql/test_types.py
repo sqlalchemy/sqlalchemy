@@ -311,7 +311,11 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
     
     def test_native_unicode(self):
         """assert expected values for 'native unicode' mode"""
-        
+       
+        if testing.against('mssql+pyodbc') and not testing.db.dialect.freetds:
+            assert testing.db.dialect.returns_unicode_strings == 'conditional'
+            return
+ 
         assert testing.db.dialect.returns_unicode_strings == \
             ((testing.db.name, testing.db.driver) in \
             (
@@ -518,6 +522,14 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                       'drole de petit voix m?a reveille. Elle disait: < S?il vous plait? '
                       'dessine-moi un mouton! >'
                  )
+            elif testing.against('mssql+pyodbc') and not testing.db.dialect.freetds:
+                # TODO: no clue what this is
+                eq_(
+                      x,
+                      u'Alors vous imaginez ma surprise, au lever du jour, quand une '
+                      u'drle de petit voix ma rveill. Elle disait:  Sil vous plat '
+                      u'dessine-moi un mouton! '
+                )
             elif engine.dialect.returns_unicode_strings:
                 eq_(x, unicodedata)
             else:

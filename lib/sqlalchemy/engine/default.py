@@ -154,7 +154,7 @@ class DefaultDialect(base.Dialect):
             str(
                 expression.select( 
                 [expression.cast(
-                    expression.literal_column("'test unicode returns'"),sqltypes.VARCHAR(60))
+                    expression.literal_column("'test unicode returns'"),sqltypes.Unicode(60))
                 ]).compile(dialect=self)
             )
         )
@@ -162,7 +162,7 @@ class DefaultDialect(base.Dialect):
         row = cursor.fetchone()
         unicode_for_unicode = isinstance(row[0], unicode)
         cursor.close()
-        
+       
         if unicode_for_unicode and not unicode_for_varchar:
             return "conditional"
         else:
