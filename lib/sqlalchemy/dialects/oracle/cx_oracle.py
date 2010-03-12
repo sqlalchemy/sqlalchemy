@@ -348,20 +348,23 @@ class Oracle_cx_oracle(OracleDialect):
             cx_oracle_ver = vers(self.dbapi.version)
             self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
             self._cx_oracle_native_nvarchar = cx_oracle_ver >= (5, 0)
-           
-        if self.dbapi is not None and not hasattr(self.dbapi, 'UNICODE'):
-             # cx_Oracle WITH_UNICODE mode.  *only* python
-             # unicode objects accepted for anything
-             self._cx_oracle_string_types = set([self.dbapi.STRING])
-             self.supports_unicode_statements = True
-             self.supports_unicode_binds = True
-             self._cx_oracle_with_unicode = True
         else:
-             self._cx_oracle_with_unicode = False
-             if self.dbapi is not None:
-                 self._cx_oracle_string_types = set([self.dbapi.UNICODE, self.dbapi.STRING])
-             else:
-                 self._cx_oracle_string_types = set()
+            cx_oracle_ver = None
+            
+        if cx_oracle_ver is None:
+            # this occurs in tests with mock DBAPIs
+            self._cx_oracle_string_types = set()
+            self._cx_oracle_with_unicode = False
+        elif not hasattr(self.dbapi, 'UNICODE'):
+            # cx_Oracle WITH_UNICODE mode.  *only* python
+            # unicode objects accepted for anything
+            self._cx_oracle_string_types = set([self.dbapi.STRING])
+            self.supports_unicode_statements = True
+            self.supports_unicode_binds = True
+            self._cx_oracle_with_unicode = True
+        else:
+            self._cx_oracle_with_unicode = False
+            self._cx_oracle_string_types = set([self.dbapi.UNICODE, self.dbapi.STRING])
  
         if self.dbapi is None or \
                     not self.auto_convert_lobs or \
