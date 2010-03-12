@@ -312,7 +312,9 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
     def test_native_unicode(self):
         """assert expected values for 'native unicode' mode"""
        
-        if testing.against('mssql+pyodbc') and not testing.db.dialect.freetds:
+        if \
+	     (testing.against('mssql+pyodbc') and not testing.db.dialect.freetds) or \
+              testing.against('oracle+cx_oracle'):
             assert testing.db.dialect.returns_unicode_strings == 'conditional'
             return
  

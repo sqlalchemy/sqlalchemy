@@ -653,6 +653,7 @@ class String(Concatenable, TypeEngine):
         return impltype(
                     length=self.length,
                     convert_unicode=self.convert_unicode,
+                    unicode_error=self.unicode_error,
                     _warn_on_bytestring=True,
                     )
 
@@ -690,7 +691,7 @@ class String(Concatenable, TypeEngine):
         needs_convert = wants_unicode and \
                         (dialect.returns_unicode_strings is not True or 
                         self.convert_unicode == 'force')
-        
+       
         if needs_convert:
             to_unicode = processors.to_unicode_processor_factory(
                                     dialect.encoding, self.unicode_error)
@@ -1216,7 +1217,7 @@ class SchemaType(object):
         if bind is None:
             bind = _bind_or_error(self)
         t = self.dialect_impl(bind.dialect)
-        if t is not self:
+        if t is not self and isinstance(t, SchemaType):
             t.create(bind=bind, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=False):
@@ -1226,27 +1227,27 @@ class SchemaType(object):
         if bind is None:
             bind = _bind_or_error(self)
         t = self.dialect_impl(bind.dialect)
-        if t is not self:
+        if t is not self and isinstance(t, SchemaType):
             t.drop(bind=bind, checkfirst=checkfirst)
         
     def _on_table_create(self, event, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)
-        if t is not self:
+        if t is not self and isinstance(t, SchemaType):
             t._on_table_create(event, target, bind, **kw)
 
     def _on_table_drop(self, event, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)
-        if t is not self:
+        if t is not self and isinstance(t, SchemaType):
             t._on_table_drop(event, target, bind, **kw)
 
     def _on_metadata_create(self, event, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)
-        if t is not self:
+        if t is not self and isinstance(t, SchemaType):
             t._on_metadata_create(event, target, bind, **kw)
 
     def _on_metadata_drop(self, event, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)
-        if t is not self:
+        if t is not self and isinstance(t, SchemaType):
             t._on_metadata_drop(event, target, bind, **kw)
     
 class Enum(String, SchemaType):
@@ -1341,13 +1342,16 @@ class Enum(String, SchemaType):
         table.append_constraint(e)
         
     def adapt(self, impltype):
-        return impltype(name=self.name, 
+        if issubclass(impltype, Enum):
+            return impltype(name=self.name, 
                         quote=self.quote, 
                         schema=self.schema, 
                         metadata=self.metadata,
                         convert_unicode=self.convert_unicode,
                         *self.enums
                         )
+        else:
+            return super(Enum, self).adapt(impltype)
 
 class PickleType(MutableType, TypeDecorator):
     """Holds Python objects.
