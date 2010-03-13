@@ -39,7 +39,8 @@ class ZooMarkTest(TestBase):
         engine.dialect._unwrap_connection = engines.unwrap_connection
         metadata = MetaData(engine)
         session = sessionmaker()()
-
+        engine.connect()
+        
     def test_baseline_1_create_tables(self):
         zoo = Table('Zoo', metadata,
                     Column('ID', Integer, Sequence('zoo_id_seq'),
@@ -286,7 +287,8 @@ class ZooMarkTest(TestBase):
         engine.dialect._unwrap_connection = engines.unwrap_connection
         metadata = MetaData(engine)
         session = sessionmaker()()
-
+        engine.connect()
+        
     @profiling.function_call_count(4898)
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
