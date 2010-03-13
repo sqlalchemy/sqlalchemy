@@ -92,7 +92,7 @@ pyodbc_                    ``access+pyodbc``\*          development  development
 -------------------------------------------------------------------------------------------------------------------------------
 adodbapi_                  ``mssql+adodbapi``           development  development   no           no                 yes
 `jTDS JDBC Driver`_        ``mssql+zxjdbc``             no           no            development  yes                yes
-mxodbc_                    ``mssql+mxyodbc``            yes          development   no           yes with FreeTDS_  yes
+mxodbc_                    ``mssql+mxodbc``             yes          development   no           yes with FreeTDS_  yes
 pyodbc_                    ``mssql+pyodbc``\*           yes          development   no           yes with FreeTDS_  yes
 pymssql_                   ``mssql+pymssql``            development  development   no           yes                yes
 **MySQL**
@@ -117,7 +117,7 @@ pysqlite_                  ``sqlite+pysqlite``\*        yes          yes        
 sqlite3_                   ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
 **Sybase ASE**
 -------------------------------------------------------------------------------------------------------------------------------
-mxodbc_                    ``sybase+myodbc``            development  development   no           yes                yes
+mxodbc_                    ``sybase+mxodbc``            development  development   no           yes                yes
 pyodbc_                    ``sybase+pyodbc``            development  development   no           unknown            unknown
 python-sybase_             ``sybase+pysybase``\*        development  development   no           yes                yes
 =========================  ===========================  ===========  ===========   ===========  =================  ============
