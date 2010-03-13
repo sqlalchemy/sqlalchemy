@@ -108,6 +108,19 @@ class _LOBMixin(object):
         return process
 
 class _NativeUnicodeMixin(object):
+    # Py2K
+    def bind_processor(self, dialect):
+        if dialect._cx_oracle_with_unicode:
+            def process(value):
+                if value is None:
+                    return value
+                else:
+                    return unicode(value)
+            return process
+        else:
+            return super(_NativeUnicodeMixin, self).bind_processor(dialect)
+    # end Py2K
+    
     def result_processor(self, dialect, coltype):
         # if we know cx_Oracle will return unicode,
         # don't process results
@@ -126,7 +139,7 @@ class _OracleChar(_NativeUnicodeMixin, sqltypes.CHAR):
 
 class _OracleNVarChar(_NativeUnicodeMixin, sqltypes.NVARCHAR):
     def get_dbapi_type(self, dbapi):
-        return dbapi.UNICODE
+        return getattr(dbapi, 'UNICODE', dbapi.STRING)
         
 class _OracleText(_LOBMixin, sqltypes.Text):
     def get_dbapi_type(self, dbapi):
@@ -203,7 +216,9 @@ class Oracle_cx_oracleCompiler(OracleCompiler):
         else:
             return OracleCompiler.bindparam_string(self, name)
 
+    
 class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
+    
     def pre_exec(self):
         quoted_bind_names = getattr(self.compiled, '_quoted_bind_names', {})
         if quoted_bind_names:
@@ -286,6 +301,25 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
 
         return result
 
+class Oracle_cx_oracle_with_unicodeExecutionContext(Oracle_cx_oracleExecutionContext):
+    """Support WITH_UNICODE in Python 2.xx.
+    
+    WITH_UNICODE allows cx_Oracle's Python 3 unicode handling behavior under Python 2.x.
+    This mode in some cases disallows and in other cases silently 
+    passes corrupted data when non-Python-unicode strings (a.k.a. plain old Python strings) 
+    are passed as arguments to connect(), the statement sent to execute(), or any of the bind
+    parameter keys or values sent to execute().  This optional context
+    therefore ensures that all statements are passed as Python unicode objects.
+    
+    """
+    def __init__(self, *arg, **kw):
+        OracleExecutionContext.__init__(self, *arg, **kw)
+        self.statement = unicode(self.statement)
+
+    def _execute_scalar(self, stmt):
+        return super(Oracle_cx_oracle_with_unicodeExecutionContext, self).\
+                            _execute_scalar(unicode(stmt))
+                            
 class ReturningResultProxy(base.FullyBufferedResultProxy):
     """Result proxy which stuffs the _returning clause + outparams into the fetch."""
     
@@ -305,7 +339,8 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
         return ret
     
     def _buffer_rows(self):
-        return [tuple(self._returning_params["ret_%d" % i] for i, c in enumerate(self._returning_params))]
+        return [tuple(self._returning_params["ret_%d" % i] 
+                    for i, c in enumerate(self._returning_params))]
 
 class Oracle_cx_oracle(OracleDialect):
     execution_ctx_cls = Oracle_cx_oracleExecutionContext
@@ -353,6 +388,19 @@ class Oracle_cx_oracle(OracleDialect):
             self.supports_unicode_statements = True
             self.supports_unicode_binds = True
             self._cx_oracle_with_unicode = True
+            # Py2K
+            # There's really no reason to run with WITH_UNICODE under Python 2.x.
+            # Give the user a hint.
+            util.warn("cx_Oracle is compiled under Python 2.xx using the "
+                        "WITH_UNICODE flag.  Consider recompiling cx_Oracle without "
+                        "this flag, which is in no way necessary for full support of Unicode. "
+                        "Otherwise, all string-holding bind parameters must "
+                        "be explicitly typed using SQLAlchemy's String type or one of its subtypes,"
+                        "or otherwise be passed as Python unicode.  Plain Python strings "
+                        "passed as bind parameters will be silently corrupted by cx_Oracle."
+                        )
+            self.execution_ctx_cls = Oracle_cx_oracle_with_unicodeExecutionContext
+            # end Py2K
         else:
             self._cx_oracle_with_unicode = False
 
@@ -421,8 +469,6 @@ class Oracle_cx_oracle(OracleDialect):
                     opts['mode'] = self.dbapi.SYSOPER
                 else:
                     util.coerce_kw_type(opts, 'mode', int)
-        # Can't set 'handle' or 'pool' via URL query args, use connect_args
-
         return ([], opts)
 
     def _get_server_version_info(self, connection):

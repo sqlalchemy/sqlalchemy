@@ -328,7 +328,10 @@ CHANGES
 
    - Added preliminary support for Oracle's WITH_UNICODE
      mode.  At the very least this establishes initial
-     support for cx_Oracle with Python 3.
+     support for cx_Oracle with Python 3.  When WITH_UNICODE
+     mode is used in Python 2.xx, a large and scary warning
+     is emitted asking that the user seriously consider
+     the usage of this difficult mode of operation.
      [ticket:1670]
      
 - sqlite
