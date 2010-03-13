@@ -350,8 +350,8 @@ class Oracle_cx_oracle(OracleDialect):
         elif not hasattr(self.dbapi, 'UNICODE'):
             # cx_Oracle WITH_UNICODE mode.  *only* python
             # unicode objects accepted for anything
-            self.supports_unicode_statements = True
-            self.supports_unicode_binds = True
+            self.supports_unicode_statements = cx_oracle_ver >= (5, 0)
+            self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
             self._cx_oracle_with_unicode = True
         else:
             self._cx_oracle_with_unicode = False
