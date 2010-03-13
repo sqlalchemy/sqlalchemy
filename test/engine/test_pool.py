@@ -511,7 +511,7 @@ class QueuePoolTest(PoolTestBase):
                 try:
                     c1 = p.connect()
                 except tsa.exc.TimeoutError, e:
-                    timeouts.append(int(time.time()) - now)
+                    timeouts.append(time.time() - now)
                     continue
                 time.sleep(4)
                 c1.close()  
@@ -524,11 +524,12 @@ class QueuePoolTest(PoolTestBase):
         for th in threads:
             th.join() 
 
-        print timeouts
         assert len(timeouts) > 0
         for t in timeouts:
-            assert abs(t - 3) < 1.5, "Not all timeouts were within 50% of 3 seconds: "\
-                                        + repr(timeouts)
+            assert t >= 3, "Not all timeouts were >= 3 seconds %r" % timeouts
+            # normally, the timeout should under 4 seconds,
+            # but on a loaded down buildbot it can go up.
+            assert t < 10, "Not all timeouts were < 10 seconds %r" % timeouts
 
     def _test_overflow(self, thread_count, max_overflow):
         gc_collect()
