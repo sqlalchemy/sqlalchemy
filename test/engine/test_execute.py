@@ -123,7 +123,7 @@ class LogTest(TestBase):
         
         eq_(eng.logging_name, eng_name)
         eq_(eng.pool.logging_name, pool_name)
-        eng.execute("select 1")
+        eng.execute(select([1]))
         for log in logs:
             log.removeHandler(buf)
         
