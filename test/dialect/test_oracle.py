@@ -423,6 +423,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
     
+    @testing.fails_on('+zxjdbc', 'zxjdbc lacks the FIXED_CHAR dbapi type')
     def test_fixed_char(self):
         m = MetaData(testing.db)
         t = Table('t1', m, 
@@ -583,12 +584,12 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             t2 = Table('t', m2, autoload=True)
             assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
 
-            # nvarchar returns unicode natively.  cx_oracle
-            # _OracleNVarChar type should be at play
-            # here.
-            assert isinstance(
-                        t2.c.data.type.dialect_impl(testing.db.dialect), 
-                        cx_oracle._OracleNVarChar)
+            if testing.against('oracle+cx_oracle'):
+                # nvarchar returns unicode natively.  cx_oracle
+                # _OracleNVarChar type should be at play here.
+                assert isinstance(
+                    t2.c.data.type.dialect_impl(testing.db.dialect), 
+                    cx_oracle._OracleNVarChar)
 
             data = u'm’a réveillé.'
             t2.insert().execute(data=data)
