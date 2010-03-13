@@ -52,29 +52,65 @@ The :class:`~sqlalchemy.engine.base.Engine` and :class:`~sqlalchemy.engine.base.
 
 Supported Databases
 ====================
-Recall that the :class:`~sqlalchemy.engine.base.Dialect` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for many different backends; these can be seen as a Python package within the :mod:`~sqlalchemy.dialect` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
 
-Dialects included with SQLAlchemy fall under one of three categories: supported, experimental, and third party.  Supported drivers are those which work against the most common databases available in the open source world, including SQLite, PostgreSQL, MySQL, and Firebird.   Very popular commercial databases which provide easy access to test platforms are also supported, these currently include MSSQL and Oracle.   These dialects are tested frequently and the level of support should be close to 100% for each.
+SQLAlchemy includes many :class:`~sqlalchemy.engine.base.Dialect` implementations for various 
+backends; each is described as its own package in the :mod:`~sqlalchemy.dialect` package.  A 
+SQLAlchemy dialect always requires that an appropriate DBAPI driver is installed.
 
-The experimental category is for drivers against less common database platforms, or commercial platforms for which no freely available and easily usable test platform is provided.   These include Access, MaxDB, Informix, and Sybase at the time of this writing.  These are not-yet-functioning
-or partially-functioning dialects for which the SQLAlchemy project is not able to provide regular test support.  If you're interested in supporting one of these backends, contact the mailing list.
+The table below summarizes the state of DBAPI support in SQLAlchemy 0.6.  The values 
+translate as:
 
-There are also third-party dialects available - currently IBM offers a DB2/Informix IDS dialect for SQLAlchemy.
+* yes / Python platform - The SQLAlchemy dialect is mostly or fully operational on the target platform.   
+* yes / OS platform - The DBAPI supports that platform.
+* no / Python platform - The DBAPI does not support that platform, or there is no SQLAlchemy dialect support.  
+* no / OS platform - The DBAPI does not support that platform.
+* partial - the DBAPI is partially usable on the target platform.
+* development - a development version of the dialect exists, but is not yet usable.
+* thirdparty - the dialect itself is maintained by a third party, who should be consulted for
+information on current support.
 
-Downloads for each DBAPI at the time of this writing are as follows:
+=========================  =========================   ===========  ===========   ===========  =================  ============
+Driver                     Connect string              Py2K         Py3K          Jython       Unix               Windows
+=========================  =========================   ===========  ===========   ===========  =================  ============
+**Postgresql**
+------------------------------------------------------------------------------------------------------------------------------
+psycopg2_                  postgresql+psycopg2         yes          no            no           yes                yes
+pg8000_                    postgresql+pg8000           yes          yes           no           yes                yes
+pypostgresql_              postgresql+pypostgresql     no           partial       no           yes                yes
+`PostgreSQL JDBC Driver`_  postgresql+zxjdbc           no           no            yes          yes                yes
+**MySQL**
+------------------------------------------------------------------------------------------------------------------------------
+mysql-python_              mysql+mysqldb               yes          no            no           yes                yes
+`MySQL Connector/Python`_  mysql+mysqlconnector        yes          no            no           yes                yes
+OurSQL_                    mysql+oursql                yes          partial       no           yes                yes
+`MySQL Connector/J`_       mysql+zxjdbc                no           no            yes          yes                yes
+**Microsoft SQL Server**
+------------------------------------------------------------------------------------------------------------------------------
+pyodbc_                    mssql+pyodbc                yes          development   no           yes with FreeTDS_  yes
+adodbapi_                  mssql+adodbapi              development  development   no           no                 yes
+pymssql_                   mssql+adodbapi              development  development   no           yes                yes
+`jTDS JDBC Driver`_        mssql+zxjdbc                no           no            development  yes                yes
+=========================  =========================   ===========  ===========   ===========  =================  ============
 
-* Supported Dialects
-
- - PostgreSQL:  `psycopg2 <http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo>`_ * `pg8000 <http://pybrary.net/pg8000/>`_
- - PostgreSQL on Jython: `PostgreSQL JDBC Driver <http://jdbc.postgresql.org/>`_
- - SQLite:  `sqlite3 <http://www.python.org/doc/2.5.2/lib/module-sqlite3.html>`_ (included in Python 2.5 or greater) * `pysqlite <http://initd.org/tracker/pysqlite>`_
- - MySQL:   `MySQLdb (a.k.a. mysql-python) <http://sourceforge.net/projects/mysql-python>`_ * `MySQL Connector/Python <https://launchpad.net/myconnpy>`_ * `OurSQL <http://packages.python.org/oursql/>`_
- - MySQL on Jython: `MySQL Connector/J JDBC driver <http://dev.mysql.com/downloads/connector/j/>`_
- - Oracle:  `cx_Oracle <http://cx-oracle.sourceforge.net/>`_
- - Oracle on Jython:  `Oracle JDBC Driver <http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html>`_
- - Firebird:  `kinterbasdb <http://firebirdsql.org/index.php?op=devel&sub=python>`_
- - MS-SQL, MSAccess:  `pyodbc <http://pyodbc.sourceforge.net/>`_ (recommended) * `adodbapi <http://adodbapi.sourceforge.net/>`_ * `pymssql <http://pymssql.sourceforge.net/>`_
- - MS-SQL on Jython:  `jTDS JDBC Driver <http://jtds.sourceforge.net/>`_
+.. _psycopg2: http://www.initd.org/
+.. _pg8000: http://pybrary.net/pg8000/
+.. _pypostgresql: http://python.projects.postgresql.org/
+.. _mysql-python: http://sourceforge.net/projects/mysql-python>
+.. _MySQL Connector/Python: https://launchpad.net/myconnpy
+.. _OurSQL: http://packages.python.org/oursql/
+.. _PostgreSQL JDBC Driver: http://jdbc.postgresql.org/
+.. _sqlite3: http://www.python.org/doc/2.5.2/lib/module-sqlite3.html
+.. _pysqlite: http://initd.org/tracker/pysqlite
+.. _MySQL Connector/J: http://dev.mysql.com/downloads/connector/j/
+.. _cx_Oracle: http://cx-oracle.sourceforge.net/
+.. _Oracle JDBC Driver: http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html
+.. _kinterbasdb:  http://firebirdsql.org/index.php?op=devel&sub=python
+.. _pyodbc: http://pyodbc.sourceforge.net/
+.. _mxodbc: http://www.egenix.com/products/python/mxODBC/
+.. _FreeTDS: http://www.freetds.org/
+.. _adodbapi: http://adodbapi.sourceforge.net/
+.. _pymssql: http://pymssql.sourceforge.net/
+.. _jTDS JDBC Driver: http://jtds.sourceforge.net/
 
 * Experimental Dialects
 
