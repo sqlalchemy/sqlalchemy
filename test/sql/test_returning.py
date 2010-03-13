@@ -96,7 +96,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         eq_(result.fetchall(), [(1,)])
 
         @testing.fails_on('postgresql', '')
-        @testing.fails_on('oracle', '')
+        @testing.fails_on('oracle+cx_oracle', '')
         @testing.crashes('mssql+mxodbc', 'Raises an error')
         def test_executemany():
             # return value is documented as failing with psycopg2/executemany
@@ -106,7 +106,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
             if testing.against('mssql+zxjdbc'):
                 # jtds apparently returns only the first row
                 eq_(result2.fetchall(), [(2, 2, False, None)])
-            elif testing.against('firebird', 'mssql'):
+            elif testing.against('firebird', 'mssql', 'oracle'):
                 # Multiple inserts only return the last row
                 eq_(result2.fetchall(), [(3, 3, True, None)])
             else:

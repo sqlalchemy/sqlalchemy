@@ -53,17 +53,17 @@ class _ZxJDBCNumeric(sqltypes.Numeric):
 class Oracle_zxjdbcCompiler(OracleCompiler):
 
     def returning_clause(self, stmt, returning_cols):
-        columnlist = list(expression._select_iterables(returning_cols))
+        self.returning_cols = list(expression._select_iterables(returning_cols))
 
         # within_columns_clause=False so that labels (foo AS bar) don't render
         columns = [self.process(c, within_columns_clause=False, result_map=self.result_map)
-                   for c in columnlist]
+                   for c in self.returning_cols]
 
         if not hasattr(self, 'returning_parameters'):
             self.returning_parameters = []
 
         binds = []
-        for i, col in enumerate(columnlist):
+        for i, col in enumerate(self.returning_cols):
             dbtype = col.type.dialect_impl(self.dialect).get_dbapi_type(self.dialect.dbapi)
             self.returning_parameters.append((i + 1, dbtype))
 
@@ -123,10 +123,8 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
         super(ReturningResultProxy, self).__init__(context)
 
     def _cursor_description(self):
-        returning = self.context.compiled.returning
-
         ret = []
-        for c in returning:
+        for c in self.context.compiled.returning_cols:
             if hasattr(c, 'name'):
                 ret.append((c.name, c.type))
             else:

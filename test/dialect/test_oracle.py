@@ -487,6 +487,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             t1.drop()
     
+    @testing.fails_on('+zxjdbc', 'Not yet known how to pass values of the INTERVAL type')
     def test_interval(self):
 
         for type_, expected in [

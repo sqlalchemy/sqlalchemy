@@ -189,7 +189,7 @@ class ProxyConnectionTest(TestBase):
                 insert2_params = (6, 'Foo')
                 if testing.against('oracle+zxjdbc'):
                     from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
-                    insert2_params.append(ReturningParam(12))
+                    insert2_params += (ReturningParam(12),)
                 cursor = [
                     ("CREATE TABLE t1", {}, ()),
                     ("INSERT INTO t1 (c1, c2)", {'c2': 'some data', 'c1': 5}, (5, 'some data')),

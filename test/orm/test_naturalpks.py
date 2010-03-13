@@ -747,7 +747,7 @@ class JoinedInheritanceTest(_base.MappedTest):
         self._test_fk(True)
         
     # PG etc. need passive=True to allow PK->PK cascade
-    @testing.fails_on_everything_except('sqlite', '+zxjdbc')
+    @testing.fails_on_everything_except('sqlite', 'mysql+zxjdbc', 'postgresql+zxjdbc')
     def test_fk_nonpassive(self):
         self._test_fk(False)
 
