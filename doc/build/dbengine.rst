@@ -130,7 +130,7 @@ python-sybase_             ``sybase+pysybase``\*        development  development
 .. _OurSQL: http://packages.python.org/oursql/
 .. _PostgreSQL JDBC Driver: http://jdbc.postgresql.org/
 .. _sqlite3: http://docs.python.org/library/sqlite3.html
-.. _pysqlite: http://initd.org/tracker/pysqlite
+.. _pysqlite: http://pypi.python.org/pypi/pysqlite/
 .. _MySQL Connector/J: http://dev.mysql.com/downloads/connector/j/
 .. _cx_Oracle: http://cx-oracle.sourceforge.net/
 .. _Oracle JDBC Driver: http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html
