@@ -1537,17 +1537,23 @@ class Query(object):
                                         only_load_props=None, passive=None):
         lockmode = lockmode or self._lockmode
         
+        mapper = self._mapper_zero()
         if not self._populate_existing and \
                 not refresh_state and \
-                not self._mapper_zero().always_refresh and \
+                not mapper.always_refresh and \
                 lockmode is None:
             instance = self.session.identity_map.get(key)
             if instance:
+                # item present in identity map with a different class
+                if not issubclass(instance.__class__, mapper.class_):
+                    return None
+                    
                 state = attributes.instance_state(instance)
+                
+                # expired - ensure it still exists
                 if state.expired:
                     if passive is attributes.PASSIVE_NO_FETCH:
                         return attributes.PASSIVE_NO_RESULT
-                    
                     try:
                         state()
                     except orm_exc.ObjectDeletedError:
@@ -1570,8 +1576,6 @@ class Query(object):
             q = self._clone()
 
         if ident is not None:
-            mapper = q._mapper_zero()
-            params = {}
             (_get_clause, _get_params) = mapper._get_clause
             
             # None present in ident - turn those comparisons
@@ -1587,14 +1591,16 @@ class Query(object):
             _get_clause = q._adapt_clause(_get_clause, True, False)
             q._criterion = _get_clause
 
-            for i, primary_key in enumerate(mapper.primary_key):
-                try:
-                    params[_get_params[primary_key].key] = ident[i]
-                except IndexError:
-                    raise sa_exc.InvalidRequestError(
-                        "Could not find enough values to formulate primary "
-                        "key for query.get(); primary key columns are %s" %
-                        ','.join("'%s'" % c for c in mapper.primary_key))
+            params = dict([
+                (_get_params[primary_key].key, id_val)
+                for id_val, primary_key in zip(ident, mapper.primary_key)
+            ])
+
+            if len(params) != len(mapper.primary_key):
+                raise sa_exc.InvalidRequestError(
+                    "Incorrect number of values in identifier to formulate primary "
+                    "key for query.get(); primary key columns are %s" %
+                    ','.join("'%s'" % c for c in mapper.primary_key))
                         
             q._params = params
 
