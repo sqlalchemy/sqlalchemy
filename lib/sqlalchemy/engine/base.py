@@ -1387,17 +1387,19 @@ class TwoPhaseTransaction(Transaction):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
 
-class Engine(Connectable):
+class Engine(Connectable, log.Identified):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and :class:`~sqlalchemy.engine.base.Dialect`
     together to provide a source of database connectivity and behavior.
 
     """
 
-    def __init__(self, pool, dialect, url, echo=None, proxy=None):
+    def __init__(self, pool, dialect, url, logging_name=None, echo=None, proxy=None):
         self.pool = pool
         self.url = url
         self.dialect = dialect
+        if logging_name:
+            self.logging_name = logging_name
         self.echo = echo
         self.engine = self
         self.logger = log.instance_logger(self, echoflag=echo)

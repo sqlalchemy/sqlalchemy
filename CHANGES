@@ -248,7 +248,14 @@ CHANGES
   - Python unicode objects as binds result in the Unicode type, 
     not string, thus eliminating a certain class of unicode errors
     on drivers that don't support unicode binds.
+
+  - Added "logging_name" argument to create_engine(), Pool() constructor
+    as well as "pool_logging_name" argument to create_engine() which
+    filters down to that of Pool.   Issues the given string name
+    within the "name" field of logging messages instead of the default
+    hex identifier string.  [ticket:1555]
     
+        
 - metadata
   - Added the ability to strip schema information when using
     "tometadata" by passing "schema=None" as an argument. If schema

@@ -56,12 +56,13 @@ def clear_managers():
         manager.close()
     proxies.clear()
 
-class Pool(object):
+class Pool(log.Identified):
     """Abstract base class for connection pools."""
 
     def __init__(self, 
                     creator, recycle=-1, echo=None, 
                     use_threadlocal=False,
+                    logging_name=None,
                     reset_on_return=True, listeners=None):
         """
         Construct a Pool.
@@ -74,6 +75,11 @@ class Pool(object):
           connection recycling, which means upon checkout, if this
           timeout is surpassed the connection will be closed and
           replaced with a newly opened connection. Defaults to -1.
+
+        :param logging_name:  String identifier which will be used within
+          the "name" field of logging records generated within the 
+          "sqlalchemy.pool" logger. Defaults to a hexstring of the object's 
+          id.
 
         :param echo: If True, connections being pulled and retrieved
           from the pool will be logged to the standard output, as well
@@ -102,6 +108,8 @@ class Pool(object):
           pool.
 
         """
+        if logging_name:
+            self.logging_name = logging_name
         self.logger = log.instance_logger(self, echoflag=echo)
         self._threadconns = threading.local()
         self._creator = creator
@@ -477,9 +485,9 @@ class SingletonThreadPool(Pool):
       
     """
 
-    def __init__(self, creator, pool_size=5, **params):
-        params['use_threadlocal'] = True
-        Pool.__init__(self, creator, **params)
+    def __init__(self, creator, pool_size=5, **kw):
+        kw['use_threadlocal'] = True
+        Pool.__init__(self, creator, **kw)
         self._conn = threading.local()
         self._all_conns = set()
         self.size = pool_size

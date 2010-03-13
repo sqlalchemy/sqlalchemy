@@ -118,7 +118,7 @@ def create_engine(*args, **kwargs):
     Pool.  Specific dialects also accept keyword arguments that
     are unique to that dialect.   Here, we describe the parameters
     that are common to most ``create_engine()`` usage.
-    
+
     :param assert_unicode:  Deprecated.  A warning is raised in all cases when a non-Unicode
       object is passed when SQLAlchemy would coerce into an encoding
       (note: but **not** when the DBAPI handles unicode objects natively).
@@ -144,6 +144,11 @@ def create_engine(*args, **kwargs):
         connections. Usage of this function causes connection
         parameters specified in the URL argument to be bypassed.
 
+    :param logging_name:  String identifier which will be used within
+       the "name" field of logging records generated within the
+       "sqlalchemy.engine" logger. Defaults to a hexstring of the 
+       object's id.
+
     :param echo=False: if True, the Engine will log all statements
         as well as a repr() of their parameter lists to the engines
         logger, which defaults to sys.stdout. The ``echo`` attribute of
@@ -152,6 +157,11 @@ def create_engine(*args, **kwargs):
         printed to the standard output as well. This flag ultimately
         controls a Python logger; see :ref:`dbengine_logging` for
         information on how to configure logging directly.
+
+    :param pool_logging_name:  String identifier which will be used within
+       the "name" field of logging records generated within the 
+       "sqlalchemy.pool" logger. Defaults to a hexstring of the object's 
+       id.
 
     :param echo_pool=False: if True, the connection pool will log
         all checkouts/checkins to the logging stream, which defaults to

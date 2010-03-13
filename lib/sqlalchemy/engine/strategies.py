@@ -90,7 +90,8 @@ class DefaultEngineStrategy(EngineStrategy):
 
             # consume pool arguments from kwargs, translating a few of
             # the arguments
-            translate = {'echo': 'echo_pool',
+            translate = {'logging_name': 'pool_logging_name',
+                         'echo': 'echo_pool',
                          'timeout': 'pool_timeout',
                          'recycle': 'pool_recycle',
                          'use_threadlocal':'pool_threadlocal'}
