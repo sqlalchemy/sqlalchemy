@@ -100,7 +100,7 @@ Several tests require alternate schemas to be present.   This requirement
 applies to all backends except SQLite and Firebird.   These schemas are:
 
     test_schema
-    test_schema_2
+    test_schema_2 (only used on Postgresql)
 
 Please refer to your vendor documentation for the proper syntax to create 
 these schemas - the database user must have permission to create and drop
@@ -110,7 +110,7 @@ expect them to be present will fail.
 
 Additional steps specific to individual databases are as follows:
 
-    ORACLE: the test_schema and test_schema_2 schemas are created as
+    ORACLE: the test_schema schema is created as
     users, as the "owner" in Oracle is considered like a "schema" in
     SQLAlchemy.
     
@@ -121,7 +121,7 @@ Additional steps specific to individual databases are as follows:
     defined (REFERENCES is per-table) - the only thing that works is to put
     the user in the "DBA" role:
     
-     grant dba to scott;
+        grant dba to scott;
     
      Any ideas on what specific privileges within "DBA" allow an open-ended
     REFERENCES grant would be appreciated, or if in fact "DBA" has some kind
@@ -131,7 +131,17 @@ Additional steps specific to individual databases are as follows:
     leaving the schemas out means those few dozen tests will fail and is
     otherwise harmless. 
     
-
+    SYBASE: Similar to Oracle, two users are created, with the primary owner
+    having the "sa_role":
+    
+        create database sqlalchemy
+        sp_addlogin scott, "tiger7"
+        sp_addlogin test_schema, "tiger7"
+        sp_adduser scott
+        sp_adduser test_schema
+        grant all to scott
+        grant sa_role to scott
+        
     MSSQL: Tests that involve multiple connections require Snapshot Isolation
     ability implented on the test database in order to prevent deadlocks that
     will occur with record locking isolation. This feature is only available
