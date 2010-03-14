@@ -21,6 +21,8 @@ from sqlalchemy.dialects.sybase.base import SybaseDialect, \
 
 class SybaseExecutionContext_pysybase(SybaseExecutionContext):
     def pre_exec(self):
+        SybaseExecutionContext.pre_exec(self)
+
         for param in self.parameters:
             for key in list(param):
                 param["@" + key] = param[key]
@@ -57,6 +59,12 @@ class SybaseDialect_pysybase(SybaseDialect):
         opts = url.translate_connect_args(username='user', password='passwd')
 
         return ([opts.pop('host')], opts)
+
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        # calling python-sybase executemany yields:
+        # TypeError: string too long for buffer
+        for param in parameters:
+            cursor.execute(statement, param)
 
     def _get_server_version_info(self, connection):
        return connection.scalar("select @@version_number")

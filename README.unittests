@@ -124,16 +124,30 @@ Additional steps specific to individual databases are as follows:
         grant dba to scott;
     
     SYBASE: Similar to Oracle, "test_schema" is created as a user, and the
-    primary test user needs to have the "sa_role":
-    
-        create database sqlalchemy
-        sp_addlogin scott, "tiger7"
-        sp_addlogin test_schema, "tiger7"
-        sp_adduser scott
-        sp_adduser test_schema
-        grant all to scott
-        grant sa_role to scott
-        
+    primary test user needs to have the "sa_role". 
+ 
+    It's also recommened to turn on "trunc log on chkpt" and to use a
+    separate transaction log device - Sybase basically seizes up when 
+    the transaction log is full otherwise.
+
+    A full series of setup assuming sa/master: 
+   
+	disk init name="translog", physname="/opt/sybase/data/translog.dat", size="10M"
+	create database sqlalchemy on default log on translog="10M"
+	sp_dboption sqlalchemy, "trunc log on chkpt", true
+	sp_addlogin scott, "tiger7"
+	sp_addlogin test_schema, "tiger7"
+	use sqlalchemy
+	sp_adduser scott
+	sp_adduser test_schema
+	grant all to scott
+        sp_role "grant", sa_role, scott
+
+    Sybase will still freeze for up to a minute when the log becomes
+    full.  To manually dump the log:
+
+        dump tran sqlalchemy with truncate_only
+
     MSSQL: Tests that involve multiple connections require Snapshot Isolation
     ability implented on the test database in order to prevent deadlocks that
     will occur with record locking isolation. This feature is only available

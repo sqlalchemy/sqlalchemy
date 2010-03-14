@@ -13,7 +13,7 @@ ASE is the primary support platform.
 """
 
 import operator
-from sqlalchemy.sql import compiler, expression
+from sqlalchemy.sql import compiler, expression, text, bindparam
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql import operators as sql_operators
@@ -23,7 +23,7 @@ from sqlalchemy import util, sql, exc
 from sqlalchemy.types import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
                             TEXT,DATE,DATETIME, FLOAT, NUMERIC,\
                             BIGINT,INT, INTEGER, SMALLINT, BINARY,\
-                            VARBINARY
+                            VARBINARY, DECIMAL, TIMESTAMP, Unicode
 
 RESERVED_WORDS = set([
     "add", "all", "alter", "and",
@@ -175,12 +175,38 @@ ischema_names = {
 
 
 class SybaseExecutionContext(default.DefaultExecutionContext):
-    def post_exec(self):
-        if self.isinsert and not self.executemany:
-            self.cursor.execute("SELECT @@identity AS lastrowid")
-            row = self.cursor.fetchall()[0]
-            self._lastrowid = int(row[0])
+    _enable_identity_insert = False
 
+    def pre_exec(self):
+        if self.isinsert:
+            tbl = self.compiled.statement.table
+            seq_column = tbl._autoincrement_column
+            insert_has_sequence = seq_column is not None
+            
+            if insert_has_sequence:
+                self._enable_identity_insert = seq_column.key in self.compiled_parameters[0]
+            else:
+                self._enable_identity_insert = False
+            
+            if self._enable_identity_insert:
+                self.cursor.execute("SET IDENTITY_INSERT %s ON" % 
+                    self.dialect.identifier_preparer.format_table(tbl))
+
+    def post_exec(self):
+        
+       if self._enable_identity_insert:
+            self.cursor.execute(
+                        "SET IDENTITY_INSERT %s OFF" %  
+                                self.dialect.identifier_preparer.
+                                    format_table(self.compiled.statement.table)
+                        )
+
+    def get_lastrowid(self):
+        cursor = self.create_cursor()
+        cursor.execute("SELECT @@identity AS lastrowid")
+        lastrowid = cursor.fetchone()[0]
+        cursor.close()
+        return lastrowid
 
 class SybaseSQLCompiler(compiler.SQLCompiler):
 
@@ -301,6 +327,11 @@ class SybaseDialect(default.DefaultDialect):
     supports_unicode_statements = False
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
+
+    supports_native_boolean = False
+    supports_unicode_binds = False
+    postfetch_lastrowid = True
+
     colspecs = colspecs
     ischema_names = ischema_names
 
