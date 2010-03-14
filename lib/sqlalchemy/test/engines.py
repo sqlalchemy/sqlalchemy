@@ -80,10 +80,12 @@ def close_open_connections(fn):
             testing_reaper.close_all()
     return function_named(decorated, fn.__name__)
 
-def all_dialects():
+def all_dialects(exclude=None):
     import sqlalchemy.databases as d
     for name in d.__all__:
         # TEMPORARY
+        if exclude and name in exclude:
+            continue
         mod = getattr(d, name, None)
         if not mod:
             mod = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)

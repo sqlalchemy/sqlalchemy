@@ -119,7 +119,7 @@ sqlite3_                   ``sqlite+pysqlite``\*        yes          yes        
 -------------------------------------------------------------------------------------------------------------------------------
 mxodbc_                    ``sybase+mxodbc``            development  development   no           yes                yes
 pyodbc_                    ``sybase+pyodbc``            development  development   no           unknown            unknown
-python-sybase_             ``sybase+pysybase``\*        development  development   no           yes                yes
+python-sybase_             ``sybase+pysybase``\*        partial      development   no           yes                yes
 =========================  ===========================  ===========  ===========   ===========  =================  ============
 
 .. _psycopg2: http://www.initd.org/

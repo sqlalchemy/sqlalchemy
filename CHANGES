@@ -352,6 +352,13 @@ CHANGES
      compatible with the "func.current_date()", which 
      will be returned as a string. [ticket:1685]
 
+- sybase
+   - Implemented a preliminary working dialect for Sybase
+     based on the Python-Sybase driver.  Handles table
+     creates/drops and basic round trip functionality.
+     Does not yet include reflection or comprehensive
+     support of unicode/special expressions/etc.
+     
 - examples
    - Changed the beaker cache example a bit to have a separate
      RelationCache option for lazyload caching.  This object
