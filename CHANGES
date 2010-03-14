@@ -30,7 +30,16 @@ CHANGES
     on existing items.  Will still mark the attr as expired
     if the destination doesn't have the attr, though, which
     fulfills some contracts of deferred cols.  [ticket:1681]
-
+  
+  - Fixed bug in 0.6-reworked "many-to-one" optimizations
+    such that a many-to-one that is against a non-primary key
+    column on the remote table (i.e. foreign key against a 
+    UNIQUE column) will pull the "old" value in from the
+    database during a change, since if it's in the session
+    we will need it for proper history/backref accounting,
+    and we can't pull from the local identity map on a 
+    non-primary key column. [ticket:1737]
+    
   - session.merge() works with relations that specifically
     don't include "merge" in their cascade options - the target
     is ignored completely.
