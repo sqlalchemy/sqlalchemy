@@ -135,7 +135,9 @@ class DefaultDialect(base.Dialect):
             self.default_schema_name = None
 
         self.returns_unicode_strings = self._check_unicode_returns(connection)
-    
+   
+        self.do_rollback(connection.connection)
+ 
     def _check_unicode_returns(self, connection):
         # Py2K
         if self.supports_unicode_statements:
@@ -257,6 +259,7 @@ class DefaultExecutionContext(base.ExecutionContext):
     isinsert = False
     isupdate = False
     isdelete = False
+    isddl = False
     executemany = False
     result_map = None
     compiled = None
@@ -276,6 +279,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         
         if compiled_ddl is not None:
             self.compiled = compiled = compiled_ddl
+            self.isddl = True
 
             if compiled.statement._execution_options:
                 self.execution_options = compiled.statement._execution_options

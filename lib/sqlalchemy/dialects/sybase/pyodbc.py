@@ -1,3 +1,11 @@
+"""
+Support for Sybase via pyodbc.
+
+This dialect is a stub only and is likely non functional at this time.
+
+
+"""
+
 from sqlalchemy.dialects.sybase.base import SybaseDialect, SybaseExecutionContext
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 

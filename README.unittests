@@ -96,43 +96,35 @@ Use an empty database and a database user with general DBA privileges.
 The test suite will be creating and dropping many tables and other DDL, and
 preexisting tables will interfere with the tests.
 
-Several tests require alternate schemas to be present.   This requirement
-applies to all backends except SQLite and Firebird.   These schemas are:
+Several tests require alternate usernames or schemas to be present, which
+are used to test dotted-name access scenarios.  On some databases such
+as Oracle or Sybase, these are usernames, and others such as Postgresql
+and MySQL they are schemas.   The requirement applies to all backends
+except SQLite and Firebird.  The names are:
 
     test_schema
     test_schema_2 (only used on Postgresql)
 
 Please refer to your vendor documentation for the proper syntax to create 
-these schemas - the database user must have permission to create and drop
+these namespaces - the database user must have permission to create and drop
 tables within these schemas.  Its perfectly fine to run the test suite
-without these schemas present, it only means that a handful of tests which
+without these namespaces present, it only means that a handful of tests which
 expect them to be present will fail.
 
 Additional steps specific to individual databases are as follows:
 
-    ORACLE: the test_schema schema is created as
-    users, as the "owner" in Oracle is considered like a "schema" in
-    SQLAlchemy.
+    ORACLE: a user named "test_schema" is created.
     
-     The primary database user needs to be able to create and drop tables,
-    synonyms, and constraints in these schemas. Unfortunately, many hours of
-    googling and experimentation cannot find a GRANT option that allows the
-    primary user the "REFERENCES" role in a remote schema for tables not yet
-    defined (REFERENCES is per-table) - the only thing that works is to put
-    the user in the "DBA" role:
+    The primary database user needs to be able to create and drop tables,
+    synonyms, and constraints within the "test_schema" user.   For this
+    to work fully, including that the user has the "REFERENCES" role
+    in a remote shcema for tables not yet defined (REFERENCES is per-table),
+    it is required that the test the user be present in the "DBA" role:
     
         grant dba to scott;
     
-     Any ideas on what specific privileges within "DBA" allow an open-ended
-    REFERENCES grant would be appreciated, or if in fact "DBA" has some kind
-    of "magic" flag not accessible otherwise. So, running SQLA tests on oracle
-    requires access to a completely open Oracle database - Oracle XE is
-    obviously a terrific choice since its just a local engine. As always,
-    leaving the schemas out means those few dozen tests will fail and is
-    otherwise harmless. 
-    
-    SYBASE: Similar to Oracle, two users are created, with the primary owner
-    having the "sa_role":
+    SYBASE: Similar to Oracle, "test_schema" is created as a user, and the
+    primary test user needs to have the "sa_role":
     
         create database sqlalchemy
         sp_addlogin scott, "tiger7"
