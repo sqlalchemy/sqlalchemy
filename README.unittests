@@ -132,15 +132,15 @@ Additional steps specific to individual databases are as follows:
 
     A full series of setup assuming sa/master: 
    
-	disk init name="translog", physname="/opt/sybase/data/translog.dat", size="10M"
-	create database sqlalchemy on default log on translog="10M"
-	sp_dboption sqlalchemy, "trunc log on chkpt", true
-	sp_addlogin scott, "tiger7"
-	sp_addlogin test_schema, "tiger7"
-	use sqlalchemy
-	sp_adduser scott
-	sp_adduser test_schema
-	grant all to scott
+        disk init name="translog", physname="/opt/sybase/data/translog.dat", size="10M"
+        create database sqlalchemy on default log on translog="10M"
+        sp_dboption sqlalchemy, "trunc log on chkpt", true
+        sp_addlogin scott, "tiger7"
+        sp_addlogin test_schema, "tiger7"
+        use sqlalchemy
+        sp_adduser scott
+        sp_adduser test_schema
+        grant all to scott
         sp_role "grant", sa_role, scott
 
     Sybase will still freeze for up to a minute when the log becomes

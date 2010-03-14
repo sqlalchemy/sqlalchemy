@@ -50,7 +50,7 @@ class _ZxJDBCNumeric(sqltypes.Numeric):
         return process
 
 
-class Oracle_zxjdbcCompiler(OracleCompiler):
+class OracleCompiler_zxjdbc(OracleCompiler):
 
     def returning_clause(self, stmt, returning_cols):
         self.returning_cols = list(expression._select_iterables(returning_cols))
@@ -74,7 +74,7 @@ class Oracle_zxjdbcCompiler(OracleCompiler):
         return 'RETURNING ' + ', '.join(columns) +  " INTO " + ", ".join(binds)
 
 
-class Oracle_zxjdbcExecutionContext(OracleExecutionContext):
+class OracleExecutionContext_zxjdbc(OracleExecutionContext):
 
     def pre_exec(self):
         if hasattr(self.compiled, 'returning_parameters'):
@@ -161,12 +161,12 @@ class ReturningParam(object):
                                                    self.type)
 
 
-class Oracle_zxjdbc(ZxJDBCConnector, OracleDialect):
+class OracleDialect_zxjdbc(ZxJDBCConnector, OracleDialect):
     jdbc_db_name = 'oracle'
     jdbc_driver_name = 'oracle.jdbc.OracleDriver'
 
-    statement_compiler = Oracle_zxjdbcCompiler
-    execution_ctx_cls = Oracle_zxjdbcExecutionContext
+    statement_compiler = OracleCompiler_zxjdbc
+    execution_ctx_cls = OracleExecutionContext_zxjdbc
 
     colspecs = util.update_copy(
         OracleDialect.colspecs,
@@ -177,7 +177,7 @@ class Oracle_zxjdbc(ZxJDBCConnector, OracleDialect):
     )
 
     def __init__(self, *args, **kwargs):
-        super(Oracle_zxjdbc, self).__init__(*args, **kwargs)
+        super(OracleDialect_zxjdbc, self).__init__(*args, **kwargs)
         global SQLException, zxJDBC
         from java.sql import SQLException
         from com.ziclix.python.sql import zxJDBC
@@ -196,7 +196,7 @@ class Oracle_zxjdbc(ZxJDBCConnector, OracleDialect):
         self.DataHandler = OracleReturningDataHandler
 
     def initialize(self, connection):
-        super(Oracle_zxjdbc, self).initialize(connection)
+        super(OracleDialect_zxjdbc, self).initialize(connection)
         self.implicit_returning = connection.connection.driverversion >= '10.2'
 
     def _create_jdbc_url(self, url):
@@ -206,4 +206,4 @@ class Oracle_zxjdbc(ZxJDBCConnector, OracleDialect):
         version = re.search(r'Release ([\d\.]+)', connection.connection.dbversion).group(1)
         return tuple(int(x) for x in version.split('.'))
 
-dialect = Oracle_zxjdbc
+dialect = OracleDialect_zxjdbc

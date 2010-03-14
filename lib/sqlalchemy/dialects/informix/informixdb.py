@@ -1,16 +1,16 @@
 from sqlalchemy.dialects.informix.base import InformixDialect
 from sqlalchemy.engine import default
 
-class InfoExecutionContext(default.DefaultExecutionContext):
+class InformixExecutionContext_informixdb(default.DefaultExecutionContext):
     def post_exec(self):
         if self.isinsert:
             self._lastrowid = [self.cursor.sqlerrd[1]]
 
 
-class Informix_informixdb(InformixDialect):
+class InformixDialect_informixdb(InformixDialect):
     driver = 'informixdb'
     default_paramstyle = 'qmark'
-    execution_context_cls = InfoExecutionContext
+    execution_context_cls = InformixExecutionContext_informixdb
 
     @classmethod
     def dbapi(cls):
@@ -43,4 +43,4 @@ class Informix_informixdb(InformixDialect):
             return False
 
 
-dialect = Informix_informixdb
+dialect = InformixDialect_informixdb

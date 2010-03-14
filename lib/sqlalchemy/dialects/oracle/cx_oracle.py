@@ -207,7 +207,7 @@ colspecs = {
     sqltypes.NVARCHAR : _OracleNVarChar,
 }
 
-class Oracle_cx_oracleCompiler(OracleCompiler):
+class OracleCompiler_cx_oracle(OracleCompiler):
     def bindparam_string(self, name):
         if self.preparer._bindparam_requires_quotes(name):
             quoted_name = '"%s"' % name
@@ -217,7 +217,7 @@ class Oracle_cx_oracleCompiler(OracleCompiler):
             return OracleCompiler.bindparam_string(self, name)
 
     
-class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
+class OracleExecutionContext_cx_oracle(OracleExecutionContext):
     
     def pre_exec(self):
         quoted_bind_names = getattr(self.compiled, '_quoted_bind_names', {})
@@ -301,7 +301,7 @@ class Oracle_cx_oracleExecutionContext(OracleExecutionContext):
 
         return result
 
-class Oracle_cx_oracle_with_unicodeExecutionContext(Oracle_cx_oracleExecutionContext):
+class OracleExecutionContext_cx_oracle_with_unicode(OracleExecutionContext_cx_oracle):
     """Support WITH_UNICODE in Python 2.xx.
     
     WITH_UNICODE allows cx_Oracle's Python 3 unicode handling behavior under Python 2.x.
@@ -313,11 +313,11 @@ class Oracle_cx_oracle_with_unicodeExecutionContext(Oracle_cx_oracleExecutionCon
     
     """
     def __init__(self, *arg, **kw):
-        OracleExecutionContext.__init__(self, *arg, **kw)
+        OracleExecutionContext_cx_oracle.__init__(self, *arg, **kw)
         self.statement = unicode(self.statement)
 
     def _execute_scalar(self, stmt):
-        return super(Oracle_cx_oracle_with_unicodeExecutionContext, self).\
+        return super(OracleExecutionContext_cx_oracle_with_unicode, self).\
                             _execute_scalar(unicode(stmt))
                             
 class ReturningResultProxy(base.FullyBufferedResultProxy):
@@ -342,9 +342,9 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
         return [tuple(self._returning_params["ret_%d" % i] 
                     for i, c in enumerate(self._returning_params))]
 
-class Oracle_cx_oracle(OracleDialect):
-    execution_ctx_cls = Oracle_cx_oracleExecutionContext
-    statement_compiler = Oracle_cx_oracleCompiler
+class OracleDialect_cx_oracle(OracleDialect):
+    execution_ctx_cls = OracleExecutionContext_cx_oracle
+    statement_compiler = OracleCompiler_cx_oracle
     driver = "cx_oracle"
     colspecs = colspecs
     
@@ -399,7 +399,7 @@ class Oracle_cx_oracle(OracleDialect):
                         "or otherwise be passed as Python unicode.  Plain Python strings "
                         "passed as bind parameters will be silently corrupted by cx_Oracle."
                         )
-            self.execution_ctx_cls = Oracle_cx_oracle_with_unicodeExecutionContext
+            self.execution_ctx_cls = OracleExecutionContext_cx_oracle_with_unicode
             # end Py2K
         else:
             self._cx_oracle_with_unicode = False
@@ -504,4 +504,4 @@ class Oracle_cx_oracle(OracleDialect):
     def do_recover_twophase(self, connection):
         pass
 
-dialect = Oracle_cx_oracle
+dialect = OracleDialect_cx_oracle

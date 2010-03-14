@@ -22,12 +22,12 @@ from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy.dialects.mssql.base import MSDialect, MSExecutionContext
 from sqlalchemy.engine import base
 
-class MS_zxjdbcExecutionContext(MSExecutionContext):
+class MSExecutionContext_zxjdbc(MSExecutionContext):
 
     _embedded_scope_identity = False
 
     def pre_exec(self):
-        super(MS_zxjdbcExecutionContext, self).pre_exec()
+        super(MSExecutionContext_zxjdbc, self).pre_exec()
         # scope_identity after the fact returns null in jTDS so we must
         # embed it
         if self._select_lastrowid and self.dialect.use_scope_identity:
@@ -52,13 +52,13 @@ class MS_zxjdbcExecutionContext(MSExecutionContext):
             self.cursor.execute("SET IDENTITY_INSERT %s OFF" % table)
 
 
-class MS_zxjdbc(ZxJDBCConnector, MSDialect):
+class MSDialect_zxjdbc(ZxJDBCConnector, MSDialect):
     jdbc_db_name = 'jtds:sqlserver'
     jdbc_driver_name = 'net.sourceforge.jtds.jdbc.Driver'
 
-    execution_ctx_cls = MS_zxjdbcExecutionContext
+    execution_ctx_cls = MSExecutionContext_zxjdbc
 
     def _get_server_version_info(self, connection):
         return tuple(int(x) for x in connection.connection.dbversion.split('.'))
 
-dialect = MS_zxjdbc
+dialect = MSDialect_zxjdbc

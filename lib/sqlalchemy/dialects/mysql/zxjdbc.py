@@ -38,7 +38,7 @@ class _ZxJDBCBit(BIT):
         return process
 
 
-class MySQL_zxjdbcExecutionContext(MySQLExecutionContext):
+class MySQLExecutionContext_zxjdbc(MySQLExecutionContext):
     def get_lastrowid(self):
         cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
@@ -47,11 +47,11 @@ class MySQL_zxjdbcExecutionContext(MySQLExecutionContext):
         return lastrowid
 
 
-class MySQL_zxjdbc(ZxJDBCConnector, MySQLDialect):
+class MySQLDialect_zxjdbc(ZxJDBCConnector, MySQLDialect):
     jdbc_db_name = 'mysql'
     jdbc_driver_name = 'com.mysql.jdbc.Driver'
 
-    execution_ctx_cls = MySQL_zxjdbcExecutionContext
+    execution_ctx_cls = MySQLExecutionContext_zxjdbc
 
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
@@ -101,4 +101,4 @@ class MySQL_zxjdbc(ZxJDBCConnector, MySQLDialect):
                 version.append(n)
         return tuple(version)
 
-dialect = MySQL_zxjdbc
+dialect = MySQLDialect_zxjdbc

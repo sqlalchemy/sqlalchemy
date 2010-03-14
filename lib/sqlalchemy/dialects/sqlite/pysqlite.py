@@ -168,7 +168,7 @@ class _SQLite_pysqliteDate(DATE):
         else:
             return DATE.result_processor(self, dialect, coltype)
 
-class SQLite_pysqlite(SQLiteDialect):
+class SQLiteDialect_pysqlite(SQLiteDialect):
     default_paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
 
@@ -238,4 +238,4 @@ class SQLite_pysqlite(SQLiteDialect):
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)
 
-dialect = SQLite_pysqlite
+dialect = SQLiteDialect_pysqlite

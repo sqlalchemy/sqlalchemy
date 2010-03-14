@@ -15,13 +15,13 @@ from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
 from sqlalchemy import processors
 
-class MySQL_mysqlconnectorExecutionContext(MySQLExecutionContext):
+class MySQLExecutionContext_mysqlconnector(MySQLExecutionContext):
 
     def get_lastrowid(self):
         return self.cursor.lastrowid
 
 
-class MySQL_mysqlconnectorCompiler(MySQLCompiler):
+class MySQLCompiler_mysqlconnector(MySQLCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
 
@@ -37,7 +37,7 @@ class _DecimalType(_NumericType):
 class _myconnpyNumeric(_DecimalType, NUMERIC):
     pass
 
-class MySQL_mysqlconnectorIdentifierPreparer(MySQLIdentifierPreparer):
+class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
 
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
@@ -49,7 +49,7 @@ class _myconnpyBIT(BIT):
 
         return None
 
-class MySQL_mysqlconnector(MySQLDialect):
+class MySQLDialect_mysqlconnector(MySQLDialect):
     driver = 'mysqlconnector'
     supports_unicode_statements = True
     supports_unicode_binds = True
@@ -57,10 +57,10 @@ class MySQL_mysqlconnector(MySQLDialect):
     supports_sane_multi_rowcount = True
 
     default_paramstyle = 'format'
-    execution_ctx_cls = MySQL_mysqlconnectorExecutionContext
-    statement_compiler = MySQL_mysqlconnectorCompiler
+    execution_ctx_cls = MySQLExecutionContext_mysqlconnector
+    statement_compiler = MySQLCompiler_mysqlconnector
 
-    preparer = MySQL_mysqlconnectorIdentifierPreparer
+    preparer = MySQLIdentifierPreparer_mysqlconnector
 
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
@@ -128,4 +128,4 @@ class MySQL_mysqlconnector(MySQLDialect):
     def _compat_fetchone(self, rp, charset=None):
         return rp.fetchone()
 
-dialect = MySQL_mysqlconnector
+dialect = MySQLDialect_mysqlconnector

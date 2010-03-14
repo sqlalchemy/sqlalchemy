@@ -8,7 +8,7 @@ from sqlalchemy.engine import base as engine_base
 from sqlalchemy import util
 import re
 
-class MySQL_pyodbcExecutionContext(MySQLExecutionContext):
+class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
 
     def get_lastrowid(self):
         cursor = self.create_cursor()
@@ -17,16 +17,16 @@ class MySQL_pyodbcExecutionContext(MySQLExecutionContext):
         cursor.close()
         return lastrowid
 
-class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
+class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
     supports_unicode_statements = False
-    execution_ctx_cls = MySQL_pyodbcExecutionContext
+    execution_ctx_cls = MySQLExecutionContext_pyodbc
 
     pyodbc_driver_name = "MySQL"
     
     def __init__(self, **kw):
         # deal with http://code.google.com/p/pyodbc/issues/detail?id=25
         kw.setdefault('convert_unicode', True)
-        super(MySQL_pyodbc, self).__init__(**kw)
+        super(MySQLDialect_pyodbc, self).__init__(**kw)
 
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
@@ -54,4 +54,4 @@ class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
         else:
             return None
 
-dialect = MySQL_pyodbc
+dialect = MySQLDialect_pyodbc

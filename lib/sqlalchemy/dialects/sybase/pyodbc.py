@@ -13,7 +13,7 @@ class SybaseExecutionContext_pyodbc(SybaseExecutionContext):
     pass
 
 
-class Sybase_pyodbc(PyODBCConnector, SybaseDialect):
+class SybaseDialect_pyodbc(PyODBCConnector, SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_pyodbc
 
-dialect = Sybase_pyodbc
+dialect = SybaseDialect_pyodbc

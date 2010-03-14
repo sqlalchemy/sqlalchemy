@@ -102,7 +102,7 @@ SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
     re.I | re.UNICODE)
 
-class PostgreSQL_psycopg2ExecutionContext(PGExecutionContext):
+class PGExecutionContext_psycopg2(PGExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
         
@@ -136,7 +136,7 @@ class PostgreSQL_psycopg2ExecutionContext(PGExecutionContext):
             return base.ResultProxy(self)
 
 
-class PostgreSQL_psycopg2Compiler(PGCompiler):
+class PGCompiler_psycopg2(PGCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
     
@@ -144,19 +144,19 @@ class PostgreSQL_psycopg2Compiler(PGCompiler):
         return text.replace('%', '%%')
 
 
-class PostgreSQL_psycopg2IdentifierPreparer(PGIdentifierPreparer):
+class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace('%', '%%')
 
-class PostgreSQL_psycopg2(PGDialect):
+class PGDialect_psycopg2(PGDialect):
     driver = 'psycopg2'
     supports_unicode_statements = False
     default_paramstyle = 'pyformat'
     supports_sane_multi_rowcount = False
-    execution_ctx_cls = PostgreSQL_psycopg2ExecutionContext
-    statement_compiler = PostgreSQL_psycopg2Compiler
-    preparer = PostgreSQL_psycopg2IdentifierPreparer
+    execution_ctx_cls = PGExecutionContext_psycopg2
+    statement_compiler = PGCompiler_psycopg2
+    preparer = PGIdentifierPreparer_psycopg2
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -191,7 +191,7 @@ class PostgreSQL_psycopg2(PGDialect):
                         return
                 extensions.register_type(extensions.UNICODE, conn)
             pool.add_listener({'first_connect': connect, 'connect':connect})
-        super(PostgreSQL_psycopg2, self).visit_pool(pool)
+        super(PGDialect_psycopg2, self).visit_pool(pool)
         
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
@@ -211,5 +211,5 @@ class PostgreSQL_psycopg2(PGDialect):
         else:
             return False
 
-dialect = PostgreSQL_psycopg2
+dialect = PGDialect_psycopg2
     
