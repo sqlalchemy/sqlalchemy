@@ -46,13 +46,13 @@ class _oursqlBIT(BIT):
         return None
 
 
-class MySQL_oursqlExecutionContext(MySQLExecutionContext):
+class MySQLExecutionContext_oursql(MySQLExecutionContext):
 
     @property
     def plain_query(self):
         return self.execution_options.get('_oursql_plain_query', False)
     
-class MySQL_oursql(MySQLDialect):
+class MySQLDialect_oursql(MySQLDialect):
     driver = 'oursql'
 # Py3K
 #    description_encoding = None
@@ -65,7 +65,7 @@ class MySQL_oursql(MySQLDialect):
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
-    execution_ctx_cls = MySQL_oursqlExecutionContext
+    execution_ctx_cls = MySQLExecutionContext_oursql
 
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
@@ -249,4 +249,4 @@ class MySQL_oursql(MySQLDialect):
         return rp.first()
 
 
-dialect = MySQL_oursql
+dialect = MySQLDialect_oursql

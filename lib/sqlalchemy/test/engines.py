@@ -80,10 +80,12 @@ def close_open_connections(fn):
             testing_reaper.close_all()
     return function_named(decorated, fn.__name__)
 
-def all_dialects():
+def all_dialects(exclude=None):
     import sqlalchemy.databases as d
     for name in d.__all__:
         # TEMPORARY
+        if exclude and name in exclude:
+            continue
         mod = getattr(d, name, None)
         if not mod:
             mod = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
@@ -240,7 +242,11 @@ class ReplayableSession(object):
             else:
                 buffer.append(result)
                 return result
-
+        
+        @property
+        def _sqla_unwrap(self):
+            return self._subject
+            
         def __getattribute__(self, key):
             try:
                 return object.__getattribute__(self, key)
@@ -273,7 +279,11 @@ class ReplayableSession(object):
                 return self
             else:
                 return result
-
+        
+        @property
+        def _sqla_unwrap(self):
+            return None
+            
         def __getattribute__(self, key):
             try:
                 return object.__getattribute__(self, key)
@@ -288,10 +298,3 @@ class ReplayableSession(object):
             else:
                 return result
 
-def unwrap_connection(conn):
-    if conn.__class__.__name__ == 'Recorder':
-        return conn._subject
-    elif conn.__class__.__name__ == 'Player':
-        return None
-    else:
-        return conn

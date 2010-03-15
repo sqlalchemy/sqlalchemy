@@ -120,7 +120,15 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, DATE, DATETIME, \
                 BLOB, CLOB, TIMESTAMP, FLOAT
                 
-RESERVED_WORDS = set('''SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN DEFAULT ALTER IS INTO MINUS INTEGER NUMBER GRANT IDENTIFIED ALL TO ORDER ON FLOAT DATE HAVING CLUSTER NOWAIT RESOURCE ANY TABLE INDEX FOR UPDATE WHERE CHECK SMALLINT WITH DELETE BY ASC REVOKE LIKE SIZE RENAME NOCOMPRESS NULL GROUP VALUES AS IN VIEW EXCLUSIVE COMPRESS SYNONYM SELECT INSERT EXISTS NOT TRIGGER ELSE CREATE INTERSECT PCTFREE DISTINCT USER CONNECT SET MODE OF UNIQUE VARCHAR2 VARCHAR LOCK OR CHAR DECIMAL UNION PUBLIC AND START UID COMMENT'''.split()) 
+RESERVED_WORDS = set('SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN '
+                     'DEFAULT ALTER IS INTO MINUS INTEGER NUMBER GRANT IDENTIFIED '
+                     'ALL TO ORDER ON FLOAT DATE HAVING CLUSTER NOWAIT RESOURCE ANY '
+                     'TABLE INDEX FOR UPDATE WHERE CHECK SMALLINT WITH DELETE BY ASC '
+                     'REVOKE LIKE SIZE RENAME NOCOMPRESS NULL GROUP VALUES AS IN VIEW '
+                     'EXCLUSIVE COMPRESS SYNONYM SELECT INSERT EXISTS NOT TRIGGER '
+                     'ELSE CREATE INTERSECT PCTFREE DISTINCT USER CONNECT SET MODE '
+                     'OF UNIQUE VARCHAR2 VARCHAR LOCK OR CHAR DECIMAL UNION PUBLIC '
+                     'AND START UID COMMENT'.split()) 
 
 class RAW(sqltypes.LargeBinary):
     pass
@@ -590,22 +598,31 @@ class OracleDialect(default.DefaultDialect):
     def normalize_name(self, name):
         if name is None:
             return None
-        elif (name.upper() == name and
-              not self.identifier_preparer._requires_quotes(name.lower().decode(self.encoding))):
-            return name.lower().decode(self.encoding)
+        # Py2K
+        if isinstance(name, str):
+            name = name.decode(self.encoding)
+        # end Py2K
+        if name.upper() == name and \
+              not self.identifier_preparer._requires_quotes(name.lower()):
+            return name.lower()
         else:
-            return name.decode(self.encoding)
+            return name
 
     def denormalize_name(self, name):
         if name is None:
             return None
         elif name.lower() == name and not self.identifier_preparer._requires_quotes(name.lower()):
-            return name.upper().encode(self.encoding)
+            name = name.upper()
+        # Py2K
+        if not self.supports_unicode_binds:
+            name = name.encode(self.encoding)
         else:
-            return name.encode(self.encoding)
+            name = unicode(name)
+        # end Py2K
+        return name
 
     def _get_default_schema_name(self, connection):
-        return self.normalize_name(connection.execute('SELECT USER FROM DUAL').scalar())
+        return self.normalize_name(connection.execute(u'SELECT USER FROM DUAL').scalar())
 
     def table_names(self, connection, schema):
         # note that table_names() isnt loading DBLINKed or synonym'ed tables
@@ -664,7 +681,11 @@ class OracleDialect(default.DefaultDialect):
                                  resolve_synonyms=False, dblink='', **kw):
 
         if resolve_synonyms:
-            actual_name, owner, dblink, synonym = self._resolve_synonym(connection, desired_owner=self.denormalize_name(schema), desired_synonym=self.denormalize_name(table_name))
+            actual_name, owner, dblink, synonym = self._resolve_synonym(
+                                                         connection, 
+                                                         desired_owner=self.denormalize_name(schema), 
+                                                         desired_synonym=self.denormalize_name(table_name)
+                                                   )
         else:
             actual_name, owner, dblink, synonym = None, None, None, None
         if not actual_name:

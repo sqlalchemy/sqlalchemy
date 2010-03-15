@@ -11,16 +11,14 @@ from sqlalchemy.test import *
 from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.test.testing import eq_
 from decimal import Decimal as _python_Decimal
-
+from sqlalchemy.test import testing
 from sqlalchemy.databases import *
-
-# FIXME!
-dialects = [d for d in all_dialects() if d.name not in ('access', 'informix')]
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
+
     def test_compile(self):
-        for dialect in dialects:
+        for dialect in all_dialects(exclude=('sybase', 'access', 'informix', 'maxdb')):
             bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
             self.assert_compile(func.current_timestamp(), "CURRENT_TIMESTAMP", dialect=dialect)
             self.assert_compile(func.localtime(), "LOCALTIME", dialect=dialect)
@@ -35,8 +33,12 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
                 def __init__(self, arg, **kwargs):
                     GenericFunction.__init__(self, args=[arg], **kwargs)
-                
-            self.assert_compile(fake_func('foo'), "fake_func(%s)" % bindtemplate % {'name':'param_1', 'position':1}, dialect=dialect)
+
+            self.assert_compile(
+                            fake_func('foo'), 
+                            "fake_func(%s)" % 
+                            bindtemplate % {'name':'param_1', 'position':1}, 
+                            dialect=dialect)
             
     def test_use_labels(self):
         self.assert_compile(select([func.foo()], use_labels=True), 
@@ -99,11 +101,13 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         
         for fn in [func.coalesce, func.max, func.min, func.sum]:
             for args, type_ in [
-                            ((datetime.date(2007, 10, 5), datetime.date(2005, 10, 15)), sqltypes.Date),
+                            ((datetime.date(2007, 10, 5), 
+                                datetime.date(2005, 10, 15)), sqltypes.Date),
                             ((3, 5), sqltypes.Integer),
                             ((_python_Decimal(3), _python_Decimal(5)), sqltypes.Numeric),
                             (("foo", "bar"), sqltypes.String),
-                            ((datetime.datetime(2007, 10, 5, 8, 3, 34), datetime.datetime(2005, 10, 15, 14, 45, 33)), sqltypes.DateTime)
+                            ((datetime.datetime(2007, 10, 5, 8, 3, 34), 
+                                datetime.datetime(2005, 10, 15, 14, 45, 33)), sqltypes.DateTime)
                         ]:
                 assert isinstance(fn(*args).type, type_), "%s / %s" % (fn(), type_)
         
@@ -141,10 +145,13 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(func.lala.hoho(7), "lala.hoho(:hoho_1)")
 
         # test None becomes NULL
-        self.assert_compile(func.my_func(1,2,None,3), "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
+        self.assert_compile(func.my_func(1,2,None,3), 
+                        "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
 
         # test pickling
-        self.assert_compile(util.pickle.loads(util.pickle.dumps(func.my_func(1, 2, None, 3))), "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
+        self.assert_compile(
+                util.pickle.loads(util.pickle.dumps(func.my_func(1, 2, None, 3))),
+                "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)")
 
         # assert func raises AttributeError for __bases__ attribute, since its not a class
         # fixes pydoc
@@ -269,7 +276,8 @@ class ExecuteTest(TestBase):
             eq_(res, [(-14, 'hi'), (3, None), (7, None)])
 
             t2.update(values=dict(value=func.length("asdsafasd"))).execute(stuff="some stuff")
-            assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [(9,"some stuff"), (9,"some stuff"), (9,"some stuff")]
+            assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == \
+                        [(9,"some stuff"), (9,"some stuff"), (9,"some stuff")]
 
             t2.delete().execute()
 

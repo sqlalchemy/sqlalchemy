@@ -90,7 +90,8 @@ class DefaultEngineStrategy(EngineStrategy):
 
             # consume pool arguments from kwargs, translating a few of
             # the arguments
-            translate = {'echo': 'echo_pool',
+            translate = {'logging_name': 'pool_logging_name',
+                         'echo': 'echo_pool',
                          'timeout': 'pool_timeout',
                          'recycle': 'pool_recycle',
                          'use_threadlocal':'pool_threadlocal'}
@@ -129,8 +130,16 @@ class DefaultEngineStrategy(EngineStrategy):
         engine = engineclass(pool, dialect, u, **engine_args)
 
         if _initialize:
-            dialect.visit_pool(pool)
-
+            do_on_connect = dialect.on_connect()
+            if do_on_connect:
+                def on_connect(conn, rec):
+                    conn = getattr(conn, '_sqla_unwrap', conn)
+                    if conn is None:
+                        return
+                    do_on_connect(conn)
+                    
+                pool.add_listener({'first_connect': on_connect, 'connect':on_connect})
+                    
             def first_connect(conn, rec):
                 c = base.Connection(engine, connection=conn)
                 dialect.initialize(c)

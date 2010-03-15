@@ -1,4 +1,4 @@
-.. _sqlalchemy.dialects:
+.. _sqlalchemy.dialects_toplevel:
 
 sqlalchemy.dialects
 ====================

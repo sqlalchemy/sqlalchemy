@@ -30,7 +30,16 @@ CHANGES
     on existing items.  Will still mark the attr as expired
     if the destination doesn't have the attr, though, which
     fulfills some contracts of deferred cols.  [ticket:1681]
-
+  
+  - Fixed bug in 0.6-reworked "many-to-one" optimizations
+    such that a many-to-one that is against a non-primary key
+    column on the remote table (i.e. foreign key against a 
+    UNIQUE column) will pull the "old" value in from the
+    database during a change, since if it's in the session
+    we will need it for proper history/backref accounting,
+    and we can't pull from the local identity map on a 
+    non-primary key column. [ticket:1737]
+    
   - session.merge() works with relations that specifically
     don't include "merge" in their cascade options - the target
     is ignored completely.
@@ -47,6 +56,11 @@ CHANGES
     from_statement() to start with since it no longer modifies
     the query.  [ticket:1688]
 
+  - query.get() now returns None if queried for an identifier
+    that is present in the identity map with a different class 
+    than the one requested, i.e. when using polymorphic loading.  
+    [ticket:1727]
+    
   - A major fix in query.join(), when the "on" clause is an
     attribute of an aliased() construct, but there is already
     an existing join made out to a compatible target, query properly
@@ -243,7 +257,20 @@ CHANGES
   - Python unicode objects as binds result in the Unicode type, 
     not string, thus eliminating a certain class of unicode errors
     on drivers that don't support unicode binds.
+
+  - Added "logging_name" argument to create_engine(), Pool() constructor
+    as well as "pool_logging_name" argument to create_engine() which
+    filters down to that of Pool.   Issues the given string name
+    within the "name" field of logging messages instead of the default
+    hex identifier string.  [ticket:1555]
     
+  - The visit_pool() method of Dialect is removed, and replaced with
+    on_connect().  This method returns a callable which receives
+    the raw DBAPI connection after each one is created.   The callable
+    is assembled into a first_connect/connect pool listener by the 
+    connection strategy if non-None.   Provides a simpler interface 
+    for dialects.
+        
 - metadata
   - Added the ability to strip schema information when using
     "tometadata" by passing "schema=None" as an argument. If schema
@@ -306,12 +333,21 @@ CHANGES
    - "out" parameters require a type that is supported by
      cx_oracle.  An error will be raised if no cx_oracle
      type can be found.
+
    - Oracle 'DATE' now does not perform any result processing,
      as the DATE type in Oracle stores full date+time objects,
      that's what you'll get.  Note that the generic types.Date
      type *will* still call value.date() on incoming values, 
      however.  When reflecting a table, the reflected type
      will be 'DATE'.
+
+   - Added preliminary support for Oracle's WITH_UNICODE
+     mode.  At the very least this establishes initial
+     support for cx_Oracle with Python 3.  When WITH_UNICODE
+     mode is used in Python 2.xx, a large and scary warning
+     is emitted asking that the user seriously consider
+     the usage of this difficult mode of operation.
+     [ticket:1670]
      
 - sqlite
    - Added "native_datetime=True" flag to create_engine().
@@ -322,6 +358,13 @@ CHANGES
      compatible with the "func.current_date()", which 
      will be returned as a string. [ticket:1685]
 
+- sybase
+   - Implemented a preliminary working dialect for Sybase
+     based on the Python-Sybase driver.  Handles table
+     creates/drops and basic round trip functionality.
+     Does not yet include reflection or comprehensive
+     support of unicode/special expressions/etc.
+     
 - examples
    - Changed the beaker cache example a bit to have a separate
      RelationCache option for lazyload caching.  This object

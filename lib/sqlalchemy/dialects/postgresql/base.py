@@ -600,21 +600,19 @@ class PGDialect(default.DefaultDialect):
         if not self.supports_native_enum:
             self.colspecs = self.colspecs.copy()
             del self.colspecs[ENUM]
-            
-    def visit_pool(self, pool):
+
+    def on_connect(self):
         if self.isolation_level is not None:
-            class SetIsolationLevel(object):
-                def __init__(self, isolation_level):
-                    self.isolation_level = isolation_level
-
-                def connect(self, conn, rec):
-                    cursor = conn.cursor()
-                    cursor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL %s"
-                                   % self.isolation_level)
-                    cursor.execute("COMMIT")
-                    cursor.close()
-            pool.add_listener(SetIsolationLevel(self.isolation_level))
-
+            def connect(conn):
+                cursor = conn.cursor()
+                cursor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL %s"
+                               % self.isolation_level)
+                cursor.execute("COMMIT")
+                cursor.close()
+            return connect
+        else:
+            return None
+            
     def do_begin_twophase(self, connection, xid):
         self.do_begin(connection.connection)
 

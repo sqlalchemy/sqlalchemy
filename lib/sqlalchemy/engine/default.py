@@ -135,28 +135,54 @@ class DefaultDialect(base.Dialect):
             self.default_schema_name = None
 
         self.returns_unicode_strings = self._check_unicode_returns(connection)
-    
+   
+        self.do_rollback(connection.connection)
+ 
+    def on_connect(self):
+        """return a callable which sets up a newly created DBAPI connection.
+        
+        This is used to set dialect-wide per-connection options such as isolation
+        modes, unicode modes, etc.
+        
+        If a callable is returned, it will be assembled into a pool listener
+        that receives the direct DBAPI connection, with all wrappers removed.
+        
+        If None is returned, no listener will be generated.
+        
+        """
+        return None
+        
     def _check_unicode_returns(self, connection):
-        cursor = connection.connection.cursor()
+        # Py2K
+        if self.supports_unicode_statements:
+            cast_to = unicode
+        else:
+            cast_to = str
+        # end Py2K
+        # Py3K
+        #cast_to = str
         def check_unicode(type_):
-            cursor.execute(
-                str(
-                    expression.select( 
-                    [expression.cast(
-                        expression.literal_column("'test unicode returns'"), type_)
-                    ]).compile(dialect=self)
+            cursor = connection.connection.cursor()
+            try:
+                cursor.execute(
+                    cast_to(
+                        expression.select( 
+                        [expression.cast(
+                            expression.literal_column("'test unicode returns'"), type_)
+                        ]).compile(dialect=self)
+                    )
                 )
-            )
-        
-            row = cursor.fetchone()
-            return isinstance(row[0], unicode)
-        
+                row = cursor.fetchone()
+                
+                return isinstance(row[0], unicode)
+            finally:
+                cursor.close()
+                
         # detect plain VARCHAR
         unicode_for_varchar = check_unicode(sqltypes.VARCHAR(60))
         
         # detect if there's an NVARCHAR type with different behavior available
         unicode_for_unicode = check_unicode(sqltypes.Unicode(60))
-        cursor.close()
        
         if unicode_for_unicode and not unicode_for_varchar:
             return "conditional"
@@ -247,6 +273,7 @@ class DefaultExecutionContext(base.ExecutionContext):
     isinsert = False
     isupdate = False
     isdelete = False
+    isddl = False
     executemany = False
     result_map = None
     compiled = None
@@ -266,6 +293,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         
         if compiled_ddl is not None:
             self.compiled = compiled = compiled_ddl
+            self.isddl = True
 
             if compiled.statement._execution_options:
                 self.execution_options = compiled.statement._execution_options

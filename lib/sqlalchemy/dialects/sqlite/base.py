@@ -360,21 +360,21 @@ class SQLiteDialect(default.DefaultDialect):
         # hypothetical driver ?)
         self.native_datetime = native_datetime
         
-    def visit_pool(self, pool):
+    def on_connect(self):
         if self.isolation_level is not None:
-            class SetIsolationLevel(object):
-                def __init__(self, isolation_level):
-                    if isolation_level == 'READ UNCOMMITTED':
-                        self.isolation_level = 1
-                    else:
-                        self.isolation_level = 0
-
-                def connect(self, conn, rec):
-                    cursor = conn.cursor()
-                    cursor.execute("PRAGMA read_uncommitted = %d" % self.isolation_level)
-                    cursor.close()
-            pool.add_listener(SetIsolationLevel(self.isolation_level))
-
+            if self.isolation_level == 'READ UNCOMMITTED':
+                isolation_level = 1
+            else:
+                isolation_level = 0
+                
+            def connect(conn):
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)
+                cursor.close()
+            return connect
+        else:
+            return None
+    
     def table_names(self, connection, schema):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)

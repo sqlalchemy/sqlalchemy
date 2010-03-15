@@ -30,13 +30,13 @@ __ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurr
 from sqlalchemy.dialects.firebird.base import FBDialect, FBCompiler
 
 
-class Firebird_kinterbasdb(FBDialect):
+class FBDialect_kinterbasdb(FBDialect):
     driver = 'kinterbasdb'
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
 
     def __init__(self, type_conv=200, concurrency_level=1, **kwargs):
-        super(Firebird_kinterbasdb, self).__init__(**kwargs)
+        super(FBDialect_kinterbasdb, self).__init__(**kwargs)
 
         self.type_conv = type_conv
         self.concurrency_level = concurrency_level
@@ -98,4 +98,4 @@ class Firebird_kinterbasdb(FBDialect):
         else:
             return False
 
-dialect = Firebird_kinterbasdb
+dialect = FBDialect_kinterbasdb

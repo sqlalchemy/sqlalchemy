@@ -1197,6 +1197,7 @@ class IntervalTest(TestBase, AssertsExecutionResults):
 
     @testing.fails_on("+pg8000", "Not yet known how to pass values of the INTERVAL type")
     @testing.fails_on("postgresql+zxjdbc", "Not yet known how to pass values of the INTERVAL type")
+    @testing.fails_on("oracle+zxjdbc", "Not yet known how to pass values of the INTERVAL type")
     def test_roundtrip(self):
         small_delta = datetime.timedelta(days=15, seconds=5874)
         delta = datetime.timedelta(414)
@@ -1210,6 +1211,7 @@ class IntervalTest(TestBase, AssertsExecutionResults):
         eq_(row['native_interval_args'], delta)
         eq_(row['non_native_interval'], delta)
 
+    @testing.fails_on("oracle+zxjdbc", "Not yet known how to pass values of the INTERVAL type")
     def test_null(self):
         interval_table.insert().execute(id=1, native_inverval=None, non_native_interval=None)
         row = interval_table.select().execute().first()

@@ -37,9 +37,9 @@ class ZooMarkTest(TestBase):
         
         recorder = lambda: dbapi_session.recorder(creator())
         engine = engines.testing_engine(options={'creator':recorder})
-        engine.dialect._unwrap_connection = engines.unwrap_connection
         metadata = MetaData(engine)
-
+        engine.connect()
+        
     def test_baseline_1_create_tables(self):
         Zoo = Table('Zoo', metadata,
                     Column('ID', Integer, Sequence('zoo_id_seq'),
@@ -320,10 +320,10 @@ class ZooMarkTest(TestBase):
 
         player = lambda: dbapi_session.player()
         engine = create_engine('postgresql:///', creator=player)
-        engine.dialect._unwrap_connection = engines.unwrap_connection
         metadata = MetaData(engine)
-
-    @profiling.function_call_count(3178, {'2.4': 2012})
+        engine.connect()
+        
+    @profiling.function_call_count(3178, {'2.4': 1816})
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 

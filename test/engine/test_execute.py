@@ -6,7 +6,7 @@ from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing, engines
-
+import logging
 
 users, metadata = None, None
 class ExecuteTest(TestBase):
@@ -111,6 +111,43 @@ class ExecuteTest(TestBase):
             (1, None)
         ])
 
+class LogTest(TestBase):
+    def _test_logger(self, eng, eng_name, pool_name):
+        buf = logging.handlers.BufferingHandler(100)
+        logs = [
+            logging.getLogger('sqlalchemy.engine'),
+            logging.getLogger('sqlalchemy.pool')
+        ]
+        for log in logs:
+            log.addHandler(buf)
+        
+        eq_(eng.logging_name, eng_name)
+        eq_(eng.pool.logging_name, pool_name)
+        eng.execute(select([1]))
+        for log in logs:
+            log.removeHandler(buf)
+        
+        names = set([b.name for b in buf.buffer])
+        assert 'sqlalchemy.engine.base.Engine.%s' % (eng_name,) in names
+        assert 'sqlalchemy.pool.%s.%s' % (eng.pool.__class__.__name__, pool_name) in names
+        
+    def test_named_logger(self):
+        options = {'echo':'debug', 'echo_pool':'debug',
+            'logging_name':'myenginename',
+            'pool_logging_name':'mypoolname'
+        }
+        eng = engines.testing_engine(options=options)
+        self._test_logger(eng, "myenginename", "mypoolname")
+
+    def test_unnamed_logger(self):
+        eng = engines.testing_engine(options={'echo':'debug', 'echo_pool':'debug'})
+        self._test_logger(
+            eng,
+            "0x...%s" % hex(id(eng))[-4:],
+            "0x...%s" % hex(id(eng.pool))[-4:],
+        )
+        
+    
 class ProxyConnectionTest(TestBase):
 
     @testing.fails_on('firebird', 'Data type unknown')
@@ -189,7 +226,7 @@ class ProxyConnectionTest(TestBase):
                 insert2_params = (6, 'Foo')
                 if testing.against('oracle+zxjdbc'):
                     from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
-                    insert2_params.append(ReturningParam(12))
+                    insert2_params += (ReturningParam(12),)
                 cursor = [
                     ("CREATE TABLE t1", {}, ()),
                     ("INSERT INTO t1 (c1, c2)", {'c2': 'some data', 'c1': 5}, (5, 'some data')),

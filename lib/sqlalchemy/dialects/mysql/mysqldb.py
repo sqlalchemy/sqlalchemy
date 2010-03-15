@@ -30,7 +30,7 @@ from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
 from sqlalchemy import processors
 
-class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
+class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
     
     @property
     def rowcount(self):
@@ -40,7 +40,7 @@ class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
             return self.cursor.rowcount
         
         
-class MySQL_mysqldbCompiler(MySQLCompiler):
+class MySQLCompiler_mysqldb(MySQLCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
     
@@ -62,22 +62,22 @@ class _MySQLdbNumeric(_DecimalType, NUMERIC):
 class _MySQLdbDecimal(_DecimalType, DECIMAL):
     pass
 
-class MySQL_mysqldbIdentifierPreparer(MySQLIdentifierPreparer):
+class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
     
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace("%", "%%")
 
-class MySQL_mysqldb(MySQLDialect):
+class MySQLDialect_mysqldb(MySQLDialect):
     driver = 'mysqldb'
     supports_unicode_statements = False
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
     default_paramstyle = 'format'
-    execution_ctx_cls = MySQL_mysqldbExecutionContext
-    statement_compiler = MySQL_mysqldbCompiler
-    preparer = MySQL_mysqldbIdentifierPreparer
+    execution_ctx_cls = MySQLExecutionContext_mysqldb
+    statement_compiler = MySQLCompiler_mysqldb
+    preparer = MySQLIdentifierPreparer_mysqldb
     
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
@@ -190,4 +190,4 @@ class MySQL_mysqldb(MySQLDialect):
                 return 'latin1'
 
 
-dialect = MySQL_mysqldb
+dialect = MySQLDialect_mysqldb
