@@ -82,11 +82,8 @@ class MxODBCConnector(Connector):
         return tuple(version)
     
     def do_execute(self, cursor, statement, parameters, context=None):
-        # temporary hack to pass tests until the a better solution is understood
-        try:
-            cursor.execute(statement, tuple(parameters))
-        except InterfaceError:
-            cursor.executedirect(statement, tuple(parameters))
+        cursor.executedirect(statement, tuple(parameters))
+
 
             
 def error_handler(connection, cursor, errorclass, errorvalue):
@@ -99,5 +96,6 @@ def error_handler(connection, cursor, errorclass, errorvalue):
                   category=errorclass,
                   stacklevel=2)
     else:
+        #import pdb; pdb.set_trace()
         raise errorclass, errorvalue
 
