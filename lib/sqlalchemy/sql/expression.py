@@ -761,9 +761,11 @@ def bindparam(key, value=None, type_=None, unique=False, required=False):
       
     """
     if isinstance(key, ColumnClause):
-        return _BindParamClause(key.name, value, type_=key.type, unique=unique, required=required)
+        return _BindParamClause(key.name, value, type_=key.type, 
+                                unique=unique, required=required)
     else:
-        return _BindParamClause(key, value, type_=type_, unique=unique, required=required)
+        return _BindParamClause(key, value, type_=type_, 
+                                unique=unique, required=required)
 
 def outparam(key, type_=None):
     """Create an 'OUT' parameter for usage in functions (stored procedures),
@@ -969,8 +971,10 @@ def _no_literals(element):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
     elif not isinstance(element, Visitable):
-        raise exc.ArgumentError("Ambiguous literal: %r.  Use the 'text()' function "
-                "to indicate a SQL expression literal, or 'literal()' to indicate a bound value." % element)
+        raise exc.ArgumentError("Ambiguous literal: %r.  Use the 'text()' "
+                                "function to indicate a SQL expression "
+                                "literal, or 'literal()' to indicate a "
+                                "bound value." % element)
     else:
         return element
 
@@ -1058,15 +1062,15 @@ class ClauseElement(Visitable):
         return d
     
     if util.jython:
-         def __hash__(self):
-             """Return a distinct hash code.
+        def __hash__(self):
+            """Return a distinct hash code.
 
-             ClauseElements may have special equality comparisons which
-             makes us rely on them having unique hash codes for use in
-             hash-based collections. Stock __hash__ doesn't guarantee
-             unique values on platforms with moving GCs.
-             """
-             return id(self)
+            ClauseElements may have special equality comparisons which
+            makes us rely on them having unique hash codes for use in
+            hash-based collections. Stock __hash__ doesn't guarantee
+            unique values on platforms with moving GCs.
+            """
+            return id(self)
         
     def _annotate(self, values):
         """return a copy of this ClauseElement with the given annotations
@@ -1722,7 +1726,8 @@ class ColumnElement(ClauseElement, _CompareMixin):
         return s
 
     def shares_lineage(self, othercolumn):
-        """Return True if the given :class:`ColumnElement` has a common ancestor to this :class:`ColumnElement`."""
+        """Return True if the given :class:`ColumnElement` 
+        has a common ancestor to this :class:`ColumnElement`."""
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
@@ -1804,8 +1809,9 @@ class ColumnCollection(util.OrderedProperties):
         return repr([str(c) for c in self])
 
     def replace(self, column):
-        """add the given column to this collection, removing unaliased versions of this column
-           as well as existing columns with the same key.
+        """add the given column to this collection, removing unaliased
+           versions of this column  as well as existing columns with the
+           same key.
 
             e.g.::
 
@@ -1835,8 +1841,8 @@ class ColumnCollection(util.OrderedProperties):
 
     def __setitem__(self, key, value):
         if key in self:
-            # this warning is primarily to catch select() statements which have conflicting
-            # column names in their exported columns collection
+            # this warning is primarily to catch select() statements which
+            # have conflicting column names in their exported columns collection
             existing = self[key]
             if not existing.shares_lineage(value):
                 util.warn(("Column %r on table %r being replaced by another "
@@ -2071,14 +2077,16 @@ class FromClause(Selectable):
 
     @util.memoized_property
     def _primary_key(self):
-        """Return the collection of Column objects which comprise the primary key of this FromClause."""
+        """Return the collection of Column objects which comprise the
+        primary key of this FromClause."""
 
         self._export_columns()
         return self._primary_key
 
     @util.memoized_property
     def _foreign_keys(self):
-        """Return the collection of ForeignKey objects which this FromClause references."""
+        """Return the collection of ForeignKey objects which this
+        FromClause references."""
 
         self._export_columns()
         return self._foreign_keys
@@ -2182,7 +2190,8 @@ class _BindParamClause(ColumnElement):
     def _convert_to_unique(self):
         if not self.unique:
             self.unique = True
-            self.key = _generated_label("%%(%d %s)s" % (id(self), self._orig_key or 'param'))
+            self.key = _generated_label("%%(%d %s)s" % (id(self),
+                                                        self._orig_key or 'param'))
 
     def bind_processor(self, dialect):
         return self.type.dialect_impl(dialect).bind_processor(dialect)
@@ -2459,7 +2468,8 @@ class _Tuple(ClauseList, ColumnElement):
 
     def _bind_param(self, operator, obj):
         return _Tuple(*[
-            _BindParamClause(None, o, _compared_to_operator=operator, _compared_to_type=self.type, unique=True)
+            _BindParamClause(None, o, _compared_to_operator=operator,
+                             _compared_to_type=self.type, unique=True)
             for o in obj
         ]).self_group()
     
@@ -2562,7 +2572,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         return self.select().execute()
 
     def _bind_param(self, operator, obj):
-        return _BindParamClause(None, obj, _compared_to_operator=operator, _compared_to_type=self.type, unique=True)
+        return _BindParamClause(None, obj, _compared_to_operator=operator, 
+                                _compared_to_type=self.type, unique=True)
 
     
 class Function(FunctionElement):
@@ -2579,7 +2590,8 @@ class Function(FunctionElement):
         FunctionElement.__init__(self, *clauses, **kw)
 
     def _bind_param(self, operator, obj):
-        return _BindParamClause(self.name, obj, _compared_to_operator=operator, _compared_to_type=self.type, unique=True)
+        return _BindParamClause(self.name, obj, _compared_to_operator=operator, 
+                                _compared_to_type=self.type, unique=True)
 
 
 class _Cast(ColumnElement):
@@ -2707,7 +2719,8 @@ class _BinaryExpression(ColumnElement):
         return self.left, self.right
 
     def compare(self, other, **kw):
-        """Compare this :class:`_BinaryExpression` against the given :class:`_BinaryExpression`."""
+        """Compare this :class:`_BinaryExpression` against the 
+        given :class:`_BinaryExpression`."""
 
         return (
             isinstance(other, _BinaryExpression) and
@@ -3189,7 +3202,8 @@ class ColumnClause(_Immutable, ColumnElement):
             return []
 
     def _bind_param(self, operator, obj):
-        return _BindParamClause(self.name, obj, _compared_to_operator=operator, _compared_to_type=self.type, unique=True)
+        return _BindParamClause(self.name, obj, _compared_to_operator=operator, 
+                                _compared_to_type=self.type, unique=True)
 
     def _make_proxy(self, selectable, name=None, attach=True):
         # propagate the "is_literal" flag only if we are keeping our name,
@@ -3978,8 +3992,8 @@ class _UpdateBase(Executable, ClauseElement):
         
         The given list of columns represent columns within the table
         that is the target of the INSERT, UPDATE, or DELETE.  Each 
-        element can be any column expression.  :class:`~sqlalchemy.schema.Table` objects
-        will be expanded into their individual columns.
+        element can be any column expression.  :class:`~sqlalchemy.schema.Table`
+        objects will be expanded into their individual columns.
         
         Upon compilation, a RETURNING clause, or database equivalent, 
         will be rendered within the statement.   For INSERT and UPDATE, 
