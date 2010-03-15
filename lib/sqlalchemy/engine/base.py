@@ -169,6 +169,7 @@ class Dialect(object):
         Given a :class:`~sqlalchemy.engine.url.URL` object, returns a tuple
         consisting of a `*args`/`**kwargs` suitable to send directly
         to the dbapi's connect function.
+        
         """
 
         raise NotImplementedError()
@@ -183,6 +184,7 @@ class Dialect(object):
 
         The returned result is cached *per dialect class* so can
         contain no dialect-instance state.
+        
         """
 
         raise NotImplementedError()
@@ -192,6 +194,13 @@ class Dialect(object):
 
         Allows dialects to configure options based on server version info or
         other properties.
+        
+        The connection passed here is a SQLAlchemy Connection object, 
+        with full capabilities.
+        
+        The initalize() method of the base dialect should be called via
+        super().
+        
         """
 
         pass
@@ -204,6 +213,12 @@ class Dialect(object):
         properties from the database.  If include_columns (a list or
         set) is specified, limit the autoload to the given column
         names.
+        
+        The default implementation uses the 
+        :class:`~sqlalchemy.engine.reflection.Inspector` interface to 
+        provide the output, building upon the granular table/column/
+        constraint etc. methods of :class:`Dialect`.
+        
         """
 
         raise NotImplementedError()
@@ -458,8 +473,22 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def visit_pool(self, pool):
-        """Executed after a pool is created."""
+    def on_connect(self):
+        """return a callable which sets up a newly created DBAPI connection.
+
+        The callable accepts a single argument "conn" which is the 
+        DBAPI connection itself.  It has no return value.
+        
+        This is used to set dialect-wide per-connection options such as isolation
+        modes, unicode modes, etc.
+
+        If a callable is returned, it will be assembled into a pool listener
+        that receives the direct DBAPI connection, with all wrappers removed.
+
+        If None is returned, no listener will be generated.
+
+        """
+        return None
 
 
 class ExecutionContext(object):

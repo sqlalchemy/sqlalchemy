@@ -264,6 +264,12 @@ CHANGES
     within the "name" field of logging messages instead of the default
     hex identifier string.  [ticket:1555]
     
+  - The visit_pool() method of Dialect is removed, and replaced with
+    on_connect().  This method returns a callable which receives
+    the raw DBAPI connection after each one is created.   The callable
+    is assembled into a first_connect/connect pool listener by the 
+    connection strategy if non-None.   Provides a simpler interface 
+    for dialects.
         
 - metadata
   - Added the ability to strip schema information when using

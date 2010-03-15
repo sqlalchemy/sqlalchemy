@@ -26,14 +26,13 @@ class MxODBCConnector(Connector):
             raise ImportError, "Unrecognized platform for mxODBC import"
         return module
 
-    def visit_pool(self, pool):
-        def connect(conn, rec):
+    def on_connect(self):
+        def connect(conn):
             conn.stringformat = self.dbapi.MIXED_STRINGFORMAT
             conn.datetimeformat = self.dbapi.PYDATETIME_DATETIMEFORMAT
             #conn.bindmethod = self.dbapi.BIND_USING_PYTHONTYPE
             #conn.bindmethod = self.dbapi.BIND_USING_SQLTYPE
-
-        pool.add_listener({'connect':connect})
+        return connect
 
     def create_connect_args(self, url):
         """ Return a tuple of *args,**kwargs for creating a connection.

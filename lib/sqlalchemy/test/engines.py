@@ -242,7 +242,11 @@ class ReplayableSession(object):
             else:
                 buffer.append(result)
                 return result
-
+        
+        @property
+        def _sqla_unwrap(self):
+            return self._subject
+            
         def __getattribute__(self, key):
             try:
                 return object.__getattribute__(self, key)
@@ -275,7 +279,11 @@ class ReplayableSession(object):
                 return self
             else:
                 return result
-
+        
+        @property
+        def _sqla_unwrap(self):
+            return None
+            
         def __getattribute__(self, key):
             try:
                 return object.__getattribute__(self, key)
@@ -290,10 +298,3 @@ class ReplayableSession(object):
             else:
                 return result
 
-def unwrap_connection(conn):
-    if conn.__class__.__name__ == 'Recorder':
-        return conn._subject
-    elif conn.__class__.__name__ == 'Player':
-        return None
-    else:
-        return conn
