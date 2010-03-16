@@ -79,9 +79,7 @@ class MxODBCConnector(Connector):
             except ValueError:
                 version.append(n)
         return tuple(version)
-    
-    def do_execute(self, cursor, statement, parameters, context=None):
-        cursor.executedirect(statement, tuple(parameters))
+
 
 
             
