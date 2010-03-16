@@ -229,7 +229,11 @@ class QueryTest(TestBase):
         for row in select([sel + 1, sel + 3], bind=users.bind).execute():
             assert row['anon_1'] == 8
             assert row['anon_2'] == 10
-    
+
+    @testing.crashes('mssql+mxodbc', """Invalid bind parameter placement:
+       'SELECT ? + query_users.user_name AS thedata \nFROM query_users 
+       ORDER BY ? + query_users.user_name' ('test: ', 'test:')
+       """)
     @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
     def test_order_by_label(self):
         """test that a label within an ORDER BY works on each backend.
@@ -767,6 +771,10 @@ class QueryTest(TestBase):
         # Null values are not outside any set
         assert len(r) == 0
 
+    @testing.crashes('mssql+mxodbc', """Invalid bind parameter placement:
+        'SELECT query_users.user_id, query_users.user_name \nFROM query_users 
+        WHERE ? = ?' ('john', 'john')
+       """)
     @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
     @testing.fails_if(lambda: 
@@ -1027,6 +1035,15 @@ class CompoundTest(TestBase):
     def _fetchall_sorted(self, executed):
         return sorted([tuple(row) for row in executed.fetchall()])
 
+    @testing.crashes('mssql+mxodbc', """Invalid bind parameter placement:
+        InterfaceError: (InterfaceError) ('07009', 0, '[Microsoft][SQL Server
+        Native Client 10.0]Invalid parameter number', 7513) 
+        'SELECT bar.col3, bar.col4 \nFROM (SELECT t1.col3 AS col3, 
+        t1.col4 AS col4 \nFROM t1 \nWHERE t1.col2 IN (?, ?) 
+        UNION SELECT t2.col3 AS col3, t2.col4 AS col4 \nFROM t2 
+        WHERE t2.col2 IN (?, ?)) AS bar' ('t1col2r1', 't1col2r2', 
+        't2col2r2','t2col2r3')
+         """)
     @testing.requires.subqueries
     def test_union(self):
         (s1, s2) = (
@@ -1059,6 +1076,15 @@ class CompoundTest(TestBase):
                   ('ccc', 'aaa')]
         eq_(u.execute().fetchall(), wanted)
 
+    @testing.crashes('mssql+mxodbc', """Invalid bind parameter placement:
+        InterfaceError: (InterfaceError) ('07009', 0, '[Microsoft][SQL Server 
+        Native Client 10.0]Invalid parameter number', 7513) 
+        'SELECT bar.col3, bar.col4 \nFROM (SELECT t1.col3 AS col3, 
+        t1.col4 AS col4 \nFROM t1 \nWHERE t1.col2 IN (?, ?) 
+        UNION SELECT t2.col3 AS col3, t2.col4 AS col4
+        FROM t2 \nWHERE t2.col2 IN (?, ?)) AS bar'
+        ('t1col2r1', 't1col2r2', 't2col2r2', 't2col2r3')
+         """)
     @testing.fails_on('firebird', "doesn't like ORDER BY with UNIONs")
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.requires.subqueries
@@ -1577,6 +1603,9 @@ class OperatorTest(TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
+    @testing.crashes('mssql+mxodbc', """Invalid bind parameter placement:
+         'SELECT flds.intcol % ? AS anon_1 \nFROM flds ORDER BY flds.idcol' (3,)
+       """)
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_modulo(self):
         eq_(

@@ -270,6 +270,7 @@ class IdentityInsertTest(TestBase, AssertsCompiledSQL):
 class ReflectionTest(TestBase, ComparesTables):
     __only_on__ = 'mssql'
 
+    @testing.crashes('mssql+mxodbc', 'Invalid bind parameter placement')
     def test_basic_reflection(self):
         meta = MetaData(testing.db)
 
@@ -311,6 +312,7 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
+    @testing.crashes('mssql+mxodbc', 'Invalid bind parameter placement')
     def test_identity(self):
         meta = MetaData(testing.db)
         table = Table(
@@ -1109,7 +1111,8 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
         testing.eq_(gen.get_column_specification(t.c.t), "t %s" % expected)
         self.assert_(repr(t.c.t))
         t.create(checkfirst=True)
-    
+
+    @testing.crashes('mssql+mxodbc', 'Invalid bind parameter placement')
     def test_autoincrement(self):
         Table('ai_1', metadata,
                Column('int_y', Integer, primary_key=True),
