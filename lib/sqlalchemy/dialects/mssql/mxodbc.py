@@ -2,7 +2,8 @@ import re
 import sys
 
 from sqlalchemy import types as sqltypes
-from sqlalchemy.connectors.mxodbc import MxODBCConnector
+from sqlalchemy import util
+from sqlalchemy.connectors.mxodbc import MxODBCConnector, MxNumeric, MxFloat
 from sqlalchemy.dialects.mssql.pyodbc import MSExecutionContext_pyodbc
 from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
 
