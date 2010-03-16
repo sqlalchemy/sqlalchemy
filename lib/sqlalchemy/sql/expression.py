@@ -528,7 +528,7 @@ def union(*selects, **kwargs):
        :func:`select`.
 
     """
-    return _compound_select('UNION', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.UNION, *selects, **kwargs)
 
 def union_all(*selects, **kwargs):
     """Return a ``UNION ALL`` of multiple selectables.
@@ -547,7 +547,7 @@ def union_all(*selects, **kwargs):
       :func:`select`.
 
     """
-    return _compound_select('UNION ALL', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.UNION_ALL, *selects, **kwargs)
 
 def except_(*selects, **kwargs):
     """Return an ``EXCEPT`` of multiple selectables.
@@ -563,7 +563,7 @@ def except_(*selects, **kwargs):
       :func:`select`.
 
     """
-    return _compound_select('EXCEPT', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.EXCEPT, *selects, **kwargs)
 
 def except_all(*selects, **kwargs):
     """Return an ``EXCEPT ALL`` of multiple selectables.
@@ -579,7 +579,7 @@ def except_all(*selects, **kwargs):
       :func:`select`.
 
     """
-    return _compound_select('EXCEPT ALL', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.EXCEPT_ALL, *selects, **kwargs)
 
 def intersect(*selects, **kwargs):
     """Return an ``INTERSECT`` of multiple selectables.
@@ -595,7 +595,7 @@ def intersect(*selects, **kwargs):
       :func:`select`.
 
     """
-    return _compound_select('INTERSECT', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.INTERSECT, *selects, **kwargs)
 
 def intersect_all(*selects, **kwargs):
     """Return an ``INTERSECT ALL`` of multiple selectables.
@@ -611,7 +611,7 @@ def intersect_all(*selects, **kwargs):
       :func:`select`.
 
     """
-    return _compound_select('INTERSECT ALL', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.INTERSECT_ALL, *selects, **kwargs)
 
 def alias(selectable, alias=None):
     """Return an :class:`Alias` object.
@@ -904,8 +904,6 @@ def _cloned_intersection(a, b):
     all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
     return set(elem for elem in a if all_overlap.intersection(elem._cloned_set))
 
-def _compound_select(keyword, *selects, **kwargs):
-    return CompoundSelect(keyword, *selects, **kwargs)
 
 def _is_literal(element):
     return not isinstance(element, Visitable) and \
@@ -3459,6 +3457,13 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
     __visit_name__ = 'compound_select'
 
+    UNION = util.symbol('UNION')
+    UNION_ALL = util.symbol('UNION ALL')
+    EXCEPT = util.symbol('EXCEPT')
+    EXCEPT_ALL = util.symbol('EXCEPT ALL')
+    INTERSECT = util.symbol('INTERSECT')
+    INTERSECT_ALL = util.symbol('INTERSECT ALL')
+    
     def __init__(self, keyword, *selects, **kwargs):
         self._should_correlate = kwargs.pop('correlate', False)
         self.keyword = keyword

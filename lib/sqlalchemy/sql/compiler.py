@@ -134,6 +134,15 @@ EXTRACT_MAP = {
     'timezone_minute': 'timezone_minute'
 }
 
+COMPOUND_KEYWORDS = {
+    sql.CompoundSelect.UNION : 'UNION',
+    sql.CompoundSelect.UNION_ALL : 'UNION ALL',
+    sql.CompoundSelect.EXCEPT : 'EXCEPT',
+    sql.CompoundSelect.EXCEPT_ALL : 'EXCEPT ALL',
+    sql.CompoundSelect.INTERSECT : 'INTERSECT',
+    sql.CompoundSelect.INTERSECT_ALL : 'INTERSECT ALL'
+}
+
 class _CompileLabel(visitors.Visitable):
     """lightweight label object which acts as an expression._Label."""
 
@@ -158,6 +167,8 @@ class SQLCompiler(engine.Compiled):
 
     extract_map = EXTRACT_MAP
 
+    compound_keywords = COMPOUND_KEYWORDS
+    
     # class-level defaults which can be set at the instance
     # level to define if this Compiled instance represents
     # INSERT/UPDATE/DELETE
@@ -414,7 +425,9 @@ class SQLCompiler(engine.Compiled):
         entry = self.stack and self.stack[-1] or {}
         self.stack.append({'from':entry.get('from', None), 'iswrapper':True})
 
-        text = (" " + cs.keyword + " ").join(
+        keyword = self.compound_keywords.get(cs.keyword)
+        
+        text = (" " + keyword + " ").join(
                             (self.process(c, asfrom=asfrom, parens=False, compound_index=i)
                             for i, c in enumerate(cs.selects))
                         )

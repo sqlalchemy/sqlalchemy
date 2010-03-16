@@ -306,7 +306,14 @@ class OracleCompiler(compiler.SQLCompiler):
     statements to work under non-ANSI configured Oracle databases, if
     the use_ansi flag is False.
     """
-
+    
+    compound_keywords = util.update_copy(
+        compiler.SQLCompiler.compound_keywords,
+        {   
+        expression.CompoundSelect.EXCEPT : 'MINUS'
+        }
+    )
+    
     def __init__(self, *args, **kwargs):
         super(OracleCompiler, self).__init__(*args, **kwargs)
         self.__wheres = {}

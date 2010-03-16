@@ -61,7 +61,8 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         s = select([t])
         s = select([s.c.col1, s.c.col2])
 
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable)")
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT "
+                                "sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable)")
 
     def test_limit(self):
         t = table('sometable', column('col1'), column('col2'))
@@ -84,10 +85,16 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         
         s = select([s.c.col1, s.c.col2])
 
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM "
+                        "(SELECT col1, col2, ROWNUM AS ora_rn FROM (SELECT "
+                        "sometable.col1 AS col1, sometable.col2 AS col2 FROM "
+                        "sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
 
         # testing this twice to ensure oracle doesn't modify the original statement
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
+        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM "
+                        "(SELECT col1, col2, ROWNUM AS ora_rn FROM (SELECT "
+                        "sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) "
+                        "WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
 
         s = select([t]).limit(10).offset(20).order_by(t.c.col2)
 
@@ -175,19 +182,28 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 from_obj = [ outerjoin(table1, table2, table1.c.myid == table2.c.otherid) ]
                 )
         self.assert_compile(query,
-            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-FROM mytable, myothertable WHERE \
-(mytable.name = :name_1 OR mytable.myid = :myid_1 OR \
-myothertable.othername != :othername_1 OR EXISTS (select yay from foo where boo = lar)) \
-AND mytable.myid = myothertable.otherid(+)",
+            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, "
+                "myothertable.othername FROM mytable, myothertable WHERE "
+                "(mytable.name = :name_1 OR mytable.myid = :myid_1 OR "
+                "myothertable.othername != :othername_1 OR EXISTS (select yay from foo where boo = lar)) "
+                "AND mytable.myid = myothertable.otherid(+)",
             dialect=oracle.OracleDialect(use_ansi = False))
 
         query = table1.outerjoin(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
-        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid LEFT OUTER JOIN thirdtable ON thirdtable.userid = myothertable.otherid")
-        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE thirdtable.userid(+) = myothertable.otherid AND mytable.myid = myothertable.otherid(+)", dialect=oracle.dialect(use_ansi=False))
+        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff "
+            "FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid LEFT OUTER "
+            "JOIN thirdtable ON thirdtable.userid = myothertable.otherid")
+        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM "
+            "mytable, myothertable, thirdtable WHERE thirdtable.userid(+) = myothertable.otherid AND "
+            "mytable.myid = myothertable.otherid(+)", dialect=oracle.dialect(use_ansi=False))
 
         query = table1.join(table2, table1.c.myid==table2.c.otherid).join(table3, table3.c.userid==table2.c.otherid)
-        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE thirdtable.userid = myothertable.otherid AND mytable.myid = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))
+        self.assert_compile(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM "
+            "mytable, myothertable, thirdtable WHERE thirdtable.userid = myothertable.otherid AND "
+            "mytable.myid = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))
 
         query = table1.join(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
 
@@ -243,6 +259,18 @@ AND mytable.myid = myothertable.otherid(+)",
             "ON addresses.address_type_id = address_types_1.id WHERE addresses.user_id = :user_id_1 ORDER BY addresses.id, "
             "address_types.id")
 
+    def test_compound(self):
+        t1 = table('t1', column('c1'), column('c2'), column('c3'), )
+        t2 = table('t2', column('c1'), column('c2'), column('c3'), )
+        self.assert_compile(
+            union(t1.select(), t2.select()),
+            "SELECT t1.c1, t1.c2, t1.c3 FROM t1 UNION SELECT t2.c1, t2.c2, t2.c3 FROM t2"
+        )
+        self.assert_compile(
+            except_(t1.select(), t2.select()),
+            "SELECT t1.c1, t1.c2, t1.c3 FROM t1 MINUS SELECT t2.c1, t2.c2, t2.c3 FROM t2"
+        )
+        
 class MultiSchemaTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
     

@@ -357,7 +357,11 @@ CHANGES
      is emitted asking that the user seriously consider
      the usage of this difficult mode of operation.
      [ticket:1670]
-     
+  
+   - The except_() method now renders as MINUS on Oracle,
+     which is more or less equivalent on that platform.
+     [ticket:1712]
+   
 - sqlite
    - Added "native_datetime=True" flag to create_engine().
      This will cause the DATE and TIMESTAMP types to skip 

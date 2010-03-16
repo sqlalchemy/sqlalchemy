@@ -191,8 +191,9 @@ ischema_names = {
 
 
 class SQLiteCompiler(compiler.SQLCompiler):
-    extract_map = compiler.SQLCompiler.extract_map.copy()
-    extract_map.update({
+    extract_map = util.update_copy(
+        compiler.SQLCompiler.extract_map,
+        {
         'month': '%m',
         'day': '%d',
         'year': '%Y',

@@ -1136,7 +1136,6 @@ class CompoundTest(TestBase):
         eq_(found2, wanted)
 
     @testing.crashes('firebird', 'Does not support except')
-    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.fails_on('sqlite', "Can't handle this style of nesting")
@@ -1154,7 +1153,6 @@ class CompoundTest(TestBase):
         eq_(found, wanted)
 
     @testing.crashes('firebird', 'Does not support except')
-    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     def test_except_style2(self):
@@ -1177,7 +1175,6 @@ class CompoundTest(TestBase):
         eq_(found2, wanted)
 
     @testing.crashes('firebird', 'Does not support except')
-    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.fails_on('sqlite', "Can't handle this style of nesting")
@@ -1195,7 +1192,6 @@ class CompoundTest(TestBase):
                           [('ccc',)])
 
     @testing.crashes('firebird', 'Does not support except')
-    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     def test_except_style4(self):
