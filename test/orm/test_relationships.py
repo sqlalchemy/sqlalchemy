@@ -596,12 +596,12 @@ class RelationToUniqueTest(_base.MappedTest):
     def define_tables(cls, metadata):
         Table("table_a", metadata,
                         Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
-                        Column("ident", String, nullable=False, unique=True),
+                        Column("ident", String(10), nullable=False, unique=True),
                         )
 
         Table("table_b", metadata,
                         Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
-                        Column("a_ident", String, ForeignKey('table_a.ident'), nullable=False),
+                        Column("a_ident", String(10), ForeignKey('table_a.ident'), nullable=False),
                         )
     
     @classmethod

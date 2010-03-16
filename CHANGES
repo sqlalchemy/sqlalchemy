@@ -126,7 +126,16 @@ CHANGES
   - query.scalar() now raises an exception if more than one 
     row is returned.  All other behavior remains the same.
     [ticket:1735]
+
+  - Fixed bug which caused "row switch" logic, that is an 
+    INSERT and DELETE replaced by an UPDATE, to fail when 
+    version_id_col was in use. [ticket:1692]
     
+  - Added "version_id_generator" argument to Mapper, this is a
+    callable that, given the current value of the "version_id_col",
+    returns the next version number.  Can be used for alternate
+    versioning schemes such as uuid, timestamps.  [ticket:1692]
+
 - sql
   - The most common result processors conversion function were
     moved to the new "processors" module.  Dialect authors are
