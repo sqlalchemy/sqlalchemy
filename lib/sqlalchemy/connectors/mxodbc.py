@@ -93,6 +93,5 @@ def error_handler(connection, cursor, errorclass, errorvalue):
                   category=errorclass,
                   stacklevel=2)
     else:
-        #import pdb; pdb.set_trace()
         raise errorclass, errorvalue
 
