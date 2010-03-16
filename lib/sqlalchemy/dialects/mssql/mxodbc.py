@@ -20,6 +20,14 @@ class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
 class MSDialect_mxodbc(MxODBCConnector, MSDialect):
 
     execution_ctx_cls = MSExecutionContext_mxodbc
+    colspecs = util.update_copy(
+        MSDialect.colspecs,
+        {
+        sqltypes.Numeric : MxNumeric,
+        sqltypes.Float : MxFloat
+        },
+    )
+
 
     def __init__(self, description_encoding='latin-1', **params):
         super(MSDialect_mxodbc, self).__init__(**params)

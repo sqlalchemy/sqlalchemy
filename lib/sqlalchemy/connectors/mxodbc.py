@@ -14,10 +14,14 @@ For more info on mxODBC, see http://www.egenix.com/
 import sys
 import re
 import warnings
+from decimal import Decimal
 
-from sqlalchemy.connectors import Connector
 from mx.ODBC import InterfaceError
 from mx.ODBC.Error import Warning as MxOdbcWarning
+
+from sqlalchemy.connectors import Connector
+from sqlalchemy import types as sqltypes
+import sqlalchemy.processors as processors
 
 class MxODBCConnector(Connector):
     driver='mxodbc'
@@ -107,3 +111,47 @@ def error_handler(connection, cursor, errorclass, errorvalue):
     else:
         raise errorclass, errorvalue
 
+
+class MxNumeric(sqltypes.Numeric):
+    """
+    Handle Numeric types between SQLAlchemy and mxODBC.
+    """
+    def bind_processor(self, dialect):
+        """
+        SQLAlchemy can accept a Python Decimal for bind
+        variables, so no special bind_processor is needed.
+        """
+        return None
+
+    def result_processor(self, dialect, coltype):
+        """
+        For cases when a 
+        """
+        if self.asdecimal:
+            return None
+        else:
+            return processors.to_float
+
+
+class MxFloat(sqltypes.Float):
+    """
+    Handle Numeric types between SQLAlchemy and mxODBC.
+    """
+    def bind_processor(self, dialect):
+        """
+        SQLAlchemy can accept a Python Decimal for bind
+        variables, so no special bind_processor is needed.
+        """
+        return None
+
+    def result_processor(self, dialect, coltype):
+        """
+        mxODBC returns Python float values for REAL, FLOAT, and
+        DOUBLE column types.
+        """
+        if self.asdecimal:
+            return processors.to_decimal_processor_factory(Decimal)
+        else:
+            return None
+
+        
