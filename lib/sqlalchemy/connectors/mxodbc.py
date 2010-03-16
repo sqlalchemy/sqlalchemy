@@ -1,3 +1,15 @@
+"""
+Provide an SQLALchemy connector for the eGenix mxODBC commercial
+Python adapter for ODBC. This is not a free product, but eGenix
+provides SQLAlchemy with a license for use in continuous integration
+testing.
+
+This has been tested for use with mxODBC 3.1.2 on SQL Server 2005
+and 2008, using the SQL Server Native driver. However, it is
+possible for this to be used on other database platforms.
+
+For more info on mxODBC, see http://www.egenix.com/
+"""
 
 import sys
 import re
