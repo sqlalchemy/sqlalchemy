@@ -4,8 +4,6 @@ import re
 import warnings
 
 from sqlalchemy.connectors import Connector
-from mx.ODBC import InterfaceError
-from mx.ODBC.Error import Warning as MxOdbcWarning
 
 class MxODBCConnector(Connector):
     driver='mxodbc'
@@ -33,11 +31,28 @@ class MxODBCConnector(Connector):
         def connect(conn):
             conn.stringformat = self.dbapi.MIXED_STRINGFORMAT
             conn.datetimeformat = self.dbapi.PYDATETIME_DATETIMEFORMAT
-            conn.errorhandler = error_handler
+            conn.errorhandler = self._error_handler()
             # Alternatives to experiment with:
             #conn.bindmethod = self.dbapi.BIND_USING_PYTHONTYPE
             #conn.bindmethod = self.dbapi.BIND_USING_SQLTYPE
         return connect
+    
+    def _error_handler(self):
+        """Return a handler that adjusts mxODBC's raised Warnings to emit Python standard warnings.
+        """
+
+        from mx.ODBC.Error import Warning as MxOdbcWarning
+        def error_handler(connection, cursor, errorclass, errorvalue):
+
+            if issubclass(errorclass, MxOdbcWarning):
+                errorclass.__bases__ = (Warning,)
+                warnings.warn(message=str(errorvalue),
+                          category=errorclass,
+                          stacklevel=2)
+            else:
+                #import pdb; pdb.set_trace()
+                raise errorclass, errorvalue
+        return error_handler
 
     def create_connect_args(self, url):
         """ Return a tuple of *args,**kwargs for creating a connection.
@@ -52,6 +67,7 @@ class MxODBCConnector(Connector):
 
         The arg 'errorhandler' is not used by SQLAlchemy and will
         not be populated.
+        
         """
         opts = url.translate_connect_args(username='user')
         opts.update(url.query)
@@ -81,20 +97,8 @@ class MxODBCConnector(Connector):
         return tuple(version)
     
     def do_execute(self, cursor, statement, parameters, context=None):
+        # TODO: dont need tuple() here
+        # TODO: use cursor.execute()
         cursor.executedirect(statement, tuple(parameters))
 
-
-            
-def error_handler(connection, cursor, errorclass, errorvalue):
-    """
-    Adjust mxODBC's raised Warnings to emit Python standard warnings.
-    """
-    if issubclass(errorclass, MxOdbcWarning):
-        errorclass.__bases__ = (Warning,)
-        warnings.warn(message=str(errorvalue),
-                  category=errorclass,
-                  stacklevel=2)
-    else:
-        #import pdb; pdb.set_trace()
-        raise errorclass, errorvalue
 
