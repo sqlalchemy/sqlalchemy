@@ -581,7 +581,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         """
         if initiator is self:
             return
-        
+
         if self.active_history:
             old = self.get(state, dict_)
         else:

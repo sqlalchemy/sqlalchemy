@@ -397,6 +397,7 @@ class RelationTest4(_base.MappedTest):
               Column("id",Integer,primary_key=True, test_needs_autoincrement=True),
               Column("foo",Integer,),
               test_needs_fk=True)
+              
         Table("tableB",metadata,
               Column("id",Integer,ForeignKey("tableA.id"),primary_key=True),
               test_needs_fk=True)
@@ -409,6 +410,27 @@ class RelationTest4(_base.MappedTest):
         class B(_base.Entity):
             pass
 
+    @testing.resolve_artifact_names
+    def test_onetoone_switch(self):
+        """test that active history is enabled on a one-to-many/one that has use_get==True"""
+        
+        mapper(A, tableA, properties={
+            'b':relation(B, cascade="all,delete-orphan", uselist=False)})
+        mapper(B, tableB)
+        
+        compile_mappers()
+        assert A.b.property.strategy.use_get
+        
+        sess = create_session()
+        
+        a1 = A()
+        sess.add(a1)
+        sess.flush()
+        sess.close()
+        a1 = sess.query(A).first()
+        a1.b = B()
+        sess.flush()
+        
     @testing.resolve_artifact_names
     def test_no_delete_PK_AtoB(self):
         """A cant be deleted without B because B would have no PK value."""
@@ -567,6 +589,48 @@ class RelationTest4(_base.MappedTest):
         assert a1 not in sess
         assert b1 not in sess
 
+class RelationToUniqueTest(_base.MappedTest):
+    """test a relation based on a primary join against a unique non-pk column"""
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("table_a", metadata,
+                        Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
+                        Column("ident", String, nullable=False, unique=True),
+                        )
+
+        Table("table_b", metadata,
+                        Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
+                        Column("a_ident", String, ForeignKey('table_a.ident'), nullable=False),
+                        )
+    
+    @classmethod
+    def setup_classes(cls):
+        class A(_base.ComparableEntity):
+            pass
+        class B(_base.ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def test_switch_parent(self):
+        mapper(A, table_a)
+        mapper(B, table_b, properties={"a": relation(A, backref="bs")})
+
+        session = create_session()
+        a1, a2 = A(ident="uuid1"), A(ident="uuid2")
+        session.add_all([a1, a2])
+        a1.bs = [
+            B(), B()
+        ]
+        session.flush()
+        session.expire_all()
+        a1, a2 = session.query(A).all()
+
+        for b in list(a1.bs):
+            b.a = a2
+        session.delete(a1)
+        session.flush()
+    
 class RelationTest5(_base.MappedTest):
     """Test a map to a select that relates to a map to the table."""
 

@@ -377,7 +377,7 @@ class LazyLoader(AbstractRelationLoader):
                 callable_=self._class_level_loader,
                 uselist = self.parent_property.uselist,
                 typecallable = self.parent_property.collection_class,
-                active_history = not self.use_get, 
+                active_history = self.parent_property.direction is not interfaces.MANYTOONE or not self.use_get,
                 )
 
     def lazy_clause(self, state, reverse_direction=False, alias_secondary=False, adapt_source=None):
