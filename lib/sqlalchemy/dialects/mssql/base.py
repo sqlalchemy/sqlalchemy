@@ -843,8 +843,9 @@ class MSExecutionContext(default.DefaultExecutionContext):
 class MSSQLCompiler(compiler.SQLCompiler):
     returning_precedes_values = True
     
-    extract_map = compiler.SQLCompiler.extract_map.copy()
-    extract_map.update ({
+    extract_map = util.update_copy(
+        compiler.SQLCompiler.extract_map,
+        {
         'doy': 'dayofyear',
         'dow': 'weekday',
         'milliseconds': 'millisecond',
@@ -937,9 +938,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
         kwargs['mssql_aliased'] = True
         return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
 
-    def visit_extract(self, extract):
+    def visit_extract(self, extract, **kw):
         field = self.extract_map.get(extract.field, extract.field)
-        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
+        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr, **kw))
 
     def visit_rollback_to_savepoint(self, savepoint_stmt):
         return "ROLLBACK TRANSACTION %s" % self.preparer.format_savepoint(savepoint_stmt)
@@ -1011,14 +1012,45 @@ class MSSQLCompiler(compiler.SQLCompiler):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use
         return ''
 
-    def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause)
+    def order_by_clause(self, select, **kw):
+        order_by = self.process(select._order_by_clause, **kw)
 
         # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
         if order_by and (not self.is_subquery() or select._limit):
             return " ORDER BY " + order_by
         else:
             return ""
+
+class MSSQLStrictCompiler(MSSQLCompiler):
+    """A subclass of MSSQLCompiler which disables the usage of bind
+    parameters where not allowed natively by MS-SQL.
+    
+    A dialect may use this compiler on a platform where native
+    binds are used.
+    
+    """
+    ansi_bind_rules = True
+
+    def visit_in_op(self, binary, **kw):
+        kw['literal_binds'] = True
+        return "%s IN %s" % (
+                                self.process(binary.left, **kw), 
+                                self.process(binary.right, **kw)
+            )
+
+    def visit_notin_op(self, binary, **kw):
+        kw['literal_binds'] = True
+        return "%s NOT IN %s" % (
+                                self.process(binary.left, **kw), 
+                                self.process(binary.right, **kw)
+            )
+
+    def visit_function(self, func, **kw):
+        kw['literal_binds'] = True
+        return super(MSSQLStrictCompiler, self).visit_function(func, **kw)
+
+    #def render_literal_value(self, value):
+        # TODO! use mxODBC's literal quoting services here
 
 
 class MSDDLCompiler(compiler.DDLCompiler):

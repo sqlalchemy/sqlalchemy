@@ -146,6 +146,23 @@ CHANGES
     including their ddl listener and other event callables.
     [ticket:1694] [ticket:1698]
 
+  - Some platforms will now interpret certain literal values 
+    as non-bind parameters, rendered literally into the SQL
+    statement.   This to support strict SQL-92 rules that are 
+    enforced by some platforms including MS-SQL and Sybase.
+    In this model, bind parameters aren't allowed in the
+    columns clause of a SELECT, nor are certain ambiguous
+    expressions like "?=?".  When this mode is enabled, the base
+    compiler will render the binds as inline literals, but only across
+    strings and numeric values.  Other types such as dates
+    will raise an error, unless the dialect subclass defines
+    a literal rendering function for those.  The bind parameter
+    must have an embedded literal value already or an error
+    is raised (i.e. won't work with straight bindparam('x')).
+    Dialects can also expand upon the areas where binds are not 
+    accepted, such as within argument lists of functions 
+    (which don't work on MS-SQL when native SQL binding is used).
+    
   - Added "unicode_errors" parameter to String, Unicode, etc.
     Behaves like the 'errors' keyword argument to
     the standard library's string.decode() functions.   This flag
@@ -372,8 +389,9 @@ CHANGES
      will be returned as a string. [ticket:1685]
 
 - sybase
-   - Implemented a preliminary working dialect for Sybase
-     based on the Python-Sybase driver.  Handles table
+   - Implemented a preliminary working dialect for Sybase,
+     with sub-implementations for Python-Sybase as well
+     as Pyodbc.  Handles table
      creates/drops and basic round trip functionality.
      Does not yet include reflection or comprehensive
      support of unicode/special expressions/etc.

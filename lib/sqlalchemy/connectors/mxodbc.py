@@ -96,9 +96,4 @@ class MxODBCConnector(Connector):
                 version.append(n)
         return tuple(version)
     
-    def do_execute(self, cursor, statement, parameters, context=None):
-        # TODO: dont need tuple() here
-        # TODO: use cursor.execute()
-        cursor.executedirect(statement, tuple(parameters))
-
 

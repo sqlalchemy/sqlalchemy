@@ -1,7 +1,12 @@
 """
 Support for Sybase via pyodbc.
 
-This dialect is a stub only and is likely non functional at this time.
+http://pypi.python.org/pypi/pyodbc/
+
+Connect strings are of the form::
+
+    sybase+pyodbc://<username>:<password>@<dsn>/
+    sybase+pyodbc://<username>:<password>@<host>/<database>
 
 
 """

@@ -62,6 +62,7 @@ class DefaultDialect(base.Dialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
     dbapi_type_map = {}
+    colspecs = {}
     default_paramstyle = 'named'
     supports_default_values = False
     supports_empty_insert = True

@@ -218,10 +218,10 @@ class SQLiteCompiler(compiler.SQLCompiler):
         else:
             return self.process(cast.clause)
 
-    def visit_extract(self, extract):
+    def visit_extract(self, extract, **kw):
         try:
             return "CAST(STRFTIME('%s', %s) AS INTEGER)" % (
-                self.extract_map[extract.field], self.process(extract.expr))
+                self.extract_map[extract.field], self.process(extract.expr, **kw))
         except KeyError:
             raise exc.ArgumentError(
                 "%s is not a valid extract argument." % extract.field)

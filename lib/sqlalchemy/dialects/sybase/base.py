@@ -236,9 +236,11 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
         return lastrowid
 
 class SybaseSQLCompiler(compiler.SQLCompiler):
+    ansi_bind_rules = True
 
-    extract_map = compiler.SQLCompiler.extract_map.copy()
-    extract_map.update ({
+    extract_map = util.update_copy(
+        compiler.SQLCompiler.extract_map,
+        {
         'doy': 'dayofyear',
         'dow': 'weekday',
         'milliseconds': 'millisecond'
@@ -267,33 +269,17 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         # Limit in sybase is after the select keyword
         return ""
 
-    def dont_visit_binary(self, binary):
-        """Move bind parameters to the right-hand side of an operator, where possible."""
-        if isinstance(binary.left, expression._BindParamClause) and binary.operator == operator.eq:
-            return self.process(expression._BinaryExpression(binary.right, binary.left, binary.operator))
-        else:
-            return super(SybaseSQLCompiler, self).visit_binary(binary)
-
-    def dont_label_select_column(self, select, column, asfrom):
-        if isinstance(column, expression.Function):
-            return column.label(None)
-        else:
-            return super(SybaseSQLCompiler, self).label_select_column(select, column, asfrom)
-
-#    def visit_getdate_func(self, fn, **kw):
-         # TODO: need to cast? something ?
-#        pass
-
-    def visit_extract(self, extract):
+    def visit_extract(self, extract, **kw):
         field = self.extract_map.get(extract.field, extract.field)
-        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
+        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr, **kw))
 
     def for_update_clause(self, select):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use
         return ''
 
-    def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause)
+    def order_by_clause(self, select, **kw):
+        kw['literal_binds'] = True
+        order_by = self.process(select._order_by_clause, **kw)
 
         # SybaseSQL only allows ORDER BY in subqueries if there is a LIMIT
         if order_by and (not self.is_subquery() or select._limit):

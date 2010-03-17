@@ -1,3 +1,16 @@
+"""
+Support for MS-SQL via pyodbc.
+
+http://pypi.python.org/pypi/pyodbc/
+
+Connect strings are of the form::
+
+    mssql+pyodbc://<username>:<password>@<dsn>/
+    mssql+pyodbc://<username>:<password>@<host>/<database>
+
+
+"""
+
 from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 from sqlalchemy import types as sqltypes
