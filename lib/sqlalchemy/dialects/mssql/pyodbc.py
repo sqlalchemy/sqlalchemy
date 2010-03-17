@@ -60,19 +60,4 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         self.description_encoding = description_encoding
         self.use_scope_identity = self.dbapi and hasattr(self.dbapi.Cursor, 'nextset')
         
-    def initialize(self, connection):
-        super(MSDialect_pyodbc, self).initialize(connection)
-        pyodbc = self.dbapi
-        
-        dbapi_con = connection.connection
-        
-        self.freetds = re.match(r".*libtdsodbc.*\.so",  dbapi_con.getinfo(pyodbc.SQL_DRIVER_NAME))
-    
-        # the "Py2K only" part here is theoretical.
-        # have not tried pyodbc + python3.1 yet.
-        # Py2K
-        self.supports_unicode_statements = not self.freetds
-        self.supports_unicode_binds = not self.freetds
-        # end Py2K
-        
 dialect = MSDialect_pyodbc

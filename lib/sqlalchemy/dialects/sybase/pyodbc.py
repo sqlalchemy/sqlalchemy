@@ -10,7 +10,11 @@ from sqlalchemy.dialects.sybase.base import SybaseDialect, SybaseExecutionContex
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 
 class SybaseExecutionContext_pyodbc(SybaseExecutionContext):
-    pass
+    def set_ddl_autocommit(self, connection, value):
+        if value:
+            connection.autocommit = True
+        else:
+            connection.autocommit = False
 
 
 class SybaseDialect_pyodbc(PyODBCConnector, SybaseDialect):

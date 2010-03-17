@@ -176,7 +176,19 @@ ischema_names = {
 
 class SybaseExecutionContext(default.DefaultExecutionContext):
     _enable_identity_insert = False
-
+    
+    def set_ddl_autocommit(self, connection, value):
+        """Must be implemented by subclasses to accommodate DDL executions.
+        
+        "connection" is the raw unwrapped DBAPI connection.   "value"
+        is True or False.  when True, the connection should be configured
+        such that a DDL can take place subsequently.  when False,
+        a DDL has taken place and the connection should be resumed
+        into non-autocommit mode.
+        
+        """
+        raise NotImplementedError()
+        
     def pre_exec(self):
         if self.isinsert:
             tbl = self.compiled.statement.table
@@ -192,7 +204,22 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
                 self.cursor.execute("SET IDENTITY_INSERT %s ON" % 
                     self.dialect.identifier_preparer.format_table(tbl))
 
+        if self.isddl:
+            # TODO: to enhance this, we can detect "ddl in tran" on the
+            # database settings.  this error message should be improved to 
+            # include a note about that.
+            if not self.should_autocommit:
+                raise exc.InvalidRequestError("The Sybase dialect only supports "
+                                            "DDL in 'autocommit' mode at this time.")
+
+            self.root_connection.engine.logger.info("AUTOCOMMIT (Assuming no Sybase 'ddl in tran')")
+
+            self.set_ddl_autocommit(self.root_connection.connection.connection, True)
+            
+
     def post_exec(self):
+       if self.isddl:
+            self.set_ddl_autocommit(self.root_connection, False)
         
        if self._enable_identity_insert:
             self.cursor.execute(

@@ -20,6 +20,14 @@ from sqlalchemy.dialects.sybase.base import SybaseDialect, \
 
 
 class SybaseExecutionContext_pysybase(SybaseExecutionContext):
+
+    def set_ddl_autocommit(self, dbapi_connection, value):
+        if value:
+            # call commit() on the Sybase connection directly,
+            # to avoid any side effects of calling a Connection 
+            # transactional method inside of pre_exec()
+            dbapi_connection.commit()
+
     def pre_exec(self):
         SybaseExecutionContext.pre_exec(self)
 
@@ -28,18 +36,6 @@ class SybaseExecutionContext_pysybase(SybaseExecutionContext):
                 param["@" + key] = param[key]
                 del param[key]
 
-        if self.isddl:
-            # TODO: to enhance this, we can detect "ddl in tran" on the
-            # database settings.  this error message should be improved to 
-            # include a note about that.
-            if not self.should_autocommit:
-                raise exc.InvalidRequestError("The Sybase dialect only supports "
-                                            "DDL in 'autocommit' mode at this time.")
-            # call commit() on the Sybase connection directly,
-            # to avoid any side effects of calling a Connection 
-            # transactional method inside of pre_exec()
-            self.root_connection.engine.logger.info("COMMIT (Assuming no Sybase 'ddl in tran')")
-            self.root_connection.connection.commit()
 
 class SybaseSQLCompiler_pysybase(SybaseSQLCompiler):
     def bindparam_string(self, name):

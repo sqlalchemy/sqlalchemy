@@ -1,4 +1,4 @@
-from sqlalchemy.dialects.sybase import base, pysybase
+from sqlalchemy.dialects.sybase import base, pysybase, pyodbc
 
 
 from base import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
