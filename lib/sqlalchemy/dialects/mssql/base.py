@@ -1011,8 +1011,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use
         return ''
 
-    def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause)
+    def order_by_clause(self, select, **kw):
+        order_by = self.process(select._order_by_clause, **kw)
 
         # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
         if order_by and (not self.is_subquery() or select._limit):
