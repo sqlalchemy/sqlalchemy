@@ -76,9 +76,9 @@ def produce_test(parent, child, direction):
             btoc = tc.c.id==tb.c.id
 
             if direction == ONETOMANY:
-                relationjoin = parent_table.c.id==child_table.c.parent_id
+                relationshipjoin = parent_table.c.id==child_table.c.parent_id
             elif direction == MANYTOONE:
-                relationjoin = parent_table.c.child_id==child_table.c.id
+                relationshipjoin = parent_table.c.child_id==child_table.c.id
                 if parent is child:
                     remote_side = [child_table.c.id]
 
@@ -111,7 +111,7 @@ def produce_test(parent, child, direction):
             parent_class = parent_mapper.class_
             child_class = child_mapper.class_
 
-            parent_mapper.add_property("collection", relation(child_mapper, primaryjoin=relationjoin, foreign_keys=foreign_keys, remote_side=remote_side, uselist=True))
+            parent_mapper.add_property("collection", relationship(child_mapper, primaryjoin=relationshipjoin, foreign_keys=foreign_keys, remote_side=remote_side, uselist=True))
 
             sess = create_session()
 

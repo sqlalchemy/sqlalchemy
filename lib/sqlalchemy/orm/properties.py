@@ -26,7 +26,7 @@ from sqlalchemy.orm.interfaces import (
 NoneType = type(None)
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
-           'ComparableProperty', 'RelationProperty', 'BackRef')
+           'ComparableProperty', 'RelationshipProperty', 'BackRef')
 
 
 class ColumnProperty(StrategizedProperty):
@@ -343,7 +343,7 @@ class ComparableProperty(MapperProperty):
         pass
 
 
-class RelationProperty(StrategizedProperty):
+class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
     """
@@ -388,7 +388,7 @@ class RelationProperty(StrategizedProperty):
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension
-        self.comparator_factory = comparator_factory or RelationProperty.Comparator
+        self.comparator_factory = comparator_factory or RelationshipProperty.Comparator
         self.comparator = self.comparator_factory(self, None)
         util.set_creation_order(self)
 
@@ -467,10 +467,10 @@ class RelationProperty(StrategizedProperty):
             return op(self, *other, **kwargs)
 
         def of_type(self, cls):
-            return RelationProperty.Comparator(self.property, self.mapper, cls, adapter=self.adapter)
+            return RelationshipProperty.Comparator(self.property, self.mapper, cls, adapter=self.adapter)
 
         def in_(self, other):
-            raise NotImplementedError("in_() not yet supported for relations.  For a "
+            raise NotImplementedError("in_() not yet supported for relationships.  For a "
                     "simple many-to-one, use in_() against the set of foreign key values.")
             
         __hash__ = None
@@ -730,8 +730,8 @@ class RelationProperty(StrategizedProperty):
         other._reverse_property.add(self)
         
         if not other._get_target().common_parent(self.parent):
-            raise sa_exc.ArgumentError("reverse_property %r on relation %s references "
-                    "relation %s, which does not reference mapper %s" % (key, self, other, self.parent))
+            raise sa_exc.ArgumentError("reverse_property %r on relationship %s references "
+                    "relationship %s, which does not reference mapper %s" % (key, self, other, self.parent))
         
         if self.direction in (ONETOMANY, MANYTOONE) and self.direction == other.direction:
             raise sa_exc.ArgumentError("%s and back-reference %s are both of the same direction %r."
@@ -747,7 +747,7 @@ class RelationProperty(StrategizedProperty):
         self._determine_local_remote_pairs()
         self._post_init()
         self._generate_backref()
-        super(RelationProperty, self).do_init()
+        super(RelationshipProperty, self).do_init()
 
     def _get_target(self):
         if not hasattr(self, 'mapper'):
@@ -759,7 +759,7 @@ class RelationProperty(StrategizedProperty):
                 # accept a callable to suit various deferred-configurational schemes
                 self.mapper = mapper.class_mapper(self.argument(), compile=False)
             else:
-                raise sa_exc.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
+                raise sa_exc.ArgumentError("relationship '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
             assert isinstance(self.mapper, mapper.Mapper), self.mapper
         return self.mapper
         
@@ -789,8 +789,8 @@ class RelationProperty(StrategizedProperty):
             for inheriting in self.parent.iterate_to_root():
                 if inheriting is not self.parent and inheriting._get_property(self.key, raiseerr=False):
                     util.warn(
-                        ("Warning: relation '%s' on mapper '%s' supercedes "
-                         "the same relation on inherited mapper '%s'; this "
+                        ("Warning: relationship '%s' on mapper '%s' supercedes "
+                         "the same relationship on inherited mapper '%s'; this "
                          "can cause dependency issues during flush") %
                         (self.key, self.parent, inheriting))
 
@@ -830,9 +830,9 @@ class RelationProperty(StrategizedProperty):
                     self.primaryjoin = _search_for_join(self.parent, self.target)
         except sa_exc.ArgumentError, e:
             raise sa_exc.ArgumentError("Could not determine join condition between "
-                        "parent/child tables on relation %s.  "
+                        "parent/child tables on relationship %s.  "
                         "Specify a 'primaryjoin' expression.  If this is a "
-                        "many-to-many relation, 'secondaryjoin' is needed as well." % (self))
+                        "many-to-many relationship, 'secondaryjoin' is needed as well." % (self))
 
     def _col_is_part_of_mappings(self, column):
         if self.secondary is None:
@@ -872,21 +872,21 @@ class RelationProperty(StrategizedProperty):
             if not eq_pairs:
                 if not self.viewonly and criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True):
                     raise sa_exc.ArgumentError("Could not locate any equated, locally "
-                        "mapped column pairs for primaryjoin condition '%s' on relation %s. "
-                        "For more relaxed rules on join conditions, the relation may be "
+                        "mapped column pairs for primaryjoin condition '%s' on relationship %s. "
+                        "For more relaxed rules on join conditions, the relationship may be "
                         "marked as viewonly=True." % (self.primaryjoin, self)
                     )
                 else:
                     if self._foreign_keys:
-                        raise sa_exc.ArgumentError("Could not determine relation direction for "
-                            "primaryjoin condition '%s', on relation %s. "
+                        raise sa_exc.ArgumentError("Could not determine relationship direction for "
+                            "primaryjoin condition '%s', on relationship %s. "
                             "Do the columns in 'foreign_keys' represent only the 'foreign' columns "
                             "in this join condition ?" % (self.primaryjoin, self))
                     else:
-                        raise sa_exc.ArgumentError("Could not determine relation direction for "
-                            "primaryjoin condition '%s', on relation %s. "
+                        raise sa_exc.ArgumentError("Could not determine relationship direction for "
+                            "primaryjoin condition '%s', on relationship %s. "
                             "Specify the 'foreign_keys' argument to indicate which columns "
-                            "on the relation are foreign." % (self.primaryjoin, self))
+                            "on the relationship are foreign." % (self.primaryjoin, self))
 
             self.synchronize_pairs = eq_pairs
 
@@ -897,15 +897,15 @@ class RelationProperty(StrategizedProperty):
             if not sq_pairs:
                 if not self.viewonly and criterion_as_pairs(self.secondaryjoin, consider_as_foreign_keys=self._foreign_keys, any_operator=True):
                     raise sa_exc.ArgumentError("Could not locate any equated, locally mapped "
-                        "column pairs for secondaryjoin condition '%s' on relation %s. "
+                        "column pairs for secondaryjoin condition '%s' on relationship %s. "
                         "For more relaxed rules on join conditions, the "
-                        "relation may be marked as viewonly=True." % (self.secondaryjoin, self)
+                        "relationship may be marked as viewonly=True." % (self.secondaryjoin, self)
                     )
                 else:
-                    raise sa_exc.ArgumentError("Could not determine relation direction "
-                    "for secondaryjoin condition '%s', on relation %s. "
+                    raise sa_exc.ArgumentError("Could not determine relationship direction "
+                    "for secondaryjoin condition '%s', on relationship %s. "
                     "Specify the foreign_keys argument to indicate which "
-                    "columns on the relation are foreign." % (self.secondaryjoin, self))
+                    "columns on the relationship are foreign." % (self.secondaryjoin, self))
 
             self.secondary_synchronize_pairs = sq_pairs
         else:
@@ -951,7 +951,7 @@ class RelationProperty(StrategizedProperty):
             
             if not onetomany_fk and not manytoone_fk:
                 raise sa_exc.ArgumentError(
-                    "Can't determine relation direction for relationship '%s' "
+                    "Can't determine relationship direction for relationship '%s' "
                     "- foreign key columns are present in neither the "
                     "parent nor the child's mapped tables" % self )
 
@@ -973,7 +973,7 @@ class RelationProperty(StrategizedProperty):
                 
             if not self.direction:
                 raise sa_exc.ArgumentError(
-                    "Can't determine relation direction for relationship '%s' "
+                    "Can't determine relationship direction for relationship '%s' "
                     "- foreign key columns are present in both the parent and "
                     "the child's mapped tables.  Specify 'foreign_keys' "
                     "argument." % self)
@@ -982,7 +982,7 @@ class RelationProperty(StrategizedProperty):
             (self.direction is MANYTOMANY or self.direction is MANYTOONE):
             util.warn("On %s, delete-orphan cascade is not supported on a "
                     "many-to-many or many-to-one relationship when single_parent is not set.  "
-                    " Set single_parent=True on the relation()." % self)
+                    " Set single_parent=True on the relationship()." % self)
         
     def _determine_local_remote_pairs(self):
         if not self.local_remote_pairs:
@@ -996,7 +996,7 @@ class RelationProperty(StrategizedProperty):
                     self.local_remote_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self.remote_side, any_operator=True)
 
                 if not self.local_remote_pairs:
-                    raise sa_exc.ArgumentError("Relation %s could not determine any local/remote column pairs from remote side argument %r" % (self, self.remote_side))
+                    raise sa_exc.ArgumentError("Relationship %s could not determine any local/remote column pairs from remote side argument %r" % (self, self.remote_side))
 
             else:
                 if self.viewonly:
@@ -1034,8 +1034,8 @@ class RelationProperty(StrategizedProperty):
         if not self.is_primary() and \
             not mapper.class_mapper(self.parent.class_, compile=False)._get_property(self.key, raiseerr=False):
 
-            raise sa_exc.ArgumentError("Attempting to assign a new relation '%s' to "
-                "a non-primary mapper on class '%s'.  New relations can only be "
+            raise sa_exc.ArgumentError("Attempting to assign a new relationship '%s' to "
+                "a non-primary mapper on class '%s'.  New relationships can only be "
                 "added to the primary mapper, i.e. the very first "
                 "mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
             
@@ -1051,7 +1051,7 @@ class RelationProperty(StrategizedProperty):
             
             mapper = self.mapper.primary_mapper()
             if mapper._get_property(backref_key, raiseerr=False) is not None:
-                raise sa_exc.ArgumentError("Error creating backref '%s' on relation '%s': "
+                raise sa_exc.ArgumentError("Error creating backref '%s' on relationship '%s': "
                     "property of that name exists on mapper '%s'" % (backref_key, self, mapper))
             
             if self.secondary is not None:
@@ -1063,7 +1063,7 @@ class RelationProperty(StrategizedProperty):
                 if sj:
                     raise sa_exc.InvalidRequestError(
                         "Can't assign 'secondaryjoin' on a backref against "
-                        "a non-secondary relation.")
+                        "a non-secondary relationship.")
 
             foreign_keys = kwargs.pop('foreign_keys', self._foreign_keys)
 
@@ -1072,7 +1072,7 @@ class RelationProperty(StrategizedProperty):
             kwargs.setdefault('post_update', self.post_update)
             
             self.back_populates = backref_key
-            relation = RelationProperty(
+            relationship = RelationshipProperty(
                                         parent, 
                                         self.secondary, 
                                         pj, 
@@ -1081,7 +1081,7 @@ class RelationProperty(StrategizedProperty):
                                         back_populates=self.key,
                                        **kwargs)
 
-            mapper._configure_property(backref_key, relation)
+            mapper._configure_property(backref_key, relationship)
 
 
         if self.back_populates:
@@ -1096,7 +1096,7 @@ class RelationProperty(StrategizedProperty):
         self.logger.info("%s synchronize pairs [%s]", self, ",".join("(%s => %s)" % (l, r) for l, r in self.synchronize_pairs))
         self.logger.info("%s secondary synchronize pairs [%s]", self, ",".join(("(%s => %s)" % (l, r) for l, r in self.secondary_synchronize_pairs or [])))
         self.logger.info("%s local/remote pairs [%s]", self, ",".join("(%s / %s)" % (l, r) for l, r in self.local_remote_pairs))
-        self.logger.info("%s relation direction %s", self, self.direction)
+        self.logger.info("%s relationship direction %s", self, self.direction)
         
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
@@ -1199,11 +1199,11 @@ class RelationProperty(StrategizedProperty):
         if not self.viewonly:
             self._dependency_processor.register_processors(uowcommit)
 
-PropertyLoader = RelationProperty
-log.class_logger(RelationProperty)
+PropertyLoader = RelationshipProperty
+log.class_logger(RelationshipProperty)
 
 mapper.ColumnProperty = ColumnProperty
 mapper.SynonymProperty = SynonymProperty
 mapper.ComparableProperty = ComparableProperty
-mapper.RelationProperty = RelationProperty
+mapper.RelationshipProperty = RelationshipProperty
 mapper.ConcreteInheritedProperty = ConcreteInheritedProperty

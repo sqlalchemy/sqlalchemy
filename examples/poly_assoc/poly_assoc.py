@@ -21,7 +21,7 @@ the associated target object from those which associate with it.
 """
 
 from sqlalchemy import MetaData, Table, Column, Integer, String, and_
-from sqlalchemy.orm import (mapper, relation, create_session, class_mapper,
+from sqlalchemy.orm import (mapper, relationship, create_session, class_mapper,
     backref)
 
 metadata = MetaData('sqlite://')
@@ -69,7 +69,7 @@ def addressable(cls, name, uselist=True):
             addresses.c.addressable_type == table.name
      )
     foreign_keys = [addresses.c.addressable_id]
-    mapper.add_property(name, relation(
+    mapper.add_property(name, relationship(
             Address,
             primaryjoin=primaryjoin, uselist=uselist, foreign_keys=foreign_keys,
             backref=backref('_backref_%s' % table.name, primaryjoin=list(table.primary_key)[0] == addresses.c.addressable_id, foreign_keys=foreign_keys)

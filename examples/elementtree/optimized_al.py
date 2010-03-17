@@ -8,7 +8,7 @@ which joins on only three tables.
 ################################# PART I - Imports/Configuration ###########################################
 from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
     Unicode, and_)
-from sqlalchemy.orm import mapper, relation, create_session, lazyload
+from sqlalchemy.orm import mapper, relationship, create_session, lazyload
 
 import sys, os, StringIO, re
 
@@ -80,16 +80,16 @@ class _Attribute(object):
 # they will be ordered in primary key/insert order, so that we can reconstruct
 # an ElementTree structure from the list.
 mapper(Document, documents, properties={
-    '_nodes':relation(_Node, lazy=False, cascade="all, delete-orphan")
+    '_nodes':relationship(_Node, lazy=False, cascade="all, delete-orphan")
 })
 
 # the _Node objects change the way they load so that a list of _Nodes will organize
 # themselves hierarchically using the ElementTreeMarshal.  this depends on the ordering of
-# nodes being hierarchical as well; relation() always applies at least ROWID/primary key
+# nodes being hierarchical as well; relationship() always applies at least ROWID/primary key
 # ordering to rows which will suffice.
 mapper(_Node, elements, properties={
-    'children':relation(_Node, lazy=None),  # doesnt load; used only for the save relationship
-    'attributes':relation(_Attribute, lazy=False, cascade="all, delete-orphan"), # eagerly load attributes
+    'children':relationship(_Node, lazy=None),  # doesnt load; used only for the save relationship
+    'attributes':relationship(_Attribute, lazy=False, cascade="all, delete-orphan"), # eagerly load attributes
 })
 
 mapper(_Attribute, attributes)

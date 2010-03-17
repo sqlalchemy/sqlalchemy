@@ -2,7 +2,7 @@
 # step 1. imports
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
     String, ForeignKey, Float, DateTime)
-from sqlalchemy.orm import sessionmaker, mapper, relation
+from sqlalchemy.orm import sessionmaker, mapper, relationship
 from sqlalchemy.orm.shard import ShardedSession
 from sqlalchemy.sql import operators
 from sqlalchemy import sql
@@ -150,7 +150,7 @@ class Report(object):
 
 # step 7.  mappers
 mapper(WeatherLocation, weather_locations, properties={
-    'reports':relation(Report, backref='location')
+    'reports':relationship(Report, backref='location')
 })
 
 mapper(Report, weather_reports)    

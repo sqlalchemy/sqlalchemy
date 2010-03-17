@@ -13,7 +13,7 @@ from sqlalchemy.test.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, exc as sa_exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session, class_mapper, backref, sessionmaker
+from sqlalchemy.orm import mapper, relationship, create_session, class_mapper, backref, sessionmaker
 from sqlalchemy.orm import attributes, exc as orm_exc
 from sqlalchemy.test import testing
 from sqlalchemy.test.testing import eq_
@@ -27,7 +27,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
-            addresses = relation(Address, backref="user"),
+            addresses = relationship(Address, backref="user"),
         ))
 
     @testing.resolve_artifact_names
@@ -231,7 +231,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         mapper(Address, addresses)
         mapper(User, users, properties = {
-            'address':relation(Address, backref=backref("user"), uselist=False)
+            'address':relationship(Address, backref=backref("user"), uselist=False)
         })
 
     @testing.resolve_artifact_names
@@ -385,7 +385,7 @@ class O2OScalarMoveTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         mapper(Address, addresses)
         mapper(User, users, properties = {
-            'address':relation(Address, uselist=False)
+            'address':relationship(Address, uselist=False)
         })
 
     @testing.resolve_artifact_names
@@ -419,7 +419,7 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         mapper(Address, addresses)
         mapper(User, users, properties = {
-            'address':relation(Address, uselist=False, 
+            'address':relationship(Address, uselist=False, 
                 backref=backref('user', single_parent=True, cascade="all, delete-orphan"))
         })
 
@@ -448,7 +448,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(Item, items, properties={
-            'keyword':relation(Keyword, secondary=item_keywords, uselist=False, backref=backref("item", uselist=False))
+            'keyword':relationship(Keyword, secondary=item_keywords, uselist=False, backref=backref("item", uselist=False))
         })
         mapper(Keyword, keywords)
     

@@ -22,7 +22,7 @@ E.g.::
     
     # specify that each Person's "addresses" collection comes from
     # cache too
-    q = q.options(RelationCache("default", "by_person", Person.addresses))
+    q = q.options(RelationshipCache("default", "by_person", Person.addresses))
     
     # query
     print q.all()
@@ -39,7 +39,7 @@ The demo scripts themselves, in order of complexity, are run as follows::
 
    python examples/beaker_caching/helloworld.py
 
-   python examples/beaker_caching/relation_caching.py
+   python examples/beaker_caching/relationship_caching.py
 
    python examples/beaker_caching/advanced.py
 
@@ -63,8 +63,8 @@ Listing of files:
 
     helloworld.py - the basic idea.
 
-    relation_caching.py - Illustrates how to add cache options on
-    relation endpoints, so that lazyloads load from cache.
+    relationship_caching.py - Illustrates how to add cache options on
+    relationship endpoints, so that lazyloads load from cache.
 
     advanced.py - Further examples of how to use FromCache.  Combines
     techniques from the first two scripts.

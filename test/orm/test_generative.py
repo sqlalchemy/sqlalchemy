@@ -4,7 +4,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, MetaData, func
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base, _fixtures
 
@@ -199,7 +199,7 @@ class GenerativeTest2(_base.MappedTest):
         eq_(res.count(), 1)
 
 
-class RelationsTest(_fixtures.FixtureTest):
+class RelationshipsTest(_fixtures.FixtureTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
@@ -208,8 +208,8 @@ class RelationsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(User, users, properties={
-            'orders':relation(mapper(Order, orders, properties={
-                'addresses':relation(mapper(Address, addresses))}))})
+            'orders':relationship(mapper(Order, orders, properties={
+                'addresses':relationship(mapper(Address, addresses))}))})
 
 
     @testing.resolve_artifact_names

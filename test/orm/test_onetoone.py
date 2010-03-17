@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from test.orm import _base
 
 
@@ -36,7 +36,7 @@ class O2OTest(_base.MappedTest):
         mapper(Jack, jack,
                order_by=[jack.c.number],
                properties=dict(
-                   port=relation(Port, backref='jack',
+                   port=relationship(Port, backref='jack',
                                  uselist=False,
                                  )),
                )

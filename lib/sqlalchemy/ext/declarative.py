@@ -49,7 +49,7 @@ added to the underlying :class:`~sqlalchemy.schema.Table` and
 :func:`~sqlalchemy.orm.mapper()` definitions as appropriate::
 
     SomeClass.data = Column('data', Unicode)
-    SomeClass.related = relation(RelatedInfo)
+    SomeClass.related = relationship(RelatedInfo)
 
 Classes which are mapped explicitly using
 :func:`~sqlalchemy.orm.mapper()` can interact freely with declarative
@@ -96,11 +96,11 @@ objects::
     mymetadata = MetaData()
     Base = declarative_base(metadata=mymetadata)
 
-Configuring Relations
-=====================
+Configuring Relationships
+=========================
 
-Relations to other classes are done in the usual way, with the added
-feature that the class specified to :func:`~sqlalchemy.orm.relation()`
+Relationships to other classes are done in the usual way, with the added
+feature that the class specified to :func:`~sqlalchemy.orm.relationship()`
 may be a string name.  The "class registry" associated with ``Base``
 is used at mapper compilation time to resolve the name into the actual
 class object, which is expected to have been defined once the mapper
@@ -111,7 +111,7 @@ configuration is used::
 
         id = Column(Integer, primary_key=True)
         name = Column(String(50))
-        addresses = relation("Address", backref="user")
+        addresses = relationship("Address", backref="user")
 
     class Address(Base):
         __tablename__ = 'addresses'
@@ -130,9 +130,9 @@ class using them::
         id = Column(Integer, primary_key=True)
         email = Column(String(50))
         user_id = Column(Integer, ForeignKey('users.id'))
-        user = relation(User, primaryjoin=user_id == User.id)
+        user = relationship(User, primaryjoin=user_id == User.id)
 
-In addition to the main argument for :func:`~sqlalchemy.orm.relation`,
+In addition to the main argument for :func:`~sqlalchemy.orm.relationship`,
 other arguments which depend upon the columns present on an as-yet
 undefined class may also be specified as strings.  These strings are
 evaluated as Python expressions.  The full namespace available within
@@ -143,7 +143,7 @@ expression functions like :func:`~sqlalchemy.sql.expression.desc` and
 
     class User(Base):
         # ....
-        addresses = relation("Address",
+        addresses = relationship("Address",
                              order_by="desc(Address.email)", 
                              primaryjoin="Address.user_id==User.id")
 
@@ -151,14 +151,14 @@ As an alternative to string-based attributes, attributes may also be
 defined after all classes have been created.  Just add them to the target
 class after the fact::
 
-    User.addresses = relation(Address,
+    User.addresses = relationship(Address,
                               primaryjoin=Address.user_id==User.id)
 
-Configuring Many-to-Many Relations
-==================================
+Configuring Many-to-Many Relationships
+======================================
 
 There's nothing special about many-to-many with declarative.  The
-``secondary`` argument to :func:`~sqlalchemy.orm.relation` still
+``secondary`` argument to :func:`~sqlalchemy.orm.relationship` still
 requires a :class:`~sqlalchemy.schema.Table` object, not a declarative
 class. The :class:`~sqlalchemy.schema.Table` should share the same
 :class:`~sqlalchemy.schema.MetaData` object used by the declarative
@@ -173,10 +173,10 @@ base::
     class Author(Base):
         __tablename__ = 'authors'
         id = Column(Integer, primary_key=True)
-        keywords = relation("Keyword", secondary=keywords)
+        keywords = relationship("Keyword", secondary=keywords)
 
 You should generally **not** map a class and also specify its table in
-a many-to-many relation, since the ORM may issue duplicate INSERT and
+a many-to-many relationship, since the ORM may issue duplicate INSERT and
 DELETE statements. 
 
 
@@ -576,7 +576,7 @@ def _as_declarative(cls, classname, dict_):
             continue
         if not isinstance(value, (Column, MapperProperty)):
             continue
-        prop = _deferred_relation(cls, value)
+        prop = _deferred_relationship(cls, value)
         our_stuff[k] = prop
 
     # set up attributes in the order they were created
@@ -717,7 +717,7 @@ class DeclarativeMeta(type):
                         cls.__table__.append_column(col)
                 cls.__mapper__.add_property(key, value)
             elif isinstance(value, MapperProperty):
-                cls.__mapper__.add_property(key, _deferred_relation(cls, value))
+                cls.__mapper__.add_property(key, _deferred_relationship(cls, value))
             else:
                 type.__setattr__(cls, key, value)
         else:
@@ -740,7 +740,7 @@ class _GetColumns(object):
         return getattr(self.cls, key)
 
 
-def _deferred_relation(cls, prop):
+def _deferred_relationship(cls, prop):
     def resolve_arg(arg):
         import sqlalchemy
         
@@ -764,7 +764,7 @@ def _deferred_relation(cls, prop):
             except NameError, n:
                 raise exceptions.InvalidRequestError(
                     "When compiling mapper %s, expression %r failed to locate a name (%r). "
-                    "If this is a class name, consider adding this relation() to the %r "
+                    "If this is a class name, consider adding this relationship() to the %r "
                     "class after both dependent classes have been defined." % (
                     prop.parent, arg, n.args[0], cls))
         return return_cls
@@ -838,7 +838,7 @@ def _declarative_constructor(self, **kwargs):
 
     Only keys that are present as
     attributes of the instance's class are allowed. These could be,
-    for example, any mapped columns or relations.
+    for example, any mapped columns or relationships.
     """
     for k in kwargs:
         if not hasattr(type(self), k):
@@ -890,7 +890,7 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
       Defaults to
       :func:`~sqlalchemy.ext.declarative._declarative_constructor`, an
       __init__ implementation that assigns \**kwargs for declared
-      fields and relations to an instance.  If ``None`` is supplied,
+      fields and relationships to an instance.  If ``None`` is supplied,
       no __init__ will be provided and construction will fall back to
       cls.__init__ by way of the normal Python semantics.
 

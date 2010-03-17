@@ -41,7 +41,7 @@ from sqlalchemy.orm.properties import (
      ColumnProperty,
      ComparableProperty,
      CompositeProperty,
-     RelationProperty,
+     RelationshipProperty,
      PropertyLoader,
      SynonymProperty,
      )
@@ -92,6 +92,7 @@ __all__ = (
     'outerjoin',
     'polymorphic_union',
     'reconstructor',
+    'relationship',
     'relation',
     'scoped_session',
     'sessionmaker',
@@ -172,21 +173,21 @@ def create_session(bind=None, **kwargs):
     kwargs.setdefault('expire_on_commit', False)
     return _Session(bind=bind, **kwargs)
 
-def relation(argument, secondary=None, **kwargs):
+def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
 
     This corresponds to a parent-child or associative table relationship.  The
-    constructed class is an instance of :class:`RelationProperty`.
+    constructed class is an instance of :class:`RelationshipProperty`.
 
-    A typical :func:`relation`::
+    A typical :func:`relationship`::
 
        mapper(Parent, properties={
-         'children': relation(Children)
+         'children': relationship(Children)
        })
 
     :param argument:
       a class or :class:`Mapper` instance, representing the target of
-      the relation.
+      the relationship.
 
     :param secondary:
       for a many-to-many relationship, specifies the intermediary
@@ -202,14 +203,14 @@ def relation(argument, secondary=None, **kwargs):
       direction. The other property will be created automatically 
       when the mappers are configured.  Can also be passed as a
       :func:`backref` object to control the configuration of the
-      new relation.
+      new relationship.
       
     :param back_populates:
       Takes a string name and has the same meaning as ``backref``, 
       except the complementing property is **not** created automatically, 
       and instead must be configured explicitly on the other mapper.  The 
       complementing property should also indicate ``back_populates`` 
-      to this relation to ensure proper functioning.
+      to this relationship to ensure proper functioning.
 
     :param cascade:
       a comma-separated list of cascade rules which determines how
@@ -244,7 +245,7 @@ def relation(argument, secondary=None, **kwargs):
       be used in place of a plain list for storing elements.
 
     :param comparator_factory:
-      a class which extends :class:`RelationProperty.Comparator` which
+      a class which extends :class:`RelationshipProperty.Comparator` which
       provides custom SQL clause generation for comparison operations.
 
     :param extension:
@@ -261,7 +262,7 @@ def relation(argument, secondary=None, **kwargs):
       this parameter should be used in conjunction with explicit
       ``primaryjoin`` and ``secondaryjoin`` (if needed) arguments, and
       the columns within the ``foreign_keys`` list should be present
-      within those join conditions. Normally, ``relation()`` will
+      within those join conditions. Normally, ``relationship()`` will
       inspect the columns within the join conditions to determine
       which columns are the "foreign key" columns, based on
       information in the ``Table`` metadata. Use this argument when no
@@ -273,7 +274,7 @@ def relation(argument, secondary=None, **kwargs):
       against related tables instead of an outer join.  The purpose
       of this option is strictly one of performance, as inner joins
       generally perform better than outer joins.  This flag can
-      be set to ``True`` when the relation references an object
+      be set to ``True`` when the relationship references an object
       via many-to-one using local foreign keys that are not nullable,
       or when the reference is one-to-one or a collection that is 
       guaranteed to have one or at least one entry.
@@ -344,12 +345,12 @@ def relation(argument, secondary=None, **kwargs):
       dependent rows.  Note that with databases which enforce
       referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
       ON UPDATE CASCADE is required for this operation.  The
-      relation() will update the value of the attribute on related
+      relationship() will update the value of the attribute on related
       items which are locally present in the session during a flush.
 
       When False, it is assumed that the database does not enforce
       referential integrity and will not be issuing its own CASCADE
-      operation for an update.  The relation() will issue the
+      operation for an update.  The relationship() will issue the
       appropriate UPDATE statements to the database in response to the
       change of a referenced key, and items locally present in the
       session during a flush will also be refreshed.
@@ -405,19 +406,19 @@ def relation(argument, secondary=None, **kwargs):
       This is used for many-to-one or many-to-many relationships that
       should be treated either as one-to-one or one-to-many.  Its
       usage is optional unless delete-orphan cascade is also 
-      set on this relation(), in which case its required (new in 0.5.2).
+      set on this relationship(), in which case its required (new in 0.5.2).
       
     :param uselist=(True|False):
       a boolean that indicates if this property should be loaded as a
       list or a scalar. In most cases, this value is determined
-      automatically by ``relation()``, based on the type and direction
+      automatically by ``relationship()``, based on the type and direction
       of the relationship - one to many forms a list, many to one
       forms a scalar, many to many is a list. If a scalar is desired
       where normally a list would be present, such as a bi-directional
       one-to-one relationship, set uselist to False.
 
     :param viewonly=False:
-      when set to True, the relation is used only for loading objects
+      when set to True, the relationship is used only for loading objects
       within the relationship, and has no effect on the unit-of-work
       flush process.  Relationships with viewonly can specify any kind of
       join conditions to provide additional views of related objects
@@ -427,8 +428,13 @@ def relation(argument, secondary=None, **kwargs):
       case, use an alternative method.
 
     """
-    return RelationProperty(argument, secondary=secondary, **kwargs)
+    return RelationshipProperty(argument, secondary=secondary, **kwargs)
 
+def relation(*arg, **kw):
+    """A synonym for :func:`relationship`."""
+    
+    return relationship(*arg, **kw)
+    
 def dynamic_loader(argument, secondary=None, primaryjoin=None,
                    secondaryjoin=None, foreign_keys=None, backref=None,
                    post_update=False, cascade=False, remote_side=None,
@@ -436,7 +442,7 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None,
                    order_by=None, comparator_factory=None, query_class=None):
     """Construct a dynamically-loading mapper property.
 
-    This property is similar to :func:`relation`, except read
+    This property is similar to :func:`relationship`, except read
     operations return an active :class:`Query` object which reads from
     the database when accessed.  Items may be appended to the
     attribute via ``append()``, or removed via ``remove()``; changes
@@ -444,12 +450,12 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None,
     However, no other Python list or collection mutation operations
     are available.
 
-    A subset of arguments available to :func:`relation` are available
+    A subset of arguments available to :func:`relationship` are available
     here.
 
     :param argument:
       a class or :class:`Mapper` instance, representing the target of
-      the relation.
+      the relationship.
 
     :param secondary:
       for a many-to-many relationship, specifies the intermediary
@@ -466,7 +472,7 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None,
     """
     from sqlalchemy.orm.dynamic import DynaLoader
 
-    return RelationProperty(
+    return RelationshipProperty(
         argument, secondary=secondary, primaryjoin=primaryjoin,
         secondaryjoin=secondaryjoin, foreign_keys=foreign_keys, backref=backref,
         post_update=post_update, cascade=cascade, remote_side=remote_side,
@@ -589,9 +595,9 @@ def composite(class_, *cols, **kwargs):
 
 def backref(name, **kwargs):
     """Create a back reference with explicit arguments, which are the same
-    arguments one can send to ``relation()``.
+    arguments one can send to ``relationship()``.
 
-    Used with the `backref` keyword argument to ``relation()`` in
+    Used with the `backref` keyword argument to ``relationship()`` in
     place of a string argument.
 
     """
@@ -695,12 +701,12 @@ def mapper(class_, local_table=None, *args, **params):
             dependent rows.  Note that with databases which enforce
             referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
             ON UPDATE CASCADE is required for this operation.  The
-            relation() will update the value of the attribute on related
+            relationship() will update the value of the attribute on related
             items which are locally present in the session during a flush.
 
             When False, it is assumed that the database does not enforce
             referential integrity and will not be issuing its own CASCADE
-            operation for an update.  The relation() will issue the
+            operation for an update.  The relationship() will issue the
             appropriate UPDATE statements to the database in response to the
             change of a referenced key, and items locally present in the
             session during a flush will also be refreshed.
@@ -709,7 +715,7 @@ def mapper(class_, local_table=None, *args, **params):
             are expected and the database in use doesn't support CASCADE
             (i.e. SQLite, MySQL MyISAM tables).
 
-            Also see the passive_updates flag on :func:`relation()`.
+            Also see the passive_updates flag on :func:`relationship()`.
 
             A future SQLAlchemy release will provide a "detect" feature for
             this flag.
@@ -791,7 +797,7 @@ def synonym(name, map_column=False, descriptor=None, comparator_factory=None):
 
     `name` refers to the name of the existing mapped property, which can be
     any other ``MapperProperty`` including column-based properties and
-    relations.
+    relationships.
 
     If `map_column` is ``True``, an additional ``ColumnProperty`` is created
     on the mapper automatically, using the synonym's name as the keyname of
@@ -950,7 +956,7 @@ def eagerload_all(*keys, **kw):
         query.options(eagerload_all(User.orders, Order.items, Item.keywords))
 
     The keyword arguments accept a flag `innerjoin=True|False` which will 
-    override the value of the `innerjoin` flag specified on the relation().
+    override the value of the `innerjoin` flag specified on the relationship().
 
     """
     innerjoin = kw.pop('innerjoin', None)

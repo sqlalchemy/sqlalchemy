@@ -10,8 +10,8 @@ relationship.  It can be used to cherry-pick fields from a collection of
 related objects or to greatly simplify access to associated objects in an
 association relationship.
 
-Simplifying Relations
----------------------
+Simplifying Relationships
+-------------------------
 
 Consider this "association object" mapping::
 
@@ -41,13 +41,13 @@ Consider this "association object" mapping::
             self.keyword = keyword
 
     mapper(User, users_table, properties={
-        'kw': relation(Keyword, secondary=userkeywords_table)
+        'kw': relationship(Keyword, secondary=userkeywords_table)
         })
     mapper(Keyword, keywords_table)
 
 Above are three simple tables, modeling users, keywords and a many-to-many
 relationship between the two.  These ``Keyword`` objects are little more
-than a container for a name, and accessing them via the relation is
+than a container for a name, and accessing them via the relationship is
 awkward::
 
     user = User('jek')
@@ -59,9 +59,9 @@ awkward::
     print [keyword.keyword for keyword in user.kw]
     # ['cheese inspector']
 
-With ``association_proxy`` you have a "view" of the relation that contains
+With ``association_proxy`` you have a "view" of the relationship that contains
 just the ``.keyword`` of the related objects.  The proxy is a Python
-property, and unlike the mapper relation, is defined in your class::
+property, and unlike the mapper relationship, is defined in your class::
 
     from sqlalchemy.ext.associationproxy import association_proxy
 
@@ -69,7 +69,7 @@ property, and unlike the mapper relation, is defined in your class::
         def __init__(self, name):
             self.name = name
 
-        # proxy the 'keyword' attribute from the 'kw' relation
+        # proxy the 'keyword' attribute from the 'kw' relationship
         keywords = association_proxy('kw', 'keyword')
 
     # ...
@@ -87,21 +87,21 @@ The proxy is read/write.  New associated objects are created on demand when
 values are added to the proxy, and modifying or removing an entry through
 the proxy also affects the underlying collection.
 
- - The association proxy property is backed by a mapper-defined relation,
+ - The association proxy property is backed by a mapper-defined relationship,
    either a collection or scalar.
 
  - You can access and modify both the proxy and the backing
-   relation. Changes in one are immediate in the other.
+   relationship. Changes in one are immediate in the other.
 
  - The proxy acts like the type of the underlying collection.  A list gets a
    list-like proxy, a dict a dict-like proxy, and so on.
 
- - Multiple proxies for the same relation are fine.
+ - Multiple proxies for the same relationship are fine.
 
- - Proxies are lazy, and won't trigger a load of the backing relation until
+ - Proxies are lazy, and won't trigger a load of the backing relationship until
    they are accessed.
 
- - The relation is inspected to determine the type of the related objects.
+ - The relationship is inspected to determine the type of the related objects.
 
  - To construct new instances, the type is called with the value being
    assigned, or key and value for dicts.
@@ -112,22 +112,22 @@ Above, the ``Keyword.__init__`` takes a single argument ``keyword``, which
 maps conveniently to the value being set through the proxy.  A ``creator``
 function could have been used instead if more flexibility was required.
 
-Because the proxies are backed by a regular relation collection, all of the
+Because the proxies are backed by a regular relationship collection, all of the
 usual hooks and patterns for using collections are still in effect.  The
 most convenient behavior is the automatic setting of "parent"-type
 relationships on assignment.  In the example above, nothing special had to
 be done to associate the Keyword to the User.  Simply adding it to the
 collection is sufficient.
 
-Simplifying Association Object Relations
-----------------------------------------
+Simplifying Association Object Relationships
+--------------------------------------------
 
 Association proxies are also useful for keeping ``association objects`` out
 the way during regular use.  For example, the ``userkeywords`` table
 might have a bunch of auditing columns that need to get updated when changes
 are made- columns that are updated but seldom, if ever, accessed in your
 application.  A proxy can provide a very natural access pattern for the
-relation.
+relationship.
 
 .. sourcecode:: python
 
@@ -170,8 +170,8 @@ relation.
     mapper(User, users_table)
     mapper(Keyword, keywords_table)
     mapper(UserKeyword, userkeywords_table, properties={
-        'user': relation(User, backref='user_keywords'),
-        'keyword': relation(Keyword),
+        'user': relationship(User, backref='user_keywords'),
+        'keyword': relationship(Keyword),
     })
 
     user = User('log')
@@ -223,7 +223,7 @@ Building Complex Views
 Above are three tables, modeling stocks, their brokers and the number of
 shares of a stock held by each broker.  This situation is quite different
 from the association example above.  ``shares`` is a *property of the
-relation*, an important one that we need to use all the time.
+relationship*, an important one that we need to use all the time.
 
 For this example, it would be very convenient if ``Broker`` objects had a
 dictionary collection that mapped ``Stock`` instances to the shares held for
@@ -255,15 +255,15 @@ each.  That's easy::
 
     mapper(Stock, stocks_table)
     mapper(Broker, brokers_table, properties={
-        'by_stock': relation(Holding,
+        'by_stock': relationship(Holding,
             collection_class=attribute_mapped_collection('stock'))
     })
     mapper(Holding, holdings_table, properties={
-        'stock': relation(Stock),
-        'broker': relation(Broker)
+        'stock': relationship(Stock),
+        'broker': relationship(Broker)
     })
 
-Above, we've set up the ``by_stock`` relation collection to act as a
+Above, we've set up the ``by_stock`` relationship collection to act as a
 dictionary, using the ``.stock`` property of each Holding as a key.
 
 Populating and accessing that dictionary manually is slightly inconvenient

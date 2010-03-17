@@ -675,22 +675,22 @@ We don't want the number ``4``, we wanted some rows back.   So for detailed quer
     {stop}()
     [(1, u'ed'), (1, u'fred'), (1, u'mary'), (1, u'wendy')]
 
-Building a Relation
-====================
+Building a Relationship
+=======================
 
 Now let's consider a second table to be dealt with.  Users in our system also can store any number of email addresses associated with their username.  This implies a basic one to many association from the ``users_table`` to a new table which stores email addresses, which we will call ``addresses``.  Using declarative, we define this table along with its mapped class, ``Address``:
 
 .. sourcecode:: python+sql
 
     >>> from sqlalchemy import ForeignKey
-    >>> from sqlalchemy.orm import relation, backref
+    >>> from sqlalchemy.orm import relationship, backref
     >>> class Address(Base):
     ...     __tablename__ = 'addresses'
     ...     id = Column(Integer, primary_key=True)
     ...     email_address = Column(String, nullable=False)
     ...     user_id = Column(Integer, ForeignKey('users.id'))
     ...
-    ...     user = relation(User, backref=backref('addresses', order_by=id))
+    ...     user = relationship(User, backref=backref('addresses', order_by=id))
     ...
     ...     def __init__(self, email_address):
     ...         self.email_address = email_address
@@ -698,25 +698,25 @@ Now let's consider a second table to be dealt with.  Users in our system also ca
     ...     def __repr__(self):
     ...         return "<Address('%s')>" % self.email_address
 
-The above class introduces a **foreign key** constraint which references the ``users`` table.  This defines for SQLAlchemy the relationship between the two tables at the database level.  The relationship between the ``User`` and ``Address`` classes is defined separately using the :func:`~sqlalchemy.orm.relation()` function, which defines an attribute ``user`` to be placed on the ``Address`` class, as well as an ``addresses`` collection to be placed on the ``User`` class.  Such a relation is known as a **bidirectional** relationship.   Because of the placement of the foreign key, from ``Address`` to ``User`` it is **many to one**, and from ``User`` to ``Address`` it is **one to many**.  SQLAlchemy is automatically aware of many-to-one/one-to-many based on foreign keys.
+The above class introduces a **foreign key** constraint which references the ``users`` table.  This defines for SQLAlchemy the relationship between the two tables at the database level.  The relationship between the ``User`` and ``Address`` classes is defined separately using the :func:`~sqlalchemy.orm.relationship()` function, which defines an attribute ``user`` to be placed on the ``Address`` class, as well as an ``addresses`` collection to be placed on the ``User`` class.  Such a relationship is known as a **bidirectional** relationship.   Because of the placement of the foreign key, from ``Address`` to ``User`` it is **many to one**, and from ``User`` to ``Address`` it is **one to many**.  SQLAlchemy is automatically aware of many-to-one/one-to-many based on foreign keys.
 
-The :func:`~sqlalchemy.orm.relation()` function is extremely flexible, and could just have easily been defined on the ``User`` class:
+The :func:`~sqlalchemy.orm.relationship()` function is extremely flexible, and could just have easily been defined on the ``User`` class:
 
 .. sourcecode:: python+sql
 
     class User(Base):
         # ....
-        addresses = relation(Address, order_by=Address.id, backref="user")
+        addresses = relationship(Address, order_by=Address.id, backref="user")
 
-We are also free to not define a backref, and to define the :func:`~sqlalchemy.orm.relation()` only on one class and not the other.   It is also possible to define two separate :func:`~sqlalchemy.orm.relation()` constructs for either direction, which is generally safe for many-to-one and one-to-many relations, but not for many-to-many relations.
+We are also free to not define a backref, and to define the :func:`~sqlalchemy.orm.relationship()` only on one class and not the other.   It is also possible to define two separate :func:`~sqlalchemy.orm.relationship()` constructs for either direction, which is generally safe for many-to-one and one-to-many relationships, but not for many-to-many relationships.
 
-When using the ``declarative`` extension, :func:`~sqlalchemy.orm.relation()` gives us the option to use strings for most arguments that concern the target class, in the case that the target class has not yet been defined.  This **only** works in conjunction with ``declarative``:
+When using the ``declarative`` extension, :func:`~sqlalchemy.orm.relationship()` gives us the option to use strings for most arguments that concern the target class, in the case that the target class has not yet been defined.  This **only** works in conjunction with ``declarative``:
 
 .. sourcecode:: python+sql
 
     class User(Base):
         ....
-        addresses = relation("Address", order_by="Address.id", backref="user")
+        addresses = relationship("Address", order_by="Address.id", backref="user")
 
 When ``declarative`` is not in use, you typically define your :func:`~sqlalchemy.orm.mapper()` well after the target classes and :class:`~sqlalchemy.schema.Table` objects have been defined, so string expressions are not needed.
 
@@ -805,7 +805,7 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
     (5,)
     {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
-When we accessed the ``addresses`` collection, SQL was suddenly issued.  This is an example of a **lazy loading relation**.  The ``addresses`` collection is now loaded and behaves just like an ordinary list.
+When we accessed the ``addresses`` collection, SQL was suddenly issued.  This is an example of a **lazy loading relationship**.  The ``addresses`` collection is now loaded and behaves just like an ordinary list.
 
 If you want to reduce the number of queries (dramatically, in many cases), we can apply an **eager load** to the query operation, using the :func:`~sqlalchemy.orm.eagerload` function.  This function is a **query option** that gives additional instructions to the query on how we would like it to load, in this case we'd like to indicate that we'd like ``addresses`` to load "eagerly".  SQLAlchemy then constructs an outer join between the ``users`` and ``addresses`` tables, and loads them at once, populating the ``addresses`` collection on each ``User`` object if it's not already populated:
 
@@ -864,7 +864,7 @@ Or we can make a real JOIN construct; the most common way is to use :meth:`~sqla
 :meth:`~sqlalchemy.orm.query.Query.join` knows how to join between ``User`` and ``Address`` because there's only one foreign key between them.  If there were no foreign keys, or several, :meth:`~sqlalchemy.orm.query.Query.join` works better when one of the following forms are used::
 
     query.join((Address, User.id==Address.user_id))  # explicit condition (note the tuple)
-    query.join(User.addresses)                       # specify relation from left to right
+    query.join(User.addresses)                       # specify relationship from left to right
     query.join((Address, User.addresses))            # same, with explicit target
     query.join('addresses')                          # same, using a string
 
@@ -1024,7 +1024,7 @@ There is an explicit EXISTS construct, which looks like this:
     ()
     {stop}jack
 
-The :class:`~sqlalchemy.orm.query.Query` features several operators which make usage of EXISTS automatically.  Above, the statement can be expressed along the ``User.addresses`` relation using ``any()``:
+The :class:`~sqlalchemy.orm.query.Query` features several operators which make usage of EXISTS automatically.  Above, the statement can be expressed along the ``User.addresses`` relationship using ``any()``:
 
 .. sourcecode:: python+sql
 
@@ -1053,7 +1053,7 @@ The :class:`~sqlalchemy.orm.query.Query` features several operators which make u
     ('%google%',)
     {stop}jack
 
-``has()`` is the same operator as ``any()`` for many-to-one relations (note the ``~`` operator here too, which means "NOT"):
+``has()`` is the same operator as ``any()`` for many-to-one relationships (note the ``~`` operator here too, which means "NOT"):
 
 .. sourcecode:: python+sql
 
@@ -1067,10 +1067,10 @@ The :class:`~sqlalchemy.orm.query.Query` features several operators which make u
     ('jack',)
     {stop}[]
 
-Common Relation Operators
+Common Relationship Operators
 -------------------------
 
-Here's all the operators which build on relations:
+Here's all the operators which build on relationships:
 
 * equals (used for many-to-one)::
 
@@ -1099,7 +1099,7 @@ Here's all the operators which build on relations:
 
     query.filter(Address.user.has(name='ed'))
 
-* with_parent (used for any relation)::
+* with_parent (used for any relationship)::
 
     session.query(Address).with_parent(someuser, 'addresses')
 
@@ -1142,7 +1142,7 @@ Uh oh, they're still there !  Analyzing the flush SQL, we can see that the ``use
 Configuring delete/delete-orphan Cascade
 ----------------------------------------
 
-We will configure **cascade** options on the ``User.addresses`` relation to change the behavior.  While SQLAlchemy allows you to add new attributes and relations to mappings at any point in time, in this case the existing relation needs to be removed, so we need to tear down the mappings completely and start again.  This is not a typical operation and is here just for illustrative purposes.
+We will configure **cascade** options on the ``User.addresses`` relationship to change the behavior.  While SQLAlchemy allows you to add new attributes and relationships to mappings at any point in time, in this case the existing relationship needs to be removed, so we need to tear down the mappings completely and start again.  This is not a typical operation and is here just for illustrative purposes.
 
 Removing all ORM state is as follows:
 
@@ -1152,12 +1152,12 @@ Removing all ORM state is as follows:
     >>> from sqlalchemy.orm import clear_mappers
     >>> clear_mappers() # clear mappers
 
-Below, we use ``mapper()`` to reconfigure an ORM mapping for ``User`` and ``Address``, on our existing but currently un-mapped classes.  The ``User.addresses`` relation now has ``delete, delete-orphan`` cascade on it, which indicates that DELETE operations will cascade to attached ``Address`` objects as well as ``Address`` objects which are removed from their parent:
+Below, we use ``mapper()`` to reconfigure an ORM mapping for ``User`` and ``Address``, on our existing but currently un-mapped classes.  The ``User.addresses`` relationship now has ``delete, delete-orphan`` cascade on it, which indicates that DELETE operations will cascade to attached ``Address`` objects as well as ``Address`` objects which are removed from their parent:
 
 .. sourcecode:: python+sql
 
     >>> mapper(User, users_table, properties={    # doctest: +ELLIPSIS
-    ...     'addresses':relation(Address, backref='user', cascade="all, delete, delete-orphan")
+    ...     'addresses':relationship(Address, backref='user', cascade="all, delete, delete-orphan")
     ... })
     <Mapper at 0x...; User>
 
@@ -1224,8 +1224,8 @@ Deleting Jack will delete both Jack and his remaining ``Address``:
     ('jack@google.com', 'j25@yahoo.com')
     {stop}0
 
-Building a Many To Many Relation
-=================================
+Building a Many To Many Relationship
+====================================
 
 We're moving into the bonus round here, but lets show off a many-to-many relationship.  We'll sneak in some other features too, just to take a tour.  We'll make our application a blog application, where users can write ``BlogPost`` items, which have ``Keyword`` items associated with them.
 
@@ -1250,7 +1250,7 @@ The declarative setup is as follows:
     ...     body = Column(Text)
     ...
     ...     # many to many BlogPost<->Keyword
-    ...     keywords = relation('Keyword', secondary=post_keywords, backref='posts')
+    ...     keywords = relationship('Keyword', secondary=post_keywords, backref='posts')
     ...
     ...     def __init__(self, headline, body, author):
     ...         self.author = author
@@ -1269,17 +1269,17 @@ The declarative setup is as follows:
     ...     def __init__(self, keyword):
     ...         self.keyword = keyword
 
-Above, the many-to-many relation is ``BlogPost.keywords``.  The defining feature of a many-to-many relation is the ``secondary`` keyword argument which references a :class:`~sqlalchemy.schema.Table` object representing the association table.  This table only contains columns which reference the two sides of the relation; if it has *any* other columns, such as its own primary key, or foreign keys to other tables, SQLAlchemy requires a different usage pattern called the "association object", described at :ref:`association_pattern`.
+Above, the many-to-many relationship is ``BlogPost.keywords``.  The defining feature of a many-to-many relationship is the ``secondary`` keyword argument which references a :class:`~sqlalchemy.schema.Table` object representing the association table.  This table only contains columns which reference the two sides of the relationship; if it has *any* other columns, such as its own primary key, or foreign keys to other tables, SQLAlchemy requires a different usage pattern called the "association object", described at :ref:`association_pattern`.
 
-The many-to-many relation is also bi-directional using the ``backref`` keyword.  This is the one case where usage of ``backref`` is generally required, since if a separate ``posts`` relation were added to the ``Keyword`` entity, both relations would independently add and remove rows from the ``post_keywords`` table and produce conflicts.
+The many-to-many relationship is also bi-directional using the ``backref`` keyword.  This is the one case where usage of ``backref`` is generally required, since if a separate ``posts`` relationship were added to the ``Keyword`` entity, both relationships would independently add and remove rows from the ``post_keywords`` table and produce conflicts.
 
-We would also like our ``BlogPost`` class to have an ``author`` field.  We will add this as another bidirectional relationship, except one issue we'll have is that a single user might have lots of blog posts.  When we access ``User.posts``, we'd like to be able to filter results further so as not to load the entire collection.  For this we use a setting accepted by :func:`~sqlalchemy.orm.relation` called ``lazy='dynamic'``, which configures an alternate **loader strategy** on the attribute.  To use it on the "reverse" side of a :func:`~sqlalchemy.orm.relation`, we use the :func:`~sqlalchemy.orm.backref` function:
+We would also like our ``BlogPost`` class to have an ``author`` field.  We will add this as another bidirectional relationship, except one issue we'll have is that a single user might have lots of blog posts.  When we access ``User.posts``, we'd like to be able to filter results further so as not to load the entire collection.  For this we use a setting accepted by :func:`~sqlalchemy.orm.relationship` called ``lazy='dynamic'``, which configures an alternate **loader strategy** on the attribute.  To use it on the "reverse" side of a :func:`~sqlalchemy.orm.relationship`, we use the :func:`~sqlalchemy.orm.backref` function:
 
 .. sourcecode:: python+sql
 
     >>> from sqlalchemy.orm import backref
-    >>> # "dynamic" loading relation to User
-    >>> BlogPost.author = relation(User, backref=backref('posts', lazy='dynamic'))
+    >>> # "dynamic" loading relationship to User
+    >>> BlogPost.author = relationship(User, backref=backref('posts', lazy='dynamic'))
 
 Create new tables:
 
@@ -1378,7 +1378,7 @@ If we want to look up just Wendy's posts, we can tell the query to narrow down t
     (2, 'firstpost')
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
-Or we can use Wendy's own ``posts`` relation, which is a "dynamic" relation, to query straight from there:
+Or we can use Wendy's own ``posts`` relationship, which is a "dynamic" relationship, to query straight from there:
 
 .. sourcecode:: python+sql
 

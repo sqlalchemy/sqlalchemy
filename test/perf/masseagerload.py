@@ -17,7 +17,7 @@ subitems = Table('subitems', meta,
 
 class Item(object):pass
 class SubItem(object):pass
-mapper(Item, items, properties={'subs':relation(SubItem, lazy=False)})
+mapper(Item, items, properties={'subs':relationship(SubItem, lazy=False)})
 mapper(SubItem, subitems)
 
 def load():

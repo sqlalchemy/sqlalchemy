@@ -20,7 +20,7 @@ class AttrSettable(object):
         return self.__class__.__name__ + "(%s)" % (hex(id(self)))
 
 
-class RelationTest1(_base.MappedTest):
+class RelationshipTest1(_base.MappedTest):
     """test self-referential relationships on polymorphic mappers"""
     @classmethod
     def define_tables(cls, metadata):
@@ -40,7 +40,7 @@ class RelationTest1(_base.MappedTest):
 
     def teardown(self):
         people.update(values={people.c.manager_id:None}).execute()
-        super(RelationTest1, self).teardown()
+        super(RelationshipTest1, self).teardown()
 
     def test_parent_refs_descendant(self):
         class Person(AttrSettable):
@@ -51,7 +51,7 @@ class RelationTest1(_base.MappedTest):
         # note that up until recently (0.4.4), we had to specify "foreign_keys" here
         # for this primary join.  
         mapper(Person, people, properties={
-            'manager':relation(Manager, primaryjoin=(people.c.manager_id ==
+            'manager':relationship(Manager, primaryjoin=(people.c.manager_id ==
                                                      managers.c.person_id),
                                uselist=False, post_update=True)
         })
@@ -81,7 +81,7 @@ class RelationTest1(_base.MappedTest):
 
         mapper(Person, people)
         mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, properties={
-            'employee':relation(Person, primaryjoin=(people.c.manager_id ==
+            'employee':relationship(Person, primaryjoin=(people.c.manager_id ==
                                                      managers.c.person_id),
                                 foreign_keys=[people.c.manager_id],
                                 uselist=False, post_update=True)
@@ -100,7 +100,7 @@ class RelationTest1(_base.MappedTest):
         print p, m, m.employee
         assert m.employee is p
 
-class RelationTest2(_base.MappedTest):
+class RelationshipTest2(_base.MappedTest):
     """test self-referential relationships on polymorphic mappers"""
     @classmethod
     def define_tables(cls, metadata):
@@ -121,17 +121,17 @@ class RelationTest2(_base.MappedTest):
             Column('data', String(30))
             )
 
-    def testrelationonsubclass_j1_nodata(self):
+    def testrelationshiponsubclass_j1_nodata(self):
         self.do_test("join1", False)
-    def testrelationonsubclass_j2_nodata(self):
+    def testrelationshiponsubclass_j2_nodata(self):
         self.do_test("join2", False)
-    def testrelationonsubclass_j1_data(self):
+    def testrelationshiponsubclass_j1_data(self):
         self.do_test("join1", True)
-    def testrelationonsubclass_j2_data(self):
+    def testrelationshiponsubclass_j2_data(self):
         self.do_test("join2", True)
-    def testrelationonsubclass_j3_nodata(self):
+    def testrelationshiponsubclass_j3_nodata(self):
         self.do_test("join3", False)
-    def testrelationonsubclass_j3_data(self):
+    def testrelationshiponsubclass_j3_data(self):
         self.do_test("join3", True)
 
     def do_test(self, jointype="join1", usedata=False):
@@ -167,14 +167,14 @@ class RelationTest2(_base.MappedTest):
         if usedata:
             mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager',
                   properties={
-                    'colleague':relation(Person, primaryjoin=managers.c.manager_id==people.c.person_id, lazy=True, uselist=False),
-                    'data':relation(Data, uselist=False)
+                    'colleague':relationship(Person, primaryjoin=managers.c.manager_id==people.c.person_id, lazy=True, uselist=False),
+                    'data':relationship(Data, uselist=False)
                  }
             )
         else:
             mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager',
                   properties={
-                    'colleague':relation(Person, primaryjoin=managers.c.manager_id==people.c.person_id, lazy=True, uselist=False)
+                    'colleague':relationship(Person, primaryjoin=managers.c.manager_id==people.c.person_id, lazy=True, uselist=False)
                  }
             )
 
@@ -196,7 +196,7 @@ class RelationTest2(_base.MappedTest):
         if usedata:
             assert m.data.data == 'ms data'
 
-class RelationTest3(_base.MappedTest):
+class RelationshipTest3(_base.MappedTest):
     """test self-referential relationships on polymorphic mappers"""
     @classmethod
     def define_tables(cls, metadata):
@@ -250,14 +250,14 @@ def _generate_test(jointype="join1", usedata=False):
         if usedata:
             mapper(Person, people, with_polymorphic=('*', poly_union), polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
-                    'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, remote_side=people.c.colleague_id, uselist=True),
-                    'data':relation(Data, uselist=False)
+                    'colleagues':relationship(Person, primaryjoin=people.c.colleague_id==people.c.person_id, remote_side=people.c.colleague_id, uselist=True),
+                    'data':relationship(Data, uselist=False)
                     }
             )
         else:
             mapper(Person, people, with_polymorphic=('*', poly_union), polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
-                    'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id,
+                    'colleagues':relationship(Person, primaryjoin=people.c.colleague_id==people.c.person_id,
                         remote_side=people.c.colleague_id, uselist=True)
                     }
             )
@@ -293,17 +293,17 @@ def _generate_test(jointype="join1", usedata=False):
             assert m.data.data == 'ms data'
 
     do_test = function_named(
-        do_test, 'test_relation_on_base_class_%s_%s' % (
+        do_test, 'test_relationship_on_base_class_%s_%s' % (
         jointype, data and "nodata" or "data"))
     return do_test
 
 for jointype in ["join1", "join2", "join3", "join4"]:
     for data in (True, False):
         func = _generate_test(jointype, data)
-        setattr(RelationTest3, func.__name__, func)
+        setattr(RelationshipTest3, func.__name__, func)
 del func
 
-class RelationTest4(_base.MappedTest):
+class RelationshipTest4(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global people, engineers, managers, cars
@@ -359,7 +359,7 @@ class RelationTest4(_base.MappedTest):
         person_mapper   = mapper(Person, people, with_polymorphic=('*', employee_join), polymorphic_on=employee_join.c.type, polymorphic_identity='person')
         engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
-        car_mapper      = mapper(Car, cars, properties= {'employee':relation(person_mapper)})
+        car_mapper      = mapper(Car, cars, properties= {'employee':relationship(person_mapper)})
 
         session = create_session()
 
@@ -416,7 +416,7 @@ class RelationTest4(_base.MappedTest):
         c = s.join("employee").filter(Person.name=="E4")[0]
         assert c.car_id==car1.car_id
 
-class RelationTest5(_base.MappedTest):
+class RelationshipTest5(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global people, engineers, managers, cars
@@ -438,7 +438,7 @@ class RelationTest5(_base.MappedTest):
            Column('owner', Integer, ForeignKey('people.person_id')))
 
     def test_eager_empty(self):
-        """test parent object with child relation to an inheriting mapper, using eager loads,
+        """test parent object with child relationship to an inheriting mapper, using eager loads,
         works when there are no child objects present"""
         class Person(object):
             def __init__(self, **kwargs):
@@ -462,7 +462,7 @@ class RelationTest5(_base.MappedTest):
         person_mapper   = mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
-        car_mapper      = mapper(Car, cars, properties= {'manager':relation(manager_mapper, lazy=False)})
+        car_mapper      = mapper(Car, cars, properties= {'manager':relationship(manager_mapper, lazy=False)})
 
         sess = create_session()
         car1 = Car()
@@ -477,7 +477,7 @@ class RelationTest5(_base.MappedTest):
         assert carlist[0].manager is None
         assert carlist[1].manager.person_id == car2.manager.person_id
 
-class RelationTest6(_base.MappedTest):
+class RelationshipTest6(_base.MappedTest):
     """test self-referential relationships on a single joined-table inheritance mapper"""
     @classmethod
     def define_tables(cls, metadata):
@@ -505,7 +505,7 @@ class RelationTest6(_base.MappedTest):
         # to parent.mapped_table
         mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id,
               properties={
-                'colleague':relation(Manager, primaryjoin=managers.c.colleague_id==managers.c.person_id, lazy=True, uselist=False)
+                'colleague':relationship(Manager, primaryjoin=managers.c.colleague_id==managers.c.person_id, lazy=True, uselist=False)
              }
         )
 
@@ -521,7 +521,7 @@ class RelationTest6(_base.MappedTest):
         m2 = sess.query(Manager).get(m2.person_id)
         assert m.colleague is m2
 
-class RelationTest7(_base.MappedTest):
+class RelationshipTest7(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global people, engineers, managers, cars, offroad_cars
@@ -599,7 +599,7 @@ class RelationTest7(_base.MappedTest):
                 with_polymorphic=('*', employee_join), polymorphic_on=employee_join.c.type,
                 polymorphic_identity='person',
                 properties={
-                    'car':relation(car_mapper)
+                    'car':relationship(car_mapper)
                     })
         engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
@@ -622,7 +622,7 @@ class RelationTest7(_base.MappedTest):
         for p in r:
             assert p.car_id == p.car.car_id
 
-class RelationTest8(_base.MappedTest):
+class RelationshipTest8(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global taggable, users
@@ -644,7 +644,7 @@ class RelationTest8(_base.MappedTest):
             pass
 
         mapper( Taggable, taggable, polymorphic_on=taggable.c.type, polymorphic_identity='taggable', properties = {
-            'owner' : relation (User,
+            'owner' : relationship (User,
                                primaryjoin=taggable.c.owner_id ==taggable.c.id,
                                 remote_side=taggable.c.id
                                 ),
@@ -745,10 +745,10 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         status_mapper   = mapper(Status, status)
         person_mapper   = mapper(Person, people,
             with_polymorphic=('*', employee_join), polymorphic_on=employee_join.c.type,
-            polymorphic_identity='person', properties={'status':relation(status_mapper)})
+            polymorphic_identity='person', properties={'status':relationship(status_mapper)})
         engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
-        car_mapper      = mapper(Car, cars, properties= {'employee':relation(person_mapper), 'status':relation(status_mapper)})
+        car_mapper      = mapper(Car, cars, properties= {'employee':relationship(person_mapper), 'status':relationship(status_mapper)})
 
         session = create_session()
 
@@ -914,7 +914,7 @@ class ManyToManyPolyTest(_base.MappedTest):
             with_polymorphic=('*', item_join),
             polymorphic_on=base_item_table.c.child_name,
             polymorphic_identity='BaseItem',
-            properties=dict(collections=relation(Collection, secondary=base_item_collection_table, backref="items")))
+            properties=dict(collections=relationship(Collection, secondary=base_item_collection_table, backref="items")))
 
         mapper(
             Item, item_table,
@@ -1049,7 +1049,7 @@ class InheritingEagerTest(_base.MappedTest):
                self.label = label
 
         mapper(Person, people, polymorphic_on=people.c._type,polymorphic_identity='person', properties={
-            'tags': relation(Tag, secondary=peopleTags,backref='people', lazy=False)
+            'tags': relationship(Tag, secondary=peopleTags,backref='people', lazy=False)
         })
         mapper(Employee, employees, inherits=Person,polymorphic_identity='employee')
         mapper(Tag, tags)
@@ -1107,7 +1107,7 @@ class MissingPolymorphicOnTest(_base.MappedTest):
         
         mapper(B, tableb)
         mapper(A, tablea, with_polymorphic=('*', poly_select), polymorphic_on=poly_select.c.discriminator, properties={
-            'b':relation(B, uselist=False)
+            'b':relationship(B, uselist=False)
         })
         mapper(C, tablec, inherits=A,polymorphic_identity='c')
         mapper(D, tabled, inherits=C, polymorphic_identity='d')

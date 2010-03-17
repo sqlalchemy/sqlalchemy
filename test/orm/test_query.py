@@ -32,24 +32,24 @@ class QueryTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', order_by=addresses.c.id),
-            'orders':relation(Order, backref='user', order_by=orders.c.id), # o2m, m2o
+            'addresses':relationship(Address, backref='user', order_by=addresses.c.id),
+            'orders':relationship(Order, backref='user', order_by=orders.c.id), # o2m, m2o
         })
         mapper(Address, addresses, properties={
-            'dingaling':relation(Dingaling, uselist=False, backref="address")  #o2o
+            'dingaling':relationship(Dingaling, uselist=False, backref="address")  #o2o
         })
         mapper(Dingaling, dingalings)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, order_by=items.c.id),  #m2m
-            'address':relation(Address),  # m2o
+            'items':relationship(Item, secondary=order_items, order_by=items.c.id),  #m2m
+            'address':relationship(Address),  # m2o
         })
         mapper(Item, items, properties={
-            'keywords':relation(Keyword, secondary=item_keywords) #m2m
+            'keywords':relationship(Keyword, secondary=item_keywords) #m2m
         })
         mapper(Keyword, keywords)
 
         mapper(Node, nodes, properties={
-            'children':relation(Node, 
+            'children':relationship(Node, 
                 backref=backref('parent', remote_side=[nodes.c.id])
             )
         })
@@ -400,7 +400,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self._test(None == Address.user, "addresses.user_id IS NULL")
         self._test(~(None == Address.user), "addresses.user_id IS NOT NULL")
         
-    def test_relation(self):
+    def test_relationship(self):
         self._test(User.addresses.any(Address.id==17), 
                         "EXISTS (SELECT 1 "
                         "FROM addresses "
@@ -418,7 +418,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
         self._test(Address.user != None, "addresses.user_id IS NOT NULL")
 
-    def test_selfref_relation(self):
+    def test_selfref_relationship(self):
         nalias = aliased(Node)
 
         # auto self-referential aliasing
@@ -497,7 +497,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
          self._test(User.id.in_(['a', 'b']),
                     "users.id IN (:id_1, :id_2)")
 
-    def test_in_on_relation_not_supported(self):
+    def test_in_on_relationship_not_supported(self):
         assert_raises(NotImplementedError, Address.user.in_, [User(id=5)])
     
     def test_neg(self):
@@ -1319,7 +1319,7 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             pass
 
         mapper(Company, companies, properties={
-            'employees':relation(Person, order_by=people.c.person_id)
+            'employees':relationship(Person, order_by=people.c.person_id)
         })
 
         mapper(Machine, machines)
@@ -1327,10 +1327,10 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
         mapper(Person, people, 
             polymorphic_on=people.c.type, polymorphic_identity='person', order_by=people.c.person_id, 
             properties={
-                'paperwork':relation(Paperwork, order_by=paperwork.c.paperwork_id)
+                'paperwork':relationship(Paperwork, order_by=paperwork.c.paperwork_id)
             })
         mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer', properties={
-                'machines':relation(Machine, order_by=machines.c.machine_id)
+                'machines':relationship(Machine, order_by=machines.c.machine_id)
             })
         mapper(Manager, managers, 
                     inherits=Person, polymorphic_identity='manager')
@@ -2167,8 +2167,8 @@ class MultiplePathTest(_base.MappedTest, AssertsCompiledSQL):
         class T2(object):pass
 
         mapper(T1, t1, properties={
-            't2s_1':relation(T2, secondary=t1t2_1),
-            't2s_2':relation(T2, secondary=t1t2_2),
+            't2s_1':relationship(T2, secondary=t1t2_1),
+            't2s_2':relationship(T2, secondary=t1t2_2),
         })
         mapper(T2, t2)
 
@@ -2188,18 +2188,18 @@ class SynonymTest(QueryTest):
     def setup_mappers(cls):
         mapper(User, users, properties={
             'name_syn':synonym('name'),
-            'addresses':relation(Address),
-            'orders':relation(Order, backref='user'), # o2m, m2o
+            'addresses':relationship(Address),
+            'orders':relationship(Order, backref='user'), # o2m, m2o
             'orders_syn':synonym('orders')
         })
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items),  #m2m
-            'address':relation(Address),  # m2o
+            'items':relationship(Item, secondary=order_items),  #m2m
+            'address':relationship(Address),  # m2o
             'items_syn':synonym('items')
         })
         mapper(Item, items, properties={
-            'keywords':relation(Keyword, secondary=item_keywords) #m2m
+            'keywords':relationship(Keyword, secondary=item_keywords) #m2m
         })
         mapper(Keyword, keywords)
 
@@ -2851,7 +2851,7 @@ class ImmediateTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
 
         mapper(User, users, properties=dict(
-            addresses=relation(Address)))
+            addresses=relationship(Address)))
 
     @testing.resolve_artifact_names
     def test_one(self):
@@ -2945,7 +2945,7 @@ class SelectFromTest(QueryTest):
 
     def test_replace_with_select(self):
         mapper(User, users, properties = {
-            'addresses':relation(Address)
+            'addresses':relationship(Address)
         })
         mapper(Address, addresses)
 
@@ -2996,7 +2996,7 @@ class SelectFromTest(QueryTest):
 
     def test_join(self):
         mapper(User, users, properties = {
-            'addresses':relation(Address)
+            'addresses':relationship(Address)
         })
         mapper(Address, addresses)
 
@@ -3025,13 +3025,13 @@ class SelectFromTest(QueryTest):
 
     def test_more_joins(self):
         mapper(User, users, properties={
-            'orders':relation(Order, backref='user'), # o2m, m2o
+            'orders':relationship(Order, backref='user'), # o2m, m2o
         })
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, order_by=items.c.id),  #m2m
+            'items':relationship(Item, secondary=order_items, order_by=items.c.id),  #m2m
         })
         mapper(Item, items, properties={
-            'keywords':relation(Keyword, secondary=item_keywords, order_by=keywords.c.id) #m2m
+            'keywords':relationship(Keyword, secondary=item_keywords, order_by=keywords.c.id) #m2m
         })
         mapper(Keyword, keywords)
 
@@ -3080,7 +3080,7 @@ class SelectFromTest(QueryTest):
 
     def test_replace_with_eager(self):
         mapper(User, users, properties = {
-            'addresses':relation(Address, order_by=addresses.c.id)
+            'addresses':relationship(Address, order_by=addresses.c.id)
         })
         mapper(Address, addresses)
 
@@ -3115,13 +3115,13 @@ class CustomJoinTest(QueryTest):
         """test aliasing of joins with a custom join condition"""
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, lazy=True, order_by=items.c.id),
+            'items':relationship(Item, secondary=order_items, lazy=True, order_by=items.c.id),
         })
         mapper(Item, items)
         mapper(User, users, properties = dict(
-            addresses = relation(Address, lazy=True),
-            open_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy=True),
-            closed_orders = relation(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=True)
+            addresses = relationship(Address, lazy=True),
+            open_orders = relationship(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy=True),
+            closed_orders = relationship(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=True)
         ))
         q = create_session().query(User)
 
@@ -3149,7 +3149,7 @@ class SelfReferentialTest(_base.MappedTest):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children':relation(Node, lazy=True, join_depth=3,
+            'children':relationship(Node, lazy=True, join_depth=3,
                 backref=backref('parent', remote_side=[nodes.c.id])
             )
         })
@@ -3332,7 +3332,7 @@ class SelfReferentialM2MTest(_base.MappedTest):
             pass
 
         mapper(Node, nodes, properties={
-            'children':relation(Node, lazy=True, secondary=node_to_nodes,
+            'children':relationship(Node, lazy=True, secondary=node_to_nodes,
                 primaryjoin=nodes.c.id==node_to_nodes.c.left_node_id,
                 secondaryjoin=nodes.c.id==node_to_nodes.c.right_node_id,
             )
@@ -3398,7 +3398,7 @@ class ExternalColumnsTest(QueryTest):
         })
 
         mapper(Address, addresses, properties={
-            'user':relation(User)
+            'user':relationship(User)
         })
 
         sess = create_session()
@@ -3485,13 +3485,13 @@ class ExternalColumnsTest(QueryTest):
         # therefore the long standing practice of eager adapters being "chained" has been removed
         # since its unnecessary and breaks this exact condition.
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', order_by=addresses.c.id),
+            'addresses':relationship(Address, backref='user', order_by=addresses.c.id),
             'concat': column_property((users.c.id * 2)),
             'count': column_property(select([func.count(addresses.c.id)], users.c.id==addresses.c.user_id).correlate(users))
         })
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'address':relation(Address),  # m2o
+            'address':relationship(Address),  # m2o
         })
 
         sess = create_session()
@@ -3534,8 +3534,8 @@ class TestOverlyEagerEquivalentCols(_base.MappedTest):
             pass
     
         mapper(Base, base, properties={
-            'sub1':relation(Sub1),
-            'sub2':relation(Sub2)
+            'sub1':relationship(Sub1),
+            'sub2':relationship(Sub2)
         })
     
         mapper(Sub1, sub1)
@@ -3609,7 +3609,7 @@ class UpdateDeleteTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(User, users)
         mapper(Document, documents, properties={
-            'user': relation(User, lazy=False, backref=backref('documents', lazy=True))
+            'user': relationship(User, lazy=False, backref=backref('documents', lazy=True))
         })
 
     @testing.resolve_artifact_names
@@ -3820,7 +3820,7 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_(rowcount, 3)
 
     @testing.resolve_artifact_names
-    def test_update_with_eager_relations(self):
+    def test_update_with_eager_relationships(self):
         self.insert_documents()
 
         sess = create_session(bind=testing.db, autocommit=False)
@@ -3842,7 +3842,7 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
     @testing.resolve_artifact_names
-    def test_delete_with_eager_relations(self):
+    def test_delete_with_eager_relationships(self):
         self.insert_documents()
 
         sess = create_session(bind=testing.db, autocommit=False)

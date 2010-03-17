@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy import MetaData, Integer, ForeignKey, util
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session, attributes, class_mapper, clear_mappers
+from sqlalchemy.orm import mapper, relationship, create_session, attributes, class_mapper, clear_mappers
 from sqlalchemy.test.testing import eq_, ne_
 from sqlalchemy.util import function_named
 from test.orm import _base
@@ -649,7 +649,7 @@ class MiscTest(_base.ORMTest):
                    Column('t1_id', Integer, ForeignKey('t1.id')))
         class A(object): pass
         class B(object): pass
-        mapper(A, t1, properties=dict(bs=relation(B)))
+        mapper(A, t1, properties=dict(bs=relationship(B)))
         mapper(B, t2)
 
         a = A()
@@ -680,7 +680,7 @@ class MiscTest(_base.ORMTest):
         for base in object, Base:
             class A(base): pass
             class B(base): pass
-            mapper(A, t1, properties=dict(bs=relation(B, backref='a')))
+            mapper(A, t1, properties=dict(bs=relationship(B, backref='a')))
             mapper(B, t2)
 
             b = B()
@@ -710,7 +710,7 @@ class MiscTest(_base.ORMTest):
             class A(base): pass
             class B(base): pass
             mapper(A, t1)
-            mapper(B, t2, properties=dict(a=relation(A, backref='bs')))
+            mapper(B, t2, properties=dict(a=relationship(A, backref='bs')))
 
             a = A()
             b = B()

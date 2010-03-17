@@ -5,8 +5,8 @@ orderinglist
 
 :author: Jason Kirtland
 
-``orderinglist`` is a helper for mutable ordered relations.  It will intercept
-list operations performed on a relation collection and automatically
+``orderinglist`` is a helper for mutable ordered relationships.  It will intercept
+list operations performed on a relationship collection and automatically
 synchronize changes in list position with an attribute on the related objects.
 (See :ref:`advdatamapping_entitycollections` for more information on the general pattern.)
 
@@ -34,11 +34,11 @@ affected rows when changes are made.
          pass
 
      mapper(Slide, slides_table, properties={
-           'bullets': relation(Bullet, order_by=[bullets_table.c.position])
+           'bullets': relationship(Bullet, order_by=[bullets_table.c.position])
      })
      mapper(Bullet, bullets_table)
 
-The standard relation mapping will produce a list-like attribute on each Slide
+The standard relationship mapping will produce a list-like attribute on each Slide
 containing all related Bullets, but coping with changes in ordering is totally
 your responsibility.  If you insert a Bullet into that list, there is no
 magic- it won't have a position attribute unless you assign it it one, and
@@ -51,7 +51,7 @@ related bullets for you.
 .. sourcecode:: python+sql
         
     mapper(Slide, slides_table, properties={
-           'bullets': relation(Bullet,
+           'bullets': relationship(Bullet,
                                collection_class=ordering_list('position'),
                                order_by=[bullets_table.c.position])
     })
@@ -66,9 +66,9 @@ related bullets for you.
     s.bullets[2].position
     >>> 2
 
-Use the ``ordering_list`` function to set up the ``collection_class`` on relations
+Use the ``ordering_list`` function to set up the ``collection_class`` on relationships
 (as in the mapper example above).  This implementation depends on the list
-starting in the proper order, so be SURE to put an order_by on your relation.
+starting in the proper order, so be SURE to put an order_by on your relationship.
 
 ``ordering_list`` takes the name of the related object's ordering attribute as
 an argument.  By default, the zero-based integer index of the object's

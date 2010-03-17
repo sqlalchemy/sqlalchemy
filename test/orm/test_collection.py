@@ -10,7 +10,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import util, exc as sa_exc
-from sqlalchemy.orm import create_session, mapper, relation, attributes
+from sqlalchemy.orm import create_session, mapper, relationship, attributes
 from test.orm import _base
 from sqlalchemy.test.testing import eq_, assert_raises
 
@@ -1438,7 +1438,7 @@ class DictHelpersTest(_base.MappedTest):
     def _test_scalar_mapped(self, collection_class):
         mapper(Child, children)
         mapper(Parent, parents, properties={
-            'children': relation(Child, collection_class=collection_class,
+            'children': relationship(Child, collection_class=collection_class,
                                  cascade="all, delete-orphan")})
 
         p = Parent()
@@ -1497,7 +1497,7 @@ class DictHelpersTest(_base.MappedTest):
     def _test_composite_mapped(self, collection_class):
         mapper(Child, children)
         mapper(Parent, parents, properties={
-            'children': relation(Child, collection_class=collection_class,
+            'children': relationship(Child, collection_class=collection_class,
                                  cascade="all, delete-orphan")
             })
 
@@ -1556,8 +1556,8 @@ class DictHelpersTest(_base.MappedTest):
         class Bar(BaseObject):
             __tablename__ = "bar"
             id = Column(Integer(), primary_key=True, test_needs_autoincrement=True)
-            foos = relation(Foo, collection_class=collections.column_mapped_collection(Foo.id))
-            foos2 = relation(Foo, collection_class=collections.column_mapped_collection((Foo.id, Foo.bar_id)))
+            foos = relationship(Foo, collection_class=collections.column_mapped_collection(Foo.id))
+            foos2 = relationship(Foo, collection_class=collections.column_mapped_collection((Foo.id, Foo.bar_id)))
             
         eq_(Bar.foos.property.collection_class().keyfunc(Foo(id=3)), 3)
         eq_(Bar.foos2.property.collection_class().keyfunc(Foo(id=3, bar_id=12)), (3, 12))
@@ -1614,7 +1614,7 @@ class CustomCollectionsTest(_base.MappedTest):
             pass
 
         mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=MyList)
+            'bars':relationship(Bar, collection_class=MyList)
         })
         mapper(Bar, someothertable)
         f = Foo()
@@ -1628,7 +1628,7 @@ class CustomCollectionsTest(_base.MappedTest):
         class Bar(object):
             pass
         mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=set)
+            'bars':relationship(Bar, collection_class=set)
         })
         mapper(Bar, someothertable)
         f = Foo()
@@ -1660,7 +1660,7 @@ class CustomCollectionsTest(_base.MappedTest):
                     del self[id(item)]
 
         mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=AppenderDict)
+            'bars':relationship(Bar, collection_class=AppenderDict)
         })
         mapper(Bar, someothertable)
         f = Foo()
@@ -1684,7 +1684,7 @@ class CustomCollectionsTest(_base.MappedTest):
             def __init__(self, data): self.data = data
 
         mapper(Foo, sometable, properties={
-            'bars':relation(Bar,
+            'bars':relationship(Bar,
                 collection_class=collections.column_mapped_collection(
                     someothertable.c.data))
         })
@@ -1757,7 +1757,7 @@ class CustomCollectionsTest(_base.MappedTest):
             pass
 
         mapper(Parent, sometable, properties={
-            'children':relation(Child, collection_class=listcls)
+            'children':relationship(Child, collection_class=listcls)
         })
         mapper(Child, someothertable)
 
@@ -1892,7 +1892,7 @@ class CustomCollectionsTest(_base.MappedTest):
                 return iter(self.data)
 
         mapper(Parent, sometable, properties={
-            'children':relation(Child, collection_class=MyCollection)
+            'children':relationship(Child, collection_class=MyCollection)
         })
         mapper(Child, someothertable)
 

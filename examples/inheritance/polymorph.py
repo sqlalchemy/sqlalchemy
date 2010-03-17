@@ -1,5 +1,5 @@
 from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 import sets
 
 # this example illustrates a polymorphic load of two classes
@@ -61,7 +61,7 @@ mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engine
 mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
 
 mapper(Company, companies, properties={
-    'employees': relation(Person, lazy=False, backref='company', cascade="all, delete-orphan")
+    'employees': relationship(Person, lazy=False, backref='company', cascade="all, delete-orphan")
 })
 
 session = create_session()

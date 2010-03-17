@@ -3,7 +3,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from test.orm import _base
 
 
@@ -63,7 +63,7 @@ class LazyTest(_base.MappedTest):
         class Information(object):
             pass
 
-        class Relation(object):
+        class Relationship(object):
             pass
 
         class Data(object):
@@ -72,8 +72,8 @@ class LazyTest(_base.MappedTest):
         session = create_session()
 
         mapper(Data, data)
-        mapper(Relation, rels, properties={
-            'datas': relation(Data,
+        mapper(Relationship, rels, properties={
+            'datas': relationship(Data,
                               primaryjoin=sa.and_(
                                 rels.c.info_pk ==
                                 data.c.info_pk,
@@ -81,7 +81,7 @@ class LazyTest(_base.MappedTest):
                                 data.c.timeval <= rels.c.finish),
                               foreign_keys=[data.c.info_pk])})
         mapper(Information, infos, properties={
-            'rels': relation(Relation)
+            'rels': relationship(Relationship)
         })
 
         info = session.query(Information).get(1)

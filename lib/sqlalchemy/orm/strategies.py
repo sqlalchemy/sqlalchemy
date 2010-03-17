@@ -308,7 +308,7 @@ class UndeferGroupOption(MapperOption):
     def process_query(self, query):
         query._attributes[('undefer', self.group)] = True
 
-class AbstractRelationLoader(LoaderStrategy):
+class AbstractRelationshipLoader(LoaderStrategy):
     """LoaderStratgies which deal with related objects as opposed to scalars."""
 
     def init(self):
@@ -317,8 +317,8 @@ class AbstractRelationLoader(LoaderStrategy):
         self.table = self.parent_property.table
         self.uselist = self.parent_property.uselist
 
-class NoLoader(AbstractRelationLoader):
-    """Strategize a relation() that doesn't load data automatically."""
+class NoLoader(AbstractRelationshipLoader):
+    """Strategize a relationship() that doesn't load data automatically."""
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -336,8 +336,8 @@ class NoLoader(AbstractRelationLoader):
 
 log.class_logger(NoLoader)
         
-class LazyLoader(AbstractRelationLoader):
-    """Strategize a relation() that loads when first accessed."""
+class LazyLoader(AbstractRelationshipLoader):
+    """Strategize a relationship() that loads when first accessed."""
 
     def init(self):
         super(LazyLoader, self).init()
@@ -575,8 +575,8 @@ class LoadLazyAttribute(object):
             else:
                 return None
 
-class EagerLoader(AbstractRelationLoader):
-    """Strategize a relation() that loads within the process of the parent object being selected."""
+class EagerLoader(AbstractRelationshipLoader):
+    """Strategize a relationship() that loads within the process of the parent object being selected."""
     
     def init(self):
         super(EagerLoader, self).init()

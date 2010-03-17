@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import engines, testing
 from sqlalchemy import Integer, String, ForeignKey, literal_column, orm
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session, column_property, sessionmaker
+from sqlalchemy.orm import mapper, relationship, create_session, column_property, sessionmaker
 from sqlalchemy.test.testing import eq_, ne_, assert_raises, assert_raises_message
 from test.orm import _base, _fixtures
 from test.engine import _base as engine_base
@@ -180,7 +180,7 @@ class RowSwitchTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(P, p, version_id_col=p.c.version_id, 
             properties={
-            'c':relation(C, uselist=False, cascade='all, delete-orphan')
+            'c':relationship(C, uselist=False, cascade='all, delete-orphan')
         })
         mapper(C, c, version_id_col=c.c.version_id)
 
@@ -240,7 +240,7 @@ class AlternateGeneratorTest(_base.MappedTest):
         mapper(P, p, version_id_col=p.c.version_id, 
             version_id_generator=lambda x:make_uuid(),
             properties={
-            'c':relation(C, uselist=False, cascade='all, delete-orphan')
+            'c':relationship(C, uselist=False, cascade='all, delete-orphan')
         })
         mapper(C, c, version_id_col=c.c.version_id,
                     version_id_generator=lambda x:make_uuid(),

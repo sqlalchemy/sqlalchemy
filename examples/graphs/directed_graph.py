@@ -1,7 +1,7 @@
 """a directed graph example."""
 
 from sqlalchemy import MetaData, Table, Column, Integer, ForeignKey
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 
 import logging
 logging.basicConfig()
@@ -42,9 +42,9 @@ class Edge(object):
 
 mapper(Node, nodes)
 mapper(Edge, edges, properties={
-    'lower_node':relation(Node,
+    'lower_node':relationship(Node,
 primaryjoin=edges.c.lower_id==nodes.c.nodeid, backref='lower_edges'),
-    'higher_node':relation(Node,
+    'higher_node':relationship(Node,
 primaryjoin=edges.c.higher_id==nodes.c.nodeid, backref='higher_edges')
     }
 )

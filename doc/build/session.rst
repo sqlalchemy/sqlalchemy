@@ -244,7 +244,7 @@ The big gotcha with :func:`~sqlalchemy.orm.session.Session.delete` is that **not
 The solution is to use proper cascading::
 
     mapper(User, users_table, properties={
-        'addresses':relation(Address, cascade="all, delete, delete-orphan")
+        'addresses':relationship(Address, cascade="all, delete, delete-orphan")
     })
     del user.addresses[1]
     session.flush()
@@ -333,7 +333,7 @@ To assist with the Session's "sticky" behavior of instances which are present, i
     session.expire(obj1)
     session.expire(obj2)
 
-:func:`~sqlalchemy.orm.session.Session.refresh` and :func:`~sqlalchemy.orm.session.Session.expire` also support being passed a list of individual attribute names in which to be refreshed.  These names can reference any attribute, column-based or relation based::
+:func:`~sqlalchemy.orm.session.Session.refresh` and :func:`~sqlalchemy.orm.session.Session.expire` also support being passed a list of individual attribute names in which to be refreshed.  These names can reference any attribute, column-based or relationship based::
 
     # immediately re-load the attributes 'hello', 'world' on obj1, obj2
     session.refresh(obj1, ['hello', 'world'])
@@ -382,22 +382,22 @@ Note that objects within the session are by default *weakly referenced*.  This m
 Cascades
 ========
 
-Mappers support the concept of configurable *cascade* behavior on :func:`~sqlalchemy.orm.relation` constructs.  This behavior controls how the Session should treat the instances that have a parent-child relationship with another instance that is operated upon by the Session.  Cascade is indicated as a comma-separated list of string keywords, with the possible values ``all``, ``delete``, ``save-update``, ``refresh-expire``, ``merge``, ``expunge``, and ``delete-orphan``.
+Mappers support the concept of configurable *cascade* behavior on :func:`~sqlalchemy.orm.relationship` constructs.  This behavior controls how the Session should treat the instances that have a parent-child relationship with another instance that is operated upon by the Session.  Cascade is indicated as a comma-separated list of string keywords, with the possible values ``all``, ``delete``, ``save-update``, ``refresh-expire``, ``merge``, ``expunge``, and ``delete-orphan``.
 
-Cascading is configured by setting the ``cascade`` keyword argument on a :func:`~sqlalchemy.orm.relation`::
+Cascading is configured by setting the ``cascade`` keyword argument on a :func:`~sqlalchemy.orm.relationship`::
 
     mapper(Order, order_table, properties={
-        'items' : relation(Item, items_table, cascade="all, delete-orphan"),
-        'customer' : relation(User, users_table, user_orders_table, cascade="save-update"),
+        'items' : relationship(Item, items_table, cascade="all, delete-orphan"),
+        'customer' : relationship(User, users_table, user_orders_table, cascade="save-update"),
     })
 
-The above mapper specifies two relations, ``items`` and ``customer``.  The ``items`` relationship specifies "all, delete-orphan" as its ``cascade`` value, indicating that all  ``add``, ``merge``, ``expunge``, ``refresh`` ``delete`` and ``expire`` operations performed on a parent ``Order`` instance should also be performed on the child ``Item`` instances attached to it.  The ``delete-orphan`` cascade value additionally indicates that if an ``Item`` instance is no longer associated with an ``Order``, it should also be deleted.  The "all, delete-orphan" cascade argument allows a so-called *lifecycle* relationship between an ``Order`` and an ``Item`` object.
+The above mapper specifies two relationships, ``items`` and ``customer``.  The ``items`` relationship specifies "all, delete-orphan" as its ``cascade`` value, indicating that all  ``add``, ``merge``, ``expunge``, ``refresh`` ``delete`` and ``expire`` operations performed on a parent ``Order`` instance should also be performed on the child ``Item`` instances attached to it.  The ``delete-orphan`` cascade value additionally indicates that if an ``Item`` instance is no longer associated with an ``Order``, it should also be deleted.  The "all, delete-orphan" cascade argument allows a so-called *lifecycle* relationship between an ``Order`` and an ``Item`` object.
 
-The ``customer`` relationship specifies only the "save-update" cascade value, indicating most operations will not be cascaded from a parent ``Order`` instance to a child ``User`` instance except for the :func:`~sqlalchemy.orm.session.Session.add` operation.  "save-update" cascade indicates that an :func:`~sqlalchemy.orm.session.Session.add` on the parent will cascade to all child items, and also that items added to a parent which is already present in the session will also be added.  "save-update" cascade also cascades the *pending history* of a relation()-based attribute, meaning that objects which were removed from a scalar or collection attribute whose changes have not yet been flushed are also placed into the new session - this so that foreign key clear operations and deletions will take place (new in 0.6).
+The ``customer`` relationship specifies only the "save-update" cascade value, indicating most operations will not be cascaded from a parent ``Order`` instance to a child ``User`` instance except for the :func:`~sqlalchemy.orm.session.Session.add` operation.  "save-update" cascade indicates that an :func:`~sqlalchemy.orm.session.Session.add` on the parent will cascade to all child items, and also that items added to a parent which is already present in the session will also be added.  "save-update" cascade also cascades the *pending history* of a relationship()-based attribute, meaning that objects which were removed from a scalar or collection attribute whose changes have not yet been flushed are also placed into the new session - this so that foreign key clear operations and deletions will take place (new in 0.6).
 
-Note that the ``delete-orphan`` cascade only functions for relationships where the target object can have a single parent at a time, meaning it is only appropriate for one-to-one or one-to-many relationships.  For a :func:`~sqlalchemy.orm.relation` which establishes one-to-one via a local foreign key, i.e. a many-to-one that stores only a single parent, or one-to-one/one-to-many via a "secondary" (association) table, a warning will be issued if ``delete-orphan`` is configured.  To disable this warning, also specify the ``single_parent=True`` flag on the relationship, which constrains objects to allow attachment to only one parent at a time.
+Note that the ``delete-orphan`` cascade only functions for relationships where the target object can have a single parent at a time, meaning it is only appropriate for one-to-one or one-to-many relationships.  For a :func:`~sqlalchemy.orm.relationship` which establishes one-to-one via a local foreign key, i.e. a many-to-one that stores only a single parent, or one-to-one/one-to-many via a "secondary" (association) table, a warning will be issued if ``delete-orphan`` is configured.  To disable this warning, also specify the ``single_parent=True`` flag on the relationship, which constrains objects to allow attachment to only one parent at a time.
 
-The default value for ``cascade`` on :func:`~sqlalchemy.orm.relation` is ``save-update, merge``.
+The default value for ``cascade`` on :func:`~sqlalchemy.orm.relationship` is ``save-update, merge``.
 
 .. _unitofwork_transaction:
 

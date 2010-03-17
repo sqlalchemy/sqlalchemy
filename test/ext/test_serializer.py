@@ -6,7 +6,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, select, desc, func, util
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import relation, sessionmaker, scoped_session, class_mapper, mapper, eagerload, compile_mappers, aliased
+from sqlalchemy.orm import relationship, sessionmaker, scoped_session, class_mapper, mapper, eagerload, compile_mappers, aliased
 from sqlalchemy.test.testing import eq_
 
 from test.orm._base import ComparableEntity, MappedTest
@@ -42,7 +42,7 @@ class SerializeTest(MappedTest):
         Session = scoped_session(sessionmaker())
 
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', order_by=addresses.c.id)
+            'addresses':relationship(Address, backref='user', order_by=addresses.c.id)
         })
         mapper(Address, addresses)
 

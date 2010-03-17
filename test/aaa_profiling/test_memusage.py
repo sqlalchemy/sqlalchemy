@@ -1,5 +1,5 @@
 from sqlalchemy.test.testing import eq_
-from sqlalchemy.orm import mapper, relation, create_session, clear_mappers, sessionmaker
+from sqlalchemy.orm import mapper, relationship, create_session, clear_mappers, sessionmaker
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.util import jython
@@ -92,7 +92,7 @@ class MemUsageTest(EnsureZeroed):
         metadata.create_all()
 
         m1 = mapper(A, table1, properties={
-            "bs":relation(B, cascade="all, delete", order_by=table2.c.col1)},
+            "bs":relationship(B, cascade="all, delete", order_by=table2.c.col1)},
             order_by=table1.c.col1)
         m2 = mapper(B, table2)
 
@@ -145,7 +145,7 @@ class MemUsageTest(EnsureZeroed):
         @profile_memory
         def go():
             m1 = mapper(A, table1, properties={
-                "bs":relation(B, order_by=table2.c.col1)
+                "bs":relationship(B, order_by=table2.c.col1)
             })
             m2 = mapper(B, table2)
 
@@ -271,7 +271,7 @@ class MemUsageTest(EnsureZeroed):
                 pass
 
             mapper(A, table1, properties={
-                'bs':relation(B, secondary=table3, backref='as', order_by=table3.c.t1)
+                'bs':relationship(B, secondary=table3, backref='as', order_by=table3.c.t1)
             })
             mapper(B, table2)
 
@@ -336,7 +336,7 @@ class MemUsageTest(EnsureZeroed):
             pass
             
         mapper(Foo, table1, properties={
-            'bars':relation(mapper(Bar, table2))
+            'bars':relationship(mapper(Bar, table2))
         })
         metadata.create_all()
 

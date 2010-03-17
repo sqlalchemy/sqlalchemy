@@ -80,7 +80,7 @@ def _produce_test(select_type):
             clear_mappers()
             
             mapper(Company, companies, properties={
-                'employees':relation(Person, order_by=people.c.person_id)
+                'employees':relationship(Person, order_by=people.c.person_id)
             })
 
             mapper(Machine, machines)
@@ -120,10 +120,10 @@ def _produce_test(select_type):
                 with_polymorphic=person_with_polymorphic, 
                 polymorphic_on=people.c.type, polymorphic_identity='person', order_by=people.c.person_id, 
                 properties={
-                    'paperwork':relation(Paperwork, order_by=paperwork.c.paperwork_id)
+                    'paperwork':relationship(Paperwork, order_by=paperwork.c.paperwork_id)
                 })
             mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer', properties={
-                    'machines':relation(Machine, order_by=machines.c.machine_id)
+                    'machines':relationship(Machine, order_by=machines.c.machine_id)
                 })
             mapper(Manager, managers, with_polymorphic=manager_with_polymorphic, 
                         inherits=Person, polymorphic_identity='manager')
@@ -429,42 +429,42 @@ def _produce_test(select_type):
             
             # compare to entities without related collections to prevent additional lazy SQL from firing on 
             # loaded entities
-            emps_without_relations = [
+            emps_without_relationships = [
                 Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer"),
                 Engineer(name="wally", engineer_name="wally", primary_language="c++", status="regular engineer"),
                 Boss(name="pointy haired boss", golf_swing="fore", manager_name="pointy", status="da boss"),
                 Manager(name="dogbert", manager_name="dogbert", status="regular manager"),
                 Engineer(name="vlad", engineer_name="vlad", primary_language="cobol", status="elbonian engineer")
             ]
-            eq_(sess.query(Person).with_polymorphic('*').all(), emps_without_relations)
+            eq_(sess.query(Person).with_polymorphic('*').all(), emps_without_relationships)
             
             
             def go():
-                eq_(sess.query(Person).with_polymorphic(Engineer).filter(Engineer.primary_language=='java').all(), emps_without_relations[0:1])
+                eq_(sess.query(Person).with_polymorphic(Engineer).filter(Engineer.primary_language=='java').all(), emps_without_relationships[0:1])
             self.assert_sql_count(testing.db, go, 1)
             
             sess.expunge_all()
             def go():
-                eq_(sess.query(Person).with_polymorphic('*').all(), emps_without_relations)
+                eq_(sess.query(Person).with_polymorphic('*').all(), emps_without_relationships)
             self.assert_sql_count(testing.db, go, 1)
 
             sess.expunge_all()
             def go():
-                eq_(sess.query(Person).with_polymorphic(Engineer).all(), emps_without_relations)
+                eq_(sess.query(Person).with_polymorphic(Engineer).all(), emps_without_relationships)
             self.assert_sql_count(testing.db, go, 3)
 
             sess.expunge_all()
             def go():
-                eq_(sess.query(Person).with_polymorphic(Engineer, people.outerjoin(engineers)).all(), emps_without_relations)
+                eq_(sess.query(Person).with_polymorphic(Engineer, people.outerjoin(engineers)).all(), emps_without_relationships)
             self.assert_sql_count(testing.db, go, 3)
             
             sess.expunge_all()
             def go():
                 # limit the polymorphic join down to just "Person", overriding select_table
-                eq_(sess.query(Person).with_polymorphic(Person).all(), emps_without_relations)
+                eq_(sess.query(Person).with_polymorphic(Person).all(), emps_without_relationships)
             self.assert_sql_count(testing.db, go, 6)
         
-        def test_relation_to_polymorphic(self):
+        def test_relationship_to_polymorphic(self):
             assert_result = [
                 Company(name="MegaCorp, Inc.", employees=[
                     Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")]),
@@ -504,7 +504,7 @@ def _produce_test(select_type):
             self.assert_sql_count(testing.db, go, 1)
 
             
-        def test_query_subclass_join_to_base_relation(self):
+        def test_query_subclass_join_to_base_relationship(self):
             sess = create_session()
             # non-polymorphic
             eq_(sess.query(Engineer).join(Person.paperwork).all(), [e1, e2, e3])
@@ -823,7 +823,7 @@ class SelfReferentialTestJoinedToBase(_base.MappedTest):
         mapper(Engineer, engineers, inherits=Person, 
           inherit_condition=engineers.c.person_id==people.c.person_id,
           polymorphic_identity='engineer', properties={
-          'reports_to':relation(Person, primaryjoin=people.c.person_id==engineers.c.reports_to_id)
+          'reports_to':relationship(Person, primaryjoin=people.c.person_id==engineers.c.reports_to_id)
         })
     
     def test_has(self):
@@ -888,7 +888,7 @@ class SelfReferentialJ2JTest(_base.MappedTest):
         
         mapper(Engineer, engineers, inherits=Person, 
           polymorphic_identity='engineer', properties={
-          'reports_to':relation(Manager, primaryjoin=managers.c.person_id==engineers.c.reports_to_id, backref='engineers')
+          'reports_to':relationship(Manager, primaryjoin=managers.c.person_id==engineers.c.reports_to_id, backref='engineers')
         })
 
     def test_has(self):
@@ -946,7 +946,7 @@ class SelfReferentialJ2JTest(_base.MappedTest):
             ]
         )
         
-    def test_relation_compare(self):
+    def test_relationship_compare(self):
         m1 = Manager(name='dogbert')
         m2 = Manager(name='foo')
         e1 = Engineer(name='dilbert', primary_language='java', reports_to=m1)
@@ -1008,7 +1008,7 @@ class M2MFilterTest(_base.MappedTest):
             pass
             
         mapper(Organization, organizations, properties={
-            'engineers':relation(Engineer, secondary=engineers_to_org, backref='organizations')
+            'engineers':relationship(Engineer, secondary=engineers_to_org, backref='organizations')
         })
         
         mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
@@ -1073,7 +1073,7 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
            id = Column(Integer, ForeignKey('parent.id'), primary_key=True)
            __mapper_args__ = dict(polymorphic_identity = 'child2')
 
-        Child1.left_child2 = relation(Child2, secondary = secondary_table,
+        Child1.left_child2 = relationship(Child2, secondary = secondary_table,
                primaryjoin = Parent.id == secondary_table.c.right_id,
                secondaryjoin = Parent.id == secondary_table.c.left_id,
                uselist = False, backref="right_children"
@@ -1189,7 +1189,7 @@ class EagerToSubclassTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(Parent, parent, properties={
-            'children':relation(Sub)
+            'children':relationship(Sub)
         })
         mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='b')
         mapper(Sub, sub, inherits=Base, polymorphic_identity='s')
@@ -1282,7 +1282,7 @@ class SubClassEagerToSubclassTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(Parent, parent, polymorphic_on=parent.c.type, polymorphic_identity='b')
         mapper(Subparent, subparent, inherits=Parent, polymorphic_identity='s', properties={
-            'children':relation(Sub)
+            'children':relationship(Sub)
         })
         mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='b')
         mapper(Sub, sub, inherits=Base, polymorphic_identity='s')

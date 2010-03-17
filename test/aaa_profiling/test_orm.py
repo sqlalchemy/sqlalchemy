@@ -1,6 +1,6 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import exc as sa_exc, util, Integer, String, ForeignKey
-from sqlalchemy.orm import exc as orm_exc, mapper, relation, sessionmaker
+from sqlalchemy.orm import exc as orm_exc, mapper, relationship, sessionmaker
 
 from sqlalchemy.test import testing, profiling
 from test.orm import _base
@@ -33,7 +33,7 @@ class MergeTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(Parent, parent, properties={
-            'children':relation(Child, backref='parent')
+            'children':relationship(Child, backref='parent')
         })
         mapper(Child, child)
 

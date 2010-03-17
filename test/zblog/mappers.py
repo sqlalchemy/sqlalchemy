@@ -22,7 +22,7 @@ def zblog_mappers():
     # ways. this will also attach a 'blogs' property to the user mapper.
     mapper(Blog, tables.blogs, properties={
         'id':tables.blogs.c.blog_id,
-        'owner':relation(user.User, lazy=False,
+        'owner':relationship(user.User, lazy=False,
                          backref=backref('blogs', cascade="all, delete-orphan")),
     })
 
@@ -38,7 +38,7 @@ def zblog_mappers():
                 primary_key=[tables.topic_xref.c.post_id,
                              tables.topic_xref.c.topic_id],
                 properties={
-                    'topic':relation(Topic, lazy=False),
+                    'topic':relationship(Topic, lazy=False),
                 })
 
     # Post mapper, these are posts within a blog.
@@ -66,11 +66,11 @@ def zblog_mappers():
     mapper(Post, posts_with_ccount, properties={
         'id':posts_with_ccount.c.post_id,
         'body':deferred(tables.posts.c.body),
-        'user':relation(user.User, lazy=True,
+        'user':relationship(user.User, lazy=True,
                         backref=backref('posts', cascade="all, delete-orphan")),
-        'blog':relation(Blog, lazy=True,
+        'blog':relationship(Blog, lazy=True,
                         backref=backref('posts', cascade="all, delete-orphan")),
-        'topics':relation(TopicAssociation, lazy=False,
+        'topics':relationship(TopicAssociation, lazy=False,
                           cascade="all, delete-orphan",
                           backref='post')
     }, order_by=[desc(posts_with_ccount.c.datetime)])
@@ -81,18 +81,18 @@ def zblog_mappers():
     # list of child comments.
     mapper(Comment, tables.comments, properties={
         'id':tables.comments.c.comment_id,
-        'post':relation(Post, lazy=True,
+        'post':relationship(Post, lazy=True,
                         backref=backref('comments',
                                         cascade="all, delete-orphan")),
-        'user':relation(user.User, lazy=False,
+        'user':relationship(user.User, lazy=False,
                         backref=backref('comments',
                                         cascade="all, delete-orphan")),
-        'parent':relation(Comment,
+        'parent':relationship(Comment,
                           primaryjoin=(tables.comments.c.parent_comment_id ==
                                        tables.comments.c.comment_id),
                           foreign_keys=[tables.comments.c.comment_id],
                           lazy=True, uselist=False),
-        'replies':relation(Comment,
+        'replies':relationship(Comment,
                            primaryjoin=(tables.comments.c.parent_comment_id ==
                                         tables.comments.c.comment_id),
                            lazy=True, uselist=True, cascade="all"),

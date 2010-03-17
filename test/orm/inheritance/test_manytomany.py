@@ -55,7 +55,7 @@ class InheritTest(_base.MappedTest):
         mapper(User, users, inherits=Principal)
 
         mapper(Group, groups, inherits=Principal, properties={
-            'users': relation(User, secondary=user_group_map,
+            'users': relationship(User, secondary=user_group_map,
                               lazy=True, backref="groups")
             })
 
@@ -116,7 +116,7 @@ class InheritTest2(_base.MappedTest):
             pass
 
         mapper(Bar, bar, inherits=Foo, properties={
-            'foos': relation(Foo, secondary=foo_bar, lazy=False)
+            'foos': relationship(Foo, secondary=foo_bar, lazy=False)
         })
 
         sess = create_session()
@@ -185,7 +185,7 @@ class InheritTest3(_base.MappedTest):
                 return "Bar id %d, data %s" % (self.id, self.data)
 
         mapper(Bar, bar, inherits=Foo, properties={
-            'foos' :relation(Foo, secondary=bar_foo, lazy=True)
+            'foos' :relationship(Foo, secondary=bar_foo, lazy=True)
         })
 
         sess = create_session()
@@ -220,8 +220,8 @@ class InheritTest3(_base.MappedTest):
                 return "Blub id %d, data %s, bars %s, foos %s" % (self.id, self.data, repr([b for b in self.bars]), repr([f for f in self.foos]))
 
         mapper(Blub, blub, inherits=Bar, properties={
-            'bars':relation(Bar, secondary=blub_bar, lazy=False),
-            'foos':relation(Foo, secondary=blub_foo, lazy=False),
+            'bars':relationship(Bar, secondary=blub_bar, lazy=False),
+            'foos':relationship(Foo, secondary=blub_foo, lazy=False),
         })
 
         sess = create_session()

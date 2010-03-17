@@ -904,11 +904,11 @@ class Query(object):
         Each element in \*props may be:
 
           * a string property name, i.e. "rooms".  This will join along the
-            relation of the same name from this Query's "primary" mapper, if
+            relationship of the same name from this Query's "primary" mapper, if
             one is present.
 
           * a class-mapped attribute, i.e. Houses.rooms.  This will create a
-            join from "Houses" table to that of the "rooms" relation.
+            join from "Houses" table to that of the "rooms" relationship.
 
           * a 2-tuple containing a target class or selectable, and an "ON"
             clause.  The ON clause can be the property name/ attribute like
@@ -921,13 +921,13 @@ class Query(object):
             session.query(Company).join('employees', 'tasks')
 
             # join the Person entity to an alias of itself,
-            # along the "friends" relation
+            # along the "friends" relationship
             PAlias = aliased(Person)
             session.query(Person).join((Palias, Person.friends))
 
             # join from Houses to the "rooms" attribute on the
             # "Colonials" subclass of Houses, then join to the
-            # "closets" relation on Room
+            # "closets" relationship on Room
             session.query(Houses).join(Colonials.rooms, Room.closets)
 
             # join from Company entities to the "employees" collection,
@@ -936,7 +936,7 @@ class Query(object):
             session.query(Company).join((people.join(engineers), 'employees'), Engineer.computers)
 
             # join from Articles to Keywords, using the "keywords" attribute.
-            # assume this is a many-to-many relation.
+            # assume this is a many-to-many relationship.
             session.query(Article).join(Article.keywords)
 
             # same thing, but spelled out entirely explicitly
@@ -1735,7 +1735,7 @@ class Query(object):
 
         Returns the number of rows deleted, excluding any cascades.
 
-        The method does *not* offer in-Python cascading of relations - it is
+        The method does *not* offer in-Python cascading of relationships - it is
         assumed that ON DELETE CASCADE is configured for any foreign key
         references which require it. The Session needs to be expired (occurs
         automatically after commit(), or call expire_all()) in order for the
@@ -1843,7 +1843,7 @@ class Query(object):
 
         Returns the number of rows matched by the update.
 
-        The method does *not* offer in-Python cascading of relations - it is assumed that
+        The method does *not* offer in-Python cascading of relationships - it is assumed that
         ON UPDATE CASCADE is configured for any foreign key references which require it.
 
         The Session needs to be expired (occurs automatically after commit(), or call expire_all())
@@ -1857,7 +1857,7 @@ class Query(object):
         """
 
         #TODO: value keys need to be mapped to corresponding sql cols and instr.attr.s to string keys
-        #TODO: updates of manytoone relations need to be converted to fk assignments
+        #TODO: updates of manytoone relationships need to be converted to fk assignments
         #TODO: cascades need handling.
 
         if synchronize_session == 'expire':

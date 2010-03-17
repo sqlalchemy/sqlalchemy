@@ -10,7 +10,7 @@ from sqlalchemy import Integer, String, ForeignKey, SmallInteger
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base, _fixtures
 
@@ -22,7 +22,7 @@ class LazyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_basic(self):
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=True)
+            'addresses':relationship(mapper(Address, addresses), lazy=True)
         })
         sess = create_session()
         q = sess.query(User)
@@ -33,7 +33,7 @@ class LazyTest(_fixtures.FixtureTest):
         """test the error raised when parent object is not bound."""
 
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=True)
+            'addresses':relationship(mapper(Address, addresses), lazy=True)
         })
         sess = create_session()
         q = sess.query(User)
@@ -44,7 +44,7 @@ class LazyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_orderby(self):
         mapper(User, users, properties = {
-            'addresses':relation(mapper(Address, addresses), lazy=True, order_by=addresses.c.email_address),
+            'addresses':relationship(mapper(Address, addresses), lazy=True, order_by=addresses.c.email_address),
         })
         q = create_session().query(User)
         assert [
@@ -64,12 +64,12 @@ class LazyTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_orderby_secondary(self):
-        """tests that a regular mapper select on a single table can order by a relation to a second table"""
+        """tests that a regular mapper select on a single table can order by a relationship to a second table"""
 
         mapper(Address, addresses)
 
         mapper(User, users, properties = dict(
-            addresses = relation(Address, lazy=True),
+            addresses = relationship(Address, lazy=True),
         ))
         q = create_session().query(User)
         l = q.filter(users.c.id==addresses.c.user_id).order_by(addresses.c.email_address).all()
@@ -92,7 +92,7 @@ class LazyTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
 
         mapper(User, users, properties = dict(
-            addresses = relation(Address, lazy=True,  order_by=[sa.desc(addresses.c.email_address)]),
+            addresses = relationship(Address, lazy=True,  order_by=[sa.desc(addresses.c.email_address)]),
         ))
         sess = create_session()
         assert [
@@ -115,7 +115,7 @@ class LazyTest(_fixtures.FixtureTest):
         """test that a lazily loaded child object is not marked as an orphan"""
 
         mapper(User, users, properties={
-            'addresses':relation(Address, cascade="all,delete-orphan", lazy=True)
+            'addresses':relationship(Address, cascade="all,delete-orphan", lazy=True)
         })
         mapper(Address, addresses)
 
@@ -130,11 +130,11 @@ class LazyTest(_fixtures.FixtureTest):
 
         mapper(Item, items)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, lazy=True)
+            'items':relationship(Item, secondary=order_items, lazy=True)
         })
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=True),
-            'orders':relation(Order, lazy=True)
+            'addresses':relationship(mapper(Address, addresses), lazy=True),
+            'orders':relationship(Order, lazy=True)
         })
 
         sess = create_session()
@@ -151,11 +151,11 @@ class LazyTest(_fixtures.FixtureTest):
     def test_distinct(self):
         mapper(Item, items)
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, lazy=True)
+            'items':relationship(Item, secondary=order_items, lazy=True)
         })
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=True),
-            'orders':relation(Order, lazy=True)
+            'addresses':relationship(mapper(Address, addresses), lazy=True),
+            'orders':relationship(Order, lazy=True)
         })
 
         sess = create_session()
@@ -172,7 +172,7 @@ class LazyTest(_fixtures.FixtureTest):
         """test that multiple rows received by a uselist=False raises a warning."""
 
         mapper(User, users, properties={
-            'order':relation(Order, uselist=False)
+            'order':relationship(Order, uselist=False)
         })
         mapper(Order, orders)
         s = create_session()
@@ -182,7 +182,7 @@ class LazyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_one_to_many_scalar(self):
         mapper(User, users, properties = dict(
-            address = relation(mapper(Address, addresses), lazy=True, uselist=False)
+            address = relationship(mapper(Address, addresses), lazy=True, uselist=False)
         ))
         q = create_session().query(User)
         l = q.filter(users.c.id == 7).all()
@@ -193,7 +193,7 @@ class LazyTest(_fixtures.FixtureTest):
         mapper(Address, addresses, primary_key=[addresses.c.user_id, addresses.c.email_address])
         
         mapper(User, users, properties = dict(
-            address = relation(Address, uselist=False,
+            address = relationship(Address, uselist=False,
                 primaryjoin=sa.and_(users.c.id==addresses.c.user_id, addresses.c.email_address=='ed@bettyboop.com')
             )
         ))
@@ -211,7 +211,7 @@ class LazyTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_double(self):
-        """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
+        """tests lazy loading with two relationships simulatneously, from the same table, using aliases.  """
 
         openorders = sa.alias(orders, 'openorders')
         closedorders = sa.alias(orders, 'closedorders')
@@ -223,9 +223,9 @@ class LazyTest(_fixtures.FixtureTest):
         open_mapper = mapper(Order, openorders, non_primary=True)
         closed_mapper = mapper(Order, closedorders, non_primary=True)
         mapper(User, users, properties = dict(
-            addresses = relation(Address, lazy = True),
-            open_orders = relation(open_mapper, primaryjoin = sa.and_(openorders.c.isopen == 1, users.c.id==openorders.c.user_id), lazy=True),
-            closed_orders = relation(closed_mapper, primaryjoin = sa.and_(closedorders.c.isopen == 0, users.c.id==closedorders.c.user_id), lazy=True)
+            addresses = relationship(Address, lazy = True),
+            open_orders = relationship(open_mapper, primaryjoin = sa.and_(openorders.c.isopen == 1, users.c.id==openorders.c.user_id), lazy=True),
+            closed_orders = relationship(closed_mapper, primaryjoin = sa.and_(closedorders.c.isopen == 0, users.c.id==closedorders.c.user_id), lazy=True)
         ))
         q = create_session().query(User)
 
@@ -262,7 +262,7 @@ class LazyTest(_fixtures.FixtureTest):
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
-                keywords = relation(Keyword, secondary=item_keywords, lazy=True),
+                keywords = relationship(Keyword, secondary=item_keywords, lazy=True),
         ))
 
         q = create_session().query(Item)
@@ -280,7 +280,7 @@ class LazyTest(_fixtures.FixtureTest):
             addresses.c.user_id==users.c.id
         ):
             mapper(Address, addresses, properties = dict(
-                user = relation(mapper(User, users), lazy=True, primaryjoin=pj)
+                user = relationship(mapper(User, users), lazy=True, primaryjoin=pj)
             ))
 
             sess = create_session()
@@ -329,7 +329,7 @@ class LazyTest(_fixtures.FixtureTest):
             )
 
             mapper(Address, addresses, properties = dict(
-                user = relation(mapper(User, users))
+                user = relationship(mapper(User, users))
             ))
 
             sess = create_session(bind=testing.db)
@@ -349,7 +349,7 @@ class LazyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one(self):
         mapper(Address, addresses, properties = dict(
-            user = relation(mapper(User, users), lazy=True)
+            user = relationship(mapper(User, users), lazy=True)
         ))
         sess = create_session()
         q = sess.query(Address)
@@ -364,7 +364,7 @@ class LazyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_backrefs_dont_lazyload(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user')
+            'addresses':relationship(Address, backref='user')
         })
         mapper(Address, addresses)
         sess = create_session()
@@ -407,7 +407,7 @@ class M2OGetTest(_fixtures.FixtureTest):
         mapper(User, users)
 
         mapper(Address, addresses, properties={
-            'user':relation(User)
+            'user':relationship(User)
         })
 
         sess = create_session()
@@ -466,7 +466,7 @@ class CorrelatedTest(_base.MappedTest):
         stuff_view = sa.select([stuff.c.id]).where(stuff.c.user_id==user_t.c.id).correlate(user_t).order_by(sa.desc(stuff.c.date)).limit(1)
 
         mapper(User, user_t, properties={
-            'stuff':relation(Stuff, primaryjoin=sa.and_(user_t.c.id==stuff.c.user_id, stuff.c.id==(stuff_view.as_scalar())))
+            'stuff':relationship(Stuff, primaryjoin=sa.and_(user_t.c.id==stuff.c.user_id, stuff.c.id==(stuff_view.as_scalar())))
         })
 
         sess = create_session()

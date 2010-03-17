@@ -90,7 +90,7 @@ is available at http://asktom.oracle.com/tkyte/update_cascade/index.html .
 When using the SQLAlchemy ORM, the ORM has limited ability to manually issue
 cascading updates - specify ForeignKey objects using the 
 "deferrable=True, initially='deferred'" keyword arguments,
-and specify "passive_updates=False" on each relation().
+and specify "passive_updates=False" on each relationship().
 
 Oracle 8 Compatibility
 ----------------------

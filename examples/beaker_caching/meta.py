@@ -9,7 +9,7 @@ The three new concepts introduced here are:
    retrieves results in/from Beaker.
  * FromCache - a query option that establishes caching
    parameters on a Query
- * RelationCache - a variant of FromCache which is specific
+ * RelationshipCache - a variant of FromCache which is specific
    to a query invoked during a lazy load.
  * _params_from_query - extracts value parameters from 
    a Query.
@@ -52,10 +52,10 @@ class CachingQuery(Query):
     session using Session.merge(load=False), which is a fast performing
     method to ensure state is present.
 
-    The FromCache and RelationCache mapper options below represent
+    The FromCache and RelationshipCache mapper options below represent
     the "public" method of 
     configuring the "cache_region" and "cache_namespace" attributes.
-    RelationCache has the ability to be invoked upon lazy loaders embedded
+    RelationshipCache has the ability to be invoked upon lazy loaders embedded
     in an object graph.
     
     """
@@ -158,14 +158,14 @@ class FromCache(MapperOption):
         
         _set_cache_parameters(query, self.region, self.namespace, self.cache_key)
 
-class RelationCache(MapperOption):
+class RelationshipCache(MapperOption):
     """Specifies that a Query as called within a "lazy load" 
        should load results from a cache."""
 
     propagate_to_loaders = True
 
     def __init__(self, region, namespace, attribute):
-        """Construct a new RelationCache.
+        """Construct a new RelationshipCache.
         
         :param region: the cache region.  Should be a
         region configured in the Beaker CacheManager.
@@ -175,13 +175,13 @@ class RelationCache(MapperOption):
         lexical structure.
         
         :param attribute: A Class.attribute which
-        indicates a particular class relation() whose
+        indicates a particular class relationship() whose
         lazy loader should be pulled from the cache.
         
         """
         self.region = region
         self.namespace = namespace
-        self._relation_options = {
+        self._relationship_options = {
             ( attribute.property.parent.class_, attribute.property.key ) : self
         }
 
@@ -196,23 +196,23 @@ class RelationCache(MapperOption):
             mapper, key = query._current_path[-2:]
 
             for cls in mapper.class_.__mro__:
-                if (cls, key) in self._relation_options:
-                    relation_option = self._relation_options[(cls, key)]
+                if (cls, key) in self._relationship_options:
+                    relationship_option = self._relationship_options[(cls, key)]
                     _set_cache_parameters(
                             query, 
-                            relation_option.region, 
-                            relation_option.namespace, 
+                            relationship_option.region, 
+                            relationship_option.namespace, 
                             None)
 
     def and_(self, option):
-        """Chain another RelationCache option to this one.
+        """Chain another RelationshipCache option to this one.
         
-        While many RelationCache objects can be specified on a single
+        While many RelationshipCache objects can be specified on a single
         Query separately, chaining them together allows for a more efficient
         lookup during load.
         
         """
-        self._relation_options.update(option._relation_options)
+        self._relationship_options.update(option._relationship_options)
         return self
 
 

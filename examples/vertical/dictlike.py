@@ -59,7 +59,7 @@ class VerticalPropertyDictMixin(object):
 
     _property_mapping:
       A string, the name of the Python attribute holding a dict-based
-      relation of _property_type instances.
+      relationship of _property_type instances.
 
     Using the VerticalProperty class above as an example,::
 
@@ -68,10 +68,10 @@ class VerticalPropertyDictMixin(object):
           _property_mapping = 'props'
 
       mapper(MyObj, sometable, properties={
-        'props': relation(VerticalProperty,
+        'props': relationship(VerticalProperty,
                           collection_class=attribute_mapped_collection('key'))})
 
-    Dict-like access to MyObj is proxied through to the 'props' relation::
+    Dict-like access to MyObj is proxied through to the 'props' relationship::
 
       myobj['key'] = 'value'
       # ...is shorthand for:
@@ -125,7 +125,7 @@ class VerticalPropertyDictMixin(object):
 if __name__ == '__main__':
     from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
         ForeignKey, UnicodeText, and_, not_)
-    from sqlalchemy.orm import mapper, relation, create_session
+    from sqlalchemy.orm import mapper, relationship, create_session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     metadata = MetaData()
@@ -166,7 +166,7 @@ if __name__ == '__main__':
 
 
     mapper(Animal, animals, properties={
-        'facts': relation(
+        'facts': relationship(
             AnimalFact, backref='animal',
             collection_class=attribute_mapped_collection('key')),
         })

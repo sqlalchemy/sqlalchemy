@@ -5,7 +5,7 @@ from sqlalchemy.test import testing
 from sqlalchemy.test.testing import assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, exc
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session, \
+from sqlalchemy.orm import mapper, relationship, create_session, \
                             sessionmaker, attributes, interfaces,\
                             clear_mappers, exc as orm_exc,\
                             compile_mappers
@@ -21,7 +21,7 @@ class PickleTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_transient(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")
+            'addresses':relationship(Address, backref="user")
         })
         mapper(Address, addresses)
 
@@ -70,11 +70,11 @@ class PickleTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_serialize_path(self):
         umapper = mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")
+            'addresses':relationship(Address, backref="user")
         })
         amapper = mapper(Address, addresses)
         
-        # this is a "relation" path with mapper, key, mapper, key
+        # this is a "relationship" path with mapper, key, mapper, key
         p1 = (umapper, 'addresses', amapper, 'email_address')
         eq_(
             interfaces.deserialize_path(interfaces.serialize_path(p1)),
@@ -100,7 +100,7 @@ class PickleTest(_fixtures.FixtureTest):
     def test_class_deferred_cols(self):
         mapper(User, users, properties={
             'name':sa.orm.deferred(users.c.name),
-            'addresses':relation(Address, backref="user")
+            'addresses':relationship(Address, backref="user")
         })
         mapper(Address, addresses, properties={
             'email_address':sa.orm.deferred(addresses.c.email_address)
@@ -130,7 +130,7 @@ class PickleTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_instance_deferred_cols(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")
+            'addresses':relationship(Address, backref="user")
         })
         mapper(Address, addresses)
 
@@ -175,7 +175,7 @@ class PickleTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_pickle_protocols(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")
+            'addresses':relationship(Address, backref="user")
         })
         mapper(Address, addresses)
 
@@ -194,7 +194,7 @@ class PickleTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_options_with_descriptors(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")
+            'addresses':relationship(Address, backref="user")
         })
         mapper(Address, addresses)
         sess = create_session()
@@ -287,7 +287,7 @@ class UnpickleSA05Test(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_one(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")
+            'addresses':relationship(Address, backref="user")
         })
         mapper(Address, addresses)
         data = \
@@ -300,7 +300,7 @@ class UnpickleSA05Test(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_two(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")
+            'addresses':relationship(Address, backref="user")
         })
         mapper(Address, addresses)
         data = \

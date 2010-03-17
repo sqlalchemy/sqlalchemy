@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, backref, create_session
+from sqlalchemy.orm import mapper, relationship, backref, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
 
@@ -71,13 +71,13 @@ class EagerTest(_base.MappedTest):
         mapper(Category, categories)
 
         mapper(Option, options, properties=dict(
-            owner=relation(Owner),
-            test=relation(Thing)))
+            owner=relationship(Owner),
+            test=relationship(Thing)))
 
         mapper(Thing, tests, properties=dict(
-            owner=relation(Owner, backref='tests'),
-            category=relation(Category),
-            owner_option=relation(Option,
+            owner=relationship(Owner, backref='tests'),
+            category=relationship(Category),
+            owner_option=relationship(Option,
                 primaryjoin=sa.and_(tests.c.id == options.c.test_id,
                                     tests.c.owner_id == options.c.owner_id),
                 foreign_keys=[options.c.test_id, options.c.owner_id],
@@ -237,10 +237,10 @@ class EagerTest2(_base.MappedTest):
         mapper(Left, left)
         mapper(Right, right)
         mapper(Middle, middle, properties=dict(
-            left=relation(Left,
+            left=relationship(Left,
                           lazy=False,
                           backref=backref('middle',lazy=False)),
-            right=relation(Right,
+            right=relationship(Right,
                            lazy=False,
                            backref=backref('middle', lazy=False)))),
 
@@ -298,10 +298,10 @@ class EagerTest3(_base.MappedTest):
     def test_nesting_with_functions(self):
         mapper(Data, datas)
         mapper(Foo, foo, properties={
-            'data': relation(Data,backref=backref('foo',uselist=False))})
+            'data': relationship(Data,backref=backref('foo',uselist=False))})
 
         mapper(Stat, stats, properties={
-            'data':relation(Data)})
+            'data':relationship(Data)})
 
         session = create_session()
 
@@ -374,7 +374,7 @@ class EagerTest4(_base.MappedTest):
     def test_basic(self):
         mapper(Employee, employees)
         mapper(Department, departments, properties=dict(
-            employees=relation(Employee,
+            employees=relationship(Employee,
                                lazy=False,
                                backref='department')))
 
@@ -451,7 +451,7 @@ class EagerTest5(_base.MappedTest):
         commentMapper = mapper(Comment, comments)
 
         baseMapper = mapper(Base, base, properties=dict(
-            comments=relation(Comment, lazy=False,
+            comments=relationship(Comment, lazy=False,
                               cascade='all, delete-orphan')))
 
         mapper(Derived, derived, inherits=baseMapper)
@@ -528,20 +528,20 @@ class EagerTest6(_base.MappedTest):
         p_m = mapper(Part, parts)
 
         mapper(InheritedPart, inherited_part, properties=dict(
-            part=relation(Part, lazy=False)))
+            part=relationship(Part, lazy=False)))
 
         d_m = mapper(Design, design, properties=dict(
-            inheritedParts=relation(InheritedPart,
+            inheritedParts=relationship(InheritedPart,
                                     cascade="all, delete-orphan",
                                     backref="design")))
 
         mapper(DesignType, design_types)
 
         d_m.add_property(
-            "type", relation(DesignType, lazy=False, backref="designs"))
+            "type", relationship(DesignType, lazy=False, backref="designs"))
 
         p_m.add_property(
-            "design", relation(
+            "design", relationship(
                 Design, lazy=False,
                 backref=backref("parts", cascade="all, delete-orphan")))
 
@@ -613,10 +613,10 @@ class EagerTest7(_base.MappedTest):
         mapper(Address, addresses)
 
         mapper(Company, companies, properties={
-            'addresses' : relation(Address, lazy=False)})
+            'addresses' : relationship(Address, lazy=False)})
 
         mapper(Invoice, invoices, properties={
-            'company': relation(Company, lazy=False)})
+            'company': relationship(Company, lazy=False)})
 
         a1 = Address(address='a1 address')
         a2 = Address(address='a2 address')
@@ -646,19 +646,19 @@ class EagerTest7(_base.MappedTest):
         mapper(Phone, phone_numbers)
 
         mapper(Address, addresses, properties={
-            'phones': relation(Phone, lazy=False, backref='address',
+            'phones': relationship(Phone, lazy=False, backref='address',
                                order_by=phone_numbers.c.phone_id)})
 
         mapper(Company, companies, properties={
-            'addresses': relation(Address, lazy=False, backref='company',
+            'addresses': relationship(Address, lazy=False, backref='company',
                                   order_by=addresses.c.address_id)})
 
         mapper(Item, items)
 
         mapper(Invoice, invoices, properties={
-            'items': relation(Item, lazy=False, backref='invoice',
+            'items': relationship(Item, lazy=False, backref='invoice',
                               order_by=items.c.item_id),
-            'company': relation(Company, lazy=False, backref='invoices')})
+            'company': relationship(Company, lazy=False, backref='invoices')})
 
         c1 = Company(company_name='company 1', addresses=[
             Address(address='a1 address',
@@ -776,7 +776,7 @@ class EagerTest8(_base.MappedTest):
         jjj = sa.join(task, jj, task.c.id == jj.c.task_id)
 
         mapper(Joined, jjj, properties=dict(
-            type=relation(Task_Type, lazy=False)))
+            type=relationship(Task_Type, lazy=False)))
 
         session = create_session()
 
@@ -829,11 +829,11 @@ class EagerTest9(_base.MappedTest):
         mapper(Transaction, transactions)
 
         mapper(Entry, entries, properties=dict(
-            account=relation(Account,
+            account=relationship(Account,
                              uselist=False,
                              backref=backref('entries', lazy=True,
                                              order_by=entries.c.entry_id)),
-            transaction=relation(Transaction,
+            transaction=relationship(Transaction,
                                  uselist=False,
                                  backref=backref('entries', lazy=False,
                                                  order_by=entries.c.entry_id))))

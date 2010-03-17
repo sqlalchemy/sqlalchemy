@@ -503,7 +503,7 @@ This section assumes familiarity with the above linked logging module.  All logg
     * ``sqlalchemy.orm.attributes`` - logs certain instrumented attribute operations, such as triggered callables
     * ``sqlalchemy.orm.mapper`` - logs Mapper configuration and operations
     * ``sqlalchemy.orm.unitofwork`` - logs flush() operations, including dependency sort graphs and other operations
-    * ``sqlalchemy.orm.strategies`` - logs relation loader operations (i.e. lazy and eager loads)
+    * ``sqlalchemy.orm.strategies`` - logs relationship loader operations (i.e. lazy and eager loads)
     * ``sqlalchemy.orm.sync`` - logs synchronization of attributes from parent to child instances during a flush()
 
 For example, to log SQL queries as well as unit of work debugging:

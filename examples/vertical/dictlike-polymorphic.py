@@ -132,7 +132,7 @@ if __name__ == '__main__':
     from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
         ForeignKey, UnicodeText, and_, not_, or_, String, Boolean, cast, text,
         null, case)
-    from sqlalchemy.orm import mapper, relation, create_session
+    from sqlalchemy.orm import mapper, relationship, create_session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     metadata = MetaData()
@@ -180,7 +180,7 @@ if __name__ == '__main__':
 
 
     mapper(Animal, animals, properties={
-        'facts': relation(
+        'facts': relationship(
             AnimalFact, backref='animal',
             collection_class=attribute_mapped_collection('key')),
         })

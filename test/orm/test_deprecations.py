@@ -9,7 +9,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, func
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session, sessionmaker
+from sqlalchemy.orm import mapper, relationship, relation, create_session, sessionmaker
 from test.orm import _base
 
 
@@ -70,7 +70,7 @@ class QueryAlternativesTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(User, users_table, properties=dict(
-            addresses=relation(Address, backref='user'),
+            addresses=relationship(Address, backref='user'),
             ))
         mapper(Address, addresses_table)
 
@@ -482,5 +482,4 @@ class QueryAlternativesTest(_base.MappedTest):
 
         users = session.query(User).filter("name='ed'").all()
         assert len(users) == 1 and users[0].name == 'ed'
-
 

@@ -62,7 +62,7 @@ def run3():
         foo()
         time.sleep(.05)
 
-mapper(T1, t1, properties={'t2':relation(T2, backref="t1")})
+mapper(T1, t1, properties={'t2':relationship(T2, backref="t1")})
 mapper(T2, t2)
 print "START"
 for j in range(0, 5):
