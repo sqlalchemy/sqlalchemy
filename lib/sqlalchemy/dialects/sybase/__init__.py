@@ -1,4 +1,4 @@
-from sqlalchemy.dialects.sybase import base, pysybase
+from sqlalchemy.dialects.sybase import base, pysybase, pyodbc
 
 
 from base import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
@@ -8,7 +8,7 @@ from base import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
                            IMAGE,BIT,MONEY,SMALLMONEY,TINYINT
 
 # default dialect
-base.dialect = pysybase.dialect
+base.dialect = pyodbc.dialect
 
 __all__ = (
      'CHAR', 'VARCHAR', 'TIME', 'NCHAR', 'NVARCHAR',

@@ -558,8 +558,8 @@ class MaxDBCompiler(compiler.SQLCompiler):
 
         return labels
 
-    def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause)
+    def order_by_clause(self, select, **kw):
+        order_by = self.process(select._order_by_clause, **kw)
 
         # ORDER BY clauses in DISTINCT queries must reference aliased
         # inner columns by alias name, not true column name.

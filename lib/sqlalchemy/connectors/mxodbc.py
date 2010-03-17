@@ -50,11 +50,28 @@ class MxODBCConnector(Connector):
             conn.stringformat = self.dbapi.MIXED_STRINGFORMAT
             conn.datetimeformat = self.dbapi.PYDATETIME_DATETIMEFORMAT
             conn.decimalformat = self.dbapi.DECIMAL_DECIMALFORMAT
-            conn.errorhandler = error_handler
+            conn.errorhandler = self._error_handler()
             # Alternatives to experiment with:
             #conn.bindmethod = self.dbapi.BIND_USING_PYTHONTYPE
             conn.bindmethod = self.dbapi.BIND_USING_SQLTYPE
         return connect
+    
+    def _error_handler(self):
+        """Return a handler that adjusts mxODBC's raised Warnings to
+        emit Python standard warnings.
+        """
+
+        from mx.ODBC.Error import Warning as MxOdbcWarning
+        def error_handler(connection, cursor, errorclass, errorvalue):
+
+            if issubclass(errorclass, MxOdbcWarning):
+                errorclass.__bases__ = (Warning,)
+                warnings.warn(message=str(errorvalue),
+                          category=errorclass,
+                          stacklevel=2)
+            else:
+                raise errorclass, errorvalue
+        return error_handler
 
     def create_connect_args(self, url):
         """ Return a tuple of *args,**kwargs for creating a connection.
@@ -69,6 +86,7 @@ class MxODBCConnector(Connector):
 
         The arg 'errorhandler' is not used by SQLAlchemy and will
         not be populated.
+        
         """
         opts = url.translate_connect_args(username='user')
         opts.update(url.query)
@@ -96,21 +114,6 @@ class MxODBCConnector(Connector):
             except ValueError:
                 version.append(n)
         return tuple(version)
-
-
-
-            
-def error_handler(connection, cursor, errorclass, errorvalue):
-    """
-    Adjust mxODBC's raised Warnings to emit Python standard warnings.
-    """
-    if issubclass(errorclass, MxOdbcWarning):
-        errorclass.__bases__ = (Warning,)
-        warnings.warn(message=str(errorvalue),
-                  category=errorclass,
-                  stacklevel=2)
-    else:
-        raise errorclass, errorvalue
 
 
 class MxNumeric(sqltypes.Numeric):

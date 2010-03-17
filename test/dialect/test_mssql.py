@@ -6,7 +6,7 @@ from sqlalchemy import types, exc, schema
 from sqlalchemy.orm import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
-from sqlalchemy.dialects.mssql import pyodbc
+from sqlalchemy.dialects.mssql import pyodbc, mxodbc
 from sqlalchemy.engine import url
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_, emits_warning_on
@@ -22,7 +22,35 @@ class CompileTest(TestBase, AssertsCompiledSQL):
     def test_update(self):
         t = table('sometable', column('somecolumn'))
         self.assert_compile(t.update(t.c.somecolumn==7), "UPDATE sometable SET somecolumn=:somecolumn WHERE sometable.somecolumn = :somecolumn_1", dict(somecolumn=10))
-
+    
+    # TODO: should this be for *all* MS-SQL dialects ?
+    def test_mxodbc_binds(self):
+        """mxodbc uses MS-SQL native binds, which aren't allowed in various places."""
+        
+        mxodbc_dialect = mxodbc.dialect()
+        t = table('sometable', column('foo'))
+        
+        for expr, compile in [
+            (
+                select([literal("x"), literal("y")]), 
+                "SELECT 'x', 'y'",
+            ),
+            (
+                select([t]).where(t.c.foo.in_(['x', 'y', 'z'])),
+                "SELECT sometable.foo FROM sometable WHERE sometable.foo IN ('x', 'y', 'z')",
+            ),
+            (
+                func.foobar("x", "y", 4, 5),
+                "foobar('x', 'y', 4, 5)",
+            ),
+            (
+                select([t]).where(func.len('xyz') > func.len(t.c.foo)),
+                "SELECT sometable.foo FROM sometable WHERE len('xyz') > len(sometable.foo)",
+            )
+        ]:
+            self.assert_compile(expr, compile, dialect=mxodbc_dialect)
+        
+        
     def test_in_with_subqueries(self):
         """Test that when using subqueries in a binary expression
         the == and != are changed to IN and NOT IN respectively.
@@ -127,15 +155,24 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             column('col4'))
 
         (s1, s2) = (
-                    select([t1.c.col3.label('col3'), t1.c.col4.label('col4')], t1.c.col2.in_(["t1col2r1", "t1col2r2"])),
-            select([t2.c.col3.label('col3'), t2.c.col4.label('col4')], t2.c.col2.in_(["t2col2r2", "t2col2r3"]))
+                    select([t1.c.col3.label('col3'), t1.c.col4.label('col4')],
+                            t1.c.col2.in_(["t1col2r1", "t1col2r2"])),
+            select([t2.c.col3.label('col3'), t2.c.col4.label('col4')], 
+                            t2.c.col2.in_(["t2col2r2", "t2col2r3"]))
         )
         u = union(s1, s2, order_by=['col3', 'col4'])
-        self.assert_compile(u, "SELECT t1.col3 AS col3, t1.col4 AS col4 FROM t1 WHERE t1.col2 IN (:col2_1, :col2_2) "\
-        "UNION SELECT t2.col3 AS col3, t2.col4 AS col4 FROM t2 WHERE t2.col2 IN (:col2_3, :col2_4) ORDER BY col3, col4")
+        self.assert_compile(u, 
+                "SELECT t1.col3 AS col3, t1.col4 AS col4 FROM t1 WHERE t1.col2 IN "
+                "(:col2_1, :col2_2) "\
+                "UNION SELECT t2.col3 AS col3, t2.col4 AS col4 FROM t2 WHERE t2.col2 "
+                "IN (:col2_3, :col2_4) ORDER BY col3, col4")
 
-        self.assert_compile(u.alias('bar').select(), "SELECT bar.col3, bar.col4 FROM (SELECT t1.col3 AS col3, t1.col4 AS col4 FROM t1 WHERE "\
-        "t1.col2 IN (:col2_1, :col2_2) UNION SELECT t2.col3 AS col3, t2.col4 AS col4 FROM t2 WHERE t2.col2 IN (:col2_3, :col2_4)) AS bar")
+        self.assert_compile(u.alias('bar').select(), 
+                                "SELECT bar.col3, bar.col4 FROM (SELECT t1.col3 AS col3, "
+                                "t1.col4 AS col4 FROM t1 WHERE "\
+                                "t1.col2 IN (:col2_1, :col2_2) UNION SELECT t2.col3 AS col3, "
+                                "t2.col4 AS col4 FROM t2 WHERE t2.col2 IN (:col2_3, :col2_4)) "
+                                "AS bar")
 
     def test_function(self):
         self.assert_compile(func.foo(1, 2), "foo(:foo_1, :foo_2)")

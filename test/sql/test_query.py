@@ -238,8 +238,9 @@ class QueryTest(TestBase):
     def test_order_by_label(self):
         """test that a label within an ORDER BY works on each backend.
         
-        simple labels in ORDER BYs now render as the actual labelname 
-        which not every database supports.
+        This test should be modified to support [ticket:1068] when that ticket
+        is implemented.  For now, you need to put the actual string in the
+        ORDER BY.
         
         """
         users.insert().execute(
@@ -250,26 +251,30 @@ class QueryTest(TestBase):
         
         concat = ("test: " + users.c.user_name).label('thedata')
         eq_(
-            select([concat]).order_by(concat).execute().fetchall(),
+            select([concat]).order_by("thedata").execute().fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)]
         )
         
         eq_(
-            select([concat]).order_by(concat).execute().fetchall(),
+            select([concat]).order_by("thedata").execute().fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)]
         )
 
         concat = ("test: " + users.c.user_name).label('thedata')
         eq_(
-            select([concat]).order_by(desc(concat)).execute().fetchall(),
+            select([concat]).order_by(desc('thedata')).execute().fetchall(),
             [("test: jack",), ("test: fred",), ("test: ed",)]
         )
 
-        concat = ("test: " + users.c.user_name).label('thedata')
-        eq_(
-            select([concat]).order_by(concat + "x").execute().fetchall(),
-            [("test: ed",), ("test: fred",), ("test: jack",)]
-        )
+        @testing.fails_on('postgresql', 'only simple labels allowed')
+        @testing.fails_on('sybase', 'only simple labels allowed')
+        def go():
+            concat = ("test: " + users.c.user_name).label('thedata')
+            eq_(
+                select([concat]).order_by(literal_column('thedata') + "x").execute().fetchall(),
+                [("test: ed",), ("test: fred",), ("test: jack",)]
+            )
+        go()
         
         
     def test_row_comparison(self):
@@ -776,11 +781,18 @@ class QueryTest(TestBase):
         WHERE ? = ?' ('john', 'john')
        """)
     @testing.emits_warning('.*empty sequence.*')
-    @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
+    @testing.fails_on('firebird', "uses sql-92 rules")
+    @testing.fails_on('sybase', "uses sql-92 rules")
     @testing.fails_if(lambda: 
                          testing.against('mssql+pyodbc') and not testing.db.dialect.freetds,
-                         "not supported by Windows ODBC driver")
+                         "uses sql-92 rules")
     def test_bind_in(self):
+        """test calling IN against a bind parameter.
+        
+        this isn't allowed on several platforms since we
+        generate ? = ?.
+        
+        """
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
         users.insert().execute(user_id = 9, user_name = None)
@@ -792,7 +804,21 @@ class QueryTest(TestBase):
         assert len(r) == 3
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
+    
+    @testing.emits_warning('.*empty sequence.*')
+    def test_literal_in(self):
+        """similar to test_bind_in but use a bind with a value."""
 
+        users.insert().execute(user_id = 7, user_name = 'jack')
+        users.insert().execute(user_id = 8, user_name = 'fred')
+        users.insert().execute(user_id = 9, user_name = None)
+
+        s = users.select(not_(literal("john").in_([])))
+        r = s.execute().fetchall()
+        assert len(r) == 3
+        
+        
+        
     @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.fails_on('maxdb', 'FIXME: unknown')
@@ -1162,7 +1188,6 @@ class CompoundTest(TestBase):
         eq_(found2, wanted)
 
     @testing.crashes('firebird', 'Does not support except')
-    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.fails_on('sqlite', "Can't handle this style of nesting")
@@ -1180,7 +1205,6 @@ class CompoundTest(TestBase):
         eq_(found, wanted)
 
     @testing.crashes('firebird', 'Does not support except')
-    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     def test_except_style2(self):
@@ -1203,7 +1227,6 @@ class CompoundTest(TestBase):
         eq_(found2, wanted)
 
     @testing.crashes('firebird', 'Does not support except')
-    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.fails_on('sqlite', "Can't handle this style of nesting")
@@ -1221,7 +1244,6 @@ class CompoundTest(TestBase):
                           [('ccc',)])
 
     @testing.crashes('firebird', 'Does not support except')
-    @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.crashes('sybase', 'FIXME: unknown, verify not fails_on')
     @testing.fails_on('mysql', 'FIXME: unknown')
     def test_except_style4(self):

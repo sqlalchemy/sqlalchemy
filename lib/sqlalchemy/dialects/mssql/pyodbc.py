@@ -1,3 +1,16 @@
+"""
+Support for MS-SQL via pyodbc.
+
+http://pypi.python.org/pypi/pyodbc/
+
+Connect strings are of the form::
+
+    mssql+pyodbc://<username>:<password>@<dsn>/
+    mssql+pyodbc://<username>:<password>@<host>/<database>
+
+
+"""
+
 from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 from sqlalchemy import types as sqltypes
@@ -59,20 +72,5 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         super(MSDialect_pyodbc, self).__init__(**params)
         self.description_encoding = description_encoding
         self.use_scope_identity = self.dbapi and hasattr(self.dbapi.Cursor, 'nextset')
-        
-    def initialize(self, connection):
-        super(MSDialect_pyodbc, self).initialize(connection)
-        pyodbc = self.dbapi
-        
-        dbapi_con = connection.connection
-        
-        self.freetds = re.match(r".*libtdsodbc.*\.so",  dbapi_con.getinfo(pyodbc.SQL_DRIVER_NAME))
-    
-        # the "Py2K only" part here is theoretical.
-        # have not tried pyodbc + python3.1 yet.
-        # Py2K
-        self.supports_unicode_statements = not self.freetds
-        self.supports_unicode_binds = not self.freetds
-        # end Py2K
         
 dialect = MSDialect_pyodbc

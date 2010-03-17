@@ -23,7 +23,8 @@ from sqlalchemy import util, sql, exc
 from sqlalchemy.types import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
                             TEXT,DATE,DATETIME, FLOAT, NUMERIC,\
                             BIGINT,INT, INTEGER, SMALLINT, BINARY,\
-                            VARBINARY, DECIMAL, TIMESTAMP, Unicode
+                            VARBINARY, DECIMAL, TIMESTAMP, Unicode,\
+                            UnicodeText
 
 RESERVED_WORDS = set([
     "add", "all", "alter", "and",
@@ -84,14 +85,24 @@ RESERVED_WORDS = set([
     "within", "work", "writetext",
     ])
 
-
-class UNICHAR(sqltypes.Unicode):
+class _SybaseUnitypeMixin(object):
+    """these types appear to return a buffer object."""
+    
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            if value is not None:
+                return str(value) #.decode("ucs-2")
+            else:
+                return None
+        return process
+    
+class UNICHAR(_SybaseUnitypeMixin, sqltypes.Unicode):
     __visit_name__ = 'UNICHAR'
 
-class UNIVARCHAR(sqltypes.Unicode):
+class UNIVARCHAR(_SybaseUnitypeMixin, sqltypes.Unicode):
     __visit_name__ = 'UNIVARCHAR'
 
-class UNITEXT(sqltypes.UnicodeText):
+class UNITEXT(_SybaseUnitypeMixin, sqltypes.UnicodeText):
     __visit_name__ = 'UNITEXT'
 
 class TINYINT(sqltypes.Integer):
@@ -120,8 +131,14 @@ class SybaseTypeCompiler(compiler.GenericTypeCompiler):
     def visit_boolean(self, type_):
         return self.visit_BIT(type_)
 
+    def visit_unicode(self, type_):
+        return self.visit_NVARCHAR(type_)
+
     def visit_UNICHAR(self, type_):
         return "UNICHAR(%d)" % type_.length
+
+    def visit_UNIVARCHAR(self, type_):
+        return "UNIVARCHAR(%d)" % type_.length
 
     def visit_UNITEXT(self, type_):
         return "UNITEXT"
@@ -176,7 +193,19 @@ ischema_names = {
 
 class SybaseExecutionContext(default.DefaultExecutionContext):
     _enable_identity_insert = False
-
+    
+    def set_ddl_autocommit(self, connection, value):
+        """Must be implemented by subclasses to accommodate DDL executions.
+        
+        "connection" is the raw unwrapped DBAPI connection.   "value"
+        is True or False.  when True, the connection should be configured
+        such that a DDL can take place subsequently.  when False,
+        a DDL has taken place and the connection should be resumed
+        into non-autocommit mode.
+        
+        """
+        raise NotImplementedError()
+        
     def pre_exec(self):
         if self.isinsert:
             tbl = self.compiled.statement.table
@@ -192,7 +221,22 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
                 self.cursor.execute("SET IDENTITY_INSERT %s ON" % 
                     self.dialect.identifier_preparer.format_table(tbl))
 
+        if self.isddl:
+            # TODO: to enhance this, we can detect "ddl in tran" on the
+            # database settings.  this error message should be improved to 
+            # include a note about that.
+            if not self.should_autocommit:
+                raise exc.InvalidRequestError("The Sybase dialect only supports "
+                                            "DDL in 'autocommit' mode at this time.")
+
+            self.root_connection.engine.logger.info("AUTOCOMMIT (Assuming no Sybase 'ddl in tran')")
+
+            self.set_ddl_autocommit(self.root_connection.connection.connection, True)
+            
+
     def post_exec(self):
+       if self.isddl:
+            self.set_ddl_autocommit(self.root_connection, False)
         
        if self._enable_identity_insert:
             self.cursor.execute(
@@ -209,9 +253,11 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
         return lastrowid
 
 class SybaseSQLCompiler(compiler.SQLCompiler):
+    ansi_bind_rules = True
 
-    extract_map = compiler.SQLCompiler.extract_map.copy()
-    extract_map.update ({
+    extract_map = util.update_copy(
+        compiler.SQLCompiler.extract_map,
+        {
         'doy': 'dayofyear',
         'dow': 'weekday',
         'milliseconds': 'millisecond'
@@ -240,33 +286,17 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         # Limit in sybase is after the select keyword
         return ""
 
-    def dont_visit_binary(self, binary):
-        """Move bind parameters to the right-hand side of an operator, where possible."""
-        if isinstance(binary.left, expression._BindParamClause) and binary.operator == operator.eq:
-            return self.process(expression._BinaryExpression(binary.right, binary.left, binary.operator))
-        else:
-            return super(SybaseSQLCompiler, self).visit_binary(binary)
-
-    def dont_label_select_column(self, select, column, asfrom):
-        if isinstance(column, expression.Function):
-            return column.label(None)
-        else:
-            return super(SybaseSQLCompiler, self).label_select_column(select, column, asfrom)
-
-#    def visit_getdate_func(self, fn, **kw):
-         # TODO: need to cast? something ?
-#        pass
-
-    def visit_extract(self, extract):
+    def visit_extract(self, extract, **kw):
         field = self.extract_map.get(extract.field, extract.field)
-        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr))
+        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr, **kw))
 
     def for_update_clause(self, select):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use
         return ''
 
-    def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause)
+    def order_by_clause(self, select, **kw):
+        kw['literal_binds'] = True
+        order_by = self.process(select._order_by_clause, **kw)
 
         # SybaseSQL only allows ORDER BY in subqueries if there is a LIMIT
         if order_by and (not self.is_subquery() or select._limit):

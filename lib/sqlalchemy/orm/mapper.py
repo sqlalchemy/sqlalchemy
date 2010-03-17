@@ -84,6 +84,7 @@ class Mapper(object):
                  order_by = False,
                  always_refresh = False,
                  version_id_col = None,
+                 version_id_generator = None,
                  polymorphic_on=None,
                  _polymorphic_map=None,
                  polymorphic_identity=None,
@@ -118,6 +119,7 @@ class Mapper(object):
         
         self.always_refresh = always_refresh
         self.version_id_col = version_id_col
+        self.version_id_generator = version_id_generator or (lambda x:(x or 0) + 1)
         self.concrete = concrete
         self.single = False
         self.inherits = inherits
@@ -252,6 +254,7 @@ class Mapper(object):
 
             if self.version_id_col is None:
                 self.version_id_col = self.inherits.version_id_col
+                self.version_id_generator = self.inherits.version_id_generator
 
             for mapper in self.iterate_to_root():
                 util.reset_memoized(mapper, '_equivalent_columns')
@@ -1303,7 +1306,7 @@ class Mapper(object):
                     if 'before_update' in mapper.extension:
                         mapper.extension.before_update(mapper, connection, state.obj())
 
-        row_switches = set()
+        row_switches = {}
         if not postupdate:
             for state, mapper, connection, has_identity, instance_key in tups:
                 # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
@@ -1324,7 +1327,7 @@ class Mapper(object):
                             
                     # remove the "delete" flag from the existing element
                     uowtransaction.set_row_switch(existing)
-                    row_switches.add(state)
+                    row_switches[state] = existing
         
         table_to_mapper = self._sorted_tables
 
@@ -1347,7 +1350,7 @@ class Mapper(object):
                 if isinsert:
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
-                            params[col.key] = 1
+                            params[col.key] = mapper.version_id_generator(None)
                         elif mapper.polymorphic_on is not None and \
                                 mapper.polymorphic_on.shares_lineage(col):
                             value = mapper.polymorphic_identity
@@ -1372,8 +1375,8 @@ class Mapper(object):
                 else:
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
-                            params[col._label] = mapper._get_state_attr_by_column(state, col)
-                            params[col.key] = params[col._label] + 1
+                            params[col._label] = mapper._get_state_attr_by_column(row_switches.get(state, state), col)
+                            params[col.key] = mapper.version_id_generator(params[col._label])
                             for prop in mapper._columntoproperty.itervalues():
                                 history = attributes.get_state_history(state, prop.key, passive=True)
                                 if history.added:

@@ -62,6 +62,7 @@ class DefaultDialect(base.Dialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
     dbapi_type_map = {}
+    colspecs = {}
     default_paramstyle = 'named'
     supports_default_values = False
     supports_empty_insert = True
@@ -183,7 +184,7 @@ class DefaultDialect(base.Dialect):
         
         # detect if there's an NVARCHAR type with different behavior available
         unicode_for_unicode = check_unicode(sqltypes.Unicode(60))
-       
+        
         if unicode_for_unicode and not unicode_for_varchar:
             return "conditional"
         else:

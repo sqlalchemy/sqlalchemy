@@ -19,6 +19,10 @@ class PyODBCConnector(Connector):
     # hold the desired driver name
     pyodbc_driver_name = None
     
+    # will be set to True after initialize()
+    # if the freetds.so is detected
+    freetds = False
+    
     @classmethod
     def dbapi(cls):
         return __import__('pyodbc')
@@ -75,6 +79,26 @@ class PyODBCConnector(Connector):
             return '[08S01]' in str(e)
         else:
             return False
+
+    def initialize(self, connection):
+        # determine FreeTDS first.   can't issue SQL easily
+        # without getting unicode_statements/binds set up.
+        
+        pyodbc = self.dbapi
+
+        dbapi_con = connection.connection
+
+        self.freetds = bool(re.match(r".*libtdsodbc.*\.so",  dbapi_con.getinfo(pyodbc.SQL_DRIVER_NAME)))
+
+        # the "Py2K only" part here is theoretical.
+        # have not tried pyodbc + python3.1 yet.
+        # Py2K
+        self.supports_unicode_statements = not self.freetds
+        self.supports_unicode_binds = not self.freetds
+        # end Py2K
+        
+        # run other initialization which asks for user name, etc.
+        super(PyODBCConnector, self).initialize(connection)
 
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection

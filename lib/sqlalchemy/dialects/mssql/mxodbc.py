@@ -5,9 +5,10 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.connectors.mxodbc import MxODBCConnector, MxNumeric, MxFloat
 from sqlalchemy.dialects.mssql.pyodbc import MSExecutionContext_pyodbc
-from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
+from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect, \
+                                            MSSQLCompiler, MSSQLStrictCompiler
 
-
+        
 class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
     """
     The pyodbc execution context is useful for enabling
@@ -19,6 +20,10 @@ class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
     #       won't work.
 
 class MSDialect_mxodbc(MxODBCConnector, MSDialect):
+    
+    # TODO: may want to use this only if FreeTDS is not in use,
+    # since FreeTDS doesn't seem to use native binds.
+    statement_compiler = MSSQLStrictCompiler
 
     execution_ctx_cls = MSExecutionContext_mxodbc
     colspecs = util.update_copy(
@@ -29,6 +34,7 @@ class MSDialect_mxodbc(MxODBCConnector, MSDialect):
         },
     )
 
+    
 
     def __init__(self, description_encoding='latin-1', **params):
         super(MSDialect_mxodbc, self).__init__(**params)

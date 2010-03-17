@@ -610,178 +610,169 @@ def deferred(*columns, **kwargs):
 def mapper(class_, local_table=None, *args, **params):
     """Return a new :class:`~sqlalchemy.orm.Mapper` object.
 
-      class\_
-        The class to be mapped.
+        :param class\_: The class to be mapped.
 
-      local_table
-        The table to which the class is mapped, or None if this mapper
-        inherits from another mapper using concrete table inheritance.
+        :param local_table: The table to which the class is mapped, or None if this mapper
+            inherits from another mapper using concrete table inheritance.
 
-      always_refresh
-        If True, all query operations for this mapped class will overwrite all
-        data within object instances that already exist within the session,
-        erasing any in-memory changes with whatever information was loaded
-        from the database.  Usage of this flag is highly discouraged; as an
-        alternative, see the method `populate_existing()` on
-        :class:`~sqlalchemy.orm.query.Query`.
+        :param always_refresh: If True, all query operations for this mapped class will overwrite all
+            data within object instances that already exist within the session,
+            erasing any in-memory changes with whatever information was loaded
+            from the database.  Usage of this flag is highly discouraged; as an
+            alternative, see the method `populate_existing()` on
+            :class:`~sqlalchemy.orm.query.Query`.
 
-      allow_null_pks
-        This flag is deprecated - this is stated as allow_partial_pks
-        which defaults to True.
-    
-      allow_partial_pks
-        Defaults to True.  Indicates that a composite primary key with
-        some NULL values should be considered as possibly existing
-        within the database.   This affects whether a mapper will assign
-        an incoming row to an existing identity, as well as if 
-        session.merge() will check the database first for a particular
-        primary key value.  A "partial primary key" can occur if one 
-        has mapped to an OUTER JOIN, for example.
+        :param allow_null_pks: This flag is deprecated - this is stated as allow_partial_pks
+            which defaults to True.
 
-      batch
-        Indicates that save operations of multiple entities can be batched
-        together for efficiency.  setting to False indicates that an instance
-        will be fully saved before saving the next instance, which includes
-        inserting/updating all table rows corresponding to the entity as well
-        as calling all ``MapperExtension`` methods corresponding to the save
-        operation.
+        :param allow_partial_pks: Defaults to True.  Indicates that a composite primary key with
+            some NULL values should be considered as possibly existing
+            within the database.   This affects whether a mapper will assign
+            an incoming row to an existing identity, as well as if 
+            session.merge() will check the database first for a particular
+            primary key value.  A "partial primary key" can occur if one 
+            has mapped to an OUTER JOIN, for example.
 
-      column_prefix
-        A string which will be prepended to the `key` name of all Columns when
-        creating column-based properties from the given Table.  Does not
-        affect explicitly specified column-based properties
+        :param batch: Indicates that save operations of multiple entities can be batched
+            together for efficiency.  setting to False indicates that an instance
+            will be fully saved before saving the next instance, which includes
+            inserting/updating all table rows corresponding to the entity as well
+            as calling all ``MapperExtension`` methods corresponding to the save
+            operation.
 
-      concrete
-        If True, indicates this mapper should use concrete table inheritance
-        with its parent mapper.
+        :param column_prefix: A string which will be prepended to the `key` name of all Columns when
+            creating column-based properties from the given Table.  Does not
+            affect explicitly specified column-based properties
 
-      extension
-        A :class:`~sqlalchemy.orm.MapperExtension` instance or list of
-        ``MapperExtension`` instances which will be applied to all
-        operations by this ``Mapper``.
+        :param concrete: If True, indicates this mapper should use concrete table inheritance
+            with its parent mapper.
 
-      inherits
-        Another ``Mapper`` for which this ``Mapper`` will have an inheritance
-        relationship with.
+        :param exclude_properties: A list of properties not to map.  Columns present in the mapped table
+            and present in this list will not be automatically converted into
+            properties.  Note that neither this option nor include_properties will
+            allow an end-run around Python inheritance.  If mapped class ``B``
+            inherits from mapped class ``A``, no combination of includes or
+            excludes will allow ``B`` to have fewer properties than its
+            superclass, ``A``.
 
-      inherit_condition
-        For joined table inheritance, a SQL expression (constructed
-        ``ClauseElement``) which will define how the two tables are joined;
-        defaults to a natural join between the two tables.
 
-      inherit_foreign_keys
-        when inherit_condition is used and the condition contains no
-        ForeignKey columns, specify the "foreign" columns of the join
-        condition in this list.  else leave as None.
+        :param extension: A :class:`~sqlalchemy.orm.interfaces.MapperExtension` instance or list of
+            :class:`~sqlalchemy.orm.interfaces.MapperExtension` instances which will be applied to all
+            operations by this :class:`~sqlalchemy.orm.mapper.Mapper`.
 
-      order_by
-        A single ``Column`` or list of ``Columns`` for which
-        selection operations should use as the default ordering for entities.
-        Defaults to the OID/ROWID of the table if any, or the first primary
-        key column of the table.
+        :param include_properties: An inclusive list of properties to map.  Columns present in the mapped
+            table but not present in this list will not be automatically converted
+            into properties.
 
-      non_primary
-        Construct a ``Mapper`` that will define only the selection of
-        instances, not their persistence.  Any number of non_primary mappers
-        may be created for a particular class.
+        :param inherits: Another :class:`~sqlalchemy.orm.Mapper` for which 
+            this :class:`~sqlalchemy.orm.Mapper` will have an inheritance
+            relationship with.
 
-      passive_updates
-        Indicates UPDATE behavior of foreign keys when a primary key changes 
-        on a joined-table inheritance or other joined table mapping.
 
-        When True, it is assumed that ON UPDATE CASCADE is configured on
-        the foreign key in the database, and that the database will
-        handle propagation of an UPDATE from a source column to
-        dependent rows.  Note that with databases which enforce
-        referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
-        ON UPDATE CASCADE is required for this operation.  The
-        relation() will update the value of the attribute on related
-        items which are locally present in the session during a flush.
+        :param inherit_condition: For joined table inheritance, a SQL expression (constructed
+            ``ClauseElement``) which will define how the two tables are joined;
+            defaults to a natural join between the two tables.
 
-        When False, it is assumed that the database does not enforce
-        referential integrity and will not be issuing its own CASCADE
-        operation for an update.  The relation() will issue the
-        appropriate UPDATE statements to the database in response to the
-        change of a referenced key, and items locally present in the
-        session during a flush will also be refreshed.
+        :param inherit_foreign_keys: When inherit_condition is used and the condition contains no
+            ForeignKey columns, specify the "foreign" columns of the join
+            condition in this list.  else leave as None.
 
-        This flag should probably be set to False if primary key changes
-        are expected and the database in use doesn't support CASCADE
-        (i.e. SQLite, MySQL MyISAM tables).
-        
-        Also see the passive_updates flag on ``relation()``.
+        :param non_primary: Construct a ``Mapper`` that will define only the selection of
+            instances, not their persistence.  Any number of non_primary mappers
+            may be created for a particular class.
 
-        A future SQLAlchemy release will provide a "detect" feature for
-        this flag.
+        :param order_by: A single ``Column`` or list of ``Columns`` for which
+            selection operations should use as the default ordering for entities.
+            Defaults to the OID/ROWID of the table if any, or the first primary
+            key column of the table.
 
-      polymorphic_on
-        Used with mappers in an inheritance relationship, a ``Column`` which
-        will identify the class/mapper combination to be used with a
-        particular row.  Requires the ``polymorphic_identity`` value to be set
-        for all mappers in the inheritance hierarchy.  The column specified by
-        ``polymorphic_on`` is usually a column that resides directly within
-        the base mapper's mapped table; alternatively, it may be a column that
-        is only present within the <selectable> portion of the
-        ``with_polymorphic`` argument.
+        :param passive_updates: Indicates UPDATE behavior of foreign keys when a primary key changes 
+            on a joined-table inheritance or other joined table mapping.
 
-      _polymorphic_map
-        Used internally to propagate the full map of polymorphic identifiers
-        to surrogate mappers.
+            When True, it is assumed that ON UPDATE CASCADE is configured on
+            the foreign key in the database, and that the database will
+            handle propagation of an UPDATE from a source column to
+            dependent rows.  Note that with databases which enforce
+            referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
+            ON UPDATE CASCADE is required for this operation.  The
+            relation() will update the value of the attribute on related
+            items which are locally present in the session during a flush.
 
-      polymorphic_identity
-        A value which will be stored in the Column denoted by polymorphic_on,
-        corresponding to the *class identity* of this mapper.
+            When False, it is assumed that the database does not enforce
+            referential integrity and will not be issuing its own CASCADE
+            operation for an update.  The relation() will issue the
+            appropriate UPDATE statements to the database in response to the
+            change of a referenced key, and items locally present in the
+            session during a flush will also be refreshed.
 
-      properties
-        A dictionary mapping the string names of object attributes to
-        ``MapperProperty`` instances, which define the persistence behavior of
-        that attribute.  Note that the columns in the mapped table are
-        automatically converted into ``ColumnProperty`` instances based on the
-        `key` property of each ``Column`` (although they can be overridden
-        using this dictionary).
+            This flag should probably be set to False if primary key changes
+            are expected and the database in use doesn't support CASCADE
+            (i.e. SQLite, MySQL MyISAM tables).
 
-      include_properties
-        An inclusive list of properties to map.  Columns present in the mapped
-        table but not present in this list will not be automatically converted
-        into properties.
+            Also see the passive_updates flag on :func:`relation()`.
 
-      exclude_properties
-        A list of properties not to map.  Columns present in the mapped table
-        and present in this list will not be automatically converted into
-        properties.  Note that neither this option nor include_properties will
-        allow an end-run around Python inheritance.  If mapped class ``B``
-        inherits from mapped class ``A``, no combination of includes or
-        excludes will allow ``B`` to have fewer properties than its
-        superclass, ``A``.
+            A future SQLAlchemy release will provide a "detect" feature for
+            this flag.
 
-      primary_key
-        A list of ``Column`` objects which define the *primary key* to be used
-        against this mapper's selectable unit.  This is normally simply the
-        primary key of the `local_table`, but can be overridden here.
+        :param polymorphic_on: Used with mappers in an inheritance relationship, a ``Column`` which
+            will identify the class/mapper combination to be used with a
+            particular row.  Requires the ``polymorphic_identity`` value to be set
+            for all mappers in the inheritance hierarchy.  The column specified by
+            ``polymorphic_on`` is usually a column that resides directly within
+            the base mapper's mapped table; alternatively, it may be a column that
+            is only present within the <selectable> portion of the
+            ``with_polymorphic`` argument.
 
-      with_polymorphic
-        A tuple in the form ``(<classes>, <selectable>)`` indicating the
-        default style of "polymorphic" loading, that is, which tables are
-        queried at once. <classes> is any single or list of mappers and/or
-        classes indicating the inherited classes that should be loaded at
-        once. The special value ``'*'`` may be used to indicate all descending
-        classes should be loaded immediately. The second tuple argument
-        <selectable> indicates a selectable that will be used to query for
-        multiple classes. Normally, it is left as None, in which case this
-        mapper will form an outer join from the base mapper's table to that of
-        all desired sub-mappers.  When specified, it provides the selectable
-        to be used for polymorphic loading. When with_polymorphic includes
-        mappers which load from a "concrete" inheriting table, the
-        <selectable> argument is required, since it usually requires more
-        complex UNION queries.
+        :param polymorphic_identity: A value which will be stored in the Column denoted by polymorphic_on,
+            corresponding to the *class identity* of this mapper.
 
-      version_id_col
-        A ``Column`` which must have an integer type that will be used to keep
-        a running *version id* of mapped entities in the database.  this is
-        used during save operations to ensure that no other thread or process
-        has updated the instance during the lifetime of the entity, else a
-        ``ConcurrentModificationError`` exception is thrown.
+        :param properties: A dictionary mapping the string names of object attributes to
+            ``MapperProperty`` instances, which define the persistence behavior of
+            that attribute.  Note that the columns in the mapped table are
+            automatically converted into ``ColumnProperty`` instances based on the
+            `key` property of each ``Column`` (although they can be overridden
+            using this dictionary).
 
+        :param primary_key: A list of ``Column`` objects which define the *primary key* to be used
+            against this mapper's selectable unit.  This is normally simply the
+            primary key of the `local_table`, but can be overridden here.
+
+        :param version_id_col: A ``Column`` which must have an integer type that will be used to keep
+            a running *version id* of mapped entities in the database.  this is
+            used during save operations to ensure that no other thread or process
+            has updated the instance during the lifetime of the entity, else a
+            ``ConcurrentModificationError`` exception is thrown.
+
+        :param version_id_generator: A callable which defines the algorithm used to generate new version 
+            ids.  Defaults to an integer generator.  Can be replaced with one that
+            generates timestamps, uuids, etc.  e.g.::
+
+                import uuid
+
+                mapper(Cls, table, 
+                version_id_col=table.c.version_uuid,
+                version_id_generator=lambda version:uuid.uuid4().hex
+                )
+
+            The callable receives the current version identifier as its 
+            single argument.
+
+        :param with_polymorphic: A tuple in the form ``(<classes>, <selectable>)`` indicating the
+            default style of "polymorphic" loading, that is, which tables are
+            queried at once. <classes> is any single or list of mappers and/or
+            classes indicating the inherited classes that should be loaded at
+            once. The special value ``'*'`` may be used to indicate all descending
+            classes should be loaded immediately. The second tuple argument
+            <selectable> indicates a selectable that will be used to query for
+            multiple classes. Normally, it is left as None, in which case this
+            mapper will form an outer join from the base mapper's table to that of
+            all desired sub-mappers.  When specified, it provides the selectable
+            to be used for polymorphic loading. When with_polymorphic includes
+            mappers which load from a "concrete" inheriting table, the
+            <selectable> argument is required, since it usually requires more
+            complex UNION queries.
+
+          
     """
     return Mapper(class_, local_table, *args, **params)
 
