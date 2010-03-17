@@ -57,9 +57,6 @@ class QuoteTest(TestBase, AssertsCompiledSQL):
             ')'
         )
 
-    @testing.crashes('mssql+mxodbc', """Invalid bind parameter placement:
-         'select ident_seed(?), ident_incr(?)' ('dbo.WorstCase2', 'dbo.WorstCase2')
-         """)
     def testreflect(self):
         meta2 = MetaData(testing.db)
         t2 = Table('WorstCase2', meta2, autoload=True, quote=True)

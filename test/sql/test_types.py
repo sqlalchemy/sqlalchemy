@@ -813,9 +813,6 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         eq_(expr.right.type.__class__, CHAR)
         
         
-    @testing.crashes('mssql+mxodbc', """Invalid bind parameter placement:
-        'SELECT test.bvalue + ? AS foo \nFROM test' ('BIND_INhi',)
-        """)
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
     def test_operator_adapt(self):
         """test type-based overloading of operators"""
@@ -855,9 +852,6 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             "BIND_INfooBIND_INhiBIND_OUT"
         )
 
-    @testing.crashes('mssql+mxodbc', """Invalid bind parameter placement:
-       'SELECT test.bvalue + ? AS foo \nFROM test' ('BIND_IN6',)
-       """)
     def test_typedec_righthand_coercion(self):
         class MyTypeDec(types.TypeDecorator):
             impl = String
