@@ -23,7 +23,8 @@ from sqlalchemy import util, sql, exc
 from sqlalchemy.types import CHAR, VARCHAR, TIME, NCHAR, NVARCHAR,\
                             TEXT,DATE,DATETIME, FLOAT, NUMERIC,\
                             BIGINT,INT, INTEGER, SMALLINT, BINARY,\
-                            VARBINARY, DECIMAL, TIMESTAMP, Unicode
+                            VARBINARY, DECIMAL, TIMESTAMP, Unicode,\
+                            UnicodeText
 
 RESERVED_WORDS = set([
     "add", "all", "alter", "and",
@@ -84,14 +85,24 @@ RESERVED_WORDS = set([
     "within", "work", "writetext",
     ])
 
-
-class UNICHAR(sqltypes.Unicode):
+class _SybaseUnitypeMixin(object):
+    """these types appear to return a buffer object."""
+    
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            if value is not None:
+                return str(value) #.decode("ucs-2")
+            else:
+                return None
+        return process
+    
+class UNICHAR(_SybaseUnitypeMixin, sqltypes.Unicode):
     __visit_name__ = 'UNICHAR'
 
-class UNIVARCHAR(sqltypes.Unicode):
+class UNIVARCHAR(_SybaseUnitypeMixin, sqltypes.Unicode):
     __visit_name__ = 'UNIVARCHAR'
 
-class UNITEXT(sqltypes.UnicodeText):
+class UNITEXT(_SybaseUnitypeMixin, sqltypes.UnicodeText):
     __visit_name__ = 'UNITEXT'
 
 class TINYINT(sqltypes.Integer):
@@ -120,8 +131,14 @@ class SybaseTypeCompiler(compiler.GenericTypeCompiler):
     def visit_boolean(self, type_):
         return self.visit_BIT(type_)
 
+    def visit_unicode(self, type_):
+        return self.visit_NVARCHAR(type_)
+
     def visit_UNICHAR(self, type_):
         return "UNICHAR(%d)" % type_.length
+
+    def visit_UNIVARCHAR(self, type_):
+        return "UNIVARCHAR(%d)" % type_.length
 
     def visit_UNITEXT(self, type_):
         return "UNITEXT"

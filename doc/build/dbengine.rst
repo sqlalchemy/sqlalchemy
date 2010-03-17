@@ -118,8 +118,8 @@ sqlite3_                   ``sqlite+pysqlite``\*        yes          yes        
 **Sybase ASE**
 -------------------------------------------------------------------------------------------------------------------------------
 mxodbc_                    ``sybase+mxodbc``            development  development   no           yes                yes
-pyodbc_                    ``sybase+pyodbc``            partial      development   no           unknown            unknown
-python-sybase_             ``sybase+pysybase``\*        partial      development   no           yes                yes
+pyodbc_                    ``sybase+pyodbc``\*          partial      development   no           unknown            unknown
+python-sybase_             ``sybase+pysybase``          partial      development   no           yes                yes
 =========================  ===========================  ===========  ===========   ===========  =================  ============
 
 .. _psycopg2: http://www.initd.org/

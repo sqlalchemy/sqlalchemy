@@ -184,7 +184,7 @@ class DefaultDialect(base.Dialect):
         
         # detect if there's an NVARCHAR type with different behavior available
         unicode_for_unicode = check_unicode(sqltypes.Unicode(60))
-       
+        
         if unicode_for_unicode and not unicode_for_varchar:
             return "conditional"
         else:

@@ -13,6 +13,12 @@ Connect strings are of the form::
 
     sybase+pysybase://<username>:<password>@<dsn>/[database name]
 
+Unicode Support
+---------------
+
+The python-sybase driver does not appear to support non-ASCII strings of any
+kind at this time.
+
 """
 
 from sqlalchemy.dialects.sybase.base import SybaseDialect, \

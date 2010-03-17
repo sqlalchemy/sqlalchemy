@@ -8,7 +8,24 @@ Connect strings are of the form::
     sybase+pyodbc://<username>:<password>@<dsn>/
     sybase+pyodbc://<username>:<password>@<host>/<database>
 
+Unicode Support
+---------------
 
+The pyodbc driver currently supports usage of these Sybase types with 
+Unicode or multibyte strings::
+
+    CHAR
+    NCHAR
+    NVARCHAR
+    TEXT
+    VARCHAR
+
+Currently *not* supported are::
+
+    UNICHAR
+    UNITEXT
+    UNIVARCHAR
+    
 """
 
 from sqlalchemy.dialects.sybase.base import SybaseDialect, SybaseExecutionContext
