@@ -53,7 +53,7 @@ class MxODBCConnector(Connector):
             conn.errorhandler = error_handler
             # Alternatives to experiment with:
             #conn.bindmethod = self.dbapi.BIND_USING_PYTHONTYPE
-            #conn.bindmethod = self.dbapi.BIND_USING_SQLTYPE
+            conn.bindmethod = self.dbapi.BIND_USING_SQLTYPE
         return connect
 
     def create_connect_args(self, url):
