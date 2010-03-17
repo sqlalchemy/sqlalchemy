@@ -1004,6 +1004,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             "SELECT mytable.myid IN (4, 5, 6) AS anon_1 FROM mytable",
             dialect=dialect
         )
+
+        self.assert_compile(
+            select([func.mod(table1.c.myid, 5)]),
+            "SELECT mod(mytable.myid, 5) AS mod_1 FROM mytable",
+            dialect=dialect
+        )
         
         self.assert_compile(
             select([literal("foo").in_([])]),
