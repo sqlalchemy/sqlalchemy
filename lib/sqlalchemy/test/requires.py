@@ -10,7 +10,8 @@ from testing import \
      _chain_decorators_on, \
      exclude, \
      emits_warning_on,\
-     skip_if
+     skip_if,\
+     fails_on
 
 import testing
 import sys
@@ -48,6 +49,8 @@ def boolean_col_expressions(fn):
         no_support('firebird', 'not supported by database'),
         no_support('oracle', 'not supported by database'),
         no_support('mssql', 'not supported by database'),
+        no_support('sybase', 'not supported by database'),
+        no_support('maxdb', 'FIXME: verify not supported by database'),
     )
     
 def identity(fn):
@@ -153,6 +156,31 @@ def subqueries(fn):
         exclude('mysql', '<', (4, 1, 1), 'no subquery support'),
         )
 
+def intersect(fn):
+    """Target database must support INTERSECT or equivlaent."""
+    return _chain_decorators_on(
+        fn,
+        fails_on('firebird', 'no support for INTERSECT'),
+        fails_on('mysql', 'no support for INTERSECT'),
+        fails_on('sybase', 'no support for INTERSECT'),
+    )
+
+def except_(fn):
+    """Target database must support EXCEPT or equivlaent (i.e. MINUS)."""
+    return _chain_decorators_on(
+        fn,
+        fails_on('firebird', 'no support for EXCEPT'),
+        fails_on('mysql', 'no support for EXCEPT'),
+        fails_on('sybase', 'no support for EXCEPT'),
+    )
+
+def offset(fn):
+    """Target database must support some method of adding OFFSET or equivalent to a result set."""
+    return _chain_decorators_on(
+        fn,
+        fails_on('sybase', 'no support for OFFSET or equivalent'),
+    )
+    
 def returning(fn):
     return _chain_decorators_on(
         fn,

@@ -263,9 +263,6 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         'milliseconds': 'millisecond'
     })
 
-    def visit_mod(self, binary, **kw):
-        return "MOD(%s, %s)" % (self.process(binary.left), self.process(binary.right))
-
     def get_select_precolumns(self, select):
         s = select._distinct and "DISTINCT " or ""
         if select._limit:
