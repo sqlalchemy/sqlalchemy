@@ -26,7 +26,7 @@ from sqlalchemy.orm.interfaces import (
 NoneType = type(None)
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
-           'ComparableProperty', 'RelationshipProperty', 'BackRef')
+           'ComparableProperty', 'RelationshipProperty', 'RelationProperty', 'BackRef')
 
 
 class ColumnProperty(StrategizedProperty):
@@ -1199,7 +1199,7 @@ class RelationshipProperty(StrategizedProperty):
         if not self.viewonly:
             self._dependency_processor.register_processors(uowcommit)
 
-PropertyLoader = RelationshipProperty
+PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)
 
 mapper.ColumnProperty = ColumnProperty
