@@ -1326,12 +1326,10 @@ class MSDialect(default.DefaultDialect):
         if ic is not None and self.server_version_info >= MS_2005_VERSION:
             table_fullname = "%s.%s" % (current_schema, tablename)
             cursor = connection.execute(
-                sql.text("select ident_seed(:tname), ident_incr(:tname)",
-                    bindparams=[
-                                    sql.bindparam('tname', table_fullname)
-                    ]
+                "select ident_seed('%s'), ident_incr('%s')" 
+                % (tablename, tablename)
                 )
-            )
+
             row = cursor.first()
             if not row is None:
                 colmap[ic]['sequence'].update({
