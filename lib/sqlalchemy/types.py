@@ -928,20 +928,24 @@ class Numeric(_DateAffinity, TypeEngine):
         return dbapi.NUMBER
 
     def bind_processor(self, dialect):
-        return processors.to_float
+        if dialect.supports_native_decimal:
+            return None
+        else:
+            return processors.to_float
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            #XXX: use decimal from http://www.bytereef.org/libmpdec.html
-#            try:
-#                from fastdec import mpd as Decimal
-#            except ImportError:
-            if self.scale is not None:
-                return processors.to_decimal_processor_factory(_python_Decimal, self.scale)
+            if dialect.supports_native_decimal:
+                # we're a "numeric", DBAPI will give us Decimal directly
+                return None
             else:
-                return processors.to_decimal_processor_factory(_python_Decimal)
+                # we're a "numeric", DBAPI returns floats, convert.
+                return processors.to_decimal_processor_factory(_python_Decimal, self.scale)
         else:
-            return None
+            if dialect.supports_native_decimal:
+                return processors.to_float
+            else:
+                return None
 
     @util.memoized_property
     def _expression_adaptations(self):
@@ -980,10 +984,6 @@ class Float(Numeric):
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            #XXX: use decimal from http://www.bytereef.org/libmpdec.html
-#            try:
-#                from fastdec import mpd as Decimal
-#            except ImportError:
             return processors.to_decimal_processor_factory(_python_Decimal)
         else:
             return None

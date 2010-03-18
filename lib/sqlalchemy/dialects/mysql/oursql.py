@@ -21,22 +21,15 @@ defaults to, there is a separate parameter::
   create_engine('mysql+oursql:///mydb?charset=latin1')
 """
 
-import decimal
 import re
 
 from sqlalchemy.dialects.mysql.base import (BIT, MySQLDialect, MySQLExecutionContext,
-                                            MySQLCompiler, MySQLIdentifierPreparer, NUMERIC, _NumericType)
+                                            MySQLCompiler, MySQLIdentifierPreparer)
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
 from sqlalchemy import processors
 
-
-class _oursqlNumeric(NUMERIC):
-    def result_processor(self, dialect, coltype):
-        if self.asdecimal:
-            return None
-        return processors.to_float
 
 
 class _oursqlBIT(BIT):
@@ -60,7 +53,9 @@ class MySQLDialect_oursql(MySQLDialect):
     supports_unicode_binds = True
     supports_unicode_statements = True
 # end Py2K
-
+    
+    supports_native_decimal = True
+    
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
     execution_ctx_cls = MySQLExecutionContext_oursql
@@ -69,7 +64,6 @@ class MySQLDialect_oursql(MySQLDialect):
         MySQLDialect.colspecs,
         {
             sqltypes.Time: sqltypes.Time,
-            sqltypes.Numeric: _oursqlNumeric,
             BIT: _oursqlBIT,
         }
     )

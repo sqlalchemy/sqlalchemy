@@ -61,19 +61,6 @@ from sqlalchemy.types import BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL,\
                             TIMESTAMP, VARCHAR
                             
 
-class _NumericMixin(object):
-    def bind_processor(self, dialect):
-        if self.asdecimal:
-            return processors.to_str
-        else:
-            return processors.to_float
-
-class _SLNumeric(_NumericMixin, sqltypes.Numeric):
-    pass
-
-class _SLFloat(_NumericMixin, sqltypes.Float):
-    pass
-
 class _DateTimeMixin(object):
     _reg = None
     _storage_format = None
@@ -163,8 +150,6 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 colspecs = {
     sqltypes.Date: DATE,
     sqltypes.DateTime: DATETIME,
-    sqltypes.Float: _SLFloat,
-    sqltypes.Numeric: _SLNumeric,
     sqltypes.Time: TIME,
 }
 

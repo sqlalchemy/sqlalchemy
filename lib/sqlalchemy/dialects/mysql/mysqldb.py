@@ -20,11 +20,10 @@ strings, also pass ``use_unicode=0`` in the connection arguments::
   create_engine('mysql:///mydb?charset=utf8&use_unicode=0')
 """
 
-import decimal
 import re
 
-from sqlalchemy.dialects.mysql.base import (DECIMAL, MySQLDialect, MySQLExecutionContext,
-                                            MySQLCompiler, MySQLIdentifierPreparer, NUMERIC, _NumericType)
+from sqlalchemy.dialects.mysql.base import (MySQLDialect, MySQLExecutionContext,
+                                            MySQLCompiler, MySQLIdentifierPreparer)
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
@@ -48,20 +47,6 @@ class MySQLCompiler_mysqldb(MySQLCompiler):
         return text.replace('%', '%%')
 
 
-class _DecimalType(_NumericType):
-    def result_processor(self, dialect, coltype):
-        if self.asdecimal:
-            return None
-        return processors.to_float
-
-
-class _MySQLdbNumeric(_DecimalType, NUMERIC):
-    pass
-
-
-class _MySQLdbDecimal(_DecimalType, DECIMAL):
-    pass
-
 class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
     
     def _escape_identifier(self, value):
@@ -74,6 +59,8 @@ class MySQLDialect_mysqldb(MySQLDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
+    supports_native_decimal = True
+
     default_paramstyle = 'format'
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
@@ -82,8 +69,6 @@ class MySQLDialect_mysqldb(MySQLDialect):
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {
-            sqltypes.Numeric: _MySQLdbNumeric,
-            DECIMAL: _MySQLdbDecimal
         }
     )
     
