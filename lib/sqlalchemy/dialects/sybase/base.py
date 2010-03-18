@@ -370,6 +370,14 @@ class SybaseDialect(default.DefaultDialect):
                      text("SELECT user_name() as user_name", typemap={'user_name':Unicode})
              )
 
+    def initialize(self, connection):
+        super(SybaseDialect, self).initialize(connection)
+        if self.server_version_info is not None and\
+            self.server_version_info < (15, ):
+            self.max_identifier_length = 30
+        else:
+            self.max_identifier_length = 255
+        
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         if schema is None:

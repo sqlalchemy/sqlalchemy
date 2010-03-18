@@ -21,9 +21,17 @@ kind at this time.
 
 """
 
+from sqlalchemy import types as sqltypes, processors
 from sqlalchemy.dialects.sybase.base import SybaseDialect, \
                                         SybaseExecutionContext, SybaseSQLCompiler
 
+
+class _SybNumeric(sqltypes.Numeric):
+    def result_processor(self, dialect, type_):
+        if not self.asdecimal:
+            return processors.to_float
+        else:
+            return sqltypes.Numeric.result_processor(self, dialect, type_)
 
 class SybaseExecutionContext_pysybase(SybaseExecutionContext):
 
@@ -52,6 +60,11 @@ class SybaseDialect_pysybase(SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_pysybase
     statement_compiler = SybaseSQLCompiler_pysybase
 
+    colspecs={
+       sqltypes.Numeric:_SybNumeric,
+       sqltypes.Float:sqltypes.Float
+    }
+
     @classmethod
     def dbapi(cls):
         import Sybase
@@ -69,7 +82,9 @@ class SybaseDialect_pysybase(SybaseDialect):
             cursor.execute(statement, param)
 
     def _get_server_version_info(self, connection):
-       return connection.scalar("select @@version_number")
+       vers = connection.scalar("select @@version_number")
+       # i.e. 15500, 15000, 12500 == (15, 5, 0, 0), (15, 0, 0, 0), (12, 5, 0, 0)
+       return (vers / 1000, vers % 1000 / 100, vers % 100 / 10, vers % 10)
 
     def is_disconnect(self, e):
         if isinstance(e, (self.dbapi.OperationalError, self.dbapi.ProgrammingError)):

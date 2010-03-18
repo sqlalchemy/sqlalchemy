@@ -940,7 +940,10 @@ class Numeric(_DateAffinity, TypeEngine):
                 return None
             else:
                 # we're a "numeric", DBAPI returns floats, convert.
-                return processors.to_decimal_processor_factory(_python_Decimal, self.scale)
+                if self.scale is not None:
+                    return processors.to_decimal_processor_factory(_python_Decimal, self.scale)
+                else:
+                    return processors.to_decimal_processor_factory(_python_Decimal)
         else:
             if dialect.supports_native_decimal:
                 return processors.to_float

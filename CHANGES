@@ -15,6 +15,11 @@ CHANGES
     relationship(), to eliminate confusion over the relational
     algebra term.  relation() however will remain available 
     in equal capacity for the foreseeable future.  [ticket:1740]
+
+  - Added "version_id_generator" argument to Mapper, this is a
+    callable that, given the current value of the "version_id_col",
+    returns the next version number.  Can be used for alternate
+    versioning schemes such as uuid, timestamps.  [ticket:1692]
     
   - Fixed bug in session.rollback() which involved not removing
     formerly "pending" objects from the session before
@@ -27,6 +32,13 @@ CHANGES
   - Removed a lot of logging that nobody really cares about,
     logging that remains will respond to live changes in the
     log level.  No significant overhead is added.  [ticket:1719]
+
+  - Fixed bug in session.merge() which prevented dict-like
+    collections from merging.
+    
+  - session.merge() works with relations that specifically
+    don't include "merge" in their cascade options - the target
+    is ignored completely.
     
   - session.merge() will not expire existing scalar attributes
     on an existing target if the target has a value for that
@@ -35,6 +47,12 @@ CHANGES
     on existing items.  Will still mark the attr as expired
     if the destination doesn't have the attr, though, which
     fulfills some contracts of deferred cols.  [ticket:1681]
+
+  - The "allow_null_pks" flag is now called "allow_partial_pks",
+    defaults to True, acts like it did in 0.5 again.  Except,
+    it also is implemented within merge() such that a SELECT
+    won't be issued for an incoming instance with partially
+    NULL primary key if the flag is False.  [ticket:1680]
   
   - Fixed bug in 0.6-reworked "many-to-one" optimizations
     such that a many-to-one that is against a non-primary key
@@ -45,10 +63,6 @@ CHANGES
     and we can't pull from the local identity map on a 
     non-primary key column. [ticket:1737]
     
-  - session.merge() works with relations that specifically
-    don't include "merge" in their cascade options - the target
-    is ignored completely.
-
   - fixed internal error which would occur if calling has()
     or similar complex expression on a single-table inheritance
     relation(). [ticket:1731]
@@ -96,14 +110,6 @@ CHANGES
   - Fixed bug in attribute history that inadvertently invoked
     __eq__ on mapped instances.
 
-  - Fixed bug in session.merge() which prevented dict-like
-    collections from merging.
-
-  - For those who might use debug logging on 
-    sqlalchemy.orm.strategies, most logging calls during row
-    loading have been removed.   These were never very helpful
-    and cluttered up the code.
-     
   - Some internal streamlining of object loading grants a 
     small speedup for large results, estimates are around 
     10-15%.   Gave the "state" internals a good solid 
@@ -116,12 +122,6 @@ CHANGES
   - Fixed cascade bug in many-to-one relation() when attribute
     was set to None, introduced in r6711 (cascade deleted
     items into session during add()).
-
-  - The "allow_null_pks" flag is now called "allow_partial_pks",
-    defaults to True, acts like it did in 0.5 again.  Except,
-    it also is implemented within merge() such that a SELECT
-    won't be issued for an incoming instance with partially
-    NULL primary key if the flag is False.  [ticket:1680]
 
   - Calling query.order_by() or query.distinct() before calling
     query.select_from(), query.with_polymorphic(), or
@@ -136,11 +136,6 @@ CHANGES
     INSERT and DELETE replaced by an UPDATE, to fail when 
     version_id_col was in use. [ticket:1692]
     
-  - Added "version_id_generator" argument to Mapper, this is a
-    callable that, given the current value of the "version_id_col",
-    returns the next version number.  Can be used for alternate
-    versioning schemes such as uuid, timestamps.  [ticket:1692]
-
 - sql
   - The most common result processors conversion function were
     moved to the new "processors" module.  Dialect authors are
@@ -350,7 +345,8 @@ CHANGES
     of MySQL keywords.  [ticket:1634]
     
 - mssql
-  - Re-established initial support for pymssql.
+  - Re-established initial support for pymssql (not functional
+    yet, though)
 
   - Various fixes for implicit returning, reflection,
     etc. - the MS-SQL dialects aren't quite complete
