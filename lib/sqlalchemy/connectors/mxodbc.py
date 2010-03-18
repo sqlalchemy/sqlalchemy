@@ -93,6 +93,8 @@ class MxODBCConnector(Connector):
         return args, kwargs
 
     def is_disconnect(self, e):
+        # eGenix recommends checking connection.closed here,
+        # but how can we get a handle on the current connection?
         if isinstance(e, self.dbapi.ProgrammingError):
             return "connection already closed" in str(e)
         elif isinstance(e, self.dbapi.Error):
