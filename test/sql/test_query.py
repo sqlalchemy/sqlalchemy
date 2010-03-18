@@ -776,6 +776,7 @@ class QueryTest(TestBase):
     @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', "uses sql-92 rules")
     @testing.fails_on('sybase', "uses sql-92 rules")
+    @testing.fails_on('mssql+mxodbc', "uses sql-92 rules")
     @testing.fails_if(lambda: 
                          testing.against('mssql+pyodbc') and not testing.db.dialect.freetds,
                          "uses sql-92 rules")
