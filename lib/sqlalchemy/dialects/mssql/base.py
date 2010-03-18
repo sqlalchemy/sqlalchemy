@@ -1065,9 +1065,23 @@ class MSSQLStrictCompiler(MSSQLCompiler):
         kw['literal_binds'] = True
         return super(MSSQLStrictCompiler, self).visit_function(func, **kw)
 
-    #def render_literal_value(self, value):
-        # TODO! use mxODBC's literal quoting services here
-
+    def render_literal_value(self, value, type_):
+        """
+        For date and datetime values, convert to a string
+        format acceptable to MSSQL. That seems to be the
+        so-called ODBC canonical date format which looks
+        like this:
+        
+            yyyy-mm-dd hh:mi:ss.mmm(24h)
+        
+        For other data types, call the base class implementation.
+        """
+        # datetime and date are both subclasses of datetime.date
+        if issubclass(type(value), datetime.date):
+            # SQL Server wants single quotes around the date string.
+            return "'" + str(value) + "'"
+        else:
+            MSSQLCompiler.render_literal_value(self, value, type_)
 
 class MSDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
