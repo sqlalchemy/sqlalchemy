@@ -283,7 +283,8 @@ class _MSNumeric(sqltypes.Numeric):
             # TODO: this seems exceedingly complex. 
             # need to know exactly what tests cover this, so far
             # test_types.NumericTest.test_enotation_decimal
-            
+            # see the _SybNumeric type in sybase/pyodbc for possible
+            # generalized solution on pyodbc
             if isinstance(value, decimal.Decimal):
                 if value.adjusted() < 0:
                     result = "%s0.%s%s" % (

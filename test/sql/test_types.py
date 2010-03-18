@@ -1155,7 +1155,6 @@ class NumericTest(TestBase, AssertsExecutionResults):
         finally:
             t.drop(testing.db)
 
-    @testing.fails_on('sybase', "Driver doesn't appear to handle E notation, won't accept strings")
     def test_enotation_decimal(self):
         """test exceedingly small decimals.
         
