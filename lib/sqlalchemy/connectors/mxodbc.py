@@ -51,9 +51,6 @@ class MxODBCConnector(Connector):
             conn.datetimeformat = self.dbapi.PYDATETIME_DATETIMEFORMAT
             conn.decimalformat = self.dbapi.DECIMAL_DECIMALFORMAT
             conn.errorhandler = self._error_handler()
-            # Alternatives to experiment with:
-            #conn.bindmethod = self.dbapi.BIND_USING_PYTHONTYPE
-            conn.bindmethod = self.dbapi.BIND_USING_SQLTYPE
         return connect
     
     def _error_handler(self):
