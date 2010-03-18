@@ -40,7 +40,7 @@ class AttributeListener(AttributeExtension):
 if __name__ == '__main__':
 
     from sqlalchemy import Column, Integer, String, ForeignKey
-    from sqlalchemy.orm import relation
+    from sqlalchemy.orm import relationship
     from sqlalchemy.ext.declarative import declarative_base
 
     class Base(object):
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         id = Column(Integer, primary_key=True)
         data = Column(String(50))
         related_id = Column(Integer, ForeignKey("related.id"))
-        related = relation("Related", backref="mapped")
+        related = relationship("Related", backref="mapped")
 
         def __str__(self):
             return "MyMappedClass(data=%r)" % self.data

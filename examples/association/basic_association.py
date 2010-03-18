@@ -14,7 +14,7 @@ from datetime import datetime
 
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
     String, DateTime, Numeric, ForeignKey, and_)
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 
 # Uncomment these to watch database activity.
 #import logging
@@ -62,12 +62,12 @@ class OrderItem(object):
         self.price = price or item.price
         
 mapper(Order, orders, properties={
-    'order_items': relation(OrderItem, cascade="all, delete-orphan",
+    'order_items': relationship(OrderItem, cascade="all, delete-orphan",
                             backref='order')
 })
 mapper(Item, items)
 mapper(OrderItem, orderitems, properties={
-    'item': relation(Item, lazy=False)
+    'item': relationship(Item, lazy=False)
 })
 
 session = create_session()

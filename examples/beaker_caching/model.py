@@ -9,8 +9,8 @@ City --(has a)--> Country
 
 """
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relation
-from meta import Base, FromCache, Session, RelationCache
+from sqlalchemy.orm import relationship
+from meta import Base, FromCache, Session, RelationshipCache
 
 class Country(Base):
     __tablename__ = 'country'
@@ -27,7 +27,7 @@ class City(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
     country_id = Column(Integer, ForeignKey('country.id'), nullable=False)
-    country = relation(Country)
+    country = relationship(Country)
 
     def __init__(self, name, country):
         self.name = name
@@ -39,7 +39,7 @@ class PostalCode(Base):
     id = Column(Integer, primary_key=True)
     code = Column(String(10), nullable=False)
     city_id = Column(Integer, ForeignKey('city.id'), nullable=False)
-    city = relation(City)
+    city = relationship(City)
     
     @property
     def country(self):
@@ -56,7 +56,7 @@ class Address(Base):
     person_id = Column(Integer, ForeignKey('person.id'), nullable=False)
     street = Column(String(200), nullable=False)
     postal_code_id = Column(Integer, ForeignKey('postal_code.id'))
-    postal_code = relation(PostalCode)
+    postal_code = relationship(PostalCode)
     
     @property
     def city(self):
@@ -77,7 +77,7 @@ class Person(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
-    addresses = relation(Address, collection_class=set)
+    addresses = relationship(Address, collection_class=set)
 
     def __init__(self, name, *addresses):
         self.name = name
@@ -92,13 +92,13 @@ class Person(Base):
     def format_full(self):
         return "\t".join([str(x) for x in [self] + list(self.addresses)])
         
-# Caching options.   A set of three RelationCache options
+# Caching options.   A set of three RelationshipCache options
 # which can be applied to Query(), causing the "lazy load"
 # of these attributes to be loaded from cache.
-cache_address_bits = RelationCache("default", "byid", PostalCode.city).\
+cache_address_bits = RelationshipCache("default", "byid", PostalCode.city).\
                 and_(
-                    RelationCache("default", "byid", City.country)
+                    RelationshipCache("default", "byid", City.country)
                 ).and_(
-                    RelationCache("default", "byid", Address.postal_code)
+                    RelationshipCache("default", "byid", Address.postal_code)
                 )
 

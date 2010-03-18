@@ -868,11 +868,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "LEN%s" % self.function_argspec(fn, **kw)
         
-    def visit_concat_op(self, binary):
-        return "%s + %s" % (self.process(binary.left), self.process(binary.right))
+    def visit_concat_op(self, binary, **kw):
+        return "%s + %s" % (self.process(binary.left, **kw), self.process(binary.right, **kw))
         
-    def visit_match_op(self, binary):
-        return "CONTAINS (%s, %s)" % (self.process(binary.left), self.process(binary.right))
+    def visit_match_op(self, binary, **kw):
+        return "CONTAINS (%s, %s)" % (
+                                        self.process(binary.left, **kw), 
+                                        self.process(binary.right, **kw))
         
     def get_select_precolumns(self, select):
         """ MS-SQL puts TOP, it's version of LIMIT here """

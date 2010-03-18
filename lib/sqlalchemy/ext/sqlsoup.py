@@ -170,10 +170,10 @@ You can also join directly to a labeled object::
     [u'name', u'email', u'password', u'classname', u'admin', u'loans_book_id', u'loans_user_name', u'loans_loan_date']
 
 
-Relations
-=========
+Relationships
+=============
 
-You can define relations on SqlSoup classes:
+You can define relationships on SqlSoup classes:
 
     >>> db.users.relate('loans', db.loans)
 
@@ -186,7 +186,7 @@ These can then be used like a normal SA property:
     [MappedUsers(name=u'Bhargan Basepair',email='basepair+nospam@example.edu',password=u'basepair',classname=None,admin=1)]
 
 
-relate can take any options that the relation function accepts in normal mapper definition:
+relate can take any options that the relationship function accepts in normal mapper definition:
 
     >>> del db._cache['users']
     >>> db.users.relate('loans', db.loans, order_by=db.loans.loan_date, cascade='all, delete-orphan')
@@ -308,7 +308,7 @@ from sqlalchemy import Table, MetaData, join
 from sqlalchemy import schema, sql
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import scoped_session, sessionmaker, mapper, \
-                            class_mapper, relation, session,\
+                            class_mapper, relationship, session,\
                             object_session
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE
 from sqlalchemy.exceptions import SQLAlchemyError, InvalidRequestError, ArgumentError
@@ -373,7 +373,7 @@ class TableClassType(SelectableClassType):
         return o
 
     def relate(cls, propname, *args, **kwargs):
-        class_mapper(cls)._configure_property(propname, relation(*args, **kwargs))
+        class_mapper(cls)._configure_property(propname, relationship(*args, **kwargs))
 
 def _is_outer_join(selectable):
     if not isinstance(selectable, sql.Join):

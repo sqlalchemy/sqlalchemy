@@ -20,7 +20,7 @@ all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
 _INSTRUMENTOR = ('mapper', 'instrumentor')
 
 class CascadeOptions(object):
-    """Keeps track of the options sent to relation().cascade"""
+    """Keeps track of the options sent to relationship().cascade"""
 
     def __init__(self, arg=""):
         if not arg:
@@ -434,8 +434,8 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     In addition to the interface provided by
     :func:`~sqlalchemy.sql.expression.join()`, left and right may be mapped
     classes or AliasedClass instances. The onclause may be a
-    string name of a relation(), or a class-bound descriptor
-    representing a relation.
+    string name of a relationship(), or a class-bound descriptor
+    representing a relationship.
 
     join_to_left indicates to attempt aliasing the ON clause,
     in whatever form it is passed, to the selectable
@@ -451,8 +451,8 @@ def outerjoin(left, right, onclause=None, join_to_left=True):
     In addition to the interface provided by
     :func:`~sqlalchemy.sql.expression.outerjoin()`, left and right may be mapped
     classes or AliasedClass instances. The onclause may be a
-    string name of a relation(), or a class-bound descriptor
-    representing a relation.
+    string name of a relationship(), or a class-bound descriptor
+    representing a relationship.
 
     """
     return _ORMJoin(left, right, onclause, True, join_to_left)

@@ -4,7 +4,7 @@ from sqlalchemy.test import testing
 from sqlalchemy.orm import scoped_session
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, query
+from sqlalchemy.orm import mapper, relationship, query
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
 
@@ -54,7 +54,7 @@ class ScopedSessionTest(_base.MappedTest):
             custom_query = Session.query_property(query_cls=CustomQuery)
 
         mapper(SomeObject, table1, properties={
-            'options':relation(SomeOtherObject)})
+            'options':relationship(SomeOtherObject)})
         mapper(SomeOtherObject, table2)
 
         s = SomeObject(id=1, data="hello")
@@ -101,7 +101,7 @@ class ScopedMapperTest(_ScopedTest):
     def setup_mappers(cls):
         Session = scoped_session(sa.orm.create_session)
         Session.mapper(SomeObject, table1, properties={
-            'options':relation(SomeOtherObject)
+            'options':relationship(SomeOtherObject)
         })
         Session.mapper(SomeOtherObject, table2)
 

@@ -47,7 +47,7 @@ class O2MTest(_base.MappedTest):
                 return "Blub id %d, data %s" % (self.id, self.data)
 
         mapper(Blub, blub, inherits=Bar, properties={
-            'parent_foo':relation(Foo)
+            'parent_foo':relationship(Foo)
         })
 
         sess = create_session()
@@ -141,7 +141,7 @@ class PolymorphicSynonymTest(_base.MappedTest):
         
     
 class CascadeTest(_base.MappedTest):
-    """that cascades on polymorphic relations continue
+    """that cascades on polymorphic relationships continue
     cascading along the path of the instance's mapper, not
     the base mapper."""
 
@@ -179,11 +179,11 @@ class CascadeTest(_base.MappedTest):
             pass
 
         mapper(T1, t1, properties={
-            't2s':relation(T2, cascade="all")
+            't2s':relationship(T2, cascade="all")
         })
         mapper(T2, t2, polymorphic_on=t2.c.type, polymorphic_identity='t2')
         mapper(T3, t3, inherits=T2, polymorphic_identity='t3', properties={
-            't4s':relation(T4, cascade="all")
+            't4s':relationship(T4, cascade="all")
         })
         mapper(T4, t4)
 
@@ -239,10 +239,10 @@ class M2OUseGetTest(_base.MappedTest):
             # previously, this was needed for the comparison to occur:
             # the 'primaryjoin' looks just like "Sub"'s "get" clause (based on the Base id),
             # and foreign_keys since that join condition doesn't actually have any fks in it
-            #'sub':relation(Sub, primaryjoin=base.c.id==related.c.sub_id, foreign_keys=related.c.sub_id)
+            #'sub':relationship(Sub, primaryjoin=base.c.id==related.c.sub_id, foreign_keys=related.c.sub_id)
             
             # now we can use this:
-            'sub':relation(Sub)
+            'sub':relationship(Sub)
         })
         
         assert class_mapper(Related).get_property('sub').strategy.use_get
@@ -383,8 +383,8 @@ class EagerLazyTest(_base.MappedTest):
 
         foos = mapper(Foo, foo)
         bars = mapper(Bar, bar, inherits=foos)
-        bars.add_property('lazy', relation(foos, bar_foo, lazy=True))
-        bars.add_property('eager', relation(foos, bar_foo, lazy=False))
+        bars.add_property('lazy', relationship(foos, bar_foo, lazy=True))
+        bars.add_property('eager', relationship(foos, bar_foo, lazy=False))
 
         foo.insert().execute(data='foo1')
         bar.insert().execute(id=1, data='bar1')
@@ -430,7 +430,7 @@ class EagerTargetingTest(_base.MappedTest):
         
         mapper(A, a_table, polymorphic_on=a_table.c.type, polymorphic_identity='A', 
                 properties={
-                    'children': relation(A, order_by=a_table.c.name)
+                    'children': relationship(A, order_by=a_table.c.name)
             })
 
         mapper(B, b_table, inherits=A, polymorphic_identity='B', properties={
@@ -492,7 +492,7 @@ class FlushTest(_base.MappedTest):
         class Admin(User):pass
         role_mapper = mapper(Role, roles)
         user_mapper = mapper(User, users, properties = {
-                'roles' : relation(Role, secondary=user_roles, lazy=False)
+                'roles' : relationship(Role, secondary=user_roles, lazy=False)
             }
         )
         admin_mapper = mapper(Admin, admins, inherits=user_mapper)
@@ -528,7 +528,7 @@ class FlushTest(_base.MappedTest):
 
         role_mapper = mapper(Role, roles)
         user_mapper = mapper(User, users, properties = {
-                'roles' : relation(Role, secondary=user_roles, lazy=False)
+                'roles' : relationship(Role, secondary=user_roles, lazy=False)
             }
         )
 
@@ -584,7 +584,7 @@ class VersioningTest(_base.MappedTest):
                     polymorphic_on=base.c.discriminator, 
                     version_id_col=base.c.version_id, 
                     polymorphic_identity=1, properties={
-            'stuff':relation(Stuff)
+            'stuff':relationship(Stuff)
         })
         mapper(Sub, subtable, inherits=Base, polymorphic_identity=2)
 
@@ -1194,7 +1194,7 @@ class PKDiscriminatorTest(_base.MappedTest):
             pass
             
         mapper(Parent, parents, properties={
-            'children': relation(Child, backref='parent'),
+            'children': relationship(Child, backref='parent'),
         })
         mapper(Child, children, polymorphic_on=children.c.type,
             polymorphic_identity=1)
@@ -1249,7 +1249,7 @@ class DeleteOrphanTest(_base.MappedTest):
         mapper(Base, single, polymorphic_on=single.c.type, polymorphic_identity='base')
         mapper(SubClass, inherits=Base, polymorphic_identity='sub')
         mapper(Parent, parent, properties={
-            'related':relation(Base, cascade="all, delete-orphan")
+            'related':relationship(Base, cascade="all, delete-orphan")
         })
         
         sess = create_session()

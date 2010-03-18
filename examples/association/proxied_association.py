@@ -4,7 +4,7 @@ the usage of the associationproxy extension."""
 from datetime import datetime
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
     String, DateTime, Float, ForeignKey, and_)
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
 engine = create_engine('sqlite://')
@@ -48,11 +48,11 @@ class Item(object):
 
 
 mapper(Order, orders, properties={
-    'itemassociations':relation(OrderItem, cascade="all, delete-orphan", lazy=False)
+    'itemassociations':relationship(OrderItem, cascade="all, delete-orphan", lazy=False)
 })
 mapper(Item, items)
 mapper(OrderItem, orderitems, properties={
-    'item':relation(Item, lazy=False)
+    'item':relationship(Item, lazy=False)
 })
 
 session = create_session()

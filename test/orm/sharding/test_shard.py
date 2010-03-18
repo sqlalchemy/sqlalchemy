@@ -124,7 +124,7 @@ class ShardTest(TestBase):
                 self.temperature = temperature
 
         mapper(WeatherLocation, weather_locations, properties={
-            'reports':relation(Report, backref='location'),
+            'reports':relationship(Report, backref='location'),
             'city': deferred(weather_locations.c.city),
         })
 

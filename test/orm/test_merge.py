@@ -4,7 +4,7 @@ from sqlalchemy import Integer, PickleType, String
 import operator
 from sqlalchemy.test import testing
 from sqlalchemy.util import OrderedSet
-from sqlalchemy.orm import mapper, relation, create_session, PropComparator, \
+from sqlalchemy.orm import mapper, relationship, create_session, PropComparator, \
                             synonym, comparable_property, sessionmaker, attributes
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.interfaces import MapperOption
@@ -57,7 +57,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_transient_to_pending_collection(self):
         mapper(User, users, properties={
-            'addresses': relation(Address, backref='user',
+            'addresses': relationship(Address, backref='user',
                                   collection_class=OrderedSet)})
         mapper(Address, addresses)
         on_load = self.on_load_tracker(User)
@@ -113,7 +113,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_transient_to_persistent_collection(self):
         mapper(User, users, properties={
-            'addresses':relation(Address,
+            'addresses':relationship(Address,
                         backref='user',
                         collection_class=OrderedSet,
                                 order_by=addresses.c.id,
@@ -166,7 +166,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_detached_to_persistent_collection(self):
         mapper(User, users, properties={
-            'addresses':relation(Address,
+            'addresses':relationship(Address,
                                  backref='user',
                                  order_by=addresses.c.id,
                                  collection_class=OrderedSet)})
@@ -201,10 +201,10 @@ class MergeTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_unsaved_cascade(self):
-        """Merge of a transient entity with two child transient entities, with a bidirectional relation."""
+        """Merge of a transient entity with two child transient entities, with a bidirectional relationship."""
 
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses),
+            'addresses':relationship(mapper(Address, addresses),
                                  cascade="all", backref="user")
         })
         on_load = self.on_load_tracker(User)
@@ -305,7 +305,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_merge_irregular_collection(self):
         mapper(User, users, properties={
-            'addresses': relation(
+            'addresses': relationship(
                 mapper(Address, addresses),
                 backref='user',
                 collection_class=attribute_mapped_collection('email_address')),
@@ -322,7 +322,7 @@ class MergeTest(_fixtures.FixtureTest):
         """Merge of a persistent entity with two child persistent entities."""
 
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), backref='user')
+            'addresses':relationship(mapper(Address, addresses), backref='user')
         })
         on_load = self.on_load_tracker(User)
         self.on_load_tracker(Address, on_load)
@@ -414,12 +414,12 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(on_load.called, 21)
 
     @testing.resolve_artifact_names
-    def test_no_relation_cascade(self):
-        """test that merge doesn't interfere with a relation()
+    def test_no_relationship_cascade(self):
+        """test that merge doesn't interfere with a relationship()
            target that specifically doesn't include 'merge' cascade.
         """
         mapper(Address, addresses, properties={
-            'user':relation(User, cascade="save-update")
+            'user':relationship(User, cascade="save-update")
         })
         mapper(User, users)
         sess = create_session()
@@ -452,7 +452,7 @@ class MergeTest(_fixtures.FixtureTest):
     def test_one_to_many_cascade(self):
 
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses))})
+            'addresses':relationship(mapper(Address, addresses))})
 
         on_load = self.on_load_tracker(User)
         self.on_load_tracker(Address, on_load)
@@ -489,7 +489,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one_cascade(self):
         mapper(Address, addresses, properties={
-            'user':relation(User)
+            'user':relationship(User)
         })
         mapper(User, users)
         
@@ -525,7 +525,7 @@ class MergeTest(_fixtures.FixtureTest):
     def test_many_to_many_cascade(self):
 
         mapper(Order, orders, properties={
-            'items':relation(mapper(Item, items), secondary=order_items)})
+            'items':relationship(mapper(Item, items), secondary=order_items)})
 
         on_load = self.on_load_tracker(Order)
         self.on_load_tracker(Item, on_load)
@@ -570,7 +570,7 @@ class MergeTest(_fixtures.FixtureTest):
     def test_one_to_one_cascade(self):
 
         mapper(User, users, properties={
-            'address':relation(mapper(Address, addresses),uselist = False)
+            'address':relationship(mapper(Address, addresses),uselist = False)
         })
         on_load = self.on_load_tracker(User)
         self.on_load_tracker(Address, on_load)
@@ -602,7 +602,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_value_to_none(self):
         mapper(User, users, properties={
-            'address':relation(mapper(Address, addresses),uselist = False, backref='user')
+            'address':relationship(mapper(Address, addresses),uselist = False, backref='user')
         })
         sess = sessionmaker()()
         u = User(id=7, name="fred", address=Address(id=1, email_address='foo@bar.com'))
@@ -650,9 +650,9 @@ class MergeTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_no_load_with_backrefs(self):
-        """load=False populates relations in both directions without requiring a load"""
+        """load=False populates relationships in both directions without requiring a load"""
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), backref='user')
+            'addresses':relationship(mapper(Address, addresses), backref='user')
         })
 
         u = User(id=7, name='fred', addresses=[
@@ -694,7 +694,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         """
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses))
+            'addresses':relationship(mapper(Address, addresses))
         })
         sess = create_session()
         u = User()
@@ -754,7 +754,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_no_load_sets_backrefs(self):
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses),backref='user')})
+            'addresses':relationship(mapper(Address, addresses),backref='user')})
 
         sess = create_session()
         u = User()
@@ -790,7 +790,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         """
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses),
+            'addresses':relationship(mapper(Address, addresses),
                                  backref='user', cascade="all, delete-orphan")})
         sess = create_session()
         u = User()
@@ -878,7 +878,7 @@ class MergeTest(_fixtures.FixtureTest):
         
         s = create_session(autoflush=True)
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses),backref='user')})
+            'addresses':relationship(mapper(Address, addresses),backref='user')})
 
         a1 = Address(user=s.merge(User(id=1, name='ed')), email_address='x')
         before_id = id(a1.user)
@@ -894,7 +894,7 @@ class MergeTest(_fixtures.FixtureTest):
     def test_cascades_dont_autoflush(self):
         sess = create_session(autoflush=True)
         m = mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses),backref='user')})
+            'addresses':relationship(mapper(Address, addresses),backref='user')})
         user = User(id=8, name='fred', addresses=[Address(email_address='user')])
         merged_user = sess.merge(user)
         assert merged_user in sess.new
@@ -904,7 +904,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_cascades_dont_autoflush_2(self):
         mapper(User, users, properties={
-            'addresses':relation(Address,
+            'addresses':relationship(Address,
                         backref='user',
                                  cascade="all, delete-orphan")
         })

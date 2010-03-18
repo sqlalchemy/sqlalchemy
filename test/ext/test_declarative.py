@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, ForeignKeyConstraint, asc, Index
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import relation, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
+from sqlalchemy.orm import relationship, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.util import classproperty
 
@@ -28,7 +28,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            addresses = relation("Address", backref="user")
+            addresses = relationship("Address", backref="user")
 
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
@@ -113,7 +113,7 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column('id', Integer, primary_key=True)
             email = Column('email', String(50))
             user_id = Column('user_id', Integer, ForeignKey('users.id'))
-            user = relation("User", primaryjoin=user_id == User.id,
+            user = relationship("User", primaryjoin=user_id == User.id,
                             backref="addresses")
 
         assert mapperlib._new_mappers is True
@@ -128,7 +128,7 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column(String(50))
-            addresses = relation("Address", order_by="desc(Address.email)", 
+            addresses = relationship("Address", order_by="desc(Address.email)", 
                 primaryjoin="User.id==Address.user_id", foreign_keys="[Address.user_id]",
                 backref=backref('user', primaryjoin="User.id==Address.user_id", foreign_keys="[Address.user_id]")
                 )
@@ -153,7 +153,7 @@ class DeclarativeTest(DeclarativeTestBase):
         class Foo(Base, ComparableEntity):
             __tablename__ = 'foo'
             id = Column(Integer, primary_key=True)
-            rel = relation("User", primaryjoin="User.addresses==Foo.id")
+            rel = relationship("User", primaryjoin="User.addresses==Foo.id")
         assert_raises_message(exc.InvalidRequestError, "'addresses' is not an instance of ColumnProperty", compile_mappers)
 
     def test_string_dependency_resolution_no_magic(self):
@@ -162,7 +162,7 @@ class DeclarativeTest(DeclarativeTestBase):
         class User(Base, ComparableEntity):
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True)
-            addresses = relation("Address", 
+            addresses = relationship("Address", 
                 primaryjoin="User.id==Address.user_id.prop.columns[0]")
         
         class Address(Base, ComparableEntity):
@@ -180,7 +180,7 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
-            addresses = relation("Address", 
+            addresses = relationship("Address", 
                 primaryjoin="User.id==Address.user_id", 
                 backref="user"
                 )
@@ -200,7 +200,7 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             
-            props = relation("Prop", 
+            props = relationship("Prop", 
                         secondary="user_to_prop", 
                         primaryjoin="User.id==user_to_prop.c.user_id", 
                         secondaryjoin="user_to_prop.c.prop_id==Prop.id", 
@@ -219,7 +219,7 @@ class DeclarativeTest(DeclarativeTestBase):
         compile_mappers()
         assert class_mapper(User).get_property("props").secondary is user_to_prop
 
-    def test_uncompiled_attributes_in_relation(self):
+    def test_uncompiled_attributes_in_relationship(self):
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
             id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
@@ -230,13 +230,13 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column(String(50))
-            addresses = relation("Address", order_by=Address.email, 
+            addresses = relationship("Address", order_by=Address.email, 
                 foreign_keys=Address.user_id, 
                 remote_side=Address.user_id,
                 )
         
         # get the mapper for User.   User mapper will compile,
-        # "addresses" relation will call upon Address.user_id for
+        # "addresses" relationship will call upon Address.user_id for
         # its clause element.  Address.user_id is a _CompileOnAttr,
         # which then calls class_mapper(Address).  But !  We're already
         # "in compilation", but class_mapper(Address) needs to initialize
@@ -259,7 +259,7 @@ class DeclarativeTest(DeclarativeTestBase):
         class User(Base):
             __tablename__ = 'users'
             id = Column('id', Integer, primary_key=True)
-            addresses = relation("Address")
+            addresses = relationship("Address")
 
         class Address(Base):
             __tablename__ = 'addresses'
@@ -275,7 +275,7 @@ class DeclarativeTest(DeclarativeTestBase):
         class User(Base):
             __tablename__ = 'users'
             id = Column('id', Integer, primary_key=True)
-            addresses = relation("Addresss")
+            addresses = relationship("Addresss")
 
         # hasattr() on a compile-loaded attribute
         hasattr(User.addresses, 'property')
@@ -302,7 +302,7 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'detail' 
             id = Column(Integer, primary_key=True, test_needs_autoincrement=True) 
             master_id = Column(None, ForeignKey(Master.id)) 
-            master = relation(Master) 
+            master = relationship(Master) 
 
         Base.metadata.create_all()
         
@@ -327,11 +327,11 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'users'
             id = Column('id', Integer, primary_key=True)
             name = Column('name', String(50))
-            error = relation("Address")
+            error = relationship("Address")
             
         i = Index('my_index', User.name)
         
-        # compile fails due to the nonexistent Addresses relation
+        # compile fails due to the nonexistent Addresses relationship
         assert_raises(sa.exc.InvalidRequestError, compile_mappers)
         
         # index configured
@@ -348,7 +348,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
         User.name = Column('name', String(50))
-        User.addresses = relation("Address", backref="user")
+        User.addresses = relationship("Address", backref="user")
 
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
@@ -395,7 +395,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            addresses = relation("Address", order_by=Address.email)
+            addresses = relationship("Address", order_by=Address.email)
 
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[
@@ -424,7 +424,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            addresses = relation("Address", order_by=(Address.email, Address.id))
+            addresses = relationship("Address", order_by=(Address.email, Address.id))
 
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[
@@ -444,7 +444,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            addresses = relation("Address", backref="user")
+            addresses = relationship("Address", backref="user")
 
         class Address(ComparableEntity):
             __tablename__ = 'addresses'
@@ -554,7 +554,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            addresses = relation("Address", backref="user")
+            addresses = relationship("Address", backref="user")
 
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
@@ -621,7 +621,7 @@ class DeclarativeTest(DeclarativeTestBase):
             adr_count = sa.orm.column_property(
                 sa.select([sa.func.count(Address.id)], Address.user_id == id).
                 as_scalar())
-            addresses = relation(Address)
+            addresses = relationship(Address)
 
         Base.metadata.create_all()
 
@@ -750,7 +750,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            addresses = relation("Address", backref="user")
+            addresses = relationship("Address", backref="user")
 
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
@@ -781,7 +781,7 @@ class DeclarativeTest(DeclarativeTestBase):
             Address(email='two'),
         ])])
 
-    def test_relation_reference(self):
+    def test_relationship_reference(self):
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
 
@@ -794,7 +794,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            addresses = relation("Address", backref="user",
+            addresses = relationship("Address", backref="user",
                                  primaryjoin=id == Address.user_id)
 
         User.address_count = sa.orm.column_property(
@@ -828,7 +828,7 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'foo'
 
             id = sa.Column(sa.Integer, primary_key=True)
-            bars = sa.orm.relation(Bar)
+            bars = sa.orm.relationship(Bar)
         
         assert Bar.__mapper__.primary_key[0] is Bar.__table__.c.id
         assert Bar.__mapper__.primary_key[1] is Bar.__table__.c.ex
@@ -952,7 +952,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __tablename__ = 'companies'
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            employees = relation("Person")
+            employees = relationship("Person")
 
         class Person(Base, ComparableEntity):
             __tablename__ = 'people'
@@ -1153,7 +1153,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __tablename__ = 'companies'
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            employees = relation("Person")
+            employees = relationship("Person")
 
         class Person(Base, ComparableEntity):
             __tablename__ = 'people'
@@ -1209,7 +1209,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __tablename__ = 'companies'
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            employees = relation("Person")
+            employees = relationship("Person")
 
         class Person(Base, ComparableEntity):
             __tablename__ = 'people'
@@ -1279,7 +1279,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __tablename__ = 'companies'
             id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column('name', String(50))
-            employees = relation("Person")
+            employees = relationship("Person")
         
         class Person(Base, ComparableEntity):
             __tablename__ = 'people'
@@ -1377,7 +1377,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         class Engineer(Person):
             __mapper_args__ = {'polymorphic_identity':'engineer'}
             primary_language_id = Column(Integer, ForeignKey('languages.id'))
-            primary_language = relation("Language")
+            primary_language = relationship("Language")
             
         class Language(Base, ComparableEntity):
             __tablename__ = 'languages'
@@ -1595,16 +1595,16 @@ def _produce_test(inline, stringbased):
                 user_id = Column(Integer, ForeignKey('users.id'))
                 if inline:
                     if stringbased:
-                        user = relation("User", primaryjoin="User.id==Address.user_id", backref="addresses")
+                        user = relationship("User", primaryjoin="User.id==Address.user_id", backref="addresses")
                     else:
-                        user = relation(User, primaryjoin=User.id==user_id, backref="addresses")
+                        user = relationship(User, primaryjoin=User.id==user_id, backref="addresses")
             
             if not inline:
                 compile_mappers()
                 if stringbased:
-                    Address.user = relation("User", primaryjoin="User.id==Address.user_id", backref="addresses")
+                    Address.user = relationship("User", primaryjoin="User.id==Address.user_id", backref="addresses")
                 else:
-                    Address.user = relation(User, primaryjoin=User.id==Address.user_id, backref="addresses")
+                    Address.user = relationship(User, primaryjoin=User.id==Address.user_id, backref="addresses")
 
         @classmethod
         def insert_data(cls):
@@ -1629,7 +1629,7 @@ def _produce_test(inline, stringbased):
         def test_aliased_join(self):
             # this query will screw up if the aliasing 
             # enabled in query.join() gets applied to the right half of the join condition inside the any().
-            # the join condition inside of any() comes from the "primaryjoin" of the relation,
+            # the join condition inside of any() comes from the "primaryjoin" of the relationship,
             # and should not be annotated with _orm_adapt.  PropertyLoader.Comparator will annotate
             # the left side with _orm_adapt, though.
             sess = create_session()
@@ -1692,7 +1692,7 @@ class DeclarativeReflectionTest(testing.TestBase):
             __autoload__ = True
             if testing.against('oracle', 'firebird'):
                 id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
-            addresses = relation("Address", backref="user")
+            addresses = relationship("Address", backref="user")
 
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
@@ -1728,7 +1728,7 @@ class DeclarativeReflectionTest(testing.TestBase):
             if testing.against('oracle', 'firebird'):
                 id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
             nom = Column('name', String(50), key='nom')
-            addresses = relation("Address", backref="user")
+            addresses = relationship("Address", backref="user")
 
         class Address(Base, ComparableEntity):
             __tablename__ = 'addresses'
@@ -1772,7 +1772,7 @@ class DeclarativeReflectionTest(testing.TestBase):
             __autoload__ = True
             if testing.against('oracle', 'firebird'):
                 id = Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
-            handles = relation("IMHandle", backref="user")
+            handles = relationship("IMHandle", backref="user")
 
         u1 = User(name='u1', handles=[
             IMHandle(network='blabber', handle='foo'),

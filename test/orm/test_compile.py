@@ -52,17 +52,17 @@ class CompileTest(_base.ORMTest):
             polymorphic_on=order_join.c.type,
             polymorphic_identity='order',
             properties={
-                'orderproducts': relation(OrderProduct, lazy=True, backref='order')}
+                'orderproducts': relationship(OrderProduct, lazy=True, backref='order')}
             )
 
         mapper(Product, product,
             properties={
-                'orderproducts': relation(OrderProduct, lazy=True, backref='product')}
+                'orderproducts': relationship(OrderProduct, lazy=True, backref='product')}
             )
 
         mapper(Employee, employee,
             properties={
-                'orders': relation(Order, lazy=True, backref='employee')})
+                'orders': relationship(Order, lazy=True, backref='employee')})
 
         mapper(OrderProduct, orderproduct)
 
@@ -105,12 +105,12 @@ class CompileTest(_base.ORMTest):
             polymorphic_on=order_join.c.type,
             polymorphic_identity='order',
             properties={
-                'orderproducts': relation(OrderProduct, lazy=True, backref='product')}
+                'orderproducts': relationship(OrderProduct, lazy=True, backref='product')}
             )
 
         mapper(Product, product,
             properties={
-                'orderproducts': relation(OrderProduct, lazy=True, backref='product')}
+                'orderproducts': relationship(OrderProduct, lazy=True, backref='product')}
             )
 
         mapper(OrderProduct, orderproduct)
@@ -149,8 +149,8 @@ class CompileTest(_base.ORMTest):
             host_mapper = mapper(Host, host_table)
             node_name_mapper = mapper(NodeName, node_name_table,
             properties = {
-                'node' : relation(Node, backref=backref('names')),
-                'host' : relation(Host),
+                'node' : relationship(Node, backref=backref('names')),
+                'host' : relationship(Host),
                 }
             )
             sess = create_session()
@@ -168,10 +168,10 @@ class CompileTest(_base.ORMTest):
         class B(object):pass
 
         mapper(A, a, properties={
-            'b':relation(B, backref='a')
+            'b':relationship(B, backref='a')
         })
         mapper(B, b, properties={
-            'a':relation(A, backref='b')
+            'a':relationship(A, backref='b')
         })
 
         try:

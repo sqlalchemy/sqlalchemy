@@ -553,7 +553,7 @@ Going from constructed SQL to text, we lose some capabilities.  We lose the capa
 Using Aliases
 ==============
 
-The alias corresponds to a "renamed" version of a table or arbitrary relation, which occurs anytime you say "SELECT  .. FROM sometable AS someothername".  The ``AS`` creates a new name for the table.  Aliases are super important in SQL as they allow you to reference the same table more than once.  Scenarios where you need to do this include when you self-join a table to itself, or more commonly when you need to join from a parent table to a child table multiple times.  For example, we know that our user ``jack`` has two email addresses.  How can we locate jack based on the combination of those two addresses?  We need to join twice to it.  Let's construct two distinct aliases for the ``addresses`` table and join:
+The alias corresponds to a "renamed" version of a table or arbitrary relationship, which occurs anytime you say "SELECT  .. FROM sometable AS someothername".  The ``AS`` creates a new name for the table.  Aliases are super important in SQL as they allow you to reference the same table more than once.  Scenarios where you need to do this include when you self-join a table to itself, or more commonly when you need to join from a parent table to a child table multiple times.  For example, we know that our user ``jack`` has two email addresses.  How can we locate jack based on the combination of those two addresses?  We need to join twice to it.  Let's construct two distinct aliases for the ``addresses`` table and join:
 
 .. sourcecode:: pycon+sql
 

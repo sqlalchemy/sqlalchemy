@@ -8,7 +8,7 @@ T1/T2.
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, backref, create_session
+from sqlalchemy.orm import mapper, relationship, backref, create_session
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.assertsql import RegexSQL, ExactSQL, CompiledSQL, AllOf
 from test.orm import _base
@@ -43,8 +43,8 @@ class SelfReferentialTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def testsingle(self):
         mapper(C1, t1, properties = {
-            'c1s':relation(C1, cascade="all"),
-            'parent':relation(C1,
+            'c1s':relationship(C1, cascade="all"),
+            'parent':relationship(C1,
                               primaryjoin=t1.c.parent_c1 == t1.c.c1,
                               remote_side=t1.c.c1,
                               lazy=True,
@@ -65,7 +65,7 @@ class SelfReferentialTest(_base.MappedTest):
         test that the circular dependency sort can assemble a many-to-one
         dependency processor when only the object on the "many" side is
         actually in the list of modified objects.  this requires that the
-        circular sort add the other side of the relation into the
+        circular sort add the other side of the relationship into the
         UOWTransaction so that the dependency operation can be tacked onto it.
 
         This also affects inheritance relationships since they rely upon
@@ -73,7 +73,7 @@ class SelfReferentialTest(_base.MappedTest):
 
         """
         mapper(C1, t1, properties={
-            'parent':relation(C1,
+            'parent':relationship(C1,
                               primaryjoin=t1.c.parent_c1 == t1.c.c1,
                               remote_side=t1.c.c1)})
 
@@ -93,8 +93,8 @@ class SelfReferentialTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def testcycle(self):
         mapper(C1, t1, properties = {
-            'c1s' : relation(C1, cascade="all"),
-            'c2s' : relation(mapper(C2, t2), cascade="all, delete-orphan")})
+            'c1s' : relationship(C1, cascade="all"),
+            'c2s' : relationship(mapper(C2, t2), cascade="all, delete-orphan")})
 
         a = C1('head c1')
         a.c1s.append(C1('child1'))
@@ -113,7 +113,7 @@ class SelfReferentialTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_setnull_ondelete(self):
         mapper(C1, t1, properties={
-            'children':relation(C1)
+            'children':relationship(C1)
         })
         
         sess = create_session()
@@ -152,7 +152,7 @@ class SelfReferentialNoPKTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(TT, item, properties={
-            'children': relation(
+            'children': relationship(
                 TT,
                 remote_side=[item.c.parent_uuid],
                 backref=backref('parent', remote_side=[item.c.uuid]))})
@@ -220,7 +220,7 @@ class InheritTestOne(_base.MappedTest):
         mapper(Parent, parent)
         mapper(Child1, child1, inherits=Parent)
         mapper(Child2, child2, inherits=Parent, properties=dict(
-            child1=relation(Child1,
+            child1=relationship(Child1,
                             primaryjoin=child2.c.child1_id == child1.c.id)))
 
     @testing.resolve_artifact_names
@@ -287,12 +287,12 @@ class InheritTestTwo(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_flush(self):
         mapper(A, a, properties={
-            'cs':relation(C, primaryjoin=a.c.cid==c.c.id)})
+            'cs':relationship(C, primaryjoin=a.c.cid==c.c.id)})
 
         mapper(B, b, inherits=A, inherit_condition=b.c.id == a.c.id)
 
         mapper(C, c, properties={
-            'arel':relation(A, primaryjoin=a.c.id == c.c.aid)})
+            'arel':relationship(A, primaryjoin=a.c.id == c.c.aid)})
 
         sess = create_session()
         bobj = B()
@@ -335,12 +335,12 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(T1, t1, properties={
-            't2':relation(T2, primaryjoin=t1.c.t2id == t2.c.id)})
+            't2':relationship(T2, primaryjoin=t1.c.t2id == t2.c.id)})
         mapper(T2, t2, properties={
-            't1':relation(T1, primaryjoin=t2.c.t1id == t1.c.id)})
+            't1':relationship(T1, primaryjoin=t2.c.t1id == t1.c.id)})
         mapper(T3, t3, properties={
-            't1':relation(T1),
-            't2':relation(T2)})
+            't1':relationship(T1),
+            't2':relationship(T2)})
 
     @testing.resolve_artifact_names
     def test_reflush(self):
@@ -392,7 +392,7 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
 
 
 class BiDirectionalOneToManyTest(_base.MappedTest):
-    """tests two mappers with a one-to-many relation to each other."""
+    """tests two mappers with a one-to-many relationship to each other."""
 
     run_define_tables = 'each'
 
@@ -418,11 +418,11 @@ class BiDirectionalOneToManyTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def testcycle(self):
         mapper(C2, t2, properties={
-            'c1s': relation(C1,
+            'c1s': relationship(C1,
                             primaryjoin=t2.c.c1 == t1.c.c2,
                             uselist=True)})
         mapper(C1, t1, properties={
-            'c2s': relation(C2,
+            'c2s': relationship(C2,
                             primaryjoin=t1.c.c1 == t2.c.c2,
                             uselist=True)})
 
@@ -441,7 +441,7 @@ class BiDirectionalOneToManyTest(_base.MappedTest):
 
 
 class BiDirectionalOneToManyTest2(_base.MappedTest):
-    """Two mappers with a one-to-many relation to each other, with a second one-to-many on one of the mappers"""
+    """Two mappers with a one-to-many relationship to each other, with a second one-to-many on one of the mappers"""
 
     run_define_tables = 'each'
 
@@ -479,14 +479,14 @@ class BiDirectionalOneToManyTest2(_base.MappedTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(C2, t2, properties={
-            'c1s': relation(C1,
+            'c1s': relationship(C1,
                             primaryjoin=t2.c.c1 == t1.c.c2,
                             uselist=True)})
         mapper(C1, t1, properties={
-            'c2s': relation(C2,
+            'c2s': relationship(C2,
                              primaryjoin=t1.c.c1 == t2.c.c2,
                              uselist=True),
-            'data': relation(mapper(C1Data, t1_data))})
+            'data': relationship(mapper(C1Data, t1_data))})
 
     @testing.resolve_artifact_names
     def testcycle(self):
@@ -553,10 +553,10 @@ class OneToManyManyToOneTest(_base.MappedTest):
         """
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
-            balls=relation(Ball,
+            balls=relationship(Ball,
                            primaryjoin=ball.c.person_id == person.c.id,
                            remote_side=ball.c.person_id),
-            favorite=relation(Ball,
+            favorite=relationship(Ball,
                               primaryjoin=person.c.favorite_ball_id == ball.c.id,
                               remote_side=ball.c.id)))
 
@@ -572,12 +572,12 @@ class OneToManyManyToOneTest(_base.MappedTest):
         """A cycle between two rows, with a post_update on the many-to-one"""
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
-            balls=relation(Ball,
+            balls=relationship(Ball,
                            primaryjoin=ball.c.person_id == person.c.id,
                            remote_side=ball.c.person_id,
                            post_update=False,
                            cascade="all, delete-orphan"),
-            favorite=relation(Ball,
+            favorite=relationship(Ball,
                               primaryjoin=person.c.favorite_ball_id == ball.c.id,
                               remote_side=person.c.favorite_ball_id,
                               post_update=True)))
@@ -625,13 +625,13 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
-            balls=relation(Ball,
+            balls=relationship(Ball,
                            primaryjoin=ball.c.person_id == person.c.id,
                            remote_side=ball.c.person_id,
                            cascade="all, delete-orphan",
                            post_update=True,
                            backref='person'),
-            favorite=relation(Ball,
+            favorite=relationship(Ball,
                               primaryjoin=person.c.favorite_ball_id == ball.c.id,
                               remote_side=person.c.favorite_ball_id)))
 
@@ -752,20 +752,20 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
         """
 
         mapper(Node, node, properties={
-            'children': relation(
+            'children': relationship(
                 Node,
                 primaryjoin=node.c.id==node.c.parent_id,
                 lazy=True,
                 cascade="all",
                 backref=backref("parent", remote_side=node.c.id)
             ),
-            'prev_sibling': relation(
+            'prev_sibling': relationship(
                 Node,
                 primaryjoin=node.c.prev_sibling_id==node.c.id,
                 remote_side=node.c.id,
                 lazy=True,
                 uselist=False),
-            'next_sibling': relation(
+            'next_sibling': relationship(
                 Node,
                 primaryjoin=node.c.next_sibling_id==node.c.id,
                 remote_side=node.c.id,
@@ -853,7 +853,7 @@ class SelfReferentialPostUpdateTest2(_base.MappedTest):
         """
 
         mapper(A, a_table, properties={
-            'foo': relation(A,
+            'foo': relationship(A,
                             remote_side=[a_table.c.id],
                             post_update=True)})
 

@@ -1,5 +1,5 @@
 from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 
 metadata = MetaData('sqlite://')
 metadata.bind.echo = 'debug'
@@ -46,7 +46,7 @@ manager_mapper = mapper(Manager, inherits=person_mapper, polymorphic_identity='m
 engineer_mapper = mapper(Engineer, inherits=person_mapper, polymorphic_identity='engineer')
 
 mapper(Company, companies, properties={
-    'employees': relation(Person, lazy=True, backref='company')
+    'employees': relationship(Person, lazy=True, backref='company')
 })
 
 session = create_session()

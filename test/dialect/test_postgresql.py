@@ -436,7 +436,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
         # want to ensure that 
         # "null value in column "id" violates not-null constraint" is raised (IntegrityError on psycoopg2,
         # but ProgrammingError on pg8000),
-        # and not "ProgrammingError: (ProgrammingError) relation "t2_id_seq" does not exist".
+        # and not "ProgrammingError: (ProgrammingError) relationship "t2_id_seq" does not exist".
         # the latter corresponds to autoincrement behavior, which is not the case
         # here due to the foreign key.
         for eng in [

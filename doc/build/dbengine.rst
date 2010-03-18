@@ -74,49 +74,38 @@ translate as:
 Driver                     Connect string               Py2K         Py3K          Jython       Unix               Windows
 =========================  ===========================  ===========  ===========   ===========  =================  ============
 **DB2/Informix IDS**
--------------------------------------------------------------------------------------------------------------------------------
 ibm-db_                    thirdparty                   thirdparty   thirdparty    thirdparty   thirdparty         thirdparty
 **Firebird**
--------------------------------------------------------------------------------------------------------------------------------
 kinterbasdb_               ``firebird+kinterbasdb``\*   yes          development   no           yes                yes
 **Informix**
--------------------------------------------------------------------------------------------------------------------------------
 informixdb_                ``informix+informixdb``\*    development  development   no           unknown            unknown
 **MaxDB**
--------------------------------------------------------------------------------------------------------------------------------
 sapdb_                     ``maxdb+sapdb``\*            development  development   no           yes                unknown
 **Microsoft Access**
--------------------------------------------------------------------------------------------------------------------------------
 pyodbc_                    ``access+pyodbc``\*          development  development   no           unknown            yes
 **Microsoft SQL Server**
--------------------------------------------------------------------------------------------------------------------------------
 adodbapi_                  ``mssql+adodbapi``           development  development   no           no                 yes
 `jTDS JDBC Driver`_        ``mssql+zxjdbc``             no           no            development  yes                yes
 mxodbc_                    ``mssql+mxodbc``             yes          development   no           yes with FreeTDS_  yes
 pyodbc_                    ``mssql+pyodbc``\*           yes          development   no           yes with FreeTDS_  yes
 pymssql_                   ``mssql+pymssql``            development  development   no           yes                yes
 **MySQL**
--------------------------------------------------------------------------------------------------------------------------------
 `MySQL Connector/J`_       ``mysql+zxjdbc``             no           no            yes          yes                yes
 `MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          partial       no           yes                yes
 mysql-python_              ``mysql+mysqldb``\*          yes          development   no           yes                yes
 OurSQL_                    ``mysql+oursql``             yes          partial       no           yes                yes
 **Oracle**
--------------------------------------------------------------------------------------------------------------------------------
 cx_oracle_                 ``oracle+cx_oracle``\*       yes          development   no           yes                yes
 `Oracle JDBC Driver`_      ``oracle+zxjdbc``            no           no            yes          yes                yes
 **Postgresql**
--------------------------------------------------------------------------------------------------------------------------------
 pg8000_                    ``postgresql+pg8000``        yes          yes           no           yes                yes
 `PostgreSQL JDBC Driver`_  ``postgresql+zxjdbc``        no           no            yes          yes                yes
 psycopg2_                  ``postgresql+psycopg2``\*    yes          development   no           yes                yes
 pypostgresql_              ``postgresql+pypostgresql``  no           partial       no           yes                yes
 **SQLite**
--------------------------------------------------------------------------------------------------------------------------------
 pysqlite_                  ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
 sqlite3_                   ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
 **Sybase ASE**
--------------------------------------------------------------------------------------------------------------------------------
 mxodbc_                    ``sybase+mxodbc``            development  development   no           yes                yes
 pyodbc_                    ``sybase+pyodbc``\*          partial      development   no           unknown            unknown
 python-sybase_             ``sybase+pysybase``          partial      development   no           yes                yes
@@ -503,7 +492,7 @@ This section assumes familiarity with the above linked logging module.  All logg
     * ``sqlalchemy.orm.attributes`` - logs certain instrumented attribute operations, such as triggered callables
     * ``sqlalchemy.orm.mapper`` - logs Mapper configuration and operations
     * ``sqlalchemy.orm.unitofwork`` - logs flush() operations, including dependency sort graphs and other operations
-    * ``sqlalchemy.orm.strategies`` - logs relation loader operations (i.e. lazy and eager loads)
+    * ``sqlalchemy.orm.strategies`` - logs relationship loader operations (i.e. lazy and eager loads)
     * ``sqlalchemy.orm.sync`` - logs synchronization of attributes from parent to child instances during a flush()
 
 For example, to log SQL queries as well as unit of work debugging:

@@ -61,14 +61,14 @@ def define_tables():
 @profiled('mapper')
 def setup_mappers():
     mapper(Item, items, properties={
-            'subitems': relation(SubItem, backref='item', lazy=True)
+            'subitems': relationship(SubItem, backref='item', lazy=True)
             })
     mapper(SubItem, subitems)
     mapper(Customer, customers, properties={
-            'purchases': relation(Purchase, lazy=True, backref='customer')
+            'purchases': relationship(Purchase, lazy=True, backref='customer')
             })
     mapper(Purchase, purchases, properties={
-            'items': relation(Item, lazy=True, secondary=purchaseitems)
+            'items': relationship(Item, lazy=True, secondary=purchaseitems)
             })
 
 @profiled('inserts')

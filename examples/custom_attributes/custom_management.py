@@ -11,7 +11,7 @@ with a custom attribute system as well.
 """
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer, Text,
     ForeignKey)
-from sqlalchemy.orm import (mapper, relation, create_session,
+from sqlalchemy.orm import (mapper, relationship, create_session,
     InstrumentationManager)
 
 from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute, is_instrumented
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         pass
 
     mapper(A, table1, properties={
-        'bs':relation(B)
+        'bs':relationship(B)
     })
 
     mapper(B, table2)

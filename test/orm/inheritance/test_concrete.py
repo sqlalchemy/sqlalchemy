@@ -286,14 +286,14 @@ class ConcreteTest(_base.MappedTest):
             set(["Engineer Jerry knows how to program", "Hacker Kurt 'Badass' knows how to hack"])
         )
         
-    def test_relation(self):
+    def test_relationship(self):
         pjoin = polymorphic_union({
             'manager':managers_table,
             'engineer':engineers_table
         }, 'type', 'pjoin')
 
         mapper(Company, companies, properties={
-            'employees':relation(Employee)
+            'employees':relationship(Employee)
         })
         employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
         manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
@@ -350,7 +350,7 @@ class PropertyInheritanceTest(_base.MappedTest):
     @testing.resolve_artifact_names    
     def test_noninherited_warning(self):
         mapper(A, a_table, properties={
-            'some_c':relation(C)
+            'some_c':relationship(C)
         })
         mapper(B, b_table,inherits=A, concrete=True)
         mapper(C, c_table)
@@ -378,14 +378,14 @@ class PropertyInheritanceTest(_base.MappedTest):
     @testing.resolve_artifact_names    
     def test_inheriting(self):
         mapper(A, a_table, properties={
-            'some_c':relation(C, back_populates='many_a')
+            'some_c':relationship(C, back_populates='many_a')
         })
         mapper(B, b_table,inherits=A, concrete=True, properties={
-            'some_c':relation(C, back_populates='many_b')
+            'some_c':relationship(C, back_populates='many_b')
         })
         mapper(C, c_table, properties={
-            'many_a':relation(A, back_populates='some_c'),
-            'many_b':relation(B, back_populates='some_c'),
+            'many_a':relationship(A, back_populates='some_c'),
+            'many_b':relationship(B, back_populates='some_c'),
         })
         
         sess = sessionmaker()()
@@ -426,15 +426,15 @@ class PropertyInheritanceTest(_base.MappedTest):
         mapper(A, a_table, with_polymorphic=('*', ajoin), 
             polymorphic_on=ajoin.c.type, polymorphic_identity='a', 
             properties={
-            'some_c':relation(C, back_populates='many_a')
+            'some_c':relationship(C, back_populates='many_a')
         })
         mapper(B, b_table,inherits=A, concrete=True, 
             polymorphic_identity='b', 
             properties={
-            'some_c':relation(C, back_populates='many_a')
+            'some_c':relationship(C, back_populates='many_a')
         })
         mapper(C, c_table, properties={
-            'many_a':relation(A, back_populates='some_c', order_by=ajoin.c.id),
+            'many_a':relationship(A, back_populates='some_c', order_by=ajoin.c.id),
         })
         
         sess = sessionmaker()()
@@ -498,12 +498,12 @@ class ManyToManyTest(_base.MappedTest):
             pass
 
     @testing.resolve_artifact_names
-    def test_selective_relations(self):
+    def test_selective_relationships(self):
         mapper(Base, base, properties={
-            'related':relation(Related, secondary=base_mtom, backref='bases', order_by=related.c.id)
+            'related':relationship(Related, secondary=base_mtom, backref='bases', order_by=related.c.id)
         })
         mapper(Sub, sub, inherits=Base, concrete=True, properties={
-            'related':relation(Related, secondary=sub_mtom, backref='subs', order_by=related.c.id)
+            'related':relationship(Related, secondary=sub_mtom, backref='subs', order_by=related.c.id)
         })
         mapper(Related, related)
         

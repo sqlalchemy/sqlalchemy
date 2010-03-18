@@ -27,7 +27,7 @@ class Email(object):
                                   getattr(self, 'address', None))
 
 mapper(Person, Person_table, properties={
-    'emails': relation(Email, backref='owner', lazy=False)
+    'emails': relationship(Email, backref='owner', lazy=False)
     })
 mapper(Email, Email_table)
 compile_mappers()

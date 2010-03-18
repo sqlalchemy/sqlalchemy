@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, Unicode
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
 
@@ -124,7 +124,7 @@ class NaturalPKTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def _test_onetomany(self, passive_updates):
         mapper(User, users, properties={
-            'addresses':relation(Address, passive_updates=passive_updates)
+            'addresses':relationship(Address, passive_updates=passive_updates)
         })
         mapper(Address, addresses)
 
@@ -177,7 +177,7 @@ class NaturalPKTest(_base.MappedTest):
     def _test_manytoone(self, passive_updates):
         mapper(User, users)
         mapper(Address, addresses, properties={
-            'user':relation(User, passive_updates=passive_updates)
+            'user':relationship(User, passive_updates=passive_updates)
         })
 
         sess = create_session()
@@ -219,7 +219,7 @@ class NaturalPKTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def _test_onetoone(self, passive_updates):
         mapper(User, users, properties={
-            "address":relation(Address, passive_updates=passive_updates, uselist=False)
+            "address":relationship(Address, passive_updates=passive_updates, uselist=False)
         })
         mapper(Address, addresses)
 
@@ -262,7 +262,7 @@ class NaturalPKTest(_base.MappedTest):
     def _test_bidirectional(self, passive_updates):
         mapper(User, users)
         mapper(Address, addresses, properties={
-            'user':relation(User, passive_updates=passive_updates,
+            'user':relationship(User, passive_updates=passive_updates,
                             backref='addresses')})
 
         sess = create_session()
@@ -318,7 +318,7 @@ class NaturalPKTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def _test_manytomany(self, passive_updates):
         mapper(User, users, properties={
-            'items':relation(Item, secondary=users_to_items, backref='users',
+            'items':relationship(Item, secondary=users_to_items, backref='users',
                              passive_updates=passive_updates)})
         mapper(Item, items)
 
@@ -445,7 +445,7 @@ class SelfRefTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_onetomany(self):
         mapper(Node, nodes, properties={
-            'children': relation(Node,
+            'children': relationship(Node,
                                  backref=sa.orm.backref('parentnode',
                                                         remote_side=nodes.c.name,
                                                         passive_updates=False),
@@ -508,7 +508,7 @@ class NonPKCascadeTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def _test_onetomany(self, passive_updates):
         mapper(User, users, properties={
-            'addresses':relation(Address, passive_updates=passive_updates)})
+            'addresses':relationship(Address, passive_updates=passive_updates)})
         mapper(Address, addresses)
 
         sess = create_session()
@@ -613,7 +613,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         
         """
         mapper(User, users, properties={
-            'addresses':relation(Address, passive_updates=passive_updates)})
+            'addresses':relationship(Address, passive_updates=passive_updates)})
         mapper(Address, addresses)
 
         sess = create_session()
@@ -631,7 +631,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     def test_rowswitch_doesntfire(self):
         mapper(User, users)
         mapper(Address, addresses, properties={
-            'user':relation(User, passive_updates=True)
+            'user':relationship(User, passive_updates=True)
         })
 
         sess = create_session()
@@ -673,7 +673,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         
         """
         mapper(User, users, properties={
-            'addresses':relation(Address, passive_updates=passive_updates)})
+            'addresses':relationship(Address, passive_updates=passive_updates)})
         mapper(Address, addresses)
     
         sess = create_session()
@@ -756,7 +756,7 @@ class JoinedInheritanceTest(_base.MappedTest):
         mapper(Person, person, polymorphic_on=person.c.type, 
                 polymorphic_identity='person', passive_updates=passive_updates)
         mapper(Engineer, engineer, inherits=Person, polymorphic_identity='engineer', properties={
-            'boss':relation(Manager, 
+            'boss':relationship(Manager, 
                         primaryjoin=manager.c.name==engineer.c.boss_name,
                         passive_updates=passive_updates
                         )
@@ -777,7 +777,7 @@ class JoinedInheritanceTest(_base.MappedTest):
         mapper(Person, person, polymorphic_on=person.c.type, 
                 polymorphic_identity='person', passive_updates=passive_updates)
         mapper(Engineer, engineer, inherits=Person, polymorphic_identity='engineer', properties={
-            'boss':relation(Manager, 
+            'boss':relationship(Manager, 
                         primaryjoin=manager.c.name==engineer.c.boss_name,
                         passive_updates=passive_updates
                         )

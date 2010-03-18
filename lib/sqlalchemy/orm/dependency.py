@@ -6,8 +6,8 @@
 
 """Relationship dependencies.
 
-Bridges the ``PropertyLoader`` (i.e. a ``relation()``) and the
-``UOWTransaction`` together to allow processing of relation()-based
+Bridges the ``PropertyLoader`` (i.e. a ``relationship()``) and the
+``UOWTransaction`` together to allow processing of relationship()-based
 dependencies at flush time.
 
 """
@@ -43,7 +43,7 @@ class DependencyProcessor(object):
         self.key = prop.key
         self.dependency_marker = MapperStub(self.parent, self.mapper, self.key)
         if not self.prop.synchronize_pairs:
-            raise sa_exc.ArgumentError("Can't build a DependencyProcessor for relation %s.  "
+            raise sa_exc.ArgumentError("Can't build a DependencyProcessor for relationship %s.  "
                     "No target attributes to populate between parent and child are present" % self.prop)
 
     def _get_instrumented_attribute(self):
@@ -141,7 +141,7 @@ class DependencyProcessor(object):
     def _check_reverse_action(self, uowcommit, parent, child, action):
         """Determine if an action has been performed by the 'reverse' property of this property.
         
-        this is used to ensure that only one side of a bidirectional relation
+        this is used to ensure that only one side of a bidirectional relationship
         issues a certain operation for a parent/child pair.
         
         """
@@ -162,7 +162,7 @@ class DependencyProcessor(object):
     def _conditional_post_update(self, state, uowcommit, related):
         """Execute a post_update call.
 
-        For relations that contain the post_update flag, an additional
+        For relationships that contain the post_update flag, an additional
         ``UPDATE`` statement may be associated after an ``INSERT`` or
         before a ``DELETE`` in order to resolve circular row
         dependencies.
@@ -298,7 +298,7 @@ class OneToManyDP(DependencyProcessor):
         return sync.source_modified(uowcommit, state, self.parent, self.prop.synchronize_pairs)
 
 class DetectKeySwitch(DependencyProcessor):
-    """a special DP that works for many-to-one relations, fires off for
+    """a special DP that works for many-to-one relationships, fires off for
     child items who have changed their referenced key."""
 
     has_dependencies = False

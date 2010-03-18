@@ -20,7 +20,7 @@ poly_assoc_generic.py.
 """
 
 from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import mapper, relation, create_session, class_mapper
+from sqlalchemy.orm import mapper, relationship, create_session, class_mapper
 
 metadata = MetaData('sqlite://')
 
@@ -56,7 +56,7 @@ def addressable(cls, name, uselist=True):
     """
     mapper = class_mapper(cls)
     table = mapper.local_table
-    mapper.add_property('address_rel', relation(AddressAssoc, backref='_backref_%s' % table.name))
+    mapper.add_property('address_rel', relationship(AddressAssoc, backref='_backref_%s' % table.name))
 
     if uselist:
         # list based property decorator
@@ -78,7 +78,7 @@ def addressable(cls, name, uselist=True):
 mapper(Address, addresses)
 
 mapper(AddressAssoc, address_associations, properties={
-    'addresses':relation(Address, backref='association'),
+    'addresses':relationship(Address, backref='association'),
 })
 
 ######

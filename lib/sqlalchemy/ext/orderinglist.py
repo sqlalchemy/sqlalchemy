@@ -1,17 +1,17 @@
 """A custom list that manages index/position information for its children.
 
 ``orderinglist`` is a custom list collection implementation for mapped
-relations that keeps an arbitrary "position" attribute on contained objects in
+relationships that keeps an arbitrary "position" attribute on contained objects in
 sync with each object's position in the Python list.
 
 The collection acts just like a normal Python ``list``, with the added
 behavior that as you manipulate the list (via ``insert``, ``pop``, assignment,
 deletion, what have you), each of the objects it contains is updated as needed
-to reflect its position.  This is very useful for managing ordered relations
+to reflect its position.  This is very useful for managing ordered relationships
 which have a user-defined, serialized order::
 
   >>> from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-  >>> from sqlalchemy.orm import mapper, relation
+  >>> from sqlalchemy.orm import mapper, relationship
   >>> from sqlalchemy.ext.orderinglist import ordering_list
 
 A simple model of users their "top 10" things::
@@ -32,7 +32,7 @@ A simple model of users their "top 10" things::
   ...        self.blurb = blurb
   ...
   >>> mapper(User, users, properties={
-  ...  'topten': relation(Blurb, collection_class=ordering_list('position'),
+  ...  'topten': relationship(Blurb, collection_class=ordering_list('position'),
   ...                     order_by=[blurbs.c.position])})
   <Mapper ...>
   >>> mapper(Blurb, blurbs)
@@ -73,7 +73,7 @@ __all__ = [ 'ordering_list' ]
 def ordering_list(attr, count_from=None, **kw):
     """Prepares an OrderingList factory for use in mapper definitions.
 
-    Returns an object suitable for use as an argument to a Mapper relation's
+    Returns an object suitable for use as an argument to a Mapper relationship's
     ``collection_class`` option.  Arguments are:
 
     attr
@@ -136,7 +136,7 @@ class OrderingList(list):
 
     See the module and __init__ documentation for more details.  The
     ``ordering_list`` factory function is used to configure ``OrderingList``
-    collections in ``mapper`` relation definitions.
+    collections in ``mapper`` relationship definitions.
 
     """
 
@@ -149,11 +149,11 @@ class OrderingList(list):
         mapped objects.
 
         This implementation relies on the list starting in the proper order,
-        so be **sure** to put an ``order_by`` on your relation.
+        so be **sure** to put an ``order_by`` on your relationship.
 
         ordering_attr
           Name of the attribute that stores the object's order in the
-          relation.
+          relationship.
 
         ordering_func
           Optional.  A function that maps the position in the Python list to a

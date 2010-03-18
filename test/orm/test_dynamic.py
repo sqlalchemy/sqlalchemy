@@ -4,7 +4,7 @@ from sqlalchemy.orm import dynamic_loader, backref
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, desc, select, func
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session, Query, attributes
+from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes
 from sqlalchemy.orm.dynamic import AppenderMixin
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from sqlalchemy.util import function_named
@@ -91,7 +91,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_backref(self):
         mapper(Address, addresses, properties={
-            'user':relation(User, backref=backref('addresses', lazy='dynamic'))
+            'user':relationship(User, backref=backref('addresses', lazy='dynamic'))
         })
         mapper(User, users)
 
@@ -125,7 +125,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_m2m(self):
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, lazy="dynamic",
+            'items':relationship(Item, secondary=order_items, lazy="dynamic",
                              backref=backref('orders', lazy="dynamic"))
         })
         mapper(Item, items)
@@ -143,7 +143,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_association_nonaliased(self):
         mapper(Order, orders, properties={
-            'items':relation(Item, secondary=order_items, 
+            'items':relationship(Item, secondary=order_items, 
                                 lazy="dynamic", 
                                 order_by=order_items.c.item_id)
         })
@@ -425,7 +425,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess.delete(u)
 
-        # u.addresses relation will have to force the load
+        # u.addresses relationship will have to force the load
         # of all addresses so that they can be updated
         sess.flush()
         sess.close()
@@ -461,7 +461,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess.delete(u)
 
-        # u.addresses relation will have to force the load
+        # u.addresses relationship will have to force the load
         # of all addresses so that they can be updated
         sess.flush()
         sess.close()
@@ -578,7 +578,7 @@ class DontDereferenceTest(_base.MappedTest):
             pass
 
         mapper(User, users, properties={
-            'addresses': relation(Address, backref='user', lazy='dynamic')
+            'addresses': relationship(Address, backref='user', lazy='dynamic')
             })
         mapper(Address, addresses)
 

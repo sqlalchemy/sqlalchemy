@@ -42,7 +42,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
             pass
 
         mapper(T1, t1, properties={
-            't2s':relation(T2, backref='t1')
+            't2s':relationship(T2, backref='t1')
         })
         mapper(T2, t2)
     

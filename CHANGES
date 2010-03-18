@@ -11,6 +11,11 @@ CHANGES
     testing instructions.
     
 - orm
+  - The official name for the relation() function is now
+    relationship(), to eliminate confusion over the relational
+    algebra term.  relation() however will remain available 
+    in equal capacity for the foreseeable future.  [ticket:1740]
+    
   - Fixed bug in session.rollback() which involved not removing
     formerly "pending" objects from the session before
     re-integrating "deleted" objects, typically occured with

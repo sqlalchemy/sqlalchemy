@@ -30,7 +30,7 @@ object_session = None
 _state_session = None
 
 class UOWEventHandler(interfaces.AttributeExtension):
-    """An event handler added to all relation attributes which handles
+    """An event handler added to all relationship attributes which handles
     session cascade operations.
     """
     
@@ -388,7 +388,7 @@ class UOWTask(object):
     def append_postupdate(self, state, post_update_cols):
         """issue a 'post update' UPDATE statement via this object's mapper immediately.
 
-        this operation is used only with relations that specify the `post_update=True`
+        this operation is used only with relationships that specify the `post_update=True`
         flag.
         """
 

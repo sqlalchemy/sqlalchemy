@@ -7,7 +7,7 @@ function "association" which creates a new polymorphic association
 """
 
 from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import mapper, relation, create_session, class_mapper
+from sqlalchemy.orm import mapper, relationship, create_session, class_mapper
 
 metadata = MetaData('sqlite://')
 
@@ -31,7 +31,7 @@ def association(cls, table):
 
         mapper = class_mapper(cls)
         table = mapper.local_table
-        mapper.add_property(attr_name, relation(GenericAssoc, backref='_backref_%s' % table.name))
+        mapper.add_property(attr_name, relationship(GenericAssoc, backref='_backref_%s' % table.name))
 
         if uselist:
             # list based property decorator
@@ -53,7 +53,7 @@ def association(cls, table):
     setattr(cls, 'member', property(lambda self: getattr(self.association, '_backref_%s' % self.association.type)))
 
     mapper(GenericAssoc, association_table, properties={
-        'targets':relation(cls, backref='association'),
+        'targets':relationship(cls, backref='association'),
     })
 
     return interface

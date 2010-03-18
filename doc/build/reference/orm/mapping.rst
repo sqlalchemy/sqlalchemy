@@ -17,13 +17,13 @@ A basic mapping of a class will simply make the columns of the
 database table or selectable available as attributes on the class.
 **Mapper properties** allow you to customize and add additional
 properties to your classes, for example making the results one-to-many
-join available as a Python list of :func:`related <relation>` objects.
+join available as a Python list of :func:`related <relationship>` objects.
 
 Mapper properties are most commonly included in the :func:`mapper`
 call::
 
   mapper(Parent, properties={
-     'children': relation(Children)
+     'children': relationship(Children)
   }
 
 .. autofunction:: backref
@@ -39,6 +39,8 @@ call::
 .. autofunction:: dynamic_loader
 
 .. autofunction:: relation
+
+.. autofunction:: relationship
 
 .. autofunction:: synonym
 

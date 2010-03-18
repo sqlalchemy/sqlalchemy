@@ -152,7 +152,7 @@ class SingleInheritanceTest(MappedTest):
         class Report(ComparableEntity): pass
 
         mapper(Report, reports, properties={
-            'employee': relation(Employee, backref='reports')})
+            'employee': relationship(Employee, backref='reports')})
         sess = create_session()
 
         m1 = Manager(name='Tom', manager_data='data1')
@@ -169,7 +169,7 @@ class SingleInheritanceTest(MappedTest):
         class Report(ComparableEntity): pass
 
         mapper(Report, reports, properties={
-            'employee': relation(Employee, backref='reports')})
+            'employee': relationship(Employee, backref='reports')})
         sess = create_session()
 
         m1 = Manager(name='Tom', manager_data='data1')
@@ -183,7 +183,7 @@ class SingleInheritanceTest(MappedTest):
         assert len(rq.join(Report.employee.of_type(Engineer)).all()) == 0
 
 
-class RelationToSingleTest(MappedTest):
+class RelationshipToSingleTest(MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -217,7 +217,7 @@ class RelationToSingleTest(MappedTest):
     @testing.resolve_artifact_names
     def test_of_type(self):
         mapper(Company, companies, properties={
-            'employees':relation(Employee, backref='company')
+            'employees':relationship(Employee, backref='company')
         })
         mapper(Employee, employees, polymorphic_on=employees.c.type)
         mapper(Manager, inherits=Employee, polymorphic_identity='manager')
@@ -251,12 +251,12 @@ class RelationToSingleTest(MappedTest):
 
 
     @testing.resolve_artifact_names
-    def test_relation_to_subclass(self):
+    def test_relationship_to_subclass(self):
         mapper(Company, companies, properties={
-            'engineers':relation(Engineer)
+            'engineers':relationship(Engineer)
         })
         mapper(Employee, employees, polymorphic_on=employees.c.type, properties={
-            'company':relation(Company)
+            'company':relationship(Company)
         })
         mapper(Manager, inherits=Employee, polymorphic_identity='manager')
         mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')

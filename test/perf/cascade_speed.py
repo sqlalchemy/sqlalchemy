@@ -30,13 +30,13 @@ class Value(object): pass
 
 valueMapper = mapper(Value, values)
 attrMapper = mapper(Attribute, attributes, properties=dict(
-    values=relation(valueMapper, cascade="save-update", backref="attribute")
+    values=relationship(valueMapper, cascade="save-update", backref="attribute")
 ))
 itemMapper = mapper(Item, items, properties=dict(
-    attributes=relation(attrMapper, cascade="save-update", backref="item")
+    attributes=relationship(attrMapper, cascade="save-update", backref="item")
 ))
 orderMapper = mapper(Order, orders, properties=dict(
-    items=relation(itemMapper, cascade="save-update", backref="order")
+    items=relationship(itemMapper, cascade="save-update", backref="order")
 ))
 
 

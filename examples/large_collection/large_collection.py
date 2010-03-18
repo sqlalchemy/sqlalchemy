@@ -1,7 +1,7 @@
 
 from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
                         create_engine)
-from sqlalchemy.orm import (mapper, relation, sessionmaker)
+from sqlalchemy.orm import (mapper, relationship, sessionmaker)
 
 
 meta = MetaData()
@@ -27,7 +27,7 @@ class Member(object):
         self.name = name
 
 mapper(Organization, org_table, properties = {
-    'members' : relation(Member, 
+    'members' : relationship(Member, 
         # Organization.members will be a Query object - no loading
         # of the entire collection occurs unless requested
         lazy="dynamic", 

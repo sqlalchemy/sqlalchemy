@@ -4,7 +4,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from test.orm import _base
 
 
@@ -70,10 +70,10 @@ class M2MTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_error(self):
         mapper(Place, place, properties={
-            'transitions':relation(Transition, secondary=place_input, backref='places')
+            'transitions':relationship(Transition, secondary=place_input, backref='places')
         })
         mapper(Transition, transition, properties={
-            'places':relation(Place, secondary=place_input, backref='transitions')
+            'places':relationship(Place, secondary=place_input, backref='transitions')
         })
         assert_raises_message(sa.exc.ArgumentError, "Error creating backref",
                                  sa.orm.compile_mappers)
@@ -84,7 +84,7 @@ class M2MTest(_base.MappedTest):
 
         Place.mapper = mapper(Place, place)
 
-        Place.mapper.add_property('places', relation(
+        Place.mapper.add_property('places', relationship(
             Place.mapper, secondary=place_place, primaryjoin=place.c.place_id==place_place.c.pl1_id,
             secondaryjoin=place.c.place_id==place_place.c.pl2_id,
             order_by=place_place.c.pl2_id,
@@ -130,16 +130,16 @@ class M2MTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_double(self):
-        """test that a mapper can have two eager relations to the same table, via
+        """test that a mapper can have two eager relationships to the same table, via
         two different association tables.  aliases are required."""
 
         Place.mapper = mapper(Place, place, properties = {
-            'thingies':relation(mapper(PlaceThingy, place_thingy), lazy=False)
+            'thingies':relationship(mapper(PlaceThingy, place_thingy), lazy=False)
         })
 
         Transition.mapper = mapper(Transition, transition, properties = dict(
-            inputs = relation(Place.mapper, place_output, lazy=False),
-            outputs = relation(Place.mapper, place_input, lazy=False),
+            inputs = relationship(Place.mapper, place_output, lazy=False),
+            outputs = relationship(Place.mapper, place_input, lazy=False),
             )
         )
 
@@ -164,8 +164,8 @@ class M2MTest(_base.MappedTest):
         """tests a many-to-many backrefs"""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
-            inputs = relation(Place.mapper, place_output, lazy=True, backref='inputs'),
-            outputs = relation(Place.mapper, place_input, lazy=True, backref='outputs'),
+            inputs = relationship(Place.mapper, place_output, lazy=True, backref='inputs'),
+            outputs = relationship(Place.mapper, place_input, lazy=True, backref='outputs'),
             )
         )
 
@@ -220,7 +220,7 @@ class M2MTest2(_base.MappedTest):
 
         mapper(Student, student)
         mapper(Course, course, properties={
-            'students': relation(Student, enroll, backref='courses')})
+            'students': relationship(Student, enroll, backref='courses')})
 
         sess = create_session()
         s1 = Student('Student1')
@@ -247,7 +247,7 @@ class M2MTest2(_base.MappedTest):
         
         mapper(Student, student)
         mapper(Course, course, properties={
-            'students': relation(Student, enroll, backref='courses')})
+            'students': relationship(Student, enroll, backref='courses')})
 
         sess = create_session()
         s1 = Student("s1")
@@ -263,7 +263,7 @@ class M2MTest2(_base.MappedTest):
 
         mapper(Student, student)
         mapper(Course, course, properties = {
-            'students': relation(Student, enroll, lazy=True,
+            'students': relationship(Student, enroll, lazy=True,
                                  backref='courses')})
 
         sess = create_session()
@@ -314,13 +314,13 @@ class M2MTest3(_base.MappedTest):
         mapper(B, b)
 
         mapper(A, a, properties={
-            'tbs': relation(B, primaryjoin=sa.and_(b.c.a1 == a.c.a1,
+            'tbs': relationship(B, primaryjoin=sa.and_(b.c.a1 == a.c.a1,
                                                    b.c.b2 == True),
                             lazy=False)})
 
         mapper(C, c, properties={
-            'a1s': relation(A, secondary=c2a1, lazy=False),
-            'a2s': relation(A, secondary=c2a2, lazy=False)})
+            'a1s': relationship(A, secondary=c2a1, lazy=False),
+            'a2s': relationship(A, secondary=c2a2, lazy=False)})
 
         assert create_session().query(C).with_labels().statement is not None
         

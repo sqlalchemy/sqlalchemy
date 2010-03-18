@@ -1,7 +1,7 @@
 from sqlalchemy import MetaData, Table, Column, Sequence, ForeignKey,\
                         Integer, String, create_engine
                         
-from sqlalchemy.orm import sessionmaker, mapper, relation, backref,\
+from sqlalchemy.orm import sessionmaker, mapper, relationship, backref,\
                                 eagerload_all
                                 
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -40,7 +40,7 @@ def dump_tree(node, indent=0):
                     
 
 mapper(TreeNode, tree_table, properties={
-    'children': relation(TreeNode, 
+    'children': relationship(TreeNode, 
 
                         # cascade deletions
                         cascade="all",

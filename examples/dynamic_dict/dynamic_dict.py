@@ -30,7 +30,7 @@ class ProxyDict(object):
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import sessionmaker, relation
+from sqlalchemy.orm import sessionmaker, relationship
 
 engine=create_engine('sqlite://', echo=True)
 Base = declarative_base(engine)
@@ -39,7 +39,7 @@ class Parent(Base):
     __tablename__ = 'parent'
     id = Column(Integer, primary_key=True)
     name = Column(String(50))
-    _collection = relation("Child", lazy="dynamic", cascade="all, delete-orphan")
+    _collection = relationship("Child", lazy="dynamic", cascade="all, delete-orphan")
     
     @property
     def child_map(self):

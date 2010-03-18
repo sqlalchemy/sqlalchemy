@@ -91,7 +91,7 @@ class _CollectionOperations(TestBase):
                     self.name = name
 
         mapper(Parent, parents_table, properties={
-            '_children': relation(Child, lazy=False,
+            '_children': relationship(Child, lazy=False,
                                   collection_class=collection_class)})
         mapper(Child, children_table)
 
@@ -654,7 +654,7 @@ class ProxyFactoryTest(ListTest):
                 self.name = name
 
         mapper(Parent, parents_table, properties={
-            '_children': relation(Child, lazy=False,
+            '_children': relationship(Child, lazy=False,
                                   collection_class=list)})
         mapper(Child, children_table)
 
@@ -701,7 +701,7 @@ class ScalarTest(TestBase):
                     setattr(self, attr, kw[attr])
 
         mapper(Parent, parents_table, properties={
-            'child': relation(Child, lazy=False,
+            'child': relationship(Child, lazy=False,
                               backref='parent', uselist=False)})
         mapper(Child, children_table)
 
@@ -836,7 +836,7 @@ class LazyLoadTest(TestBase):
         Parent, Child = self.Parent, self.Child
 
         mapper(Parent, self.table, properties={
-            '_children': relation(Child, lazy=True,
+            '_children': relationship(Child, lazy=True,
                                   collection_class=list)})
 
         p = Parent('p')
@@ -854,7 +854,7 @@ class LazyLoadTest(TestBase):
         Parent, Child = self.Parent, self.Child
 
         mapper(Parent, self.table, properties={
-            '_children': relation(Child, lazy=False,
+            '_children': relationship(Child, lazy=False,
                                   collection_class=list)})
 
         p = Parent('p')
@@ -869,7 +869,7 @@ class LazyLoadTest(TestBase):
         Parent, Child = self.Parent, self.Child
 
         mapper(Parent, self.table, properties={
-            '_children': relation(Child, lazy=True, uselist=False)})
+            '_children': relationship(Child, lazy=True, uselist=False)})
 
 
         p = Parent('p')
@@ -884,7 +884,7 @@ class LazyLoadTest(TestBase):
         Parent, Child = self.Parent, self.Child
 
         mapper(Parent, self.table, properties={
-            '_children': relation(Child, lazy=False, uselist=False)})
+            '_children': relationship(Child, lazy=False, uselist=False)})
 
 
         p = Parent('p')
@@ -921,7 +921,7 @@ class ReconstitutionTest(TestBase):
         clear_mappers()
 
     def test_weak_identity_map(self):
-        mapper(Parent, self.parents, properties=dict(children=relation(Child)))
+        mapper(Parent, self.parents, properties=dict(children=relationship(Child)))
         mapper(Child, self.children)
 
         session = create_session(weak_identity_map=True)
@@ -941,7 +941,7 @@ class ReconstitutionTest(TestBase):
         assert set(p.kids) == set(['c1', 'c2']), p.kids
 
     def test_copy(self):
-        mapper(Parent, self.parents, properties=dict(children=relation(Child)))
+        mapper(Parent, self.parents, properties=dict(children=relationship(Child)))
         mapper(Child, self.children)
 
         p = Parent('p1')
@@ -953,7 +953,7 @@ class ReconstitutionTest(TestBase):
         assert set(p_copy.kids) == set(['c1', 'c2']), p.kids
 
     def test_pickle_list(self):
-        mapper(Parent, self.parents, properties=dict(children=relation(Child)))
+        mapper(Parent, self.parents, properties=dict(children=relationship(Child)))
         mapper(Child, self.children)
 
         p = Parent('p1')
@@ -966,7 +966,7 @@ class ReconstitutionTest(TestBase):
         assert r2 == ['c1', 'c2']
 
     def test_pickle_set(self):
-        mapper(Parent, self.parents, properties=dict(children=relation(Child, collection_class=set)))
+        mapper(Parent, self.parents, properties=dict(children=relationship(Child, collection_class=set)))
         mapper(Child, self.children)
 
         p = Parent('p1')
@@ -980,7 +980,7 @@ class ReconstitutionTest(TestBase):
 
     def test_pickle_dict(self):
         mapper(Parent, self.parents, properties=dict(
-                    children=relation(KVChild, collection_class=collections.mapped_collection(PickleKeyFunc('name')))
+                    children=relationship(KVChild, collection_class=collections.mapped_collection(PickleKeyFunc('name')))
                 ))
         mapper(KVChild, self.children)
 
@@ -1049,11 +1049,11 @@ class ComparatorTest(_base.MappedTest):
         
         mapper(User, users)
         mapper(Keyword, keywords, properties={
-            'user_keyword': relation(UserKeyword, uselist=False)
+            'user_keyword': relationship(UserKeyword, uselist=False)
         })
         mapper(UserKeyword, userkeywords, properties={
-            'user': relation(User, backref='user_keywords'),
-            'keyword': relation(Keyword),
+            'user': relationship(User, backref='user_keywords'),
+            'keyword': relationship(Keyword),
         })
 
     @classmethod

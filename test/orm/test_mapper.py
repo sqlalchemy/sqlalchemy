@@ -6,8 +6,8 @@ from sqlalchemy.test import testing, pickleable
 from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.engine import default
-from sqlalchemy.orm import mapper, relation, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
-from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relation, dynamic_loader, comparable_property,AttributeExtension
+from sqlalchemy.orm import mapper, relationship, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
+from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relationship, dynamic_loader, comparable_property,AttributeExtension
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
@@ -22,7 +22,7 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         mapper(User, users,
             properties={
-            'addresses':relation(Address, backref='email_address')
+            'addresses':relationship(Address, backref='email_address')
         })
         assert_raises(sa.exc.ArgumentError, sa.orm.compile_mappers)
 
@@ -84,14 +84,14 @@ class MapperTest(_fixtures.FixtureTest):
     def test_bad_cascade(self):
         mapper(Address, addresses)
         assert_raises(sa.exc.ArgumentError,
-                          relation, Address, cascade="fake, all, delete-orphan")
+                          relationship, Address, cascade="fake, all, delete-orphan")
 
     @testing.resolve_artifact_names
     def test_exceptions_sticky(self):
         """test preservation of mapper compile errors raised during hasattr()."""
         
         mapper(Address, addresses, properties={
-            'user':relation(User)
+            'user':relationship(User)
         })
         
         hasattr(Address.user, 'property')
@@ -128,7 +128,7 @@ class MapperTest(_fixtures.FixtureTest):
         assert sa.orm.mapperlib._new_mappers is False
 
         m = mapper(Address, addresses, properties={
-                'user': relation(User, backref="addresses")})
+                'user': relationship(User, backref="addresses")})
 
         assert m.compiled is False
         assert sa.orm.mapperlib._new_mappers is True
@@ -222,21 +222,21 @@ class MapperTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_props(self):
         m = mapper(User, users, properties = {
-            'addresses' : relation(mapper(Address, addresses))
+            'addresses' : relationship(mapper(Address, addresses))
         }).compile()
         assert User.addresses.property is m.get_property('addresses')
 
     @testing.resolve_artifact_names
     def test_compile_on_prop_1(self):
         mapper(User, users, properties = {
-            'addresses' : relation(mapper(Address, addresses))
+            'addresses' : relationship(mapper(Address, addresses))
         })
         User.addresses.any(Address.email_address=='foo@bar.com')
 
     @testing.resolve_artifact_names
     def test_compile_on_prop_2(self):
         mapper(User, users, properties = {
-            'addresses' : relation(mapper(Address, addresses))
+            'addresses' : relationship(mapper(Address, addresses))
         })
         eq_(str(User.id == 3), str(users.c.id==3))
 
@@ -264,7 +264,7 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Foo, addresses, inherits=User)
         ext_list = [AttributeExtension()]
         m.add_property('somename', column_property(users.c.name, extension=ext_list))
-        m.add_property('orders', relation(Order, extension=ext_list, backref='user'))
+        m.add_property('orders', relationship(Order, extension=ext_list, backref='user'))
         assert len(ext_list) == 1
 
         assert Foo.orders.impl.extensions is User.orders.impl.extensions
@@ -327,7 +327,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         m.add_property('_name', deferred(users.c.name))
         m.add_property('name', synonym('_name'))
-        m.add_property('addresses', relation(Address))
+        m.add_property('addresses', relationship(Address))
         m.add_property('uc_name', sa.orm.comparable_property(UCComparator))
         m.add_property('uc_name2', sa.orm.comparable_property(
                 UCComparator, User.uc_name2))
@@ -398,7 +398,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         # later, backref sets up the prop
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='_user')
+            'addresses':relationship(Address, backref='_user')
         })
 
         sess = create_session()
@@ -421,7 +421,7 @@ class MapperTest(_fixtures.FixtureTest):
             pass
 
         mapper(Node, t, properties={
-            '_children':relation(Node, backref=backref('_parent', remote_side=t.c.id)),
+            '_children':relationship(Node, backref=backref('_parent', remote_side=t.c.id)),
             'children':synonym('_children'),
             'parent':synonym('_parent')
         })
@@ -439,11 +439,11 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         try:
             mapper(User, users, non_primary=True, properties={
-                'addresses':relation(Address)
+                'addresses':relationship(Address)
             }).compile()
             assert False
         except sa.exc.ArgumentError, e:
-            assert "Attempting to assign a new relation 'addresses' to a non-primary mapper on class 'User'" in str(e)
+            assert "Attempting to assign a new relationship 'addresses' to a non-primary mapper on class 'User'" in str(e)
 
     @testing.resolve_artifact_names
     def test_illegal_non_primary_2(self):
@@ -478,7 +478,7 @@ class MapperTest(_fixtures.FixtureTest):
                      include_properties=('id', 'type', 'name'))
         e_m = mapper(Employee, inherits=p_m, polymorphic_identity='employee',
           properties={
-            'boss': relation(Manager, backref=backref('peon', ), remote_side=t.c.id)
+            'boss': relationship(Manager, backref=backref('peon', ), remote_side=t.c.id)
           },
           exclude_properties=('vendor_id',))
 
@@ -602,10 +602,10 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Item, items)
 
         mapper(Order, orders, properties=dict(
-            items=relation(Item, order_items)))
+            items=relationship(Item, order_items)))
 
         mapper(User, users, properties=dict(
-            orders=relation(Order)))
+            orders=relationship(Order)))
 
         session = create_session()
         l = (session.query(User).
@@ -674,7 +674,7 @@ class MapperTest(_fixtures.FixtureTest):
     def test_many_to_many_count(self):
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-            keywords = relation(Keyword, item_keywords, lazy=True)))
+            keywords = relationship(Keyword, item_keywords, lazy=True)))
 
         session = create_session()
         q = (session.query(Item).
@@ -689,7 +689,7 @@ class MapperTest(_fixtures.FixtureTest):
         def go():
             mapper(User, users,
                    properties=dict(
-                       name=relation(mapper(Address, addresses))))
+                       name=relationship(mapper(Address, addresses))))
 
         assert_raises(sa.exc.ArgumentError, go)
 
@@ -700,7 +700,7 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(User, users,
                exclude_properties=['name'],
                properties=dict(
-                   name=relation(mapper(Address, addresses))))
+                   name=relationship(mapper(Address, addresses))))
         
         assert bool(User.name)
         
@@ -709,7 +709,7 @@ class MapperTest(_fixtures.FixtureTest):
         """The column being named elsewhere also cancels the error,"""
         mapper(User, users,
                properties=dict(
-                   name=relation(mapper(Address, addresses)),
+                   name=relationship(mapper(Address, addresses)),
                    foo=users.c.name))
 
     @testing.resolve_artifact_names
@@ -731,7 +731,7 @@ class MapperTest(_fixtures.FixtureTest):
             uname = extendedproperty(_get_name, _set_name)
 
         mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=True),
+            addresses = relationship(mapper(Address, addresses), lazy=True),
             uname = synonym('name'),
             adlist = synonym('addresses'),
             adname = synonym('addresses')
@@ -810,7 +810,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         mapper(Address, addresses)
         mapper(User, users, properties = {
-            'addresses':relation(Address, lazy=True),
+            'addresses':relationship(Address, lazy=True),
             'name':synonym('_name', map_column=True)
         })
 
@@ -1057,7 +1057,7 @@ class MapperTest(_fixtures.FixtureTest):
         sa.orm.clear_mappers()
 
         mapper(User, users, properties={
-            'addresses':relation(Address)
+            'addresses':relationship(Address)
         })
 
         assert_raises(sa.orm.exc.UnmappedClassError, sa.orm.compile_mappers)
@@ -1086,7 +1086,7 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_synonym_options(self):
         mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=True,
+            addresses = relationship(mapper(Address, addresses), lazy=True,
                                  order_by=addresses.c.id),
             adlist = synonym('addresses')))
 
@@ -1103,9 +1103,9 @@ class OptionsTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_eager_options(self):
-        """A lazy relation can be upgraded to an eager relation."""
+        """A lazy relationship can be upgraded to an eager relationship."""
         mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses),
+            addresses = relationship(mapper(Address, addresses),
                                  order_by=addresses.c.id)))
 
         sess = create_session()
@@ -1121,7 +1121,7 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_eager_options_with_limit(self):
         mapper(User, users, properties=dict(
-            addresses=relation(mapper(Address, addresses), lazy=True)))
+            addresses=relationship(mapper(Address, addresses), lazy=True)))
 
         sess = create_session()
         u = (sess.query(User).
@@ -1143,7 +1143,7 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_lazy_options_with_limit(self):
         mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=False)))
+            addresses = relationship(mapper(Address, addresses), lazy=False)))
 
         sess = create_session()
         u = (sess.query(User).
@@ -1157,9 +1157,9 @@ class OptionsTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_eager_degrade(self):
-        """An eager relation automatically degrades to a lazy relation if eager columns are not available"""
+        """An eager relationship automatically degrades to a lazy relationship if eager columns are not available"""
         mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=False)))
+            addresses = relationship(mapper(Address, addresses), lazy=False)))
 
         sess = create_session()
         # first test straight eager load, 1 statement
@@ -1191,18 +1191,18 @@ class OptionsTest(_fixtures.FixtureTest):
         mapper(Keyword, keywords)
 
         mapper(Item, items, properties=dict(
-            keywords=relation(Keyword, secondary=item_keywords,
+            keywords=relationship(Keyword, secondary=item_keywords,
                               lazy=False,
                               order_by=item_keywords.c.keyword_id)))
 
         mapper(Order, orders, properties=dict(
-            items=relation(Item, secondary=order_items, lazy=False,
+            items=relationship(Item, secondary=order_items, lazy=False,
                            order_by=order_items.c.item_id)))
 
         mapper(User, users, properties=dict(
-            addresses=relation(Address, lazy=False,
+            addresses=relationship(Address, lazy=False,
                                order_by=addresses.c.id),
-            orders=relation(Order, lazy=False,
+            orders=relationship(Order, lazy=False,
                             order_by=orders.c.id)))
 
         sess = create_session()
@@ -1225,9 +1225,9 @@ class OptionsTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_lazy_options(self):
-        """An eager relation can be upgraded to a lazy relation."""
+        """An eager relationship can be upgraded to a lazy relationship."""
         mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=False)
+            addresses = relationship(mapper(Address, addresses), lazy=False)
         ))
 
         sess = create_session()
@@ -1242,10 +1242,10 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_option_propagate(self):
         mapper(User, users, properties=dict(
-            orders = relation(Order)
+            orders = relationship(Order)
         ))
         mapper(Order, orders, properties=dict(
-            items = relation(Item, secondary=order_items)
+            items = relationship(Item, secondary=order_items)
         ))
         mapper(Item, items)
         
@@ -1270,15 +1270,15 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         mapper(Keyword, keywords)
 
         mapper(Item, items, properties=dict(
-            keywords=relation(Keyword, item_keywords,
+            keywords=relationship(Keyword, item_keywords,
                               order_by=item_keywords.c.item_id)))
 
         mapper(Order, orders, properties=dict(
-            items=relation(Item, order_items,
+            items=relationship(Item, order_items,
                            order_by=items.c.id)))
 
         mapper(User, users, order_by=users.c.id, properties=dict(
-            orders=relation(Order, order_by=orders.c.id)))
+            orders=relationship(Order, order_by=orders.c.id)))
 
     @testing.resolve_artifact_names
     def test_deep_options_1(self):
@@ -1365,7 +1365,7 @@ class ValidatorTest(_fixtures.FixtureTest):
                 assert '@' in ad.email_address
                 return ad
                 
-        mapper(User, users, properties={'addresses':relation(Address)})
+        mapper(User, users, properties={'addresses':relationship(Address)})
         mapper(Address, addresses)
         sess = create_session()
         u1 = User(name='edward')
@@ -1396,7 +1396,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             (deferred, users.c.name),
             (synonym, 'name'),
             (composite, DummyComposite, users.c.id, users.c.name),
-            (relation, Address),
+            (relationship, Address),
             (backref, 'address'),
             (comparable_property, ),
             (dynamic_loader, Address)
@@ -1429,7 +1429,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.assert_compile(aliased(User).name == 'ed', "foobar(users_1.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
 
     @testing.resolve_artifact_names
-    def test_relation(self):
+    def test_relationship(self):
         from sqlalchemy.orm.properties import PropertyLoader
 
         class MyFactory(PropertyLoader.Comparator):
@@ -1444,7 +1444,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 
         mapper(User, users)
         mapper(Address, addresses, properties={
-            'user':relation(User, comparator_factory=MyFactory, 
+            'user':relationship(User, comparator_factory=MyFactory, 
                 backref=backref("addresses", comparator_factory=MyFactory2)
             )
             }
@@ -1726,9 +1726,9 @@ class DeferredTest(_fixtures.FixtureTest):
         mapper(Item, items, properties=dict(
             description=deferred(items.c.description)))
         mapper(Order, orders, properties=dict(
-            items=relation(Item, secondary=order_items)))
+            items=relationship(Item, secondary=order_items)))
         mapper(User, users, properties=dict(
-            orders=relation(Order, order_by=orders.c.id)))
+            orders=relationship(Order, order_by=orders.c.id)))
 
         sess = create_session()
         q = sess.query(User).order_by(User.id)
@@ -1784,10 +1784,10 @@ class SecondaryOptionsTest(_base.MappedTest):
         class Related(_base.ComparableEntity):
             pass
         mapper(Base, base, polymorphic_on=base.c.type, properties={
-            'related':relation(Related, uselist=False)
+            'related':relationship(Related, uselist=False)
         })
         mapper(Child1, child1, inherits=Base, polymorphic_identity='child1', properties={
-            'child2':relation(Child2, primaryjoin=child1.c.child2id==base.c.id, foreign_keys=child1.c.child2id)
+            'child2':relationship(Child2, primaryjoin=child1.c.child2id==base.c.id, foreign_keys=child1.c.child2id)
         })
         mapper(Child2, child2, inherits=Base, polymorphic_identity='child2')
         mapper(Related, related)
@@ -1925,7 +1925,7 @@ class DeferredPopulationTest(_base.MappedTest):
         class Human(_base.BasicEntity): pass
         class Thing(_base.BasicEntity): pass
 
-        mapper(Human, human, properties={"thing": relation(Thing)})
+        mapper(Human, human, properties={"thing": relationship(Thing)})
         mapper(Thing, thing, properties={"name": deferred(thing.c.name)})
     
     @classmethod
@@ -2045,7 +2045,7 @@ class CompositeTypesTest(_base.MappedTest):
                 self.end = end
 
         mapper(Graph, graphs, properties={
-            'edges':relation(Edge)
+            'edges':relationship(Edge)
         })
         mapper(Edge, edges, properties={
             'start':sa.orm.composite(Point, edges.c.x1, edges.c.y1),
@@ -2269,7 +2269,7 @@ class CompositeTypesTest(_base.MappedTest):
                 self.end = end
 
         mapper(Graph, graphs, properties={
-            'edges':relation(Edge)
+            'edges':relationship(Edge)
         })
         mapper(Edge, edges, properties={
             'start':sa.orm.composite(Point, edges.c.x1, edges.c.y1),
@@ -2301,7 +2301,7 @@ class NoLoadTest(_fixtures.FixtureTest):
     def test_basic(self):
         """A basic one-to-many lazy load"""
         m = mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=None)
+            addresses = relationship(mapper(Address, addresses), lazy=None)
         ))
         q = create_session().query(m)
         l = [None]
@@ -2318,7 +2318,7 @@ class NoLoadTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_options(self):
         m = mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=None)
+            addresses = relationship(mapper(Address, addresses), lazy=None)
         ))
         q = create_session().query(m).options(sa.orm.lazyload('addresses'))
         l = [None]
@@ -2516,7 +2516,7 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         Ext, methods = self.extension()
 
         mapper(Item, items, extension=Ext() , properties={
-            'keywords': relation(Keyword, secondary=item_keywords)})
+            'keywords': relationship(Keyword, secondary=item_keywords)})
         mapper(Keyword, keywords, extension=Ext())
 
         sess = create_session()
@@ -2660,13 +2660,13 @@ class RequirementsTest(_base.MappedTest):
             pass
 
         mapper(H1, ht1, properties={
-            'h2s': relation(H2, backref='h1'),
-            'h3s': relation(H3, secondary=ht4, backref='h1s'),
-            'h1s': relation(H1, secondary=ht5, backref='parent_h1'),
-            't6a': relation(H6, backref='h1a',
-                            primaryjoin=ht1.c.id==ht6.c.ht1a_id),
-            't6b': relation(H6, backref='h1b',
-                            primaryjoin=ht1.c.id==ht6.c.ht1b_id),
+            'h2s': relationship(H2, backref='h1'),
+            'h3s': relationship(H3, secondary=ht4, backref='h1s'),
+            'h1s': relationship(H1, secondary=ht5, backref='parent_h1'),
+            't6a': relationship(H6, backref='h1a',
+                                primaryjoin=ht1.c.id==ht6.c.ht1a_id),
+            't6b': relationship(H6, backref='h1b',
+                                primaryjoin=ht1.c.id==ht6.c.ht1b_id),
             })
         mapper(H2, ht2)
         mapper(H3, ht3)
@@ -2778,7 +2778,7 @@ class MagicNamesTest(_base.MappedTest):
         mapper(Cartographer, cartographers, properties=dict(
             query=cartographers.c.quip))
         mapper(Map, maps, properties=dict(
-            mapper=relation(Cartographer, backref='maps')))
+            mapper=relationship(Cartographer, backref='maps')))
 
         c = Cartographer(name='Lenny', alias='The Dude',
                          query='Where be dragons?')

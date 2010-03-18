@@ -2,7 +2,7 @@
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from test.orm import _base
 from sqlalchemy.test.testing import eq_
 
@@ -55,12 +55,12 @@ class AssociationTest(_base.MappedTest):
 
         mapper(Keyword, keywords)
         mapper(KeywordAssociation, item_keywords, properties={
-            'keyword':relation(Keyword, lazy=False)},
+            'keyword':relationship(Keyword, lazy=False)},
                primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
                order_by=[item_keywords.c.data])
 
         mapper(Item, items, properties={
-            'keywords' : relation(KeywordAssociation,
+            'keywords' : relationship(KeywordAssociation,
                                   cascade="all, delete-orphan")
         })
 

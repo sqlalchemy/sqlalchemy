@@ -52,7 +52,7 @@ decoration::
   class InstrumentedList(list):
       pass
 
-Collection classes can be specified in ``relation(collection_class=)`` as
+Collection classes can be specified in ``relationship(collection_class=)`` as
 types or a function that returns an instance.  Collection classes are
 inspected and instrumented during the mapper compilation phase.  The
 collection_class callable will be executed once to produce a specimen

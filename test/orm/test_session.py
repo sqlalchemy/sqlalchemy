@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, backref, eagerload
+from sqlalchemy.orm import mapper, relationship, backref, eagerload
 from sqlalchemy.test.testing import eq_
 from test.engine import _base as engine_base
 from test.orm import _base, _fixtures
@@ -80,7 +80,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_expunge_cascade(self):
         mapper(Address, addresses)
         mapper(User, users, properties={
-            'addresses':relation(Address,
+            'addresses':relationship(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
 
@@ -113,7 +113,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         mapper(Address, addresses_unbound)
         mapper(User, users_unbound, properties={
-            'addresses':relation(Address,
+            'addresses':relationship(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
 
@@ -150,7 +150,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         mapper(Address, addresses_unbound)
         mapper(User, users_unbound, properties={
-            'addresses':relation(Address,
+            'addresses':relationship(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
 
@@ -258,7 +258,7 @@ class SessionTest(_fixtures.FixtureTest):
         
         """
         mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")})
+            'addresses':relationship(Address, backref="user")})
         mapper(Address, addresses)
 
         sess = create_session(autoflush=True, autocommit=False)
@@ -320,7 +320,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_autoflush_rollback(self):
         mapper(Address, addresses)
         mapper(User, users, properties={
-            'addresses':relation(Address)})
+            'addresses':relationship(Address)})
 
         _fixtures.run_inserts_for(users)
         _fixtures.run_inserts_for(addresses)
@@ -707,7 +707,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         s = create_session()
         mapper(User, users, properties={
-            'addresses':relation(Address, cascade="all, delete")
+            'addresses':relationship(Address, cascade="all, delete")
         })
         mapper(Address, addresses)
 
@@ -759,7 +759,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_is_modified(self):
         s = create_session()
 
-        mapper(User, users, properties={'addresses':relation(Address)})
+        mapper(User, users, properties={'addresses':relationship(Address)})
         mapper(Address, addresses)
 
         # save user
@@ -883,7 +883,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_weakref_with_cycles_o2m(self):
         s = sessionmaker()()
         mapper(User, users, properties={
-            "addresses":relation(Address, backref="user")
+            "addresses":relationship(Address, backref="user")
         })
         mapper(Address, addresses)
         s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
@@ -912,7 +912,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_weakref_with_cycles_o2o(self):
         s = sessionmaker()()
         mapper(User, users, properties={
-            "address":relation(Address, backref="user", uselist=False)
+            "address":relationship(Address, backref="user", uselist=False)
         })
         mapper(Address, addresses)
         s.add(User(name="ed", address=Address(email_address="ed1")))
@@ -1013,7 +1013,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_no_save_cascade_1(self):
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
-            addresses=relation(Address, cascade="none", backref="user")))
+            addresses=relationship(Address, cascade="none", backref="user")))
         s = create_session()
 
         u = User(name='u1')
@@ -1032,7 +1032,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_no_save_cascade_2(self):
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
-            addresses=relation(Address,
+            addresses=relationship(Address,
                                cascade="all",
                                backref=backref("user", cascade="none"))))
 

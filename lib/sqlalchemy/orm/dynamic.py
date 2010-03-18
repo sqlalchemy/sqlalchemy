@@ -22,7 +22,7 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import _state_has_identity, has_identity
 from sqlalchemy.orm import attributes, collections
 
-class DynaLoader(strategies.AbstractRelationLoader):
+class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
 

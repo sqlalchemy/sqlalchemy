@@ -73,10 +73,10 @@ class PolymorphicCircularTest(_base.MappedTest):
                                    polymorphic_on=table1.c.type,
                                    polymorphic_identity='table1',
                                    properties={
-                                    'nxt': relation(Table1,
+                                    'nxt': relationship(Table1,
                                         backref=backref('prev', foreignkey=join.c.id, uselist=False),
                                         uselist=False, primaryjoin=join.c.id==join.c.related_id),
-                                    'data':relation(mapper(Data, data))
+                                    'data':relationship(mapper(Data, data))
                                     },
                             order_by=table1.c.id)
             table1_mapper.compile()
@@ -87,8 +87,8 @@ class PolymorphicCircularTest(_base.MappedTest):
 
         # currently, the "eager" relationships degrade to lazy relationships
         # due to the polymorphic load.
-        # the "nxt" relation used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential"
-        # exception now.  since eager loading would never work for that relation anyway, its better that the user
+        # the "nxt" relationship used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential"
+        # exception now.  since eager loading would never work for that relationship anyway, its better that the user
         # gets an exception instead of it silently not eager loading.
         # NOTE: using "nxt" instead of "next" to avoid 2to3 turning it into __next__() for some reason.
         table1_mapper = mapper(Table1, table1,
@@ -96,10 +96,10 @@ class PolymorphicCircularTest(_base.MappedTest):
                                polymorphic_on=table1.c.type,
                                polymorphic_identity='table1',
                                properties={
-                               'nxt': relation(Table1,
+                               'nxt': relationship(Table1,
                                    backref=backref('prev', remote_side=table1.c.id, uselist=False),
                                    uselist=False, primaryjoin=table1.c.id==table1.c.related_id),
-                               'data':relation(mapper(Data, data), lazy=False, order_by=data.c.id)
+                               'data':relationship(mapper(Data, data), lazy=False, order_by=data.c.id)
                                 },
                                 order_by=table1.c.id
                         )

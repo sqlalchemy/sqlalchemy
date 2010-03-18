@@ -9,7 +9,7 @@ styles of persistence are identical, as is the structure of the main Document cl
 ################################# PART I - Imports/Coniguration ####################################
 from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
     Unicode, and_)
-from sqlalchemy.orm import mapper, relation, create_session, lazyload
+from sqlalchemy.orm import mapper, relationship, create_session, lazyload
 
 import sys, os, StringIO, re
 
@@ -79,13 +79,13 @@ class _Attribute(object):
 
 # setup mappers.  Document will eagerly load a list of _Node objects.
 mapper(Document, documents, properties={
-    '_root':relation(_Node, lazy=False, cascade="all")
+    '_root':relationship(_Node, lazy=False, cascade="all")
 })
 
 mapper(_Node, elements, properties={
-    'children':relation(_Node, cascade="all"),
+    'children':relationship(_Node, cascade="all"),
     # eagerly load attributes
-    'attributes':relation(_Attribute, lazy=False, cascade="all, delete-orphan"),
+    'attributes':relationship(_Attribute, lazy=False, cascade="all, delete-orphan"),
 })
 
 mapper(_Attribute, attributes)

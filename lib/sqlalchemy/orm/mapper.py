@@ -58,7 +58,7 @@ _COMPILE_MUTEX = util.threading.RLock()
 ColumnProperty = None
 SynonymProperty = None
 ComparableProperty = None
-RelationProperty = None
+RelationshipProperty = None
 ConcreteInheritedProperty = None
 _expire_state = None
 _state_session = None
@@ -1202,7 +1202,7 @@ class Mapper(object):
 
     def cascade_iterator(self, type_, state, halt_on=None):
         """Iterate each element and its mapper in an object graph,
-        for all relations that meet the given cascade rule.
+        for all relationships that meet the given cascade rule.
 
         ``type\_``:
           The name of the cascade rule (i.e. save-update, delete,
@@ -1210,7 +1210,7 @@ class Mapper(object):
 
         ``state``:
           The lead InstanceState.  child items will be processed per
-          the relations defined for this object's mapper.
+          the relationships defined for this object's mapper.
 
         the return value are object instances; this provides a strong
         reference so that they don't fall out of scope immediately.

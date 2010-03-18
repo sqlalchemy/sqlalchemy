@@ -264,6 +264,7 @@ class QueryTest(TestBase):
 
         @testing.fails_on('postgresql', 'only simple labels allowed')
         @testing.fails_on('sybase', 'only simple labels allowed')
+        @testing.fails_on('mssql', 'only simple labels allowed')
         def go():
             concat = ("test: " + users.c.user_name).label('thedata')
             eq_(
