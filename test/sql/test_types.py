@@ -1113,10 +1113,16 @@ class NumericTest(TestBase):
         )
 
     def test_numeric_as_float(self):
+        if testing.against("oracle+cx_oracle"):
+            filter_ = lambda n:round(n, 5)
+        else:
+            filter_ = None
+
         self._do_test(
             Numeric(precision=8, scale=4, asdecimal=False),
             [15.7563, Decimal("15.7563")],
-            [15.7563]
+            [15.7563],
+            filter_ = filter_
         )
 
     def test_float_as_decimal(self):
