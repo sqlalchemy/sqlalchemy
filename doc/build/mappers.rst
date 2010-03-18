@@ -895,7 +895,8 @@ Relationship Configuration
 Basic Relational Patterns
 --------------------------
 
-A quick walkthrough of the basic relational patterns.
+A quick walkthrough of the basic relational patterns.   Note that the :func:`~sqlalchemy.orm.relationship()` function is known as :func:`~sqlalchemy.orm.relation()`
+in all SQLAlchemy versions prior to 0.6beta2, including the 0.5 and 0.4 series.
 
 One To Many
 ~~~~~~~~~~~~

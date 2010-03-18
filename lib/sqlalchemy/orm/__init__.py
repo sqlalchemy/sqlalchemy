@@ -175,7 +175,13 @@ def create_session(bind=None, **kwargs):
 
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
-
+    
+    .. note:: This function is known as :func:`relation` in all versions
+      of SQLAlchemy prior to version 0.6beta2, including the 0.5 and 0.4 series.
+      :func:`~sqlalchemy.orm.relationship()` is only available starting with 
+      SQLAlchemy 0.6beta2.  The :func:`relation` name will remain available for 
+      the foreseeable future in order to enable cross-compatibility.
+    
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`RelationshipProperty`.
 

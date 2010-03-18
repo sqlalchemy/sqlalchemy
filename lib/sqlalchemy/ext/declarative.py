@@ -100,8 +100,11 @@ Configuring Relationships
 =========================
 
 Relationships to other classes are done in the usual way, with the added
-feature that the class specified to :func:`~sqlalchemy.orm.relationship()`
-may be a string name.  The "class registry" associated with ``Base``
+feature that the class specified to :func:`~sqlalchemy.orm.relationship`
+may be a string name (note that :func:`~sqlalchemy.orm.relationship` is 
+only available as of SQLAlchemy 0.6beta2, and in all prior versions is known
+as :func:`~sqlalchemy.orm.relation`, 
+including 0.5 and 0.4).  The "class registry" associated with ``Base``
 is used at mapper compilation time to resolve the name into the actual
 class object, which is expected to have been defined once the mapper
 configuration is used:: 

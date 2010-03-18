@@ -38,6 +38,8 @@ call::
 
 .. autofunction:: dynamic_loader
 
+.. autofunction:: relation
+
 .. autofunction:: relationship
 
 .. autofunction:: synonym

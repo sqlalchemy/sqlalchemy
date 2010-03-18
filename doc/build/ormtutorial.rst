@@ -700,6 +700,8 @@ Now let's consider a second table to be dealt with.  Users in our system also ca
 
 The above class introduces a **foreign key** constraint which references the ``users`` table.  This defines for SQLAlchemy the relationship between the two tables at the database level.  The relationship between the ``User`` and ``Address`` classes is defined separately using the :func:`~sqlalchemy.orm.relationship()` function, which defines an attribute ``user`` to be placed on the ``Address`` class, as well as an ``addresses`` collection to be placed on the ``User`` class.  Such a relationship is known as a **bidirectional** relationship.   Because of the placement of the foreign key, from ``Address`` to ``User`` it is **many to one**, and from ``User`` to ``Address`` it is **one to many**.  SQLAlchemy is automatically aware of many-to-one/one-to-many based on foreign keys.
 
+.. note:: The :func:`~sqlalchemy.orm.relationship()` function has historically been known as :func:`~sqlalchemy.orm.relation()`, which is the name that's available in all versions of SQLAlchemy prior to 0.6beta2, including the 0.5 and 0.4 series. :func:`~sqlalchemy.orm.relationship()` is only available starting with SQLAlchemy 0.6beta2.  :func:`~sqlalchemy.orm.relation()` will remain available in SQLAlchemy for the foreseeable future to enable cross-compatibility.
+
 The :func:`~sqlalchemy.orm.relationship()` function is extremely flexible, and could just have easily been defined on the ``User`` class:
 
 .. sourcecode:: python+sql
@@ -1068,7 +1070,7 @@ The :class:`~sqlalchemy.orm.query.Query` features several operators which make u
     {stop}[]
 
 Common Relationship Operators
--------------------------
+-----------------------------
 
 Here's all the operators which build on relationships:
 
