@@ -1081,7 +1081,7 @@ class MSSQLStrictCompiler(MSSQLCompiler):
             # SQL Server wants single quotes around the date string.
             return "'" + str(value) + "'"
         else:
-            MSSQLCompiler.render_literal_value(self, value, type_)
+            return super(MSSQLStrictCompiler, self).render_literal_value(value, type_)
 
 class MSDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
