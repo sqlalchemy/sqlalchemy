@@ -1,3 +1,11 @@
+"""
+MSSQL dialect tweaked to work with mxODBC, mainly by making use
+of the MSSQLStrictCompiler.
+
+This was tested with mxODBC 3.1.2 and the SQL Server Native
+Client connected to MSSQL 2005 and 2008 Express Editions.
+"""
+
 import re
 import sys
 
@@ -9,7 +17,8 @@ from sqlalchemy.dialects.mssql.base import (MSExecutionContext, MSDialect,
                                             MSSQLCompiler, MSSQLStrictCompiler,
                                             _MSDateTime, _MSDate, TIME)
 
-        
+
+
 class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
     """
     The pyodbc execution context is useful for enabling
