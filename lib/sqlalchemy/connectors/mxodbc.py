@@ -126,7 +126,15 @@ class MxNumeric(sqltypes.Numeric):
 
     def result_processor(self, dialect, coltype):
         """
-        For cases when a 
+        By default, the SQLAlchemy mxODBC connector is
+        configured to return Decimal values from 
+        Numeric columns. In addition, the SQLAlchemy's
+        Numeric type is expected to return a Python Numeric,
+        so by default no action is needed.
+        
+        However, if the user specifies asdecimal=False
+        on a Decimal column, it is expected to return
+        a Python float.
         """
         if self.asdecimal:
             return None
@@ -148,7 +156,9 @@ class MxFloat(sqltypes.Float):
     def result_processor(self, dialect, coltype):
         """
         mxODBC returns Python float values for REAL, FLOAT, and
-        DOUBLE column types.
+        DOUBLE column types, so if the user specifies 'asdecimal',
+        SQLAlchemy needs to coerce the value to a Decimal type.
+        Otherwise, no special action is needed.
         """
         if self.asdecimal:
             return processors.to_decimal_processor_factory(Decimal)
