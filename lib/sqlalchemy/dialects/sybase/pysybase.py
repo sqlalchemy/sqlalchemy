@@ -21,9 +21,17 @@ kind at this time.
 
 """
 
+from sqlalchemy import types as sqltypes, processors
 from sqlalchemy.dialects.sybase.base import SybaseDialect, \
                                         SybaseExecutionContext, SybaseSQLCompiler
 
+
+class _SybNumeric(sqltypes.Numeric):
+    def result_processor(self, dialect, type_):
+        if not self.asdecimal:
+            return processors.to_float
+        else:
+            return sqltypes.Numeric.result_processor(self, dialect, type_)
 
 class SybaseExecutionContext_pysybase(SybaseExecutionContext):
 
@@ -51,6 +59,11 @@ class SybaseDialect_pysybase(SybaseDialect):
     driver = 'pysybase'
     execution_ctx_cls = SybaseExecutionContext_pysybase
     statement_compiler = SybaseSQLCompiler_pysybase
+
+    colspecs={
+       sqltypes.Numeric:_SybNumeric,
+       sqltypes.Float:sqltypes.Float
+    }
 
     @classmethod
     def dbapi(cls):
