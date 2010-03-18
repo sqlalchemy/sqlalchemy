@@ -16,9 +16,6 @@ import re
 import warnings
 from decimal import Decimal
 
-from mx.ODBC import InterfaceError
-from mx.ODBC.Error import Warning as MxOdbcWarning
-
 from sqlalchemy.connectors import Connector
 from sqlalchemy import types as sqltypes
 import sqlalchemy.processors as processors
