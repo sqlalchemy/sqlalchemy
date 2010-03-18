@@ -1144,7 +1144,7 @@ class NumericTest(TestBase, AssertsExecutionResults):
 
             ret = set([row[0] for row in testing.db.execute(t.select()).fetchall()])
             
-            if testing.against('sqlite', 'sybase+pysybase'):
+            if testing.against('sqlite', 'sybase+pysybase', 'oracle+cx_oracle'):
                 numbers = set(round_decimal(n, 11) for n in numbers)
                 ret = set(round_decimal(n, 11) for n in ret)
             else:
