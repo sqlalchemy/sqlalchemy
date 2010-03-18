@@ -29,7 +29,8 @@ class MxODBCConnector(Connector):
     supports_sane_multi_rowcount = False
     supports_unicode_statements = False
     supports_unicode_binds = False
-    supports_native_decimal = False
+    
+    supports_native_decimal = True
     
     @classmethod
     def dbapi(cls):

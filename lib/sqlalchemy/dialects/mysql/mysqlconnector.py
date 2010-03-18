@@ -8,7 +8,7 @@ import re
 
 from sqlalchemy.dialects.mysql.base import (MySQLDialect,
     MySQLExecutionContext, MySQLCompiler, MySQLIdentifierPreparer,
-    BIT, NUMERIC, _NumericType)
+    BIT)
 
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
@@ -27,15 +27,6 @@ class MySQLCompiler_mysqlconnector(MySQLCompiler):
 
     def post_process_text(self, text):
         return text.replace('%', '%%')
-
-class _DecimalType(_NumericType):
-    def result_processor(self, dialect, coltype):
-        if self.asdecimal:
-            return None
-        return processors.to_float
-
-class _myconnpyNumeric(_DecimalType, NUMERIC):
-    pass
 
 class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
 
@@ -56,6 +47,8 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
+    supports_native_decimal = True
+
     default_paramstyle = 'format'
     execution_ctx_cls = MySQLExecutionContext_mysqlconnector
     statement_compiler = MySQLCompiler_mysqlconnector
@@ -65,7 +58,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {
-            sqltypes.Numeric: _myconnpyNumeric,
             BIT: _myconnpyBIT,
         }
     )

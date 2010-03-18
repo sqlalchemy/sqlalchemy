@@ -11,6 +11,8 @@ from sqlalchemy.databases import *
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.test import *
 from sqlalchemy.test.util import picklers
+from decimal import Decimal
+from sqlalchemy.test.util import round_decimal
 
 
 class AdaptTest(TestBase):
@@ -1083,14 +1085,6 @@ class StringTest(TestBase, AssertsExecutionResults):
         foo.create()
         foo.drop()
 
-def _missing_decimal():
-    """Python implementation supports decimals"""
-    try:
-        import decimal
-        return False
-    except ImportError:
-        return True
-
 class NumericTest(TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
@@ -1113,7 +1107,6 @@ class NumericTest(TestBase, AssertsExecutionResults):
     def teardown(self):
         numeric_table.delete().execute()
 
-    @testing.fails_if(_missing_decimal)
     def test_decimal(self):
         from decimal import Decimal
         numeric_table.insert().execute(
@@ -1133,10 +1126,7 @@ class NumericTest(TestBase, AssertsExecutionResults):
             (2, 3.5, 5.6, Decimal("12.4"), Decimal("15.75")),
         ])
 
-    @testing.fails_if(_missing_decimal)
     def test_precision_decimal(self):
-        from decimal import Decimal
-        from sqlalchemy.test.util import round_decimal
             
         t = Table('t', MetaData(), Column('x', Numeric(precision=18, scale=12)))
         t.create(testing.db)
@@ -1153,13 +1143,49 @@ class NumericTest(TestBase, AssertsExecutionResults):
 
             ret = set([row[0] for row in testing.db.execute(t.select()).fetchall()])
             
-            numbers = set(round_decimal(n, 11) for n in numbers)
-            ret = set(round_decimal(n, 11) for n in ret)
+            if testing.against('sqlite', 'sybase+pysybase', 'oracle+cx_oracle'):
+                numbers = set(round_decimal(n, 11) for n in numbers)
+                ret = set(round_decimal(n, 11) for n in ret)
+            else:
+                numbers = set(n for n in numbers)
+                ret = set(n for n in ret)
             
             eq_(numbers, ret)
         finally:
             t.drop(testing.db)
+
+    def test_enotation_decimal(self):
+        """test exceedingly small decimals.
+        
+        Decimal reports values with E notation when the exponent 
+        is greater than 6.
+        
+        """
+
+        t = Table('t', MetaData(), Column('x', Numeric(precision=18, scale=12)))
+        t.create(testing.db)
+        try:
+            numbers = set([
+                decimal.Decimal('1E-2'),
+                decimal.Decimal('1E-3'),
+                decimal.Decimal('1E-4'),
+                decimal.Decimal('1E-5'),
+                decimal.Decimal('1E-6'),
+                decimal.Decimal('1E-7'),
+                decimal.Decimal('1E-8'),
+            ])
+
+            testing.db.execute(t.insert(), [{'x':x} for x in numbers])
+
+            ret = set([row[0] for row in testing.db.execute(t.select()).fetchall()])
             
+            numbers = set(n for n in numbers)
+            ret = set(n for n in ret)
+            
+            eq_(numbers, ret)
+        finally:
+            t.drop(testing.db)
+        
 
     def test_decimal_fallback(self):
         from decimal import Decimal

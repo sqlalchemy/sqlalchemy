@@ -277,27 +277,14 @@ RESERVED_WORDS = set(
 
 
 class _MSNumeric(sqltypes.Numeric):
-    def result_processor(self, dialect, coltype):
-        if self.asdecimal:
-            # TODO: factor this down into the sqltypes.Numeric class,
-            # use dialect flags
-            if getattr(self, 'scale', None) is None:
-                # we're a "float".  return a default decimal factory
-                return processors.to_decimal_processor_factory(decimal.Decimal)
-            elif dialect.supports_native_decimal:
-                # we're a "numeric", DBAPI will give us Decimal directly
-                return None
-            else:
-                # we're a "numeric", DBAPI returns floats, convert.
-                return processors.to_decimal_processor_factory(decimal.Decimal, self.scale)
-        else:
-            #XXX: if the DBAPI returns a float (this is likely, given the
-            # processor when asdecimal is True), this should be a None
-            # processor instead.
-            return processors.to_float
-            
+    
     def bind_processor(self, dialect):
         def process(value):
+            # TODO: this seems exceedingly complex. 
+            # need to know exactly what tests cover this, so far
+            # test_types.NumericTest.test_enotation_decimal
+            # see the _SybNumeric type in sybase/pyodbc for possible
+            # generalized solution on pyodbc
             if isinstance(value, decimal.Decimal):
                 if value.adjusted() < 0:
                     result = "%s0.%s%s" % (

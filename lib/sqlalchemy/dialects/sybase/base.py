@@ -85,6 +85,7 @@ RESERVED_WORDS = set([
     "within", "work", "writetext",
     ])
 
+        
 class _SybaseUnitypeMixin(object):
     """these types appear to return a buffer object."""
     
@@ -161,9 +162,6 @@ class SybaseTypeCompiler(compiler.GenericTypeCompiler):
     def visit_UNIQUEIDENTIFIER(self, type_):
         return "UNIQUEIDENTIFIER"
         
-colspecs = {
-}
-
 ischema_names = {
     'integer' : INTEGER,
     'unsigned int' : INTEGER, # TODO: unsigned flags
@@ -359,7 +357,7 @@ class SybaseDialect(default.DefaultDialect):
     supports_unicode_binds = False
     postfetch_lastrowid = True
 
-    colspecs = colspecs
+    colspecs = {}
     ischema_names = ischema_names
 
     type_compiler = SybaseTypeCompiler
