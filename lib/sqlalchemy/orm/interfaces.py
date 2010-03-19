@@ -498,24 +498,7 @@ class MapperProperty(object):
         """
         pass
 
-    def register_dependencies(self, *args, **kwargs):
-        """Called by the ``Mapper`` in response to the UnitOfWork
-        calling the ``Mapper``'s register_dependencies operation.
-        Establishes a topological dependency between two mappers
-        which will affect the order in which mappers persist data.
-        
-        """
-
-        pass
-
-    def register_processors(self, *args, **kwargs):
-        """Called by the ``Mapper`` in response to the UnitOfWork
-        calling the ``Mapper``'s register_processors operation.
-        Establishes a processor object between two mappers which
-        will link data and state between parent/child objects.
-        
-        """
-
+    def get_flush_actions(self, uowtransaction, records, state):
         pass
         
     def is_primary(self):

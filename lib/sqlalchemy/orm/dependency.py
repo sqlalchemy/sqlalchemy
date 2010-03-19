@@ -176,7 +176,8 @@ class DependencyProcessor(object):
         if state is not None and self.post_update:
             for x in related:
                 if x is not None and not self._check_reverse_action(uowcommit, x, state, "postupdate"):
-                    uowcommit.register_object(state, postupdate=True, post_update_cols=[r for l, r in self.prop.synchronize_pairs])
+                    uowcommit.register_object(state, postupdate=True, 
+                                    post_update_cols=[r for l, r in self.prop.synchronize_pairs])
                     self._performed_action(uowcommit, x, state, "postupdate")
                     break
 

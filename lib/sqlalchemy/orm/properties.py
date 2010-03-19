@@ -1191,13 +1191,10 @@ class RelationshipProperty(StrategizedProperty):
                 source_selectable, 
                 dest_selectable, secondary, target_adapter)
 
-    def register_dependencies(self, uowcommit):
+    def get_flush_actions(self, uowtransaction, records, state):
         if not self.viewonly:
-            self._dependency_processor.register_dependencies(uowcommit)
+            return self._depency_processor.get_flush_actions(uowtransaction, records, state)
 
-    def register_processors(self, uowcommit):
-        if not self.viewonly:
-            self._dependency_processor.register_processors(uowcommit)
 
 PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)

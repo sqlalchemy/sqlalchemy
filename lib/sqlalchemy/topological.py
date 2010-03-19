@@ -23,73 +23,21 @@ from sqlalchemy import util
 
 __all__ = ['sort', 'sort_with_cycles', 'sort_as_tree']
 
-def sort(tuples, allitems):
-    """sort the given list of items by dependency.
-    
-    'tuples' is a list of tuples representing a partial ordering.
-    """
-    
-    return [n.item for n in _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=True)]
-
-def sort_with_cycles(tuples, allitems):
-    """sort the given list of items by dependency, cutting out cycles.
-    
-    returns results as an iterable of 2-tuples, containing the item,
-    and a list containing items involved in a cycle with this item, if any.
-    
-    'tuples' is a list of tuples representing a partial ordering.
-    """
-    
-    return [(n.item, [n.item for n in n.cycles or []]) for n in _sort(tuples, allitems, allow_cycles=True)]
-    
-def sort_as_tree(tuples, allitems, with_cycles=False):
-    """sort the given list of items by dependency, and return results
-    as a hierarchical tree structure.
-    
-    returns results as an iterable of 3-tuples, containing the item,
-    a list containing items involved in a cycle with this item, if any,
-    and a list of child tuples.  
-    
-    if with_cycles is False, the returned structure is of the same form
-    but the second element of each tuple, i.e. the 'cycles', is an empty list.
-    
-    'tuples' is a list of tuples representing a partial ordering.
-    """
-
-    return _organize_as_tree(_sort(tuples, allitems, allow_cycles=with_cycles))
-
-
-class _Node(object):
+# TODO: obviate the need for a _Node class.
+# a straight tuple should be used.
+class _Node(tuple):
     """Represent each item in the sort."""
-
-    def __init__(self, item):
-        self.item = item
-        self.dependencies = set()
-        self.children = []
-        self.cycles = None
-
-    def __str__(self):
-        return self.safestr()
     
-    def safestr(self, indent=0):
-        return (' ' * indent * 2) + \
-            str(self.item) + \
-            (self.cycles is not None and (" (cycles: " + repr([x for x in self.cycles]) + ")") or "") + \
-            "\n" + \
-            ''.join(str(n) for n in self.children)
-
-    def __repr__(self):
-        return str(self.item)
-
-    def all_deps(self):
-        """Return a set of dependencies for this node and all its cycles."""
-
-        deps = set(self.dependencies)
-        if self.cycles is not None:
-            for c in self.cycles:
-                deps.update(c.dependencies)
-        return deps
-
+    def __new__(cls, item):
+        children = []
+        t = tuple.__new__(cls, [item, children])
+        t.item = item
+        t.children = children
+        return t
+    
+    def __hash__(self):
+        return id(self)
+    
 class _EdgeCollection(object):
     """A collection of directed edges."""
 
@@ -103,7 +51,6 @@ class _EdgeCollection(object):
         parentnode, childnode = edge
         self.parent_to_children[parentnode].add(childnode)
         self.child_to_parents[childnode].add(parentnode)
-        parentnode.dependencies.add(childnode)
 
     def remove(self, edge):
         """Remove an edge from this collection.
@@ -156,7 +103,11 @@ class _EdgeCollection(object):
     def __repr__(self):
         return repr(list(self))
 
-def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
+def sort(tuples, allitems):
+    """sort the given list of items by dependency.
+
+    'tuples' is a list of tuples representing a partial ordering.
+    """
     nodes = {}
     edges = _EdgeCollection()
 
@@ -168,11 +119,6 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
     for t in tuples:
         id0, id1 = id(t[0]), id(t[1])
         if t[0] is t[1]:
-            if allow_cycles:
-                n = nodes[id0]
-                n.cycles = set([n])
-            elif not ignore_self_cycles:
-                raise CircularDependencyError("Self-referential dependency detected " + repr(t))
             continue
         childnode = nodes[id1]
         parentnode = nodes[id0]
@@ -186,117 +132,12 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
     output = []
     while nodes:
         if not queue:
-            # edges remain but no edgeless nodes to remove; this indicates
-            # a cycle
-            if allow_cycles:
-                for cycle in _find_cycles(edges):
-                    lead = cycle[0][0]
-                    lead.cycles = set()
-                    for edge in cycle:
-                        n = edges.remove(edge)
-                        lead.cycles.add(edge[0])
-                        lead.cycles.add(edge[1])
-                        if n is not None:
-                            queue.append(n)
-                    for n in lead.cycles:
-                        if n is not lead:
-                            n._cyclical = True
-                            for (n, k) in list(edges.edges_by_parent(n)):
-                                edges.add((lead, k))
-                                edges.remove((n, k))
-                continue
-            else:
-                # long cycles not allowed
-                raise CircularDependencyError("Circular dependency detected " + repr(edges) + repr(queue))
+            raise CircularDependencyError("Circular dependency detected " + 
+                                repr(edges) + repr(queue))
         node = queue.pop()
-        if not hasattr(node, '_cyclical'):
-            output.append(node)
+        output.append(node.item)
         del nodes[id(node.item)]
         for childnode in edges.pop_node(node):
             queue.append(childnode)
     return output
 
-def _organize_as_tree(nodes):
-    """Given a list of nodes from a topological sort, organize the
-    nodes into a tree structure, with as many non-dependent nodes
-    set as siblings to each other as possible.
-    
-    returns nodes as 3-tuples (item, cycles, children).
-    """
-
-    if not nodes:
-        return None
-    # a list of all currently independent subtrees as a tuple of
-    # (root_node, set_of_all_tree_nodes, set_of_all_cycle_nodes_in_tree)
-    # order of the list has no semantics for the algorithmic
-    independents = []
-    # in reverse topological order
-    for node in reversed(nodes):
-        # nodes subtree and cycles contain the node itself
-        subtree = set([node])
-        if node.cycles is not None:
-            cycles = set(node.cycles)
-        else:
-            cycles = set()
-        # get a set of dependent nodes of node and its cycles
-        nodealldeps = node.all_deps()
-        if nodealldeps:
-            # iterate over independent node indexes in reverse order so we can efficiently remove them
-            for index in xrange(len(independents) - 1, -1, -1):
-                child, childsubtree, childcycles = independents[index]
-                # if there is a dependency between this node and an independent node
-                if (childsubtree.intersection(nodealldeps) or childcycles.intersection(node.dependencies)):
-                    # prepend child to nodes children
-                    # (append should be fine, but previous implemetation used prepend)
-                    node.children[0:0] = [(child.item, [n.item for n in child.cycles or []], child.children)]
-                    # merge childs subtree and cycles
-                    subtree.update(childsubtree)
-                    cycles.update(childcycles)
-                    # remove the child from list of independent subtrees
-                    independents[index:index+1] = []
-        # add node as a new independent subtree
-        independents.append((node, subtree, cycles))
-    # choose an arbitrary node from list of all independent subtrees
-    head = independents.pop()[0]
-    # add all other independent subtrees as a child of the chosen root
-    # used prepend [0:0] instead of extend to maintain exact behaviour of previous implementation
-    head.children[0:0] = [(i[0].item, [n.item for n in i[0].cycles or []], i[0].children) for i in independents]
-    return (head.item, [n.item for n in head.cycles or []], head.children)
-
-def _find_cycles(edges):
-    involved_in_cycles = set()
-    cycles = {}
-    def traverse(node, goal=None, cycle=None):
-        if goal is None:
-            goal = node
-            cycle = []
-        elif node is goal:
-            return True
-
-        for (n, key) in edges.edges_by_parent(node):
-            if key in cycle:
-                continue
-            cycle.append(key)
-            if traverse(key, goal, cycle):
-                cycset = set(cycle)
-                for x in cycle:
-                    involved_in_cycles.add(x)
-                    if x in cycles:
-                        existing_set = cycles[x]
-                        [existing_set.add(y) for y in cycset]
-                        for y in existing_set:
-                            cycles[y] = existing_set
-                        cycset = existing_set
-                    else:
-                        cycles[x] = cycset
-            cycle.pop()
-
-    for parent in edges.get_parents():
-        traverse(parent)
-
-    unique_cycles = set(tuple(s) for s in cycles.values())
-    
-    for cycle in unique_cycles:
-        edgecollection = [edge for edge in edges
-                          if edge[0] in cycle and edge[1] in cycle]
-        yield edgecollection
