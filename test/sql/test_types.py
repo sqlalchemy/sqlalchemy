@@ -1208,6 +1208,7 @@ class NumericTest(TestBase):
     @testing.fails_on('oracle', 'TODO')
     @testing.fails_on('postgresql+pg8000', 'TODO')
     @testing.fails_on("firebird", "Precision must be from 1 to 18")
+    @testing.fails_on("sybase+pysybase", "TODO")
     def test_many_significant_digits(self):
         numbers = set([
             decimal.Decimal("31943874831932418390.01"),
