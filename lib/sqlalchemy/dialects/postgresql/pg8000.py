@@ -29,9 +29,6 @@ from sqlalchemy.dialects.postgresql.base import PGDialect, \
                 PGCompiler, PGIdentifierPreparer, PGExecutionContext
 
 class _PGNumeric(sqltypes.Numeric):
-    def bind_processor(self, dialect):
-        return processors.to_float
-    
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             if coltype in (700, 701):
