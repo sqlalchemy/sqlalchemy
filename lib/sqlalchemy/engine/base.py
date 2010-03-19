@@ -1569,7 +1569,7 @@ class Engine(Connectable, log.Identified):
         if not schema:
             schema =  self.dialect.default_schema_name
         try:
-            return self.dialect.table_names(conn, schema)
+            return self.dialect.get_table_names(conn, schema)
         finally:
             if connection is None:
                 conn.close()

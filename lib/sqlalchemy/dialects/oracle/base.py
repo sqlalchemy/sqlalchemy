@@ -631,18 +631,6 @@ class OracleDialect(default.DefaultDialect):
     def _get_default_schema_name(self, connection):
         return self.normalize_name(connection.execute(u'SELECT USER FROM DUAL').scalar())
 
-    def table_names(self, connection, schema):
-        # note that table_names() isnt loading DBLINKed or synonym'ed tables
-        if schema is None:
-            schema = self.default_schema_name
-        s = sql.text(
-            "SELECT table_name FROM all_tables "
-            "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
-            "AND OWNER = :owner "
-            "AND IOT_NAME IS NULL")
-        cursor = connection.execute(s, owner=self.denormalize_name(schema))
-        return [self.normalize_name(row[0]) for row in cursor]
-
     def _resolve_synonym(self, connection, desired_owner=None, desired_synonym=None, desired_table=None):
         """search for a local synonym matching the given desired owner/name.
 
@@ -712,7 +700,18 @@ class OracleDialect(default.DefaultDialect):
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         schema = self.denormalize_name(schema or self.default_schema_name)
-        return self.table_names(connection, schema)
+
+        # note that table_names() isnt loading DBLINKed or synonym'ed tables
+        if schema is None:
+            schema = self.default_schema_name
+        s = sql.text(
+            "SELECT table_name FROM all_tables "
+            "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
+            "AND OWNER = :owner "
+            "AND IOT_NAME IS NULL")
+        cursor = connection.execute(s, owner=schema)
+        return [self.normalize_name(row[0]) for row in cursor]
+
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):

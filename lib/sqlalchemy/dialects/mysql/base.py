@@ -1766,24 +1766,20 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
+        """Return a Unicode SHOW TABLES from a given schema."""
         if schema is not None:
             current_schema = schema
         else:
             current_schema = self.default_schema_name
-        table_names = self.table_names(connection, current_schema)
-        return table_names
-
-    def table_names(self, connection, schema):
-        """Return a Unicode SHOW TABLES from a given schema."""
 
         charset = self._connection_charset
         if self.server_version_info < (5, 0, 2):
             rp = connection.execute("SHOW TABLES FROM %s" %
-                self.identifier_preparer.quote_identifier(schema))
+                self.identifier_preparer.quote_identifier(current_schema))
             return [row[0] for row in self._compat_fetchall(rp, charset=charset)]
         else:
             rp = connection.execute("SHOW FULL TABLES FROM %s" %
-                    self.identifier_preparer.quote_identifier(schema))
+                    self.identifier_preparer.quote_identifier(current_schema))
 
             return [row[0] for row in self._compat_fetchall(rp, charset=charset)\
                                                         if row[1] == 'BASE TABLE']
@@ -1796,7 +1792,7 @@ class MySQLDialect(default.DefaultDialect):
         if schema is None:
             schema = self.default_schema_name
         if self.server_version_info < (5, 0, 2):
-            return self.table_names(connection, schema)
+            return self.get_table_names(connection, schema)
         charset = self._connection_charset
         rp = connection.execute("SHOW FULL TABLES FROM %s" %
                 self.identifier_preparer.quote_identifier(schema))

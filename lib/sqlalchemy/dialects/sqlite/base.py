@@ -360,8 +360,9 @@ class SQLiteDialect(default.DefaultDialect):
             return connect
         else:
             return None
-    
-    def table_names(self, connection, schema):
+
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
             master = '%s.sqlite_master' % qschema
@@ -399,10 +400,6 @@ class SQLiteDialect(default.DefaultDialect):
             pass
 
         return (row is not None)
-
-    @reflection.cache
-    def get_table_names(self, connection, schema=None, **kw):
-        return self.table_names(connection, schema)
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):

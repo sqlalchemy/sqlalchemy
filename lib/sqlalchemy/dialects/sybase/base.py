@@ -382,9 +382,6 @@ class SybaseDialect(default.DefaultDialect):
     def get_table_names(self, connection, schema=None, **kw):
         if schema is None:
             schema = self.default_schema_name
-        return self.table_names(connection, schema)
-
-    def table_names(self, connection, schema):
 
         result = connection.execute(
                     text("select sysobjects.name from sysobjects, sysusers "

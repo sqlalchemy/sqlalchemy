@@ -63,7 +63,7 @@ import datetime, itertools, re
 from sqlalchemy import exc, schema, sql, util, processors
 from sqlalchemy.sql import operators as sql_operators, expression as sql_expr
 from sqlalchemy.sql import compiler, visitors
-from sqlalchemy.engine import base as engine_base, default
+from sqlalchemy.engine import base as engine_base, default, reflection
 from sqlalchemy import types as sqltypes
 
 
@@ -880,7 +880,8 @@ class MaxDBDialect(default.DefaultDialect):
         rp = connection.execute(sql, bind)
         return bool(rp.first())
 
-    def table_names(self, connection, schema):
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
         if schema is None:
             sql = (" SELECT TABLENAME FROM TABLES WHERE "
                    " SCHEMANAME=CURRENT_SCHEMA ")

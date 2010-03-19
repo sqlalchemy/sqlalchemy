@@ -1149,11 +1149,6 @@ class MSDialect(default.DefaultDialect):
                 pass
         return self.schema_name
 
-    def table_names(self, connection, schema):
-        s = select([ischema.tables.c.table_name], 
-                   ischema.tables.c.table_schema==schema)
-        return [row[0] for row in connection.execute(s)]
-
 
     def has_table(self, connection, tablename, schema=None):
         current_schema = schema or self.default_schema_name
@@ -1182,7 +1177,7 @@ class MSDialect(default.DefaultDialect):
         s = sql.select([tables.c.table_name],
             sql.and_(
                 tables.c.table_schema == current_schema,
-                tables.c.table_type == 'BASE TABLE'
+                tables.c.table_type == u'BASE TABLE'
             ),
             order_by=[tables.c.table_name]
         )
@@ -1196,7 +1191,7 @@ class MSDialect(default.DefaultDialect):
         s = sql.select([tables.c.table_name],
             sql.and_(
                 tables.c.table_schema == current_schema,
-                tables.c.table_type == 'VIEW'
+                tables.c.table_type == u'VIEW'
             ),
             order_by=[tables.c.table_name]
         )
@@ -1320,11 +1315,11 @@ class MSDialect(default.DefaultDialect):
             table_fullname = "%s.%s" % (current_schema, tablename)
             cursor = connection.execute(
                 "select ident_seed('%s'), ident_incr('%s')" 
-                % (tablename, tablename)
+                % (table_fullname, table_fullname)
                 )
 
             row = cursor.first()
-            if not row is None:
+            if row is not None and row[0] is not None:
                 colmap[ic]['sequence'].update({
                     'start' : int(row[0]),
                     'increment' : int(row[1])

@@ -21,7 +21,7 @@ tables = Table("TABLES", ischema,
     Column("TABLE_CATALOG", CoerceUnicode, key="table_catalog"),
     Column("TABLE_SCHEMA", CoerceUnicode, key="table_schema"),
     Column("TABLE_NAME", CoerceUnicode, key="table_name"),
-    Column("TABLE_TYPE", String, key="table_type"),
+    Column("TABLE_TYPE", String(convert_unicode=True), key="table_type"),
     schema="INFORMATION_SCHEMA")
 
 columns = Table("COLUMNS", ischema,
@@ -42,7 +42,7 @@ constraints = Table("TABLE_CONSTRAINTS", ischema,
     Column("TABLE_SCHEMA", CoerceUnicode, key="table_schema"),
     Column("TABLE_NAME", CoerceUnicode, key="table_name"),
     Column("CONSTRAINT_NAME", CoerceUnicode, key="constraint_name"),
-    Column("CONSTRAINT_TYPE", String, key="constraint_type"),
+    Column("CONSTRAINT_TYPE", String(convert_unicode=True), key="constraint_type"),
     schema="INFORMATION_SCHEMA")
 
 column_constraints = Table("CONSTRAINT_COLUMN_USAGE", ischema,

@@ -193,7 +193,8 @@ class InformixDialect(default.DefaultDialect):
         cu.execute('SET LOCK MODE TO WAIT')
         #cu.execute('SET ISOLATION TO REPEATABLE READ')
 
-    def table_names(self, connection, schema):
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
         s = "select tabname from systables"
         return [row[0] for row in connection.execute(s)]
 
