@@ -20,6 +20,11 @@ CHANGES
     callable that, given the current value of the "version_id_col",
     returns the next version number.  Can be used for alternate
     versioning schemes such as uuid, timestamps.  [ticket:1692]
+  
+  - added "lockmode" kw argument to Session.refresh(), will
+    pass through the string value to Query the same as  
+    in with_lockmode(), will also do version check for a 
+    version_id_col-enabled mapping.
     
   - Fixed bug in session.rollback() which involved not removing
     formerly "pending" objects from the session before

@@ -125,16 +125,29 @@ class VersioningTest(_base.MappedTest):
         s2.commit()
 
         # load, version is wrong
-        assert_raises(sa.orm.exc.ConcurrentModificationError, s1.query(Foo).with_lockmode('read').get, f1s1.id)
+        assert_raises(
+                sa.orm.exc.ConcurrentModificationError, 
+                s1.query(Foo).with_lockmode('read').get, f1s1.id
+            )
+
+        # load, version is wrong
+        assert_raises(
+                sa.orm.exc.ConcurrentModificationError, 
+                s1.refresh, f1s1, lockmode='read'
+            )
 
         # reload it
         s1.query(Foo).populate_existing().get(f1s1.id)
+        
         # now assert version OK
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
 
         # assert brand new load is OK too
         s1.close()
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
+        
+        
+        
 
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections

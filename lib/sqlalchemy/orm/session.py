@@ -882,7 +882,7 @@ class Session(object):
         for state, dict_ in states.items():
             state.commit_all(dict_, self.identity_map)
 
-    def refresh(self, instance, attribute_names=None):
+    def refresh(self, instance, attribute_names=None, lockmode=None):
         """Refresh the attributes on the given instance.
 
         A query will be issued to the database and all attributes will be
@@ -895,9 +895,13 @@ class Session(object):
         Eagerly-loaded relational attributes will eagerly load within the
         single refresh operation.
 
-        The ``attribute_names`` argument is an iterable collection of
-        attribute names indicating a subset of attributes to be refreshed.
-
+        :param attribute_names: optional.  An iterable collection of
+          string attribute names indicating a subset of attributes to 
+          be refreshed.
+        
+        :param lockmode: Passed to the :class:`~sqlalchemy.orm.query.Query` 
+          as used by :meth:`~sqlalchemy.orm.query.Query.with_lockmode`.
+        
         """
         try:
             state = attributes.instance_state(instance)
@@ -906,6 +910,7 @@ class Session(object):
         self._validate_persistent(state)
         if self.query(_object_mapper(instance))._get(
                 state.key, refresh_state=state,
+                lockmode=lockmode,
                 only_load_props=attribute_names) is None:
             raise sa_exc.InvalidRequestError(
                 "Could not refresh instance '%s'" %
