@@ -1211,13 +1211,14 @@ class NumericTest(TestBase):
     
     @testing.fails_on('sqlite', 'TODO')
     @testing.fails_on('oracle', 'TODO')
-    @testing.fails_on('sybase', 'TODO')
+    @testing.fails_on('postgresql+pg8000', 'TODO')
     def test_many_significant_digits(self):
         numbers = set([
             decimal.Decimal("31943874831932418390.01"),
+            decimal.Decimal("319438950232418390.273596"),
         ])
         self._do_test(
-            Numeric(precision=25, scale=2),
+            Numeric(precision=26, scale=6),
             numbers,
             numbers
         )

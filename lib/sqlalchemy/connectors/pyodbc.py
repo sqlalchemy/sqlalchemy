@@ -10,6 +10,8 @@ from sqlalchemy import processors, types as sqltypes
 class PyODBCNumeric(sqltypes.Numeric):
     """Turns Decimals with adjusted() < -6 into floats, > 7 into strings"""
     
+    convert_large_decimals_to_string = False
+    
     def bind_processor(self, dialect):
         super_process = super(PyODBCNumeric, self).bind_processor(dialect)
         
@@ -19,7 +21,8 @@ class PyODBCNumeric(sqltypes.Numeric):
                 
                 if value.adjusted() < -6:
                     return processors.to_float(value)
-                elif value.adjusted() > 7:
+                elif self.convert_large_decimals_to_string and \
+                    value.adjusted() > 7:
                     return self._large_dec_to_string(value)
 
             if super_process:

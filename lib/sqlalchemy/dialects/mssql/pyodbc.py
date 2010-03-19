@@ -16,7 +16,8 @@ from sqlalchemy.connectors.pyodbc import PyODBCConnector, PyODBCNumeric
 from sqlalchemy import types as sqltypes, util
 
 class _MSNumeric_pyodbc(PyODBCNumeric):
-    pass
+    convert_large_decimals_to_string = True
+    
     
 class MSExecutionContext_pyodbc(MSExecutionContext):
     _embedded_scope_identity = False

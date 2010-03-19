@@ -34,7 +34,7 @@ from sqlalchemy.connectors.pyodbc import PyODBCConnector, PyODBCNumeric
 from sqlalchemy import types as sqltypes, util
 
 class _SybNumeric_pyodbc(PyODBCNumeric):
-    pass
+    convert_large_decimals_to_string = False
 
 class SybaseExecutionContext_pyodbc(SybaseExecutionContext):
     def set_ddl_autocommit(self, connection, value):
