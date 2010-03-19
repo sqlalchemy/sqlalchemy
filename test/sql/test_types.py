@@ -1110,29 +1110,29 @@ class NumericTest(TestBase):
     def test_numeric_as_decimal(self):
         self._do_test(
             Numeric(precision=8, scale=4),
-            [15.7563, Decimal("15.7563")],
-            [Decimal("15.7563")], 
+            [15.7563, Decimal("15.7563"), None],
+            [Decimal("15.7563"), None], 
         )
 
     def test_numeric_as_float(self):
         if testing.against("oracle+cx_oracle"):
-            filter_ = lambda n:round(n, 5)
+            filter_ = lambda n:n is not None and round(n, 5) or None
         else:
             filter_ = None
 
         self._do_test(
             Numeric(precision=8, scale=4, asdecimal=False),
-            [15.7563, Decimal("15.7563")],
-            [15.7563],
+            [15.7563, Decimal("15.7563"), None],
+            [15.7563, None],
             filter_ = filter_
         )
 
     def test_float_as_decimal(self):
         self._do_test(
             Float(precision=8, asdecimal=True),
-            [15.7563, Decimal("15.7563")],
-            [Decimal("15.7563")], 
-            filter_ = lambda n:round(n, 5)
+            [15.7563, Decimal("15.7563"), None],
+            [Decimal("15.7563"), None], 
+            filter_ = lambda n:n is not None and round(n, 5) or None
         )
 
     def test_float_as_float(self):
@@ -1140,26 +1140,20 @@ class NumericTest(TestBase):
             Float(precision=8),
             [15.7563, Decimal("15.7563")],
             [15.7563],
-            filter_ = lambda n:round(n, 5)
+            filter_ = lambda n:n is not None and round(n, 5) or None
         )
         
     def test_precision_decimal(self):
         numbers = set([
             decimal.Decimal("54.234246451650"),
-            decimal.Decimal("87673.594069654000"),
             decimal.Decimal("0.004354"), 
             decimal.Decimal("900.0"), 
         ])
-        if testing.against('sqlite', 'sybase+pysybase', 'oracle+cx_oracle'):
-            filter_ = lambda n:round_decimal(n, 11)
-        else:
-            filter_ = None
             
         self._do_test(
             Numeric(precision=18, scale=12),
             numbers,
             numbers,
-            filter_=filter_
         )
 
     def test_enotation_decimal(self):
@@ -1192,6 +1186,7 @@ class NumericTest(TestBase):
     
     @testing.fails_on("sybase+pyodbc", 
                         "Don't know how do get these values through FreeTDS + Sybase")
+    @testing.fails_on("firebird", "Precision must be from 1 to 18")
     def test_enotation_decimal_large(self):
         """test exceedingly large decimals.
 
@@ -1212,13 +1207,15 @@ class NumericTest(TestBase):
     @testing.fails_on('sqlite', 'TODO')
     @testing.fails_on('oracle', 'TODO')
     @testing.fails_on('postgresql+pg8000', 'TODO')
+    @testing.fails_on("firebird", "Precision must be from 1 to 18")
     def test_many_significant_digits(self):
         numbers = set([
             decimal.Decimal("31943874831932418390.01"),
             decimal.Decimal("319438950232418390.273596"),
+            decimal.Decimal("87673.594069654243"),
         ])
         self._do_test(
-            Numeric(precision=26, scale=6),
+            Numeric(precision=38, scale=12),
             numbers,
             numbers
         )

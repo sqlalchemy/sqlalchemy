@@ -82,6 +82,12 @@ from sqlalchemy import types as sqltypes, util, exc
 from datetime import datetime
 import random
 
+class _OracleNumeric(sqltypes.Numeric):
+    # cx_oracle accepts Decimal objects, but returns
+    # floats
+    def bind_processor(self, dialect):
+        return None
+        
 class _OracleDate(sqltypes.Date):
     def bind_processor(self, dialect):
         return None
@@ -187,25 +193,6 @@ class _OracleInterval(oracle.INTERVAL):
     
 class _OracleRaw(oracle.RAW):
     pass
-
-colspecs = {
-    sqltypes.Date : _OracleDate, # generic type, assume datetime.date is desired
-    oracle.DATE: oracle.DATE,  # non generic type - passthru
-    sqltypes.LargeBinary : _OracleBinary,
-    sqltypes.Boolean : oracle._OracleBoolean,
-    sqltypes.Interval : _OracleInterval,
-    oracle.INTERVAL : _OracleInterval,
-    sqltypes.Text : _OracleText,
-    sqltypes.String : _OracleString,
-    sqltypes.UnicodeText : _OracleUnicodeText,
-    sqltypes.CHAR : _OracleChar,
-    sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
-                                        # it would be nice if we could not use it otherwise.
-    oracle.NUMBER : oracle.NUMBER, # don't let this get converted
-    oracle.RAW: _OracleRaw,
-    sqltypes.Unicode: _OracleNVarChar,
-    sqltypes.NVARCHAR : _OracleNVarChar,
-}
 
 class OracleCompiler_cx_oracle(OracleCompiler):
     def bindparam_string(self, name):
@@ -346,7 +333,27 @@ class OracleDialect_cx_oracle(OracleDialect):
     execution_ctx_cls = OracleExecutionContext_cx_oracle
     statement_compiler = OracleCompiler_cx_oracle
     driver = "cx_oracle"
-    colspecs = colspecs
+    
+    colspecs = colspecs = {
+        sqltypes.Numeric: _OracleNumeric,
+        sqltypes.Date : _OracleDate, # generic type, assume datetime.date is desired
+        oracle.DATE: oracle.DATE,  # non generic type - passthru
+        sqltypes.LargeBinary : _OracleBinary,
+        sqltypes.Boolean : oracle._OracleBoolean,
+        sqltypes.Interval : _OracleInterval,
+        oracle.INTERVAL : _OracleInterval,
+        sqltypes.Text : _OracleText,
+        sqltypes.String : _OracleString,
+        sqltypes.UnicodeText : _OracleUnicodeText,
+        sqltypes.CHAR : _OracleChar,
+        sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
+                                            # it would be nice if we could not use it otherwise.
+        oracle.NUMBER : oracle.NUMBER, # don't let this get converted
+        oracle.RAW: _OracleRaw,
+        sqltypes.Unicode: _OracleNVarChar,
+        sqltypes.NVARCHAR : _OracleNVarChar,
+    }
+
     
     execute_sequence_format = list
     
