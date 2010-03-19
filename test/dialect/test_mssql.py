@@ -1030,11 +1030,11 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
 
         columns = [
             # column type, args, kwargs, expected ddl
-            (mssql.MSNumeric, [], {},
+            (types.NUMERIC, [], {},
              'NUMERIC'),
-            (mssql.MSNumeric, [None], {},
+            (types.NUMERIC, [None], {},
              'NUMERIC'),
-            (mssql.MSNumeric, [12, 4], {},
+            (types.NUMERIC, [12, 4], {},
              'NUMERIC(12, 4)'),
 
             (types.Float, [], {},

@@ -8,55 +8,43 @@ import decimal
 from sqlalchemy import processors, types as sqltypes
 
 class PyODBCNumeric(sqltypes.Numeric):
-    """Turns Decimals with adjusted() < -6 into floats."""
+    """Turns Decimals with adjusted() < -6 into floats, > 7 into strings"""
     
     def bind_processor(self, dialect):
         super_process = super(PyODBCNumeric, self).bind_processor(dialect)
         
         def process(value):
             if self.asdecimal and \
-                    isinstance(value, decimal.Decimal) and \
-                    value.adjusted() < -6:
-                return processors.to_float(value)
-            elif super_process:
+                    isinstance(value, decimal.Decimal):
+                
+                if value.adjusted() < -6:
+                    return processors.to_float(value)
+                elif value.adjusted() > 7:
+                    return self._large_dec_to_string(value)
+
+            if super_process:
                 return super_process(value)
             else:
                 return value
         return process
 
-    # This method turns the adjusted into a string.
-    # not sure if this has advantages over the simple float
-    # approach above.
-#    def bind_processor(self, dialect):
-#        def process(value):
-#            if isinstance(value, decimal.Decimal):
-#                if value.adjusted() < 0:
-#                    result = "%s0.%s%s" % (
-#                            (value < 0 and '-' or ''),
-#                            '0' * (abs(value.adjusted()) - 1),
-#                            "".join([str(nint) for nint in value._int]))
-#
-#                else:
-#                    if 'E' in str(value):
-#                        result = "%s%s%s" % (
-#                                (value < 0 and '-' or ''),
-#                                "".join([str(s) for s in value._int]),
-#                                "0" * (value.adjusted() - (len(value._int)-1)))
-#                    else:
-#                        if (len(value._int) - 1) > value.adjusted():
-#                            result = "%s%s.%s" % (
-#                                    (value < 0 and '-' or ''),
-#                                    "".join([str(s) for s in value._int][0:value.adjusted() + 1]),
-#                                    "".join([str(s) for s in value._int][value.adjusted() + 1:]))
-#                        else:
-#                            result = "%s%s" % (
-#                                    (value < 0 and '-' or ''),
-#                                    "".join([str(s) for s in value._int][0:value.adjusted() + 1]))
-#                return result
-#
-#            else:
-#                return value
-#        return process
+    def _large_dec_to_string(self, value):
+        if 'E' in str(value):
+            result = "%s%s%s" % (
+                    (value < 0 and '-' or ''),
+                    "".join([str(s) for s in value._int]),
+                    "0" * (value.adjusted() - (len(value._int)-1)))
+        else:
+            if (len(value._int) - 1) > value.adjusted():
+                result = "%s%s.%s" % (
+                        (value < 0 and '-' or ''),
+                        "".join([str(s) for s in value._int][0:value.adjusted() + 1]),
+                        "".join([str(s) for s in value._int][value.adjusted() + 1:]))
+            else:
+                result = "%s%s" % (
+                        (value < 0 and '-' or ''),
+                        "".join([str(s) for s in value._int][0:value.adjusted() + 1]))
+        return result
 
 class PyODBCConnector(Connector):
     driver='pyodbc'

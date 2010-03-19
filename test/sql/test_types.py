@@ -1189,6 +1189,27 @@ class NumericTest(TestBase):
             numbers,
             numbers
         )
+    
+    @testing.fails_on("sybase+pyodbc", 
+                        "Don't know how do get these values through FreeTDS + Sybase")
+    @testing.fails_on('sqlite', 'The 319438... number fails.')
+    def test_enotation_decimal_large(self):
+        """test exceedingly large decimals.
+
+        """
+
+        numbers = set([
+            decimal.Decimal('4E+8'),
+            decimal.Decimal("31943874831932418390.01"),
+            decimal.Decimal("5748E+15"),
+            decimal.Decimal('1.521E+15'),
+            decimal.Decimal('00000000000000.1E+12'),
+        ])
+        self._do_test(
+            Numeric(precision=25, scale=2),
+            numbers,
+            numbers
+        )
         
 
             
