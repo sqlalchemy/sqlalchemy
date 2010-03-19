@@ -12,11 +12,12 @@ Connect strings are of the form::
 """
 
 from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
-from sqlalchemy.connectors.pyodbc import PyODBCConnector
-from sqlalchemy import types as sqltypes
-import re
-import sys
+from sqlalchemy.connectors.pyodbc import PyODBCConnector, PyODBCNumeric
+from sqlalchemy import types as sqltypes, util
 
+class _MSNumeric_pyodbc(PyODBCNumeric):
+    pass
+    
 class MSExecutionContext_pyodbc(MSExecutionContext):
     _embedded_scope_identity = False
     
@@ -67,7 +68,14 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     execution_ctx_cls = MSExecutionContext_pyodbc
 
     pyodbc_driver_name = 'SQL Server'
-
+    
+    colspecs = util.update_copy(
+        MSDialect.colspecs,
+        {
+            sqltypes.Numeric:_MSNumeric_pyodbc
+        }
+    )
+    
     def __init__(self, description_encoding='latin-1', **params):
         super(MSDialect_pyodbc, self).__init__(**params)
         self.description_encoding = description_encoding

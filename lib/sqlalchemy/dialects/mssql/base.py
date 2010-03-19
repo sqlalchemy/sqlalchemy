@@ -276,46 +276,6 @@ RESERVED_WORDS = set(
     ])
 
 
-class _MSNumeric(sqltypes.Numeric):
-    
-    def bind_processor(self, dialect):
-        def process(value):
-            # TODO: this seems exceedingly complex. 
-            # need to know exactly what tests cover this, so far
-            # test_types.NumericTest.test_enotation_decimal
-            # see the _SybNumeric type in sybase/pyodbc for possible
-            # generalized solution on pyodbc
-            if isinstance(value, decimal.Decimal):
-                if value.adjusted() < 0:
-                    result = "%s0.%s%s" % (
-                            (value < 0 and '-' or ''),
-                            '0' * (abs(value.adjusted()) - 1),
-                            "".join([str(nint) for nint in value._int]))
-
-                else:
-                    if 'E' in str(value):
-                        result = "%s%s%s" % (
-                                (value < 0 and '-' or ''),
-                                "".join([str(s) for s in value._int]),
-                                "0" * (value.adjusted() - (len(value._int)-1)))
-                    else:
-                        if (len(value._int) - 1) > value.adjusted():
-                            result = "%s%s.%s" % (
-                                    (value < 0 and '-' or ''),
-                                    "".join([str(s) for s in value._int][0:value.adjusted() + 1]),
-                                    "".join([str(s) for s in value._int][value.adjusted() + 1:]))
-                        else:
-                            result = "%s%s" % (
-                                    (value < 0 and '-' or ''),
-                                    "".join([str(s) for s in value._int][0:value.adjusted() + 1]))
-
-                return result
-
-            else:
-                return value
-
-        return process
-
 class REAL(sqltypes.Float):
     """A type for ``real`` numbers."""
 
@@ -411,26 +371,11 @@ class DATETIMEOFFSET(sqltypes.TypeEngine):
     def __init__(self, precision=None, **kwargs):
         self.precision = precision
 
-
 class _StringType(object):
     """Base for MSSQL string types."""
 
     def __init__(self, collation=None):
         self.collation = collation
-
-    def __repr__(self):
-        attributes = inspect.getargspec(self.__init__)[0][1:]
-        attributes.extend(inspect.getargspec(_StringType.__init__)[0][1:])
-
-        params = {}
-        for attr in attributes:
-            val = getattr(self, attr)
-            if val is not None and val is not False:
-                params[attr] = val
-
-        return "%s(%s)" % (self.__class__.__name__,
-                           ', '.join(['%s=%r' % (k, params[k]) for k in params]))
-
 
 class TEXT(_StringType, sqltypes.TEXT):
     """MSSQL TEXT type, for variable-length text up to 2^31 characters."""
@@ -579,7 +524,6 @@ class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = 'SQL_VARIANT'
 
 # old names.
-MSNumeric = _MSNumeric
 MSDateTime = _MSDateTime
 MSDate = _MSDate
 MSReal = REAL
@@ -602,13 +546,6 @@ MSMoney = MONEY
 MSSmallMoney = SMALLMONEY
 MSUniqueIdentifier = UNIQUEIDENTIFIER
 MSVariant = SQL_VARIANT
-
-colspecs = {
-    sqltypes.Numeric : _MSNumeric,
-    sqltypes.DateTime : _MSDateTime,
-    sqltypes.Date : _MSDate,
-    sqltypes.Time : TIME,
-}
 
 ischema_names = {
     'int' : INTEGER,
@@ -1146,7 +1083,13 @@ class MSDialect(default.DefaultDialect):
     use_scope_identity = True
     max_identifier_length = 128
     schema_name = "dbo"
-    colspecs = colspecs
+
+    colspecs = {
+        sqltypes.DateTime : _MSDateTime,
+        sqltypes.Date : _MSDate,
+        sqltypes.Time : TIME,
+    }
+
     ischema_names = ischema_names
     
     supports_native_boolean = False
