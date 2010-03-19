@@ -1103,6 +1103,8 @@ class NumericTest(TestBase):
         if filter_:
             result = set(filter_(x) for x in result)
             output = set(filter_(x) for x in output)
+        print result
+        print output
         eq_(result, output)
         
     def test_numeric_as_decimal(self):
@@ -1176,9 +1178,14 @@ class NumericTest(TestBase):
             decimal.Decimal('1E-6'),
             decimal.Decimal('1E-7'),
             decimal.Decimal('1E-8'),
+            decimal.Decimal("0.01000005940696"),
+            decimal.Decimal("0.00000005940696"),
+            decimal.Decimal("0.00000000000696"),
+            decimal.Decimal("0.70000000000696"),
+            decimal.Decimal("696E-12"),
         ])
         self._do_test(
-            Numeric(precision=18, scale=12),
+            Numeric(precision=18, scale=14),
             numbers,
             numbers
         )
