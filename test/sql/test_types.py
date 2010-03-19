@@ -1146,7 +1146,7 @@ class NumericTest(TestBase):
     def test_precision_decimal(self):
         numbers = set([
             decimal.Decimal("54.234246451650"),
-            decimal.Decimal("876734.594069654000"),
+            decimal.Decimal("87673.594069654000"),
             decimal.Decimal("0.004354"), 
             decimal.Decimal("900.0"), 
         ])
