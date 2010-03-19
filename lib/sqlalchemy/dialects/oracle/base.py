@@ -225,6 +225,8 @@ ischema_names = {
     'CLOB' : CLOB,
     'NCLOB' : NCLOB,
     'TIMESTAMP' : TIMESTAMP,
+    'TIMESTAMP WITH TIME ZONE' : TIMESTAMP,
+    'INTERVAL DAY TO SECOND' : INTERVAL,
     'RAW' : RAW,
     'FLOAT' : FLOAT,
     'DOUBLE PRECISION' : DOUBLE_PRECISION,
@@ -256,7 +258,13 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
                 "(%d)" % type_.second_precision or
                 "",
         )
-            
+
+    def visit_TIMESTAMP(self, type_):
+        if type_.timezone:
+            return "TIMESTAMP WITH TIME ZONE"
+        else:
+            return "TIMESTAMP"
+
     def visit_DOUBLE_PRECISION(self, type_):
         return self._generate_numeric(type_, "DOUBLE PRECISION")
         
@@ -756,6 +764,8 @@ class OracleDialect(default.DefaultDialect):
                 coltype = NUMBER(precision, scale)
             elif coltype=='CHAR' or coltype=='VARCHAR2':
                 coltype = self.ischema_names.get(coltype)(length)
+            elif 'WITH TIME ZONE' in coltype: 
+                coltype = TIMESTAMP(timezone=True)
             else:
                 coltype = re.sub(r'\(\d+\)', '', coltype)
                 try:

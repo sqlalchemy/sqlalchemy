@@ -401,6 +401,12 @@ CHANGES
      which is more or less equivalent on that platform.
      [ticket:1712]
    
+   - Added support for rendering and reflecting 
+     TIMESTAMP WITH TIME ZONE, i.e. TIMESTAMP(timezone=True).
+     [ticket:651]
+     
+   - Oracle INTERVAL type can now be reflected.
+     
 - sqlite
    - Added "native_datetime=True" flag to create_engine().
      This will cause the DATE and TIMESTAMP types to skip 

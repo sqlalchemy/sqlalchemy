@@ -591,7 +591,31 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             t1.drop()
     
-    
+    def test_reflect_dates(self):
+        metadata = MetaData(testing.db)
+        Table(
+            "date_types", metadata,
+            Column('d1', DATE),
+            Column('d2', TIMESTAMP),
+            Column('d3', TIMESTAMP(timezone=True)),
+            Column('d4', oracle.INTERVAL(second_precision=5)),
+        )
+        metadata.create_all()
+        try:
+            m = MetaData(testing.db)
+            t1 = Table(
+                "date_types", m,
+                autoload=True)
+            assert isinstance(t1.c.d1.type, DATE)
+            assert isinstance(t1.c.d2.type, TIMESTAMP)
+            assert not t1.c.d2.type.timezone
+            assert isinstance(t1.c.d3.type, TIMESTAMP)
+            assert t1.c.d3.type.timezone
+            assert isinstance(t1.c.d4.type, oracle.INTERVAL)
+            
+        finally:
+            metadata.drop_all()
+        
     def test_reflect_raw(self):
         types_table = Table(
         'all_types', MetaData(testing.db),
