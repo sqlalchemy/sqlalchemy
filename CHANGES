@@ -331,7 +331,11 @@ CHANGES
     propagation from the parent.  mapper inheritance already
     propagates the things you want from the parent mapper.
     [ticket:1393]
-     
+
+  - An exception is raised when a single-table subclass specifies
+    a column that is already present on the base class.
+    [ticket:1732]
+    
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
     nullable flag and server defaults would not be reflected.

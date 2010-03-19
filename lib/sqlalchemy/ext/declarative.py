@@ -682,6 +682,11 @@ def _as_declarative(cls, classname, dict_):
                     raise exceptions.ArgumentError(
                         "Can't place primary key columns on an inherited class with no table."
                         )
+                if c.name in inherited_table.c:
+                    raise exceptions.ArgumentError(
+                                "Column '%s' on class %s conflicts with existing column '%s'" % 
+                                (c, cls, inherited_table.c[c.name])
+                            )
                 inherited_table.append_column(c)
     
         # single or joined inheritance

@@ -1445,7 +1445,35 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         assert not hasattr(Engineer, 'nerf_gun')
         assert not hasattr(Manager, 'nerf_gun')
         assert not hasattr(Manager, 'primary_language')
-            
+    
+    def test_single_detects_conflict(self):
+        class Person(Base):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on':discriminator}
+
+        class Engineer(Person):
+            __mapper_args__ = {'polymorphic_identity':'engineer'}
+            primary_language = Column(String(50))
+        
+        # test sibling col conflict
+        def go():
+            class Manager(Person):
+                __mapper_args__ = {'polymorphic_identity':'manager'}
+                golf_swing = Column(String(50))
+                primary_language = Column(String(50))
+        assert_raises(sa.exc.ArgumentError, go)
+
+        # test parent col conflict
+        def go():
+            class Salesman(Person):
+                __mapper_args__ = {'polymorphic_identity':'manager'}
+                name = Column(String(50))
+        assert_raises(sa.exc.ArgumentError, go)
+
+        
     def test_single_no_special_cols(self):
         class Person(Base, ComparableEntity):
             __tablename__ = 'people'
@@ -1595,16 +1623,22 @@ def _produce_test(inline, stringbased):
                 user_id = Column(Integer, ForeignKey('users.id'))
                 if inline:
                     if stringbased:
-                        user = relationship("User", primaryjoin="User.id==Address.user_id", backref="addresses")
+                        user = relationship("User", 
+                                                    primaryjoin="User.id==Address.user_id",
+                                                    backref="addresses")
                     else:
                         user = relationship(User, primaryjoin=User.id==user_id, backref="addresses")
             
             if not inline:
                 compile_mappers()
                 if stringbased:
-                    Address.user = relationship("User", primaryjoin="User.id==Address.user_id", backref="addresses")
+                    Address.user = relationship("User", 
+                                            primaryjoin="User.id==Address.user_id",
+                                            backref="addresses")
                 else:
-                    Address.user = relationship(User, primaryjoin=User.id==Address.user_id, backref="addresses")
+                    Address.user = relationship(User, 
+                                            primaryjoin=User.id==Address.user_id,
+                                            backref="addresses")
 
         @classmethod
         def insert_data(cls):
@@ -1628,18 +1662,22 @@ def _produce_test(inline, stringbased):
     
         def test_aliased_join(self):
             # this query will screw up if the aliasing 
-            # enabled in query.join() gets applied to the right half of the join condition inside the any().
+            # enabled in query.join() gets applied to the right half of the 
+            # join condition inside the any().
             # the join condition inside of any() comes from the "primaryjoin" of the relationship,
             # and should not be annotated with _orm_adapt.  PropertyLoader.Comparator will annotate
             # the left side with _orm_adapt, though.
             sess = create_session()
             eq_(
                 sess.query(User).join(User.addresses, aliased=True).
-                    filter(Address.email=='ed@wood.com').filter(User.addresses.any(Address.email=='jack@bean.com')).all(),
+                    filter(Address.email=='ed@wood.com').
+                    filter(User.addresses.any(Address.email=='jack@bean.com')).all(),
                 []
             )
     
-    ExplicitJoinTest.__name__ = "ExplicitJoinTest%s%s" % (inline and 'Inline' or 'Separate', stringbased and 'String' or 'Literal')
+    ExplicitJoinTest.__name__ = "ExplicitJoinTest%s%s" % \
+                                    (inline and 'Inline' or 'Separate', 
+                                    stringbased and 'String' or 'Literal')
     return ExplicitJoinTest
 
 for inline in (True, False):
