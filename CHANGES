@@ -142,6 +142,13 @@ CHANGES
     version_id_col was in use. [ticket:1692]
     
 - sql
+  - join() will now simulate a NATURAL JOIN by default.  Meaning,
+    if the left side is a join, it will attempt to join the right
+    side to the rightmost side of the left first, and not raise
+    any exceptions about ambiguous join conditions if successful
+    even if there are further join targets across the rest of
+    the left.  [ticket:1714]
+    
   - The most common result processors conversion function were
     moved to the new "processors" module.  Dialect authors are
     encouraged to use those functions whenever they correspond

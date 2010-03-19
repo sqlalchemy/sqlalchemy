@@ -2853,11 +2853,15 @@ class Join(FromClause):
     def get_children(self, **kwargs):
         return self.left, self.right, self.onclause
 
-    def _match_primaries(self, primary, secondary):
+    def _match_primaries(self, left, right):
         global sql_util
         if not sql_util:
             from sqlalchemy.sql import util as sql_util
-        return sql_util.join_condition(primary, secondary)
+        if isinstance(left, Join):
+            left_right = left.right
+        else:
+            left_right = None
+        return sql_util.join_condition(left, right, a_subset=left_right)
 
     def select(self, whereclause=None, fold_equivalents=False, **kwargs):
         """Create a :class:`Select` from this :class:`Join`.

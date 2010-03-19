@@ -131,49 +131,77 @@ def adapt_criterion_to_null(crit, nulls):
     return visitors.cloned_traverse(crit, {}, {'binary':visit_binary})
     
     
-def join_condition(a, b, ignore_nonexistent_tables=False):
-    """create a join condition between two tables.
+def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
+    """create a join condition between two tables or selectables.
     
-    ignore_nonexistent_tables=True allows a join condition to be
-    determined between two tables which may contain references to
-    other not-yet-defined tables.  In general the NoSuchTableError
-    raised is only required if the user is trying to join selectables
-    across multiple MetaData objects (which is an extremely rare use 
-    case).
+    e.g.::
+    
+        join_condition(tablea, tableb)
+        
+    would produce an expression along the lines of::
+    
+        tablea.c.id==tableb.c.tablea_id
+    
+    The join is determined based on the foreign key relationships
+    between the two selectables.   If there are multiple ways
+    to join, or no way to join, an error is raised.
+    
+    :param ignore_nonexistent_tables: This flag will cause the
+    function to silently skip over foreign key resolution errors
+    due to nonexistent tables - the assumption is that these
+    tables have not yet been defined within an initialization process
+    and are not significant to the operation.
+
+    :param a_subset: An optional expression that is a sub-component
+    of ``a``.  An attempt will be made to join to just this sub-component
+    first before looking at the full ``a`` construct, and if found
+    will be successful even if there are other ways to join to ``a``.
+    This allows the "right side" of a join to be passed thereby
+    providing a "natural join".
     
     """
     crit = []
     constraints = set()
-    for fk in b.foreign_keys:
-        try:
-            col = fk.get_referent(a)
-        except exc.NoReferencedTableError:
-            if ignore_nonexistent_tables:
-                continue
-            else:
-                raise
-                
-        if col is not None:
-            crit.append(col == fk.parent)
-            constraints.add(fk.constraint)
-    if a is not b:
-        for fk in a.foreign_keys:
+    
+    for left in (a_subset, a):
+        if left is None:
+            continue
+        for fk in b.foreign_keys:
             try:
-                col = fk.get_referent(b)
+                col = fk.get_referent(left)
             except exc.NoReferencedTableError:
                 if ignore_nonexistent_tables:
                     continue
                 else:
                     raise
-
+                
             if col is not None:
                 crit.append(col == fk.parent)
                 constraints.add(fk.constraint)
+        if left is not b:
+            for fk in left.foreign_keys:
+                try:
+                    col = fk.get_referent(b)
+                except exc.NoReferencedTableError:
+                    if ignore_nonexistent_tables:
+                        continue
+                    else:
+                        raise
 
+                if col is not None:
+                    crit.append(col == fk.parent)
+                    constraints.add(fk.constraint)
+        if crit:
+            break
+            
     if len(crit) == 0:
+        if isinstance(b, expression._FromGrouping):
+            hint = " Perhaps you meant to convert the right side to a subquery using alias()?"
+        else:
+            hint = ""
         raise exc.ArgumentError(
             "Can't find any foreign key relationships "
-            "between '%s' and '%s'" % (a.description, b.description))
+            "between '%s' and '%s'.%s" % (a.description, b.description, hint))
     elif len(constraints) > 1:
         raise exc.ArgumentError(
             "Can't determine join between '%s' and '%s'; "

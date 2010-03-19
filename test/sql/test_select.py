@@ -77,10 +77,14 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         assert not hasattr(table1.alias().c.myid, 'c')
 
     def test_table_select(self):
-        self.assert_compile(table1.select(), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable")
+        self.assert_compile(table1.select(), 
+                            "SELECT mytable.myid, mytable.name, "
+                            "mytable.description FROM mytable")
 
-        self.assert_compile(select([table1, table2]), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, \
-myothertable.othername FROM mytable, myothertable")
+        self.assert_compile(select([table1, table2]), 
+                            "SELECT mytable.myid, mytable.name, mytable.description, "
+                            "myothertable.otherid, myothertable.othername FROM mytable, "
+                            "myothertable")
     
     def test_invalid_col_argument(self):
         assert_raises(exc.ArgumentError, select, table1)
@@ -97,13 +101,15 @@ myothertable.othername FROM mytable, myothertable")
                 s.c.myid == 7
             )
             ,
-        "SELECT myid, name, description FROM (SELECT mytable.myid AS myid, mytable.name AS name, mytable.description AS description FROM mytable "\
+        "SELECT myid, name, description FROM (SELECT mytable.myid AS myid, "
+        "mytable.name AS name, mytable.description AS description FROM mytable "
         "WHERE mytable.name = :name_1) WHERE myid = :myid_1")
 
         sq = select([table1])
         self.assert_compile(
             sq.select(),
-            "SELECT myid, name, description FROM (SELECT mytable.myid AS myid, mytable.name AS name, mytable.description AS description FROM mytable)"
+            "SELECT myid, name, description FROM (SELECT mytable.myid AS myid, "
+            "mytable.name AS name, mytable.description AS description FROM mytable)"
         )
 
         sq = select(
@@ -112,8 +118,9 @@ myothertable.othername FROM mytable, myothertable")
 
         self.assert_compile(
             sq.select(sq.c.myid == 7),
-            "SELECT sq.myid, sq.name, sq.description FROM \
-(SELECT mytable.myid AS myid, mytable.name AS name, mytable.description AS description FROM mytable) AS sq WHERE sq.myid = :myid_1"
+            "SELECT sq.myid, sq.name, sq.description FROM "
+            "(SELECT mytable.myid AS myid, mytable.name AS name, "
+            "mytable.description AS description FROM mytable) AS sq WHERE sq.myid = :myid_1"
         )
 
         sq = select(
@@ -1112,8 +1119,9 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
     def test_joins(self):
         self.assert_compile(
             join(table2, table1, table1.c.myid == table2.c.otherid).select(),
-            "SELECT myothertable.otherid, myothertable.othername, mytable.myid, mytable.name, \
-mytable.description FROM myothertable JOIN mytable ON mytable.myid = myothertable.otherid"
+            "SELECT myothertable.otherid, myothertable.othername, "
+            "mytable.myid, mytable.name, mytable.description FROM "
+            "myothertable JOIN mytable ON mytable.myid = myothertable.otherid"
         )
 
         self.assert_compile(
@@ -1121,34 +1129,51 @@ mytable.description FROM myothertable JOIN mytable ON mytable.myid = myothertabl
              [table1],
                 from_obj = [join(table1, table2, table1.c.myid == table2.c.otherid)]
             ),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM "
+        "mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
 
         self.assert_compile(
             select(
-                [join(join(table1, table2, table1.c.myid == table2.c.otherid), table3, table1.c.myid == table3.c.userid)]
+                [join(join(table1, table2, table1.c.myid == table2.c.otherid), 
+                table3, table1.c.myid == table3.c.userid)]
             ),
-            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid JOIN thirdtable ON mytable.myid = thirdtable.userid"
+            "SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid, myothertable.othername, thirdtable.userid, "
+            "thirdtable.otherstuff FROM mytable JOIN myothertable ON mytable.myid ="
+            " myothertable.otherid JOIN thirdtable ON mytable.myid = thirdtable.userid"
         )
 
         self.assert_compile(
             join(users, addresses, users.c.user_id==addresses.c.user_id).select(),
-            "SELECT users.user_id, users.user_name, users.password, addresses.address_id, addresses.user_id, addresses.street, addresses.city, addresses.state, addresses.zip FROM users JOIN addresses ON users.user_id = addresses.user_id"
+            "SELECT users.user_id, users.user_name, users.password, "
+            "addresses.address_id, addresses.user_id, addresses.street, "
+            "addresses.city, addresses.state, addresses.zip FROM users JOIN addresses "
+            "ON users.user_id = addresses.user_id"
         )
 
         self.assert_compile(
                 select([table1, table2, table3],
 
-                from_obj = [join(table1, table2, table1.c.myid == table2.c.otherid).outerjoin(table3, table1.c.myid==table3.c.userid)]
-
-                #from_obj = [outerjoin(join(table, table2, table1.c.myid == table2.c.otherid), table3, table1.c.myid==table3.c.userid)]
+                from_obj = [join(table1, table2, table1.c.myid == table2.c.otherid).
+                                    outerjoin(table3, table1.c.myid==table3.c.userid)]
                 )
-                ,"SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid LEFT OUTER JOIN thirdtable ON mytable.myid = thirdtable.userid"
+                ,"SELECT mytable.myid, mytable.name, mytable.description, "
+                "myothertable.otherid, myothertable.othername, thirdtable.userid,"
+                " thirdtable.otherstuff FROM mytable JOIN myothertable ON mytable.myid "
+                "= myothertable.otherid LEFT OUTER JOIN thirdtable ON mytable.myid ="
+                " thirdtable.userid"
             )
         self.assert_compile(
                 select([table1, table2, table3],
-                from_obj = [outerjoin(table1, join(table2, table3, table2.c.otherid == table3.c.userid), table1.c.myid==table2.c.otherid)]
+                from_obj = [outerjoin(table1, 
+                                join(table2, table3, table2.c.otherid == table3.c.userid),
+                                table1.c.myid==table2.c.otherid)]
                 )
-                ,"SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable LEFT OUTER JOIN (myothertable JOIN thirdtable ON myothertable.otherid = thirdtable.userid) ON mytable.myid = myothertable.otherid"
+                ,"SELECT mytable.myid, mytable.name, mytable.description, "
+                "myothertable.otherid, myothertable.othername, thirdtable.userid,"
+                " thirdtable.otherstuff FROM mytable LEFT OUTER JOIN (myothertable "
+                "JOIN thirdtable ON myothertable.otherid = thirdtable.userid) ON "
+                "mytable.myid = myothertable.otherid"
             )
 
         query = select(
@@ -1162,11 +1187,12 @@ mytable.description FROM myothertable JOIN mytable ON mytable.myid = myothertabl
                 from_obj = [ outerjoin(table1, table2, table1.c.myid == table2.c.otherid) ]
                 )
         self.assert_compile(query,
-            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid \
-WHERE mytable.name = :name_1 OR mytable.myid = :myid_1 OR \
-myothertable.othername != :othername_1 OR \
-EXISTS (select yay from foo where boo = lar)",
+            "SELECT mytable.myid, mytable.name, mytable.description, "
+            "myothertable.otherid, myothertable.othername "
+            "FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = "
+            "myothertable.otherid WHERE mytable.name = :name_1 OR "
+            "mytable.myid = :myid_1 OR myothertable.othername != :othername_1 "
+            "OR EXISTS (select yay from foo where boo = lar)",
             )
 
     def test_compound_selects(self):
