@@ -308,7 +308,12 @@ CHANGES
     is assembled into a first_connect/connect pool listener by the 
     connection strategy if non-None.   Provides a simpler interface 
     for dialects.
-        
+    
+  - StaticPool now initializes, disposes and recreates without 
+    opening a new connection - the connection is only opened when 
+    first requested. dispose() also works on AssertionPool now.
+    [ticket:1728]
+    
 - metadata
   - Added the ability to strip schema information when using
     "tometadata" by passing "schema=None" as an argument. If schema
