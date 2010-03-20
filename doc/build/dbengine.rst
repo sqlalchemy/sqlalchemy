@@ -54,8 +54,8 @@ Supported Databases
 ====================
 
 SQLAlchemy includes many :class:`~sqlalchemy.engine.base.Dialect` implementations for various 
-backends; each is described as its own package in the 
-:ref:`sqlalchemy.dialects_toplevel` package.  A SQLAlchemy dialect always requires that an appropriate DBAPI driver is installed.
+backends; each is described as its own package in the :ref:`sqlalchemy.dialects_toplevel` package.  A 
+SQLAlchemy dialect always requires that an appropriate DBAPI driver is installed.
 
 The table below summarizes the state of DBAPI support in SQLAlchemy 0.6.  The values 
 translate as:
@@ -135,7 +135,7 @@ python-sybase_             ``sybase+pysybase``          partial      development
 .. _sapdb: http://www.sapdb.org/sapdbapi.html
 .. _python-sybase: http://python-sybase.sourceforge.net/
 
-Further detail on dialects is available at :ref:`sqlalchemy.dialects_toplevel` as well as additional notes on the wiki at `Database Notes <http://www.sqlalchemy.org/trac/wiki/DatabaseNotes>`_.
+Further detail on dialects is available at :ref:`sqlalchemy.dialects_toplevel` as well as additional notes on the wiki at `Database Notes <http://www.sqlalchemy.org/trac/wiki/DatabaseNotes>`_
 
 create_engine() URL Arguments
 ==============================
@@ -245,8 +245,7 @@ The ``execute()`` methods on both :class:`~sqlalchemy.engine.base.Engine` and :c
         print row['col1'], row['col2']
     connection.close()
 
-The above SQL construct is known as a ``select()``.  The full range of SQL constructs available are described in 
-:ref:`sqlexpression_toplevel`.
+The above SQL construct is known as a ``select()``.  The full range of SQL constructs available are described in :ref:`sqlexpression_toplevel`.
 
 Both :class:`~sqlalchemy.engine.base.Connection` and :class:`~sqlalchemy.engine.base.Engine` fulfill an interface known as :class:`~sqlalchemy.engine.base.Connectable` which specifies common functionality between the two objects, namely being able to call ``connect()`` to return a :class:`~sqlalchemy.engine.base.Connection` object (:class:`~sqlalchemy.engine.base.Connection` just returns itself), and being able to call ``execute()`` to get a result set.   Following this, most SQLAlchemy functions and objects which accept an :class:`~sqlalchemy.engine.base.Engine` as a parameter or attribute with which to execute SQL will also accept a :class:`~sqlalchemy.engine.base.Connection`.  This argument is named ``bind``::
 
@@ -317,8 +316,7 @@ The :class:`~sqlalchemy.engine.base.Transaction` object also handles "nested" be
 
 Above, ``method_a`` is called first, which calls ``connection.begin()``.  Then it calls ``method_b``. When ``method_b`` calls ``connection.begin()``, it just increments a counter that is decremented when it calls ``commit()``.  If either ``method_a`` or ``method_b`` calls ``rollback()``, the whole transaction is rolled back.  The transaction is not committed until ``method_a`` calls the ``commit()`` method.  This "nesting" behavior allows the creation of functions which "guarantee" that a transaction will be used if one was not already available, but will automatically participate in an enclosing transaction if one exists.
 
-Note that SQLAlchemy's Object Relational Mapper also provides a way to control transaction scope at a higher level; this is described in 
-:ref:`unitofwork_transaction`.
+Note that SQLAlchemy's Object Relational Mapper also provides a way to control transaction scope at a higher level; this is described in :ref:`unitofwork_transaction`.
 
 .. index::
    single: thread safety; transactions
@@ -343,11 +341,9 @@ The above transaction example illustrates how to use :class:`~sqlalchemy.engine.
 Connectionless Execution, Implicit Execution
 =============================================
 
-Recall from the first section we mentioned executing with and without a :class:`~sqlalchemy.engine.base.Connection`.  ``Connectionless`` execution refers to calling the ``execute()`` method on an object which is not a :class:`~sqlalchemy.engine.base.Connection`, which could be on the :class:`~sqlalchemy.engine.base.Engine` itself, or could be a constructed SQL object.  When we say "implicit", we mean that we are calling the ``execute()`` method on an object which is neither a :class:`~sqlalchemy.engine.base.Connection` nor an :class:`~sqlalchemy.engine.base.Engine` object; this can only be used with constructed SQL objects which have their own ``execute()`` method, and can be "bound" to an :class:`~sqlalchemy.engine.base.Engine`.  A description of "constructed SQL objects" may be found in  
-:ref:`sqlexpression_toplevel`.
+Recall from the first section we mentioned executing with and without a :class:`~sqlalchemy.engine.base.Connection`.  ``Connectionless`` execution refers to calling the ``execute()`` method on an object which is not a :class:`~sqlalchemy.engine.base.Connection`, which could be on the :class:`~sqlalchemy.engine.base.Engine` itself, or could be a constructed SQL object.  When we say "implicit", we mean that we are calling the ``execute()`` method on an object which is neither a :class:`~sqlalchemy.engine.base.Connection` nor an :class:`~sqlalchemy.engine.base.Engine` object; this can only be used with constructed SQL objects which have their own ``execute()`` method, and can be "bound" to an :class:`~sqlalchemy.engine.base.Engine`.  A description of "constructed SQL objects" may be found in :ref:`sqlexpression_toplevel`.
 
-A summary of all three methods follows below.  First, assume the usage of the following :class:`~sqlalchemy.schema.MetaData` and :class:`~sqlalchemy.schema.Table` objects; while we haven't yet introduced these concepts, for now you only need to know that we are representing a database table, and are creating an "executable" SQL construct which issues a statement to the database.  These objects are described in 
-:ref:`metadata_toplevel`.
+A summary of all three methods follows below.  First, assume the usage of the following :class:`~sqlalchemy.schema.MetaData` and :class:`~sqlalchemy.schema.Table` objects; while we haven't yet introduced these concepts, for now you only need to know that we are representing a database table, and are creating an "executable" SQL construct which issues a statement to the database.  These objects are described in :ref:`metadata_toplevel`.
 
 .. sourcecode:: python+sql
 
@@ -378,8 +374,7 @@ Explicit, connectionless execution delivers the expression to the ``execute()`` 
         # ....
     result.close()
 
-Implicit execution is also connectionless, and calls the ``execute()`` method on the expression itself, utilizing the fact that either an :class:`~sqlalchemy.engine.base.Engine` or :class:`~sqlalchemy.engine.base.Connection` has been *bound* to the expression object (binding is discussed further in the next section, 
-:ref:`metadata_toplevel`):
+Implicit execution is also connectionless, and calls the ``execute()`` method on the expression itself, utilizing the fact that either an :class:`~sqlalchemy.engine.base.Engine` or :class:`~sqlalchemy.engine.base.Connection` has been *bound* to the expression object (binding is discussed further in the next section, :ref:`metadata_toplevel`):
 
 .. sourcecode:: python+sql
 

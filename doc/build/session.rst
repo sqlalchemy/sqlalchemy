@@ -62,11 +62,9 @@ In our previous example regarding :func:`~sqlalchemy.orm.sessionmaker`, we speci
     # work with the session
     session = Session()
 
-It's actually entirely optional to bind a Session to an engine.  If the underlying mapped :class:`~sqlalchemy.schema.Table` objects use "bound" metadata, the :class:`~sqlalchemy.orm.session.Session` will make use of the bound engine instead (or will even use multiple engines if multiple binds are present within the mapped tables).  "Bound" metadata is described at 
-:ref:`metadata_binding`.
+It's actually entirely optional to bind a Session to an engine.  If the underlying mapped :class:`~sqlalchemy.schema.Table` objects use "bound" metadata, the :class:`~sqlalchemy.orm.session.Session` will make use of the bound engine instead (or will even use multiple engines if multiple binds are present within the mapped tables).  "Bound" metadata is described at :ref:`metadata_binding`.
 
-The :class:`~sqlalchemy.orm.session.Session` also has the ability to be bound to multiple engines explicitly.   Descriptions of these scenarios are described in 
-:ref:`session_partitioning`.
+The :class:`~sqlalchemy.orm.session.Session` also has the ability to be bound to multiple engines explicitly.   Descriptions of these scenarios are described in :ref:`session_partitioning`.
 
 Binding Session to a Connection
 -------------------------------
@@ -199,8 +197,7 @@ To add a list of items to the session at once, use :func:`~sqlalchemy.orm.sessio
 
     session.add_all([item1, item2, item3])
 
-The :func:`~sqlalchemy.orm.session.Session.add` operation **cascades** along the ``save-update`` cascade.  For more details see the section 
-:ref:`unitofwork_cascades`.
+The :func:`~sqlalchemy.orm.session.Session.add` operation **cascades** along the ``save-update`` cascade.  For more details see the section :ref:`unitofwork_cascades`.
 
 Merging
 -------
