@@ -3,7 +3,10 @@
 =======
 CHANGES
 =======
+
 0.6beta2
+========
+
 - py3k
   - Improved the installation/test setup regarding Python 3,
     now that Distribute runs on Py3k.   distribute_setup.py
