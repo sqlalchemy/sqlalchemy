@@ -88,7 +88,7 @@ adodbapi_                  ``mssql+adodbapi``           development  development
 `jTDS JDBC Driver`_        ``mssql+zxjdbc``             no           no            development  yes                yes
 mxodbc_                    ``mssql+mxodbc``             yes          development   no           yes with FreeTDS_  yes
 pyodbc_                    ``mssql+pyodbc``\*           yes          development   no           yes with FreeTDS_  yes
-pymssql_                   ``mssql+pymssql``            development  development   no           yes                yes
+pymssql_                   ``mssql+pymssql``            yes          development   no           yes                yes
 **MySQL**
 `MySQL Connector/J`_       ``mysql+zxjdbc``             no           no            yes          yes                yes
 `MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          partial       no           yes                yes

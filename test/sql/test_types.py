@@ -319,7 +319,11 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
               testing.against('oracle+cx_oracle'):
             assert testing.db.dialect.returns_unicode_strings == 'conditional'
             return
- 
+        
+        if testing.against('mssql+pymssql'):
+            assert testing.db.dialect.returns_unicode_strings == ('charset' in testing.db.url.query)
+            return
+            
         assert testing.db.dialect.returns_unicode_strings == \
             ((testing.db.name, testing.db.driver) in \
             (
@@ -1142,7 +1146,8 @@ class NumericTest(TestBase):
             [15.7563],
             filter_ = lambda n:n is not None and round(n, 5) or None
         )
-        
+    
+    @testing.fails_on('mssql+pymssql', 'FIXME: improve pymssql dec handling')
     def test_precision_decimal(self):
         numbers = set([
             decimal.Decimal("54.234246451650"),
@@ -1156,6 +1161,7 @@ class NumericTest(TestBase):
             numbers,
         )
 
+    @testing.fails_on('mssql+pymssql', 'FIXME: improve pymssql dec handling')
     def test_enotation_decimal(self):
         """test exceedingly small decimals.
         
@@ -1209,6 +1215,7 @@ class NumericTest(TestBase):
     @testing.fails_on('postgresql+pg8000', 'TODO')
     @testing.fails_on("firebird", "Precision must be from 1 to 18")
     @testing.fails_on("sybase+pysybase", "TODO")
+    @testing.fails_on('mssql+pymssql', 'FIXME: improve pymssql dec handling')
     def test_many_significant_digits(self):
         numbers = set([
             decimal.Decimal("31943874831932418390.01"),

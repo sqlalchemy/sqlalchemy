@@ -373,8 +373,7 @@ CHANGES
     a Windows host [ticket:1580]
     
 - mssql
-  - Re-established initial support for pymssql (not functional
-    yet, though)
+  - Re-established support for the pymssql dialect.
 
   - Various fixes for implicit returning, reflection,
     etc. - the MS-SQL dialects aren't quite complete

@@ -224,6 +224,7 @@ def unicode_ddl(fn):
         no_support('maxdb', 'database support flakey'),
         no_support('oracle', 'FIXME: no support in database?'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
+        no_support('mssql+pymssql', 'no FreeTDS support'),
         exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
         )
 
