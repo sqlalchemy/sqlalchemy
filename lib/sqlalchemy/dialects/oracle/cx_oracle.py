@@ -387,7 +387,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         if hasattr(self.dbapi, 'version'):
             cx_oracle_ver = tuple([int(x) for x in self.dbapi.version.split('.')])
         else:  
-           cx_oracle_ver = None
+           cx_oracle_ver = (0, 0, 0)
             
         def types(*names):
             return set([
