@@ -12,11 +12,61 @@ Connect strings are of the form::
 """
 
 from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
-from sqlalchemy.connectors.pyodbc import PyODBCConnector, PyODBCNumeric
+from sqlalchemy.connectors.pyodbc import PyODBCConnector
 from sqlalchemy import types as sqltypes, util
+import decimal
 
-class _MSNumeric_pyodbc(PyODBCNumeric):
-    convert_large_decimals_to_string = True
+class _MSNumeric_pyodbc(sqltypes.Numeric):
+    """Turns Decimals with adjusted() < -6 or > 7 into strings.
+    
+    This is the only method that is proven to work with Pyodbc+MSSQL
+    without crashing (floats can be used but seem to cause sporadic
+    crashes).
+    
+    """
+
+    def bind_processor(self, dialect):
+        super_process = super(_MSNumeric_pyodbc, self).bind_processor(dialect)
+
+        def process(value):
+            if self.asdecimal and \
+                    isinstance(value, decimal.Decimal):
+                
+                adjusted = value.adjusted()
+                if adjusted < -6:
+                    return self._small_dec_to_string(value)
+                elif adjusted > 7:
+                    return self._large_dec_to_string(value)
+
+            if super_process:
+                return super_process(value)
+            else:
+                return value
+        return process
+    
+    def _small_dec_to_string(self, value):
+        return "%s0.%s%s" % (
+                    (value < 0 and '-' or ''),
+                    '0' * (abs(value.adjusted()) - 1),
+                    "".join([str(nint) for nint in value._int]))
+
+    def _large_dec_to_string(self, value):
+        if 'E' in str(value):
+            result = "%s%s%s" % (
+                    (value < 0 and '-' or ''),
+                    "".join([str(s) for s in value._int]),
+                    "0" * (value.adjusted() - (len(value._int)-1)))
+        else:
+            if (len(value._int) - 1) > value.adjusted():
+                result = "%s%s.%s" % (
+                        (value < 0 and '-' or ''),
+                        "".join([str(s) for s in value._int][0:value.adjusted() + 1]),
+                        "".join([str(s) for s in value._int][value.adjusted() + 1:]))
+            else:
+                result = "%s%s" % (
+                        (value < 0 and '-' or ''),
+                        "".join([str(s) for s in value._int][0:value.adjusted() + 1]))
+        return result
     
     
 class MSExecutionContext_pyodbc(MSExecutionContext):
