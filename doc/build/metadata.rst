@@ -32,7 +32,8 @@ To represent a table, use the :class:`~sqlalchemy.schema.Table` class.  Its two 
 
 Above, a table called ``user`` is described, which contains four columns.   The primary key of the table consists of the ``user_id`` column.   Multiple columns may be assigned the ``primary_key=True`` flag which denotes a multi-column primary key, known as a *composite* primary key.
 
-Note also that each column describes its datatype using objects corresponding to genericized types, such as :class:`~sqlalchemy.types.Integer` and :class:`~sqlalchemy.types.String`.    SQLAlchemy features dozens of types of varying levels of specificity as well as the ability to create custom types.   Documentation on the type system can be found at :ref:`types`.
+Note also that each column describes its datatype using objects corresponding to genericized types, such as :class:`~sqlalchemy.types.Integer` and :class:`~sqlalchemy.types.String`.    SQLAlchemy features dozens of types of varying levels of specificity as well as the ability to create custom types.   Documentation on the type system can be found at 
+:ref:`types`.
 
 Accessing Tables and Columns
 ----------------------------
@@ -55,7 +56,8 @@ Once a :class:`~sqlalchemy.schema.Table` has been defined, it has a full set of 
         Column('employee_dept', Integer, ForeignKey("departments.department_id"))
     )
 
-Note the :class:`~sqlalchemy.schema.ForeignKey` object used in this table - this construct defines a reference to a remote table, and is fully described in :ref:`metadata_foreignkeys`.   Methods of accessing information about this table include::
+Note the :class:`~sqlalchemy.schema.ForeignKey` object used in this table - this construct defines a reference to a remote table, and is fully described in 
+:ref:`metadata_foreignkeys`.   Methods of accessing information about this table include::
 
     # access the column "EMPLOYEE_ID":
     employees.columns.employee_id
@@ -723,7 +725,8 @@ The ``sqlalchemy.schema`` package contains SQL expression constructs that provid
         col6 INTEGER
     ){stop}
 
-Above, the :class:`~sqlalchemy.schema.CreateTable` construct works like any other expression construct (such as ``select()``, ``table.insert()``, etc.).  A full reference of available constructs is in :ref:`schema_api_ddl`.
+Above, the :class:`~sqlalchemy.schema.CreateTable` construct works like any other expression construct (such as ``select()``, ``table.insert()``, etc.).  A full reference of available constructs is in 
+:ref:`schema_api_ddl`.
 
 The DDL constructs all extend a common base class which provides the capability to be associated with an individual :class:`~sqlalchemy.schema.Table` or :class:`~sqlalchemy.schema.MetaData` object, to be invoked upon create/drop events.   Consider the example of a table which contains a CHECK constraint:
 

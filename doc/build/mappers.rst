@@ -3,7 +3,8 @@
 ====================
 Mapper Configuration
 ====================
-This section references most major configurational patterns involving the :func:`~sqlalchemy.orm.mapper` and :func:`~sqlalchemy.orm.relationship` functions.  It assumes you've worked through :ref:`ormtutorial_toplevel` and know how to construct and use rudimentary mappers and relationships.
+This section references most major configurational patterns involving the :func:`~sqlalchemy.orm.mapper` and :func:`~sqlalchemy.orm.relationship` functions.  It assumes you've worked through 
+:ref:`ormtutorial_toplevel` and know how to construct and use rudimentary mappers and relationships.
 
 Mapper Configuration
 ====================
@@ -291,7 +292,8 @@ We can now use the ``Vertex`` instances as well as querying as though the ``star
 
     v2 = session.query(Vertex).filter(Vertex.start == Point(3, 4))
 
-The "equals" comparison operation by default produces an AND of all corresponding columns equated to one another.  This can be changed using the ``comparator_factory``, described in :ref:`custom_comparators`::
+The "equals" comparison operation by default produces an AND of all corresponding columns equated to one another.  This can be changed using the ``comparator_factory``, described in
+:ref:`custom_comparators`::
 
     from sqlalchemy.orm.properties import CompositeProperty
     from sqlalchemy import sql
@@ -1080,7 +1082,8 @@ Working with the association pattern in its direct form requires that child obje
         print assoc.data
         print assoc.child
 
-To enhance the association object pattern such that direct access to the ``Association`` object is optional, SQLAlchemy provides the :ref:`associationproxy`.
+To enhance the association object pattern such that direct access to the ``Association`` object is optional, SQLAlchemy provides the 
+:ref:`associationproxy`.
 
 **Important Note**:  it is strongly advised that the ``secondary`` table argument not be combined with the Association Object pattern, unless the :func:`~sqlalchemy.orm.relationship` which contains the ``secondary`` argument is marked ``viewonly=True``.  Otherwise, SQLAlchemy may persist conflicting data to the underlying association table since it is represented by two conflicting mappings.  The Association Proxy pattern should be favored in the case where access to the underlying association data is only sometimes needed.
 
