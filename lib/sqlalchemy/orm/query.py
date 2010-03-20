@@ -114,7 +114,8 @@ class Query(object):
                     mapper, selectable, is_aliased_class = _entity_info(entity)
                     if not is_aliased_class and mapper.with_polymorphic:
                         with_polymorphic = mapper._with_polymorphic_mappers
-                        self.__mapper_loads_polymorphically_with(mapper, 
+                        if mapper.mapped_table not in self._polymorphic_adapters:
+                            self.__mapper_loads_polymorphically_with(mapper, 
                                 sql_util.ColumnAdapter(selectable, mapper._equivalent_columns))
                         adapter = None
                     elif is_aliased_class:

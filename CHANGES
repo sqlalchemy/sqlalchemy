@@ -25,7 +25,11 @@ CHANGES
     pass through the string value to Query the same as  
     in with_lockmode(), will also do version check for a 
     version_id_col-enabled mapping.
-    
+
+  - Fixed bug whereby calling query(A).join(A.bs).add_entity(B)
+    in a joined inheritance scenario would double-add B as a 
+    target and produce an invalid query.  [ticket:1188]
+
   - Fixed bug in session.rollback() which involved not removing
     formerly "pending" objects from the session before
     re-integrating "deleted" objects, typically occured with

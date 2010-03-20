@@ -1325,7 +1325,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
         mapper(Machine, machines)
 
         mapper(Person, people, 
-            polymorphic_on=people.c.type, polymorphic_identity='person', order_by=people.c.person_id, 
+            polymorphic_on=people.c.type, 
+            polymorphic_identity='person', 
+            order_by=people.c.person_id, 
             properties={
                 'paperwork':relationship(Paperwork, order_by=paperwork.c.paperwork_id)
             })
@@ -1382,11 +1384,14 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(Company).join(Company.employees.of_type(Engineer)),
             "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
-            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
-            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id AS "
-            "engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, "
+            "people.company_id AS people_company_id, people.name AS people_name, "
+            "people.type AS people_type, engineers.person_id AS "
+            "engineers_person_id, engineers.status AS engineers_status, "
+            "engineers.engineer_name AS engineers_engineer_name, "
             "engineers.primary_language AS engineers_primary_language "
-            "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS anon_1 ON companies.company_id = anon_1.people_company_id"
+            "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS "
+            "anon_1 ON companies.company_id = anon_1.people_company_id"
             , use_default_dialect = True
         )
 
@@ -1395,19 +1400,28 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
         sess = create_session()
         
         self.assert_compile(
-            sess.query(Person).with_polymorphic(Manager).join('paperwork').filter(Paperwork.description.like('%review%')),
-                "SELECT people.person_id AS people_person_id, people.company_id AS people_company_id, "
-                "people.name AS people_name, people.type AS people_type, managers.person_id AS managers_person_id, "
-                "managers.status AS managers_status, managers.manager_name AS managers_manager_name FROM people "
-                "LEFT OUTER JOIN managers ON people.person_id = managers.person_id JOIN paperwork ON people.person_id = "
-                "paperwork.person_id WHERE paperwork.description LIKE :description_1 ORDER BY people.person_id"
+            sess.query(Person).with_polymorphic(Manager).
+                    join('paperwork').filter(Paperwork.description.like('%review%')),
+                "SELECT people.person_id AS people_person_id, people.company_id AS"
+                " people_company_id, "
+                "people.name AS people_name, people.type AS people_type, managers.person_id "
+                "AS managers_person_id, "
+                "managers.status AS managers_status, managers.manager_name AS "
+                "managers_manager_name FROM people "
+                "LEFT OUTER JOIN managers ON people.person_id = managers.person_id JOIN "
+                "paperwork ON people.person_id = "
+                "paperwork.person_id WHERE paperwork.description LIKE :description_1 "
+                "ORDER BY people.person_id"
                 , use_default_dialect=True
             )
         
         self.assert_compile(
-            sess.query(Person).with_polymorphic(Manager).join('paperwork', aliased=True).filter(Paperwork.description.like('%review%')),
+            sess.query(Person).with_polymorphic(Manager).
+                    join('paperwork', aliased=True).
+                    filter(Paperwork.description.like('%review%')),
             "SELECT people.person_id AS people_person_id, people.company_id AS people_company_id, "
-            "people.name AS people_name, people.type AS people_type, managers.person_id AS managers_person_id, "
+            "people.name AS people_name, people.type AS people_type, managers.person_id "
+            "AS managers_person_id, "
             "managers.status AS managers_status, managers.manager_name AS managers_manager_name "
             "FROM people LEFT OUTER JOIN managers ON people.person_id = managers.person_id JOIN "
             "paperwork AS paperwork_1 ON people.person_id = paperwork_1.person_id "
@@ -1421,24 +1435,35 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
         
         self.assert_compile(
             sess.query(Company).join(Engineer).filter(Engineer.engineer_name=='vlad'),
-            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
-            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
-            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id AS "
-            "engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
+            "SELECT companies.company_id AS companies_company_id, companies.name AS "
+            "companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, "
+            "people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS people_type,"
+            " engineers.person_id AS "
+            "engineers_person_id, engineers.status AS engineers_status, "
+            "engineers.engineer_name AS engineers_engineer_name, "
             "engineers.primary_language AS engineers_primary_language "
-            "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS anon_1 ON "
+            "FROM people JOIN engineers ON people.person_id = engineers.person_id) "
+            "AS anon_1 ON "
             "companies.company_id = anon_1.people_company_id "
             "WHERE anon_1.engineers_engineer_name = :engineer_name_1"
             , use_default_dialect=True
         )
         self.assert_compile(
-            sess.query(Company).join((Engineer, Company.company_id==Engineer.company_id)).filter(Engineer.engineer_name=='vlad'),
-            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
-            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
-            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id AS "
-            "engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
+            sess.query(Company).join((Engineer, Company.company_id==Engineer.company_id)).
+                    filter(Engineer.engineer_name=='vlad'),
+            "SELECT companies.company_id AS companies_company_id, companies.name "
+            "AS companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, "
+            "people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS "
+            "people_type, engineers.person_id AS "
+            "engineers_person_id, engineers.status AS engineers_status, "
+            "engineers.engineer_name AS engineers_engineer_name, "
             "engineers.primary_language AS engineers_primary_language "
-            "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS anon_1 ON "
+            "FROM people JOIN engineers ON people.person_id = engineers.person_id) AS "
+            "anon_1 ON "
             "companies.company_id = anon_1.people_company_id "
             "WHERE anon_1.engineers_engineer_name = :engineer_name_1"
             , use_default_dialect=True
@@ -1446,39 +1471,151 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_multiple_adaption(self):
-        """test that multiple filter() adapters get chained together and work correctly within a multiple-entry join()."""
+        """test that multiple filter() adapters get chained together "
+        and work correctly within a multiple-entry join()."""
         
         sess = create_session()
 
         self.assert_compile(
             sess.query(Company).join((people.join(engineers), Company.employees)).
                 filter(Engineer.name=='dilbert'),
-            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
-            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
-            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id "
-            "AS engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
-            "engineers.primary_language AS engineers_primary_language FROM people JOIN engineers ON people.person_id = "
-            "engineers.person_id) AS anon_1 ON companies.company_id = anon_1.people_company_id WHERE anon_1.people_name = :name_1"
+            "SELECT companies.company_id AS companies_company_id, companies.name AS "
+            "companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, "
+            "people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS "
+            "people_type, engineers.person_id "
+            "AS engineers_person_id, engineers.status AS engineers_status, "
+            "engineers.engineer_name AS engineers_engineer_name, "
+            "engineers.primary_language AS engineers_primary_language FROM people "
+            "JOIN engineers ON people.person_id = "
+            "engineers.person_id) AS anon_1 ON companies.company_id = "
+            "anon_1.people_company_id WHERE anon_1.people_name = :name_1"
             , use_default_dialect = True
         )
         
         mach_alias = machines.select()
         self.assert_compile(
-            sess.query(Company).join((people.join(engineers), Company.employees), (mach_alias, Engineer.machines)).
+            sess.query(Company).join((people.join(engineers), Company.employees), 
+                                        (mach_alias, Engineer.machines)).
                 filter(Engineer.name=='dilbert').filter(Machine.name=='foo'),
-            "SELECT companies.company_id AS companies_company_id, companies.name AS companies_name "
-            "FROM companies JOIN (SELECT people.person_id AS people_person_id, people.company_id AS "
-            "people_company_id, people.name AS people_name, people.type AS people_type, engineers.person_id "
-            "AS engineers_person_id, engineers.status AS engineers_status, engineers.engineer_name AS engineers_engineer_name, "
-            "engineers.primary_language AS engineers_primary_language FROM people JOIN engineers ON people.person_id = "
-            "engineers.person_id) AS anon_1 ON companies.company_id = anon_1.people_company_id JOIN "
-            "(SELECT machines.machine_id AS machine_id, machines.name AS name, machines.engineer_id AS engineer_id "
+            "SELECT companies.company_id AS companies_company_id, companies.name AS "
+            "companies_name "
+            "FROM companies JOIN (SELECT people.person_id AS people_person_id, "
+            "people.company_id AS "
+            "people_company_id, people.name AS people_name, people.type AS people_type,"
+            " engineers.person_id "
+            "AS engineers_person_id, engineers.status AS engineers_status, "
+            "engineers.engineer_name AS engineers_engineer_name, "
+            "engineers.primary_language AS engineers_primary_language FROM people "
+            "JOIN engineers ON people.person_id = "
+            "engineers.person_id) AS anon_1 ON companies.company_id = "
+            "anon_1.people_company_id JOIN "
+            "(SELECT machines.machine_id AS machine_id, machines.name AS name, "
+            "machines.engineer_id AS engineer_id "
             "FROM machines) AS anon_2 ON anon_1.engineers_person_id = anon_2.engineer_id "
             "WHERE anon_1.people_name = :name_1 AND anon_2.name = :name_2"
             , use_default_dialect = True
         )
+
+class AddEntityEquivalenceTest(_base.MappedTest, AssertsCompiledSQL):
+    run_setup_mappers = 'once'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('name', String(50)),
+            Column('type', String(20)),
+            Column('bid', Integer, ForeignKey('b.id'))
+        )
+
+        Table('b', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('name', String(50)),
+            Column('type', String(20))
+        )
+
+        Table('c', metadata,
+            Column('id', Integer, ForeignKey('b.id'), primary_key=True),
+            Column('age', Integer)
+        )
+
+        Table('d', metadata,
+            Column('id', Integer, ForeignKey('a.id'), primary_key=True),
+            Column('dede', Integer)
+        )
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_classes(cls):
+        class A(_fixtures.Base):
+            pass
+            
+        class B(_fixtures.Base):
+            pass
         
+        class C(B):
+            pass
         
+        class D(A):
+            pass
+            
+        mapper(A, a, 
+                    polymorphic_identity='a', 
+                    polymorphic_on=a.c.type,
+                    with_polymorphic= ('*', None),
+                    properties={
+                        'link':relation( B, uselist=False, backref='back')
+                    })
+        mapper(B, b, 
+                    polymorphic_identity='b', 
+                    polymorphic_on=b.c.type,
+                    with_polymorphic= ('*', None)
+                    )
+        mapper(C, c, inherits=B, polymorphic_identity='c')
+        mapper(D, d, inherits=A, polymorphic_identity='d')
+        
+    @classmethod
+    @testing.resolve_artifact_names
+    def insert_data(cls):
+        sess = create_session()
+        sess.add_all([
+            B(name='b1'), 
+            A(name='a1', link= C(name='c1',age=3)), 
+            C(name='c2',age=6), 
+            A(name='a2')
+            ])
+        sess.flush()
+    
+    @testing.resolve_artifact_names
+    def test_add_entity_equivalence(self):
+        sess = create_session()
+        
+        for q in [
+            sess.query( A,B).join( A.link),
+            sess.query( A).join( A.link).add_entity(B),
+        ]:
+            eq_(
+                q.all(),
+                [(
+                    A(bid=2, id=1, name=u'a1', type=u'a'), 
+                    C(age=3, id=2, name=u'c1', type=u'c')
+                )]
+            )
+
+        for q in [
+            sess.query( B,A).join( B.back),
+            sess.query( B).join( B.back).add_entity(A),
+            sess.query( B).add_entity(A).join( B.back)
+        ]:
+            eq_(
+                q.all(),
+                [(
+                    C(age=3, id=2, name=u'c1', type=u'c'), 
+                    A(bid=2, id=1, name=u'a1', type=u'a')
+                )]
+            )
         
 class JoinTest(QueryTest, AssertsCompiledSQL):
     
