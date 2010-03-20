@@ -17,7 +17,7 @@ from sqlalchemy import types as sqltypes, util
 import decimal
 
 class _MSNumeric_pyodbc(sqltypes.Numeric):
-    """Turns Decimals with adjusted() < -6 or > 7 into strings.
+    """Turns Decimals with adjusted() < 0 or > 7 into strings.
     
     This is the only method that is proven to work with Pyodbc+MSSQL
     without crashing (floats can be used but seem to cause sporadic
@@ -33,7 +33,7 @@ class _MSNumeric_pyodbc(sqltypes.Numeric):
                     isinstance(value, decimal.Decimal):
                 
                 adjusted = value.adjusted()
-                if adjusted < -6:
+                if adjusted < 0:
                     return self._small_dec_to_string(value)
                 elif adjusted > 7:
                     return self._large_dec_to_string(value)
