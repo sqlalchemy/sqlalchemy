@@ -1942,7 +1942,7 @@ class MySQLDialect(default.DefaultDialect):
         # For winxx database hosts.  TODO: is this really needed?
         if casing == 1 and table.name != table.name.lower():
             table.name = table.name.lower()
-            lc_alias = schema._get_table_key(table.name, table.schema)
+            lc_alias = sa_schema._get_table_key(table.name, table.schema)
             table.metadata.tables[lc_alias] = table
 
     def _detect_charset(self, connection):

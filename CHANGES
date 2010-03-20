@@ -364,6 +364,9 @@ CHANGES
 
   - Added reflection/create table support for a wide range
     of MySQL keywords.  [ticket:1634]
+  
+  - Fixed import error which could occur reflecting tables on
+    a Windows host [ticket:1580]
     
 - mssql
   - Re-established initial support for pymssql (not functional
