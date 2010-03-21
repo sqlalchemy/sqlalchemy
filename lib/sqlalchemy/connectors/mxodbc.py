@@ -31,6 +31,9 @@ class MxODBCConnector(Connector):
     
     @classmethod
     def dbapi(cls):
+        # this classmethod will normally be replaced by an instance
+        # attribute of the same name, so this is normally only called once.
+        cls._load_mx_exceptions()
         platform = sys.platform
         if platform == 'win32':
             from mx.ODBC import Windows as module
@@ -42,6 +45,16 @@ class MxODBCConnector(Connector):
         else:
             raise ImportError, "Unrecognized platform for mxODBC import"
         return module
+
+    @classmethod
+    def _load_mx_exceptions(cls):
+        """ Import mxODBC exception classes into the module namespace,
+        as if they had been imported normally. This is done here
+        to avoid requiring all SQLAlchemy users to install mxODBC.
+        """
+        global InterfaceError, ProgrammingError
+        from mx.ODBC import InterfaceError
+        from mx.ODBC import ProgrammingError
 
     def on_connect(self):
         def connect(conn):
