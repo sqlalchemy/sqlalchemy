@@ -126,4 +126,11 @@ class MxODBCConnector(Connector):
                 version.append(n)
         return tuple(version)
 
-
+    def do_execute(self, cursor, statement, parameters, context=None):
+        # temporary workaround until a more comprehensive solution can
+        # be found for controlling when to use executedirect
+        try:
+            cursor.execute(statement, parameters)
+        except (InterfaceError, ProgrammingError), e:
+            warnings.warn("cursor.execute failed; falling back to executedirect")
+            cursor.executedirect(statement, parameters)
