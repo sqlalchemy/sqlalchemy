@@ -172,7 +172,7 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
                 n = nodes[id0]
                 n.cycles = set([n])
             elif not ignore_self_cycles:
-                raise CircularDependencyError("Self-referential dependency detected " + repr(t))
+                raise CircularDependencyError("Self-referential dependency detected: %r" % t)
             continue
         childnode = nodes[id1]
         parentnode = nodes[id0]
@@ -207,7 +207,7 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
                 continue
             else:
                 # long cycles not allowed
-                raise CircularDependencyError("Circular dependency detected " + repr(edges) + repr(queue))
+                raise CircularDependencyError("Circular dependency detected: %r %r " % (edges, queue))
         node = queue.pop()
         if not hasattr(node, '_cyclical'):
             output.append(node)
@@ -264,35 +264,30 @@ def _organize_as_tree(nodes):
     return (head.item, [n.item for n in head.cycles or []], head.children)
 
 def _find_cycles(edges):
-    involved_in_cycles = set()
     cycles = {}
-    def traverse(node, goal=None, cycle=None):
-        if goal is None:
-            goal = node
-            cycle = []
-        elif node is goal:
-            return True
 
+    def traverse(node, cycle, goal):
         for (n, key) in edges.edges_by_parent(node):
             if key in cycle:
                 continue
-            cycle.append(key)
-            if traverse(key, goal, cycle):
+            cycle.add(key)
+            if key is goal:
                 cycset = set(cycle)
                 for x in cycle:
-                    involved_in_cycles.add(x)
                     if x in cycles:
                         existing_set = cycles[x]
-                        [existing_set.add(y) for y in cycset]
+                        existing_set.update(cycset)
                         for y in existing_set:
                             cycles[y] = existing_set
                         cycset = existing_set
                     else:
                         cycles[x] = cycset
+            else:
+                traverse(key, cycle, goal)
             cycle.pop()
 
     for parent in edges.get_parents():
-        traverse(parent)
+        traverse(parent, set(), parent)
 
     unique_cycles = set(tuple(s) for s in cycles.values())
     
