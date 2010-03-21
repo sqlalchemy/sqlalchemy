@@ -65,10 +65,9 @@ class MxODBCConnector(Connector):
         return connect
     
     def _error_handler(self):
-        """Return a handler that adjusts mxODBC's raised Warnings to
+        """ Return a handler that adjusts mxODBC's raised Warnings to
         emit Python standard warnings.
         """
-
         from mx.ODBC.Error import Warning as MxOdbcWarning
         def error_handler(connection, cursor, errorclass, errorvalue):
 
