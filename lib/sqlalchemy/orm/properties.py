@@ -397,13 +397,17 @@ class RelationshipProperty(StrategizedProperty):
         elif self.lazy == 'dynamic':
             from sqlalchemy.orm import dynamic
             self.strategy_class = dynamic.DynaLoader
-        elif self.lazy is False:
+        elif self.lazy is False or self.lazy == 'joined':
             self.strategy_class = strategies.EagerLoader
-        elif self.lazy is None:
+        elif self.lazy is None or self.lazy == 'noload':
             self.strategy_class = strategies.NoLoader
+        elif self.lazy is False or self.lazy == 'select':
+            self.strategy_class = strategies.LazyLoader
+        elif self.lazy == 'subquery':
+            self.strategy_class = strategies.SubqueryLoader
         else:
             self.strategy_class = strategies.LazyLoader
-
+            
         self._reverse_property = set()
 
         if cascade is not False:

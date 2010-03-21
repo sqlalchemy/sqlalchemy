@@ -96,6 +96,8 @@ __all__ = (
     'relation',
     'scoped_session',
     'sessionmaker',
+    'subqueryload',
+    'subqueryload_all',
     'synonym',
     'undefer',
     'undefer_group',
@@ -974,6 +976,12 @@ def eagerload_all(*keys, **kw):
     else:
         return strategies.EagerLazyOption(keys, lazy=False, chained=True)
 
+def subqueryload(*keys):
+    return strategies.EagerLazyOption(keys, _strategy_cls=strategies.SubqueryLoader)
+
+def subqueryload_all(*keys):
+    return strategies.EagerLazyOption(keys, _strategy_cls=strategies.SubqueryLoader, chained=True)
+    
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given

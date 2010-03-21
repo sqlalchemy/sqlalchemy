@@ -17,6 +17,7 @@ from sqlalchemy.orm.interfaces import (
     )
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
+import itertools
 
 def _register_attribute(strategy, mapper, useobject,
         compare_function=None, 
@@ -575,6 +576,98 @@ class LoadLazyAttribute(object):
             else:
                 return None
 
+class SubqueryLoader(AbstractRelationshipLoader):
+    def init_class_attribute(self, mapper):
+        self.parent_property._get_strategy(LazyLoader).init_class_attribute(mapper)
+    
+    def setup_query(self, context, entity, path, adapter, 
+                                column_collection=None, parentmapper=None, **kwargs):
+
+        if not context.query._enable_eagerloads:
+            return
+
+        path = path + (self.key,)
+        
+        # TODO: shouldn't have to use getattr() to get at
+        # InstrumentedAttributes, or alternatively should not need to
+        # use InstrumentedAttributes with the Query at all (it should accept
+        # the MapperProperty objects as well).
+        
+        local_cols, remote_cols = self._local_remote_columns
+
+        local_attr = [getattr(self.parent.class_, key)
+                            for key in 
+                                [self.parent._get_col_to_prop(c).key for c in local_cols]
+                    ]
+        
+        attr = getattr(self.parent.class_, self.key)
+        
+        # modify the query to just look for parent columns in the join condition
+        
+        # TODO.  secondary is not supported at all yet.
+        
+        # TODO: what happens to options() in the parent query ?  are they going
+        # to get in the way here ?
+        
+        q = context.query._clone()
+        q._set_entities(local_attr)
+        if self.parent_property.secondary is not None:
+            q = q.from_self(self.mapper, *local_attr)
+        else:
+            q = q.from_self(self.mapper) 
+        q = q.join(attr)
+                                                    
+        if self.parent_property.secondary is not None:
+            q = q.order_by(*local_attr)
+        else:
+            q = q.order_by(*remote_cols)
+        
+        if self.parent_property.order_by:
+            q = q.order_by(*self.parent_property.order_by)
+        
+        context.attributes[('subquery', path)] = q
+    
+    @property
+    def _local_remote_columns(self):
+        if self.parent_property.secondary is None:
+            return zip(*self.parent_property.local_remote_pairs)
+        else:
+            return \
+                [p[0] for p in self.parent_property.synchronize_pairs],\
+                [p[0] for p in self.parent_property.secondary_synchronize_pairs]
+        
+    def create_row_processor(self, context, path, mapper, row, adapter):
+        path = path + (self.key,)
+
+        local_cols, remote_cols = self._local_remote_columns
+
+        local_attr = [self.parent._get_col_to_prop(c).key for c in local_cols]
+        remote_attr = [self.mapper._get_col_to_prop(c).key for c in remote_cols]
+
+        q = context.attributes[('subquery', path)]
+        
+        if self.parent_property.secondary is not None:
+            collections = dict((k, [v[0] for v in v]) for k, v in itertools.groupby(
+                              q, 
+                              lambda x:x[1:]
+                          ))
+        else:
+            collections = dict((k, list(v)) for k, v in itertools.groupby(
+                              q, 
+                              lambda x:tuple([getattr(x, key) for key in remote_attr])
+                          ))
+
+        
+        def execute(state, dict_, row):
+            collection = collections.get(
+                tuple([row[col] for col in local_cols]), 
+                ()
+            )
+            state.get_impl(self.key).set_committed_value(state, dict_, collection)
+                
+        return (execute, None)
+        
+
 class EagerLoader(AbstractRelationshipLoader):
     """Strategize a relationship() that loads within the process of the parent object being selected."""
     
@@ -809,24 +902,29 @@ class EagerLoader(AbstractRelationshipLoader):
 log.class_logger(EagerLoader)
 
 class EagerLazyOption(StrategizedOption):
-
-    def __init__(self, key, lazy=True, chained=False, mapper=None, propagate_to_loaders=True):
+    def __init__(self, key, lazy=True, chained=False, 
+                    mapper=None, propagate_to_loaders=True,
+                    _strategy_cls=None
+                    ):
         super(EagerLazyOption, self).__init__(key, mapper)
         self.lazy = lazy
         self.chained = chained
         self.propagate_to_loaders = propagate_to_loaders
+        self.strategy_cls = _strategy_cls
         
     def is_chained(self):
         return not self.lazy and self.chained
         
     def get_strategy_class(self):
-        if self.lazy:
+        if self.strategy_cls:
+            return self.strategy_cls
+        elif self.lazy:
             return LazyLoader
         elif self.lazy is False:
             return EagerLoader
         elif self.lazy is None:
             return NoLoader
-
+        
 class EagerJoinOption(PropertyOption):
     
     def __init__(self, key, innerjoin, chained=False):
