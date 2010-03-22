@@ -588,39 +588,28 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         path = path + (self.key,)
         
-        # TODO: shouldn't have to use getattr() to get at
-        # InstrumentedAttributes, or alternatively should not need to
-        # use InstrumentedAttributes with the Query at all (it should accept
-        # the MapperProperty objects as well).
-        
         local_cols, remote_cols = self._local_remote_columns
 
-        local_attr = [getattr(self.parent.class_, key)
-                            for key in 
-                                [self.parent._get_col_to_prop(c).key for c in local_cols]
-                    ]
+        local_attr = [
+            self.parent._get_col_to_prop(c).class_attribute
+            for c in local_cols
+        ]
         
-        attr = getattr(self.parent.class_, self.key)
+        attr = self.parent_property.class_attribute
         
         # modify the query to just look for parent columns in the join condition
-        
-        # TODO.  secondary is not supported at all yet.
         
         # TODO: what happens to options() in the parent query ?  are they going
         # to get in the way here ?
         
         q = context.query._clone()
         q._set_entities(local_attr)
-        if self.parent_property.secondary is not None:
-            q = q.from_self(self.mapper, *local_attr)
-        else:
-            q = q.from_self(self.mapper) 
+        
+        q = q.from_self(self.mapper, *local_attr)
+        
         q = q.join(attr)
                                                     
-        if self.parent_property.secondary is not None:
-            q = q.order_by(*local_attr)
-        else:
-            q = q.order_by(*remote_cols)
+        q = q.order_by(*local_attr)
         
         if self.parent_property.order_by:
             q = q.order_by(*self.parent_property.order_by)
@@ -646,16 +635,10 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         q = context.attributes[('subquery', path)]
         
-        if self.parent_property.secondary is not None:
-            collections = dict((k, [v[0] for v in v]) for k, v in itertools.groupby(
-                              q, 
-                              lambda x:x[1:]
-                          ))
-        else:
-            collections = dict((k, list(v)) for k, v in itertools.groupby(
-                              q, 
-                              lambda x:tuple([getattr(x, key) for key in remote_attr])
-                          ))
+        collections = dict((k, [v[0] for v in v]) for k, v in itertools.groupby(
+                        q, 
+                        lambda x:x[1:]
+                    ))
 
         
         def execute(state, dict_, row):

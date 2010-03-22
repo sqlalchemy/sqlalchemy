@@ -627,9 +627,11 @@ class Query(object):
 
     @_generative()
     def _from_selectable(self, fromclause):
-        self._statement = self._criterion = None
-        self._order_by = self._group_by = self._distinct = False
-        self._limit = self._offset = None
+        for attr in ('_statement', '_criterion', '_order_by', '_group_by',
+                '_limit', '_offset', '_joinpath', '_joinpoint', 
+                '_distinct'
+        ):
+            self.__dict__.pop(attr, None)
         self._set_select_from(fromclause)
         old_entities = self._entities
         self._entities = []

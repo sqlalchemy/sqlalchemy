@@ -2275,6 +2275,25 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             [(u'jack',), (u'ed',), (u'ed',), (u'ed',), (u'fred',)]
         )
         
+    def test_from_self_resets_joinpaths(self):
+        """test a join from from_self() doesn't confuse joins inside the subquery
+        with the outside.
+        """
+        sess = create_session()
+        
+        self.assert_compile(
+            sess.query(Item).join(Item.keywords).from_self(Keyword).join(Item.keywords),
+            "SELECT keywords.id AS keywords_id, keywords.name AS keywords_name FROM "
+            "(SELECT items.id AS items_id, items.description AS items_description "
+            "FROM items JOIN item_keywords AS item_keywords_1 ON items.id = "
+            "item_keywords_1.item_id JOIN keywords ON keywords.id = item_keywords_1.keyword_id) "
+            "AS anon_1 JOIN item_keywords AS item_keywords_2 ON "
+            "anon_1.items_id = item_keywords_2.item_id "
+            "JOIN keywords ON "
+            "keywords.id = item_keywords_2.keyword_id",
+            use_default_dialect=True
+        )
+        
         
 class MultiplePathTest(_base.MappedTest, AssertsCompiledSQL):
     @classmethod

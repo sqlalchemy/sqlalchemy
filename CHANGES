@@ -4,6 +4,15 @@
 CHANGES
 =======
 
+0.6beta3
+========
+
+- orm
+  - Fixed bug in Query whereby calling q.join(prop).from_self(...).
+    join(prop) would fail to render the second join outside the
+    subquery, when joining on the same criterion as was on the 
+    inside.
+
 0.6beta2
 ========
 

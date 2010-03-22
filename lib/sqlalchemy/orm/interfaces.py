@@ -482,6 +482,12 @@ class MapperProperty(object):
         self.do_init()
         self._compile_finished = True
 
+    @property
+    def class_attribute(self):
+        """Return the class-bound descriptor corresponding to this MapperProperty."""
+        
+        return getattr(self.parent.class_, self.key)
+        
     def do_init(self):
         """Perform subclass-specific initialization post-mapper-creation steps.
 
