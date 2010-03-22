@@ -644,28 +644,38 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if not context.query._enable_eagerloads:
             return
 
-        path = path + (self.key,)
+#        path = path + (self.key,)
         
-        local_cols, remote_cols = self._local_remote_columns
+        
+        if ("orig_query", SubqueryLoader) not in context.attributes:
+            context.attributes[("orig_query", SubqueryLoader)] =\
+                    context.query
+        
+        orig_query = context.attributes[("orig_query", SubqueryLoader)]
+
+#        orig_query = context.query
+        path = context.query._current_path + path + (self.key, )
+        
+        prop = path[0].get_property(path[1])
+        
+        local_cols, remote_cols = self._local_remote_columns(prop)
 
         local_attr = [
-            self.parent._get_col_to_prop(c).class_attribute
+            path[0]._get_col_to_prop(c).class_attribute
             for c in local_cols
         ]
         
-        attr = self.parent_property.class_attribute
+        #attr = self.parent_property.class_attribute
         
         # modify the query to just look for parent columns in the 
         # join condition
         
-        # TODO: what happens to options() in the parent query ?  
-        # are they going
-        # to get in the way here ?
-        
         # set the original query to only look
         # for the significant columns, not order
         # by anything.
-        q = context.query._clone()
+        q = orig_query._clone() #context.query._clone()
+        q._attributes = q._attributes.copy()
+        q._attributes[("orig_query", SubqueryLoader)] = orig_query
         q._set_entities(local_attr)
         q._order_by = None
         
@@ -674,37 +684,66 @@ class SubqueryLoader(AbstractRelationshipLoader):
         
         # and join to the related thing we want
         # to load.
-        q = q.join(attr)
-                                                    
+        for mapper, key in [(path[i], path[i+1]) for i in xrange(0, len(path), 2)]:
+            prop = mapper.get_property(key)
+            q = q.join(prop.class_attribute)
+
         q = q.order_by(*local_attr)
         
+        q._attributes = q._attributes.copy()
+        for attr in orig_query._attributes:
+            strat, opt_path = attr
+            if strat == "loaderstrategy":
+                opt_path = opt_path[len(path):]
+                q._attributes[("loaderstrategy", opt_path)] =\
+                       context.query._attributes[attr]
+
+        q = q._with_current_path(path)
         if self.parent_property.order_by:
             q = q.order_by(*self.parent_property.order_by)
         
-        context.attributes[('subquery', path)] = q
+        context.attributes[('subquery', path)] = \
+                q._attributes[('subquery', path)] = \
+                q
+
+#        for value in self.mapper._iterate_polymorphic_properties():
+#            strat = value._get_context_strategy(
+#                                        context, path + 
+#                                        (self.mapper,value.key)
+#                                    )
+            #print "VALUE", value, "PATH", path + (self.mapper,), "STRAT", type(strat)
+#            if isinstance(strat, SubqueryLoader):
+#                value.setup(
+#                    context, 
+#                    entity, 
+##                    path + (self.mapper,), 
+#                    adapter, 
+#                    parentmapper=self.mapper,
+#                    )
     
-    @property
-    def _local_remote_columns(self):
-        if self.parent_property.secondary is None:
-            return zip(*self.parent_property.local_remote_pairs)
+    def _local_remote_columns(self, prop):
+        if prop.secondary is None:
+            return zip(*prop.local_remote_pairs)
         else:
             return \
-                [p[0] for p in self.parent_property.synchronize_pairs],\
+                [p[0] for p in prop.synchronize_pairs],\
                 [
-                    p[0] for p in self.parent_property.
+                    p[0] for p in prop.
                                         secondary_synchronize_pairs
                 ]
         
     def create_row_processor(self, context, path, mapper, row, adapter):
-        path = path + (self.key,)
+#        path = path + (self.key,)
+        path = context.query._current_path + path + (self.key,)
 
-        local_cols, remote_cols = self._local_remote_columns
+        local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
         local_attr = [self.parent._get_col_to_prop(c).key for c in local_cols]
         remote_attr = [
                         self.mapper._get_col_to_prop(c).key 
                         for c in remote_cols]
-
+        
+        print "STRAT LOOKING FOR SUBQ AT PATH", path
         q = context.attributes[('subquery', path)]
         
         collections = dict(
@@ -713,7 +752,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                         q, 
                         lambda x:x[1:]
                     ))
-
+        
         def execute(state, dict_, row):
             collection = collections.get(
                 tuple([row[col] for col in local_cols]), 

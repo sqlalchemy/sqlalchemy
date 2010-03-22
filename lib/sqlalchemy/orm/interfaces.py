@@ -646,7 +646,7 @@ class StrategizedProperty(MapperProperty):
     
     """
 
-    def __get_context_strategy(self, context, path):
+    def _get_context_strategy(self, context, path):
         cls = context.attributes.get(("loaderstrategy", _reduce_path(path)), None)
         if cls:
             try:
@@ -668,11 +668,11 @@ class StrategizedProperty(MapperProperty):
         return strategy
 
     def setup(self, context, entity, path, adapter, **kwargs):
-        self.__get_context_strategy(context, path + (self.key,)).\
+        self._get_context_strategy(context, path + (self.key,)).\
                     setup_query(context, entity, path, adapter, **kwargs)
 
     def create_row_processor(self, context, path, mapper, row, adapter):
-        return self.__get_context_strategy(context, path + (self.key,)).\
+        return self._get_context_strategy(context, path + (self.key,)).\
                     create_row_processor(context, path, mapper, row, adapter)
 
     def do_init(self):
@@ -775,12 +775,17 @@ class PropertyOption(MapperOption):
             isa = True
             
         for ent in query._mapper_entities:
-            if searchfor is ent.path_entity or (isa and searchfor.common_parent(ent.path_entity)):
+            if searchfor is ent.path_entity or (
+                                isa and
+                                searchfor.common_parent(ent.path_entity)):
                 return ent
         else:
             if raiseerr:
-                raise sa_exc.ArgumentError("Can't find entity %s in Query.  Current list: %r" 
-                    % (searchfor, [str(m.path_entity) for m in query._entities]))
+                raise sa_exc.ArgumentError(
+                    "Can't find entity %s in Query.  Current list: %r" 
+                    % (searchfor, [
+                                str(m.path_entity) for m in query._entities
+                                ]))
             else:
                 return None
 
@@ -921,7 +926,7 @@ class StrategizedOption(PropertyOption):
         return False
 
     def process_query_property(self, query, paths, mappers):
-        # __get_context_strategy may receive the path in terms of
+        # _get_context_strategy may receive the path in terms of
         # a base mapper - e.g.  options(eagerload_all(Company.employees, Engineer.machines))
         # in the polymorphic tests leads to "(Person, 'machines')" in 
         # the path due to the mechanics of how the eager strategy builds

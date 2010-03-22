@@ -619,7 +619,8 @@ class Query(object):
         those being selected.
 
         """
-        fromclause = self.with_labels().enable_eagerloads(False).statement.correlate(None)
+        fromclause = self.with_labels().enable_eagerloads(False).\
+                                    statement.correlate(None)
         q = self._from_selectable(fromclause)
         if entities:
             q._set_entities(entities)

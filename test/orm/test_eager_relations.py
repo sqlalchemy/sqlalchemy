@@ -440,10 +440,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
-        User, Item, Address, Order = self.classes.get_all(
-            'User', 'Item', 'Address', 'Order')
-        users, items, order_items, orders, addresses = self.tables.get_all(
-            'users', 'items', 'order_items', 'orders', 'addresses')
 
         mapper(Item, items)
         mapper(Order, orders, properties={

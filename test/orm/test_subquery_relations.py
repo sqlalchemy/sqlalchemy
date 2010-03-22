@@ -1,7 +1,8 @@
 from sqlalchemy.test.testing import eq_, is_, is_not_
 from sqlalchemy.test import testing
-from sqlalchemy.orm import backref, subqueryload, subqueryload_all
-from sqlalchemy.orm import mapper, relationship, create_session, lazyload, aliased
+from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
+                mapper, relationship, \
+                create_session, lazyload, aliased, eagerload
 from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
@@ -14,7 +15,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_basic(self):
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses), order_by=Address.id)
+            'addresses':relationship(
+                            mapper(Address, addresses), 
+                            order_by=Address.id)
         })
         sess = create_session()
         
@@ -22,7 +25,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         
         def go():
             eq_(
-                    [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])],
+                    [User(id=7, addresses=[
+                            Address(id=1, email_address='jack@bean.com')])],
                     q.filter(User.id==7).all()
             )
         
@@ -85,7 +89,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(User, users, properties = {
             'addresses':relationship(mapper(Address, addresses), 
                             lazy='subquery', 
-                            order_by=[addresses.c.email_address, addresses.c.id]),
+                            order_by=[
+                                    addresses.c.email_address,
+                                    addresses.c.id]),
         })
         q = create_session().query(User)
         eq_([
@@ -110,11 +116,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
-            addresses = relationship(Address, lazy='subquery', order_by=addresses.c.id),
+            addresses = relationship(Address, 
+                                        lazy='subquery',
+                                        order_by=addresses.c.id),
         ))
 
         q = create_session().query(User)
-        l = q.filter(User.id==Address.user_id).order_by(Address.email_address).all()
+        l = q.filter(User.id==Address.user_id).\
+            order_by(Address.email_address).all()
 
         eq_([
             User(id=8, addresses=[
@@ -135,7 +144,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
             addresses = relationship(Address, lazy='subquery',
-                                 order_by=[sa.desc(addresses.c.email_address)]),
+                                 order_by=[
+                                    sa.desc(addresses.c.email_address)
+                                ]),
         ))
         sess = create_session()
         eq_([
@@ -153,6 +164,55 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             User(id=10, addresses=[])
         ], sess.query(User).order_by(User.id).all())
 
+    @testing.resolve_artifact_names
+    def test_pathing(self):
+        mapper(User, users, properties={
+            'orders':relationship(Order, order_by=orders.c.id), # o2m, m2o
+        })
+        mapper(Order, orders, properties={
+            'items':relationship(Item, 
+                        secondary=order_items, order_by=items.c.id),  #m2m
+        })
+        mapper(Item, items, properties={
+            'keywords':relationship(Keyword, 
+                                        secondary=item_keywords,
+                                        order_by=keywords.c.id) #m2m
+        })
+        mapper(Keyword, keywords)
+        
+
+        for opt, count in [
+#            ((
+#                lazyload(User.orders), 
+#                lazyload(User.orders, Order.items), 
+#                lazyload(User.orders, Order.items, Item.keywords)
+#            ), 14),
+#            ((
+#                eagerload(User.orders), 
+#                eagerload(User.orders, Order.items), 
+#                eagerload(User.orders, Order.items, Item.keywords)
+#            ), 1),
+#            ((
+#                subqueryload(User.orders), 
+#            ), 12),
+            ((
+                subqueryload(User.orders), 
+                subqueryload(User.orders, Order.items), 
+            ), 8),
+#            ((
+#                subqueryload(User.orders), 
+#                subqueryload(User.orders, Order.items), 
+#                subqueryload(User.orders, Order.items, Item.keywords), 
+#            ), 4),
+        ]:
+            sess = create_session()
+            def go():
+                eq_(
+                    sess.query(User).options(*opt).order_by(User.id).all(),
+                    self.static.user_item_keyword_result
+                )
+            self.assert_sql_count(testing.db, go, count)
+            
     # TODO: all the tests in test_eager_relations
     
     # TODO: ensure state stuff works out OK, existing objects/collections
