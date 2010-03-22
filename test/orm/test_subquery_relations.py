@@ -5,6 +5,7 @@ from sqlalchemy.orm import mapper, relationship, create_session, lazyload, alias
 from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
+import sqlalchemy as sa
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_inserts = 'once'
@@ -57,6 +58,100 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                  filter(Keyword.name == 'red')).all())
         self.assert_sql_count(testing.db, go, 2)
 
+    @testing.resolve_artifact_names
+    def test_orderby(self):
+        mapper(User, users, properties = {
+            'addresses':relationship(mapper(Address, addresses), 
+                        lazy='subquery', order_by=addresses.c.email_address),
+        })
+        q = create_session().query(User)
+        eq_([
+            User(id=7, addresses=[
+                Address(id=1)
+            ]),
+            User(id=8, addresses=[
+                Address(id=3, email_address='ed@bettyboop.com'),
+                Address(id=4, email_address='ed@lala.com'),
+                Address(id=2, email_address='ed@wood.com')
+            ]),
+            User(id=9, addresses=[
+                Address(id=5)
+            ]),
+            User(id=10, addresses=[])
+        ], q.order_by(User.id).all())
+
+    @testing.resolve_artifact_names
+    def test_orderby_multi(self):
+        mapper(User, users, properties = {
+            'addresses':relationship(mapper(Address, addresses), 
+                            lazy='subquery', 
+                            order_by=[addresses.c.email_address, addresses.c.id]),
+        })
+        q = create_session().query(User)
+        eq_([
+            User(id=7, addresses=[
+                Address(id=1)
+            ]),
+            User(id=8, addresses=[
+                Address(id=3, email_address='ed@bettyboop.com'),
+                Address(id=4, email_address='ed@lala.com'),
+                Address(id=2, email_address='ed@wood.com')
+            ]),
+            User(id=9, addresses=[
+                Address(id=5)
+            ]),
+            User(id=10, addresses=[])
+        ], q.order_by(User.id).all())
+
+    @testing.resolve_artifact_names
+    def test_orderby_related(self):
+        """A regular mapper select on a single table can 
+            order by a relationship to a second table"""
+
+        mapper(Address, addresses)
+        mapper(User, users, properties = dict(
+            addresses = relationship(Address, lazy='subquery', order_by=addresses.c.id),
+        ))
+
+        q = create_session().query(User)
+        l = q.filter(User.id==Address.user_id).order_by(Address.email_address).all()
+
+        eq_([
+            User(id=8, addresses=[
+                Address(id=2, email_address='ed@wood.com'),
+                Address(id=3, email_address='ed@bettyboop.com'),
+                Address(id=4, email_address='ed@lala.com'),
+            ]),
+            User(id=9, addresses=[
+                Address(id=5)
+            ]),
+            User(id=7, addresses=[
+                Address(id=1)
+            ]),
+        ], l)
+
+    @testing.resolve_artifact_names
+    def test_orderby_desc(self):
+        mapper(Address, addresses)
+        mapper(User, users, properties = dict(
+            addresses = relationship(Address, lazy='subquery',
+                                 order_by=[sa.desc(addresses.c.email_address)]),
+        ))
+        sess = create_session()
+        eq_([
+            User(id=7, addresses=[
+                Address(id=1)
+            ]),
+            User(id=8, addresses=[
+                Address(id=2, email_address='ed@wood.com'),
+                Address(id=4, email_address='ed@lala.com'),
+                Address(id=3, email_address='ed@bettyboop.com'),
+            ]),
+            User(id=9, addresses=[
+                Address(id=5)
+            ]),
+            User(id=10, addresses=[])
+        ], sess.query(User).order_by(User.id).all())
 
     # TODO: all the tests in test_eager_relations
     

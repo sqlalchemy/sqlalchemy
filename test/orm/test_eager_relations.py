@@ -48,6 +48,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_no_orphan(self):
         """An eagerly loaded child object is not marked as an orphan"""
+        
         mapper(User, users, properties={
             'addresses':relationship(Address, cascade="all,delete-orphan", lazy=False)
         })
@@ -55,13 +56,16 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         sess = create_session()
         user = sess.query(User).get(7)
-        assert getattr(User, 'addresses').hasparent(sa.orm.attributes.instance_state(user.addresses[0]), optimistic=True)
-        assert not sa.orm.class_mapper(Address)._is_orphan(sa.orm.attributes.instance_state(user.addresses[0]))
+        assert getattr(User, 'addresses').\
+                    hasparent(sa.orm.attributes.instance_state(user.addresses[0]), optimistic=True)
+        assert not sa.orm.class_mapper(Address).\
+                    _is_orphan(sa.orm.attributes.instance_state(user.addresses[0]))
 
     @testing.resolve_artifact_names
     def test_orderby(self):
         mapper(User, users, properties = {
-            'addresses':relationship(mapper(Address, addresses), lazy=False, order_by=addresses.c.email_address),
+            'addresses':relationship(mapper(Address, addresses), 
+                        lazy=False, order_by=addresses.c.email_address),
         })
         q = create_session().query(User)
         eq_([
@@ -82,7 +86,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_orderby_multi(self):
         mapper(User, users, properties = {
-            'addresses':relationship(mapper(Address, addresses), lazy=False, order_by=[addresses.c.email_address, addresses.c.id]),
+            'addresses':relationship(mapper(Address, addresses), 
+                            lazy=False, 
+                            order_by=[addresses.c.email_address, addresses.c.id]),
         })
         q = create_session().query(User)
         eq_([
@@ -102,7 +108,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_orderby_related(self):
-        """A regular mapper select on a single table can order by a relationship to a second table"""
+        """A regular mapper select on a single table can 
+            order by a relationship to a second table"""
+            
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
             addresses = relationship(Address, lazy=False, order_by=addresses.c.id),
@@ -150,11 +158,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_deferred_fk_col(self):
-        User, Address, Dingaling = self.classes.get_all(
-            'User', 'Address', 'Dingaling')
-        users, addresses, dingalings = self.tables.get_all(
-            'users', 'addresses', 'dingalings')
-
         mapper(Address, addresses, properties={
             'user_id':deferred(addresses.c.user_id),
             'user':relationship(User, lazy=False)
@@ -240,9 +243,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_many_to_many(self):
-        Keyword, Item = self.Keyword, self.Item
-        keywords, item_keywords, items = self.tables.get_all(
-            'keywords', 'item_keywords', 'items')
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
@@ -267,10 +267,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_eager_option(self):
-        Keyword, Item = self.Keyword, self.Item
-        keywords, item_keywords, items = self.tables.get_all(
-            'keywords', 'item_keywords', 'items')
-
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
                 keywords = relationship(Keyword, secondary=item_keywords, lazy=True,
@@ -288,8 +284,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_cyclical(self):
         """A circular eager relationship breaks the cycle with a lazy loader"""
-        User, Address = self.User, self.Address
-        users, addresses = self.tables.get_all('users', 'addresses')
 
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
@@ -305,10 +299,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_double(self):
         """Eager loading with two relationships simultaneously, from the same table, using aliases."""
-        User, Address, Order = self.classes.get_all(
-            'User', 'Address', 'Order')
-        users, addresses, orders = self.tables.get_all(
-            'users', 'addresses', 'orders')
 
         openorders = sa.alias(orders, 'openorders')
         closedorders = sa.alias(orders, 'closedorders')
@@ -362,10 +352,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_double_same_mappers(self):
         """Eager loading with two relationships simulatneously, from the same table, using aliases."""
-        User, Address, Order = self.classes.get_all(
-            'User', 'Address', 'Order')
-        users, addresses, orders = self.tables.get_all(
-            'users', 'addresses', 'orders')
 
         mapper(Address, addresses)
         mapper(Order, orders, properties={
@@ -432,10 +418,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_no_false_hits(self):
         """Eager loaders don't interpret main table columns as part of their eager load."""
-        User, Address, Order = self.classes.get_all(
-            'User', 'Address', 'Order')
-        users, addresses, orders = self.tables.get_all(
-            'users', 'addresses', 'orders')
 
         mapper(User, users, properties={
             'addresses':relationship(Address, lazy=False),
