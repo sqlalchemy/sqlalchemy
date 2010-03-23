@@ -704,24 +704,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         q = q.order_by(*local_attr)
         
-        # place loaderstrategy tokens in the new query
-        # so that further loader strategy options take effect.
-        # TODO: use the actual options in the parent query, 
-        # figure out how to achieve the path-manipulation
-        # (should probably use _current_path).
-        # some of these options may be user-defined so they
-        # must propagate.
-        # consider adding a new call to MapperOption that is
-        # specific to subquery loads.
-        for attr in context.attributes:
-            strat, opt_path = attr
-            if strat == "loaderstrategy":
-                # TODO: make sure we understand this part
-                #opt_path = opt_path[len(path):] # works, i think this 
-                                                # leaves excess tho
-                opt_path = opt_path[2:] # also works
-                q._attributes[("loaderstrategy", opt_path)] =\
-                    context.query._attributes[attr]
+        # propagate loader options etc. to the new query
+        q = q._with_current_path(subq_path)
+        q = q._conditional_options(*orig_query._with_options)
         
         if self.parent_property.order_by:
             q = q.order_by(*self.parent_property.order_by)

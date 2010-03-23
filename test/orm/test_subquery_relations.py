@@ -174,6 +174,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         ("subqueryload", "subqueryload", "eagerload", 3),
     ]
 #    _pathing_runs = [("subqueryload", "subqueryload", "eagerload", 3)]
+#    _pathing_runs = [("subqueryload", "subqueryload", "subqueryload", 4)]
 
     def test_options_pathing(self):
         self._do_options_test(self._pathing_runs)
