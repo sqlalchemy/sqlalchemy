@@ -12,7 +12,13 @@ CHANGES
     join(prop) would fail to render the second join outside the
     subquery, when joining on the same criterion as was on the 
     inside.
-
+    
+  - Fixed bug which affected all eagerload() and similar options 
+    such that "remote" eager loads, i.e. eagerloads off of a lazy
+    load such as query(A).options(eagerload(A.b, B.c))
+    wouldn't eagerload anything, but using eagerload("b.c") would
+    work fine.
+     
 0.6beta2
 ========
 

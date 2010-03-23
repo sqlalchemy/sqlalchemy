@@ -1,7 +1,7 @@
 from sqlalchemy.test.testing import eq_, is_, is_not_
 from sqlalchemy.test import testing
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
-                mapper, relationship, \
+                mapper, relationship, clear_mappers,\
                 create_session, lazyload, aliased, eagerload
 from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy.test.assertsql import CompiledSQL
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_inserts = 'once'
     run_deletes = None
-
+    
     @testing.resolve_artifact_names
     def test_basic(self):
         mapper(User, users, properties={
@@ -164,8 +164,28 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             User(id=10, addresses=[])
         ], sess.query(User).order_by(User.id).all())
 
+    _pathing_runs = [
+        ( "lazyload", "lazyload", "lazyload", 15 ),
+        ("eagerload", "eagerload", "eagerload", 1),
+        ("subqueryload", "lazyload", "lazyload", 12),
+        ("subqueryload", "subqueryload", "lazyload", 8),
+        ("eagerload", "subqueryload", "lazyload", 7),
+        ("lazyload", "lazyload", "subqueryload", 12),
+        
+        # here's the one that fails:
+        #("subqueryload", "subqueryload", "subqueryload", 4),
+    ]
+#    _pathing_runs = [("subqueryload", "subqueryload", "subqueryload", 4)]
+    _pathing_runs = [("lazyload", "lazyload", "subqueryload", 12)]
+    
+    def test_options_pathing(self):
+        self._do_options_test(self._pathing_runs)
+    
+    def test_mapper_pathing(self):
+        self._do_mapper_test(self._pathing_runs)
+    
     @testing.resolve_artifact_names
-    def test_pathing(self):
+    def _do_options_test(self, configs):
         mapper(User, users, properties={
             'orders':relationship(Order, order_by=orders.c.id), # o2m, m2o
         })
@@ -180,39 +200,81 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         })
         mapper(Keyword, keywords)
         
+        callables = {
+                        'eagerload':eagerload, 
+                    'subqueryload':subqueryload
+                }
+        
+        for o, i, k, count in configs:
+            options = []
+            if o in callables:
+                options.append(callables[o](User.orders))
+            if i in callables:
+                options.append(callables[i](User.orders, Order.items))
+            if k in callables:
+                options.append(callables[k](User.orders, Order.items, Item.keywords))
 
-        for opt, count in [
-#            ((
-#                lazyload(User.orders), 
-#                lazyload(User.orders, Order.items), 
-#                lazyload(User.orders, Order.items, Item.keywords)
-#            ), 14),
-#            ((
-#                eagerload(User.orders), 
-#                eagerload(User.orders, Order.items), 
-#                eagerload(User.orders, Order.items, Item.keywords)
-#            ), 1),
-#            ((
-#                subqueryload(User.orders), 
-#            ), 12),
-            ((
-                subqueryload(User.orders), 
-                subqueryload(User.orders, Order.items), 
-            ), 8),
-#            ((
-#                subqueryload(User.orders), 
-#                subqueryload(User.orders, Order.items), 
-#                subqueryload(User.orders, Order.items, Item.keywords), 
-#            ), 4),
-        ]:
             sess = create_session()
             def go():
                 eq_(
-                    sess.query(User).options(*opt).order_by(User.id).all(),
+                    sess.query(User).options(*options).order_by(User.id).all(),
                     self.static.user_item_keyword_result
                 )
             self.assert_sql_count(testing.db, go, count)
+
+            sess = create_session()
+#            def go():
+            eq_(
+                sess.query(User).filter(User.name=='fred').
+                        options(*options).order_by(User.id).all(),
+                self.static.user_item_keyword_result[2:3]
+            )
+#            self.assert_sql_count(testing.db, go, count)
+
+    @testing.resolve_artifact_names
+    def _do_mapper_test(self, configs):
+        opts = {
+            'lazyload':'select',
+            'eagerload':'joined',
+            'subqueryload':'subquery',
             
+        }
+
+        for o, i, k, count in configs:
+            mapper(User, users, properties={
+                'orders':relationship(Order, lazy=opts[o], order_by=orders.c.id), 
+            })
+            mapper(Order, orders, properties={
+                'items':relationship(Item, 
+                            secondary=order_items, lazy=opts[i], order_by=items.c.id), 
+            })
+            mapper(Item, items, properties={
+                'keywords':relationship(Keyword, 
+                                            lazy=opts[k],
+                                            secondary=item_keywords,
+                                            order_by=keywords.c.id)
+            })
+            mapper(Keyword, keywords)
+
+            sess = create_session()
+            def go():
+                eq_(
+                    sess.query(User).order_by(User.id).all(),
+                    self.static.user_item_keyword_result
+                )
+            try:
+                self.assert_sql_count(testing.db, go, count)
+
+                eq_(
+                    sess.query(User).filter(User.name=='fred').
+                            order_by(User.id).all(),
+                    self.static.user_item_keyword_result[2:3]
+                )
+
+            finally:
+                clear_mappers()
+        
+        
     # TODO: all the tests in test_eager_relations
     
     # TODO: ensure state stuff works out OK, existing objects/collections

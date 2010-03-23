@@ -1336,6 +1336,14 @@ class DeepOptionsTest(_fixtures.FixtureTest):
             x = u[0].orders[1].items[0].keywords[1]
         self.sql_count_(2, go)
 
+        sess = create_session()
+        q3 = sess.query(User).options(
+                    sa.orm.eagerload(User.orders, Order.items, Item.keywords))
+        u = q3.all()
+        def go():
+            x = u[0].orders[1].items[0].keywords[1]
+        self.sql_count_(2, go)
+
 class ValidatorTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_scalar(self):

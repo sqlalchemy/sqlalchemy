@@ -418,7 +418,7 @@ class CannedResults(object):
                            items=[item1, item2, item3]),
                      Order(id=4,
                            items=[item1, item5])]),
-                User(id=10)]
+                User(id=10, orders=[])]
         return user_result
         
 FixtureTest.static = CannedResults()

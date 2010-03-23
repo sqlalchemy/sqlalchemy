@@ -757,37 +757,12 @@ class PropertyOption(MapperOption):
         self._process(query, False)
 
     def _process(self, query, raiseerr):
-        paths, mappers = self.__get_paths(query, raiseerr)
+        paths, mappers = self._get_paths(query, raiseerr)
         if paths:
             self.process_query_property(query, paths, mappers)
 
     def process_query_property(self, query, paths, mappers):
         pass
-
-    def __find_entity(self, query, mapper, raiseerr):
-        from sqlalchemy.orm.util import _class_to_mapper, _is_aliased_class
-
-        if _is_aliased_class(mapper):
-            searchfor = mapper
-            isa = False
-        else:
-            searchfor = _class_to_mapper(mapper)
-            isa = True
-            
-        for ent in query._mapper_entities:
-            if searchfor is ent.path_entity or (
-                                isa and
-                                searchfor.common_parent(ent.path_entity)):
-                return ent
-        else:
-            if raiseerr:
-                raise sa_exc.ArgumentError(
-                    "Can't find entity %s in Query.  Current list: %r" 
-                    % (searchfor, [
-                                str(m.path_entity) for m in query._entities
-                                ]))
-            else:
-                return None
 
     def __getstate__(self):
         d = self.__dict__.copy()
@@ -810,7 +785,32 @@ class PropertyOption(MapperOption):
         state['key'] = tuple(ret)
         self.__dict__ = state
 
-    def __get_paths(self, query, raiseerr):
+    def _find_entity(self, query, mapper, raiseerr):
+        from sqlalchemy.orm.util import _class_to_mapper, _is_aliased_class
+
+        if _is_aliased_class(mapper):
+            searchfor = mapper
+            isa = False
+        else:
+            searchfor = _class_to_mapper(mapper)
+            isa = True
+
+        for ent in query._mapper_entities:
+            if searchfor is ent.path_entity or (
+                                isa and
+                                searchfor.common_parent(ent.path_entity)):
+                return ent
+        else:
+            if raiseerr:
+                raise sa_exc.ArgumentError(
+                    "Can't find entity %s in Query.  Current list: %r" 
+                    % (searchfor, [
+                                str(m.path_entity) for m in query._entities
+                                ]))
+            else:
+                return None
+
+    def _get_paths(self, query, raiseerr):
         path = None
         entity = None
         l = []
@@ -820,61 +820,71 @@ class PropertyOption(MapperOption):
         # with an existing path
         current_path = list(query._current_path)
             
-        if self.mapper:
-            entity = self.__find_entity(query, self.mapper, raiseerr)
-            mapper = entity.mapper
-            path_element = entity.path_entity
-
+        tokens = []
         for key in util.to_list(self.key):
             if isinstance(key, basestring):
-                tokens = key.split('.')
+                tokens += key.split('.')
             else:
-                tokens = [key]
-            for token in tokens:
-                if isinstance(token, basestring):
-                    if not entity:
-                        entity = query._entity_zero()
-                        path_element = entity.path_entity
-                        mapper = entity.mapper
-                    mappers.append(mapper)
-                    prop = mapper.get_property(token, resolve_synonyms=True, raiseerr=raiseerr)
-                    key = token
-                elif isinstance(token, PropComparator):
-                    prop = token.property
-                    if not entity:
-                        entity = self.__find_entity(query, token.parententity, raiseerr)
-                        if not entity:
-                            return [], []
-                        path_element = entity.path_entity
-                    mappers.append(prop.parent)
-                    key = prop.key
-                else:
-                    raise sa_exc.ArgumentError("mapper option expects string key "
-                                                "or list of attributes")
-
-                if current_path and key == current_path[1]:
-                    current_path = current_path[2:]
-                    continue
+                tokens += [key]
+        
+        for token in tokens:
+            if isinstance(token, basestring):
+                if not entity:
+                    if current_path:
+                        if current_path[1] == token:
+                            current_path = current_path[2:]
+                            continue
                     
-                if prop is None:
-                    return [], []
+                    entity = query._entity_zero()
+                    path_element = entity.path_entity
+                    mapper = entity.mapper
+                mappers.append(mapper)
+                prop = mapper.get_property(
+                                    token, 
+                                    resolve_synonyms=True, 
+                                    raiseerr=raiseerr)
+                key = token
+            elif isinstance(token, PropComparator):
+                prop = token.property
+                if not entity:
+                    if current_path:
+                        if current_path[0:2] == [token.parententity, prop.key]:
+                            current_path = current_path[2:]
+                            continue
 
-                path = build_path(path_element, prop.key, path)
-                l.append(path)
-                if getattr(token, '_of_type', None):
-                    path_element = mapper = token._of_type
-                else:
-                    path_element = mapper = getattr(prop, 'mapper', None)
+                    entity = self._find_entity(
+                                            query, 
+                                            token.parententity, 
+                                            raiseerr)
+                    if not entity:
+                        return [], []
+                    path_element = entity.path_entity
+                    mapper = entity.mapper
+                mappers.append(prop.parent)
+                key = prop.key
+            else:
+                raise sa_exc.ArgumentError("mapper option expects string key "
+                                            "or list of attributes")
 
-                if path_element:
-                    path_element = path_element
+            if prop is None:
+                return [], []
+
+            path = build_path(path_element, prop.key, path)
+            l.append(path)
+            if getattr(token, '_of_type', None):
+                path_element = mapper = token._of_type
+            else:
+                path_element = mapper = getattr(prop, 'mapper', None)
+
+            if path_element:
+                path_element = path_element
                     
                 
         # if current_path tokens remain, then
         # we didn't have an exact path match.
         if current_path:
             return [], []
-            
+
         return l, mappers
 
 class AttributeExtension(object):

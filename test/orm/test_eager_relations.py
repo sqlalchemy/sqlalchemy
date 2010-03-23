@@ -242,6 +242,50 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
+    def test_options_pathing(self):
+        mapper(User, users, properties={
+            'orders':relationship(Order, order_by=orders.c.id), # o2m, m2o
+        })
+        mapper(Order, orders, properties={
+            'items':relationship(Item, 
+                        secondary=order_items, order_by=items.c.id),  #m2m
+        })
+        mapper(Item, items, properties={
+            'keywords':relationship(Keyword, 
+                                        secondary=item_keywords,
+                                        order_by=keywords.c.id) #m2m
+        })
+        mapper(Keyword, keywords)
+
+        for opt, count in [
+            ((
+                eagerload(User.orders, Order.items), 
+            ), 10),
+            ((eagerload("orders.items"), ), 10),
+            ((
+                eagerload(User.orders, ), 
+                eagerload(User.orders, Order.items), 
+                eagerload(User.orders, Order.items, Item.keywords), 
+            ), 1),
+            ((
+                eagerload(User.orders, Order.items, Item.keywords), 
+            ), 10),
+            ((
+                eagerload(User.orders, Order.items), 
+                eagerload(User.orders, Order.items, Item.keywords), 
+            ), 5),
+        ]:
+            sess = create_session()
+            def go():
+                eq_(
+                    sess.query(User).options(*opt).order_by(User.id).all(),
+                    self.static.user_item_keyword_result
+                )
+            self.assert_sql_count(testing.db, go, count)
+
+
+
+    @testing.resolve_artifact_names
     def test_many_to_many(self):
 
         mapper(Keyword, keywords)
