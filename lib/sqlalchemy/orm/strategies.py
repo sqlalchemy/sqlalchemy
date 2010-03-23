@@ -711,25 +711,45 @@ class SubqueryLoader(AbstractRelationshipLoader):
             q._order_by = None
         
         q._attributes[('subquery_path', None)] = subq_path
-        
+
         # now select from it as a subquery.
         q = q.from_self(self.mapper, *local_attr)
-        
+
         # and join to the related thing we want
         # to load.
         for mapper, key in [(subq_path[i], subq_path[i+1]) 
-                                for i in xrange(0, len(subq_path), 2)]:
+                            for i in xrange(0, len(subq_path), 2)]:
             prop = mapper.get_property(key)
             q = q.join(prop.class_attribute)
+            
+        #join_on = [(subq_path[i], subq_path[i+1]) 
+        #        for i in xrange(0, len(subq_path), 2)]
+        #for i, (mapper, key) in enumerate(join_on):
+        #    aliased = i != len(join_on) - 1
+        #    prop = mapper.get_property(key)
+        #    q = q.join(prop.class_attribute, aliased=aliased)
 
         q = q.order_by(*local_attr)
         
         # propagate loader options etc. to the new query
         q = q._with_current_path(subq_path)
         q = q._conditional_options(*orig_query._with_options)
-        
+
         if self.parent_property.order_by:
-            q = q.order_by(*self.parent_property.order_by)
+            # if there's an ORDER BY, alias it the same
+            # way joinedloader does, but we have to pull out 
+            # the "eagerjoin" from the query.
+            # this really only picks up the "secondary" table
+            # right now.
+            eagerjoin = q._from_obj[0]
+            eager_order_by = \
+                            eagerjoin._target_adapter.\
+                                copy_and_process(
+                                    util.to_list(
+                                        self.parent_property.order_by
+                                    )
+                                )
+            q = q.order_by(*eager_order_by)
         
         # this key is for the row_processor to pick up
         # within this same loader.

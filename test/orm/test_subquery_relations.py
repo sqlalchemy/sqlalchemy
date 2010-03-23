@@ -1,8 +1,11 @@
 from sqlalchemy.test.testing import eq_, is_, is_not_
 from sqlalchemy.test import testing
+from sqlalchemy.test.schema import Table, Column
+from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
                 mapper, relationship, clear_mappers,\
-                create_session, lazyload, aliased, eagerload
+                create_session, lazyload, aliased, eagerload,\
+                deferred
 from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
@@ -511,6 +514,263 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         s = create_session()
         assert_raises(sa.exc.SAWarning,
                 s.query(User).options(subqueryload(User.order)).all)
+
+class OrderBySecondaryTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('m2m', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('aid', Integer, ForeignKey('a.id')),
+              Column('bid', Integer, ForeignKey('b.id')))
+
+        Table('a', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('data', String(50)))
+        Table('b', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('data', String(50)))
+
+    @classmethod
+    def fixtures(cls):
+        return dict(
+            a=(('id', 'data'),
+               (1, 'a1'),
+               (2, 'a2')),
+
+            b=(('id', 'data'),
+               (1, 'b1'),
+               (2, 'b2'),
+               (3, 'b3'),
+               (4, 'b4')),
+
+            m2m=(('id', 'aid', 'bid'),
+                 (2, 1, 1),
+                 (4, 2, 4),
+                 (1, 1, 3),
+                 (6, 2, 2),
+                 (3, 1, 2),
+                 (5, 2, 3)))
+
+    @testing.resolve_artifact_names
+    def test_ordering(self):
+        class A(_base.ComparableEntity):pass
+        class B(_base.ComparableEntity):pass
+
+        mapper(A, a, properties={
+            'bs':relationship(B, secondary=m2m, lazy='subquery', order_by=m2m.c.id)
+        })
+        mapper(B, b)
+
+        sess = create_session()
+        def go():
+            eq_(sess.query(A).all(), [
+                        A(data='a1', bs=[B(data='b3'), B(data='b1'), B(data='b2')]),
+                        A(bs=[B(data='b4'), B(data='b3'), B(data='b2')])
+            ])
+        self.assert_sql_count(testing.db, go, 2)
+
+class SelfReferentialEagerTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('nodes', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+            Column('data', String(30)))
+
+    @testing.fails_on('maxdb', 'FIXME: unknown')
+    @testing.resolve_artifact_names
+    def _test_basic(self):
+        class Node(_base.ComparableEntity):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, 
+                                        lazy='subquery', 
+                                        join_depth=3, order_by=nodes.c.id)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+#        n1.children[1].append(Node(data='n121'))
+#        n1.children[1].append(Node(data='n122'))
+#        n1.children[1].append(Node(data='n123'))
+        n2 = Node(data='n2')
+        n2.append(Node(data='n21'))
+#        n2.children[0].append(Node(data='n211'))
+#        n2.children[0].append(Node(data='n212'))
+        
+        sess.add(n1)
+        sess.add(n2)
+        sess.flush()
+        sess.expunge_all()
+        def go():
+            d = sess.query(Node).filter(Node.data.in_(['n1', 'n2'])).\
+                            order_by(Node.data).all()
+            eq_([Node(data='n1', children=[
+                    Node(data='n11'),
+                    Node(data='n12', children=[
+#                        Node(data='n121'),
+#                        Node(data='n122'),
+#                        Node(data='n123')
+                    ]),
+                    Node(data='n13')
+                ]),
+                Node(data='n2', children=[
+                    Node(data='n21', children=[
+#                        Node(data='n211'),
+#                        Node(data='n212'),
+                    ])
+                ])
+            ], d)
+        self.assert_sql_count(testing.db, go, 1)
+
+
+
+    @testing.resolve_artifact_names
+    def _test_lazy_fallback_doesnt_affect_eager(self):
+        class Node(_base.ComparableEntity):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, lazy='subquery', join_depth=1,
+                                    order_by=nodes.c.id)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.add(n1)
+        sess.flush()
+        sess.expunge_all()
+
+        def go():
+            allnodes = sess.query(Node).order_by(Node.data).all()
+            n12 = allnodes[2]
+            eq_(n12.data, 'n12')
+            eq_([
+                Node(data='n121'),
+                Node(data='n122'),
+                Node(data='n123')
+            ], list(n12.children))
+        self.assert_sql_count(testing.db, go, 1)
+
+    @testing.resolve_artifact_names
+    def _test_with_deferred(self):
+        class Node(_base.ComparableEntity):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, lazy='subquery', join_depth=3,
+                                    order_by=nodes.c.id),
+            'data':deferred(nodes.c.data)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        sess.add(n1)
+        sess.flush()
+        sess.expunge_all()
+
+        def go():
+            eq_( 
+                Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
+                sess.query(Node).order_by(Node.id).first(),
+                )
+        self.assert_sql_count(testing.db, go, 4)
+
+        sess.expunge_all()
+
+        def go():
+            eq_(Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
+                sess.query(Node).options(undefer('data')).order_by(Node.id).first())
+        self.assert_sql_count(testing.db, go, 3)
+
+        sess.expunge_all()
+
+        def go():
+            eq_(Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
+                sess.query(Node).options(undefer('data'),
+                                            undefer('children.data')).first())
+        self.assert_sql_count(testing.db, go, 1)
+
+
+    @testing.resolve_artifact_names
+    def _test_options(self):
+        class Node(_base.ComparableEntity):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, lazy=True, order_by=nodes.c.id)
+        }, order_by=nodes.c.id)
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.add(n1)
+        sess.flush()
+        sess.expunge_all()
+        def go():
+            d = sess.query(Node).filter_by(data='n1').\
+                        options(eagerload('children.children')).first()
+            eq_(Node(data='n1', children=[
+                Node(data='n11'),
+                Node(data='n12', children=[
+                    Node(data='n121'),
+                    Node(data='n122'),
+                    Node(data='n123')
+                ]),
+                Node(data='n13')
+            ]), d)
+        self.assert_sql_count(testing.db, go, 2)
+
+    @testing.fails_on('maxdb', 'FIXME: unknown')
+    @testing.resolve_artifact_names
+    def _test_no_depth(self):
+        class Node(_base.ComparableEntity):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, lazy='subquery')
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.append(Node(data='n11'))
+        n1.append(Node(data='n12'))
+        n1.append(Node(data='n13'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
+        sess.add(n1)
+        sess.flush()
+        sess.expunge_all()
+        def go():
+            d = sess.query(Node).filter_by(data='n1').first()
+            eq_(Node(data='n1', children=[
+                Node(data='n11'),
+                Node(data='n12', children=[
+                    Node(data='n121'),
+                    Node(data='n122'),
+                    Node(data='n123')
+                ]),
+                Node(data='n13')
+            ]), d)
+        self.assert_sql_count(testing.db, go, 3)
 
     # TODO: all the tests in test_eager_relations
     

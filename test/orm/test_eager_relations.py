@@ -861,10 +861,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_aliasing(self):
-        """test that eager loading uses aliases to insulate the eager load from regular criterion against those tables."""
+        """test that eager loading uses aliases to insulate the eager 
+        load from regular criterion against those tables."""
 
         mapper(User, users, properties = dict(
-            addresses = relationship(mapper(Address, addresses), lazy=False, order_by=addresses.c.id)
+            addresses = relationship(mapper(Address, addresses), 
+                                    lazy=False, order_by=addresses.c.id)
         ))
         q = create_session().query(User)
         l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(
@@ -1096,8 +1098,10 @@ class OrderBySecondaryTest(_base.MappedTest):
         mapper(B, b)
 
         sess = create_session()
-        eq_(sess.query(A).all(), [A(data='a1', bs=[B(data='b3'), B(data='b1'), B(data='b2')]),
-                                  A(bs=[B(data='b4'), B(data='b3'), B(data='b2')])])
+        eq_(sess.query(A).all(), [
+                        A(data='a1', bs=[B(data='b3'), B(data='b1'), B(data='b2')]),
+                        A(bs=[B(data='b4'), B(data='b3'), B(data='b2')])
+        ])
 
 
 class SelfReferentialEagerTest(_base.MappedTest):
@@ -1116,7 +1120,9 @@ class SelfReferentialEagerTest(_base.MappedTest):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, lazy=False, join_depth=3, order_by=nodes.c.id)
+            'children':relationship(Node, 
+                                        lazy=False, 
+                                        join_depth=3, order_by=nodes.c.id)
         })
         sess = create_session()
         n1 = Node(data='n1')
@@ -1164,7 +1170,8 @@ class SelfReferentialEagerTest(_base.MappedTest):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, lazy=False, join_depth=1, order_by=nodes.c.id)
+            'children':relationship(Node, lazy=False, join_depth=1,
+                                    order_by=nodes.c.id)
         })
         sess = create_session()
         n1 = Node(data='n1')
@@ -1204,7 +1211,8 @@ class SelfReferentialEagerTest(_base.MappedTest):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, lazy=False, join_depth=3, order_by=nodes.c.id),
+            'children':relationship(Node, lazy=False, join_depth=3,
+                                    order_by=nodes.c.id),
             'data':deferred(nodes.c.data)
         })
         sess = create_session()
@@ -1233,7 +1241,8 @@ class SelfReferentialEagerTest(_base.MappedTest):
 
         def go():
             eq_(Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
-                sess.query(Node).options(undefer('data'), undefer('children.data')).first())
+                sess.query(Node).options(undefer('data'),
+                                            undefer('children.data')).first())
         self.assert_sql_count(testing.db, go, 1)
 
 
@@ -1258,7 +1267,8 @@ class SelfReferentialEagerTest(_base.MappedTest):
         sess.flush()
         sess.expunge_all()
         def go():
-            d = sess.query(Node).filter_by(data='n1').options(eagerload('children.children')).first()
+            d = sess.query(Node).filter_by(data='n1').\
+                        options(eagerload('children.children')).first()
             eq_(Node(data='n1', children=[
                 Node(data='n11'),
                 Node(data='n12', children=[
@@ -1271,7 +1281,8 @@ class SelfReferentialEagerTest(_base.MappedTest):
         self.assert_sql_count(testing.db, go, 2)
 
         def go():
-            d = sess.query(Node).filter_by(data='n1').options(eagerload('children.children')).first()
+            d = sess.query(Node).filter_by(data='n1').\
+                        options(eagerload('children.children')).first()
 
         # test that the query isn't wrapping the initial query for eager loading.
         self.assert_sql_execution(testing.db, go, 
@@ -1320,14 +1331,14 @@ class MixedSelfReferentialEagerTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a_table', metadata,
-                       Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
-                       )
+               Column('id', Integer, primary_key=True, test_needs_autoincrement=True)
+               )
 
         Table('b_table', metadata,
-                       Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-                       Column('parent_b1_id', Integer, ForeignKey('b_table.id')),
-                       Column('parent_a_id', Integer, ForeignKey('a_table.id')),
-                       Column('parent_b2_id', Integer, ForeignKey('b_table.id')))
+               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+               Column('parent_b1_id', Integer, ForeignKey('b_table.id')),
+               Column('parent_a_id', Integer, ForeignKey('a_table.id')),
+               Column('parent_b2_id', Integer, ForeignKey('b_table.id')))
 
 
     @classmethod
@@ -1379,7 +1390,11 @@ class MixedSelfReferentialEagerTest(_base.MappedTest):
         session = create_session()
         def go():
             eq_(
-                session.query(B).options(eagerload('parent_b1'),eagerload('parent_b2'),eagerload('parent_z')).
+                session.query(B).\
+                    options(
+                                eagerload('parent_b1'),
+                                eagerload('parent_b2'),
+                                eagerload('parent_z')).
                             filter(B.id.in_([2, 8, 11])).order_by(B.id).all(),
                 [
                     B(id=2, parent_z=A(id=1), parent_b1=B(id=1), parent_b2=None),
