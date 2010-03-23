@@ -166,18 +166,15 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     _pathing_runs = [
         ( "lazyload", "lazyload", "lazyload", 15 ),
-        ("eagerload", "eagerload", "eagerload", 1),
         ("subqueryload", "lazyload", "lazyload", 12),
         ("subqueryload", "subqueryload", "lazyload", 8),
         ("eagerload", "subqueryload", "lazyload", 7),
         ("lazyload", "lazyload", "subqueryload", 12),
-        
-        # here's the one that fails:
-        #("subqueryload", "subqueryload", "subqueryload", 4),
+        ("subqueryload", "subqueryload", "subqueryload", 4),
+        ("subqueryload", "subqueryload", "eagerload", 3),
     ]
-#    _pathing_runs = [("subqueryload", "subqueryload", "subqueryload", 4)]
-    _pathing_runs = [("lazyload", "lazyload", "subqueryload", 12)]
-    
+#    _pathing_runs = [("subqueryload", "subqueryload", "eagerload", 3)]
+
     def test_options_pathing(self):
         self._do_options_test(self._pathing_runs)
     
@@ -213,7 +210,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 options.append(callables[i](User.orders, Order.items))
             if k in callables:
                 options.append(callables[k](User.orders, Order.items, Item.keywords))
-
+                
             sess = create_session()
             def go():
                 eq_(
@@ -223,13 +220,19 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.assert_sql_count(testing.db, go, count)
 
             sess = create_session()
-#            def go():
             eq_(
                 sess.query(User).filter(User.name=='fred').
                         options(*options).order_by(User.id).all(),
                 self.static.user_item_keyword_result[2:3]
             )
-#            self.assert_sql_count(testing.db, go, count)
+
+            sess = create_session()
+            eq_(
+                sess.query(User).join(User.orders).
+                        filter(Order.id==3).\
+                        options(*options).order_by(User.id).all(),
+                self.static.user_item_keyword_result[0:1]
+            )
 
     @testing.resolve_artifact_names
     def _do_mapper_test(self, configs):
@@ -269,6 +272,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     sess.query(User).filter(User.name=='fred').
                             order_by(User.id).all(),
                     self.static.user_item_keyword_result[2:3]
+                )
+
+                sess = create_session()
+                eq_(
+                    sess.query(User).join(User.orders).
+                            filter(Order.id==3).\
+                            order_by(User.id).all(),
+                    self.static.user_item_keyword_result[0:1]
                 )
 
             finally:

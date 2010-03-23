@@ -644,18 +644,29 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if not context.query._enable_eagerloads:
             return
         
-        orig_query = context.attributes.get(("orig_query", SubqueryLoader),
-                            context.query)
+        # the leftmost query we'll be joining from.
+        # in the case of an end-user query with eager or subq
+        # loads, this is the user's query.  In the case of a lazyload,
+        # this is the query generated in the LazyLoader.
+        # this query is passed along to all queries generated for this 
+        # load.
+        if ("orig_query", SubqueryLoader) not in context.attributes:
+            context.attributes[("orig_query", SubqueryLoader)] = context.query
+            
+        orig_query = context.attributes[("orig_query", SubqueryLoader)]
 
+        # build up a path indicating the path from the leftmost
+        # entity to the thing we're subquery loading.
+        subq_path = context.attributes.get(('subquery_path', None), ())
+        
         path = path + (self.key, )
         
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
-        if len(path) > 1:
-            leftmost_mapper, leftmost_prop = path[0], path[0].get_property(path[1])
-            leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
-        else:
-            leftmost_cols = local_cols
-            leftmost_mapper = self.parent
+        
+        subq_path = subq_path + path
+        leftmost_mapper, leftmost_prop = \
+                            subq_path[0], subq_path[0].get_property(subq_path[1])
+        leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         
         leftmost_attr = [
             leftmost_mapper._get_col_to_prop(c).class_attribute
@@ -673,36 +684,51 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # set the original query to only look
         # for the significant columns, not order
         # by anything.
-        q = orig_query._clone() #context.query._clone()
-        q._attributes = q._attributes.copy()
+        q = orig_query._clone()
+        q._attributes = {}
         q._attributes[("orig_query", SubqueryLoader)] = orig_query
         q._set_entities(leftmost_attr)
         q._order_by = None
+        
+        q._attributes[('subquery_path', None)] = subq_path
         
         # now select from it as a subquery.
         q = q.from_self(self.mapper, *local_attr)
         
         # and join to the related thing we want
         # to load.
-        for mapper, key in [(path[i], path[i+1]) for i in xrange(0, len(path), 2)]:
+        for mapper, key in [(subq_path[i], subq_path[i+1]) 
+                                for i in xrange(0, len(subq_path), 2)]:
             prop = mapper.get_property(key)
             q = q.join(prop.class_attribute)
 
         q = q.order_by(*local_attr)
         
-        for attr in orig_query._attributes:
+        # place loaderstrategy tokens in the new query
+        # so that further loader strategy options take effect.
+        # TODO: use the actual options in the parent query, 
+        # figure out how to achieve the path-manipulation
+        # (should probably use _current_path).
+        # some of these options may be user-defined so they
+        # must propagate.
+        # consider adding a new call to MapperOption that is
+        # specific to subquery loads.
+        for attr in context.attributes:
             strat, opt_path = attr
             if strat == "loaderstrategy":
-                opt_path = opt_path[len(path):]
+                # TODO: make sure we understand this part
+                #opt_path = opt_path[len(path):] # works, i think this 
+                                                # leaves excess tho
+                opt_path = opt_path[2:] # also works
                 q._attributes[("loaderstrategy", opt_path)] =\
-                       context.query._attributes[attr]
+                    context.query._attributes[attr]
         
         if self.parent_property.order_by:
             q = q.order_by(*self.parent_property.order_by)
         
-        context.attributes[('subquery', path)] = \
-            q._attributes[('subquery', path)] = q
-        
+        # this key is for the row_processor to pick up
+        # within this same loader.
+        context.attributes[('subquery', path)] = q
     
     def _local_remote_columns(self, prop):
         if prop.secondary is None:
