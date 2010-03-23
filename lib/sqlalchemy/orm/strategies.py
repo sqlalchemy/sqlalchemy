@@ -632,6 +632,10 @@ class LoadLazyAttribute(object):
                 return None
 
 class SubqueryLoader(AbstractRelationshipLoader):
+    def init(self):
+        super(SubqueryLoader, self).init()
+        self.join_depth = self.parent_property.join_depth
+    
     def init_class_attribute(self, mapper):
         self.parent_property.\
                 _get_strategy(LazyLoader).\
@@ -643,6 +647,27 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         if not context.query._enable_eagerloads:
             return
+
+        path = path + (self.key, )
+
+        # build up a path indicating the path from the leftmost
+        # entity to the thing we're subquery loading.
+        subq_path = context.attributes.get(('subquery_path', None), ())
+
+        subq_path = subq_path + path
+
+        reduced_path = interfaces._reduce_path(subq_path)
+
+        # check for join_depth or basic recursion,
+        # if the current path was not explicitly stated as 
+        # a desired "loaderstrategy" (i.e. via query.options())
+        if ("loaderstrategy", reduced_path) not in context.attributes:
+            if self.join_depth:
+                if len(path) / 2 > self.join_depth:
+                    return
+            else:
+                if self.mapper.base_mapper in reduced_path:
+                    return
         
         # the leftmost query we'll be joining from.
         # in the case of an end-user query with eager or subq
@@ -655,15 +680,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
             
         orig_query = context.attributes[("orig_query", SubqueryLoader)]
 
-        # build up a path indicating the path from the leftmost
-        # entity to the thing we're subquery loading.
-        subq_path = context.attributes.get(('subquery_path', None), ())
-        
-        path = path + (self.key, )
         
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
         
-        subq_path = subq_path + path
         leftmost_mapper, leftmost_prop = \
                             subq_path[0], subq_path[0].get_property(subq_path[1])
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
@@ -688,7 +707,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
         q._attributes = {}
         q._attributes[("orig_query", SubqueryLoader)] = orig_query
         q._set_entities(leftmost_attr)
-        q._order_by = None
+        if q._limit is None and q._offset is None:
+            q._order_by = None
         
         q._attributes[('subquery_path', None)] = subq_path
         
@@ -750,15 +770,31 @@ class SubqueryLoader(AbstractRelationshipLoader):
         
         if adapter:
             local_cols = [adapter.columns[c] for c in local_cols]
-
-        def execute(state, dict_, row):
-            collection = collections.get(
-                tuple([row[col] for col in local_cols]), 
-                ()
-            )
-            state.get_impl(self.key).\
-                    set_committed_value(state, dict_, collection)
-                
+        
+        if self.uselist:
+            def execute(state, dict_, row):
+                collection = collections.get(
+                    tuple([row[col] for col in local_cols]), 
+                    ()
+                )
+                state.get_impl(self.key).\
+                        set_committed_value(state, dict_, collection)
+        else:
+            def execute(state, dict_, row):
+                collection = collections.get(
+                    tuple([row[col] for col in local_cols]), 
+                    (None,)
+                )
+                if len(collection) > 1:
+                    util.warn(
+                        "Multiple rows returned with "
+                        "uselist=False for eagerly-loaded attribute '%s' "
+                        % self)
+                    
+                scalar = collection[0]
+                state.get_impl(self.key).\
+                        set_committed_value(state, dict_, scalar)
+            
         return execute, None
 
 class EagerLoader(AbstractRelationshipLoader):

@@ -332,7 +332,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
             addresses = relationship(Address, lazy=False,
-                                 backref=sa.orm.backref('user', lazy=False), order_by=Address.id)
+                                 backref=sa.orm.backref('user', lazy=False),
+                                            order_by=Address.id)
         ))
         is_(sa.orm.class_mapper(User).get_property('addresses').lazy, False)
         is_(sa.orm.class_mapper(Address).get_property('user').lazy, False)
@@ -342,7 +343,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_double(self):
-        """Eager loading with two relationships simultaneously, from the same table, using aliases."""
+        """Eager loading with two relationships simultaneously, 
+            from the same table, using aliases."""
 
         openorders = sa.alias(orders, 'openorders')
         closedorders = sa.alias(orders, 'closedorders')
@@ -395,7 +397,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_double_same_mappers(self):
-        """Eager loading with two relationships simulatneously, from the same table, using aliases."""
+        """Eager loading with two relationships simulatneously, 
+        from the same table, using aliases."""
 
         mapper(Address, addresses)
         mapper(Order, orders, properties={
@@ -461,7 +464,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_no_false_hits(self):
-        """Eager loaders don't interpret main table columns as part of their eager load."""
+        """Eager loaders don't interpret main table columns as 
+        part of their eager load."""
 
         mapper(User, users, properties={
             'addresses':relationship(Address, lazy=False),
@@ -476,7 +480,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         # eager loaders have aliases which should not hit on those columns,
         # they should be required to locate only their aliased/fully table
         # qualified column name.
-        noeagers = create_session().query(User).from_statement("select * from users").all()
+        noeagers = create_session().query(User).\
+                        from_statement("select * from users").all()
         assert 'orders' not in noeagers[0].__dict__
         assert 'addresses' not in noeagers[0].__dict__
 
@@ -487,7 +492,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         mapper(Item, items)
         mapper(Order, orders, properties={
-            'items':relationship(Item, secondary=order_items, lazy=False, order_by=items.c.id)
+            'items':relationship(Item, secondary=order_items, lazy=False,
+                order_by=items.c.id)
         })
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses), lazy=False, order_by=addresses.c.id),
@@ -530,7 +536,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         sess = create_session()
         q = sess.query(Item)
-        l = q.filter((Item.description=='item 2') | (Item.description=='item 5') | (Item.description=='item 3')).\
+        l = q.filter((Item.description=='item 2') | 
+                        (Item.description=='item 5') | 
+                        (Item.description=='item 3')).\
             order_by(Item.id).limit(2).all()
 
         eq_(self.static.item_keyword_result[1:3], l)
@@ -538,8 +546,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_limit_3(self):
-        """test that the ORDER BY is propagated from the inner select to the outer select, when using the
-        'wrapped' select statement resulting from the combination of eager loading and limit/offset clauses."""
+        """test that the ORDER BY is propagated from the inner 
+        select to the outer select, when using the
+        'wrapped' select statement resulting from the combination of 
+        eager loading and limit/offset clauses."""
 
         mapper(Item, items)
         mapper(Order, orders, properties = dict(
@@ -685,7 +695,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_one_to_many_scalar(self):
         mapper(User, users, properties = dict(
-            address = relationship(mapper(Address, addresses), lazy=False, uselist=False)
+            address = relationship(mapper(Address, addresses), 
+                                    lazy=False, uselist=False)
         ))
         q = create_session().query(User)
 
@@ -765,13 +776,16 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_double_with_aggregate(self):
         max_orders_by_user = sa.select([sa.func.max(orders.c.id).label('order_id')],
-                                       group_by=[orders.c.user_id]).alias('max_orders_by_user')
+                                       group_by=[orders.c.user_id]
+                                     ).alias('max_orders_by_user')
 
-        max_orders = orders.select(orders.c.id==max_orders_by_user.c.order_id).alias('max_orders')
+        max_orders = orders.select(orders.c.id==max_orders_by_user.c.order_id).\
+                                alias('max_orders')
 
         mapper(Order, orders)
         mapper(User, users, properties={
-               'orders':relationship(Order, backref='user', lazy=False, order_by=orders.c.id),
+               'orders':relationship(Order, backref='user', lazy=False,
+                                            order_by=orders.c.id),
                'max_order':relationship(
                                 mapper(Order, max_orders, non_primary=True), 
                                 lazy=False, uselist=False)
@@ -798,14 +812,16 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names 
     def test_uselist_false_warning(self):
-        """test that multiple rows received by a uselist=False raises a warning."""
+        """test that multiple rows received by a 
+        uselist=False raises a warning."""
         
         mapper(User, users, properties={
             'order':relationship(Order, uselist=False)
         })
         mapper(Order, orders)
         s = create_session()
-        assert_raises(sa.exc.SAWarning, s.query(User).options(eagerload(User.order)).all)
+        assert_raises(sa.exc.SAWarning,
+                s.query(User).options(eagerload(User.order)).all)
         
     @testing.resolve_artifact_names
     def test_wide(self):
