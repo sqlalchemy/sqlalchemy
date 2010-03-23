@@ -692,11 +692,6 @@ class SubqueryLoader(AbstractRelationshipLoader):
             for c in leftmost_cols
         ]
 
-        local_attr = [
-            self.parent._get_col_to_prop(c).class_attribute
-            for c in local_cols
-        ]
-        
         # modify the query to just look for parent columns in the 
         # join condition
         
@@ -713,24 +708,44 @@ class SubqueryLoader(AbstractRelationshipLoader):
         q._attributes[('subquery_path', None)] = subq_path
 
         # now select from it as a subquery.
-        q = q.from_self(self.mapper, *local_attr)
+        local_attr = [
+            self.parent._get_col_to_prop(c).class_attribute
+            for c in local_cols
+        ]
 
-        # and join to the related thing we want
-        # to load.
-        for mapper, key in [(subq_path[i], subq_path[i+1]) 
-                            for i in xrange(0, len(subq_path), 2)]:
-            prop = mapper.get_property(key)
-            q = q.join(prop.class_attribute)
-            
-        #join_on = [(subq_path[i], subq_path[i+1]) 
-        #        for i in xrange(0, len(subq_path), 2)]
-        #for i, (mapper, key) in enumerate(join_on):
-        #    aliased = i != len(join_on) - 1
-        #    prop = mapper.get_property(key)
-        #    q = q.join(prop.class_attribute, aliased=aliased)
+        q = q.from_self(self.mapper)
+        q._entities[0].disable_aliasing = True
 
-        q = q.order_by(*local_attr)
+        to_join = [(subq_path[i], subq_path[i+1]) 
+                            for i in xrange(0, len(subq_path), 2)]
         
+        for i, (mapper, key) in enumerate(to_join):
+            alias_join = i < len(to_join) - 1
+            second_to_last = i == len(to_join) - 2
+            
+            prop = mapper.get_property(key)
+            q = q.join(prop.class_attribute, aliased=alias_join)
+            
+            if alias_join and second_to_last:
+                cols = [
+                    q._adapt_clause(col, True, False)
+                    for col in local_cols
+                ]
+                for col in cols:
+                    q = q.add_column(col)
+                q = q.order_by(*cols)
+        
+        if len(to_join) < 2:
+            local_attr = [
+                self.parent._get_col_to_prop(c).class_attribute
+                for c in local_cols
+            ]
+
+            for col in local_attr:
+                q = q.add_column(col)
+            q = q.order_by(*local_attr)
+                
+
         # propagate loader options etc. to the new query
         q = q._with_current_path(subq_path)
         q = q._conditional_options(*orig_query._with_options)
@@ -774,7 +789,6 @@ class SubqueryLoader(AbstractRelationshipLoader):
             
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
-        local_attr = [self.parent._get_col_to_prop(c).key for c in local_cols]
         remote_attr = [
                         self.mapper._get_col_to_prop(c).key 
                         for c in remote_cols]

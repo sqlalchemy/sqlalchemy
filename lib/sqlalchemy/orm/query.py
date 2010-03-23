@@ -134,7 +134,7 @@ class Query(object):
                 self._polymorphic_adapters[m.mapped_table] = self._polymorphic_adapters[m.local_table] = adapter
 
     def _set_select_from(self, *obj):
-        
+
         fa = []
         for from_obj in obj:
             if isinstance(from_obj, expression._SelectBaseMixin):
@@ -143,9 +143,8 @@ class Query(object):
 
         self._from_obj = tuple(fa)
 
-        # TODO: only use this adapter for from_self() ?   right
-        # now its usage is somewhat arbitrary.
-        if len(self._from_obj) == 1 and isinstance(self._from_obj[0], expression.Alias):
+        if len(self._from_obj) == 1 and \
+            isinstance(self._from_obj[0], expression.Alias):
             equivs = self.__all_equivs()
             self._from_obj_alias = sql_util.ColumnAdapter(self._from_obj[0], equivs)
         
@@ -625,7 +624,7 @@ class Query(object):
         if entities:
             q._set_entities(entities)
         return q
-
+    
     @_generative()
     def _from_selectable(self, fromclause):
         for attr in ('_statement', '_criterion', '_order_by', '_group_by',
@@ -2139,6 +2138,7 @@ class _MapperEntity(_QueryEntity):
         self._with_polymorphic = with_polymorphic
         self._polymorphic_discriminator = None
         self.is_aliased_class = is_aliased_class
+        self.disable_aliasing = False
         if is_aliased_class:
             self.path_entity = self.entity = self.entity_zero = entity
         else:
@@ -2170,7 +2170,9 @@ class _MapperEntity(_QueryEntity):
         query._entities.append(self)
 
     def _get_entity_clauses(self, query, context):
-
+        if self.disable_aliasing:
+            return None
+            
         adapter = None
         if not self.is_aliased_class and query._polymorphic_adapters:
             adapter = query._polymorphic_adapters.get(self.mapper, None)
@@ -2250,7 +2252,6 @@ class _MapperEntity(_QueryEntity):
 
     def __str__(self):
         return str(self.mapper)
-
 
 class _ColumnEntity(_QueryEntity):
     """Column/expression based entity."""

@@ -569,7 +569,7 @@ class OrderBySecondaryTest(_base.MappedTest):
             ])
         self.assert_sql_count(testing.db, go, 2)
 
-class SelfReferentialEagerTest(_base.MappedTest):
+class SelfReferentialTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('nodes', metadata,
@@ -579,7 +579,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
-    def _test_basic(self):
+    def test_basic(self):
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
@@ -594,13 +594,13 @@ class SelfReferentialEagerTest(_base.MappedTest):
         n1.append(Node(data='n11'))
         n1.append(Node(data='n12'))
         n1.append(Node(data='n13'))
-#        n1.children[1].append(Node(data='n121'))
-#        n1.children[1].append(Node(data='n122'))
-#        n1.children[1].append(Node(data='n123'))
+        n1.children[1].append(Node(data='n121'))
+        n1.children[1].append(Node(data='n122'))
+        n1.children[1].append(Node(data='n123'))
         n2 = Node(data='n2')
         n2.append(Node(data='n21'))
-#        n2.children[0].append(Node(data='n211'))
-#        n2.children[0].append(Node(data='n212'))
+        n2.children[0].append(Node(data='n211'))
+        n2.children[0].append(Node(data='n212'))
         
         sess.add(n1)
         sess.add(n2)
@@ -612,20 +612,20 @@ class SelfReferentialEagerTest(_base.MappedTest):
             eq_([Node(data='n1', children=[
                     Node(data='n11'),
                     Node(data='n12', children=[
-#                        Node(data='n121'),
-#                        Node(data='n122'),
-#                        Node(data='n123')
+                        Node(data='n121'),
+                        Node(data='n122'),
+                        Node(data='n123')
                     ]),
                     Node(data='n13')
                 ]),
                 Node(data='n2', children=[
                     Node(data='n21', children=[
-#                        Node(data='n211'),
-#                        Node(data='n212'),
+                        Node(data='n211'),
+                        Node(data='n212'),
                     ])
                 ])
             ], d)
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 4)
 
 
 
