@@ -3283,7 +3283,7 @@ class CustomJoinTest(QueryTest):
 
         assert [User(id=7)] == q.join('open_orders', 'items', aliased=True).filter(Item.id==4).join('closed_orders', 'items', aliased=True).filter(Item.id==3).all()
 
-class SelfReferentialTest(_base.MappedTest):
+class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
@@ -3337,7 +3337,60 @@ class SelfReferentialTest(_base.MappedTest):
         node = sess.query(Node).filter_by(data='n122').join('parent', aliased=True).filter_by(data='n12').\
             join('parent', aliased=True, from_joinpoint=True).filter_by(data='n1').first()
         assert node.data == 'n122'
+    
+    def test_from_self_inside_excludes_outside(self):
+        """test the propagation of aliased() from inside to outside
+        on a from_self()..
+        """
+        sess = create_session()
+        
+        n1 = aliased(Node)
+        
+        # n1 is not inside the from_self(), so all cols must be maintained
+        # on the outside
+        self.assert_compile(
+            sess.query(Node).filter(Node.data=='n122').from_self(n1, Node.id),
+            "SELECT nodes_1.id AS nodes_1_id, nodes_1.parent_id AS nodes_1_parent_id, "
+            "nodes_1.data AS nodes_1_data, anon_1.nodes_id AS anon_1_nodes_id "
+            "FROM nodes AS nodes_1, (SELECT nodes.id AS nodes_id, "
+            "nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data FROM "
+            "nodes WHERE nodes.data = :data_1) AS anon_1",
+            use_default_dialect=True
+        )
 
+        parent = aliased(Node)
+        grandparent = aliased(Node)
+        q = sess.query(Node, parent, grandparent).\
+            join((Node.parent, parent), (parent.parent, grandparent)).\
+                filter(Node.data=='n122').filter(parent.data=='n12').\
+                filter(grandparent.data=='n1').from_self().limit(1)
+        
+        # parent, grandparent *are* inside the from_self(), so they 
+        # should get aliased to the outside.
+        self.assert_compile(
+            q,
+            "SELECT anon_1.nodes_id AS anon_1_nodes_id, "
+            "anon_1.nodes_parent_id AS anon_1_nodes_parent_id, "
+            "anon_1.nodes_data AS anon_1_nodes_data, "
+            "anon_1.nodes_1_id AS anon_1_nodes_1_id, "
+            "anon_1.nodes_1_parent_id AS anon_1_nodes_1_parent_id, "
+            "anon_1.nodes_1_data AS anon_1_nodes_1_data, "
+            "anon_1.nodes_2_id AS anon_1_nodes_2_id, "
+            "anon_1.nodes_2_parent_id AS anon_1_nodes_2_parent_id, "
+            "anon_1.nodes_2_data AS anon_1_nodes_2_data "
+            "FROM (SELECT nodes.id AS nodes_id, nodes.parent_id "
+            "AS nodes_parent_id, nodes.data AS nodes_data, "
+            "nodes_1.id AS nodes_1_id, nodes_1.parent_id AS nodes_1_parent_id, "
+            "nodes_1.data AS nodes_1_data, nodes_2.id AS nodes_2_id, "
+            "nodes_2.parent_id AS nodes_2_parent_id, nodes_2.data AS "
+            "nodes_2_data FROM nodes JOIN nodes AS nodes_1 ON "
+            "nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_2.id = nodes_1.parent_id "
+            "WHERE nodes.data = :data_1 AND nodes_1.data = :data_2 AND "
+            "nodes_2.data = :data_3) AS anon_1  LIMIT 1",
+            use_default_dialect=True
+        )
+        
     def test_explicit_join(self):
         sess = create_session()
     
@@ -3382,6 +3435,7 @@ class SelfReferentialTest(_base.MappedTest):
             [Node(parent_id=1,data=u'n11',id=2), Node(parent_id=1,data=u'n12',id=3), Node(parent_id=1,data=u'n13',id=4)]
         )
     
+        
     def test_multiple_explicit_entities(self):
         sess = create_session()
     
