@@ -662,15 +662,24 @@ class Query(object):
             return None
 
     @_generative()
-    def add_column(self, column):
-        """Add a SQL ColumnElement to the list of result columns to be returned."""
+    def add_columns(self, *column):
+        """Add one or more column expressions to the list 
+        of result columns to be returned."""
 
         self._entities = list(self._entities)
         l = len(self._entities)
-        _ColumnEntity(self, column)
+        for c in column:
+            _ColumnEntity(self, c)
         # _ColumnEntity may add many entities if the
         # given arg is a FROM clause
         self._setup_aliasizers(self._entities[l:])
+
+    @util.pending_deprecation("add_column() superceded by add_columns()")
+    def add_column(self, column):
+        """Add a column expression to the list of result columns
+        to be returned."""
+        
+        return self.add_columns(column)
 
     def options(self, *args):
         """Return a new Query object, applying the given list of

@@ -23,7 +23,11 @@ CHANGES
     load such as query(A).options(eagerload(A.b, B.c))
     wouldn't eagerload anything, but using eagerload("b.c") would
     work fine.
-     
+
+  - Query gains an add_columns(*columns) method which is a multi-
+    version of add_column(col).  add_column(col) is future 
+    deprecated.
+    
 0.6beta2
 ========
 

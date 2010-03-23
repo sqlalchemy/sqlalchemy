@@ -195,7 +195,8 @@ def _produce_test(select_type):
             sess = create_session()
 
             # assert the JOINs dont over JOIN
-            assert sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).limit(2).offset(1).with_labels().subquery().count().scalar() == 2
+            assert sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).\
+                                    limit(2).offset(1).with_labels().subquery().count().scalar() == 2
 
             def go():
                 eq_(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines))[1:3], all_employees[1:3])

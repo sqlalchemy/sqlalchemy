@@ -707,44 +707,38 @@ class SubqueryLoader(AbstractRelationshipLoader):
         
         q._attributes[('subquery_path', None)] = subq_path
 
-        # now select from it as a subquery.
-        local_attr = [
-            self.parent._get_col_to_prop(c).class_attribute
-            for c in local_cols
-        ]
-
         q = q.from_self(self.mapper)
         q._entities[0].disable_aliasing = True
 
-        to_join = [(subq_path[i], subq_path[i+1]) 
-                            for i in xrange(0, len(subq_path), 2)]
-        
-        for i, (mapper, key) in enumerate(to_join):
-            alias_join = i < len(to_join) - 1
-            second_to_last = i == len(to_join) - 2
-            
-            prop = mapper.get_property(key)
-            q = q.join(prop.class_attribute, aliased=alias_join)
-            
-            if alias_join and second_to_last:
-                cols = [
-                    q._adapt_clause(col, True, False)
-                    for col in local_cols
+        to_join = [
+                    (subq_path[i], subq_path[i+1]) 
+                    for i in xrange(0, len(subq_path), 2)
                 ]
-                for col in cols:
-                    q = q.add_column(col)
-                q = q.order_by(*cols)
-        
+
         if len(to_join) < 2:
             local_attr = [
                 self.parent._get_col_to_prop(c).class_attribute
                 for c in local_cols
             ]
-
-            for col in local_attr:
-                q = q.add_column(col)
-            q = q.order_by(*local_attr)
-                
+        else:
+            parent_alias = mapperutil.AliasedClass(self.parent)
+            local_attr = [
+                getattr(parent_alias, self.parent._get_col_to_prop(c).key)
+                for c in local_cols
+            ]
+        q = q.add_columns(*local_attr)
+        q = q.order_by(*local_attr)
+            
+        for i, (mapper, key) in enumerate(to_join):
+            alias_join = i < len(to_join) - 1
+            second_to_last = i == len(to_join) - 2
+            
+            prop = mapper.get_property(key)
+            
+            if second_to_last:
+                q = q.join((parent_alias, prop.class_attribute))
+            else:
+                q = q.join(prop.class_attribute, aliased=alias_join)
 
         # propagate loader options etc. to the new query
         q = q._with_current_path(subq_path)
