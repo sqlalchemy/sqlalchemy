@@ -1069,8 +1069,7 @@ class Query(object):
             left = self._joinpoint_zero()
 
         if left is right and \
-                not create_aliases and \
-                not self._entity_zero()._subq_aliasing:
+                not create_aliases:
             raise sa_exc.InvalidRequestError(
                         "Can't construct a join from %s to %s, they are the same entity" % 
                         (left, right))
@@ -2159,7 +2158,6 @@ class _MapperEntity(_QueryEntity):
         self._with_polymorphic = with_polymorphic
         self._polymorphic_discriminator = None
         self.is_aliased_class = is_aliased_class
-        self._subq_aliasing = False
         if is_aliased_class:
             self.path_entity = self.entity = self.entity_zero = entity
         else:
@@ -2199,10 +2197,6 @@ class _MapperEntity(_QueryEntity):
         if not adapter and self.adapter:
             adapter = self.adapter
         
-        # special flag set by subquery loader
-        if self._subq_aliasing:
-            return adapter
-            
         if adapter:
             if query._from_obj_alias:
                 ret = adapter.wrap(query._from_obj_alias)

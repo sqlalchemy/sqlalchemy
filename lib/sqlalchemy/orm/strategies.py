@@ -658,9 +658,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         reduced_path = interfaces._reduce_path(subq_path)
         
-        # check for join_depth or basic recursion,
-        # if the current path was not explicitly stated as 
-        # a desired "loaderstrategy" (i.e. via query.options())
+        # join-depth / recursion check
         if ("loaderstrategy", reduced_path) not in context.attributes:
             if self.join_depth:
                 if len(path) / 2 > self.join_depth:
@@ -669,19 +667,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 if self.mapper.base_mapper in reduced_path:
                     return
         
-        # the leftmost query we'll be joining from.
-        # in the case of an end-user query with eager or subq
-        # loads, this is the user's query.  In the case of a lazyload,
-        # this is the query generated in the LazyLoader.
-        # this query is passed along to all queries generated for this 
-        # load.
-        if ("orig_query", SubqueryLoader) not in context.attributes:
-            context.attributes[("orig_query", SubqueryLoader)] = context.query
-            
-        orig_query = context.attributes[("orig_query", SubqueryLoader)]
+        orig_query = context.attributes.get(("orig_query", SubqueryLoader), context.query)
 
-        local_cols, remote_cols = self._local_remote_columns(self.parent_property)
-        
+        # determine attributes of the leftmost mapper
         if self.parent.isa(subq_path[0]) and self.key==subq_path[1]:
             leftmost_mapper, leftmost_prop = \
                                 self.parent, self.parent_property
@@ -695,32 +683,36 @@ class SubqueryLoader(AbstractRelationshipLoader):
             for c in leftmost_cols
         ]
 
-        # set the original query to only look
-        # for the significant columns, not order
-        # by anything.
+        # reformat the original query
+        # to look only for significant columns
         q = orig_query._clone()
+        # TODO: why does polymporphic etc. require hardcoding 
+        # into _adapt_col_list ?  Does query.add_columns(...) work
+        # with polymorphic loading ?
         q._set_entities(q._adapt_col_list(leftmost_attr))
+
+        # don't need ORDER BY if no limit/offset
         if q._limit is None and q._offset is None:
             q._order_by = None
-        
+
+        # new query will join to an aliased entity
+        # of the modified original query
         embed_q = q.with_labels().subquery()
+        left_alias = mapperutil.AliasedClass(leftmost_mapper, embed_q)
         
+        # new query, request endpoint columns
         q = q.session.query(self.mapper)
         
-        # magic hardcody thing.  TODO: dammit
-        q._entities[0]._subq_aliasing = True
         q._attributes = {}
         q._attributes[("orig_query", SubqueryLoader)] = orig_query
-        
-        left_alias = mapperutil.AliasedClass(leftmost_mapper, embed_q)
-        q = q.select_from(left_alias)
-        
         q._attributes[('subquery_path', None)] = subq_path
 
+        # figure out what's being joined.  a.k.a. the fun part
         to_join = [
                     (subq_path[i], subq_path[i+1]) 
                     for i in xrange(0, len(subq_path), 2)
                 ]
+        local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
         if len(to_join) < 2:
             local_attr = [
@@ -740,16 +732,25 @@ class SubqueryLoader(AbstractRelationshipLoader):
             alias_join = i < len(to_join) - 1
             second_to_last = i == len(to_join) - 2
             
-            if i == 0:
-                prop = leftmost_prop
-            else:
-                prop = mapper.get_property(key)
+            # we need to use query.join() here because of the 
+            # rich behavior it brings when dealing with "with_polymorphic" 
+            # mappers, otherwise we get broken aliasing and subquerying if
+            # using orm.join directly.   _joinpoint_zero() is because
+            # from_joinpoint doesn't seem to be totally working with self-ref, 
+            # and/or we should not use aliased=True, instead use AliasedClass()
+            # for everything.
+            # three TODOs: 1. make orm.join() work with rich polymorphic (huge)
+            # 2. make from_joinpoint work completely 3. use AliasedClass() here
             
-            if second_to_last:
-                q = q.join((parent_alias, prop.class_attribute))
+            if i == 0:
+                attr = getattr(left_alias, key)
             else:
-                q = q.join(prop.class_attribute, aliased=alias_join)
-
+                attr = getattr(q._joinpoint_zero(), key)
+                
+            if second_to_last:
+                q = q.join((parent_alias, attr))
+            else:
+                q = q.join(attr, aliased=alias_join)
 
         # propagate loader options etc. to the new query
         q = q._with_current_path(subq_path)
@@ -771,8 +772,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
                                 )
             q = q.order_by(*eager_order_by)
         
-        # this key is for the row_processor to pick up
-        # within this same loader.
+        # add new query to attributes to be picked up 
+        # by create_row_processor
         context.attributes[('subquery', interfaces._reduce_path(path))] = q
     
     def _local_remote_columns(self, prop):
