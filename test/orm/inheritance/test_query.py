@@ -1282,7 +1282,7 @@ class EagerToSubclassTest(_base.MappedTest):
             )
         self.assert_sql_count(testing.db, go, 1)
 
-class SubClassEagerToSubclassTest(_base.MappedTest):
+class SubClassEagerToSubClassTest(_base.MappedTest):
     """Test eagerloads from subclass to subclass mappers"""
 
     run_setup_classes = 'once'
@@ -1396,4 +1396,27 @@ class SubClassEagerToSubclassTest(_base.MappedTest):
             )
         self.assert_sql_count(testing.db, go, 1)
 
+    @testing.resolve_artifact_names
+    def test_subqueryload(self):
+        sess = create_session()
+        def go():
+            eq_(
+                sess.query(Subparent).options(subqueryload(Subparent.children)).all(), 
+                [
+                    Subparent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
+                    Subparent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 2)
+
+        sess.expunge_all()
+        def go():
+            eq_(
+                sess.query(Subparent).options(subqueryload("children")).all(), 
+                [
+                    Subparent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
+                    Subparent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 2)
 
