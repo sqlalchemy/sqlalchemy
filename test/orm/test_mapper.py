@@ -674,7 +674,7 @@ class MapperTest(_fixtures.FixtureTest):
     def test_many_to_many_count(self):
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-            keywords = relationship(Keyword, item_keywords, lazy=True)))
+            keywords = relationship(Keyword, item_keywords, lazy='select')))
 
         session = create_session()
         q = (session.query(Item).
@@ -731,7 +731,7 @@ class MapperTest(_fixtures.FixtureTest):
             uname = extendedproperty(_get_name, _set_name)
 
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=True),
+            addresses = relationship(mapper(Address, addresses), lazy='select'),
             uname = synonym('name'),
             adlist = synonym('addresses'),
             adname = synonym('addresses')
@@ -810,7 +810,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         mapper(Address, addresses)
         mapper(User, users, properties = {
-            'addresses':relationship(Address, lazy=True),
+            'addresses':relationship(Address, lazy='select'),
             'name':synonym('_name', map_column=True)
         })
 
@@ -1086,7 +1086,7 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_synonym_options(self):
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=True,
+            addresses = relationship(mapper(Address, addresses), lazy='select',
                                  order_by=addresses.c.id),
             adlist = synonym('addresses')))
 
@@ -1121,7 +1121,7 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_eager_options_with_limit(self):
         mapper(User, users, properties=dict(
-            addresses=relationship(mapper(Address, addresses), lazy=True)))
+            addresses=relationship(mapper(Address, addresses), lazy='select')))
 
         sess = create_session()
         u = (sess.query(User).
@@ -1143,7 +1143,7 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_lazy_options_with_limit(self):
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=False)))
+            addresses = relationship(mapper(Address, addresses), lazy='joined')))
 
         sess = create_session()
         u = (sess.query(User).
@@ -1159,7 +1159,7 @@ class OptionsTest(_fixtures.FixtureTest):
     def test_eager_degrade(self):
         """An eager relationship automatically degrades to a lazy relationship if eager columns are not available"""
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=False)))
+            addresses = relationship(mapper(Address, addresses), lazy='joined')))
 
         sess = create_session()
         # first test straight eager load, 1 statement
@@ -1192,17 +1192,17 @@ class OptionsTest(_fixtures.FixtureTest):
 
         mapper(Item, items, properties=dict(
             keywords=relationship(Keyword, secondary=item_keywords,
-                              lazy=False,
+                              lazy='joined',
                               order_by=item_keywords.c.keyword_id)))
 
         mapper(Order, orders, properties=dict(
-            items=relationship(Item, secondary=order_items, lazy=False,
+            items=relationship(Item, secondary=order_items, lazy='joined',
                            order_by=order_items.c.item_id)))
 
         mapper(User, users, properties=dict(
-            addresses=relationship(Address, lazy=False,
+            addresses=relationship(Address, lazy='joined',
                                order_by=addresses.c.id),
-            orders=relationship(Order, lazy=False,
+            orders=relationship(Order, lazy='joined',
                             order_by=orders.c.id)))
 
         sess = create_session()
@@ -1227,7 +1227,7 @@ class OptionsTest(_fixtures.FixtureTest):
     def test_lazy_options(self):
         """An eager relationship can be upgraded to a lazy relationship."""
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=False)
+            addresses = relationship(mapper(Address, addresses), lazy='joined')
         ))
 
         sess = create_session()
@@ -2309,7 +2309,7 @@ class NoLoadTest(_fixtures.FixtureTest):
     def test_basic(self):
         """A basic one-to-many lazy load"""
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=None)
+            addresses = relationship(mapper(Address, addresses), lazy='noload')
         ))
         q = create_session().query(m)
         l = [None]
@@ -2326,7 +2326,7 @@ class NoLoadTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_options(self):
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=None)
+            addresses = relationship(mapper(Address, addresses), lazy='noload')
         ))
         q = create_session().query(m).options(sa.orm.lazyload('addresses'))
         l = [None]

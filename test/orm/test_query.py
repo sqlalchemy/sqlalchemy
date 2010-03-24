@@ -3338,13 +3338,13 @@ class CustomJoinTest(QueryTest):
         """test aliasing of joins with a custom join condition"""
         mapper(Address, addresses)
         mapper(Order, orders, properties={
-            'items':relationship(Item, secondary=order_items, lazy=True, order_by=items.c.id),
+            'items':relationship(Item, secondary=order_items, lazy='select', order_by=items.c.id),
         })
         mapper(Item, items)
         mapper(User, users, properties = dict(
-            addresses = relationship(Address, lazy=True),
-            open_orders = relationship(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy=True),
-            closed_orders = relationship(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=True)
+            addresses = relationship(Address, lazy='select'),
+            open_orders = relationship(Order, primaryjoin = and_(orders.c.isopen == 1, users.c.id==orders.c.user_id), lazy='select'),
+            closed_orders = relationship(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy='select')
         ))
         q = create_session().query(User)
         
@@ -3376,7 +3376,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, lazy=True, join_depth=3,
+            'children':relationship(Node, lazy='select', join_depth=3,
                 backref=backref('parent', remote_side=[nodes.c.id])
             )
         })
@@ -3661,7 +3661,7 @@ class SelfReferentialM2MTest(_base.MappedTest):
             pass
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, lazy=True, secondary=node_to_nodes,
+            'children':relationship(Node, lazy='select', secondary=node_to_nodes,
                 primaryjoin=nodes.c.id==node_to_nodes.c.left_node_id,
                 secondaryjoin=nodes.c.id==node_to_nodes.c.right_node_id,
             )
@@ -3938,7 +3938,7 @@ class UpdateDeleteTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(User, users)
         mapper(Document, documents, properties={
-            'user': relationship(User, lazy=False, backref=backref('documents', lazy=True))
+            'user': relationship(User, lazy='joined', backref=backref('documents', lazy='select'))
         })
 
     @testing.resolve_artifact_names

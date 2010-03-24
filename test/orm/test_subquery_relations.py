@@ -423,7 +423,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             'addresses':relationship(mapper(Address, addresses), 
                             lazy='subquery', 
                             order_by=addresses.c.id),
-            'orders':relationship(Order, lazy=True, order_by=orders.c.id)
+            'orders':relationship(Order, lazy='select', order_by=orders.c.id)
         })
 
         sess = create_session()

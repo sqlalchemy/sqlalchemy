@@ -324,7 +324,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expired_eager(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -359,7 +359,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_relationship_changes_preserved(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
         sess = create_session()
@@ -379,13 +379,13 @@ class ExpireTest(_fixtures.FixtureTest):
         # fires off to load "addresses", but needs foreign key or primary key
         # attributes in order to lazy load; hits those attributes, such as
         # below it hits "u.id".  "u.id" triggers full unexpire operation,
-        # joinedloads addresses since lazy=False.  this is all wihtin lazy load
+        # joinedloads addresses since lazy='joined'.  this is all wihtin lazy load
         # which fires unconditionally; so an unnecessary joinedload (or
         # lazyload) was issued.  would prefer not to complicate lazyloading to
         # "figure out" that the operation should be aborted right now.
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
         sess = create_session()
@@ -514,7 +514,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_partial_expire_eager(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -643,7 +643,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_joinedload_query_refreshes(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -660,7 +660,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expire_all(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -768,7 +768,7 @@ class ExpireTest(_fixtures.FixtureTest):
     def test_state_noload_to_lazy(self):
         """Behavioral test to verify the current activity of loader callables."""
 
-        mapper(User, users, properties={'addresses':relationship(Address, lazy=None)})
+        mapper(User, users, properties={'addresses':relationship(Address, lazy='noload')})
         mapper(Address, addresses)
         
         sess = create_session()
@@ -1002,7 +1002,7 @@ class RefreshTest(_fixtures.FixtureTest):
         """test that a refresh/expire operation loads rows properly and sends correct "isnew" state to eager loaders"""
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses), lazy=False)
+            'addresses':relationship(mapper(Address, addresses), lazy='joined')
         })
 
         s = create_session()
@@ -1025,7 +1025,7 @@ class RefreshTest(_fixtures.FixtureTest):
         s = create_session()
         mapper(Address, addresses)
 
-        mapper(User, users, properties = dict(addresses=relationship(Address,cascade="all, delete-orphan",lazy=False)) )
+        mapper(User, users, properties = dict(addresses=relationship(Address,cascade="all, delete-orphan",lazy='joined')) )
 
         u = User()
         u.name='Justin'

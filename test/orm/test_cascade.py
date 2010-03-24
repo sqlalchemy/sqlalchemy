@@ -403,7 +403,7 @@ class M2OCascadeTest(_base.MappedTest):
             extra = relationship(Extra, cascade="all, delete")
         ))
         mapper(User, users, properties = dict(
-            pref = relationship(Pref, lazy=False, cascade="all, delete-orphan", single_parent=True  ),
+            pref = relationship(Pref, lazy='joined', cascade="all, delete-orphan", single_parent=True  ),
             foo = relationship(Foo) # straight m2o
         ))
         mapper(Foo, foo)

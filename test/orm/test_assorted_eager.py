@@ -238,11 +238,11 @@ class EagerTest2(_base.MappedTest):
         mapper(Right, right)
         mapper(Middle, middle, properties=dict(
             left=relationship(Left,
-                          lazy=False,
-                          backref=backref('middle',lazy=False)),
+                          lazy='joined',
+                          backref=backref('middle',lazy='joined')),
             right=relationship(Right,
-                           lazy=False,
-                           backref=backref('middle', lazy=False)))),
+                           lazy='joined',
+                           backref=backref('middle', lazy='joined')))),
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
@@ -375,7 +375,7 @@ class EagerTest4(_base.MappedTest):
         mapper(Employee, employees)
         mapper(Department, departments, properties=dict(
             employees=relationship(Employee,
-                               lazy=False,
+                               lazy='joined',
                                backref='department')))
 
         d1 = Department(name='One')
@@ -451,7 +451,7 @@ class EagerTest5(_base.MappedTest):
         commentMapper = mapper(Comment, comments)
 
         baseMapper = mapper(Base, base, properties=dict(
-            comments=relationship(Comment, lazy=False,
+            comments=relationship(Comment, lazy='joined',
                               cascade='all, delete-orphan')))
 
         mapper(Derived, derived, inherits=baseMapper)
@@ -528,7 +528,7 @@ class EagerTest6(_base.MappedTest):
         p_m = mapper(Part, parts)
 
         mapper(InheritedPart, inherited_part, properties=dict(
-            part=relationship(Part, lazy=False)))
+            part=relationship(Part, lazy='joined')))
 
         d_m = mapper(Design, design, properties=dict(
             inheritedParts=relationship(InheritedPart,
@@ -538,11 +538,11 @@ class EagerTest6(_base.MappedTest):
         mapper(DesignType, design_types)
 
         d_m.add_property(
-            "type", relationship(DesignType, lazy=False, backref="designs"))
+            "type", relationship(DesignType, lazy='joined', backref="designs"))
 
         p_m.add_property(
             "design", relationship(
-                Design, lazy=False,
+                Design, lazy='joined',
                 backref=backref("parts", cascade="all, delete-orphan")))
 
 
@@ -613,10 +613,10 @@ class EagerTest7(_base.MappedTest):
         mapper(Address, addresses)
 
         mapper(Company, companies, properties={
-            'addresses' : relationship(Address, lazy=False)})
+            'addresses' : relationship(Address, lazy='joined')})
 
         mapper(Invoice, invoices, properties={
-            'company': relationship(Company, lazy=False)})
+            'company': relationship(Company, lazy='joined')})
 
         a1 = Address(address='a1 address')
         a2 = Address(address='a2 address')
@@ -646,19 +646,19 @@ class EagerTest7(_base.MappedTest):
         mapper(Phone, phone_numbers)
 
         mapper(Address, addresses, properties={
-            'phones': relationship(Phone, lazy=False, backref='address',
+            'phones': relationship(Phone, lazy='joined', backref='address',
                                order_by=phone_numbers.c.phone_id)})
 
         mapper(Company, companies, properties={
-            'addresses': relationship(Address, lazy=False, backref='company',
+            'addresses': relationship(Address, lazy='joined', backref='company',
                                   order_by=addresses.c.address_id)})
 
         mapper(Item, items)
 
         mapper(Invoice, invoices, properties={
-            'items': relationship(Item, lazy=False, backref='invoice',
+            'items': relationship(Item, lazy='joined', backref='invoice',
                               order_by=items.c.item_id),
-            'company': relationship(Company, lazy=False, backref='invoices')})
+            'company': relationship(Company, lazy='joined', backref='invoices')})
 
         c1 = Company(company_name='company 1', addresses=[
             Address(address='a1 address',
@@ -776,7 +776,7 @@ class EagerTest8(_base.MappedTest):
         jjj = sa.join(task, jj, task.c.id == jj.c.task_id)
 
         mapper(Joined, jjj, properties=dict(
-            type=relationship(Task_Type, lazy=False)))
+            type=relationship(Task_Type, lazy='joined')))
 
         session = create_session()
 
@@ -831,11 +831,11 @@ class EagerTest9(_base.MappedTest):
         mapper(Entry, entries, properties=dict(
             account=relationship(Account,
                              uselist=False,
-                             backref=backref('entries', lazy=True,
+                             backref=backref('entries', lazy='select',
                                              order_by=entries.c.entry_id)),
             transaction=relationship(Transaction,
                                  uselist=False,
-                                 backref=backref('entries', lazy=False,
+                                 backref=backref('entries', lazy='joined',
                                                  order_by=entries.c.entry_id))))
 
     @testing.fails_on('maxdb', 'FIXME: unknown')

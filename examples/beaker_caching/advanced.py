@@ -8,8 +8,8 @@ and collection caching.
 
 import environment
 from model import Person, Address, cache_address_bits
-from meta import Session, FromCache, RelationCache
-from sqlalchemy.orm import eagerload
+from meta import Session, FromCache, RelationshipCache
+from sqlalchemy.orm import joinedload
 
 def load_name_range(start, end, invalidate=False):
     """Load Person objects on a range of names.
@@ -22,7 +22,7 @@ def load_name_range(start, end, invalidate=False):
     
     The `Person.addresses` collections are also cached.  Its basically
     another level of tuning here, as that particular cache option
-    can be transparently replaced with eagerload(Person.addresses). 
+    can be transparently replaced with joinedload(Person.addresses). 
     The effect is that each Person and his/her Address collection
     is cached either together or separately, affecting the kind of
     SQL that emits for unloaded Person objects as well as the distribution
@@ -35,13 +35,13 @@ def load_name_range(start, end, invalidate=False):
 
     # have the "addresses" collection cached separately
     # each lazyload of Person.addresses loads from cache.
-    q = q.options(RelationCache("default", "by_person", Person.addresses))
+    q = q.options(RelationshipCache("default", "by_person", Person.addresses))
     
     # alternatively, eagerly load the "addresses" collection, so that they'd
     # be cached together.   This issues a bigger SQL statement and caches
     # a single, larger value in the cache per person rather than two
     # separate ones.
-    #q = q.options(eagerload(Person.addresses))
+    #q = q.options(joinedload(Person.addresses))
     
     # if requested, invalidate the cache on current criterion.
     if invalidate:

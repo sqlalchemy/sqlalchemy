@@ -77,7 +77,7 @@ class OrderingListTest(TestBase):
                 return '<Bullet "%s" pos %s>' % (self.text, self.position)
 
         mapper(Slide, slides_table, properties={
-            'bullets': relationship(Bullet, lazy=False,
+            'bullets': relationship(Bullet, lazy='joined',
                                 collection_class=test_collection_class,
                                 backref='slide',
                                 order_by=[bullets_table.c.position])

@@ -67,7 +67,7 @@ mapper(Order, orders, properties={
 })
 mapper(Item, items)
 mapper(OrderItem, orderitems, properties={
-    'item': relationship(Item, lazy=False)
+    'item': relationship(Item, lazy='joined')
 })
 
 session = create_session()

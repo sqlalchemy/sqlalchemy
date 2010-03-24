@@ -8,10 +8,10 @@ term cache.
 import environment
 from model import Person, Address, cache_address_bits
 from meta import Session
-from sqlalchemy.orm import eagerload
+from sqlalchemy.orm import joinedload
 import os
 
-for p in Session.query(Person).options(eagerload(Person.addresses), cache_address_bits):
+for p in Session.query(Person).options(joinedload(Person.addresses), cache_address_bits):
     print p.format_full()
 
 

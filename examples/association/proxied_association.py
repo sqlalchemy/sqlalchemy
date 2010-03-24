@@ -48,11 +48,11 @@ class Item(object):
 
 
 mapper(Order, orders, properties={
-    'itemassociations':relationship(OrderItem, cascade="all, delete-orphan", lazy=False)
+    'itemassociations':relationship(OrderItem, cascade="all, delete-orphan", lazy='joined')
 })
 mapper(Item, items)
 mapper(OrderItem, orderitems, properties={
-    'item':relationship(Item, lazy=False)
+    'item':relationship(Item, lazy='joined')
 })
 
 session = create_session()
