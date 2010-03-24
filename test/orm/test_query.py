@@ -563,6 +563,9 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(sess.query(x).filter(x==5).statement, 
             "SELECT lala(users.id) AS foo FROM users WHERE lala(users.id) = :param_1", dialect=default.DefaultDialect())
 
+        self.assert_compile(sess.query(func.sum(x).label('bar')).statement,  
+            "SELECT sum(lala(users.id)) AS bar FROM users", dialect=default.DefaultDialect()) 
+
 class ExpressionTest(QueryTest, AssertsCompiledSQL):
         
     def test_deferred_instances(self):

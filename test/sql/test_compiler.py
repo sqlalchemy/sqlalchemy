@@ -171,8 +171,13 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
 
         self.assert_compile(
-            select([cast("data", Integer)], use_labels=True),      # this will work with plain Integer in 0.6
+            select([cast("data", Integer)], use_labels=True),
             "SELECT CAST(:param_1 AS INTEGER) AS anon_1"
+        )
+        
+        self.assert_compile(
+            select([func.sum(func.lala(table1.c.myid).label('foo')).label('bar')]),
+            "SELECT sum(lala(mytable.myid)) AS bar FROM mytable"
         )
     
     def test_paramstyles(self):
