@@ -1068,6 +1068,13 @@ class Query(object):
         if left is None:
             left = self._joinpoint_zero()
 
+        if left is right and \
+                not create_aliases and \
+                not self._entity_zero()._subq_aliasing:  # <-- TODO: hack
+            raise sa_exc.InvalidRequestError(
+                        "Can't construct a join from %s to %s, they are the same entity" % 
+                        (left, right))
+            
         left_mapper, left_selectable, left_is_aliased = _entity_info(left)
         right_mapper, right_selectable, is_aliased_class = _entity_info(right)
 

@@ -3096,7 +3096,7 @@ class ImmediateTest(_fixtures.FixtureTest):
         eq_(sess.query().value(sa.literal_column('1').label('x')), 1)
 
 
-class SelectFromTest(QueryTest):
+class SelectFromTest(QueryTest, AssertsCompiledSQL):
     run_setup_mappers = None
 
     def test_replace_with_select(self):
@@ -3138,6 +3138,64 @@ class SelectFromTest(QueryTest):
             ]
         )
 
+    def test_differentiate_self_external(self):
+        """test some different combinations of joining a table to a subquery of itself."""
+        
+        mapper(User, users)
+        
+        sess = create_session()
+
+        sel = sess.query(User).filter(User.id.in_([7, 8])).subquery()
+        ualias = aliased(User)
+        
+        self.assert_compile(
+            sess.query(User).join((sel, User.id>sel.c.id)),
+            "SELECT users.id AS users_id, users.name AS users_name FROM "
+            "users JOIN (SELECT users.id AS id, users.name AS name FROM "
+            "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 ON users.id > anon_1.id",
+            use_default_dialect=True
+        )
+    
+        self.assert_compile(
+            sess.query(ualias).select_from(sel).filter(ualias.id>sel.c.id),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM "
+            "users AS users_1, (SELECT users.id AS id, users.name AS name FROM "
+            "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 WHERE users_1.id > anon_1.id",
+            use_default_dialect=True
+        )
+
+        # these two are essentially saying, "join ualias to ualias", so an 
+        # error is raised.  join() deals with entities, not what's in
+        # select_from().
+        assert_raises(sa_exc.InvalidRequestError,
+            sess.query(ualias).select_from(sel).join, (ualias, ualias.id>sel.c.id)
+        )
+
+        assert_raises(sa_exc.InvalidRequestError,
+            sess.query(ualias).select_from(sel).join, (ualias, ualias.id>User.id)
+        )
+
+        salias = aliased(User, sel)
+        self.assert_compile(
+            sess.query(salias).join((ualias, ualias.id>salias.id)),
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users WHERE users.id "
+            "IN (:id_1, :id_2)) AS anon_1 JOIN users AS users_1 ON users_1.id > anon_1.id",
+            use_default_dialect=True
+        )
+        
+        
+        # this one uses an explicit join(left, right, onclause) so works
+        self.assert_compile(
+            sess.query(ualias).select_from(join(sel, ualias, ualias.id>sel.c.id)),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users WHERE users.id "
+            "IN (:id_1, :id_2)) AS anon_1 JOIN users AS users_1 ON users_1.id > anon_1.id",
+            use_default_dialect=True
+        )
+        
+        
+        
     def test_join_no_order_by(self):
         mapper(User, users)
 
@@ -3159,7 +3217,8 @@ class SelectFromTest(QueryTest):
         sel = users.select(users.c.id.in_([7, 8]))
         sess = create_session()
 
-        eq_(sess.query(User).select_from(sel).join('addresses').add_entity(Address).order_by(User.id).order_by(Address.id).all(),
+        eq_(sess.query(User).select_from(sel).join('addresses').
+                    add_entity(Address).order_by(User.id).order_by(Address.id).all(),
             [
                 (User(name='jack',id=7), Address(user_id=7,email_address='jack@bean.com',id=1)),
                 (User(name='ed',id=8), Address(user_id=8,email_address='ed@wood.com',id=2)),
@@ -3169,7 +3228,8 @@ class SelectFromTest(QueryTest):
         )
 
         adalias = aliased(Address)
-        eq_(sess.query(User).select_from(sel).join(('addresses', adalias)).add_entity(adalias).order_by(User.id).order_by(adalias.id).all(),
+        eq_(sess.query(User).select_from(sel).join(('addresses', adalias)).
+                    add_entity(adalias).order_by(User.id).order_by(adalias.id).all(),
             [
                 (User(name='jack',id=7), Address(user_id=7,email_address='jack@bean.com',id=1)),
                 (User(name='ed',id=8), Address(user_id=8,email_address='ed@wood.com',id=2)),
@@ -3194,9 +3254,6 @@ class SelectFromTest(QueryTest):
         sel = users.select(users.c.id.in_([7, 8]))
         sess = create_session()
     
-        # TODO: remove
-        sess.query(User).select_from(sel).options(eagerload_all('orders.items.keywords')).join('orders', 'items', 'keywords', aliased=True).filter(Keyword.name.in_(['red', 'big', 'round'])).all()
-
         eq_(sess.query(User).select_from(sel).join('orders', 'items', 'keywords').filter(Keyword.name.in_(['red', 'big', 'round'])).all(), [
             User(name=u'jack',id=7)
         ])
@@ -3206,7 +3263,12 @@ class SelectFromTest(QueryTest):
         ])
 
         def go():
-            eq_(sess.query(User).select_from(sel).options(eagerload_all('orders.items.keywords')).join('orders', 'items', 'keywords', aliased=True).filter(Keyword.name.in_(['red', 'big', 'round'])).all(), [
+            eq_(
+                sess.query(User).select_from(sel).
+                            options(eagerload_all('orders.items.keywords')).
+                            join('orders', 'items', 'keywords', aliased=True).
+                            filter(Keyword.name.in_(['red', 'big', 'round'])).all(), 
+                [
                 User(name=u'jack',orders=[
                     Order(description=u'order 1',items=[
                         Item(description=u'item 1',keywords=[Keyword(name=u'red'), Keyword(name=u'big'), Keyword(name=u'round')]),

@@ -27,6 +27,9 @@ CHANGES
   - Query gains an add_columns(*columns) method which is a multi-
     version of add_column(col).  add_column(col) is future 
     deprecated.
+
+  - Query.join() will detect if the end result will be 
+    "FROM A JOIN A", and will raise an error if so.
     
 0.6beta2
 ========
