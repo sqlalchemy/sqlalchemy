@@ -384,7 +384,7 @@ class RelationshipTest4(_base.MappedTest):
         session.expunge_all()
     
         def go():
-            testcar = session.query(Car).options(eagerload('employee')).get(car1.car_id)
+            testcar = session.query(Car).options(joinedload('employee')).get(car1.car_id)
             assert str(testcar.employee) == "Engineer E4, status X"
         self.assert_sql_count(testing.db, go, 1)
 
@@ -407,7 +407,7 @@ class RelationshipTest4(_base.MappedTest):
         # and now for the lightning round, eager !
 
         def go():
-            testcar = session.query(Car).options(eagerload('employee')).get(car1.car_id)
+            testcar = session.query(Car).options(joinedload('employee')).get(car1.car_id)
             assert str(testcar.employee) == "Engineer E4, status X"
         self.assert_sql_count(testing.db, go, 1)
 

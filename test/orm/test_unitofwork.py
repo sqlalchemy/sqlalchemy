@@ -173,7 +173,7 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
         assert new_a1.t2s[0].d == b1.d
         session.expunge_all()
 
-        new_a1 = (session.query(A).options(sa.orm.eagerload('t2s')).
+        new_a1 = (session.query(A).options(sa.orm.joinedload('t2s')).
                   filter(t1.c.a == a1.a)).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d

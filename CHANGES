@@ -21,6 +21,18 @@ CHANGES
     at mapper config level using "lazy='subquery'" and at the query
     options level using "subqueryload(props..)", 
     "subqueryload_all(props...)".  [ticket:1675]
+
+  - To accomodate the fact that there are now two kinds of eager 
+    loading available, the new names for eagerload() and 
+    eagerload_all() are joinedload() and joinedload_all().  The 
+    old names will remain as synonyms for the foreseeable future.
+    
+  - The "lazy" flag on the relationship() function now accepts 
+    a string argument for all kinds of loading: "select", "joined",
+    "subquery", "noload" and "dynamic", where the default is now
+    "select".  The old values of True/
+    False/None still retain their usual meanings and will remain
+    as synonyms for the foreseeable future.
     
   - Fixed bug in Query whereby calling q.join(prop).from_self(...).
     join(prop) would fail to render the second join outside the

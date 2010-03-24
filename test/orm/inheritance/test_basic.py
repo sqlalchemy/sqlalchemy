@@ -455,7 +455,7 @@ class EagerTargetingTest(_base.MappedTest):
         eq_(node.children[0], B(id=2, name='b2',b_data='l'))
         
         sess.expunge_all()
-        node = sess.query(B).options(eagerload(B.children)).filter(B.id==bid).all()[0]
+        node = sess.query(B).options(joinedload(B.children)).filter(B.id==bid).all()[0]
         eq_(node, B(id=1, name='b1',b_data='i'))
         eq_(node.children[0], B(id=2, name='b2',b_data='l'))
         

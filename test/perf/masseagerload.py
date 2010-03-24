@@ -35,8 +35,8 @@ def load():
         #print l
         subitems.insert().execute(*l)
 
-@profiling.profiled('masseagerload', always=True, sort=['cumulative'])
-def masseagerload(session):
+@profiling.profiled('massjoinedload', always=True, sort=['cumulative'])
+def massjoinedload(session):
     session.begin()
     query = session.query(Item)
     l = query.all()
@@ -46,7 +46,7 @@ def all():
     meta.create_all()
     try:
         load()
-        masseagerload(create_session())
+        massjoinedload(create_session())
     finally:
         meta.drop_all()
 

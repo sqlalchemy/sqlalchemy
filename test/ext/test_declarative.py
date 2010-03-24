@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, ForeignKeyConstraint, asc, Index
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import relationship, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
+from sqlalchemy.orm import relationship, create_session, class_mapper, joinedload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.util import classproperty
 
@@ -406,7 +406,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).options(eagerload(User.addresses)).all(), [User(name='u1', addresses=[
+        eq_(sess.query(User).options(joinedload(User.addresses)).all(), [User(name='u1', addresses=[
             Address(email='one'),
             Address(email='two'),
         ])])

@@ -1125,28 +1125,34 @@ log.class_logger(EagerLoader)
 
 class EagerLazyOption(StrategizedOption):
     def __init__(self, key, lazy=True, chained=False,
-                    propagate_to_loaders=True,
-                    _strategy_cls=None
+                    propagate_to_loaders=True
                     ):
         super(EagerLazyOption, self).__init__(key)
         self.lazy = lazy
         self.chained = chained
         self.propagate_to_loaders = propagate_to_loaders
-        self.strategy_cls = _strategy_cls
+        self.strategy_cls = factory(lazy)
         
     def is_chained(self):
         return not self.lazy and self.chained
         
     def get_strategy_class(self):
-        if self.strategy_cls:
-            return self.strategy_cls
-        elif self.lazy:
-            return LazyLoader
-        elif self.lazy is False:
-            return EagerLoader
-        elif self.lazy is None:
-            return NoLoader
-        
+        return self.strategy_cls
+
+def factory(identifier):
+    if identifier is False or identifier == 'joined':
+        return EagerLoader
+    elif identifier is None or identifier == 'noload':
+        return NoLoader
+    elif identifier is False or identifier == 'select':
+        return LazyLoader
+    elif identifier == 'subquery':
+        return SubqueryLoader
+    else:
+        return LazyLoader
+    
+    
+    
 class EagerJoinOption(PropertyOption):
     
     def __init__(self, key, innerjoin, chained=False):

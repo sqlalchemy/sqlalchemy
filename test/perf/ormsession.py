@@ -152,8 +152,8 @@ def run_queries():
     q = session.query(Purchase). \
         order_by(desc(Purchase.purchase_date)). \
         limit(50).\
-        options(eagerload('items'), eagerload('items.subitems'),
-                eagerload('customer'))
+        options(joinedload('items'), joinedload('items.subitems'),
+                joinedload('customer'))
 
     report = []
     # "write" the report.  pretend it's going to a web template or something,

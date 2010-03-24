@@ -209,7 +209,7 @@ class GetTest(QueryTest):
         assert u.orders[1].items[2].description == 'item 12'
 
         # eager load does
-        s.query(User).options(eagerload('addresses'), eagerload_all('orders.items')).populate_existing().all()
+        s.query(User).options(joinedload('addresses'), joinedload_all('orders.items')).populate_existing().all()
         assert u.addresses[0].email_address == 'jack@bean.com'
         assert u.orders[1].items[2].description == 'item 5'
 
@@ -882,15 +882,15 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             [(7, 1), (8, 3), (9, 1)]
         )
         
-    def test_no_eagerload(self):
-        """test that eagerloads are pushed outwards and not rendered in subqueries."""
+    def test_no_joinedload(self):
+        """test that joinedloads are pushed outwards and not rendered in subqueries."""
         
         s = create_session()
         
         oracle_as = not testing.against('oracle') and "AS " or ""
         
         self.assert_compile(
-            s.query(User).options(eagerload(User.addresses)).from_self().statement,
+            s.query(User).options(joinedload(User.addresses)).from_self().statement,
             "SELECT anon_1.users_id, anon_1.users_name, addresses_1.id, addresses_1.user_id, "\
             "addresses_1.email_address FROM (SELECT users.id AS users_id, users.name AS users_name FROM users) %(oracle_as)sanon_1 "\
             "LEFT OUTER JOIN addresses %(oracle_as)saddresses_1 ON anon_1.users_id = addresses_1.user_id ORDER BY addresses_1.id" % {
@@ -947,7 +947,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         )
 
         eq_(
-            sess.query(User, Address).filter(User.id==Address.user_id).filter(Address.id.in_([2, 5])).from_self().options(eagerload('addresses')).first(),
+            sess.query(User, Address).filter(User.id==Address.user_id).filter(Address.id.in_([2, 5])).from_self().options(joinedload('addresses')).first(),
             
             #    order_by(User.id, Address.id).first(),
             (User(id=8, addresses=[Address(), Address(), Address()]), Address(id=2)),
@@ -1064,7 +1064,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
 
         def go():
             eq_(
-                fred.union(ed).order_by(User.name).options(eagerload(User.addresses)).all(), 
+                fred.union(ed).order_by(User.name).options(joinedload(User.addresses)).all(), 
                 [
                     User(name='ed', addresses=[Address(), Address(), Address()]), 
                     User(name='fred', addresses=[Address()])
@@ -1161,8 +1161,8 @@ class DistinctTest(QueryTest):
 
         sess.expunge_all()
 
-        # test that it works on embedded eagerload/LIMIT subquery
-        q = sess.query(User).join('addresses').distinct().options(eagerload('addresses')).order_by(desc(Address.email_address)).limit(2)
+        # test that it works on embedded joinedload/LIMIT subquery
+        q = sess.query(User).join('addresses').distinct().options(joinedload('addresses')).order_by(desc(Address.email_address)).limit(2)
 
         def go():
             assert [
@@ -2533,10 +2533,10 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
         def go():
             # outerjoin to User.orders, offset 1/limit 2 so we get user 7 + second two orders.
-            # then eagerload the addresses.  User + Order columns go into the subquery, address
-            # left outer joins to the subquery, eagerloader for User.orders applies context.adapter 
+            # then joinedload the addresses.  User + Order columns go into the subquery, address
+            # left outer joins to the subquery, joinedloader for User.orders applies context.adapter 
             # to result rows.  This was [ticket:1180].
-            l = q.outerjoin(User.orders).options(eagerload(User.addresses), contains_eager(User.orders)).order_by(User.id, Order.id).offset(1).limit(2).all()
+            l = q.outerjoin(User.orders).options(joinedload(User.addresses), contains_eager(User.orders)).order_by(User.id, Order.id).offset(1).limit(2).all()
             eq_(l, [User(id=7,
             addresses=[Address(email_address=u'jack@bean.com',user_id=7,id=1)],
             name=u'jack',
@@ -2551,7 +2551,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             # same as above, except Order is aliased, so two adapters are applied by the
             # eager loader
             oalias = aliased(Order)
-            l = q.outerjoin((User.orders, oalias)).options(eagerload(User.addresses), contains_eager(User.orders, alias=oalias)).order_by(User.id, oalias.id).offset(1).limit(2).all()
+            l = q.outerjoin((User.orders, oalias)).options(joinedload(User.addresses), contains_eager(User.orders, alias=oalias)).order_by(User.id, oalias.id).offset(1).limit(2).all()
             eq_(l, [User(id=7,
             addresses=[Address(email_address=u'jack@bean.com',user_id=7,id=1)],
             name=u'jack',
@@ -2767,8 +2767,8 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
         # test eager aliasing, with/without select_from aliasing
         for q in [
-            sess.query(User, adalias.email_address).outerjoin((User.addresses, adalias)).options(eagerload(User.addresses)).order_by(User.id, adalias.id).limit(10),
-            sess.query(User, adalias.email_address, adalias.id).outerjoin((User.addresses, adalias)).from_self(User, adalias.email_address).options(eagerload(User.addresses)).order_by(User.id, adalias.id).limit(10),
+            sess.query(User, adalias.email_address).outerjoin((User.addresses, adalias)).options(joinedload(User.addresses)).order_by(User.id, adalias.id).limit(10),
+            sess.query(User, adalias.email_address, adalias.id).outerjoin((User.addresses, adalias)).from_self(User, adalias.email_address).options(joinedload(User.addresses)).order_by(User.id, adalias.id).limit(10),
         ]:
             eq_(
 
@@ -2791,11 +2791,11 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 (User(addresses=[],name=u'chuck',id=10), None)]
         )
 
-    def test_column_from_limited_eagerload(self):
+    def test_column_from_limited_joinedload(self):
         sess = create_session()
     
         def go():
-            results = sess.query(User).limit(1).options(eagerload('addresses')).add_column(User.name).all()
+            results = sess.query(User).limit(1).options(joinedload('addresses')).add_column(User.name).all()
             eq_(results, [(User(name='jack'), 'jack')])
         self.assert_sql_count(testing.db, go, 1)
     
@@ -2813,10 +2813,10 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             sess.query(oalias, Order).from_self().filter(oalias.user_id==Order.user_id).filter(oalias.user_id==7).filter(Order.id<oalias.id).order_by(oalias.id, Order.id),
         
             # here we go....two layers of aliasing
-            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).from_self().order_by(Order.id, oalias.id).limit(10).options(eagerload(Order.items)),
+            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).from_self().order_by(Order.id, oalias.id).limit(10).options(joinedload(Order.items)),
 
             # gratuitous four layers
-            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).from_self().from_self().from_self().order_by(Order.id, oalias.id).limit(10).options(eagerload(Order.items)),
+            sess.query(Order, oalias).filter(Order.user_id==oalias.user_id).filter(Order.user_id==7).filter(Order.id>oalias.id).from_self().from_self().from_self().order_by(Order.id, oalias.id).limit(10).options(joinedload(Order.items)),
 
         ]:
     
@@ -2877,7 +2877,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             eq_(q.all(), [(user8, address3)])
             sess.expunge_all()
 
-            q = sess.query(User, address_entity).join(('addresses', address_entity)).options(eagerload('addresses')).filter_by(email_address='ed@bettyboop.com')
+            q = sess.query(User, address_entity).join(('addresses', address_entity)).options(joinedload('addresses')).filter_by(email_address='ed@bettyboop.com')
             eq_(list(util.OrderedSet(q.all())), [(user8, address3)])
             sess.expunge_all()
 
@@ -3125,7 +3125,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             User(name='ed',id=8), User(name='jack',id=7)
         ])
 
-        eq_(sess.query(User).select_from(sel).options(eagerload('addresses')).first(),
+        eq_(sess.query(User).select_from(sel).options(joinedload('addresses')).first(),
             User(name='jack', addresses=[Address(id=1)])
         )
 
@@ -3270,7 +3270,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         def go():
             eq_(
                 sess.query(User).select_from(sel).
-                            options(eagerload_all('orders.items.keywords')).
+                            options(joinedload_all('orders.items.keywords')).
                             join('orders', 'items', 'keywords', aliased=True).
                             filter(Keyword.name.in_(['red', 'big', 'round'])).all(), 
                 [
@@ -3311,7 +3311,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         def go():
-            eq_(sess.query(User).options(eagerload('addresses')).select_from(sel).order_by(User.id).all(),
+            eq_(sess.query(User).options(joinedload('addresses')).select_from(sel).order_by(User.id).all(),
                 [
                     User(id=7, addresses=[Address(id=1)]),
                     User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)])
@@ -3321,14 +3321,14 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         sess.expunge_all()
 
         def go():
-            eq_(sess.query(User).options(eagerload('addresses')).select_from(sel).filter(User.id==8).order_by(User.id).all(),
+            eq_(sess.query(User).options(joinedload('addresses')).select_from(sel).filter(User.id==8).order_by(User.id).all(),
                 [User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)])]
             )
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 
         def go():
-            eq_(sess.query(User).options(eagerload('addresses')).select_from(sel).order_by(User.id)[1], User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)]))
+            eq_(sess.query(User).options(joinedload('addresses')).select_from(sel).order_by(User.id)[1], User(id=8, addresses=[Address(id=2), Address(id=3), Address(id=4)]))
         self.assert_sql_count(testing.db, go, 1)
 
 class CustomJoinTest(QueryTest):
@@ -3590,7 +3590,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
                 join((Node.parent, parent), (parent.parent, grandparent)).\
                     filter(Node.data=='n122').filter(parent.data=='n12').\
                     filter(grandparent.data=='n1').\
-                    options(eagerload(Node.children)).first(),
+                    options(joinedload(Node.children)).first(),
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
         )
 
@@ -3599,7 +3599,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
                 join((Node.parent, parent), (parent.parent, grandparent)).\
                     filter(Node.data=='n122').filter(parent.data=='n12').\
                     filter(grandparent.data=='n1').from_self().\
-                    options(eagerload(Node.children)).first(),
+                    options(joinedload(Node.children)).first(),
             (Node(data='n122'), Node(data='n12'), Node(data='n1'))
         )
     
@@ -3732,7 +3732,7 @@ class ExternalColumnsTest(QueryTest):
 
         sess = create_session()
     
-        sess.query(Address).options(eagerload('user')).all()
+        sess.query(Address).options(joinedload('user')).all()
 
         eq_(sess.query(User).all(), 
             [
@@ -3756,7 +3756,7 @@ class ExternalColumnsTest(QueryTest):
         for x in range(2):
             sess.expunge_all()
             def go():
-               eq_(sess.query(Address).options(eagerload('user')).order_by(Address.id).all(), address_result)
+               eq_(sess.query(Address).options(joinedload('user')).order_by(Address.id).all(), address_result)
             self.assert_sql_count(testing.db, go, 1)
     
         ualias = aliased(User)
@@ -3789,7 +3789,7 @@ class ExternalColumnsTest(QueryTest):
         ua = aliased(User)
         eq_(sess.query(Address, ua.concat, ua.count).
                     select_from(join(Address, ua, 'user')).
-                    options(eagerload(Address.user)).order_by(Address.id).all(),
+                    options(joinedload(Address.user)).order_by(Address.id).all(),
             [
                 (Address(id=1, user=User(id=7, concat=14, count=1)), 14, 1),
                 (Address(id=2, user=User(id=8, concat=16, count=3)), 16, 3),
@@ -3807,9 +3807,9 @@ class ExternalColumnsTest(QueryTest):
             [(1, 7, 14, 1), (2, 8, 16, 3), (3, 8, 16, 3), (4, 8, 16, 3), (5, 9, 18, 1)]
         )
 
-    def test_external_columns_eagerload(self):
+    def test_external_columns_joinedload(self):
         # in this test, we have a subquery on User that accesses "addresses", underneath
-        # an eagerload for "addresses".  So the "addresses" alias adapter needs to *not* hit 
+        # an joinedload for "addresses".  So the "addresses" alias adapter needs to *not* hit 
         # the "addresses" table within the "user" subquery, but "user" still needs to be adapted.
         # therefore the long standing practice of eager adapters being "chained" has been removed
         # since its unnecessary and breaks this exact condition.
@@ -3825,13 +3825,13 @@ class ExternalColumnsTest(QueryTest):
 
         sess = create_session()
         def go():
-            o1 = sess.query(Order).options(eagerload_all('address.user')).get(1)
+            o1 = sess.query(Order).options(joinedload_all('address.user')).get(1)
             eq_(o1.address.user.count, 1)
         self.assert_sql_count(testing.db, go, 1)
 
         sess = create_session()
         def go():
-            o1 = sess.query(Order).options(eagerload_all('address.user')).first()
+            o1 = sess.query(Order).options(joinedload_all('address.user')).first()
             eq_(o1.address.user.count, 1)
         self.assert_sql_count(testing.db, go, 1)
 
@@ -4161,11 +4161,11 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_(sess.query(Document.title).order_by(Document.id).all(), zip(['foofoo','barbar', 'baz']))
 
     @testing.resolve_artifact_names
-    def test_update_with_explicit_eagerload(self):
+    def test_update_with_explicit_joinedload(self):
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).options(eagerload(User.documents)).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='fetch')
+        sess.query(User).options(joinedload(User.documents)).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='fetch')
 
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))

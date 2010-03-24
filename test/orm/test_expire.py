@@ -373,14 +373,14 @@ class ExpireTest(_fixtures.FixtureTest):
         assert len(u.addresses) == 2
 
     @testing.resolve_artifact_names
-    def test_eagerload_props_dontload(self):
+    def test_joinedload_props_dontload(self):
         # relationships currently have to load separately from scalar instances.
         # the use case is: expire "addresses".  then access it.  lazy load
         # fires off to load "addresses", but needs foreign key or primary key
         # attributes in order to lazy load; hits those attributes, such as
         # below it hits "u.id".  "u.id" triggers full unexpire operation,
-        # eagerloads addresses since lazy=False.  this is all wihtin lazy load
-        # which fires unconditionally; so an unnecessary eagerload (or
+        # joinedloads addresses since lazy=False.  this is all wihtin lazy load
+        # which fires unconditionally; so an unnecessary joinedload (or
         # lazyload) was issued.  would prefer not to complicate lazyloading to
         # "figure out" that the operation should be aborted right now.
 
@@ -568,7 +568,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess.expire(u, ['name', 'addresses'])
         assert 'name' not in u.__dict__
         assert 'addresses' not in u.__dict__
-        (sess.query(User).options(sa.orm.eagerload('addresses')).
+        (sess.query(User).options(sa.orm.joinedload('addresses')).
          filter_by(id=8).all())
         assert 'name' in u.__dict__
         assert 'addresses' in u.__dict__
@@ -641,7 +641,7 @@ class ExpireTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
-    def test_eagerload_query_refreshes(self):
+    def test_joinedload_query_refreshes(self):
         mapper(User, users, properties={
             'addresses':relationship(Address, backref='user', lazy=False),
             })

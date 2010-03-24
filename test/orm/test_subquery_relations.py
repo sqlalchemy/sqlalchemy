@@ -4,7 +4,7 @@ from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
                 mapper, relationship, clear_mappers,\
-                create_session, lazyload, aliased, eagerload,\
+                create_session, lazyload, aliased, joinedload,\
                 deferred, undefer
 from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy.test.assertsql import CompiledSQL
@@ -171,12 +171,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         ( "lazyload", "lazyload", "lazyload", 15 ),
         ("subqueryload", "lazyload", "lazyload", 12),
         ("subqueryload", "subqueryload", "lazyload", 8),
-        ("eagerload", "subqueryload", "lazyload", 7),
+        ("joinedload", "subqueryload", "lazyload", 7),
         ("lazyload", "lazyload", "subqueryload", 12),
         ("subqueryload", "subqueryload", "subqueryload", 4),
-        ("subqueryload", "subqueryload", "eagerload", 3),
+        ("subqueryload", "subqueryload", "joinedload", 3),
     ]
-#    _pathing_runs = [("subqueryload", "subqueryload", "eagerload", 3)]
+#    _pathing_runs = [("subqueryload", "subqueryload", "joinedload", 3)]
 #    _pathing_runs = [("subqueryload", "subqueryload", "subqueryload", 4)]
 
     def test_options_pathing(self):
@@ -202,7 +202,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Keyword, keywords)
         
         callables = {
-                        'eagerload':eagerload, 
+                        'joinedload':joinedload, 
                     'subqueryload':subqueryload
                 }
         
@@ -221,7 +221,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     def _do_mapper_test(self, configs):
         opts = {
             'lazyload':'select',
-            'eagerload':'joined',
+            'joinedload':'joined',
             'subqueryload':'subquery',
         }
 
