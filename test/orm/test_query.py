@@ -3347,8 +3347,12 @@ class CustomJoinTest(QueryTest):
             closed_orders = relationship(Order, primaryjoin = and_(orders.c.isopen == 0, users.c.id==orders.c.user_id), lazy=True)
         ))
         q = create_session().query(User)
-
-        assert [User(id=7)] == q.join('open_orders', 'items', aliased=True).filter(Item.id==4).join('closed_orders', 'items', aliased=True).filter(Item.id==3).all()
+        
+        eq_(
+            q.join('open_orders', 'items', aliased=True).filter(Item.id==4).\
+                        join('closed_orders', 'items', aliased=True).filter(Item.id==3).all(),
+            [User(id=7)]
+        )
 
 class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
@@ -3405,6 +3409,54 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             join('parent', aliased=True, from_joinpoint=True).filter_by(data='n1').first()
         assert node.data == 'n122'
     
+    def test_string_or_prop_aliased(self):
+        """test that join('foo') behaves the same as join(Cls.foo) in a self
+        referential scenario.
+        
+        """
+        
+        sess = create_session()
+        nalias = aliased(Node, sess.query(Node).filter_by(data='n1').subquery())
+        
+        q1 = sess.query(nalias).join(nalias.children, aliased=True).\
+                join(Node.children, from_joinpoint=True)
+
+        q2 = sess.query(nalias).join(nalias.children, aliased=True).\
+                join("children", from_joinpoint=True)
+
+        for q in (q1, q2):
+            self.assert_compile(
+                q,
+                "SELECT anon_1.id AS anon_1_id, anon_1.parent_id AS "
+                "anon_1_parent_id, anon_1.data AS anon_1_data FROM "
+                "(SELECT nodes.id AS id, nodes.parent_id AS parent_id, "
+                "nodes.data AS data FROM nodes WHERE nodes.data = :data_1) "
+                "AS anon_1 JOIN nodes AS nodes_1 ON anon_1.id = "
+                "nodes_1.parent_id JOIN nodes ON nodes_1.id = nodes.parent_id",
+                use_default_dialect=True
+            )
+        
+        q1 = sess.query(Node).join(nalias.children, aliased=True).\
+                join(Node.children, aliased=True, from_joinpoint=True).\
+                join(Node.children, from_joinpoint=True)
+
+        q2 = sess.query(Node).join(nalias.children, aliased=True).\
+                join("children", aliased=True, from_joinpoint=True).\
+                join("children", from_joinpoint=True)
+                
+        for q in (q1, q2):
+            self.assert_compile(
+                q,
+                "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
+                "nodes_parent_id, nodes.data AS nodes_data FROM (SELECT "
+                "nodes.id AS id, nodes.parent_id AS parent_id, nodes.data "
+                "AS data FROM nodes WHERE nodes.data = :data_1) AS anon_1 "
+                "JOIN nodes AS nodes_1 ON anon_1.id = nodes_1.parent_id "
+                "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id "
+                "JOIN nodes ON nodes_2.id = nodes.parent_id",
+                use_default_dialect=True
+            )
+        
     def test_from_self_inside_excludes_outside(self):
         """test the propagation of aliased() from inside to outside
         on a from_self()..

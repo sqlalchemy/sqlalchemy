@@ -8,6 +8,20 @@ CHANGES
 ========
 
 - orm
+  - Major feature: Added new "subquery" loading capability to 
+    relationship().   This is an eager loading option which
+    generates a second SELECT for each collection represented
+    in a query, across all parents at once.  The query 
+    re-issues the original end-user query wrapped in a subquery,
+    applies joins out to the target collection, and loads 
+    all those collections fully in one result, similar to 
+    eager loading but using all inner joins and not re-fetching
+    full parent rows repeatedly (as most DBAPIs seem to do,
+    even if columns are skipped).   Subquery loading is available
+    at mapper config level using "lazy='subquery'" and at the query
+    options level using "subqueryload(props..)", 
+    "subqueryload_all(props...)".  [ticket:1675]
+    
   - Fixed bug in Query whereby calling q.join(prop).from_self(...).
     join(prop) would fail to render the second join outside the
     subquery, when joining on the same criterion as was on the 
@@ -30,6 +44,11 @@ CHANGES
 
   - Query.join() will detect if the end result will be 
     "FROM A JOIN A", and will raise an error if so.
+
+  - Query.join(Cls.propname, from_joinpoint=True) will check more
+    carefully that "Cls" is compatible with the current joinpoint,
+    and act the same way as Query.join("propname", from_joinpoint=True)
+    in that regard.
     
 0.6beta2
 ========

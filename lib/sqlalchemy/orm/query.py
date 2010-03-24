@@ -1030,6 +1030,18 @@ class Query(object):
 
                 descriptor, prop = _entity_descriptor(left_entity, onclause)
                 onclause = descriptor
+            
+            # check for q.join(Class.propname, from_joinpoint=True)
+            # and Class is that of the current joinpoint
+            elif from_joinpoint and isinstance(onclause, interfaces.PropComparator):
+                left_entity = onclause.parententity
+                
+                left_mapper, left_selectable, left_is_aliased = \
+                                    _entity_info(self._joinpoint_zero())
+                if left_mapper is left_entity:
+                    left_entity = self._joinpoint_zero()
+                    descriptor, prop = _entity_descriptor(left_entity, onclause.key)
+                    onclause = descriptor
 
             if isinstance(onclause, interfaces.PropComparator):
                 if right_entity is None:
@@ -1039,7 +1051,7 @@ class Query(object):
                         right_entity = of_type
                     else:
                         right_entity = onclause.property.mapper
-                
+            
                 left_entity = onclause.parententity
                 
                 prop = onclause.property

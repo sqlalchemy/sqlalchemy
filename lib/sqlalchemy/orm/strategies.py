@@ -667,15 +667,18 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 if self.mapper.base_mapper in reduced_path:
                     return
         
-        orig_query = context.attributes.get(("orig_query", SubqueryLoader), context.query)
+        orig_query = context.attributes.get(
+                                ("orig_query", SubqueryLoader), 
+                                context.query)
 
         # determine attributes of the leftmost mapper
         if self.parent.isa(subq_path[0]) and self.key==subq_path[1]:
             leftmost_mapper, leftmost_prop = \
-                                self.parent, self.parent_property
+                                    self.parent, self.parent_property
         else:
             leftmost_mapper, leftmost_prop = \
-                                subq_path[0], subq_path[0].get_property(subq_path[1])
+                                    subq_path[0], \
+                                    subq_path[0].get_property(subq_path[1])
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         
         leftmost_attr = [
@@ -695,64 +698,67 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if q._limit is None and q._offset is None:
             q._order_by = None
 
-        # new query will join to an aliased entity
-        # of the modified original query
+        # the original query now becomes a subquery
+        # which we'll join onto.
         embed_q = q.with_labels().subquery()
         left_alias = mapperutil.AliasedClass(leftmost_mapper, embed_q)
         
-        # new query, request endpoint columns
-        q = q.session.query(self.mapper)
+        # q becomes a new query.  basically doing a longhand
+        # "from_self()".  (from_self() itself not quite industrial
+        # strength enough for all contingencies...but very close)
         
-        q._attributes = {}
-        q._attributes[("orig_query", SubqueryLoader)] = orig_query
-        q._attributes[('subquery_path', None)] = subq_path
+        q = q.session.query(self.mapper)
+        q._attributes = {
+            ("orig_query", SubqueryLoader): orig_query,
+            ('subquery_path', None) : subq_path
+        }
 
         # figure out what's being joined.  a.k.a. the fun part
         to_join = [
                     (subq_path[i], subq_path[i+1]) 
                     for i in xrange(0, len(subq_path), 2)
                 ]
-        local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
         if len(to_join) < 2:
-            local_attr = [
-                getattr(left_alias, self.parent._get_col_to_prop(c).key)
-                for c in local_cols
-            ]
+            parent_alias = left_alias
         else:
             parent_alias = mapperutil.AliasedClass(self.parent)
-            local_attr = [
-                getattr(parent_alias, self.parent._get_col_to_prop(c).key)
-                for c in local_cols
-            ]
+
+        local_cols, remote_cols = \
+                        self._local_remote_columns(self.parent_property)
+
+        local_attr = [
+            getattr(parent_alias, self.parent._get_col_to_prop(c).key)
+            for c in local_cols
+        ]
         q = q.order_by(*local_attr)
         q = q.add_columns(*local_attr)
         
         for i, (mapper, key) in enumerate(to_join):
-            alias_join = i < len(to_join) - 1
+            
+            # we need to use query.join() as opposed to
+            # orm.join() here because of the 
+            # rich behavior it brings when dealing with 
+            # "with_polymorphic" mappers.  "aliased"
+            # and "from_joinpoint" take care of most of 
+            # the chaining and aliasing for us.
+            
+            first = i == 0
+            middle = i < len(to_join) - 1
             second_to_last = i == len(to_join) - 2
             
-            # we need to use query.join() here because of the 
-            # rich behavior it brings when dealing with "with_polymorphic" 
-            # mappers, otherwise we get broken aliasing and subquerying if
-            # using orm.join directly.   _joinpoint_zero() is because
-            # from_joinpoint doesn't seem to be totally working with self-ref, 
-            # and/or we should not use aliased=True, instead use AliasedClass()
-            # for everything.
-            # three TODOs: 1. make orm.join() work with rich polymorphic (huge)
-            # 2. make from_joinpoint work completely 3. use AliasedClass() here
-            
-            if i == 0:
+            if first:
                 attr = getattr(left_alias, key)
             else:
-                attr = getattr(q._joinpoint_zero(), key)
+                attr = key
                 
             if second_to_last:
-                q = q.join((parent_alias, attr))
+                q = q.join((parent_alias, attr), from_joinpoint=True)
             else:
-                q = q.join(attr, aliased=alias_join)
+                q = q.join(attr, aliased=middle, from_joinpoint=True)
 
-        # propagate loader options etc. to the new query
+        # propagate loader options etc. to the new query.
+        # these will fire relative to subq_path.
         q = q._with_current_path(subq_path)
         q = q._conditional_options(*orig_query._with_options)
 
