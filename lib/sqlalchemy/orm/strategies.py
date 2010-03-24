@@ -647,7 +647,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         if not context.query._enable_eagerloads:
             return
-
+        
         path = path + (self.key, )
 
         # build up a path indicating the path from the leftmost
@@ -657,7 +657,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         subq_path = subq_path + path
 
         reduced_path = interfaces._reduce_path(subq_path)
-
+        
         # check for join_depth or basic recursion,
         # if the current path was not explicitly stated as 
         # a desired "loaderstrategy" (i.e. via query.options())
@@ -680,11 +680,14 @@ class SubqueryLoader(AbstractRelationshipLoader):
             
         orig_query = context.attributes[("orig_query", SubqueryLoader)]
 
-        
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
         
-        leftmost_mapper, leftmost_prop = \
-                            subq_path[0], subq_path[0].get_property(subq_path[1])
+        if self.parent.isa(subq_path[0]) and self.key==subq_path[1]:
+            leftmost_mapper, leftmost_prop = \
+                                self.parent, self.parent_property
+        else:
+            leftmost_mapper, leftmost_prop = \
+                                subq_path[0], subq_path[0].get_property(subq_path[1])
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         
         leftmost_attr = [
@@ -692,23 +695,24 @@ class SubqueryLoader(AbstractRelationshipLoader):
             for c in leftmost_cols
         ]
 
-        # modify the query to just look for parent columns in the 
-        # join condition
-        
         # set the original query to only look
         # for the significant columns, not order
         # by anything.
         q = orig_query._clone()
         q._attributes = {}
         q._attributes[("orig_query", SubqueryLoader)] = orig_query
-        q._set_entities(leftmost_attr)
+        q._set_entities(q._adapt_col_list(leftmost_attr))
         if q._limit is None and q._offset is None:
             q._order_by = None
-        
-        q._attributes[('subquery_path', None)] = subq_path
-
+            
         q = q.from_self(self.mapper)
-        q._entities[0].disable_aliasing = True
+        
+        # TODO: this is currently a magic hardcody
+        # flag on _MapperEntity.  we should find 
+        # a way to turn it into public functionality.
+        q._entities[0]._subq_aliasing = True
+
+        q._attributes[('subquery_path', None)] = subq_path
 
         to_join = [
                     (subq_path[i], subq_path[i+1]) 
@@ -726,14 +730,17 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 getattr(parent_alias, self.parent._get_col_to_prop(c).key)
                 for c in local_cols
             ]
-        q = q.add_columns(*local_attr)
         q = q.order_by(*local_attr)
-            
+        q = q.add_columns(*local_attr)
+        
         for i, (mapper, key) in enumerate(to_join):
             alias_join = i < len(to_join) - 1
             second_to_last = i == len(to_join) - 2
             
-            prop = mapper.get_property(key)
+            if i == 0:
+                prop = leftmost_prop
+            else:
+                prop = mapper.get_property(key)
             
             if second_to_last:
                 q = q.join((parent_alias, prop.class_attribute))
@@ -762,7 +769,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         
         # this key is for the row_processor to pick up
         # within this same loader.
-        context.attributes[('subquery', path)] = q
+        context.attributes[('subquery', interfaces._reduce_path(path))] = q
     
     def _local_remote_columns(self, prop):
         if prop.secondary is None:
@@ -777,6 +784,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
         
     def create_row_processor(self, context, path, mapper, row, adapter):
         path = path + (self.key,)
+
+        path = interfaces._reduce_path(path)
         
         if ('subquery', path) not in context.attributes:
             return None, None
@@ -824,6 +833,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
                         set_committed_value(state, dict_, scalar)
             
         return execute, None
+
+log.class_logger(SubqueryLoader)
 
 class EagerLoader(AbstractRelationshipLoader):
     """Strategize a relationship() that loads within the process 

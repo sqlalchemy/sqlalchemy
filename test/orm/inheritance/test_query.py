@@ -187,10 +187,22 @@ def _produce_test(select_type):
 
         def test_primary_eager_aliasing(self):
             sess = create_session()
+
+            # for both eagerload() and subqueryload(), if the original q is not loading
+            # the subclass table, the eagerload doesn't happen.
             
             def go():
                 eq_(sess.query(Person).options(eagerload(Engineer.machines))[1:3], all_employees[1:3])
             self.assert_sql_count(testing.db, go, {'':6, 'Polymorphic':3}.get(select_type, 4))
+
+            # additionally, subqueryload() can't handle from_self() on the union.
+            # I'm not too concerned about that.
+            sess = create_session()
+            
+            @testing.fails_if(lambda:select_type == 'Unions')
+            def go():
+                eq_(sess.query(Person).options(subqueryload(Engineer.machines)).all(), all_employees)
+            self.assert_sql_count(testing.db, go, {'':14, 'Unions':3, 'Polymorphic':7}.get(select_type, 8))
 
             sess = create_session()
 
@@ -199,7 +211,10 @@ def _produce_test(select_type):
                                     limit(2).offset(1).with_labels().subquery().count().scalar() == 2
 
             def go():
-                eq_(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines))[1:3], all_employees[1:3])
+                eq_(
+                    sess.query(Person).with_polymorphic('*').
+                        options(eagerload(Engineer.machines))[1:3], 
+                    all_employees[1:3])
             self.assert_sql_count(testing.db, go, 3)
             
             
@@ -489,11 +504,26 @@ def _produce_test(select_type):
             def go():
                 # currently, it doesn't matter if we say Company.employees, or Company.employees.of_type(Engineer).  eagerloader doesn't
                 # pick up on the "of_type()" as of yet.
-                eq_(sess.query(Company).options(eagerload_all(Company.employees.of_type(Engineer), Engineer.machines)).all(), assert_result)
+                eq_(
+                        sess.query(Company).options(
+                                                eagerload_all(Company.employees.of_type(Engineer), Engineer.machines
+                                            )).all(), 
+                                        assert_result)
             
             # in the case of select_type='', the eagerload doesn't take in this case; 
             # it eagerloads company->people, then a load for each of 5 rows, then lazyload of "machines"            
             self.assert_sql_count(testing.db, go, {'':7, 'Polymorphic':1}.get(select_type, 2))
+            
+            sess = create_session()
+            @testing.fails_if(lambda: select_type=='Unions')
+            def go():
+                eq_(
+                        sess.query(Company).options(
+                                                subqueryload_all(Company.employees.of_type(Engineer), Engineer.machines
+                                            )).all(), 
+                                        assert_result)
+        
+            self.assert_sql_count(testing.db, go, {'':9, 'Joins':6,'Unions':3,'Polymorphic':5,'AliasedJoins':6}[select_type])
     
         def test_eagerload_on_subclass(self):
             sess = create_session()
@@ -503,6 +533,14 @@ def _produce_test(select_type):
                 [Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")])]
                 )
             self.assert_sql_count(testing.db, go, 1)
+
+            sess = create_session()
+            def go():
+                # test load People with subqueryload to engineers + machines
+                eq_(sess.query(Person).with_polymorphic('*').options(subqueryload(Engineer.machines)).filter(Person.name=='dilbert').all(), 
+                [Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")])]
+                )
+            self.assert_sql_count(testing.db, go, 2)
 
             
         def test_query_subclass_join_to_base_relationship(self):
@@ -1147,7 +1185,19 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
         assert q.limit(1).with_labels().subquery().count().scalar() == 1
         
         assert q.first() is c1
-
+    
+    def test_subquery_load(self):
+        session = create_session()
+        
+        c1 = Child1()
+        c1.left_child2 = Child2()
+        session.add(c1)
+        session.flush()
+        session.expunge_all()
+        
+        for row in session.query(Child1).options(subqueryload('left_child2')).all():
+            assert row.left_child2
+        
 class EagerToSubclassTest(_base.MappedTest):
     """Test eagerloads to subclass mappers"""
 

@@ -198,7 +198,13 @@ class Query(object):
     @_generative()
     def _adapt_all_clauses(self):
         self._disable_orm_filtering = True
-
+    
+    def _adapt_col_list(self, cols):
+        return [
+                    self._adapt_clause(expression._literal_as_text(o), True, True) 
+                    for o in cols
+                ]
+        
     def _adapt_clause(self, clause, as_filter, orm_only):
         adapters = []
         if as_filter and self._filter_aliases:
@@ -773,7 +779,6 @@ class Query(object):
 
         return self.filter(sql.and_(*clauses))
 
-
     @_generative(_no_statement_condition, _no_limit_offset)
     @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def order_by(self, *criterion):
@@ -782,7 +787,7 @@ class Query(object):
         if len(criterion) == 1 and criterion[0] is None:
             self._order_by = None
         else:
-            criterion = [self._adapt_clause(expression._literal_as_text(o), True, True) for o in criterion]
+            criterion = self._adapt_col_list(criterion)
 
             if self._order_by is False or self._order_by is None:
                 self._order_by = criterion
@@ -796,7 +801,7 @@ class Query(object):
 
         criterion = list(chain(*[_orm_columns(c) for c in criterion]))
 
-        criterion = [self._adapt_clause(expression._literal_as_text(o), True, True) for o in criterion]
+        criterion = self._adapt_col_list(criterion)
 
         if self._group_by is False:
             self._group_by = criterion
@@ -2147,7 +2152,7 @@ class _MapperEntity(_QueryEntity):
         self._with_polymorphic = with_polymorphic
         self._polymorphic_discriminator = None
         self.is_aliased_class = is_aliased_class
-        self.disable_aliasing = False
+        self._subq_aliasing = False
         if is_aliased_class:
             self.path_entity = self.entity = self.entity_zero = entity
         else:
@@ -2179,8 +2184,6 @@ class _MapperEntity(_QueryEntity):
         query._entities.append(self)
 
     def _get_entity_clauses(self, query, context):
-        if self.disable_aliasing:
-            return None
             
         adapter = None
         if not self.is_aliased_class and query._polymorphic_adapters:
@@ -2188,7 +2191,11 @@ class _MapperEntity(_QueryEntity):
 
         if not adapter and self.adapter:
             adapter = self.adapter
-
+        
+        # special flag set by subquery loader
+        if self._subq_aliasing:
+            return adapter
+            
         if adapter:
             if query._from_obj_alias:
                 ret = adapter.wrap(query._from_obj_alias)
