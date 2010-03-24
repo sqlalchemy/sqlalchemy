@@ -185,6 +185,13 @@ def _produce_test(select_type):
                 eq_(sess.query(Person).all(), all_employees)
             self.assert_sql_count(testing.db, go, {'':14, 'Polymorphic':9}.get(select_type, 10))
 
+        def test_foo(self):
+            sess = create_session()
+            
+            def go():
+                eq_(sess.query(Person).options(subqueryload(Engineer.machines)).all(), all_employees)
+            self.assert_sql_count(testing.db, go, {'':14, 'Unions':8, 'Polymorphic':7}.get(select_type, 8))
+
         def test_primary_eager_aliasing(self):
             sess = create_session()
 
@@ -195,14 +202,11 @@ def _produce_test(select_type):
                 eq_(sess.query(Person).options(eagerload(Engineer.machines))[1:3], all_employees[1:3])
             self.assert_sql_count(testing.db, go, {'':6, 'Polymorphic':3}.get(select_type, 4))
 
-            # additionally, subqueryload() can't handle from_self() on the union.
-            # I'm not too concerned about that.
             sess = create_session()
             
-            @testing.fails_if(lambda:select_type == 'Unions')
             def go():
                 eq_(sess.query(Person).options(subqueryload(Engineer.machines)).all(), all_employees)
-            self.assert_sql_count(testing.db, go, {'':14, 'Unions':3, 'Polymorphic':7}.get(select_type, 8))
+            self.assert_sql_count(testing.db, go, {'':14, 'Unions':8, 'Polymorphic':7}.get(select_type, 8))
 
             sess = create_session()
 
@@ -515,7 +519,6 @@ def _produce_test(select_type):
             self.assert_sql_count(testing.db, go, {'':7, 'Polymorphic':1}.get(select_type, 2))
             
             sess = create_session()
-            @testing.fails_if(lambda: select_type=='Unions')
             def go():
                 eq_(
                         sess.query(Company).options(
@@ -523,7 +526,7 @@ def _produce_test(select_type):
                                             )).all(), 
                                         assert_result)
         
-            self.assert_sql_count(testing.db, go, {'':9, 'Joins':6,'Unions':3,'Polymorphic':5,'AliasedJoins':6}[select_type])
+            self.assert_sql_count(testing.db, go, {'':9, 'Joins':6,'Unions':6,'Polymorphic':5,'AliasedJoins':6}[select_type])
     
         def test_eagerload_on_subclass(self):
             sess = create_session()

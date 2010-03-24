@@ -1069,8 +1069,7 @@ class Query(object):
             left = self._joinpoint_zero()
 
         if left is right and \
-                not create_aliases and \
-                not self._entity_zero()._subq_aliasing:  # <-- TODO: hack
+                not create_aliases:
             raise sa_exc.InvalidRequestError(
                         "Can't construct a join from %s to %s, they are the same entity" % 
                         (left, right))
