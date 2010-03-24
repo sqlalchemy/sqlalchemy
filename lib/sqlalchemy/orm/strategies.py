@@ -699,8 +699,6 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # for the significant columns, not order
         # by anything.
         q = orig_query._clone()
-#        q._attributes = {}
-#        q._attributes[("orig_query", SubqueryLoader)] = orig_query
         q._set_entities(q._adapt_col_list(leftmost_attr))
         if q._limit is None and q._offset is None:
             q._order_by = None
@@ -708,19 +706,15 @@ class SubqueryLoader(AbstractRelationshipLoader):
         embed_q = q.with_labels().subquery()
         
         q = q.session.query(self.mapper)
+        
+        # magic hardcody thing.  TODO: dammit
+        q._entities[0]._subq_aliasing = True
         q._attributes = {}
         q._attributes[("orig_query", SubqueryLoader)] = orig_query
         
         left_alias = mapperutil.AliasedClass(leftmost_mapper, embed_q)
         q = q.select_from(left_alias)
         
-#        q = q.from_self(self.mapper)
-        
-        # TODO: this is currently a magic hardcody
-        # flag on _MapperEntity.  we should find 
-        # a way to turn it into public functionality.
-#        q._entities[0]._subq_aliasing = True
-
         q._attributes[('subquery_path', None)] = subq_path
 
         to_join = [
@@ -729,10 +723,6 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 ]
 
         if len(to_join) < 2:
-#            local_attr = [
-#                self.parent._get_col_to_prop(c).class_attribute
-#                for c in local_cols
-#            ]
             local_attr = [
                 getattr(left_alias, self.parent._get_col_to_prop(c).key)
                 for c in local_cols

@@ -5,7 +5,7 @@ from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
                 mapper, relationship, clear_mappers,\
                 create_session, lazyload, aliased, eagerload,\
-                deferred
+                deferred, undefer
 from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
@@ -630,7 +630,7 @@ class SelfReferentialTest(_base.MappedTest):
 
 
     @testing.resolve_artifact_names
-    def _test_lazy_fallback_doesnt_affect_eager(self):
+    def test_lazy_fallback_doesnt_affect_eager(self):
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
@@ -660,10 +660,10 @@ class SelfReferentialTest(_base.MappedTest):
                 Node(data='n122'),
                 Node(data='n123')
             ], list(n12.children))
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 4)
 
     @testing.resolve_artifact_names
-    def _test_with_deferred(self):
+    def test_with_deferred(self):
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
@@ -686,14 +686,14 @@ class SelfReferentialTest(_base.MappedTest):
                 Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
                 sess.query(Node).order_by(Node.id).first(),
                 )
-        self.assert_sql_count(testing.db, go, 4)
+        self.assert_sql_count(testing.db, go, 6)
 
         sess.expunge_all()
 
         def go():
             eq_(Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
                 sess.query(Node).options(undefer('data')).order_by(Node.id).first())
-        self.assert_sql_count(testing.db, go, 3)
+        self.assert_sql_count(testing.db, go, 5)
 
         sess.expunge_all()
 
@@ -701,17 +701,17 @@ class SelfReferentialTest(_base.MappedTest):
             eq_(Node(data='n1', children=[Node(data='n11'), Node(data='n12')]),
                 sess.query(Node).options(undefer('data'),
                                             undefer('children.data')).first())
-        self.assert_sql_count(testing.db, go, 1)
+        self.assert_sql_count(testing.db, go, 3)
 
 
     @testing.resolve_artifact_names
-    def _test_options(self):
+    def test_options(self):
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, lazy=True, order_by=nodes.c.id)
+            'children':relationship(Node, order_by=nodes.c.id)
         }, order_by=nodes.c.id)
         sess = create_session()
         n1 = Node(data='n1')
@@ -726,7 +726,7 @@ class SelfReferentialTest(_base.MappedTest):
         sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').\
-                        options(eagerload('children.children')).first()
+                        options(subqueryload('children.children')).first()
             eq_(Node(data='n1', children=[
                 Node(data='n11'),
                 Node(data='n12', children=[
@@ -736,11 +736,12 @@ class SelfReferentialTest(_base.MappedTest):
                 ]),
                 Node(data='n13')
             ]), d)
-        self.assert_sql_count(testing.db, go, 2)
+        self.assert_sql_count(testing.db, go, 3)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
-    def _test_no_depth(self):
+    def test_no_depth(self):
+        """no join depth is set, so no eager loading occurs."""
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
@@ -756,34 +757,28 @@ class SelfReferentialTest(_base.MappedTest):
         n1.children[1].append(Node(data='n121'))
         n1.children[1].append(Node(data='n122'))
         n1.children[1].append(Node(data='n123'))
+        n2 = Node(data='n2')
+        n2.append(Node(data='n21'))
         sess.add(n1)
+        sess.add(n2)
         sess.flush()
         sess.expunge_all()
         def go():
-            d = sess.query(Node).filter_by(data='n1').first()
-            eq_(Node(data='n1', children=[
-                Node(data='n11'),
-                Node(data='n12', children=[
-                    Node(data='n121'),
-                    Node(data='n122'),
-                    Node(data='n123')
+            d = sess.query(Node).filter(Node.data.in_(['n1', 'n2'])).order_by(Node.data).all()
+            eq_([
+                Node(data='n1', children=[
+                    Node(data='n11'),
+                    Node(data='n12', children=[
+                        Node(data='n121'),
+                        Node(data='n122'),
+                        Node(data='n123')
+                    ]),
+                    Node(data='n13')
                 ]),
-                Node(data='n13')
-            ]), d)
-        self.assert_sql_count(testing.db, go, 3)
+                Node(data='n2', children=[
+                    Node(data='n21')
+                ])
+            ], d)
+        self.assert_sql_count(testing.db, go, 4)
 
-    # TODO: all the tests in test_eager_relations
-    
-    # TODO: ensure state stuff works out OK, existing objects/collections
-    # don't get inappropriately whacked, etc.
-    
-    # TODO: subquery loading with eagerloads on those collections ???
-    
-    # TODO: eagerloading of child objects with subquery loading on those ???
-    
-    # TODO: lazy loads leading into subq loads ??
-    
-    # TODO: e.g. all kinds of path combos need to be tested
-    
-    # TODO: joined table inh !  
     
