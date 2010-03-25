@@ -6,7 +6,9 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, ForeignKeyConstraint, asc, Index
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import relationship, create_session, class_mapper, joinedload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
+from sqlalchemy.orm import relationship, create_session, class_mapper, \
+                            joinedload, compile_mappers, backref, clear_mappers, \
+                            polymorphic_union, deferred
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.util import classproperty
 
@@ -75,7 +77,9 @@ class DeclarativeTest(DeclarativeTestBase):
                 __table__ = t
                 foo = Column(Integer, primary_key=True)
         # can't specify new columns not already in the table
-        assert_raises_message(sa.exc.ArgumentError, "Can't add additional column 'foo' when specifying __table__", go)
+        assert_raises_message(sa.exc.ArgumentError, 
+                                "Can't add additional column 'foo' when specifying __table__", 
+                                go)
 
         # regular re-mapping works tho
         class Bar(Base):
@@ -84,6 +88,33 @@ class DeclarativeTest(DeclarativeTestBase):
             
         assert class_mapper(Bar).get_property('some_data').columns[0] is t.c.data
     
+    def test_difficult_class(self):
+        """test no getattr() errors with a customized class"""
+
+        # metaclass to mock the way zope.interface breaks getattr()
+        class BrokenMeta(type):
+            def __getattribute__(self, attr):
+                if attr == 'xyzzy':
+                    raise AttributeError, 'xyzzy'
+                else:
+                    return object.__getattribute__(self,attr)
+
+        # even though this class has an xyzzy attribute, getattr(cls,"xyzzy")
+        # fails
+        class BrokenParent(object):
+            __metaclass__ = BrokenMeta
+            xyzzy = "magic"
+
+        # _as_declarative() inspects obj.__class__.__bases__
+        class User(BrokenParent,ComparableEntity):
+            __tablename__ = 'users'
+            id = Column('id', Integer, primary_key=True,
+                test_needs_autoincrement=True)
+            name = Column('name', String(50))
+
+        decl.instrument_declarative(User,{},Base.metadata)
+
+        
     def test_undefer_column_name(self):
         # TODO: not sure if there was an explicit
         # test for this elsewhere

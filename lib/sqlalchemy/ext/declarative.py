@@ -545,7 +545,7 @@ def _as_declarative(cls, classname, dict_):
         names = dir(base)
         if not _is_mapped_class(base):
             for name in names:
-                obj = getattr(base,name)
+                obj = getattr(base,name, None)
                 if isinstance(obj, Column):
                     dict_[name]=column_copies[obj]=obj.copy()
             get_mapper_args = get_mapper_args or getattr(base,'__mapper_args__',None)

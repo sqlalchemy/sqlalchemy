@@ -71,6 +71,11 @@ CHANGES
    - The psycopg2 dialect will log NOTICE messages via the
      "sqlalchemy.dialects.postgresql" logger name. 
      [ticket:877]
+
+- declarative
+   - Using a mixin won't break if the mixin implements an 
+     unpredictable __getattribute__(), i.e. Zope interfaces.
+     [ticket:1746]
      
 0.6beta2
 ========
