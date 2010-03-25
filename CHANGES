@@ -62,6 +62,11 @@ CHANGES
     and act the same way as Query.join("propname", from_joinpoint=True)
     in that regard.
     
+- sql
+   - Fixed bug introduced in 0.6beta2 where column labels would 
+     render inside of column expressions already assigned a label.
+     [ticket:1747]
+     
 0.6beta2
 ========
 

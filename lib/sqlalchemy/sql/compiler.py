@@ -305,11 +305,13 @@ class SQLCompiler(engine.Compiled):
     def visit_grouping(self, grouping, asfrom=False, **kwargs):
         return "(" + self.process(grouping.element, **kwargs) + ")"
 
-    def visit_label(self, label, result_map=None, within_columns_clause=False, **kw):
+    def visit_label(self, label, result_map=None, 
+                            within_label_clause=False, 
+                            within_columns_clause=False, **kw):
         # only render labels within the columns clause
         # or ORDER BY clause of a select.  dialect-specific compilers
         # can modify this behavior.
-        if within_columns_clause:
+        if within_columns_clause and not within_label_clause:
             labelname = isinstance(label.name, sql._generated_label) and \
                     self._truncated_identifier("colident", label.name) or label.name
 
@@ -318,13 +320,14 @@ class SQLCompiler(engine.Compiled):
                         (label.name, (label, label.element, labelname), label.element.type)
 
             return self.process(label.element, 
-                                    within_columns_clause=within_columns_clause, 
+                                    within_columns_clause=True,
+                                    within_label_clause=True, 
                                     **kw) + \
                         OPERATORS[operators.as_] + \
                         self.preparer.format_label(label, labelname)
         else:
             return self.process(label.element, 
-                                    within_columns_clause=within_columns_clause, 
+                                    within_columns_clause=False, 
                                     **kw)
             
     def visit_column(self, column, result_map=None, **kwargs):
