@@ -693,6 +693,7 @@ class FilterTest(QueryTest):
         assert [] == create_session().query(User).order_by(User.id)[3:3]
         assert [] == create_session().query(User).order_by(User.id)[0:0]
         
+    @testing.requires.boolean_col_expressions
     def test_exists(self):
         sess = create_session(testing.db)
         
