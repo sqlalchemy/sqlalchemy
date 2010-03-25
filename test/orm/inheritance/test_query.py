@@ -1349,7 +1349,7 @@ class SubClassEagerToSubClassTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(Parent, parent, polymorphic_on=parent.c.type, polymorphic_identity='b')
         mapper(Subparent, subparent, inherits=Parent, polymorphic_identity='s', properties={
-            'children':relationship(Sub)
+            'children':relationship(Sub, order_by=base.c.id)
         })
         mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='b')
         mapper(Sub, sub, inherits=Base, polymorphic_identity='s')
