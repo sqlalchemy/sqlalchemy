@@ -735,7 +735,47 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             assert isinstance(res, unicode)
         finally:
             metadata.drop_all()
-        
+       
+    def test_char_length(self):
+        self.assert_compile(
+            VARCHAR(50),
+            "VARCHAR(50 CHAR)",
+        )
+
+        oracle8dialect = oracle.dialect()
+        oracle8dialect.supports_char_length = False
+        self.assert_compile(
+            VARCHAR(50),
+            "VARCHAR(50)",
+            dialect=oracle8dialect
+        )
+
+        self.assert_compile(
+            NVARCHAR(50),
+            "NVARCHAR2(50)",
+        )
+        self.assert_compile(
+            CHAR(50),
+            "CHAR(50)",
+        )
+        metadata = MetaData(testing.db)
+        t1 = Table('t1', metadata,
+              Column("c1", VARCHAR(50)),
+              Column("c2", NVARCHAR(250)),
+              Column("c3", CHAR(200))
+        )
+        t1.create()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('t1', m2, autoload=True)
+            eq_(t2.c.c1.type.length, 50)
+            eq_(t2.c.c2.type.length, 250)
+            eq_(t2.c.c3.type.length, 200)
+        finally:
+            t1.drop()
+
+
+ 
     def test_longstring(self):
         metadata = MetaData(testing.db)
         testing.db.execute("""

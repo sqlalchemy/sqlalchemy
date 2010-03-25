@@ -72,6 +72,16 @@ CHANGES
      "sqlalchemy.dialects.postgresql" logger name. 
      [ticket:877]
 
+- oracle
+   - The Oracle dialect will issue VARCHAR type definitions
+     using character counts, i.e. VARCHAR2(50 CHAR), so that
+     the column is sized in terms of characters and not bytes.
+     Column reflection of character types will also use
+     ALL_TAB_COLUMNS.CHAR_LENGTH instead of 
+     ALL_TAB_COLUMNS.DATA_LENGTH.  Both of these behaviors take
+     effect when the server version is 9 or higher - for 
+     version 8, the old behaviors are used.  [ticket:1744]
+
 - declarative
    - Using a mixin won't break if the mixin implements an 
      unpredictable __getattribute__(), i.e. Zope interfaces.

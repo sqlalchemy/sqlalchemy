@@ -286,7 +286,10 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
             return "%(name)s(%(precision)s, %(scale)s)" % {'name':name,'precision': precision, 'scale' : scale}
         
     def visit_VARCHAR(self, type_):
-        return "VARCHAR(%(length)s)" % {'length' : type_.length}
+        if self.dialect.supports_char_length:
+            return "VARCHAR(%(length)s CHAR)" % {'length' : type_.length}
+        else:
+            return "VARCHAR(%(length)s)" % {'length' : type_.length}
 
     def visit_NVARCHAR(self, type_):
         return "NVARCHAR2(%(length)s)" % {'length' : type_.length}
@@ -569,7 +572,8 @@ class OracleDialect(default.DefaultDialect):
     execution_ctx_cls = OracleExecutionContext
     
     reflection_options = ('oracle_resolve_synonyms', )
-    
+
+    supports_char_length = True    
     
     def __init__(self, 
                 use_ansi=True, 
@@ -583,6 +587,8 @@ class OracleDialect(default.DefaultDialect):
         super(OracleDialect, self).initialize(connection)
         self.implicit_returning = self.server_version_info > (10, ) and \
                                         self.__dict__.get('implicit_returning', True)
+
+        self.supports_char_length = self.server_version_info >= (9, )
 
         if self.server_version_info < (9,):
             self.colspecs = self.colspecs.copy()
@@ -749,11 +755,16 @@ class OracleDialect(default.DefaultDialect):
                                           resolve_synonyms, dblink,
                                           info_cache=info_cache)
         columns = []
+        if self.supports_char_length:
+            char_length_col = 'char_length'
+        else:
+            char_length_col = 'data_length'
+ 
         c = connection.execute(sql.text(
-                "SELECT column_name, data_type, data_length, data_precision, data_scale, "
+                "SELECT column_name, data_type, %(char_length_col)s, data_precision, data_scale, "
                 "nullable, data_default FROM ALL_TAB_COLUMNS%(dblink)s "
                 "WHERE table_name = :table_name AND owner = :owner " 
-                "ORDER BY column_id" % {'dblink': dblink}),
+                "ORDER BY column_id" % {'dblink': dblink, 'char_length_col':char_length_col}),
                                table_name=table_name, owner=schema)
 
         for row in c:
@@ -762,7 +773,7 @@ class OracleDialect(default.DefaultDialect):
 
             if coltype == 'NUMBER' :
                 coltype = NUMBER(precision, scale)
-            elif coltype=='CHAR' or coltype=='VARCHAR2':
+            elif coltype in ('VARCHAR2', 'NVARCHAR2', 'CHAR'):
                 coltype = self.ischema_names.get(coltype)(length)
             elif 'WITH TIME ZONE' in coltype: 
                 coltype = TIMESTAMP(timezone=True)
