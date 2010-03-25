@@ -34,6 +34,8 @@ Query Options
 
 Options which are passed to ``query.options()``, to affect the behavior of loading.
 
+.. autofunction:: contains_alias
+
 .. autofunction:: contains_eager
 
 .. autofunction:: defer

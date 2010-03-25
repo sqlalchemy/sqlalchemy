@@ -1823,12 +1823,12 @@ Note that eager/lazy loading options cannot be used in conjunction dynamic relat
 Setting Noload
 ~~~~~~~~~~~~~~~
 
-The opposite of the dynamic relationship is simply "noload", specified using ``lazy=None``:
+The opposite of the dynamic relationship is simply "noload", specified using ``lazy='noload'``:
 
 .. sourcecode:: python+sql
 
     mapper(MyClass, table, properties={
-        'children': relationship(MyOtherClass, lazy=None)
+        'children': relationship(MyOtherClass, lazy='noload')
     })
 
 Above, the ``children`` collection is fully writeable, and changes to it will be persisted to the database as well as locally available for reading at the time they are added.  However when instances of  ``MyClass`` are freshly loaded from the database, the ``children`` collection stays empty.

@@ -932,8 +932,7 @@ class StrategizedOption(PropertyOption):
     for an operation by a StrategizedProperty.
     """
 
-    def is_chained(self):
-        return False
+    is_chained = False
 
     def process_query_property(self, query, paths, mappers):
         # _get_context_strategy may receive the path in terms of
@@ -941,7 +940,7 @@ class StrategizedOption(PropertyOption):
         # in the polymorphic tests leads to "(Person, 'machines')" in 
         # the path due to the mechanics of how the eager strategy builds
         # up the path
-        if self.is_chained():
+        if self.is_chained:
             for path in paths:
                 query._attributes[("loaderstrategy", _reduce_path(path))] = \
                  self.get_strategy_class()

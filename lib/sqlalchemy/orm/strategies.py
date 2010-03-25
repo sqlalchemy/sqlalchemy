@@ -664,7 +664,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 if len(path) / 2 > self.join_depth:
                     return
             else:
-                if self.mapper.base_mapper in reduced_path:
+                if self.mapper.base_mapper in interfaces._reduce_path(subq_path):
                     return
         
         orig_query = context.attributes.get(
@@ -1132,10 +1132,15 @@ class EagerLazyOption(StrategizedOption):
         self.chained = chained
         self.propagate_to_loaders = propagate_to_loaders
         self.strategy_cls = factory(lazy)
-        
+    
+    @property
+    def is_eager(self):
+        return self.lazy in (False, 'joined', 'subquery')
+    
+    @property
     def is_chained(self):
-        return not self.lazy and self.chained
-        
+        return self.is_eager and self.chained
+
     def get_strategy_class(self):
         return self.strategy_cls
 

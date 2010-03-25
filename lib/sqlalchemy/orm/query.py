@@ -381,7 +381,8 @@ class Query(object):
                         statement._annotate({'_halt_adapt': True})
 
     def subquery(self):
-        """return the full SELECT statement represented by this Query, embedded within an Alias.
+        """return the full SELECT statement represented by this Query, 
+        embedded within an Alias.
 
         Eager JOIN generation within the query is disabled.
 
@@ -397,11 +398,14 @@ class Query(object):
 
     @_generative()
     def enable_eagerloads(self, value):
-        """Control whether or not eager joins are rendered.
+        """Control whether or not eager joins and subqueries are 
+        rendered.
 
         When set to False, the returned Query will not render
-        eager joins regardless of eagerload() options
-        or mapper-level lazy=False configurations.
+        eager joins regardless of :func:`~sqlalchemy.orm.joinedload`,
+        :func:`~sqlalchemy.orm.subqueryload` options
+        or mapper-level ``lazy='joined'``/``lazy='subquery'``
+        configurations.
 
         This is used primarily when nesting the Query's
         statement into a subquery or other
@@ -508,13 +512,16 @@ class Query(object):
         overwritten.
 
         In particular, it's usually impossible to use this setting with
-        eagerly loaded collections (i.e. any lazy=False) since those
-        collections will be cleared for a new load when encountered in a
-        subsequent result batch.
+        eagerly loaded collections (i.e. any lazy='joined' or 'subquery') 
+        since those collections will be cleared for a new load when 
+        encountered in a subsequent result batch.   In the case of 'subquery'
+        loading, the full result for all rows is fetched which generally
+        defeats the purpose of :meth:`~sqlalchemy.orm.query.Query.yield_per`.
 
         Also note that many DBAPIs do not "stream" results, pre-buffering
         all rows before making them available, including mysql-python and 
-        psycopg2.  yield_per() will also set the ``stream_results`` execution
+        psycopg2.  :meth:`~sqlalchemy.orm.query.Query.yield_per` will also 
+        set the ``stream_results`` execution
         option to ``True``, which currently is only understood by psycopg2
         and causes server side cursors to be used.
         
@@ -1347,7 +1354,7 @@ class Query(object):
            
         first() applies a limit of one within the generated SQL, so that
         only one primary entity row is generated on the server side 
-        (note this may consist of multiple result rows if eagerly loaded
+        (note this may consist of multiple result rows if join-loaded 
         collections are present).
 
         Calling ``first()`` results in an execution of the underlying query.

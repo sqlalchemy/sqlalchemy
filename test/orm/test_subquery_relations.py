@@ -726,7 +726,7 @@ class SelfReferentialTest(_base.MappedTest):
         sess.expunge_all()
         def go():
             d = sess.query(Node).filter_by(data='n1').\
-                        options(subqueryload('children.children')).first()
+                        options(subqueryload_all('children.children')).first()
             eq_(Node(data='n1', children=[
                 Node(data='n11'),
                 Node(data='n12', children=[

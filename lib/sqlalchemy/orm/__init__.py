@@ -267,7 +267,6 @@ def relationship(argument, secondary=None, **kwargs):
       change the value used in the operation.
 
     :param foreign_keys:
-
       a list of columns which are to be used as "foreign key" columns.
       this parameter should be used in conjunction with explicit
       ``primaryjoin`` and ``secondaryjoin`` (if needed) arguments, and
@@ -280,7 +279,7 @@ def relationship(argument, secondary=None, **kwargs):
       the table-defined foreign keys.
 
     :param innerjoin=False:
-      when ``True``, eager loads will use an inner join to join
+      when ``True``, joined eager loads will use an inner join to join
       against related tables instead of an outer join.  The purpose
       of this option is strictly one of performance, as inner joins
       generally perform better than outer joins.  This flag can
@@ -291,43 +290,46 @@ def relationship(argument, secondary=None, **kwargs):
       
     :param join_depth:
       when non-``None``, an integer value indicating how many levels
-      deep eagerload joins should be constructed on a self-referring
-      or cyclical relationship.  The number counts how many times the
-      same Mapper shall be present in the loading condition along a
-      particular join branch.  When left at its default of ``None``,
-      eager loads will automatically stop chaining joins when they
-      encounter a mapper which is already higher up in the chain.
+      deep "eager" loaders should join on a self-referring or cyclical 
+      relationship.  The number counts how many times the same Mapper 
+      shall be present in the loading condition along a particular join 
+      branch.  When left at its default of ``None``, eager loaders
+      will stop chaining when they encounter a the same target mapper 
+      which is already higher up in the chain.  This option applies
+      both to joined- and subquery- eager loaders.
 
     :param lazy=('select'|'joined'|'subquery'|'noload'|'dynamic'):
       specifies how the related items should be loaded. Values include:
 
-      'select' - items should be loaded lazily when the property is first
-             accessed.
+      * 'select' - items should be loaded lazily when the property is first
+        accessed.
 
-      'joined' - items should be loaded "eagerly" in the same query as
-              that of the parent, using a JOIN or LEFT OUTER JOIN.
+      * 'joined' - items should be loaded "eagerly" in the same query as
+        that of the parent, using a JOIN or LEFT OUTER JOIN.
               
-      'subquery' - items should be loaded "eagerly" within the same
-              query as that of the parent, using a second SQL statement
-              which issues a JOIN to a subquery of the original
-              statement.
+      * 'subquery' - items should be loaded "eagerly" within the same
+        query as that of the parent, using a second SQL statement
+        which issues a JOIN to a subquery of the original
+        statement.
 
-      'noload' - no loading should occur at any time.  This is to support
-             "write-only" attributes, or attributes which are
-             populated in some manner specific to the application.
+      * 'noload' - no loading should occur at any time.  This is to support
+         "write-only" attributes, or attributes which are
+         populated in some manner specific to the application.
 
-      'dynamic' - a ``DynaLoader`` will be attached, which returns a
-                  ``Query`` object for all read operations.  The
-                  dynamic- collection supports only ``append()`` and
-                  ``remove()`` for write operations; changes to the
-                  dynamic property will not be visible until the data
-                  is flushed to the database.
+      * 'dynamic' - the attribute will return a pre-configured
+        :class:`~sqlalchemy.orm.query.Query` object for all read 
+        operations, onto which further filtering operations can be
+        applied before iterating the results.  The dynamic 
+        collection supports a limited set of mutation operations,
+        allowing ``append()`` and ``remove()``.  Changes to the
+        collection will not be visible until flushed 
+        to the database, where it is then refetched upon iteration.
        
-       True - a synonym for 'select'
+      * True - a synonym for 'select'
        
-       False - a synonyn for 'joined'
+      * False - a synonyn for 'joined'
        
-       None - a synonym for 'noload'
+      * None - a synonym for 'noload'
        
     :param order_by:
       indicates the ordering that should be applied when loading these
@@ -959,11 +961,11 @@ def joinedload(*keys, **kw):
     innerjoin = kw.pop('innerjoin', None)
     if innerjoin is not None:
         return (
-             strategies.EagerLazyOption(keys, lazy=False), 
+             strategies.EagerLazyOption(keys, lazy='joined'), 
              strategies.EagerJoinOption(keys, innerjoin)
          )
     else:
-        return strategies.EagerLazyOption(keys, lazy=False)
+        return strategies.EagerLazyOption(keys, lazy='joined')
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def joinedload_all(*keys, **kw):
@@ -997,11 +999,11 @@ def joinedload_all(*keys, **kw):
     innerjoin = kw.pop('innerjoin', None)
     if innerjoin is not None:
         return (
-            strategies.EagerLazyOption(keys, lazy=False, chained=True), 
+            strategies.EagerLazyOption(keys, lazy='joined', chained=True), 
             strategies.EagerJoinOption(keys, innerjoin, chained=True)
         )
     else:
-        return strategies.EagerLazyOption(keys, lazy=False, chained=True)
+        return strategies.EagerLazyOption(keys, lazy='joined', chained=True)
 
 def eagerload(*args, **kwargs):
     """A synonym for :func:`joinedload()`."""
@@ -1054,7 +1056,7 @@ def subqueryload_all(*keys):
 
     Individual descriptors are accepted as arguments as well::
     
-        query.options(subquryload_all(User.orders, Order.items, Item.keywords))
+        query.options(subqueryload_all(User.orders, Order.items, Item.keywords))
 
     See also:  :func:`joinedload_all`, :func:`lazyload`
 
@@ -1132,7 +1134,7 @@ def contains_eager(*keys, **kwargs):
         raise exceptions.ArgumentError("Invalid kwargs for contains_eager: %r" % kwargs.keys())
 
     return (
-            strategies.EagerLazyOption(keys, lazy=False, propagate_to_loaders=False), 
+            strategies.EagerLazyOption(keys, lazy='joined', propagate_to_loaders=False), 
             strategies.LoadEagerFromAliasOption(keys, alias=alias)
         )
 

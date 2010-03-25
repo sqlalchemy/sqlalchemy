@@ -487,7 +487,9 @@ def _produce_test(select_type):
         def test_relationship_to_polymorphic(self):
             assert_result = [
                 Company(name="MegaCorp, Inc.", employees=[
-                    Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")]),
+                    Engineer(name="dilbert", engineer_name="dilbert", 
+                            primary_language="java", status="regular engineer", 
+                            machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")]),
                     Engineer(name="wally", engineer_name="wally", primary_language="c++", status="regular engineer"),
                     Boss(name="pointy haired boss", golf_swing="fore", manager_name="pointy", status="da boss"),
                     Manager(name="dogbert", manager_name="dogbert", status="regular manager"),
@@ -506,27 +508,38 @@ def _produce_test(select_type):
         
             sess = create_session()
             def go():
-                # currently, it doesn't matter if we say Company.employees, or Company.employees.of_type(Engineer).  joinedloader doesn't
+                # currently, it doesn't matter if we say Company.employees, 
+                # or Company.employees.of_type(Engineer).  joinedloader doesn't
                 # pick up on the "of_type()" as of yet.
                 eq_(
-                        sess.query(Company).options(
-                                                joinedload_all(Company.employees.of_type(Engineer), Engineer.machines
-                                            )).all(), 
-                                        assert_result)
+                    sess.query(Company).options(
+                                        joinedload_all(Company.employees.of_type(Engineer), Engineer.machines
+                                    )).all(), 
+                        assert_result)
             
-            # in the case of select_type='', the joinedload doesn't take in this case; 
-            # it joinedloads company->people, then a load for each of 5 rows, then lazyload of "machines"            
-            self.assert_sql_count(testing.db, go, {'':7, 'Polymorphic':1}.get(select_type, 2))
+            # in the case of select_type='', the joinedload 
+            # doesn't take in this case; it joinedloads company->people, 
+            # then a load for each of 5 rows, then lazyload of "machines"            
+            self.assert_sql_count(testing.db, go, 
+                                    {'':7, 'Polymorphic':1}.get(select_type, 2)
+                                    )
             
             sess = create_session()
             def go():
                 eq_(
-                        sess.query(Company).options(
-                                                subqueryload_all(Company.employees.of_type(Engineer), Engineer.machines
-                                            )).all(), 
-                                        assert_result)
+                    sess.query(Company).options(
+                                    subqueryload_all(Company.employees.of_type(Engineer), Engineer.machines
+                                )).all(), 
+                            assert_result)
         
-            self.assert_sql_count(testing.db, go, {'':9, 'Joins':6,'Unions':6,'Polymorphic':5,'AliasedJoins':6}[select_type])
+            self.assert_sql_count(
+                            testing.db, go, 
+                            {'':8, 
+                                'Joins':4,
+                                'Unions':4,
+                                'Polymorphic':3,
+                                'AliasedJoins':4}[select_type]
+                        )
     
         def test_joinedload_on_subclass(self):
             sess = create_session()

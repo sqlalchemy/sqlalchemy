@@ -1292,12 +1292,20 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_deep_options_2(self):
+        """test (joined|subquery)load_all() options"""
+        
         sess = create_session()
 
-        # joinedload orders.items.keywords; joinedload_all() implies eager load
-        # of orders, orders.items
         l = (sess.query(User).
               options(sa.orm.joinedload_all('orders.items.keywords'))).all()
+        def go():
+            x = l[0].orders[1].items[0].keywords[1]
+        self.sql_count_(0, go)
+
+        sess = create_session()
+
+        l = (sess.query(User).
+              options(sa.orm.subqueryload_all('orders.items.keywords'))).all()
         def go():
             x = l[0].orders[1].items[0].keywords[1]
         self.sql_count_(0, go)

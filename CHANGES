@@ -15,11 +15,11 @@ CHANGES
     re-issues the original end-user query wrapped in a subquery,
     applies joins out to the target collection, and loads 
     all those collections fully in one result, similar to 
-    eager loading but using all inner joins and not re-fetching
-    full parent rows repeatedly (as most DBAPIs seem to do,
-    even if columns are skipped).   Subquery loading is available
-    at mapper config level using "lazy='subquery'" and at the query
-    options level using "subqueryload(props..)", 
+    "joined" eager loading but using all inner joins and not 
+    re-fetching full parent rows repeatedly (as most DBAPIs seem 
+    to do, even if columns are skipped).   Subquery loading is 
+    available at mapper config level using "lazy='subquery'" and 
+    at the query options level using "subqueryload(props..)", 
     "subqueryload_all(props...)".  [ticket:1675]
 
   - To accomodate the fact that there are now two kinds of eager 
