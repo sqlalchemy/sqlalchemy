@@ -656,7 +656,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         subq_path = subq_path + path
 
-        reduced_path = interfaces._reduce_path(subq_path)
+        reduced_path = interfaces._reduce_path(path)
         
         # join-depth / recursion check
         if ("loaderstrategy", reduced_path) not in context.attributes:
@@ -780,7 +780,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         
         # add new query to attributes to be picked up 
         # by create_row_processor
-        context.attributes[('subquery', interfaces._reduce_path(path))] = q
+        context.attributes[('subquery', reduced_path)] = q
     
     def _local_remote_columns(self, prop):
         if prop.secondary is None:
