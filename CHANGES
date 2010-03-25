@@ -66,6 +66,11 @@ CHANGES
    - Fixed bug introduced in 0.6beta2 where column labels would 
      render inside of column expressions already assigned a label.
      [ticket:1747]
+
+- postgresql
+   - The psycopg2 dialect will log NOTICE messages via the
+     "sqlalchemy.dialects.postgresql" logger name. 
+     [ticket:877]
      
 0.6beta2
 ========

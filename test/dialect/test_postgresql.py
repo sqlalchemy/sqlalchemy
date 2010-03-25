@@ -13,6 +13,7 @@ from sqlalchemy.test.util import round_decimal
 from sqlalchemy.sql import table, column
 from sqlalchemy.test.testing import eq_
 from test.engine._base import TablesTest
+import logging
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
@@ -394,9 +395,6 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             assert t2.c.value2.type.schema == 'test_schema'
         finally:
             metadata.drop_all()
-        
-        
-        
         
 class InsertTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
@@ -964,7 +962,6 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         finally:
             postgresql.PGDialect.ischema_names = ischema_names
 
-
 class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     __only_on__ = 'postgresql'
 
@@ -1001,6 +998,29 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         ]:
             
             eq_(testing.db.dialect._get_server_version_info(MockConn(string)), version)
+    
+    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    def test_notice_logging(self):
+        log = logging.getLogger('sqlalchemy.dialects.postgresql')
+        buf = logging.handlers.BufferingHandler(100)
+        lev = log.level
+        log.addHandler(buf)
+        log.setLevel(logging.INFO)
+        try:
+            conn = testing.db.connect()
+            trans = conn.begin()
+            try:
+                conn.execute("create table foo (id serial primary key)")
+            finally:
+                trans.rollback()
+        finally:
+            log.removeHandler(buf)
+            log.setLevel(lev)
+
+        msgs = " ".join(b.msg for b in buf.buffer)
+        assert "will create implicit sequence" in msgs
+        assert "will create implicit index" in msgs
+         
         
     def test_pg_weirdchar_reflection(self):
         meta1 = MetaData(testing.db)
