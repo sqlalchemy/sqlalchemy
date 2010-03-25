@@ -694,10 +694,10 @@ class FilterTest(QueryTest):
         assert [] == create_session().query(User).order_by(User.id)[0:0]
         
     def test_exists(self):
-        sess = create_session()
+        sess = create_session(testing.db)
         
-        assert sess.query(exists([User.id])).filter(User.id==9).scalar()
-        assert not sess.query(exists([User.id])).filter(User.id==29).scalar()
+        assert sess.query(exists().where(User.id==9)).scalar()
+        assert not sess.query(exists().where(User.id==29)).scalar()
         
     def test_one_filter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
