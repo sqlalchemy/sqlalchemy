@@ -97,10 +97,10 @@ class MxODBCConnector(Connector):
         """
         opts = url.translate_connect_args(username='user')
         opts.update(url.query)
-        args = opts['host'],
-        kwargs = {'user':opts['user'],
-                  'password': opts['password']}
-        return args, kwargs
+        args = opts.pop('host')
+        opts.pop('port', None)
+        opts.pop('database', None)
+        return (args,), opts
 
     def is_disconnect(self, e):
         # eGenix recommends checking connection.closed here,
@@ -126,10 +126,20 @@ class MxODBCConnector(Connector):
         return tuple(version)
 
     def do_execute(self, cursor, statement, parameters, context=None):
-        # temporary workaround until a more comprehensive solution can
-        # be found for controlling when to use executedirect
-        try:
-            cursor.execute(statement, parameters)
-        except (InterfaceError, ProgrammingError), e:
-            warnings.warn("cursor.execute failed; falling back to executedirect")
+        if context:
+            native_odbc_execute = context.execution_options.\
+                                        get('native_odbc_execute', 'auto')
+            if native_odbc_execute is True:
+                # user specified native_odbc_execute=True
+                cursor.execute(statement, parameters)
+            elif native_odbc_execute is False:
+                # user specified native_odbc_execute=False
+                cursor.executedirect(statement, parameters)
+            elif context.is_crud:
+                # statement is UPDATE, DELETE, INSERT
+                cursor.execute(statement, parameters)
+            else:
+                # all other statements
+                cursor.executedirect(statement, parameters)
+        else:
             cursor.executedirect(statement, parameters)

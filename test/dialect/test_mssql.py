@@ -49,8 +49,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             )
         ]:
             self.assert_compile(expr, compile, dialect=mxodbc_dialect)
-        
-        
+    
     def test_in_with_subqueries(self):
         """Test that when using subqueries in a binary expression
         the == and != are changed to IN and NOT IN respectively.
