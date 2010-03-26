@@ -1312,6 +1312,7 @@ class TimezoneTest(TestBase):
             Column("name", String(20)),
         )
         metadata.create_all()
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
@@ -1319,16 +1320,34 @@ class TimezoneTest(TestBase):
     def test_with_timezone(self):
         # get a date with a tzinfo
         somedate = testing.db.connect().scalar(func.current_timestamp().select())
+        assert somedate.tzinfo
+        
         tztable.insert().execute(id=1, name='row1', date=somedate)
-        c = tztable.update(tztable.c.id==1).execute(name='newname')
-        print tztable.select(tztable.c.id==1).execute().first()
+        
+        row = select([tztable.c.date], tztable.c.id==1).execute().first()
+        eq_(row[0], somedate)
+        eq_(somedate.tzinfo.utcoffset(somedate), row[0].tzinfo.utcoffset(row[0]))
+
+        result = tztable.update(tztable.c.id==1).\
+                        returning(tztable.c.date).execute(name='newname')
+        row = result.first()
+        assert row[0] >= somedate
 
     def test_without_timezone(self):
         # get a date without a tzinfo
-        somedate = datetime.datetime(2005, 10,20, 11, 52, 00)
+        somedate = datetime.datetime(2005, 10, 20, 11, 52, 0)
+        assert not somedate.tzinfo
+        
         notztable.insert().execute(id=1, name='row1', date=somedate)
-        c = notztable.update(notztable.c.id==1).execute(name='newname')
-        print notztable.select(tztable.c.id==1).execute().first()
+
+        row = select([notztable.c.date], notztable.c.id==1).execute().first()
+        eq_(row[0], somedate)
+        eq_(row[0].tzinfo, None)
+        
+        result = notztable.update(notztable.c.id==1).\
+                        returning(notztable.c.date).execute(name='newname')
+        row = result.first()
+        assert row[0] >= somedate
 
 class TimePrecisionTest(TestBase, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()
