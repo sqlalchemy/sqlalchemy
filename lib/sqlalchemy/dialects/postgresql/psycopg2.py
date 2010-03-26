@@ -12,7 +12,7 @@ Note that psycopg1 is **not** supported.
 Connecting
 ----------
 
-URLs are of the form `postgresql+psycopg2://user@password@host:port/dbname[?key=value&key=value...]`.
+URLs are of the form `postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]`.
 
 psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.create_engine()` are:
 
