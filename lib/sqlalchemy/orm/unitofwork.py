@@ -483,6 +483,7 @@ class UOWTask(object):
         per-mapper topological structure is found to have cycles.
         
         """
+
         dependencies = {}
         def set_processor_for_state(state, depprocessor, target_state, isdelete):
             if state not in dependencies:

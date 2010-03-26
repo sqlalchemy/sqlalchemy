@@ -61,7 +61,7 @@ mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engine
 mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
 
 mapper(Company, companies, properties={
-    'employees': relationship(Person, lazy=False, backref='company', cascade="all, delete-orphan")
+    'employees': relationship(Person, lazy='joined', backref='company', cascade="all, delete-orphan")
 })
 
 session = create_session()

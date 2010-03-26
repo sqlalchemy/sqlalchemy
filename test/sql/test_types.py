@@ -42,7 +42,7 @@ class AdaptTest(TestBase):
                 (DATE, "DATE"),
                 (TIME, "TIME"),
                 (CLOB, "CLOB"),
-                (VARCHAR(10), "VARCHAR(10)"),
+                (VARCHAR(10), ("VARCHAR(10)","VARCHAR(10 CHAR)")),
                 (NVARCHAR(10), ("NVARCHAR(10)", "NATIONAL VARCHAR(10)", "NVARCHAR2(10)")),
                 (CHAR, "CHAR"),
                 (NCHAR, ("NCHAR", "NATIONAL CHAR")),

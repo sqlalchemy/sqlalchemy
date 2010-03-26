@@ -52,17 +52,17 @@ class CompileTest(_base.ORMTest):
             polymorphic_on=order_join.c.type,
             polymorphic_identity='order',
             properties={
-                'orderproducts': relationship(OrderProduct, lazy=True, backref='order')}
+                'orderproducts': relationship(OrderProduct, lazy='select', backref='order')}
             )
 
         mapper(Product, product,
             properties={
-                'orderproducts': relationship(OrderProduct, lazy=True, backref='product')}
+                'orderproducts': relationship(OrderProduct, lazy='select', backref='product')}
             )
 
         mapper(Employee, employee,
             properties={
-                'orders': relationship(Order, lazy=True, backref='employee')})
+                'orders': relationship(Order, lazy='select', backref='employee')})
 
         mapper(OrderProduct, orderproduct)
 
@@ -105,12 +105,12 @@ class CompileTest(_base.ORMTest):
             polymorphic_on=order_join.c.type,
             polymorphic_identity='order',
             properties={
-                'orderproducts': relationship(OrderProduct, lazy=True, backref='product')}
+                'orderproducts': relationship(OrderProduct, lazy='select', backref='product')}
             )
 
         mapper(Product, product,
             properties={
-                'orderproducts': relationship(OrderProduct, lazy=True, backref='product')}
+                'orderproducts': relationship(OrderProduct, lazy='select', backref='product')}
             )
 
         mapper(OrderProduct, orderproduct)

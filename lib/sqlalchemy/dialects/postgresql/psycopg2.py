@@ -12,7 +12,7 @@ Note that psycopg1 is **not** supported.
 Connecting
 ----------
 
-URLs are of the form `postgresql+psycopg2://user@password@host:port/dbname[?key=value&key=value...]`.
+URLs are of the form `postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]`.
 
 psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.create_engine()` are:
 
@@ -34,6 +34,15 @@ Transactions
 
 The psycopg2 dialect fully supports SAVEPOINT and two-phase commit operations.
 
+NOTICE logging
+---------------
+
+The psycopg2 dialect will log Postgresql NOTICE messages via the 
+``sqlalchemy.dialects.postgresql`` logger::
+
+    import logging
+    logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
+
 
 Per-Statement Execution Options
 -------------------------------
@@ -46,8 +55,10 @@ The following per-statement execution options are respected:
 
 """
 
-import random, re
+import random
+import re
 import decimal
+import logging
 
 from sqlalchemy import util
 from sqlalchemy import processors
@@ -58,6 +69,10 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, \
                                             PGIdentifierPreparer, PGExecutionContext, \
                                             ENUM, ARRAY
+
+
+logger = logging.getLogger('sqlalchemy.dialects.postgresql')
+
 
 class _PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -130,10 +145,21 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
             return self._connection.connection.cursor()
 
     def get_result_proxy(self):
+        if logger.isEnabledFor(logging.INFO):
+            self._log_notices(self.cursor)
+        
         if self.__is_server_side:
             return base.BufferedRowResultProxy(self)
         else:
             return base.ResultProxy(self)
+
+    def _log_notices(self, cursor):
+        for notice in cursor.connection.notices:
+            # NOTICE messages have a 
+            # newline character at the end
+            logger.info(notice.rstrip())
+
+        cursor.connection.notices[:] = []
 
 
 class PGCompiler_psycopg2(PGCompiler):
@@ -190,7 +216,7 @@ class PGDialect_psycopg2(PGDialect):
             return connect
         else:
             return base_on_connect
-            
+
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
         if 'port' in opts:

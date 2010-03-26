@@ -13,6 +13,7 @@ from sqlalchemy.test.util import round_decimal
 from sqlalchemy.sql import table, column
 from sqlalchemy.test.testing import eq_
 from test.engine._base import TablesTest
+import logging
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
     def test_basic(self):
@@ -394,9 +395,6 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             assert t2.c.value2.type.schema == 'test_schema'
         finally:
             metadata.drop_all()
-        
-        
-        
         
 class InsertTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
@@ -964,7 +962,6 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         finally:
             postgresql.PGDialect.ischema_names = ischema_names
 
-
 class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     __only_on__ = 'postgresql'
 
@@ -1001,6 +998,29 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         ]:
             
             eq_(testing.db.dialect._get_server_version_info(MockConn(string)), version)
+    
+    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    def test_notice_logging(self):
+        log = logging.getLogger('sqlalchemy.dialects.postgresql')
+        buf = logging.handlers.BufferingHandler(100)
+        lev = log.level
+        log.addHandler(buf)
+        log.setLevel(logging.INFO)
+        try:
+            conn = testing.db.connect()
+            trans = conn.begin()
+            try:
+                conn.execute("create table foo (id serial primary key)")
+            finally:
+                trans.rollback()
+        finally:
+            log.removeHandler(buf)
+            log.setLevel(lev)
+
+        msgs = " ".join(b.msg for b in buf.buffer)
+        assert "will create implicit sequence" in msgs
+        assert "will create implicit index" in msgs
+         
         
     def test_pg_weirdchar_reflection(self):
         meta1 = MetaData(testing.db)
@@ -1264,7 +1284,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert_raises(exception_cls, eng.execute, "show transaction isolation level")
 
 
-class TimezoneTest(TestBase, AssertsExecutionResults):
+class TimezoneTest(TestBase):
     """Test timezone-aware datetimes.
 
     psycopg will return a datetime with a tzinfo attached to it, if postgresql
@@ -1292,6 +1312,7 @@ class TimezoneTest(TestBase, AssertsExecutionResults):
             Column("name", String(20)),
         )
         metadata.create_all()
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
@@ -1299,17 +1320,82 @@ class TimezoneTest(TestBase, AssertsExecutionResults):
     def test_with_timezone(self):
         # get a date with a tzinfo
         somedate = testing.db.connect().scalar(func.current_timestamp().select())
+        assert somedate.tzinfo
+        
         tztable.insert().execute(id=1, name='row1', date=somedate)
-        c = tztable.update(tztable.c.id==1).execute(name='newname')
-        print tztable.select(tztable.c.id==1).execute().first()
+        
+        row = select([tztable.c.date], tztable.c.id==1).execute().first()
+        eq_(row[0], somedate)
+        eq_(somedate.tzinfo.utcoffset(somedate), row[0].tzinfo.utcoffset(row[0]))
+
+        result = tztable.update(tztable.c.id==1).\
+                        returning(tztable.c.date).execute(name='newname')
+        row = result.first()
+        assert row[0] >= somedate
 
     def test_without_timezone(self):
         # get a date without a tzinfo
-        somedate = datetime.datetime(2005, 10,20, 11, 52, 00)
+        somedate = datetime.datetime(2005, 10, 20, 11, 52, 0)
+        assert not somedate.tzinfo
+        
         notztable.insert().execute(id=1, name='row1', date=somedate)
-        c = notztable.update(notztable.c.id==1).execute(name='newname')
-        print notztable.select(tztable.c.id==1).execute().first()
 
+        row = select([notztable.c.date], notztable.c.id==1).execute().first()
+        eq_(row[0], somedate)
+        eq_(row[0].tzinfo, None)
+        
+        result = notztable.update(notztable.c.id==1).\
+                        returning(notztable.c.date).execute(name='newname')
+        row = result.first()
+        assert row[0] >= somedate
+
+class TimePrecisionTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = postgresql.dialect()
+    
+    def test_compile(self):
+        for (type_, expected) in [
+            (postgresql.TIME(), "TIME WITHOUT TIME ZONE"),
+            (postgresql.TIME(precision=5), "TIME(5) WITHOUT TIME ZONE"),
+            (postgresql.TIME(timezone=True, precision=5), "TIME(5) WITH TIME ZONE"),
+            (postgresql.TIMESTAMP(), "TIMESTAMP WITHOUT TIME ZONE"),
+            (postgresql.TIMESTAMP(precision=5), "TIMESTAMP(5) WITHOUT TIME ZONE"),
+            (postgresql.TIMESTAMP(timezone=True, precision=5), "TIMESTAMP(5) WITH TIME ZONE"),
+        ]:
+            self.assert_compile(type_, expected)
+    
+    @testing.only_on('postgresql', 'DB specific feature')
+    def test_reflection(self):
+        m1 = MetaData(testing.db)
+        t1 = Table('t1', m1, 
+            Column('c1', postgresql.TIME()),
+            Column('c2', postgresql.TIME(precision=5)),
+            Column('c3', postgresql.TIME(timezone=True, precision=5)), 
+            Column('c4', postgresql.TIMESTAMP()), 
+            Column('c5', postgresql.TIMESTAMP(precision=5)), 
+            Column('c6', postgresql.TIMESTAMP(timezone=True, precision=5)), 
+        
+        )
+        t1.create()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('t1', m2, autoload=True)
+            eq_(t2.c.c1.type.precision, None)
+            eq_(t2.c.c2.type.precision, 5)
+            eq_(t2.c.c3.type.precision, 5)
+            eq_(t2.c.c4.type.precision, None)
+            eq_(t2.c.c5.type.precision, 5)
+            eq_(t2.c.c6.type.precision, 5)
+            eq_(t2.c.c1.type.timezone, False)
+            eq_(t2.c.c2.type.timezone, False)
+            eq_(t2.c.c3.type.timezone, True)
+            eq_(t2.c.c4.type.timezone, False)
+            eq_(t2.c.c5.type.timezone, False)
+            eq_(t2.c.c6.type.timezone, True)
+        finally:
+            t1.drop()
+        
+    
+    
 class ArrayTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
 

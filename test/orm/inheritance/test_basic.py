@@ -383,8 +383,8 @@ class EagerLazyTest(_base.MappedTest):
 
         foos = mapper(Foo, foo)
         bars = mapper(Bar, bar, inherits=foos)
-        bars.add_property('lazy', relationship(foos, bar_foo, lazy=True))
-        bars.add_property('eager', relationship(foos, bar_foo, lazy=False))
+        bars.add_property('lazy', relationship(foos, bar_foo, lazy='select'))
+        bars.add_property('eager', relationship(foos, bar_foo, lazy='joined'))
 
         foo.insert().execute(data='foo1')
         bar.insert().execute(id=1, data='bar1')
@@ -455,7 +455,7 @@ class EagerTargetingTest(_base.MappedTest):
         eq_(node.children[0], B(id=2, name='b2',b_data='l'))
         
         sess.expunge_all()
-        node = sess.query(B).options(eagerload(B.children)).filter(B.id==bid).all()[0]
+        node = sess.query(B).options(joinedload(B.children)).filter(B.id==bid).all()[0]
         eq_(node, B(id=1, name='b1',b_data='i'))
         eq_(node.children[0], B(id=2, name='b2',b_data='l'))
         
@@ -492,7 +492,7 @@ class FlushTest(_base.MappedTest):
         class Admin(User):pass
         role_mapper = mapper(Role, roles)
         user_mapper = mapper(User, users, properties = {
-                'roles' : relationship(Role, secondary=user_roles, lazy=False)
+                'roles' : relationship(Role, secondary=user_roles, lazy='joined')
             }
         )
         admin_mapper = mapper(Admin, admins, inherits=user_mapper)
@@ -528,7 +528,7 @@ class FlushTest(_base.MappedTest):
 
         role_mapper = mapper(Role, roles)
         user_mapper = mapper(User, users, properties = {
-                'roles' : relationship(Role, secondary=user_roles, lazy=False)
+                'roles' : relationship(Role, secondary=user_roles, lazy='joined')
             }
         )
 

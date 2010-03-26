@@ -132,7 +132,7 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
         location_name_mapper = mapper(LocationName, location_name_table)
 
         location_mapper = mapper(Location, location_table, properties = {
-            'issue': relationship(Issue, backref=backref('locations', lazy=False, cascade="all, delete-orphan")),
+            'issue': relationship(Issue, backref=backref('locations', lazy='joined', cascade="all, delete-orphan")),
             '_name': relationship(LocationName),
         })
 

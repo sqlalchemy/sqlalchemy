@@ -91,7 +91,7 @@ class _CollectionOperations(TestBase):
                     self.name = name
 
         mapper(Parent, parents_table, properties={
-            '_children': relationship(Child, lazy=False,
+            '_children': relationship(Child, lazy='joined',
                                   collection_class=collection_class)})
         mapper(Child, children_table)
 
@@ -654,7 +654,7 @@ class ProxyFactoryTest(ListTest):
                 self.name = name
 
         mapper(Parent, parents_table, properties={
-            '_children': relationship(Child, lazy=False,
+            '_children': relationship(Child, lazy='joined',
                                   collection_class=list)})
         mapper(Child, children_table)
 
@@ -701,7 +701,7 @@ class ScalarTest(TestBase):
                     setattr(self, attr, kw[attr])
 
         mapper(Parent, parents_table, properties={
-            'child': relationship(Child, lazy=False,
+            'child': relationship(Child, lazy='joined',
                               backref='parent', uselist=False)})
         mapper(Child, children_table)
 
@@ -836,7 +836,7 @@ class LazyLoadTest(TestBase):
         Parent, Child = self.Parent, self.Child
 
         mapper(Parent, self.table, properties={
-            '_children': relationship(Child, lazy=True,
+            '_children': relationship(Child, lazy='select',
                                   collection_class=list)})
 
         p = Parent('p')
@@ -854,7 +854,7 @@ class LazyLoadTest(TestBase):
         Parent, Child = self.Parent, self.Child
 
         mapper(Parent, self.table, properties={
-            '_children': relationship(Child, lazy=False,
+            '_children': relationship(Child, lazy='joined',
                                   collection_class=list)})
 
         p = Parent('p')
@@ -869,7 +869,7 @@ class LazyLoadTest(TestBase):
         Parent, Child = self.Parent, self.Child
 
         mapper(Parent, self.table, properties={
-            '_children': relationship(Child, lazy=True, uselist=False)})
+            '_children': relationship(Child, lazy='select', uselist=False)})
 
 
         p = Parent('p')
@@ -884,7 +884,7 @@ class LazyLoadTest(TestBase):
         Parent, Child = self.Parent, self.Child
 
         mapper(Parent, self.table, properties={
-            '_children': relationship(Child, lazy=False, uselist=False)})
+            '_children': relationship(Child, lazy='joined', uselist=False)})
 
 
         p = Parent('p')

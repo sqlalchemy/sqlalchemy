@@ -809,14 +809,14 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
 
 When we accessed the ``addresses`` collection, SQL was suddenly issued.  This is an example of a **lazy loading relationship**.  The ``addresses`` collection is now loaded and behaves just like an ordinary list.
 
-If you want to reduce the number of queries (dramatically, in many cases), we can apply an **eager load** to the query operation, using the :func:`~sqlalchemy.orm.eagerload` function.  This function is a **query option** that gives additional instructions to the query on how we would like it to load, in this case we'd like to indicate that we'd like ``addresses`` to load "eagerly".  SQLAlchemy then constructs an outer join between the ``users`` and ``addresses`` tables, and loads them at once, populating the ``addresses`` collection on each ``User`` object if it's not already populated:
+If you want to reduce the number of queries (dramatically, in many cases), we can apply an **eager load** to the query operation, using the :func:`~sqlalchemy.orm.joinedload` function.  This function is a **query option** that gives additional instructions to the query on how we would like it to load, in this case we'd like to indicate that we'd like ``addresses`` to load "eagerly".  SQLAlchemy then constructs an outer join between the ``users`` and ``addresses`` tables, and loads them at once, populating the ``addresses`` collection on each ``User`` object if it's not already populated:
 
 .. sourcecode:: python+sql
 
-    >>> from sqlalchemy.orm import eagerload
+    >>> from sqlalchemy.orm import joinedload
 
     {sql}>>> jack = session.query(User).\
-    ...                        options(eagerload('addresses')).\
+    ...                        options(joinedload('addresses')).\
     ...                        filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
     users.password AS users_password, addresses_1.id AS addresses_1_id, addresses_1.email_address
@@ -831,12 +831,12 @@ If you want to reduce the number of queries (dramatically, in many cases), we ca
     >>> jack.addresses
     [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
-See :func:`~sqlalchemy.orm.eagerload` for further detail.  We'll also see another way to "eagerly" load in the next section.
+See :ref:`mapper_loader_strategies` for information on :func:`~sqlalchemy.orm.joinedload` and its new brother, :func:`~sqlalchemy.orm.subqueryload`.   We'll also see another way to "eagerly" load in the next section.
 
 Querying with Joins
 ====================
 
-While :func:`~sqlalchemy.orm.eagerload` created a JOIN specifically to populate a collection, we can also work explicitly with joins in many ways.  For example, to construct a simple inner join between ``User`` and ``Address``, we can just :meth:`~sqlalchemy.orm.query.Query.filter()` their related columns together.  Below we load the ``User`` and ``Address`` entities at once using this method:
+While :func:`~sqlalchemy.orm.joinedload` created a JOIN specifically to populate a collection, we can also work explicitly with joins in many ways.  For example, to construct a simple inner join between ``User`` and ``Address``, we can just :meth:`~sqlalchemy.orm.query.Query.filter()` their related columns together.  Below we load the ``User`` and ``Address`` entities at once using this method:
 
 .. sourcecode:: python+sql
 
@@ -898,10 +898,10 @@ the :meth:`~sqlalchemy.orm.query.Query.select_from` method to set an explicit FR
 Using join() to Eagerly Load Collections/Attributes
 -------------------------------------------------------
 
-The "eager loading" capabilities of the :func:`~sqlalchemy.orm.eagerload` function and the join-construction capabilities of :meth:`~sqlalchemy.orm.query.Query.join()` or an equivalent can be combined together using the :func:`~sqlalchemy.orm.contains_eager` option.   This is typically used 
+The "eager loading" capabilities of the :func:`~sqlalchemy.orm.joinedload` function and the join-construction capabilities of :meth:`~sqlalchemy.orm.query.Query.join()` or an equivalent can be combined together using the :func:`~sqlalchemy.orm.contains_eager` option.   This is typically used 
 for a query that is already joining to some related entity (more often than not via many-to-one), and you'd like the related entity to also be loaded onto the resulting objects
 in one step without the need for additional queries and without the "automatic" join embedded
-by the :func:`~sqlalchemy.orm.eagerload` function:
+by the :func:`~sqlalchemy.orm.joinedload` function:
 
 .. sourcecode:: python+sql
 

@@ -323,7 +323,7 @@ The "default" ordering for a collection, which applies to list-based collections
         'addresses': relationship(Address, order_by=addresses_table.c.address_id)
     })
 
-Note that when using eager loaders with relationships, the tables used by the eager load's join are anonymously aliased.  You can only order by these columns if you specify it at the :func:`~sqlalchemy.orm.relationship` level.  To control ordering at the query level based on a related table, you ``join()`` to that relationship, then order by it::
+Note that when using joined eager loaders with relationships, the tables used by the eager load's join are anonymously aliased.  You can only order by these columns if you specify it at the :func:`~sqlalchemy.orm.relationship` level.  To control ordering at the query level based on a related table, you ``join()`` to that relationship, then order by it::
 
     session.query(User).join('addresses').order_by(Address.street)
 
@@ -1198,12 +1198,12 @@ To add criterion to multiple points along a longer join, use ``from_joinpoint=Tr
 Configuring Eager Loading
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Eager loading of relationships occurs using joins or outerjoins from parent to child table during a normal query operation, such that the parent and its child collection can be populated from a single SQL statement.  SQLAlchemy's eager loading uses aliased tables in all cases when joining to related items, so it is compatible with self-referential joining.  However, to use eager loading with a self-referential relationship, SQLAlchemy needs to be told how many levels deep it should join; otherwise the eager load will not take place.  This depth setting is configured via ``join_depth``:
+Eager loading of relationships occurs using joins or outerjoins from parent to child table during a normal query operation, such that the parent and its child collection can be populated from a single SQL statement, or a second statement for all collections at once.  SQLAlchemy's joined and subquery eager loading uses aliased tables in all cases when joining to related items, so it is compatible with self-referential joining.  However, to use eager loading with a self-referential relationship, SQLAlchemy needs to be told how many levels deep it should join; otherwise the eager load will not take place.  This depth setting is configured via ``join_depth``:
 
 .. sourcecode:: python+sql
 
     mapper(Node, nodes, properties={
-        'children': relationship(Node, lazy=False, join_depth=2)
+        'children': relationship(Node, lazy='joined', join_depth=2)
     })
 
     {sql}session.query(Node).all()
@@ -1531,14 +1531,18 @@ The ORM uses this approach for built-ins, quietly substituting a trivial subclas
 
 The collections package provides additional decorators and support for authoring custom types.  See the :mod:`sqlalchemy.orm.collections` package for more information and discussion of advanced usage and Python 2.3-compatible decoration options.
 
+.. _mapper_loader_strategies:
+
 Configuring Loader Strategies: Lazy Loading, Eager Loading
 -----------------------------------------------------------
+
+.. note:: SQLAlchemy version 0.6beta3 introduces the :func:`~sqlalchemy.orm.joinedload`, :func:`~sqlalchemy.orm.joinedload_all`, :func:`~sqlalchemy.orm.subqueryload` and :func:`~sqlalchemy.orm.subqueryload_all` functions described in this section.  In previous versions, including 0.5 and 0.4, use :func:`~sqlalchemy.orm.eagerload` and :func:`~sqlalchemy.orm.eagerload_all`.  Additionally, the ``lazy`` keyword argument on :func:`~sqlalchemy.orm.relationship` accepts the values ``True``, ``False`` and ``None`` in previous versions, whereas in the latest 0.6 it also accepts the arguments ``select``, ``joined``, ``noload``, and ``subquery``.
 
 In the :ref:`ormtutorial_toplevel`, we introduced the concept of **Eager Loading**.  We used an ``option`` in conjunction with the :class:`~sqlalchemy.orm.query.Query` object in order to indicate that a relationship should be loaded at the same time as the parent, within a single SQL query:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> jack = session.query(User).options(eagerload('addresses')).filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> jack = session.query(User).options(joinedload('addresses')).filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
     SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
@@ -1551,65 +1555,149 @@ By default, all inter-object relationships are **lazy loading**.  The scalar or 
 .. sourcecode:: python+sql
 
     {sql}>>> jack.addresses
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, 
+    addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id
     [5]
     {stop}[<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
 
-The default **loader strategy** for any :func:`~sqlalchemy.orm.relationship` is configured by the ``lazy`` keyword argument, which defaults to ``True``.  Below we set it as ``False`` so that the ``children`` relationship is eager loading:
+A second option for eager loading exists, called "subquery" loading.   This kind of eager loading emits an additional SQL statement for each collection requested, aggregated across all parent objects:
+
+.. sourcecode:: python+sql
+    
+    {sql}>>>jack = session.query(User).options(subqueryload('addresses')).filter_by(name='jack').all() 
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
+    users.password AS users_password 
+    FROM users 
+    WHERE users.name = ?
+    ('jack',)
+    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, 
+    addresses.user_id AS addresses_user_id, anon_1.users_id AS anon_1_users_id 
+    FROM (SELECT users.id AS users_id 
+    FROM users 
+    WHERE users.name = ?) AS anon_1 JOIN addresses ON anon_1.users_id = addresses.user_id 
+    ORDER BY anon_1.users_id, addresses.id
+    ('jack',)
+
+The default **loader strategy** for any :func:`~sqlalchemy.orm.relationship` is configured by the ``lazy`` keyword argument, which defaults to ``select``.  Below we set it as ``joined`` so that the ``children`` relationship is eager loading, using a join:
 
 .. sourcecode:: python+sql
 
-    # eager load 'children' attribute
+    # load the 'children' collection using LEFT OUTER JOIN
     mapper(Parent, parent_table, properties={
-        'children': relationship(Child, lazy=False)
+        'children': relationship(Child, lazy='joined')
     })
 
-The loader strategy can be changed from lazy to eager as well as eager to lazy using the :func:`~sqlalchemy.orm.eagerload` and :func:`~sqlalchemy.orm.lazyload` query options:
+We can also set it to eagerly load using a second query for all collections, using ``subquery``:
+
+.. sourcecode:: python+sql
+
+    # load the 'children' attribute using a join to a subquery
+    mapper(Parent, parent_table, properties={
+        'children': relationship(Child, lazy='subquery')
+    })
+
+When querying, all three choices of loader strategy are available on a per-query basis, using the :func:`~sqlalchemy.orm.joinedload`, :func:`~sqlalchemy.orm.subqueryload` and :func:`~sqlalchemy.orm.lazyload` query options:
 
 .. sourcecode:: python+sql
 
     # set children to load lazily
     session.query(Parent).options(lazyload('children')).all()
 
-    # set children to load eagerly
-    session.query(Parent).options(eagerload('children')).all()
+    # set children to load eagerly with a join
+    session.query(Parent).options(joinedload('children')).all()
+
+    # set children to load eagerly with a second statement
+    session.query(Parent).options(subqueryload('children')).all()
 
 To reference a relationship that is deeper than one level, separate the names by periods:
 
 .. sourcecode:: python+sql
 
-    session.query(Parent).options(eagerload('foo.bar.bat')).all()
+    session.query(Parent).options(joinedload('foo.bar.bat')).all()
 
-When using dot-separated names with :func:`~sqlalchemy.orm.eagerload`, option applies **only** to the actual attribute named, and **not** its ancestors.  For example, suppose a mapping from ``A`` to ``B`` to ``C``, where the relationships, named ``atob`` and ``btoc``, are both lazy-loading.  A statement like the following:
+When using dot-separated names with :func:`~sqlalchemy.orm.joinedload` or :func:`~sqlalchemy.orm.subqueryload`, option applies **only** to the actual attribute named, and **not** its ancestors.  For example, suppose a mapping from ``A`` to ``B`` to ``C``, where the relationships, named ``atob`` and ``btoc``, are both lazy-loading.  A statement like the following:
 
 .. sourcecode:: python+sql
 
-    session.query(A).options(eagerload('atob.btoc')).all()
+    session.query(A).options(joinedload('atob.btoc')).all()
 
 will load only ``A`` objects to start.  When the ``atob`` attribute on each ``A`` is accessed, the returned ``B`` objects will *eagerly* load their ``C`` objects.
 
-Therefore, to modify the eager load to load both ``atob`` as well as ``btoc``, place eagerloads for both:
+Therefore, to modify the eager load to load both ``atob`` as well as ``btoc``, place joinedloads for both:
 
 .. sourcecode:: python+sql
 
-    session.query(A).options(eagerload('atob'), eagerload('atob.btoc')).all()
+    session.query(A).options(joinedload('atob'), joinedload('atob.btoc')).all()
 
-or more simply just use :func:`~sqlalchemy.orm.eagerload_all`:
+or more simply just use :func:`~sqlalchemy.orm.joinedload_all` or :func:`~sqlalchemy.orm.subqueryload_all`:
 
 .. sourcecode:: python+sql
 
-    session.query(A).options(eagerload_all('atob.btoc')).all()
+    session.query(A).options(joinedload_all('atob.btoc')).all()
 
 There are two other loader strategies available, **dynamic loading** and **no loading**; these are described in :ref:`largecollections`.
+
+What Kind of Loading to Use ?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Which type of loading to use typically comes down to optimizing the tradeoff between number of SQL executions, complexity of SQL emitted, and amount of data fetched.   Lets take two examples, a :func:`~sqlalchemy.orm.relationship` which references a collection, and a :func:`~sqlalchemy.orm.relationship` that references a scalar many-to-one reference.
+
+* One to Many Collection
+
+ * When using the default lazy loading, if you load 100 objects, and then access a collection on each of
+   them, a total of 101 SQL statements will be emitted, although each statement will typically be a
+   simple SELECT without any joins.
+   
+ * When using joined loading, the load of 100 objects and their collections will emit only one SQL
+   statement.  However, the 
+   total number of rows fetched will be equal to the sum of the size of all the collections, plus one 
+   extra row for each parent object that has an empty collection.  Each row will also contain the full
+   set of columns represented by the parents, repeated for each collection item - SQLAlchemy does not
+   re-fetch these columns other than those of the primary key, however most DBAPIs (with some 
+   exceptions) will transmit the full data of each parent over the wire to the client connection in 
+   any case.  Therefore joined eager loading only makes sense when the size of the collections are 
+   relatively small.  The LEFT OUTER JOIN can also be performance intensive compared to an INNER join.
+   
+ * When using subquery loading, the load of 100 objects will emit two SQL statements.  The second
+   statement will fetch a total number of rows equal to the sum of the size of all collections.  An
+   INNER JOIN is used, and a minimum of parent columns are requested, only the primary keys.  So a 
+   subquery load makes sense when the collections are larger.
+   
+ * When multiple levels of depth are used with joined or subquery loading, loading collections-within-
+   collections will multiply the total number of rows fetched in a cartesian fashion.  Both forms
+   of eager loading always join from the original parent class.
+   
+* Many to One Reference
+
+  * When using the default lazy loading, a load of 100 objects will like in the case of the collection
+    emit as many as 101 SQL statements.  However - there is a significant exception to this, in that
+    if the many-to-one reference is a simple foreign key reference to the target's primary key, each
+    reference will be checked first in the current identity map using ``query.get()``.  So here, 
+    if the collection of objects references a relatively small set of target objects, or the full set
+    of possible target objects have already been loaded into the session and are strongly referenced,
+    using the default of `lazy='select'` is by far the most efficient way to go.
+  
+  * When using joined loading, the load of 100 objects will emit only one SQL statement.   The join
+    will be a LEFT OUTER JOIN, and the total number of rows will be equal to 100 in all cases.  
+    If you know that each parent definitely has a child (i.e. the foreign
+    key reference is NOT NULL), the joined load can be configured with ``innerjoin=True``, which is
+    usually specified within the :func:`~sqlalchemy.orm.relationship`.   For a load of objects where
+    there are many possible target references which may have not been loaded already, joined loading
+    with an INNER JOIN is extremely efficient.
+   
+  * Subquery loading will issue a second load for all the child objects, so for a load of 100 objects
+    there would be two SQL statements emitted.  There's probably not much advantage here over
+    joined loading, however, except perhaps that subquery loading can use an INNER JOIN in all cases
+    whereas joined loading requires that the foreign key is NOT NULL.
 
 Routing Explicit Joins/Statements into Eagerly Loaded Collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The behavior of :func:`~sqlalchemy.orm.eagerload()` is such that joins are created automatically, the results of which are routed into collections and scalar references on loaded objects.  It is often the case that a query already includes the necessary joins which represent a particular collection or scalar reference, and the joins added by the eagerload feature are redundant - yet you'd still like the collections/references to be populated.
+The behavior of :func:`~sqlalchemy.orm.joinedload()` is such that joins are created automatically, the results of which are routed into collections and scalar references on loaded objects.  It is often the case that a query already includes the necessary joins which represent a particular collection or scalar reference, and the joins added by the joinedload feature are redundant - yet you'd still like the collections/references to be populated.
 
-For this SQLAlchemy supplies the :func:`~sqlalchemy.orm.contains_eager()` option.  This option is used in the same manner as the :func:`~sqlalchemy.orm.eagerload()` option except it is assumed that the :class:`~sqlalchemy.orm.query.Query` will specify the appropriate joins explicitly.  Below it's used with a ``from_statement`` load::
+For this SQLAlchemy supplies the :func:`~sqlalchemy.orm.contains_eager()` option.  This option is used in the same manner as the :func:`~sqlalchemy.orm.joinedload()` option except it is assumed that the :class:`~sqlalchemy.orm.query.Query` will specify the appropriate joins explicitly.  Below it's used with a ``from_statement`` load::
 
     # mapping is the users->addresses mapping
     mapper(User, users_table, properties={
@@ -1735,12 +1823,12 @@ Note that eager/lazy loading options cannot be used in conjunction dynamic relat
 Setting Noload
 ~~~~~~~~~~~~~~~
 
-The opposite of the dynamic relationship is simply "noload", specified using ``lazy=None``:
+The opposite of the dynamic relationship is simply "noload", specified using ``lazy='noload'``:
 
 .. sourcecode:: python+sql
 
     mapper(MyClass, table, properties={
-        'children': relationship(MyOtherClass, lazy=None)
+        'children': relationship(MyOtherClass, lazy='noload')
     })
 
 Above, the ``children`` collection is fully writeable, and changes to it will be persisted to the database as well as locally available for reading at the time they are added.  However when instances of  ``MyClass`` are freshly loaded from the database, the ``children`` collection stays empty.

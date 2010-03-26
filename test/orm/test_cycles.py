@@ -47,7 +47,7 @@ class SelfReferentialTest(_base.MappedTest):
             'parent':relationship(C1,
                               primaryjoin=t1.c.parent_c1 == t1.c.c1,
                               remote_side=t1.c.c1,
-                              lazy=True,
+                              lazy='select',
                               uselist=False)})
         a = C1('head c1')
         a.c1s.append(C1('another c1'))
@@ -755,7 +755,7 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
             'children': relationship(
                 Node,
                 primaryjoin=node.c.id==node.c.parent_id,
-                lazy=True,
+                lazy='select',
                 cascade="all",
                 backref=backref("parent", remote_side=node.c.id)
             ),
@@ -763,13 +763,13 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
                 Node,
                 primaryjoin=node.c.prev_sibling_id==node.c.id,
                 remote_side=node.c.id,
-                lazy=True,
+                lazy='select',
                 uselist=False),
             'next_sibling': relationship(
                 Node,
                 primaryjoin=node.c.next_sibling_id==node.c.id,
                 remote_side=node.c.id,
-                lazy=True,
+                lazy='select',
                 uselist=False,
                 post_update=True)})
 

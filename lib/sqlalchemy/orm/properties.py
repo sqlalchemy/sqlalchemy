@@ -391,19 +391,15 @@ class RelationshipProperty(StrategizedProperty):
         self.comparator_factory = comparator_factory or RelationshipProperty.Comparator
         self.comparator = self.comparator_factory(self, None)
         util.set_creation_order(self)
-
+        
         if strategy_class:
             self.strategy_class = strategy_class
-        elif self.lazy == 'dynamic':
+        elif self.lazy== 'dynamic':
             from sqlalchemy.orm import dynamic
             self.strategy_class = dynamic.DynaLoader
-        elif self.lazy is False:
-            self.strategy_class = strategies.EagerLoader
-        elif self.lazy is None:
-            self.strategy_class = strategies.NoLoader
         else:
-            self.strategy_class = strategies.LazyLoader
-
+            self.strategy_class = strategies.factory(self.lazy)
+            
         self._reverse_property = set()
 
         if cascade is not False:

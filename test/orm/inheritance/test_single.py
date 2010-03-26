@@ -286,7 +286,7 @@ class RelationshipToSingleTest(MappedTest):
 
         # eager load join should limit to only "Engineer"
         sess.expunge_all()
-        eq_(sess.query(Company).options(eagerload('engineers')).order_by(Company.name).all(), 
+        eq_(sess.query(Company).options(joinedload('engineers')).order_by(Company.name).all(), 
             [
                 Company(name='c1', engineers=[JuniorEngineer(name='Ed')]),
                 Company(name='c2', engineers=[Engineer(name='Kurt')])

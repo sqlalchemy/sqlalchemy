@@ -79,13 +79,13 @@ class _Attribute(object):
 
 # setup mappers.  Document will eagerly load a list of _Node objects.
 mapper(Document, documents, properties={
-    '_root':relationship(_Node, lazy=False, cascade="all")
+    '_root':relationship(_Node, lazy='joined', cascade="all")
 })
 
 mapper(_Node, elements, properties={
     'children':relationship(_Node, cascade="all"),
     # eagerly load attributes
-    'attributes':relationship(_Attribute, lazy=False, cascade="all, delete-orphan"),
+    'attributes':relationship(_Attribute, lazy='joined', cascade="all, delete-orphan"),
 })
 
 mapper(_Attribute, attributes)

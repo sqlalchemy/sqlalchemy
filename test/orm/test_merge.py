@@ -708,7 +708,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess.flush()
 
         sess2 = create_session()
-        u2 = sess2.query(User).options(sa.orm.eagerload('addresses')).get(7)
+        u2 = sess2.query(User).options(sa.orm.joinedload('addresses')).get(7)
 
         sess3 = create_session()
         u3 = sess3.merge(u2, load=False)

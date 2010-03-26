@@ -78,7 +78,7 @@ from sqlalchemy import types as sqltypes
 
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, VARCHAR, \
         CHAR, TEXT, FLOAT, NUMERIC, \
-        TIMESTAMP, TIME, DATE, BOOLEAN
+        DATE, BOOLEAN
 
 class REAL(sqltypes.Float):
     __visit_name__ = "REAL"
@@ -101,6 +101,16 @@ class MACADDR(sqltypes.TypeEngine):
     __visit_name__ = "MACADDR"
 PGMacAddr = MACADDR
 
+class TIMESTAMP(sqltypes.TIMESTAMP):
+    def __init__(self, timezone=False, precision=None):
+        super(TIMESTAMP, self).__init__(timezone=timezone)
+        self.precision = precision
+        
+class TIME(sqltypes.TIME):
+    def __init__(self, timezone=False, precision=None):
+        super(TIME, self).__init__(timezone=timezone)
+        self.precision = precision
+    
 class INTERVAL(sqltypes.TypeEngine):
     __visit_name__ = 'INTERVAL'
     def __init__(self, precision=None):
@@ -466,10 +476,16 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return self.dialect.identifier_preparer.format_type(type_)
         
     def visit_TIMESTAMP(self, type_):
-        return "TIMESTAMP " + (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
+        return "TIMESTAMP%s %s" % (
+            getattr(type_, 'precision', None) and "(%d)" % type_.precision or "",
+            (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
+        )
 
     def visit_TIME(self, type_):
-        return "TIME " + (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
+        return "TIME%s %s" % (
+            getattr(type_, 'precision', None) and "(%d)" % type_.precision or "",
+            (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
+        )
 
     def visit_INTERVAL(self, type_):
         if type_.precision is not None:
@@ -875,39 +891,48 @@ class PGDialect(default.DefaultDialect):
         # format columns
         columns = []
         for name, format_type, default, notnull, attnum, table_oid in rows:
-            ## strip (30) from character varying(30)
-            attype = re.search('([^\([]+)', format_type).group(1)
+            ## strip (5) from character varying(5), timestamp(5) with time zone, etc
+            attype = re.sub(r'\([\d,]+\)', '', format_type)
+            
+            # strip '[]' from integer[], etc.
+            attype = re.sub(r'\[\]', '', attype)
+            
             nullable = not notnull
             is_array = format_type.endswith('[]')
-            try:
-                charlen = re.search('\(([\d,]+)\)', format_type).group(1)
-            except:
-                charlen = False
-            numericprec = False
-            numericscale = False
-            if attype == 'numeric':
-                if charlen is False:
-                    numericprec, numericscale = (None, None)
-                else:
-                    numericprec, numericscale = charlen.split(',')
-                charlen = False
-            elif attype == 'double precision':
-                numericprec, numericscale = (53, False)
-                charlen = False
-            elif attype == 'integer':
-                numericprec, numericscale = (32, 0)
-                charlen = False
-            args = []
-            for a in (charlen, numericprec, numericscale):
-                if a is None:
-                    args.append(None)
-                elif a is not False:
-                    args.append(int(a))
+            charlen = re.search('\(([\d,]+)\)', format_type)
+            if charlen:
+                charlen = charlen.group(1)
             kwargs = {}
-            if attype == 'timestamp with time zone':
+                
+            if attype == 'numeric':
+                if charlen:
+                    prec, scale = charlen.split(',')
+                    args = (int(prec), int(scale))
+                else:
+                    args = ()
+            elif attype == 'double precision':
+                args = (53, )
+            elif attype == 'integer':
+                args = (32, 0)
+            elif attype in ('timestamp with time zone', 'time with time zone'):
                 kwargs['timezone'] = True
-            elif attype == 'timestamp without time zone':
+                if charlen:
+                    kwargs['precision'] = int(charlen)
+                args = ()
+            elif attype in ('timestamp without time zone', 'time without time zone', 'time'):
                 kwargs['timezone'] = False
+                if charlen:
+                    kwargs['precision'] = int(charlen)
+                args = ()
+            elif attype in ('interval','interval year to month','interval day to second'):
+                if charlen:
+                    kwargs['precision'] = int(charlen)
+                args = ()
+            elif charlen:
+                args = (int(charlen),)
+            else:
+                args = ()
+            
             if attype in self.ischema_names:
                 coltype = self.ischema_names[attype]
             elif attype in enums:
