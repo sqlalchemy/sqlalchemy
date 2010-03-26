@@ -92,6 +92,11 @@ CHANGES
    - Using a mixin won't break if the mixin implements an 
      unpredictable __getattribute__(), i.e. Zope interfaces.
      [ticket:1746]
+
+   - Using @classdecorator and similar on mixins to define 
+     __tablename__, __table_args__, etc. now works if
+     the method references attributes on the ultimate 
+     subclass. [ticket:1749]
      
 0.6beta2
 ========

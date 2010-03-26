@@ -1958,6 +1958,18 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         eq_(MyModel.__table__.name,'mymodel1')
     
+    def test_table_name_dependent_on_subclass(self):
+        class MyHistoryMixin:
+            @classproperty
+            def __tablename__(cls):
+                return cls.parent_name + '_changelog'
+
+        class MyModel(Base, MyHistoryMixin):
+            parent_name = 'foo'
+            id = Column(Integer, primary_key=True)
+            
+        eq_(MyModel.__table__.name, 'foo_changelog')
+        
     def test_table_args_inherited(self):
         
         class MyMixin:
