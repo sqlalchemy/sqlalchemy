@@ -72,6 +72,12 @@ CHANGES
      "sqlalchemy.dialects.postgresql" logger name. 
      [ticket:877]
 
+   - the TIME and TIMESTAMP types are now availble from the
+     postgresql dialect directly, which add the PG-specific
+     argument 'precision' to both.   'precision' and 
+     'timezone' are correctly reflected for both TIME and 
+     TIMEZONE types. [ticket:997]
+     
 - oracle
    - The Oracle dialect will issue VARCHAR type definitions
      using character counts, i.e. VARCHAR2(50 CHAR), so that

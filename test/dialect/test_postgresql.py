@@ -1284,7 +1284,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert_raises(exception_cls, eng.execute, "show transaction isolation level")
 
 
-class TimezoneTest(TestBase, AssertsExecutionResults):
+class TimezoneTest(TestBase):
     """Test timezone-aware datetimes.
 
     psycopg will return a datetime with a tzinfo attached to it, if postgresql
@@ -1330,6 +1330,53 @@ class TimezoneTest(TestBase, AssertsExecutionResults):
         c = notztable.update(notztable.c.id==1).execute(name='newname')
         print notztable.select(tztable.c.id==1).execute().first()
 
+class TimePrecisionTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = postgresql.dialect()
+    
+    def test_compile(self):
+        for (type_, expected) in [
+            (postgresql.TIME(), "TIME WITHOUT TIME ZONE"),
+            (postgresql.TIME(precision=5), "TIME(5) WITHOUT TIME ZONE"),
+            (postgresql.TIME(timezone=True, precision=5), "TIME(5) WITH TIME ZONE"),
+            (postgresql.TIMESTAMP(), "TIMESTAMP WITHOUT TIME ZONE"),
+            (postgresql.TIMESTAMP(precision=5), "TIMESTAMP(5) WITHOUT TIME ZONE"),
+            (postgresql.TIMESTAMP(timezone=True, precision=5), "TIMESTAMP(5) WITH TIME ZONE"),
+        ]:
+            self.assert_compile(type_, expected)
+    
+    @testing.only_on('postgresql', 'DB specific feature')
+    def test_reflection(self):
+        m1 = MetaData(testing.db)
+        t1 = Table('t1', m1, 
+            Column('c1', postgresql.TIME()),
+            Column('c2', postgresql.TIME(precision=5)),
+            Column('c3', postgresql.TIME(timezone=True, precision=5)), 
+            Column('c4', postgresql.TIMESTAMP()), 
+            Column('c5', postgresql.TIMESTAMP(precision=5)), 
+            Column('c6', postgresql.TIMESTAMP(timezone=True, precision=5)), 
+        
+        )
+        t1.create()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('t1', m2, autoload=True)
+            eq_(t2.c.c1.type.precision, None)
+            eq_(t2.c.c2.type.precision, 5)
+            eq_(t2.c.c3.type.precision, 5)
+            eq_(t2.c.c4.type.precision, None)
+            eq_(t2.c.c5.type.precision, 5)
+            eq_(t2.c.c6.type.precision, 5)
+            eq_(t2.c.c1.type.timezone, False)
+            eq_(t2.c.c2.type.timezone, False)
+            eq_(t2.c.c3.type.timezone, True)
+            eq_(t2.c.c4.type.timezone, False)
+            eq_(t2.c.c5.type.timezone, False)
+            eq_(t2.c.c6.type.timezone, True)
+        finally:
+            t1.drop()
+        
+    
+    
 class ArrayTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
 
