@@ -230,25 +230,33 @@ def relationship(argument, secondary=None, **kwargs):
 
       Available cascades are:
 
-        ``save-update`` - cascade the "add()" operation (formerly
-        known as save() and update())
+        * ``save-update`` - cascade the :meth:`~sqlalchemy.orm.session.Session.add` 
+          operation.  This cascade applies both to future and
+          past calls to :meth:`~sqlalchemy.orm.session.Session.add`, 
+          meaning new items added to a collection or scalar relationship
+          get placed into the same session as that of the parent, and 
+          also applies to items which have been removed from this 
+          relationship but are still part of unflushed history.
 
-        ``merge`` - cascade the "merge()" operation
+        * ``merge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.merge`
+          operation
 
-        ``expunge`` - cascade the "expunge()" operation
+        * ``expunge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expunge`
+          operation
 
-        ``delete`` - cascade the "delete()" operation
+        * ``delete`` - cascade the :meth:`~sqlalchemy.orm.session.Session.delete`
+          operation
 
-        ``delete-orphan`` - if an item of the child's type with no
-        parent is detected, mark it for deletion.  Note that this
-        option prevents a pending item of the child's class from being
-        persisted without a parent present.
+        * ``delete-orphan`` - if an item of the child's type with no
+          parent is detected, mark it for deletion.  Note that this
+          option prevents a pending item of the child's class from being
+          persisted without a parent present.
 
-        ``refresh-expire`` - cascade the expire() and refresh()
-        operations
+        * ``refresh-expire`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expire` 
+          and :meth:`~sqlalchemy.orm.session.Session.refresh` operations
 
-        ``all`` - shorthand for "save-update,merge, refresh-expire,
-        expunge, delete"
+        * ``all`` - shorthand for "save-update,merge, refresh-expire,
+          expunge, delete"
 
     :param collection_class:
       a class or callable that returns a new list-holding object. will
