@@ -1,6 +1,9 @@
-# sybase.py
-# Copyright (C) 2007 Fisch Asset Management AG http://www.fam.ch
-# Coding: Alexander Houben alexander.houben@thor-solutions.ch
+# sybase/base.py
+# Copyright (C) 2010 Michael Bayer mike_mp@zzzcomputing.com
+# get_select_precolumns(), limit_clause() implementation
+# copyright (C) 2007 Fisch Asset Management 
+# AG http://www.fam.ch, with coding by Alexander Houben 
+# alexander.houben@thor-solutions.ch
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -312,8 +315,6 @@ class SybaseDDLCompiler(compiler.DDLCompiler):
             raise exc.InvalidRequestError("The Sybase dialect requires Table-bound "\
                                                    "columns in order to generate DDL")
         seq_col = column.table._autoincrement_column
-
-            
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if seq_col is column:
