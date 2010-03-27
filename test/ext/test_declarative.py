@@ -1914,6 +1914,24 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.name,'testing')
         eq_(obj.foo(),'bar1')
         eq_(obj.baz,'fu')
+    
+    def test_not_allowed(self):
+        class MyMixin:
+            foo = Column(Integer, ForeignKey('bar.id'))
+            
+        def go():
+            class MyModel(Base, MyMixin):
+                __tablename__ = 'foo'
+        
+        assert_raises(sa.exc.InvalidRequestError, go)
+        
+        class MyRelMixin:
+            foo = relationship("Bar")
+        def go():
+            class MyModel(Base, MyRelMixin):
+                __tablename__ = 'foo'
+        assert_raises(sa.exc.InvalidRequestError, go)
+        
         
     def test_table_name_inherited(self):
         
