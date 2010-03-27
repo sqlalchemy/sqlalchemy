@@ -249,46 +249,6 @@ class UserDefinedTest(TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-class ColumnsTest(TestBase, AssertsExecutionResults):
-
-    def testcolumns(self):
-        expectedResults = { 'int_column': 'int_column INTEGER',
-                            'smallint_column': 'smallint_column SMALLINT',
-                            'varchar_column': 'varchar_column VARCHAR(20)',
-                            'numeric_column': 'numeric_column NUMERIC(12, 3)',
-                            'float_column': 'float_column FLOAT(25)',
-                          }
-
-        db = testing.db
-        if testing.against('oracle') or \
-            testing.against('sqlite') or \
-            testing.against('firebird'):
-            expectedResults['float_column'] = 'float_column FLOAT'
-            
-        if testing.against('maxdb'):
-            expectedResults['numeric_column'] = (
-                expectedResults['numeric_column'].replace('NUMERIC', 'FIXED'))
-
-        if testing.against('mssql'):
-            for key, value in expectedResults.items():
-                expectedResults[key] = '%s NULL' % value
-
-        testTable = Table('testColumns', MetaData(db),
-            Column('int_column', Integer),
-            Column('smallint_column', SmallInteger),
-            Column('varchar_column', String(20)),
-            Column('numeric_column', Numeric(12,3)),
-            Column('float_column', Float(25)),
-        )
-
-        for aCol in testTable.c:
-            eq_(
-                expectedResults[aCol.name],
-                db.dialect.ddl_compiler(
-                            db.dialect, schema.CreateTable(testTable)).
-                            get_column_specification(aCol)
-            )
-
 class UnicodeTest(TestBase, AssertsExecutionResults):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
 
