@@ -230,33 +230,33 @@ def relationship(argument, secondary=None, **kwargs):
 
       Available cascades are:
 
-        * ``save-update`` - cascade the :meth:`~sqlalchemy.orm.session.Session.add` 
-          operation.  This cascade applies both to future and
-          past calls to :meth:`~sqlalchemy.orm.session.Session.add`, 
-          meaning new items added to a collection or scalar relationship
-          get placed into the same session as that of the parent, and 
-          also applies to items which have been removed from this 
-          relationship but are still part of unflushed history.
+      * ``save-update`` - cascade the :meth:`~sqlalchemy.orm.session.Session.add` 
+        operation.  This cascade applies both to future and
+        past calls to :meth:`~sqlalchemy.orm.session.Session.add`, 
+        meaning new items added to a collection or scalar relationship
+        get placed into the same session as that of the parent, and 
+        also applies to items which have been removed from this 
+        relationship but are still part of unflushed history.
 
-        * ``merge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.merge`
-          operation
+      * ``merge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.merge`
+        operation
 
-        * ``expunge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expunge`
-          operation
+      * ``expunge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expunge`
+        operation
 
-        * ``delete`` - cascade the :meth:`~sqlalchemy.orm.session.Session.delete`
-          operation
+      * ``delete`` - cascade the :meth:`~sqlalchemy.orm.session.Session.delete`
+        operation
 
-        * ``delete-orphan`` - if an item of the child's type with no
-          parent is detected, mark it for deletion.  Note that this
-          option prevents a pending item of the child's class from being
-          persisted without a parent present.
+      * ``delete-orphan`` - if an item of the child's type with no
+        parent is detected, mark it for deletion.  Note that this
+        option prevents a pending item of the child's class from being
+        persisted without a parent present.
 
-        * ``refresh-expire`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expire` 
-          and :meth:`~sqlalchemy.orm.session.Session.refresh` operations
+      * ``refresh-expire`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expire` 
+        and :meth:`~sqlalchemy.orm.session.Session.refresh` operations
 
-        * ``all`` - shorthand for "save-update,merge, refresh-expire,
-          expunge, delete"
+      * ``all`` - shorthand for "save-update,merge, refresh-expire,
+        expunge, delete"
 
     :param collection_class:
       a class or callable that returns a new list-holding object. will
@@ -306,8 +306,8 @@ def relationship(argument, secondary=None, **kwargs):
       which is already higher up in the chain.  This option applies
       both to joined- and subquery- eager loaders.
 
-    :param lazy=('select'|'joined'|'subquery'|'noload'|'dynamic'):
-      specifies how the related items should be loaded. Values include:
+    :param lazy=('select'|'joined'|'subquery'|'noload'|'dynamic'): specifies 
+      how the related items should be loaded. Values include:
 
       * 'select' - items should be loaded lazily when the property is first
         accessed.
@@ -320,9 +320,9 @@ def relationship(argument, secondary=None, **kwargs):
         which issues a JOIN to a subquery of the original
         statement.
 
-      * 'noload' - no loading should occur at any time.  This is to support
-         "write-only" attributes, or attributes which are
-         populated in some manner specific to the application.
+      * 'noload' - no loading should occur at any time.  This is to 
+        support "write-only" attributes, or attributes which are
+        populated in some manner specific to the application.
 
       * 'dynamic' - the attribute will return a pre-configured
         :class:`~sqlalchemy.orm.query.Query` object for all read 
