@@ -1154,7 +1154,10 @@ class MySQLCompiler(compiler.SQLCompiler):
         
     def visit_match_op(self, binary, **kw):
         return "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (self.process(binary.left), self.process(binary.right))
-        
+
+    def get_from_hint_text(self, table, text):
+        return text
+
     def visit_typeclause(self, typeclause):
         type_ = typeclause.type.dialect_impl(self.dialect)
         if isinstance(type_, sqltypes.Integer):
@@ -1204,11 +1207,11 @@ class MySQLCompiler(compiler.SQLCompiler):
         # support can be added, preferably after dialects are
         # refactored to be version-sensitive.
         return ''.join(
-            (self.process(join.left, asfrom=True),
+            (self.process(join.left, asfrom=True, **kwargs),
              (join.isouter and " LEFT OUTER JOIN " or " INNER JOIN "),
-             self.process(join.right, asfrom=True),
+             self.process(join.right, asfrom=True, **kwargs),
              " ON ",
-             self.process(join.onclause)))
+             self.process(join.onclause, **kwargs)))
 
     def for_update_clause(self, select):
         if select.for_update == 'read':

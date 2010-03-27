@@ -1199,6 +1199,39 @@ class YieldTest(QueryTest):
         except StopIteration:
             pass
 
+class HintsTest(QueryTest, AssertsCompiledSQL):
+    def test_hints(self):
+        from sqlalchemy.dialects import mysql
+        dialect = mysql.dialect()
+        
+        sess = create_session()
+        
+        self.assert_compile(
+            sess.query(User).with_hint(User, 'USE INDEX (col1_index,col2_index)'),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users USE INDEX (col1_index,col2_index)",
+            dialect=dialect
+        )
+
+        self.assert_compile(
+            sess.query(User).with_hint(User, 'WITH INDEX col1_index', 'sybase'),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users",
+            dialect=dialect
+        )
+        
+        ualias = aliased(User)
+        self.assert_compile(
+            sess.query(User, ualias).with_hint(ualias, 'USE INDEX (col1_index,col2_index)').
+                join((ualias, ualias.id > User.id)),
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users INNER JOIN users AS users_1 USE INDEX (col1_index,col2_index) "
+            "ON users.id < users_1.id",
+            dialect=dialect
+        )
+    
+
 class TextTest(QueryTest):
     def test_fulltext(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users order by id").all()

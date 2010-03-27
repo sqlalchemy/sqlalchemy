@@ -33,6 +33,11 @@ CHANGES
     "select".  The old values of True/
     False/None still retain their usual meanings and will remain
     as synonyms for the foreseeable future.
+
+  - Added with_hint() method to Query() construct.  This calls
+    directly down to select().with_hint() and also accepts
+    entities as well as tables and aliases.  See with_hint() in the 
+    SQL section below. [ticket:921]
     
   - Fixed bug in Query whereby calling q.join(prop).from_self(...).
     join(prop) would fail to render the second join outside the
@@ -63,6 +68,11 @@ CHANGES
     in that regard.
     
 - sql
+   - Added with_hint() method to select() construct.  Specify
+     a table/alias, hint text, and optional dialect name, and
+     "hints" will be rendered in the appropriate place in the 
+     statement.  Works for Oracle, Sybase, MySQL.  [ticket:921]
+     
    - Fixed bug introduced in 0.6beta2 where column labels would 
      render inside of column expressions already assigned a label.
      [ticket:1747]

@@ -277,6 +277,9 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
             s += "START AT %s " % (select._offset+1,)
         return s
 
+    def get_from_hint_text(self, table, text):
+        return text
+
     def limit_clause(self, select):
         # Limit in sybase is after the select keyword
         return ""

@@ -84,6 +84,7 @@ class Query(object):
     _params = util.frozendict()
     _attributes = util.frozendict()
     _with_options = ()
+    _with_hints = ()
     
     def __init__(self, entities, session=None):
         self.session = session
@@ -718,6 +719,21 @@ class Query(object):
             for opt in opts:
                 opt.process_query(self)
 
+    @_generative()
+    def with_hint(self, selectable, text, dialect_name=None):
+        """Add an indexing hint for the given entity or selectable to 
+        this :class:`Query`.
+        
+        Functionality is passed straight through to 
+        :meth:`~sqlalchemy.sql.expression.Select.with_hint`, 
+        with the addition that ``selectable`` can be a 
+        :class:`Table`, :class:`Alias`, or ORM entity / mapped class 
+        /etc.
+        """
+        mapper, selectable, is_aliased_class = _entity_info(selectable)
+        
+        self._with_hints += ((selectable, text, dialect_name),)
+        
     @_generative()
     def execution_options(self, **kwargs):
         """ Set non-SQL options which take effect during execution.
@@ -2053,7 +2069,10 @@ class Query(object):
                         order_by=context.order_by,
                         **self._select_args
                     )
-
+            
+            for hint in self._with_hints:
+                inner = inner.with_hint(*hint)
+                
             if self._correlate:
                 inner = inner.correlate(*self._correlate)
 
@@ -2108,6 +2127,10 @@ class Query(object):
                             order_by=context.order_by,
                             **self._select_args
                         )
+
+            for hint in self._with_hints:
+                statement = statement.with_hint(*hint)
+                        
             if self._execution_options:
                 statement = statement.execution_options(**self._execution_options)
 

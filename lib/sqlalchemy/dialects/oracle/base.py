@@ -342,6 +342,11 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_match_op(self, binary, **kw):
         return "CONTAINS (%s, %s)" % (self.process(binary.left), self.process(binary.right))
     
+    def get_select_hint_text(self, byfroms):
+        return " ".join(
+            "/*+ %s */" % text for table, text in byfroms.items()
+        )
+        
     def function_argspec(self, fn, **kw):
         if len(fn.clauses) > 0:
             return compiler.SQLCompiler.function_argspec(self, fn, **kw)
@@ -360,7 +365,9 @@ class OracleCompiler(compiler.SQLCompiler):
         if self.dialect.use_ansi:
             return compiler.SQLCompiler.visit_join(self, join, **kwargs)
         else:
-            return self.process(join.left, asfrom=True) + ", " + self.process(join.right, asfrom=True)
+            kwargs['asfrom'] = True
+            return self.process(join.left, **kwargs) + \
+                        ", " + self.process(join.right, **kwargs)
 
     def _get_nonansi_join_whereclause(self, froms):
         clauses = []
@@ -392,14 +399,18 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_sequence(self, seq):
         return self.dialect.identifier_preparer.format_sequence(seq) + ".nextval"
 
-    def visit_alias(self, alias, asfrom=False, **kwargs):
+    def visit_alias(self, alias, asfrom=False, ashint=False, **kwargs):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
-
-        if asfrom:
+        
+        if asfrom or ashint:
             alias_name = isinstance(alias.name, expression._generated_label) and \
                             self._truncated_identifier("alias", alias.name) or alias.name
-            
-            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + self.preparer.format_alias(alias, alias_name)
+        
+        if ashint:
+            return alias_name
+        elif asfrom:
+            return self.process(alias.original, asfrom=asfrom, **kwargs) + \
+                            " " + self.preparer.format_alias(alias, alias_name)
         else:
             return self.process(alias.original, **kwargs)
 
