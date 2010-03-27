@@ -2207,13 +2207,6 @@ class MySQLTableDefinitionParser(object):
         name, type_, args, notnull = \
               spec['name'], spec['coltype'], spec['arg'], spec['notnull']
 
-        # Convention says that TINYINT(1) columns == BOOLEAN
-        if type_ == 'tinyint' and args == '1':
-            type_ = 'boolean'
-            args = None
-            spec['unsigned'] = None
-            spec['zerofill'] = None
-
         try:
             col_type = self.dialect.ischema_names[type_]
         except KeyError:

@@ -399,8 +399,17 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             roundtrip([False, False, 0, 0, 0], [False, False, 0, 0, 0])
 
             meta2 = MetaData(testing.db)
-            # replace with reflected
             table = Table('mysql_bool', meta2, autoload=True)
+            eq_(colspec(table.c.b3), 'b3 TINYINT(1)')
+            eq_(colspec(table.c.b4), 'b4 TINYINT(1) UNSIGNED')
+
+            meta2 = MetaData(testing.db)
+            table = Table('mysql_bool', meta2, 
+                            Column('b1', BOOLEAN),
+                            Column('b2', Boolean),
+                            Column('b3', BOOLEAN), 
+                            Column('b4', BOOLEAN), 
+                            autoload=True)
             eq_(colspec(table.c.b3), 'b3 BOOL')
             eq_(colspec(table.c.b4), 'b4 BOOL')
 

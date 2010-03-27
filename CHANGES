@@ -87,6 +87,12 @@ CHANGES
      argument 'precision' to both.   'precision' and 
      'timezone' are correctly reflected for both TIME and 
      TIMEZONE types. [ticket:997]
+
+- mysql
+   - No longer guessing that TINYINT(1) should be BOOLEAN
+     when reflecting - TINYINT(1) is returned.  Use Boolean/
+     BOOLEAN in table definition to get boolean conversion
+     behavior.  [ticket:1752]
      
 - oracle
    - The Oracle dialect will issue VARCHAR type definitions
