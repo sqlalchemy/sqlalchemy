@@ -1848,14 +1848,15 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             " myothertable.othername FROM mytable JOIN myothertable ON"
             " mytable.myid = myothertable.otherid) ON othername ="
             " thirdtable.otherstuff"),
-            (s5, oracle_d, 
-              "SELECT /*+ hint3 */ /*+ hint1 */ thirdtable.userid, "
-              "thirdtable.otherstuff "
-              "FROM thirdtable JOIN (SELECT mytable.myid,"
-              " mytable.name, mytable.description, myothertable.otherid,"
-              " myothertable.othername FROM mytable JOIN myothertable ON"
-              " mytable.myid = myothertable.otherid) ON othername ="
-              " thirdtable.otherstuff"),
+# TODO: figure out dictionary ordering solution here
+#            (s5, oracle_d, 
+#              "SELECT /*+ hint3 */ /*+ hint1 */ thirdtable.userid, "
+#              "thirdtable.otherstuff "
+#              "FROM thirdtable JOIN (SELECT mytable.myid,"
+#              " mytable.name, mytable.description, myothertable.otherid,"
+#              " myothertable.othername FROM mytable JOIN myothertable ON"
+#              " mytable.myid = myothertable.otherid) ON othername ="
+#              " thirdtable.otherstuff"),
              (s6, oracle_d, 
                 """SELECT /*+ "QuotedName" idx1 */ "QuotedName".col1 """
                 """FROM "QuotedName" WHERE "QuotedName".col1 > :col1_1"""),
