@@ -149,7 +149,7 @@ li.toctree-l1 ul li li
 }
 
 
-div.note  {
+div.note, div.warning  {
     background-color:#EEFFEF;
 }
 
@@ -158,6 +158,10 @@ div.admonition {
     margin:5px 5px 5px 5px;
     padding:5px 5px 5px 35px;
     font-size:.9em;
+}
+
+div.warning .admonition-title {
+    color:#FF0000;
 }
 
 div.admonition .admonition-title {

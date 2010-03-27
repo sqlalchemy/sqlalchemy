@@ -1,67 +1,92 @@
 """A custom list that manages index/position information for its children.
 
-``orderinglist`` is a custom list collection implementation for mapped
-relationships that keeps an arbitrary "position" attribute on contained objects in
-sync with each object's position in the Python list.
+:author: Jason Kirtland
 
-The collection acts just like a normal Python ``list``, with the added
-behavior that as you manipulate the list (via ``insert``, ``pop``, assignment,
-deletion, what have you), each of the objects it contains is updated as needed
-to reflect its position.  This is very useful for managing ordered relationships
-which have a user-defined, serialized order::
+``orderinglist`` is a helper for mutable ordered relationships.  It will intercept
+list operations performed on a relationship collection and automatically
+synchronize changes in list position with an attribute on the related objects.
+(See :ref:`advdatamapping_entitycollections` for more information on the general pattern.)
 
-  >>> from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-  >>> from sqlalchemy.orm import mapper, relationship
-  >>> from sqlalchemy.ext.orderinglist import ordering_list
+Example: Two tables that store slides in a presentation.  Each slide
+has a number of bullet points, displayed in order by the 'position'
+column on the bullets table.  These bullets can be inserted and re-ordered
+by your end users, and you need to update the 'position' column of all
+affected rows when changes are made.
 
-A simple model of users their "top 10" things::
+.. sourcecode:: python+sql
 
-  >>> metadata = MetaData()
-  >>> users = Table('users', metadata,
-  ...               Column('id', Integer, primary_key=True))
-  >>> blurbs = Table('user_top_ten_list', metadata,
-  ...               Column('id', Integer, primary_key=True),
-  ...               Column('user_id', Integer, ForeignKey('users.id')),
-  ...               Column('position', Integer),
-  ...               Column('blurb', String(80)))
-  >>> class User(object):
-  ...   pass
-  ...
-  >>> class Blurb(object):
-  ...    def __init__(self, blurb):
-  ...        self.blurb = blurb
-  ...
-  >>> mapper(User, users, properties={
-  ...  'topten': relationship(Blurb, collection_class=ordering_list('position'),
-  ...                     order_by=[blurbs.c.position])})
-  <Mapper ...>
-  >>> mapper(Blurb, blurbs)
-  <Mapper ...>
+    slides_table = Table('Slides', metadata,
+                         Column('id', Integer, primary_key=True),
+                         Column('name', String))
 
-Acts just like a regular list::
+    bullets_table = Table('Bullets', metadata,
+                          Column('id', Integer, primary_key=True),
+                          Column('slide_id', Integer, ForeignKey('Slides.id')),
+                          Column('position', Integer),
+                          Column('text', String))
 
-  >>> u = User()
-  >>> u.topten.append(Blurb('Number one!'))
-  >>> u.topten.append(Blurb('Number two!'))
+     class Slide(object):
+         pass
+     class Bullet(object):
+         pass
 
-But the ``.position`` attibute is set automatically behind the scenes::
+     mapper(Slide, slides_table, properties={
+           'bullets': relationship(Bullet, order_by=[bullets_table.c.position])
+     })
+     mapper(Bullet, bullets_table)
 
-  >>> assert [blurb.position for blurb in u.topten] == [0, 1]
+The standard relationship mapping will produce a list-like attribute on each Slide
+containing all related Bullets, but coping with changes in ordering is totally
+your responsibility.  If you insert a Bullet into that list, there is no
+magic- it won't have a position attribute unless you assign it it one, and
+you'll need to manually renumber all the subsequent Bullets in the list to
+accommodate the insert.
 
-The objects will be renumbered automaticaly after any list-changing operation,
-for example an ``insert()``::
+An ``orderinglist`` can automate this and manage the 'position' attribute on all
+related bullets for you.
 
-  >>> u.topten.insert(1, Blurb('I am the new Number Two.'))
-  >>> assert [blurb.position for blurb in u.topten] == [0, 1, 2]
-  >>> assert u.topten[1].blurb == 'I am the new Number Two.'
-  >>> assert u.topten[1].position == 1
+.. sourcecode:: python+sql
+        
+    mapper(Slide, slides_table, properties={
+           'bullets': relationship(Bullet,
+                               collection_class=ordering_list('position'),
+                               order_by=[bullets_table.c.position])
+    })
+    mapper(Bullet, bullets_table)
 
-Numbering and serialization are both highly configurable.  See the docstrings
-in this module and the main SQLAlchemy documentation for more information and
-examples.
+    s = Slide()
+    s.bullets.append(Bullet())
+    s.bullets.append(Bullet())
+    s.bullets[1].position
+    >>> 1
+    s.bullets.insert(1, Bullet())
+    s.bullets[2].position
+    >>> 2
 
-The :class:`~sqlalchemy.ext.orderinglist.ordering_list` factory function is the
-ORM-compatible constructor for `OrderingList` instances.
+Use the ``ordering_list`` function to set up the ``collection_class`` on relationships
+(as in the mapper example above).  This implementation depends on the list
+starting in the proper order, so be SURE to put an order_by on your relationship.  
+
+.. warning:: ``ordering_list`` only provides limited functionality when a primary
+  key column or unique column is the target of the sort.  Since changing the order of 
+  entries often means that two rows must trade values, this is not possible when 
+  the value is constrained by a primary key or unique constraint, since one of the rows
+  would temporarily have to point to a third available value so that the other row
+  could take its old value.   ``ordering_list`` doesn't do any of this for you, 
+  nor does SQLAlchemy itself.
+
+``ordering_list`` takes the name of the related object's ordering attribute as
+an argument.  By default, the zero-based integer index of the object's
+position in the ``ordering_list`` is synchronized with the ordering attribute:
+index 0 will get position 0, index 1 position 1, etc.  To start numbering at 1
+or some other integer, provide ``count_from=1``.
+
+Ordering values are not limited to incrementing integers.  Almost any scheme
+can implemented by supplying a custom ``ordering_func`` that maps a Python list
+index to any value you require.  
+
+
+
 
 """
 from sqlalchemy.orm.collections import collection
@@ -287,8 +312,4 @@ class OrderingList(list):
             not func.__doc__ and hasattr(list, func_name)):
             func.__doc__ = getattr(list, func_name).__doc__
     del func_name, func
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod(optionflags=doctest.ELLIPSIS)
 
