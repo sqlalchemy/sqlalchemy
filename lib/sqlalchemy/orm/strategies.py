@@ -611,8 +611,17 @@ class LoadLazyAttribute(object):
         if prop.order_by:
             q = q.order_by(*util.to_list(prop.order_by))
 
+        for rev in prop._reverse_property:
+            # reverse props that are MANYTOONE are loading *this* 
+            # object from get(), so don't need to eager out to those.
+            if rev.direction is interfaces.MANYTOONE and \
+                        rev._use_get and \
+                        not isinstance(rev.strategy, LazyLoader):
+                q = q.options(EagerLazyOption(rev.key, lazy='select'))
+
         if state.load_options:
             q = q._conditional_options(*state.load_options)
+            
         q = q.filter(strategy.lazy_clause(state))
 
         result = q.all()

@@ -588,7 +588,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.resolve_artifact_names
     def test_limit_4(self):
-        # tests the LIMIT/OFFSET aliasing on a mapper against a select.   original issue from ticket #904
+        # tests the LIMIT/OFFSET aliasing on a mapper 
+        # against a select.   original issue from ticket #904
         sel = sa.select([users, addresses.c.email_address],
                         users.c.id==addresses.c.user_id).alias('useralias')
         mapper(User, sel, properties={
@@ -606,8 +607,33 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
     @testing.resolve_artifact_names
+    def test_useget_cancels_eager(self):
+        """test that a one to many lazyload cancels the unnecessary
+        eager many-to-one join on the other side."""
+        
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user':relationship(User, lazy='joined', backref='addresses')
+        })
+        
+        sess = create_session()
+        u1 = sess.query(User).filter(User.id==8).one()
+        def go():
+            eq_(u1.addresses[0].user, u1)
+        self.assert_sql_execution(testing.db, go, 
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                "addresses_user_id, addresses.email_address AS "
+                "addresses_email_address FROM addresses WHERE :param_1 = "
+                "addresses.user_id",
+             {'param_1': 8})
+        )
+    
+    
+    @testing.resolve_artifact_names
     def test_manytoone_limit(self):
-        """test that the subquery wrapping only occurs with limit/offset and m2m or o2m joins present."""
+        """test that the subquery wrapping only occurs with 
+        limit/offset and m2m or o2m joins present."""
         
         mapper(User, users, properties=odict(
             orders=relationship(Order, backref='user')

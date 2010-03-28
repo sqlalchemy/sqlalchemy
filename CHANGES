@@ -4,6 +4,14 @@
 CHANGES
 =======
 
+0.6.0
+=====
+
+- orm
+  - A collection lazy load will switch off default 
+    eagerloading on the reverse many-to-one side, since 
+    that loading is by definition unnecessary.  [ticket:1495]
+
 0.6beta3
 ========
 
