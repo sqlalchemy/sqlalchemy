@@ -1671,26 +1671,26 @@ Which type of loading to use typically comes down to optimizing the tradeoff bet
    
 * Many to One Reference
 
-  * When using the default lazy loading, a load of 100 objects will like in the case of the collection
-    emit as many as 101 SQL statements.  However - there is a significant exception to this, in that
-    if the many-to-one reference is a simple foreign key reference to the target's primary key, each
-    reference will be checked first in the current identity map using ``query.get()``.  So here, 
-    if the collection of objects references a relatively small set of target objects, or the full set
-    of possible target objects have already been loaded into the session and are strongly referenced,
-    using the default of `lazy='select'` is by far the most efficient way to go.
+ * When using the default lazy loading, a load of 100 objects will like in the case of the collection
+   emit as many as 101 SQL statements.  However - there is a significant exception to this, in that
+   if the many-to-one reference is a simple foreign key reference to the target's primary key, each
+   reference will be checked first in the current identity map using ``query.get()``.  So here, 
+   if the collection of objects references a relatively small set of target objects, or the full set
+   of possible target objects have already been loaded into the session and are strongly referenced,
+   using the default of `lazy='select'` is by far the most efficient way to go.
   
-  * When using joined loading, the load of 100 objects will emit only one SQL statement.   The join
-    will be a LEFT OUTER JOIN, and the total number of rows will be equal to 100 in all cases.  
-    If you know that each parent definitely has a child (i.e. the foreign
-    key reference is NOT NULL), the joined load can be configured with ``innerjoin=True``, which is
-    usually specified within the :func:`~sqlalchemy.orm.relationship`.   For a load of objects where
-    there are many possible target references which may have not been loaded already, joined loading
-    with an INNER JOIN is extremely efficient.
+ * When using joined loading, the load of 100 objects will emit only one SQL statement.   The join
+   will be a LEFT OUTER JOIN, and the total number of rows will be equal to 100 in all cases.  
+   If you know that each parent definitely has a child (i.e. the foreign
+   key reference is NOT NULL), the joined load can be configured with ``innerjoin=True``, which is
+   usually specified within the :func:`~sqlalchemy.orm.relationship`.   For a load of objects where
+   there are many possible target references which may have not been loaded already, joined loading
+   with an INNER JOIN is extremely efficient.
    
-  * Subquery loading will issue a second load for all the child objects, so for a load of 100 objects
-    there would be two SQL statements emitted.  There's probably not much advantage here over
-    joined loading, however, except perhaps that subquery loading can use an INNER JOIN in all cases
-    whereas joined loading requires that the foreign key is NOT NULL.
+ * Subquery loading will issue a second load for all the child objects, so for a load of 100 objects
+   there would be two SQL statements emitted.  There's probably not much advantage here over
+   joined loading, however, except perhaps that subquery loading can use an INNER JOIN in all cases
+   whereas joined loading requires that the foreign key is NOT NULL.
 
 Routing Explicit Joins/Statements into Eagerly Loaded Collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
