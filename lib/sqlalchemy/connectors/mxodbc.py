@@ -9,6 +9,7 @@ and 2008, using the SQL Server Native driver. However, it is
 possible for this to be used on other database platforms.
 
 For more info on mxODBC, see http://www.egenix.com/
+
 """
 
 import sys

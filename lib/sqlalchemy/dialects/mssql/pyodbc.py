@@ -5,6 +5,9 @@ pyodbc is available at:
 
     http://pypi.python.org/pypi/pyodbc/
 
+Connecting
+^^^^^^^^^^
+
 Examples of pyodbc connection string URLs:
 
 * ``mssql+pyodbc://mydsn`` - connects using the specified DSN named ``mydsn``.

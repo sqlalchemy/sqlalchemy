@@ -18,6 +18,7 @@ current versions of SQLAlchemy.
     oracle
     postgresql
     sqlite
+    sybase
 
 Unsupported Databases
 ---------------------
@@ -31,5 +32,4 @@ ported to current versions of SQLAlchemy.
     access
     informix
     maxdb
-    sybase
 

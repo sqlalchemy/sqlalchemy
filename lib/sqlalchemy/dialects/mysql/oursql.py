@@ -1,5 +1,16 @@
 """Support for the MySQL database via the oursql adapter.
 
+OurSQL is available at:
+
+    http://packages.python.org/oursql/
+    
+Connecting
+-----------
+
+Connect string format::
+
+    mysql+oursql://<user>:<password>@<host>[:<port>]/<dbname>
+
 Character Sets
 --------------
 

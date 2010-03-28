@@ -7,6 +7,10 @@ PyODBC
 ------
 .. automodule:: sqlalchemy.dialects.mssql.pyodbc
 
+mxODBC
+------
+.. automodule:: sqlalchemy.dialects.mssql.mxodbc
+
 pymssql
 -------
 .. automodule:: sqlalchemy.dialects.mssql.pymssql

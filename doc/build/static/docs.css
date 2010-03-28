@@ -2,12 +2,13 @@
 
 body, td {
 	font-family: verdana, sans-serif;
-	font-size:.95em;
+	font-size:.9em;
 }
 
 body {
 	background-color: #FDFBFC;
-	margin:20px 20px 20px 20px;
+	margin:38px;
+	color:#333333;
 }
 
 form {
@@ -20,7 +21,10 @@ p {
 }
 
 
-a {font-weight:normal; text-decoration:underline;}
+a {
+        font-weight:normal; 
+        text-decoration:none;
+}
 a:link {color:#0000FF;}
 a:visited {color:#0000FF;}
 a:active {color:#0000FF;}
@@ -57,7 +61,7 @@ strong a {
 
 .topnav .prevnext {
     padding: 5px 0px 0px 0px;
-    font-size: 0.8em
+    /*font-size: 0.8em*/
 }
 
 h1, h2, h3, h4, h5 {

@@ -1,5 +1,18 @@
 """Support for the MySQL database via the MySQL-python adapter.
 
+MySQL-Python is available at:
+
+    http://sourceforge.net/projects/mysql-python
+    
+At least version 1.2.1 or 1.2.2 should be used.
+
+Connecting
+-----------
+
+Connect string format::
+
+    mysql+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
+    
 Character Sets
 --------------
 
@@ -14,10 +27,21 @@ enabling ``use_unicode`` in the driver by default.  For regular encoded
 strings, also pass ``use_unicode=0`` in the connection arguments::
 
   # set client encoding to utf8; all strings come back as unicode
-  create_engine('mysql:///mydb?charset=utf8')
+  create_engine('mysql+mysqldb:///mydb?charset=utf8')
 
   # set client encoding to utf8; all strings come back as utf8 str
-  create_engine('mysql:///mydb?charset=utf8&use_unicode=0')
+  create_engine('mysql+mysqldb:///mydb?charset=utf8&use_unicode=0')
+
+Known Issues
+-------------
+
+MySQL-python at least as of version 1.2.2 has a serious memory leak related
+to unicode conversion, a feature which is disabled via ``use_unicode=0``.   
+The recommended connection form with SQLAlchemy is::
+
+    engine = create_engine('mysql://scott:tiger@localhost/test?charset=utf8&use_unicode=0', pool_recycle=3600)
+
+
 """
 
 import re
