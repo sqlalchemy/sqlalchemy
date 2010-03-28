@@ -100,6 +100,6 @@ print [(item.description, item.price)
        for item in order.items]
 
 # print customers who bought 'MySQL Crowbar' on sale
-orders = session.query(Order).join(['itemassociations', 'item']).filter(
+orders = session.query(Order).join('itemassociations', 'item').filter(
     and_(Item.description=='MySQL Crowbar', Item.price > OrderItem.price))
 print [order.customer_name for order in orders]

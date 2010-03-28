@@ -118,16 +118,16 @@ class MyCollectionAdapter(object):
 
     def fire_append_event(self, item, initiator=None):
         if initiator is not False and item is not None:
-            self.state.get_impl(self.key).fire_append_event(self.state, item,
+            self.state.get_impl(self.key).fire_append_event(self.state, self.state.dict, item,
                                                             initiator)
 
     def fire_remove_event(self, item, initiator=None):
         if initiator is not False and item is not None:
-            self.state.get_impl(self.key).fire_remove_event(self.state, item,
+            self.state.get_impl(self.key).fire_remove_event(self.state, self.state.dict, item,
                                                             initiator)
 
     def fire_pre_remove_event(self, initiator=None):
-        self.state.get_impl(self.key).fire_pre_remove_event(self.state,
+        self.state.get_impl(self.key).fire_pre_remove_event(self.state, self.state.dict, 
                                                             initiator)
 
 class MyCollection(object):
