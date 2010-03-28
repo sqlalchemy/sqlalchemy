@@ -3,7 +3,7 @@
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
     String, ForeignKey, Float, DateTime)
 from sqlalchemy.orm import sessionmaker, mapper, relationship
-from sqlalchemy.orm.shard import ShardedSession
+from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.sql import operators
 from sqlalchemy import sql
 import datetime

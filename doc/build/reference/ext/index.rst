@@ -17,4 +17,5 @@ core behavior.
     serializer
     sqlsoup
     compiler
+    horizontal_shard
 

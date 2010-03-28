@@ -116,7 +116,12 @@ CHANGES
     
    - relationships and columns with foreign keys aren't 
      allowed on declarative mixins, sorry.  [ticket:1751]
-     
+
+- ext
+    - The sqlalchemy.orm.shard module now becomes an extension,
+      sqlalchemy.ext.horizontal_shard.   The old import 
+      works with a deprecation warning.
+      
 0.6beta2
 ========
 

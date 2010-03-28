@@ -107,10 +107,11 @@ def create_engine(*args, **kwargs):
     arguments sent as options to the dialect and resulting Engine.
 
     The URL is a string in the form
-    ``dialect://user:password@host/dbname[?key=value..]``, where
-    ``dialect`` is a name such as ``mysql``, ``oracle``, ``postgresql``,
-    etc.  Alternatively, the URL can be an instance of
-    :class:`~sqlalchemy.engine.url.URL`.
+    ``dialect+driver://user:password@host/dbname[?key=value..]``, where
+    ``dialect`` is a database name such as ``mysql``, ``oracle``, 
+    ``postgresql``, etc., and ``driver`` the name of a DBAPI, such as 
+    ``psycopg2``, ``pyodbc``, ``cx_oracle``, etc.  Alternatively, 
+    the URL can be an instance of :class:`~sqlalchemy.engine.url.URL`.
 
     `**kwargs` takes a wide variety of options which are routed 
     towards their appropriate components.  Arguments may be 
