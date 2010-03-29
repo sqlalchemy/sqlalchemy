@@ -12,6 +12,21 @@ CHANGES
     eagerloading on the reverse many-to-one side, since 
     that loading is by definition unnecessary.  [ticket:1495]
 
+  - Session.refresh() now does an equivalent expire()
+    on the given instance first, so that the "refresh-expire"
+    cascade is propagated.   Previously, refresh() was
+    not affected in any way by the presence of "refresh-expire"
+    cascade.   This is a change in behavior versus that
+    of 0.6beta2, where the "lockmode" flag passed to refresh()
+    would cause a version check to occur.  Since the instance
+    is first expired, refresh() always upgrades the object
+    to the most recent version.
+    
+  - The 'refresh-expire' cascade, when reaching a pending object,
+    will expunge the object if the cascade also includes
+    "delete-orphan", or will simply detach it otherwise.
+    [ticket:1754]
+    
 0.6beta3
 ========
 

@@ -742,6 +742,8 @@ class RelationshipProperty(StrategizedProperty):
         else:
             instances = state.value_as_iterable(self.key, passive=passive)
         
+        skip_pending = type_ == 'refresh-expire' and 'delete-orphan' not in self.cascade
+        
         if instances:
             for c in instances:
                 if c is not None and \
@@ -757,12 +759,17 @@ class RelationshipProperty(StrategizedProperty):
                                                 str(self.parent.class_), 
                                                 str(c.__class__)
                                             ))
+                    instance_state = attributes.instance_state(c)
+                    
+                    if skip_pending and not instance_state.key:
+                        continue
+                        
                     visited_instances.add(c)
 
                     # cascade using the mapper local to this 
                     # object, so that its individual properties are located
-                    instance_mapper = object_mapper(c)
-                    yield (c, instance_mapper, attributes.instance_state(c))
+                    instance_mapper = instance_state.manager.mapper
+                    yield (c, instance_mapper, instance_state)
 
     def _add_reverse_property(self, key):
         other = self.mapper._get_property(key)

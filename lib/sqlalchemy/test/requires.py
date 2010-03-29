@@ -149,6 +149,18 @@ def sequences(fn):
         no_support('sybase', 'no SEQUENCE support'),
         )
 
+def update_nowait(fn):
+    """Target database must support SELECT...FOR UPDATE NOWAIT"""
+    return _chain_decorators_on(
+        fn,
+        no_support('access', 'no FOR UPDATE NOWAIT support'),
+        no_support('firebird', 'no FOR UPDATE NOWAIT support'),
+        no_support('mssql', 'no FOR UPDATE NOWAIT support'),
+        no_support('mysql', 'no FOR UPDATE NOWAIT support'),
+        no_support('sqlite', 'no FOR UPDATE NOWAIT support'),
+        no_support('sybase', 'no FOR UPDATE NOWAIT support'),
+    )
+    
 def subqueries(fn):
     """Target database must support subqueries."""
     return _chain_decorators_on(
