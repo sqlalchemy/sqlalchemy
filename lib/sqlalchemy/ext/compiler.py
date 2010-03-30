@@ -165,7 +165,7 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
 
 def compiles(class_, *specs):
     def decorate(fn):
-        existing = getattr(class_, '_compiler_dispatcher', None)
+        existing = class_.__dict__.get('_compiler_dispatcher', None)
         if not existing:
             existing = _dispatcher()
 

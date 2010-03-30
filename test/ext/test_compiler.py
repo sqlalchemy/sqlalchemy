@@ -176,6 +176,61 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             "timezone('utc', current_timestamp)",
             dialect=postgresql.dialect()
         )
-            
+    
+    def test_subclasses_one(self):
+        class Base(FunctionElement):
+            name = 'base'
         
+        class Sub1(Base):
+            name = 'sub1'
+
+        class Sub2(Base):
+            name = 'sub2'
+        
+        @compiles(Base)
+        def visit_base(element, compiler, **kw):
+            return element.name
+
+        @compiles(Sub1)
+        def visit_base(element, compiler, **kw):
+            return "FOO" + element.name
+
+        self.assert_compile(
+            select([Sub1(), Sub2()]),
+            'SELECT FOOsub1, sub2',
+            use_default_dialect=True
+        )
+    
+    def test_subclasses_two(self):
+        class Base(FunctionElement):
+            name = 'base'
+        
+        class Sub1(Base):
+            name = 'sub1'
+
+        @compiles(Base)
+        def visit_base(element, compiler, **kw):
+            return element.name
+
+        class Sub2(Base):
+            name = 'sub2'
+        
+        class SubSub1(Sub1):
+            name = 'subsub1'
+            
+        self.assert_compile(
+            select([Sub1(), Sub2(), SubSub1()]),
+            'SELECT sub1, sub2, subsub1',
+            use_default_dialect=True
+        )
+
+        @compiles(Sub1)
+        def visit_base(element, compiler, **kw):
+            return "FOO" + element.name
+
+        self.assert_compile(
+            select([Sub1(), Sub2(), SubSub1()]),
+            'SELECT FOOsub1, sub2, FOOsubsub1',
+            use_default_dialect=True
+        )
         

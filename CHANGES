@@ -26,7 +26,13 @@ CHANGES
     will expunge the object if the cascade also includes
     "delete-orphan", or will simply detach it otherwise.
     [ticket:1754]
-    
+
+- ext
+   - the compiler extension now allows @compiles decorators
+     on base classes that extend to child classes, @compiles
+     decorators on child classes that aren't broken by a 
+     @compiles decorator on the base class.
+   
 0.6beta3
 ========
 
