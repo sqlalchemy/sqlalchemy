@@ -1285,10 +1285,6 @@ class RelationshipProperty(StrategizedProperty):
                 source_selectable, 
                 dest_selectable, secondary, target_adapter)
 
-    def get_flush_actions(self, uowtransaction, records, state):
-        if not self.viewonly:
-            return self._depency_processor.get_flush_actions(uowtransaction, records, state)
-
 
 PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)

@@ -14,7 +14,7 @@ dependencies at flush time.
 
 from sqlalchemy import sql, util
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy.orm import attributes, exc, sync
+from sqlalchemy.orm import attributes, exc, sync, unitofwork
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 
 
@@ -188,18 +188,42 @@ class DependencyProcessor(object):
         return "%s(%s)" % (self.__class__.__name__, self.prop)
 
 class OneToManyDP(DependencyProcessor):
-    def register_dependencies(self, uowcommit):
+    
+    def per_mapper_flush_actions(self, uow):
         if self.post_update:
-            uowcommit.register_dependency(self.mapper, self.dependency_marker)
-            uowcommit.register_dependency(self.parent, self.dependency_marker)
+            # ...
         else:
-            uowcommit.register_dependency(self.parent, self.mapper)
+            after_save = unitofwork.ProcessAll(uow, self, False)
+            before_delete = unitofwork.ProcessAll(uow, self, True)
+            
+            parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
+            child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
+            
+            parent_deletes = unitofwork.DeleteAll(uow, self.parent)
+            child_deletes = unitofwork.DeleteAll(uow, self.mapper)
+            
+            uowtransaction.dependencies.update([
+                (parent_saves, after_save),
+                (after_save, child_saves),
+                (child_deletes, before_delete),
+                (before_delete, parent_deletes)
+            ])
+            
+        
+#    def register_dependencies(self, uowcommit):
+#        if self.post_update:
+#            uowcommit.register_dependency(self.mapper, self.dependency_marker)
+#            uowcommit.register_dependency(self.parent, self.dependency_marker)
+#        else:
+#            uowcommit.register_dependency(self.parent, self.mapper)
+#
+#
+#    def register_processors(self, uowcommit):
+#        if self.post_update:
+#            uowcommit.register_processor(self.dependency_marker, self, self.parent)
+#        else:
+#            uowcommit.register_processor(self.parent, self, self.parent)
 
-    def register_processors(self, uowcommit):
-        if self.post_update:
-            uowcommit.register_processor(self.dependency_marker, self, self.parent)
-        else:
-            uowcommit.register_processor(self.parent, self, self.parent)
 
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         if delete:

@@ -11,6 +11,7 @@ class DependencySortTest(TestBase):
         for parent, child in tuples:
             deps[parent].add(child)
         
+        assert len(result)
         for i, node in enumerate(result):
             for n in result[i:]:
                 assert node not in deps[n]
@@ -35,8 +36,7 @@ class DependencySortTest(TestBase):
             (node4, subnode3),
             (node4, subnode4)
         ]
-        head = topological.sort(tuples, [])
-        self.assert_sort(tuples, head)
+        self.assert_sort(tuples, topological.sort(tuples, []))
 
     def testsort2(self):
         node1 = 'node1'
@@ -53,28 +53,7 @@ class DependencySortTest(TestBase):
             (node5, node6),
             (node6, node2)
         ]
-        head = topological.sort(tuples, [node7])
-        self.assert_sort(tuples, head)
-
-    def testsort3(self):
-        ['Mapper|Keyword|keywords,Mapper|IKAssociation|itemkeywords', 'Mapper|Item|items,Mapper|IKAssociation|itemkeywords']
-        node1 = 'keywords'
-        node2 = 'itemkeyowrds'
-        node3 = 'items'
-        tuples = [
-            (node1, node2),
-            (node3, node2),
-            (node1,node3)
-        ]
-        head1 = topological.sort(tuples, [node1, node2, node3])
-        head2 = topological.sort(tuples, [node3, node1, node2])
-        head3 = topological.sort(tuples, [node3, node2, node1])
-
-        # TODO: figure out a "node == node2" function
-        #self.assert_(str(head1) == str(head2) == str(head3))
-        print "\n" + str(head1)
-        print "\n" + str(head2)
-        print "\n" + str(head3)
+        self.assert_sort(tuples, topological.sort(tuples, [node7]))
 
     def testsort4(self):
         node1 = 'keywords'
@@ -87,8 +66,7 @@ class DependencySortTest(TestBase):
             (node1, node3),
             (node3, node2)
         ]
-        head = topological.sort(tuples, [])
-        self.assert_sort(tuples, head)
+        self.assert_sort(tuples, topological.sort(tuples, []))
 
     def testcircular(self):
         node1 = 'node1'
@@ -107,6 +85,8 @@ class DependencySortTest(TestBase):
         allitems = [node1, node2, node3, node4]
         assert_raises(exc.CircularDependencyError, topological.sort, tuples, allitems)
 
+        # TODO: test find_cycles
+
     def testcircular2(self):
         # this condition was arising from ticket:362
         # and was not treated properly by topological sort
@@ -123,20 +103,34 @@ class DependencySortTest(TestBase):
         ]
         assert_raises(exc.CircularDependencyError, topological.sort, tuples, [])
 
+        # TODO: test find_cycles
+
     def testcircular3(self):
         question, issue, providerservice, answer, provider = "Question", "Issue", "ProviderService", "Answer", "Provider"
 
-        tuples = [(question, issue), (providerservice, issue), (provider, question), (question, provider), (providerservice, question), (provider, providerservice), (question, answer), (issue, question)]
+        tuples = [(question, issue), (providerservice, issue), (provider, question), 
+                    (question, provider), (providerservice, question), 
+                    (provider, providerservice), (question, answer), (issue, question)]
 
         assert_raises(exc.CircularDependencyError, topological.sort, tuples, [])
-
+        
+        # TODO: test find_cycles
+        
     def testbigsort(self):
         tuples = [(i, i + 1) for i in range(0, 1500, 2)]
-        head = topological.sort(tuples, [])
+        self.assert_sort(
+            tuples,
+            topological.sort(tuples, [])
+        )
 
 
     def testids(self):
         # ticket:1380 regression: would raise a KeyError
-        topological.sort([(id(i), i) for i in range(3)], [])
+        tuples = [(id(i), i) for i in range(3)]
+        self.assert_sort(
+            tuples,
+            topological.sort(tuples, [])
+        )
+        
 
 

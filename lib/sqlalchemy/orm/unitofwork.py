@@ -88,12 +88,12 @@ class UOWTransaction(object):
         # information.
         self.attributes = {}
         
-        self.recs = []
-        self.states = set()
-        self.dependencies = []
-        
-    def _dependency(self, rec1, rec2):
-        self.dependencies.append((rec1, rec2))
+        self.mappers = collections.defaultdict(set)
+        self.actions = {}
+        self.saves = set()
+        self.deletes = set()
+        self.etc = set()
+        self.dependencies = set()
         
     def get_attribute_history(self, state, key, passive=True):
         hashkey = ("history", state, key)
@@ -129,21 +129,39 @@ class UOWTransaction(object):
             return
             
         mapper = _state_mapper(state)
+        self.mappers[mapper].add(state)
+        self._state_collection(isdelete, listonly).add(state)
+    
+    def register_dependency(self, parent, child):
+        self.dependencies.add((parent, child))
         
-        self.states.add(state)
+    def _state_collection(self, isdelete, listonly):
+        if isdelete:
+            return self.deletes
+        elif not listonly:
+            return self.saves
+        else:
+            return self.etc
         
-        self.recs.extend(
-            mapper.get_flush_actions(self, state)
-        )
-        
-            
+    def states_for_mapper(self, mapper, isdelete, listonly):
+        return iter(self._state_collection(isdelete, listonly)[mapper])
+
+    def states_for_mapper_hierarchy(self, mapper, isdelete, listonly):
+        collection = self._state_collection(isdelete, listonly)
+        for mapper in mapper.base_mapper.polymorphic_iterator():
+            for state in collection[mapper]:
+                yield state
+                
     def execute(self):
-        # so here, thinking we could figure out a way to get
-        # consecutive, "compatible" records to collapse together,
-        # i.e. a bunch of updates become an executemany(), etc.
-        # even though we usually need individual executes.
-        for rec in topological.sort(self.dependencies, self.recs):
-            rec.execute()
+        
+        for mapper in self.mappers:
+            mapper.per_mapper_flush_actions(self)
+
+#        if cycles:
+#            break up actions into finer grained actions along those cycles
+            
+#        for rec in topological.sort(self.dependencies, self.actions):
+#            rec.execute()
 
     def finalize_flush_changes(self):
         """mark processed objects as clean / deleted after a successful flush().
@@ -160,8 +178,40 @@ class UOWTransaction(object):
 
 log.class_logger(UOWTransaction)
 
-# TODO: don't know what these should be.
-# its very hard not to use subclasses to define behavior here.
 class Rec(object):
-    pass
+    def __new__(self, uow, *args):
+        key = (self.__class__, ) + args
+        if key in uow.actions:
+            return uow.actions[key]
+        else:
+            uow.actions[key] = ret = object.__new__(self)
+            return ret
+
+class SaveUpdateAll(Rec):
+    def __init__(self, uow, mapper):
+        self.mapper = mapper
+
+class DeleteAll(Rec):
+    def __init__(self, mapper):
+        self.mapper = mapper
+
+class ProcessAll(Rec):
+    def __init__(self, uow, dependency_processor, delete):
+        self.dependency_processor = dependency_processor
+        self.delete = delete
+
+class ProcessState(Rec):
+    def __init__(self, uow, dependency_processor, delete, state):
+        self.dependency_processor = dependency_processor
+        self.delete = delete
+        self.state = state
+        
+class SaveUpdateState(Rec):
+    def __init__(self, uow, state):
+        self.state = state
+
+class DeleteState(Rec):
+    def __init__(self, uow, state):
+        self.state = state
+
 

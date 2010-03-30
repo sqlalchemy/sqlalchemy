@@ -1254,35 +1254,14 @@ class Mapper(object):
         
         return sqlutil.sort_tables(l)
         
-    
-    def get_flush_actions(self, uowtransaction, state):
-        if isdelete:
-            type_ = Delete
-            tables = reversed(mapper._sorted_table_list)
-        elif not _state_has_identity(state):
-            type_ = Insert
-            tables = mapper._sorted_table_list
-        else:
-            type_ = Update
-            tables = mapper._sorted_table_list
-            
-        recs = [
-            type_(state, table)
-            for table in tables
-        ]
-        for i, rec in enumerate(recs):
-            if i > 0:
-                self._dependency(recs[i - 1], recs[i])
-            recs.append(SyncKeys(state, recs[i - 1].table, recs[i].table))
-
-        dep_recs = []
-        for prop in mapper._props.values():
-            dp = prop.get_flush_actions(uowtransaction, recs, state)
-            if dp:
-                dep_recs.extend(dp)
+    def per_mapper_flush_actions(self, uowtransaction):
+        unitofwork.SaveUpdateAll(uow, self.base_mapper)
+        unitofwork.DeleteAll(uow, self.base_mapper)
         
-        return recs + dep_recs
-        
+        for prop in self._props.values():
+            dp = prop._dependency_processor
+            if dp is not None:
+                dp.per_mapper_flush_actions(uowtransaction)
         
     def _save_obj(self, states, uowtransaction, postupdate=False, 
                                 post_update_cols=None, single=False):
@@ -1876,31 +1855,6 @@ class Mapper(object):
         return configure_subclass_mapper
 
 log.class_logger(Mapper)
-
-class Insert(unitofwork.Rec):
-    def __init__(self, mapper, state, table):
-        self.mapper = mapper
-        self.state = state
-        self.table = table
-
-class Update(unitofwork.Rec):
-    def __init__(self, mapper, state, table):
-        self.mapper = mapper
-        self.state = state
-        self.table = table
-
-class Delete(unitofwork.Rec):
-    def __init__(self, mapper, state, table):
-        self.mapper = mapper
-        self.state = state
-        self.table = table
-
-class SyncKeys(unitofwork.Rec):
-    def __init__(self, mapper, state, parent, child):
-        self.mapper = mapper
-        self.state = state
-        self.parent = parent
-        self.child = child
 
 
 def reconstructor(fn):
