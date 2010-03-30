@@ -336,7 +336,7 @@ class ExpireTest(_fixtures.FixtureTest):
         s = create_session()
 
         u = s.query(User).get(8)
-        a = Address(email_address='foobar')
+        a = Address(id=12, email_address='foobar')
         
         u.addresses.append(a)
         if expire_or_refresh:
