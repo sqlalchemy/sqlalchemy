@@ -1,6 +1,9 @@
-# sybase.py
-# Copyright (C) 2007 Fisch Asset Management AG http://www.fam.ch
-# Coding: Alexander Houben alexander.houben@thor-solutions.ch
+# sybase/base.py
+# Copyright (C) 2010 Michael Bayer mike_mp@zzzcomputing.com
+# get_select_precolumns(), limit_clause() implementation
+# copyright (C) 2007 Fisch Asset Management 
+# AG http://www.fam.ch, with coding by Alexander Houben 
+# alexander.houben@thor-solutions.ch
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -277,6 +280,9 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
             s += "START AT %s " % (select._offset+1,)
         return s
 
+    def get_from_hint_text(self, table, text):
+        return text
+
     def limit_clause(self, select):
         # Limit in sybase is after the select keyword
         return ""
@@ -309,8 +315,6 @@ class SybaseDDLCompiler(compiler.DDLCompiler):
             raise exc.InvalidRequestError("The Sybase dialect requires Table-bound "\
                                                    "columns in order to generate DDL")
         seq_col = column.table._autoincrement_column
-
-            
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if seq_col is column:
@@ -382,9 +386,6 @@ class SybaseDialect(default.DefaultDialect):
     def get_table_names(self, connection, schema=None, **kw):
         if schema is None:
             schema = self.default_schema_name
-        return self.table_names(connection, schema)
-
-    def table_names(self, connection, schema):
 
         result = connection.execute(
                     text("select sysobjects.name from sysobjects, sysusers "

@@ -185,20 +185,40 @@ def _produce_test(select_type):
                 eq_(sess.query(Person).all(), all_employees)
             self.assert_sql_count(testing.db, go, {'':14, 'Polymorphic':9}.get(select_type, 10))
 
-        def test_primary_eager_aliasing(self):
+        def test_foo(self):
             sess = create_session()
             
             def go():
-                eq_(sess.query(Person).options(eagerload(Engineer.machines))[1:3], all_employees[1:3])
+                eq_(sess.query(Person).options(subqueryload(Engineer.machines)).all(), all_employees)
+            self.assert_sql_count(testing.db, go, {'':14, 'Unions':8, 'Polymorphic':7}.get(select_type, 8))
+
+        def test_primary_eager_aliasing(self):
+            sess = create_session()
+
+            # for both joinedload() and subqueryload(), if the original q is not loading
+            # the subclass table, the joinedload doesn't happen.
+            
+            def go():
+                eq_(sess.query(Person).options(joinedload(Engineer.machines))[1:3], all_employees[1:3])
             self.assert_sql_count(testing.db, go, {'':6, 'Polymorphic':3}.get(select_type, 4))
+
+            sess = create_session()
+            
+            def go():
+                eq_(sess.query(Person).options(subqueryload(Engineer.machines)).all(), all_employees)
+            self.assert_sql_count(testing.db, go, {'':14, 'Unions':8, 'Polymorphic':7}.get(select_type, 8))
 
             sess = create_session()
 
             # assert the JOINs dont over JOIN
-            assert sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).limit(2).offset(1).with_labels().subquery().count().scalar() == 2
+            assert sess.query(Person).with_polymorphic('*').options(joinedload(Engineer.machines)).\
+                                    limit(2).offset(1).with_labels().subquery().count().scalar() == 2
 
             def go():
-                eq_(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines))[1:3], all_employees[1:3])
+                eq_(
+                    sess.query(Person).with_polymorphic('*').
+                        options(joinedload(Engineer.machines))[1:3], 
+                    all_employees[1:3])
             self.assert_sql_count(testing.db, go, 3)
             
             
@@ -467,7 +487,9 @@ def _produce_test(select_type):
         def test_relationship_to_polymorphic(self):
             assert_result = [
                 Company(name="MegaCorp, Inc.", employees=[
-                    Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")]),
+                    Engineer(name="dilbert", engineer_name="dilbert", 
+                            primary_language="java", status="regular engineer", 
+                            machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")]),
                     Engineer(name="wally", engineer_name="wally", primary_language="c++", status="regular engineer"),
                     Boss(name="pointy haired boss", golf_swing="fore", manager_name="pointy", status="da boss"),
                     Manager(name="dogbert", manager_name="dogbert", status="regular manager"),
@@ -486,22 +508,55 @@ def _produce_test(select_type):
         
             sess = create_session()
             def go():
-                # currently, it doesn't matter if we say Company.employees, or Company.employees.of_type(Engineer).  eagerloader doesn't
+                # currently, it doesn't matter if we say Company.employees, 
+                # or Company.employees.of_type(Engineer).  joinedloader doesn't
                 # pick up on the "of_type()" as of yet.
-                eq_(sess.query(Company).options(eagerload_all(Company.employees.of_type(Engineer), Engineer.machines)).all(), assert_result)
+                eq_(
+                    sess.query(Company).options(
+                                        joinedload_all(Company.employees.of_type(Engineer), Engineer.machines
+                                    )).all(), 
+                        assert_result)
             
-            # in the case of select_type='', the eagerload doesn't take in this case; 
-            # it eagerloads company->people, then a load for each of 5 rows, then lazyload of "machines"            
-            self.assert_sql_count(testing.db, go, {'':7, 'Polymorphic':1}.get(select_type, 2))
-    
-        def test_eagerload_on_subclass(self):
+            # in the case of select_type='', the joinedload 
+            # doesn't take in this case; it joinedloads company->people, 
+            # then a load for each of 5 rows, then lazyload of "machines"            
+            self.assert_sql_count(testing.db, go, 
+                                    {'':7, 'Polymorphic':1}.get(select_type, 2)
+                                    )
+            
             sess = create_session()
             def go():
-                # test load People with eagerload to engineers + machines
-                eq_(sess.query(Person).with_polymorphic('*').options(eagerload(Engineer.machines)).filter(Person.name=='dilbert').all(), 
+                eq_(
+                    sess.query(Company).options(
+                                    subqueryload_all(Company.employees.of_type(Engineer), Engineer.machines
+                                )).all(), 
+                            assert_result)
+        
+            self.assert_sql_count(
+                            testing.db, go, 
+                            {'':8, 
+                                'Joins':4,
+                                'Unions':4,
+                                'Polymorphic':3,
+                                'AliasedJoins':4}[select_type]
+                        )
+    
+        def test_joinedload_on_subclass(self):
+            sess = create_session()
+            def go():
+                # test load People with joinedload to engineers + machines
+                eq_(sess.query(Person).with_polymorphic('*').options(joinedload(Engineer.machines)).filter(Person.name=='dilbert').all(), 
                 [Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")])]
                 )
             self.assert_sql_count(testing.db, go, 1)
+
+            sess = create_session()
+            def go():
+                # test load People with subqueryload to engineers + machines
+                eq_(sess.query(Person).with_polymorphic('*').options(subqueryload(Engineer.machines)).filter(Person.name=='dilbert').all(), 
+                [Engineer(name="dilbert", engineer_name="dilbert", primary_language="java", status="regular engineer", machines=[Machine(name="IBM ThinkPad"), Machine(name="IPhone")])]
+                )
+            self.assert_sql_count(testing.db, go, 2)
 
             
         def test_query_subclass_join_to_base_relationship(self):
@@ -1128,7 +1183,7 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
         session.add(c1)
         session.flush()
         
-        q = session.query(Child1).options(eagerload('left_child2'))
+        q = session.query(Child1).options(joinedload('left_child2'))
 
         # test that the splicing of the join works here, doesnt break in the middle of "parent join child1"
         self.assert_compile(q.limit(1).with_labels().statement, 
@@ -1146,9 +1201,21 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
         assert q.limit(1).with_labels().subquery().count().scalar() == 1
         
         assert q.first() is c1
-
+    
+    def test_subquery_load(self):
+        session = create_session()
+        
+        c1 = Child1()
+        c1.left_child2 = Child2()
+        session.add(c1)
+        session.flush()
+        session.expunge_all()
+        
+        for row in session.query(Child1).options(subqueryload('left_child2')).all():
+            assert row.left_child2
+        
 class EagerToSubclassTest(_base.MappedTest):
-    """Test eagerloads to subclass mappers"""
+    """Test joinedloads to subclass mappers"""
 
     run_setup_classes = 'once'
     run_setup_mappers = 'once'
@@ -1205,11 +1272,11 @@ class EagerToSubclassTest(_base.MappedTest):
         sess.flush()
 
     @testing.resolve_artifact_names
-    def test_eagerload(self):
+    def test_joinedload(self):
         sess = create_session()
         def go():
             eq_(
-                sess.query(Parent).options(eagerload(Parent.children)).all(), 
+                sess.query(Parent).options(joinedload(Parent.children)).all(), 
                 [
                     Parent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
                     Parent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
@@ -1231,8 +1298,8 @@ class EagerToSubclassTest(_base.MappedTest):
             )
         self.assert_sql_count(testing.db, go, 1)
 
-class SubClassEagerToSubclassTest(_base.MappedTest):
-    """Test eagerloads from subclass to subclass mappers"""
+class SubClassEagerToSubClassTest(_base.MappedTest):
+    """Test joinedloads from subclass to subclass mappers"""
 
     run_setup_classes = 'once'
     run_setup_mappers = 'once'
@@ -1282,7 +1349,7 @@ class SubClassEagerToSubclassTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(Parent, parent, polymorphic_on=parent.c.type, polymorphic_identity='b')
         mapper(Subparent, subparent, inherits=Parent, polymorphic_identity='s', properties={
-            'children':relationship(Sub)
+            'children':relationship(Sub, order_by=base.c.id)
         })
         mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='b')
         mapper(Sub, sub, inherits=Base, polymorphic_identity='s')
@@ -1298,11 +1365,11 @@ class SubClassEagerToSubclassTest(_base.MappedTest):
         sess.flush()
 
     @testing.resolve_artifact_names
-    def test_eagerload(self):
+    def test_joinedload(self):
         sess = create_session()
         def go():
             eq_(
-                sess.query(Subparent).options(eagerload(Subparent.children)).all(), 
+                sess.query(Subparent).options(joinedload(Subparent.children)).all(), 
                 [
                     Subparent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
                     Subparent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
@@ -1313,7 +1380,7 @@ class SubClassEagerToSubclassTest(_base.MappedTest):
         sess.expunge_all()
         def go():
             eq_(
-                sess.query(Subparent).options(eagerload("children")).all(), 
+                sess.query(Subparent).options(joinedload("children")).all(), 
                 [
                     Subparent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
                     Subparent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
@@ -1345,4 +1412,27 @@ class SubClassEagerToSubclassTest(_base.MappedTest):
             )
         self.assert_sql_count(testing.db, go, 1)
 
+    @testing.resolve_artifact_names
+    def test_subqueryload(self):
+        sess = create_session()
+        def go():
+            eq_(
+                sess.query(Subparent).options(subqueryload(Subparent.children)).all(), 
+                [
+                    Subparent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
+                    Subparent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 2)
+
+        sess.expunge_all()
+        def go():
+            eq_(
+                sess.query(Subparent).options(subqueryload("children")).all(), 
+                [
+                    Subparent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
+                    Subparent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 2)
 

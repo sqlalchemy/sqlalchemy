@@ -187,20 +187,15 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     
     def __init__(self, **kwargs):
         SQLiteDialect.__init__(self, **kwargs)
-        def vers(num):
-            return tuple([int(x) for x in num.split('.')])
+
         if self.dbapi is not None:
             sqlite_ver = self.dbapi.version_info
-            if sqlite_ver < (2, 1, '3'):
+            if sqlite_ver < (2, 1, 3):
                 util.warn(
                     ("The installed version of pysqlite2 (%s) is out-dated "
                      "and will cause errors in some cases.  Version 2.1.3 "
                      "or greater is recommended.") %
                     '.'.join([str(subver) for subver in sqlite_ver]))
-            if self.dbapi.sqlite_version_info < (3, 3, 8):
-                self.supports_default_values = False
-        self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
-
 
     @classmethod
     def dbapi(cls):

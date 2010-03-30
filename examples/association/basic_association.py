@@ -67,7 +67,7 @@ mapper(Order, orders, properties={
 })
 mapper(Item, items)
 mapper(OrderItem, orderitems, properties={
-    'item': relationship(Item, lazy=False)
+    'item': relationship(Item, lazy='joined')
 })
 
 session = create_session()
@@ -101,7 +101,7 @@ print [(order_item.item.description, order_item.price)
        for order_item in order.order_items]
 
 # print customers who bought 'MySQL Crowbar' on sale
-q = session.query(Order).join(['order_items', 'item'])
+q = session.query(Order).join('order_items', 'item')
 q = q.filter(and_(Item.description == 'MySQL Crowbar',
                   Item.price > OrderItem.price))
 

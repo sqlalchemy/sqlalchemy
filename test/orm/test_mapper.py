@@ -674,7 +674,7 @@ class MapperTest(_fixtures.FixtureTest):
     def test_many_to_many_count(self):
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-            keywords = relationship(Keyword, item_keywords, lazy=True)))
+            keywords = relationship(Keyword, item_keywords, lazy='select')))
 
         session = create_session()
         q = (session.query(Item).
@@ -731,7 +731,7 @@ class MapperTest(_fixtures.FixtureTest):
             uname = extendedproperty(_get_name, _set_name)
 
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=True),
+            addresses = relationship(mapper(Address, addresses), lazy='select'),
             uname = synonym('name'),
             adlist = synonym('addresses'),
             adname = synonym('addresses')
@@ -810,7 +810,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         mapper(Address, addresses)
         mapper(User, users, properties = {
-            'addresses':relationship(Address, lazy=True),
+            'addresses':relationship(Address, lazy='select'),
             'name':synonym('_name', map_column=True)
         })
 
@@ -1086,7 +1086,7 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_synonym_options(self):
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=True,
+            addresses = relationship(mapper(Address, addresses), lazy='select',
                                  order_by=addresses.c.id),
             adlist = synonym('addresses')))
 
@@ -1095,7 +1095,7 @@ class OptionsTest(_fixtures.FixtureTest):
             sess = create_session()
             u = (sess.query(User).
                  order_by(User.id).
-                 options(sa.orm.eagerload('adlist')).
+                 options(sa.orm.joinedload('adlist')).
                  filter_by(name='jack')).one()
             eq_(u.adlist,
                 [self.static.user_address_result[0].addresses[0]])
@@ -1111,7 +1111,7 @@ class OptionsTest(_fixtures.FixtureTest):
         sess = create_session()
         l = (sess.query(User).
              order_by(User.id).
-             options(sa.orm.eagerload('addresses'))).all()
+             options(sa.orm.joinedload('addresses'))).all()
 
         def go():
             eq_(l, self.static.user_address_result)
@@ -1121,11 +1121,11 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_eager_options_with_limit(self):
         mapper(User, users, properties=dict(
-            addresses=relationship(mapper(Address, addresses), lazy=True)))
+            addresses=relationship(mapper(Address, addresses), lazy='select')))
 
         sess = create_session()
         u = (sess.query(User).
-             options(sa.orm.eagerload('addresses')).
+             options(sa.orm.joinedload('addresses')).
              filter_by(id=8)).one()
 
         def go():
@@ -1143,7 +1143,7 @@ class OptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_lazy_options_with_limit(self):
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=False)))
+            addresses = relationship(mapper(Address, addresses), lazy='joined')))
 
         sess = create_session()
         u = (sess.query(User).
@@ -1159,7 +1159,7 @@ class OptionsTest(_fixtures.FixtureTest):
     def test_eager_degrade(self):
         """An eager relationship automatically degrades to a lazy relationship if eager columns are not available"""
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=False)))
+            addresses = relationship(mapper(Address, addresses), lazy='joined')))
 
         sess = create_session()
         # first test straight eager load, 1 statement
@@ -1192,17 +1192,17 @@ class OptionsTest(_fixtures.FixtureTest):
 
         mapper(Item, items, properties=dict(
             keywords=relationship(Keyword, secondary=item_keywords,
-                              lazy=False,
+                              lazy='joined',
                               order_by=item_keywords.c.keyword_id)))
 
         mapper(Order, orders, properties=dict(
-            items=relationship(Item, secondary=order_items, lazy=False,
+            items=relationship(Item, secondary=order_items, lazy='joined',
                            order_by=order_items.c.item_id)))
 
         mapper(User, users, properties=dict(
-            addresses=relationship(Address, lazy=False,
+            addresses=relationship(Address, lazy='joined',
                                order_by=addresses.c.id),
-            orders=relationship(Order, lazy=False,
+            orders=relationship(Order, lazy='joined',
                             order_by=orders.c.id)))
 
         sess = create_session()
@@ -1227,7 +1227,7 @@ class OptionsTest(_fixtures.FixtureTest):
     def test_lazy_options(self):
         """An eager relationship can be upgraded to a lazy relationship."""
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=False)
+            addresses = relationship(mapper(Address, addresses), lazy='joined')
         ))
 
         sess = create_session()
@@ -1252,7 +1252,7 @@ class OptionsTest(_fixtures.FixtureTest):
         sess = create_session()
         
         oalias = aliased(Order)
-        opt1 = sa.orm.eagerload(User.orders, Order.items)
+        opt1 = sa.orm.joinedload(User.orders, Order.items)
         opt2a, opt2b = sa.orm.contains_eager(User.orders, Order.items, alias=oalias)
         u1 = sess.query(User).join((oalias, User.orders)).options(opt1, opt2a, opt2b).first()
         ustate = attributes.instance_state(u1)
@@ -1284,7 +1284,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
     def test_deep_options_1(self):
         sess = create_session()
 
-        # eagerload nothing.
+        # joinedload nothing.
         u = sess.query(User).all()
         def go():
             x = u[0].orders[1].items[0].keywords[1]
@@ -1292,12 +1292,20 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_deep_options_2(self):
+        """test (joined|subquery)load_all() options"""
+        
         sess = create_session()
 
-        # eagerload orders.items.keywords; eagerload_all() implies eager load
-        # of orders, orders.items
         l = (sess.query(User).
-              options(sa.orm.eagerload_all('orders.items.keywords'))).all()
+              options(sa.orm.joinedload_all('orders.items.keywords'))).all()
+        def go():
+            x = l[0].orders[1].items[0].keywords[1]
+        self.sql_count_(0, go)
+
+        sess = create_session()
+
+        l = (sess.query(User).
+              options(sa.orm.subqueryload_all('orders.items.keywords'))).all()
         def go():
             x = l[0].orders[1].items[0].keywords[1]
         self.sql_count_(0, go)
@@ -1309,9 +1317,9 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         # same thing, with separate options calls
         q2 = (sess.query(User).
-              options(sa.orm.eagerload('orders')).
-              options(sa.orm.eagerload('orders.items')).
-              options(sa.orm.eagerload('orders.items.keywords')))
+              options(sa.orm.joinedload('orders')).
+              options(sa.orm.joinedload('orders.items')).
+              options(sa.orm.joinedload('orders.items.keywords')))
         u = q2.all()
         def go():
             x = u[0].orders[1].items[0].keywords[1]
@@ -1325,12 +1333,20 @@ class DeepOptionsTest(_fixtures.FixtureTest):
             sa.exc.ArgumentError,
             r"Can't find entity Mapper\|Order\|orders in Query.  "
             r"Current list: \['Mapper\|User\|users'\]",
-            sess.query(User).options, sa.orm.eagerload(Order.items))
+            sess.query(User).options, sa.orm.joinedload(Order.items))
 
-        # eagerload "keywords" on items.  it will lazy load "orders", then
+        # joinedload "keywords" on items.  it will lazy load "orders", then
         # lazy load the "items" on the order, but on "items" it will eager
         # load the "keywords"
-        q3 = sess.query(User).options(sa.orm.eagerload('orders.items.keywords'))
+        q3 = sess.query(User).options(sa.orm.joinedload('orders.items.keywords'))
+        u = q3.all()
+        def go():
+            x = u[0].orders[1].items[0].keywords[1]
+        self.sql_count_(2, go)
+
+        sess = create_session()
+        q3 = sess.query(User).options(
+                    sa.orm.joinedload(User.orders, Order.items, Item.keywords))
         u = q3.all()
         def go():
             x = u[0].orders[1].items[0].keywords[1]
@@ -1850,10 +1866,10 @@ class SecondaryOptionsTest(_base.MappedTest):
         )
 
     @testing.resolve_artifact_names
-    def test_eagerload_on_other(self):
+    def test_joinedload_on_other(self):
         sess = create_session()
 
-        child1s = sess.query(Child1).join(Child1.related).options(sa.orm.eagerload(Child1.related)).order_by(Child1.id)
+        child1s = sess.query(Child1).join(Child1.related).options(sa.orm.joinedload(Child1.related)).order_by(Child1.id)
 
         def go():
             eq_(
@@ -1871,7 +1887,7 @@ class SecondaryOptionsTest(_base.MappedTest):
             "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type "
             "FROM base JOIN child2 ON base.id = child2.id WHERE base.id = :param_1",
 
-#   eagerload- this shouldn't happen
+#   joinedload- this shouldn't happen
 #            "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type, "
 #            "related_1.id AS related_1_id FROM base JOIN child2 ON base.id = child2.id "
 #            "LEFT OUTER JOIN related AS related_1 ON base.id = related_1.id WHERE base.id = :param_1",
@@ -1880,10 +1896,10 @@ class SecondaryOptionsTest(_base.MappedTest):
         )
 
     @testing.resolve_artifact_names
-    def test_eagerload_on_same(self):
+    def test_joinedload_on_same(self):
         sess = create_session()
 
-        child1s = sess.query(Child1).join(Child1.related).options(sa.orm.eagerload(Child1.child2, Child2.related)).order_by(Child1.id)
+        child1s = sess.query(Child1).join(Child1.related).options(sa.orm.joinedload(Child1.child2, Child2.related)).order_by(Child1.id)
 
         def go():
             eq_(
@@ -1894,7 +1910,7 @@ class SecondaryOptionsTest(_base.MappedTest):
         
         c1 = child1s[0]
 
-        # this *does* eagerload
+        # this *does* joinedload
         self.assert_sql_execution(
             testing.db, 
             lambda: c1.child2, 
@@ -1964,17 +1980,17 @@ class DeferredPopulationTest(_base.MappedTest):
         self._test(thing)
     
     @testing.resolve_artifact_names
-    def test_eagerload_with_clear(self):
+    def test_joinedload_with_clear(self):
         session = create_session()
-        human = session.query(Human).options(sa.orm.eagerload("thing")).first()
+        human = session.query(Human).options(sa.orm.joinedload("thing")).first()
         session.expunge_all()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
 
     @testing.resolve_artifact_names
-    def test_eagerload_no_clear(self):
+    def test_joinedload_no_clear(self):
         session = create_session()
-        human = session.query(Human).options(sa.orm.eagerload("thing")).first()
+        human = session.query(Human).options(sa.orm.joinedload("thing")).first()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
 
@@ -2084,7 +2100,7 @@ class CompositeTypesTest(_base.MappedTest):
         sess.expunge_all()
         def go():
             g2 = (sess.query(Graph).
-                  options(sa.orm.eagerload('edges'))).get([g.id, g.version_id])
+                  options(sa.orm.joinedload('edges'))).get([g.id, g.version_id])
             for e1, e2 in zip(g.edges, g2.edges):
                 eq_(e1.start, e2.start)
                 eq_(e1.end, e2.end)
@@ -2301,7 +2317,7 @@ class NoLoadTest(_fixtures.FixtureTest):
     def test_basic(self):
         """A basic one-to-many lazy load"""
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=None)
+            addresses = relationship(mapper(Address, addresses), lazy='noload')
         ))
         q = create_session().query(m)
         l = [None]
@@ -2318,7 +2334,7 @@ class NoLoadTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_options(self):
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=None)
+            addresses = relationship(mapper(Address, addresses), lazy='noload')
         ))
         q = create_session().query(m).options(sa.orm.lazyload('addresses'))
         l = [None]
@@ -2700,7 +2716,7 @@ class RequirementsTest(_base.MappedTest):
         h1.h2s.extend([H2(), H2()])
         s.flush()
 
-        h1s = s.query(H1).options(sa.orm.eagerload('h2s')).all()
+        h1s = s.query(H1).options(sa.orm.joinedload('h2s')).all()
         eq_(len(h1s), 5)
 
         self.assert_unordered_result(h1s, H1,
@@ -2712,12 +2728,12 @@ class RequirementsTest(_base.MappedTest):
                                      {'h2s': []},
                                      {'h2s': (H2, [{'value': 'abc'}])})
 
-        h1s = s.query(H1).options(sa.orm.eagerload('h3s')).all()
+        h1s = s.query(H1).options(sa.orm.joinedload('h3s')).all()
 
         eq_(len(h1s), 5)
-        h1s = s.query(H1).options(sa.orm.eagerload_all('t6a.h1b'),
-                                  sa.orm.eagerload('h2s'),
-                                  sa.orm.eagerload_all('h3s.h1s')).all()
+        h1s = s.query(H1).options(sa.orm.joinedload_all('t6a.h1b'),
+                                  sa.orm.joinedload('h2s'),
+                                  sa.orm.joinedload_all('h3s.h1s')).all()
         eq_(len(h1s), 5)
 
     @testing.resolve_artifact_names

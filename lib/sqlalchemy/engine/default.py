@@ -381,7 +381,10 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.execution_options = self.execution_options.union(connection._execution_options)
             self.cursor = self.create_cursor()
         
-            
+    @util.memoized_property
+    def is_crud(self):
+        return self.isinsert or self.isupdate or self.isdelete
+        
     @util.memoized_property
     def should_autocommit(self):
         autocommit = self.execution_options.get('autocommit', 

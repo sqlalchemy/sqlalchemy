@@ -9,7 +9,7 @@ from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                         attributes, deferred, exc as orm_exc, defer, undefer,\
-                        strategies, state, lazyload
+                        strategies, state, lazyload, backref
 from test.orm import _base, _fixtures
 
 
@@ -295,9 +295,61 @@ class ExpireTest(_fixtures.FixtureTest):
 
         u.addresses[0].email_address = 'someotheraddress'
         s.expire(u)
-        u.name
-        print attributes.instance_state(u).dict
         assert u.addresses[0].email_address == 'ed@wood.com'
+
+    @testing.resolve_artifact_names
+    def test_refresh_cascade(self):
+        mapper(User, users, properties={
+            'addresses':relationship(Address, cascade="all, refresh-expire")
+        })
+        mapper(Address, addresses)
+        s = create_session()
+        u = s.query(User).get(8)
+        assert u.addresses[0].email_address == 'ed@wood.com'
+
+        u.addresses[0].email_address = 'someotheraddress'
+        s.refresh(u)
+        assert u.addresses[0].email_address == 'ed@wood.com'
+
+    def test_expire_cascade_pending_orphan(self):
+        cascade = 'save-update, refresh-expire, delete, delete-orphan'
+        self._test_cascade_to_pending(cascade, True)
+
+    def test_refresh_cascade_pending_orphan(self):
+        cascade = 'save-update, refresh-expire, delete, delete-orphan'
+        self._test_cascade_to_pending(cascade, False)
+
+    def test_expire_cascade_pending(self):
+        cascade = 'save-update, refresh-expire'
+        self._test_cascade_to_pending(cascade, True)
+
+    def test_refresh_cascade_pending(self):
+        cascade = 'save-update, refresh-expire'
+        self._test_cascade_to_pending(cascade, False)
+        
+    @testing.resolve_artifact_names
+    def _test_cascade_to_pending(self, cascade, expire_or_refresh):
+        mapper(User, users, properties={
+            'addresses':relationship(Address, cascade=cascade)
+        })
+        mapper(Address, addresses)
+        s = create_session()
+
+        u = s.query(User).get(8)
+        a = Address(id=12, email_address='foobar')
+        
+        u.addresses.append(a)
+        if expire_or_refresh:
+            s.expire(u)
+        else:
+            s.refresh(u)
+        if "delete-orphan" in cascade:
+            assert a not in s
+        else:
+            assert a in s
+        
+        assert a not in u.addresses
+        s.flush()
 
     @testing.resolve_artifact_names
     def test_expired_lazy(self):
@@ -324,7 +376,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expired_eager(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -359,7 +411,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_relationship_changes_preserved(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
         sess = create_session()
@@ -373,19 +425,19 @@ class ExpireTest(_fixtures.FixtureTest):
         assert len(u.addresses) == 2
 
     @testing.resolve_artifact_names
-    def test_eagerload_props_dontload(self):
+    def test_joinedload_props_dontload(self):
         # relationships currently have to load separately from scalar instances.
         # the use case is: expire "addresses".  then access it.  lazy load
         # fires off to load "addresses", but needs foreign key or primary key
         # attributes in order to lazy load; hits those attributes, such as
         # below it hits "u.id".  "u.id" triggers full unexpire operation,
-        # eagerloads addresses since lazy=False.  this is all wihtin lazy load
-        # which fires unconditionally; so an unnecessary eagerload (or
+        # joinedloads addresses since lazy='joined'.  this is all wihtin lazy load
+        # which fires unconditionally; so an unnecessary joinedload (or
         # lazyload) was issued.  would prefer not to complicate lazyloading to
         # "figure out" that the operation should be aborted right now.
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
         sess = create_session()
@@ -514,7 +566,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_partial_expire_eager(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -568,7 +620,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess.expire(u, ['name', 'addresses'])
         assert 'name' not in u.__dict__
         assert 'addresses' not in u.__dict__
-        (sess.query(User).options(sa.orm.eagerload('addresses')).
+        (sess.query(User).options(sa.orm.joinedload('addresses')).
          filter_by(id=8).all())
         assert 'name' in u.__dict__
         assert 'addresses' in u.__dict__
@@ -641,9 +693,9 @@ class ExpireTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
-    def test_eagerload_query_refreshes(self):
+    def test_joinedload_query_refreshes(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -660,7 +712,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expire_all(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -768,7 +820,7 @@ class ExpireTest(_fixtures.FixtureTest):
     def test_state_noload_to_lazy(self):
         """Behavioral test to verify the current activity of loader callables."""
 
-        mapper(User, users, properties={'addresses':relationship(Address, lazy=None)})
+        mapper(User, users, properties={'addresses':relationship(Address, lazy='noload')})
         mapper(Address, addresses)
         
         sess = create_session()
@@ -1002,7 +1054,7 @@ class RefreshTest(_fixtures.FixtureTest):
         """test that a refresh/expire operation loads rows properly and sends correct "isnew" state to eager loaders"""
 
         mapper(User, users, properties={
-            'addresses':relationship(mapper(Address, addresses), lazy=False)
+            'addresses':relationship(mapper(Address, addresses), lazy='joined')
         })
 
         s = create_session()
@@ -1025,7 +1077,7 @@ class RefreshTest(_fixtures.FixtureTest):
         s = create_session()
         mapper(Address, addresses)
 
-        mapper(User, users, properties = dict(addresses=relationship(Address,cascade="all, delete-orphan",lazy=False)) )
+        mapper(User, users, properties = dict(addresses=relationship(Address,cascade="all, delete-orphan",lazy='joined')) )
 
         u = User()
         u.name='Justin'

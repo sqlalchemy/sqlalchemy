@@ -88,7 +88,7 @@ class M2MTest(_base.MappedTest):
             Place.mapper, secondary=place_place, primaryjoin=place.c.place_id==place_place.c.pl1_id,
             secondaryjoin=place.c.place_id==place_place.c.pl2_id,
             order_by=place_place.c.pl2_id,
-            lazy=True,
+            lazy='select',
             ))
 
         sess = create_session()
@@ -134,12 +134,12 @@ class M2MTest(_base.MappedTest):
         two different association tables.  aliases are required."""
 
         Place.mapper = mapper(Place, place, properties = {
-            'thingies':relationship(mapper(PlaceThingy, place_thingy), lazy=False)
+            'thingies':relationship(mapper(PlaceThingy, place_thingy), lazy='joined')
         })
 
         Transition.mapper = mapper(Transition, transition, properties = dict(
-            inputs = relationship(Place.mapper, place_output, lazy=False),
-            outputs = relationship(Place.mapper, place_input, lazy=False),
+            inputs = relationship(Place.mapper, place_output, lazy='joined'),
+            outputs = relationship(Place.mapper, place_input, lazy='joined'),
             )
         )
 
@@ -164,8 +164,8 @@ class M2MTest(_base.MappedTest):
         """tests a many-to-many backrefs"""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
-            inputs = relationship(Place.mapper, place_output, lazy=True, backref='inputs'),
-            outputs = relationship(Place.mapper, place_input, lazy=True, backref='outputs'),
+            inputs = relationship(Place.mapper, place_output, lazy='select', backref='inputs'),
+            outputs = relationship(Place.mapper, place_input, lazy='select', backref='outputs'),
             )
         )
 
@@ -263,7 +263,7 @@ class M2MTest2(_base.MappedTest):
 
         mapper(Student, student)
         mapper(Course, course, properties = {
-            'students': relationship(Student, enroll, lazy=True,
+            'students': relationship(Student, enroll, lazy='select',
                                  backref='courses')})
 
         sess = create_session()
@@ -316,11 +316,11 @@ class M2MTest3(_base.MappedTest):
         mapper(A, a, properties={
             'tbs': relationship(B, primaryjoin=sa.and_(b.c.a1 == a.c.a1,
                                                    b.c.b2 == True),
-                            lazy=False)})
+                            lazy='joined')})
 
         mapper(C, c, properties={
-            'a1s': relationship(A, secondary=c2a1, lazy=False),
-            'a2s': relationship(A, secondary=c2a2, lazy=False)})
+            'a1s': relationship(A, secondary=c2a1, lazy='joined'),
+            'a2s': relationship(A, secondary=c2a2, lazy='joined')})
 
         assert create_session().query(C).with_labels().statement is not None
         

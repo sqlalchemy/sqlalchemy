@@ -1,5 +1,16 @@
 """Support for the MySQL database via the oursql adapter.
 
+OurSQL is available at:
+
+    http://packages.python.org/oursql/
+    
+Connecting
+-----------
+
+Connect string format::
+
+    mysql+oursql://<user>:<password>@<host>[:<port>]/<dbname>
+
 Character Sets
 --------------
 
@@ -151,8 +162,8 @@ class MySQLDialect_oursql(MySQLDialect):
                                             **kw
         )
         
-    def table_names(self, connection, schema):
-        return MySQLDialect.table_names(self,
+    def get_table_names(self, connection, schema=None, **kw):
+        return MySQLDialect.get_table_names(self,
                             connection.connect().\
                                         execution_options(_oursql_plain_query=True),
                             schema

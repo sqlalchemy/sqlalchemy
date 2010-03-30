@@ -1420,6 +1420,9 @@ class Engine(Connectable, log.Identified):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and :class:`~sqlalchemy.engine.base.Dialect`
     together to provide a source of database connectivity and behavior.
+    
+    An :class:`Engine` object is instantiated publically using the :func:`~sqlalchemy.create_engine`
+    function.
 
     """
 
@@ -1569,7 +1572,7 @@ class Engine(Connectable, log.Identified):
         if not schema:
             schema =  self.dialect.default_schema_name
         try:
-            return self.dialect.table_names(conn, schema)
+            return self.dialect.get_table_names(conn, schema)
         finally:
             if connection is None:
                 conn.close()

@@ -95,12 +95,12 @@ class InheritTest(_base.MappedTest):
                 master=relationship(Assembly,
                     foreign_keys=[specification_table.c.master_id],
                     primaryjoin=specification_table.c.master_id==products_table.c.product_id,
-                    lazy=True, backref=backref('specification'),
+                    lazy='select', backref=backref('specification'),
                     uselist=False),
                 slave=relationship(Product,
                     foreign_keys=[specification_table.c.slave_id],
                     primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
-                    lazy=True, uselist=False),
+                    lazy='select', uselist=False),
                 quantity=specification_table.c.quantity,
                 )
             )
@@ -139,7 +139,7 @@ class InheritTest(_base.MappedTest):
                 slave=relationship(Product,
                     foreign_keys=[specification_table.c.slave_id],
                     primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
-                    lazy=True, uselist=False),
+                    lazy='select', uselist=False),
                 )
             )
 
@@ -168,12 +168,12 @@ class InheritTest(_base.MappedTest):
 
         specification_mapper = mapper(SpecLine, specification_table,
             properties=dict(
-                master=relationship(Assembly, lazy=False, uselist=False,
+                master=relationship(Assembly, lazy='joined', uselist=False,
                     foreign_keys=[specification_table.c.master_id],
                     primaryjoin=specification_table.c.master_id==products_table.c.product_id,
                     backref=backref('specification', cascade="all, delete-orphan"),
                     ),
-                slave=relationship(Product, lazy=False,  uselist=False,
+                slave=relationship(Product, lazy='joined',  uselist=False,
                     foreign_keys=[specification_table.c.slave_id],
                     primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
                     ),
@@ -187,7 +187,7 @@ class InheritTest(_base.MappedTest):
             properties=dict(
                 name=documents_table.c.name,
                 data=deferred(documents_table.c.data),
-                product=relationship(Product, lazy=True, backref=backref('documents', cascade="all, delete-orphan")),
+                product=relationship(Product, lazy='select', backref=backref('documents', cascade="all, delete-orphan")),
                 ),
             )
         raster_document_mapper = mapper(RasterDocument, inherits=document_mapper,
@@ -227,7 +227,7 @@ class InheritTest(_base.MappedTest):
             properties=dict(
                 name=documents_table.c.name,
                 data=deferred(documents_table.c.data),
-                product=relationship(Product, lazy=True, backref=backref('documents', cascade="all, delete-orphan")),
+                product=relationship(Product, lazy='select', backref=backref('documents', cascade="all, delete-orphan")),
                 ),
             )
         raster_document_mapper = mapper(RasterDocument, inherits=document_mapper,
@@ -260,12 +260,12 @@ class InheritTest(_base.MappedTest):
 
         specification_mapper = mapper(SpecLine, specification_table,
             properties=dict(
-                master=relationship(Assembly, lazy=False, uselist=False,
+                master=relationship(Assembly, lazy='joined', uselist=False,
                     foreign_keys=[specification_table.c.master_id],
                     primaryjoin=specification_table.c.master_id==products_table.c.product_id,
                     backref=backref('specification'),
                     ),
-                slave=relationship(Product, lazy=False,  uselist=False,
+                slave=relationship(Product, lazy='joined',  uselist=False,
                     foreign_keys=[specification_table.c.slave_id],
                     primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
                     ),
@@ -276,7 +276,7 @@ class InheritTest(_base.MappedTest):
         product_mapper = mapper(Product, products_table,
             polymorphic_on=products_table.c.product_type,
             polymorphic_identity='product', properties={
-            'documents' : relationship(Document, lazy=True,
+            'documents' : relationship(Document, lazy='select',
                     backref='product', cascade='all, delete-orphan'),
             })
 

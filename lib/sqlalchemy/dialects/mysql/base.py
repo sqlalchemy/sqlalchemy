@@ -1,36 +1,12 @@
 # -*- fill-column: 78 -*-
-# mysql.py
+# mysql/base.py
 # Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
+# and Jason Kirtland.
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """Support for the MySQL database.
-
-Overview
---------
-
-For normal SQLAlchemy usage, importing this module is unnecessary.  It will be
-loaded on-demand when a MySQL connection is needed.  The generic column types
-like :class:`~sqlalchemy.String` and :class:`~sqlalchemy.Integer` will
-automatically be adapted to the optimal matching MySQL column type.
-
-But if you would like to use one of the MySQL-specific or enhanced column
-types when creating tables with your :class:`~sqlalchemy.Table` definitions,
-then you will need to import them from this module::
-
-  from sqlalchemy.dialect.mysql import base as mysql
-
-  Table('mytable', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('ittybittyblob', mysql.TINYBLOB),
-        Column('biggy', mysql.BIGINT(unsigned=True)))
-
-All standard MySQL column types are supported.  The OpenGIS types are
-available for use via table reflection but have no special support or mapping
-to Python classes.  If you're using these types and have opinions about how
-OpenGIS can be smartly integrated into SQLAlchemy please join the mailing
-list!
 
 Supported Versions and Features
 -------------------------------
@@ -44,10 +20,7 @@ in the suite 100%.  No heroic measures are taken to work around major missing
 SQL features- if your server version does not support sub-selects, for
 example, they won't work in SQLAlchemy either.
 
-Currently, the only DB-API driver supported is `MySQL-Python` (also referred to
-as `MySQLdb`).  Either 1.2.1 or 1.2.2 are recommended.  The alpha, beta and
-gamma releases of 1.2.1 and 1.2.2 should be avoided.  Support for Jython and
-IronPython is planned.
+Most available DBAPI drivers are supported; see below.
 
 =====================================  ===============
 Feature                                Minimum Version
@@ -63,6 +36,37 @@ Nested Transactions                    5.0.3
 
 See the official MySQL documentation for detailed information about features
 supported in any given server release.
+
+Connecting
+----------
+
+See the API documentation on individual drivers for details on connecting.
+    
+Data Types
+----------
+
+All of MySQL's standard types are supported.   These can also be specified within 
+table metadata, for the purpose of issuing CREATE TABLE statements
+which include MySQL-specific extensions.   The types are available
+from the module, as in::
+
+    from sqlalchemy.dialects import mysql
+
+    Table('mytable', metadata,
+          Column('id', Integer, primary_key=True),
+          Column('ittybittyblob', mysql.TINYBLOB),
+          Column('biggy', mysql.BIGINT(unsigned=True)))
+
+See the API documentation on specific column types for further details.
+
+Connection Timeouts
+-------------------
+
+MySQL features an automatic connection close behavior, for connections that have
+been idle for eight hours or more.   To circumvent having this issue, use the 
+``pool_recycle`` option which controls the maximum age of any connection::
+
+    engine = create_engine('mysql+mysqldb://...', pool_recycle=3600)
 
 Storage Engines
 ---------------
@@ -159,20 +163,13 @@ And of course any valid MySQL statement can be executed as a string as well.
 Some limited direct support for MySQL extensions to SQL is currently
 available.
 
-  * SELECT pragma::
+* SELECT pragma::
 
-      select(..., prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
+    select(..., prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
 
-  * UPDATE with LIMIT::
+* UPDATE with LIMIT::
 
-      update(..., mysql_limit=10)
-
-Boolean Types
--------------
-
-MySQL's BOOL type is a synonym for SMALLINT, so is actually a numeric value,
-and additionally MySQL doesn't support CHECK constraints. Therefore SQLA's
-Boolean type cannot fully constrain values to just "True" and "False" the way it does for most other backends.
+    update(..., mysql_limit=10)
 
 Troubleshooting
 ---------------
@@ -1154,7 +1151,10 @@ class MySQLCompiler(compiler.SQLCompiler):
         
     def visit_match_op(self, binary, **kw):
         return "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (self.process(binary.left), self.process(binary.right))
-        
+
+    def get_from_hint_text(self, table, text):
+        return text
+
     def visit_typeclause(self, typeclause):
         type_ = typeclause.type.dialect_impl(self.dialect)
         if isinstance(type_, sqltypes.Integer):
@@ -1204,11 +1204,11 @@ class MySQLCompiler(compiler.SQLCompiler):
         # support can be added, preferably after dialects are
         # refactored to be version-sensitive.
         return ''.join(
-            (self.process(join.left, asfrom=True),
+            (self.process(join.left, asfrom=True, **kwargs),
              (join.isouter and " LEFT OUTER JOIN " or " INNER JOIN "),
-             self.process(join.right, asfrom=True),
+             self.process(join.right, asfrom=True, **kwargs),
              " ON ",
-             self.process(join.onclause)))
+             self.process(join.onclause, **kwargs)))
 
     def for_update_clause(self, select):
         if select.for_update == 'read':
@@ -1766,24 +1766,20 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
+        """Return a Unicode SHOW TABLES from a given schema."""
         if schema is not None:
             current_schema = schema
         else:
             current_schema = self.default_schema_name
-        table_names = self.table_names(connection, current_schema)
-        return table_names
-
-    def table_names(self, connection, schema):
-        """Return a Unicode SHOW TABLES from a given schema."""
 
         charset = self._connection_charset
         if self.server_version_info < (5, 0, 2):
             rp = connection.execute("SHOW TABLES FROM %s" %
-                self.identifier_preparer.quote_identifier(schema))
+                self.identifier_preparer.quote_identifier(current_schema))
             return [row[0] for row in self._compat_fetchall(rp, charset=charset)]
         else:
             rp = connection.execute("SHOW FULL TABLES FROM %s" %
-                    self.identifier_preparer.quote_identifier(schema))
+                    self.identifier_preparer.quote_identifier(current_schema))
 
             return [row[0] for row in self._compat_fetchall(rp, charset=charset)\
                                                         if row[1] == 'BASE TABLE']
@@ -1796,7 +1792,7 @@ class MySQLDialect(default.DefaultDialect):
         if schema is None:
             schema = self.default_schema_name
         if self.server_version_info < (5, 0, 2):
-            return self.table_names(connection, schema)
+            return self.get_table_names(connection, schema)
         charset = self._connection_charset
         rp = connection.execute("SHOW FULL TABLES FROM %s" %
                 self.identifier_preparer.quote_identifier(schema))
@@ -1946,7 +1942,7 @@ class MySQLDialect(default.DefaultDialect):
         # For winxx database hosts.  TODO: is this really needed?
         if casing == 1 and table.name != table.name.lower():
             table.name = table.name.lower()
-            lc_alias = schema._get_table_key(table.name, table.schema)
+            lc_alias = sa_schema._get_table_key(table.name, table.schema)
             table.metadata.tables[lc_alias] = table
 
     def _detect_charset(self, connection):
@@ -2207,13 +2203,6 @@ class MySQLTableDefinitionParser(object):
 
         name, type_, args, notnull = \
               spec['name'], spec['coltype'], spec['arg'], spec['notnull']
-
-        # Convention says that TINYINT(1) columns == BOOLEAN
-        if type_ == 'tinyint' and args == '1':
-            type_ = 'boolean'
-            args = None
-            spec['unsigned'] = None
-            spec['zerofill'] = None
 
         try:
             col_type = self.dialect.ischema_names[type_]

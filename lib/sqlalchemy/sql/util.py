@@ -579,7 +579,7 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
             return None
         elif self.exclude and col in self.exclude:
             return None
-
+        
         return self._corresponding_column(col, True)
 
 class ColumnAdapter(ClauseAdapter):
@@ -587,11 +587,13 @@ class ColumnAdapter(ClauseAdapter):
     
     Provides the ability to "wrap" this ClauseAdapter 
     around another, a columns dictionary which returns
-    cached, adapted elements given an original, and an 
+    adapted elements given an original, and an 
     adapted_row() factory.
     
     """
-    def __init__(self, selectable, equivalents=None, chain_to=None, include=None, exclude=None, adapt_required=False):
+    def __init__(self, selectable, equivalents=None, 
+                        chain_to=None, include=None, 
+                        exclude=None, adapt_required=False):
         ClauseAdapter.__init__(self, selectable, equivalents, include, exclude)
         if chain_to:
             self.chain(chain_to)
@@ -617,7 +619,7 @@ class ColumnAdapter(ClauseAdapter):
         return locate
 
     def _locate_col(self, col):
-        c = self._corresponding_column(col, False)
+        c = self._corresponding_column(col, True)
         if c is None:
             c = self.adapt_clause(col)
             

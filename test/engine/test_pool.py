@@ -81,7 +81,26 @@ class PoolTest(PoolTestBase):
         expected = [(1,)]
         for row in cursor:
             eq_(row, expected.pop(0))
+    
+    def test_no_connect_on_recreate(self):
+        def creator():
+            raise Exception("no creates allowed")
         
+        for cls in (pool.SingletonThreadPool, pool.StaticPool, 
+                    pool.QueuePool, pool.NullPool, pool.AssertionPool):
+            p = cls(creator=creator)
+            p.dispose()
+            p.recreate()
+        
+            mock_dbapi = MockDBAPI()
+            p = cls(creator=mock_dbapi.connect)
+            conn = p.connect()
+            conn.close()
+            mock_dbapi.throw_error = True
+            p.dispose()
+            p.recreate()
+            
+            
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
 

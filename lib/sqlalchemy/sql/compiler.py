@@ -305,11 +305,13 @@ class SQLCompiler(engine.Compiled):
     def visit_grouping(self, grouping, asfrom=False, **kwargs):
         return "(" + self.process(grouping.element, **kwargs) + ")"
 
-    def visit_label(self, label, result_map=None, within_columns_clause=False, **kw):
+    def visit_label(self, label, result_map=None, 
+                            within_label_clause=False, 
+                            within_columns_clause=False, **kw):
         # only render labels within the columns clause
         # or ORDER BY clause of a select.  dialect-specific compilers
         # can modify this behavior.
-        if within_columns_clause:
+        if within_columns_clause and not within_label_clause:
             labelname = isinstance(label.name, sql._generated_label) and \
                     self._truncated_identifier("colident", label.name) or label.name
 
@@ -318,13 +320,14 @@ class SQLCompiler(engine.Compiled):
                         (label.name, (label, label.element, labelname), label.element.type)
 
             return self.process(label.element, 
-                                    within_columns_clause=within_columns_clause, 
+                                    within_columns_clause=True,
+                                    within_label_clause=True, 
                                     **kw) + \
                         OPERATORS[operators.as_] + \
                         self.preparer.format_label(label, labelname)
         else:
             return self.process(label.element, 
-                                    within_columns_clause=within_columns_clause, 
+                                    within_columns_clause=False, 
                                     **kw)
             
     def visit_column(self, column, result_map=None, **kwargs):
@@ -625,13 +628,22 @@ class SQLCompiler(engine.Compiled):
         else:
             return self.bindtemplate % {'name':name}
 
-    def visit_alias(self, alias, asfrom=False, **kwargs):
-        if asfrom:
+    def visit_alias(self, alias, asfrom=False, ashint=False, fromhints=None, **kwargs):
+        if asfrom or ashint:
             alias_name = isinstance(alias.name, sql._generated_label) and \
                             self._truncated_identifier("alias", alias.name) or alias.name
-            
-            return self.process(alias.original, asfrom=True, **kwargs) + " AS " + \
+        if ashint:
+            return self.preparer.format_alias(alias, alias_name)
+        elif asfrom:
+            ret = self.process(alias.original, asfrom=True, **kwargs) + " AS " + \
                     self.preparer.format_alias(alias, alias_name)
+                    
+            if fromhints and alias in fromhints:
+                hinttext = self.get_from_hint_text(alias, fromhints[alias])
+                if hinttext:
+                    ret += " " + hinttext
+            
+            return ret
         else:
             return self.process(alias.original, **kwargs)
 
@@ -658,8 +670,15 @@ class SQLCompiler(engine.Compiled):
         else:
             return column
 
+    def get_select_hint_text(self, byfroms):
+        return None
+    
+    def get_from_hint_text(self, table, text):
+        return None
+        
     def visit_select(self, select, asfrom=False, parens=True, 
-                            iswrapper=False, compound_index=1, **kwargs):
+                            iswrapper=False, fromhints=None, 
+                            compound_index=1, **kwargs):
 
         entry = self.stack and self.stack[-1] or {}
         
@@ -694,6 +713,18 @@ class SQLCompiler(engine.Compiled):
         ]
         
         text = "SELECT "  # we're off to a good start !
+
+        if select._hints:
+            byfrom = dict([
+                            (from_, hinttext % {'name':self.process(from_, ashint=True)}) 
+                            for (from_, dialect), hinttext in 
+                            select._hints.iteritems() 
+                            if dialect in ('*', self.dialect.name)
+                        ])
+            hint_text = self.get_select_hint_text(byfrom)
+            if hint_text:
+                text += hint_text + " "
+                
         if select._prefixes:
             text += " ".join(self.process(x, **kwargs) for x in select._prefixes) + " "
         text += self.get_select_precolumns(select)
@@ -701,7 +732,16 @@ class SQLCompiler(engine.Compiled):
 
         if froms:
             text += " \nFROM "
-            text += ', '.join(self.process(f, asfrom=True, **kwargs) for f in froms)
+            
+            if select._hints:
+                text += ', '.join([self.process(f, 
+                                    asfrom=True, fromhints=byfrom, 
+                                    **kwargs) 
+                                for f in froms])
+            else:
+                text += ', '.join([self.process(f, 
+                                    asfrom=True, **kwargs) 
+                                for f in froms])
         else:
             text += self.default_from()
 
@@ -764,20 +804,26 @@ class SQLCompiler(engine.Compiled):
             text += " OFFSET " + str(select._offset)
         return text
 
-    def visit_table(self, table, asfrom=False, **kwargs):
-        if asfrom:
+    def visit_table(self, table, asfrom=False, ashint=False, fromhints=None, **kwargs):
+        if asfrom or ashint:
             if getattr(table, "schema", None):
-                return self.preparer.quote_schema(table.schema, table.quote_schema) + \
+                ret = self.preparer.quote_schema(table.schema, table.quote_schema) + \
                                 "." + self.preparer.quote(table.name, table.quote)
             else:
-                return self.preparer.quote(table.name, table.quote)
+                ret = self.preparer.quote(table.name, table.quote)
+            if fromhints and table in fromhints:
+                hinttext = self.get_from_hint_text(table, fromhints[table])
+                if hinttext:
+                    ret += " " + hinttext
+            return ret
         else:
             return ""
 
     def visit_join(self, join, asfrom=False, **kwargs):
-        return (self.process(join.left, asfrom=True) + \
+        return (self.process(join.left, asfrom=True, **kwargs) + \
                 (join.isouter and " LEFT OUTER JOIN " or " JOIN ") + \
-            self.process(join.right, asfrom=True) + " ON " + self.process(join.onclause))
+            self.process(join.right, asfrom=True, **kwargs) + " ON " + \
+            self.process(join.onclause, **kwargs))
 
     def visit_sequence(self, seq):
         return None

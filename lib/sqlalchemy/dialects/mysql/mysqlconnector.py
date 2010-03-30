@@ -1,6 +1,15 @@
 """Support for the MySQL database via the MySQL Connector/Python adapter.
 
-# TODO: add docs/notes here regarding MySQL Connector/Python
+MySQL Connector/Python is available at:
+
+    https://launchpad.net/myconnpy
+
+Connecting
+-----------
+
+Connect string format::
+
+    mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>
 
 """
 

@@ -83,6 +83,8 @@ __all__ = (
     'eagerload_all',
     'extension',
     'join',
+    'joinedload',
+    'joinedload_all',
     'lazyload',
     'mapper',
     'make_transient',
@@ -96,6 +98,8 @@ __all__ = (
     'relation',
     'scoped_session',
     'sessionmaker',
+    'subqueryload',
+    'subqueryload_all',
     'synonym',
     'undefer',
     'undefer_group',
@@ -226,24 +230,32 @@ def relationship(argument, secondary=None, **kwargs):
 
       Available cascades are:
 
-        ``save-update`` - cascade the "add()" operation (formerly
-        known as save() and update())
+      * ``save-update`` - cascade the :meth:`~sqlalchemy.orm.session.Session.add` 
+        operation.  This cascade applies both to future and
+        past calls to :meth:`~sqlalchemy.orm.session.Session.add`, 
+        meaning new items added to a collection or scalar relationship
+        get placed into the same session as that of the parent, and 
+        also applies to items which have been removed from this 
+        relationship but are still part of unflushed history.
 
-        ``merge`` - cascade the "merge()" operation
+      * ``merge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.merge`
+        operation
 
-        ``expunge`` - cascade the "expunge()" operation
+      * ``expunge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expunge`
+        operation
 
-        ``delete`` - cascade the "delete()" operation
+      * ``delete`` - cascade the :meth:`~sqlalchemy.orm.session.Session.delete`
+        operation
 
-        ``delete-orphan`` - if an item of the child's type with no
+      * ``delete-orphan`` - if an item of the child's type with no
         parent is detected, mark it for deletion.  Note that this
         option prevents a pending item of the child's class from being
         persisted without a parent present.
 
-        ``refresh-expire`` - cascade the expire() and refresh()
-        operations
+      * ``refresh-expire`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expire` 
+        and :meth:`~sqlalchemy.orm.session.Session.refresh` operations
 
-        ``all`` - shorthand for "save-update,merge, refresh-expire,
+      * ``all`` - shorthand for "save-update,merge, refresh-expire,
         expunge, delete"
 
     :param collection_class:
@@ -263,7 +275,6 @@ def relationship(argument, secondary=None, **kwargs):
       change the value used in the operation.
 
     :param foreign_keys:
-
       a list of columns which are to be used as "foreign key" columns.
       this parameter should be used in conjunction with explicit
       ``primaryjoin`` and ``secondaryjoin`` (if needed) arguments, and
@@ -276,7 +287,7 @@ def relationship(argument, secondary=None, **kwargs):
       the table-defined foreign keys.
 
     :param innerjoin=False:
-      when ``True``, eager loads will use an inner join to join
+      when ``True``, joined eager loads will use an inner join to join
       against related tables instead of an outer join.  The purpose
       of this option is strictly one of performance, as inner joins
       generally perform better than outer joins.  This flag can
@@ -287,33 +298,47 @@ def relationship(argument, secondary=None, **kwargs):
       
     :param join_depth:
       when non-``None``, an integer value indicating how many levels
-      deep eagerload joins should be constructed on a self-referring
-      or cyclical relationship.  The number counts how many times the
-      same Mapper shall be present in the loading condition along a
-      particular join branch.  When left at its default of ``None``,
-      eager loads will automatically stop chaining joins when they
-      encounter a mapper which is already higher up in the chain.
+      deep "eager" loaders should join on a self-referring or cyclical 
+      relationship.  The number counts how many times the same Mapper 
+      shall be present in the loading condition along a particular join 
+      branch.  When left at its default of ``None``, eager loaders
+      will stop chaining when they encounter a the same target mapper 
+      which is already higher up in the chain.  This option applies
+      both to joined- and subquery- eager loaders.
 
-    :param lazy=(True|False|None|'dynamic'):
-      specifies how the related items should be loaded. Values include:
+    :param lazy=('select'|'joined'|'subquery'|'noload'|'dynamic'): specifies 
+      how the related items should be loaded. Values include:
 
-      True - items should be loaded lazily when the property is first
-             accessed.
+      * 'select' - items should be loaded lazily when the property is first
+        accessed.
 
-      False - items should be loaded "eagerly" in the same query as
-              that of the parent, using a JOIN or LEFT OUTER JOIN.
+      * 'joined' - items should be loaded "eagerly" in the same query as
+        that of the parent, using a JOIN or LEFT OUTER JOIN.
+              
+      * 'subquery' - items should be loaded "eagerly" within the same
+        query as that of the parent, using a second SQL statement
+        which issues a JOIN to a subquery of the original
+        statement.
 
-      None - no loading should occur at any time.  This is to support
-             "write-only" attributes, or attributes which are
-             populated in some manner specific to the application.
+      * 'noload' - no loading should occur at any time.  This is to 
+        support "write-only" attributes, or attributes which are
+        populated in some manner specific to the application.
 
-      'dynamic' - a ``DynaLoader`` will be attached, which returns a
-                  ``Query`` object for all read operations.  The
-                  dynamic- collection supports only ``append()`` and
-                  ``remove()`` for write operations; changes to the
-                  dynamic property will not be visible until the data
-                  is flushed to the database.
-
+      * 'dynamic' - the attribute will return a pre-configured
+        :class:`~sqlalchemy.orm.query.Query` object for all read 
+        operations, onto which further filtering operations can be
+        applied before iterating the results.  The dynamic 
+        collection supports a limited set of mutation operations,
+        allowing ``append()`` and ``remove()``.  Changes to the
+        collection will not be visible until flushed 
+        to the database, where it is then refetched upon iteration.
+       
+      * True - a synonym for 'select'
+       
+      * False - a synonyn for 'joined'
+       
+      * None - a synonym for 'noload'
+       
     :param order_by:
       indicates the ordering that should be applied when loading these
       items.
@@ -904,82 +929,156 @@ def extension(ext):
     return ExtensionOption(ext)
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
-def eagerload(*keys, **kw):
+def joinedload(*keys, **kw):
     """Return a ``MapperOption`` that will convert the property of the given
-    name into an eager load.
+    name into an joined eager load.
+
+    .. note:: This function is known as :func:`eagerload` in all versions
+      of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4 series.
+      :func:`eagerload` will remain available for 
+      the foreseeable future in order to enable cross-compatibility.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     examples::
     
-        # eagerload the "orders" colleciton on "User"
-        query(User).options(eagerload(User.orders))
+        # joined-load the "orders" colleciton on "User"
+        query(User).options(joinedload(User.orders))
         
-        # eagerload the "keywords" collection on each "Item",
+        # joined-load the "keywords" collection on each "Item",
         # but not the "items" collection on "Order" - those 
         # remain lazily loaded.
-        query(Order).options(eagerload(Order.items, Item.keywords))
+        query(Order).options(joinedload(Order.items, Item.keywords))
 
-        # to eagerload across both, use eagerload_all()
-        query(Order).options(eagerload_all(Order.items, Item.keywords))
+        # to joined-load across both, use joinedload_all()
+        query(Order).options(joinedload_all(Order.items, Item.keywords))
 
-    :func:`eagerload` also accepts a keyword argument `innerjoin=True` which
+    :func:`joinedload` also accepts a keyword argument `innerjoin=True` which
     indicates using an inner join instead of an outer::
     
-        query(Order).options(eagerload(Order.user, innerjoin=True))
+        query(Order).options(joinedload(Order.user, innerjoin=True))
         
-    Note that the join created by :func:`eagerload` is aliased such that
-    no other aspects of the query will affect what it loads.  To use eager
+    Note that the join created by :func:`joinedload` is aliased such that
+    no other aspects of the query will affect what it loads.  To use joined eager
     loading with a join that is constructed manually using :meth:`~sqlalchemy.orm.query.Query.join`
     or :func:`~sqlalchemy.orm.join`, see :func:`contains_eager`.
+    
+    See also:  :func:`subqueryload`, :func:`lazyload`
     
     """
     innerjoin = kw.pop('innerjoin', None)
     if innerjoin is not None:
         return (
-             strategies.EagerLazyOption(keys, lazy=False), 
+             strategies.EagerLazyOption(keys, lazy='joined'), 
              strategies.EagerJoinOption(keys, innerjoin)
          )
     else:
-        return strategies.EagerLazyOption(keys, lazy=False)
+        return strategies.EagerLazyOption(keys, lazy='joined')
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
-def eagerload_all(*keys, **kw):
+def joinedload_all(*keys, **kw):
     """Return a ``MapperOption`` that will convert all properties along the
-    given dot-separated path into an eager load.
+    given dot-separated path into an joined eager load.
+
+    .. note:: This function is known as :func:`eagerload_all` in all versions
+      of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4 series.
+      :func:`eagerload_all` will remain available for 
+      the foreseeable future in order to enable cross-compatibility.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     For example::
 
-        query.options(eagerload_all('orders.items.keywords'))...
+        query.options(joinedload_all('orders.items.keywords'))...
 
     will set all of 'orders', 'orders.items', and 'orders.items.keywords' to
-    load in one eager load.
+    load in one joined eager load.
 
     Individual descriptors are accepted as arguments as well::
     
-        query.options(eagerload_all(User.orders, Order.items, Item.keywords))
+        query.options(joinedload_all(User.orders, Order.items, Item.keywords))
 
     The keyword arguments accept a flag `innerjoin=True|False` which will 
     override the value of the `innerjoin` flag specified on the relationship().
+
+    See also:  :func:`subqueryload_all`, :func:`lazyload`
 
     """
     innerjoin = kw.pop('innerjoin', None)
     if innerjoin is not None:
         return (
-            strategies.EagerLazyOption(keys, lazy=False, chained=True), 
+            strategies.EagerLazyOption(keys, lazy='joined', chained=True), 
             strategies.EagerJoinOption(keys, innerjoin, chained=True)
         )
     else:
-        return strategies.EagerLazyOption(keys, lazy=False, chained=True)
+        return strategies.EagerLazyOption(keys, lazy='joined', chained=True)
 
+def eagerload(*args, **kwargs):
+    """A synonym for :func:`joinedload()`."""
+    return joinedload(*args, **kwargs)
+    
+def eagerload_all(*args, **kwargs):
+    """A synonym for :func:`joinedload_all()`"""
+    return joinedload_all(*args, **kwargs)
+    
+def subqueryload(*keys):
+    """Return a ``MapperOption`` that will convert the property 
+    of the given name into an subquery eager load.
+
+    .. note:: This function is new as of SQLAlchemy version 0.6beta3.
+
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+
+    examples::
+    
+        # subquery-load the "orders" colleciton on "User"
+        query(User).options(subqueryload(User.orders))
+        
+        # subquery-load the "keywords" collection on each "Item",
+        # but not the "items" collection on "Order" - those 
+        # remain lazily loaded.
+        query(Order).options(subqueryload(Order.items, Item.keywords))
+
+        # to subquery-load across both, use subqueryload_all()
+        query(Order).options(subqueryload_all(Order.items, Item.keywords))
+
+    See also:  :func:`joinedload`, :func:`lazyload`
+    
+    """
+    return strategies.EagerLazyOption(keys, lazy="subquery")
+
+def subqueryload_all(*keys):
+    """Return a ``MapperOption`` that will convert all properties along the
+    given dot-separated path into a subquery eager load.
+
+    .. note:: This function is new as of SQLAlchemy version 0.6beta3.
+
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+
+    For example::
+
+        query.options(subqueryload_all('orders.items.keywords'))...
+
+    will set all of 'orders', 'orders.items', and 'orders.items.keywords' to
+    load in one subquery eager load.
+
+    Individual descriptors are accepted as arguments as well::
+    
+        query.options(subqueryload_all(User.orders, Order.items, Item.keywords))
+
+    See also:  :func:`joinedload_all`, :func:`lazyload`
+
+    """
+    return strategies.EagerLazyOption(keys, lazy="subquery", chained=True)
+    
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
     name into a lazy load.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+
+    See also:  :func:`eagerload`, :func:`subqueryload`
 
     """
     return strategies.EagerLazyOption(keys, lazy=True)
@@ -989,6 +1088,8 @@ def noload(*keys):
     given name into a non-load.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+
+    See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`
 
     """
     return strategies.EagerLazyOption(keys, lazy=None)
@@ -1041,7 +1142,7 @@ def contains_eager(*keys, **kwargs):
         raise exceptions.ArgumentError("Invalid kwargs for contains_eager: %r" % kwargs.keys())
 
     return (
-            strategies.EagerLazyOption(keys, lazy=False, propagate_to_loaders=False), 
+            strategies.EagerLazyOption(keys, lazy='joined', propagate_to_loaders=False), 
             strategies.LoadEagerFromAliasOption(keys, alias=alias)
         )
 

@@ -260,7 +260,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
         try:
             cx.execute('ATTACH DATABASE ":memory:" AS  test_schema')
             dialect = cx.dialect
-            assert dialect.table_names(cx, 'test_schema') == []
+            assert dialect.get_table_names(cx, 'test_schema') == []
 
             meta = MetaData(cx)
             Table('created', meta, Column('id', Integer),
@@ -269,7 +269,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
                                schema='test_schema')
             meta.create_all(cx)
 
-            eq_(dialect.table_names(cx, 'test_schema'),
+            eq_(dialect.get_table_names(cx, 'test_schema'),
                               ['created'])
             assert len(alt_master.c) > 0
 
@@ -293,7 +293,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
             # note that sqlite_master is cleared, above
             meta.drop_all()
 
-            assert dialect.table_names(cx, 'test_schema') == []
+            assert dialect.get_table_names(cx, 'test_schema') == []
         finally:
             cx.execute('DETACH DATABASE test_schema')
 
@@ -303,7 +303,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
         try:
             cx.execute('CREATE TEMPORARY TABLE tempy (id INT)')
 
-            assert 'tempy' in cx.dialect.table_names(cx, None)
+            assert 'tempy' in cx.dialect.get_table_names(cx, None)
 
             meta = MetaData(cx)
             tempy = Table('tempy', meta, autoload=True)

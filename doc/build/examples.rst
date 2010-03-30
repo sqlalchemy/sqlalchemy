@@ -59,6 +59,8 @@ Location: /examples/dynamic_dict/
 
 .. automodule:: dynamic_dict
 
+.. _examples_sharding:
+
 Horizontal Sharding
 -------------------
 

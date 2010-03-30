@@ -7,9 +7,9 @@ PyODBC
 ------
 .. automodule:: sqlalchemy.dialects.mssql.pyodbc
 
-AdoDBAPI
---------
-.. automodule:: sqlalchemy.dialects.mssql.adodbapi
+mxODBC
+------
+.. automodule:: sqlalchemy.dialects.mssql.mxodbc
 
 pymssql
 -------
@@ -19,3 +19,8 @@ zxjdbc Notes
 --------------
 
 .. automodule:: sqlalchemy.dialects.mssql.zxjdbc
+
+AdoDBAPI
+--------
+.. automodule:: sqlalchemy.dialects.mssql.adodbapi
+

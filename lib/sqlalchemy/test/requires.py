@@ -149,6 +149,18 @@ def sequences(fn):
         no_support('sybase', 'no SEQUENCE support'),
         )
 
+def update_nowait(fn):
+    """Target database must support SELECT...FOR UPDATE NOWAIT"""
+    return _chain_decorators_on(
+        fn,
+        no_support('access', 'no FOR UPDATE NOWAIT support'),
+        no_support('firebird', 'no FOR UPDATE NOWAIT support'),
+        no_support('mssql', 'no FOR UPDATE NOWAIT support'),
+        no_support('mysql', 'no FOR UPDATE NOWAIT support'),
+        no_support('sqlite', 'no FOR UPDATE NOWAIT support'),
+        no_support('sybase', 'no FOR UPDATE NOWAIT support'),
+    )
+    
 def subqueries(fn):
     """Target database must support subqueries."""
     return _chain_decorators_on(
@@ -224,6 +236,7 @@ def unicode_ddl(fn):
         no_support('maxdb', 'database support flakey'),
         no_support('oracle', 'FIXME: no support in database?'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
+        no_support('mssql+pymssql', 'no FreeTDS support'),
         exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
         )
 

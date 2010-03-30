@@ -6,6 +6,13 @@ JDBC Driver
 The official MySQL JDBC driver is at
 http://dev.mysql.com/downloads/connector/j/.
 
+Connecting
+----------
+
+Connect string format:
+
+    mysql+zxjdbc://<user>:<password>@<hostname>[:<port>]/<database>
+
 Character Sets
 --------------
 

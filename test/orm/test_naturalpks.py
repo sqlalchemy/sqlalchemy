@@ -423,7 +423,7 @@ class ReversePKsTest(_base.MappedTest):
 
     
 class SelfRefTest(_base.MappedTest):
-    __unsupported_on__ = 'mssql' # mssql doesn't allow ON UPDATE on self-referential keys
+    __unsupported_on__ = ('mssql',) # mssql doesn't allow ON UPDATE on self-referential keys
 
     @classmethod
     def define_tables(cls, metadata):
@@ -696,6 +696,8 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
 
 class JoinedInheritanceTest(_base.MappedTest):
     """Test cascades of pk->pk/fk on joined table inh."""
+    
+    __unsupported_on__ = ('mssql',) # mssql doesn't allow ON UPDATE on self-referential keys
 
     @classmethod
     def define_tables(cls, metadata):

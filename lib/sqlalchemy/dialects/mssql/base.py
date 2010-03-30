@@ -2,119 +2,10 @@
 
 """Support for the Microsoft SQL Server database.
 
-Driver
-------
-
-The MSSQL dialect will work with three different available drivers:
-
-* *pyodbc* - http://pyodbc.sourceforge.net/. This is the recommeded
-  driver.
-
-* *pymssql* - http://pymssql.sourceforge.net/
-
-* *adodbapi* - http://adodbapi.sourceforge.net/
-
-Drivers are loaded in the order listed above based on availability.
-
-If you need to load a specific driver pass ``module_name`` when
-creating the engine::
-
-    engine = create_engine('mssql+module_name://dsn')
-
-``module_name`` currently accepts: ``pyodbc``, ``pymssql``, and
-``adodbapi``.
-
-Currently the pyodbc driver offers the greatest level of
-compatibility.
-
 Connecting
 ----------
 
-Connecting with create_engine() uses the standard URL approach of
-``mssql://user:pass@host/dbname[?key=value&key=value...]``.
-
-If the database name is present, the tokens are converted to a
-connection string with the specified values. If the database is not
-present, then the host token is taken directly as the DSN name.
-
-Examples of pyodbc connection string URLs:
-
-* *mssql+pyodbc://mydsn* - connects using the specified DSN named ``mydsn``.
-  The connection string that is created will appear like::
-
-    dsn=mydsn;Trusted_Connection=Yes
-
-* *mssql+pyodbc://user:pass@mydsn* - connects using the DSN named
-  ``mydsn`` passing in the ``UID`` and ``PWD`` information. The
-  connection string that is created will appear like::
-
-    dsn=mydsn;UID=user;PWD=pass
-
-* *mssql+pyodbc://user:pass@mydsn/?LANGUAGE=us_english* - connects
-  using the DSN named ``mydsn`` passing in the ``UID`` and ``PWD``
-  information, plus the additional connection configuration option
-  ``LANGUAGE``. The connection string that is created will appear
-  like::
-
-    dsn=mydsn;UID=user;PWD=pass;LANGUAGE=us_english
-
-* *mssql+pyodbc://user:pass@host/db* - connects using a connection string
-  dynamically created that would appear like::
-
-    DRIVER={SQL Server};Server=host;Database=db;UID=user;PWD=pass
-
-* *mssql+pyodbc://user:pass@host:123/db* - connects using a connection
-  string that is dynamically created, which also includes the port
-  information using the comma syntax. If your connection string
-  requires the port information to be passed as a ``port`` keyword
-  see the next example. This will create the following connection
-  string::
-
-    DRIVER={SQL Server};Server=host,123;Database=db;UID=user;PWD=pass
-
-* *mssql+pyodbc://user:pass@host/db?port=123* - connects using a connection
-  string that is dynamically created that includes the port
-  information as a separate ``port`` keyword. This will create the
-  following connection string::
-
-    DRIVER={SQL Server};Server=host;Database=db;UID=user;PWD=pass;port=123
-
-If you require a connection string that is outside the options
-presented above, use the ``odbc_connect`` keyword to pass in a
-urlencoded connection string. What gets passed in will be urldecoded
-and passed directly.
-
-For example::
-
-    mssql+pyodbc:///?odbc_connect=dsn%3Dmydsn%3BDatabase%3Ddb
-
-would create the following connection string::
-
-    dsn=mydsn;Database=db
-
-Encoding your connection string can be easily accomplished through
-the python shell. For example::
-
-    >>> import urllib
-    >>> urllib.quote_plus('dsn=mydsn;Database=db')
-    'dsn%3Dmydsn%3BDatabase%3Ddb'
-
-Additional arguments which may be specified either as query string
-arguments on the URL, or as keyword argument to
-:func:`~sqlalchemy.create_engine()` are:
-
-* *query_timeout* - allows you to override the default query timeout.
-  Defaults to ``None``. This is only supported on pymssql.
-
-* *use_scope_identity* - allows you to specify that SCOPE_IDENTITY
-  should be used in place of the non-scoped version @@IDENTITY.
-  Defaults to True.
-
-* *max_identifier_length* - allows you to se the maximum length of
-  identfiers supported by the database. Defaults to 128. For pymssql
-  the default is 30.
-
-* *schema_name* - use to set the schema name. Defaults to ``dbo``.
+See the individual driver sections below for details on connecting.
 
 Auto Increment Behavior
 -----------------------
@@ -219,9 +110,6 @@ Known Issues
 ------------
 
 * No support for more than one ``IDENTITY`` column per table
-
-* pymssql has problems with binary and unicode data that this module
-  does **not** work around
 
 """
 import datetime, decimal, inspect, operator, sys, re
@@ -1149,11 +1037,6 @@ class MSDialect(default.DefaultDialect):
                 pass
         return self.schema_name
 
-    def table_names(self, connection, schema):
-        s = select([ischema.tables.c.table_name], 
-                   ischema.tables.c.table_schema==schema)
-        return [row[0] for row in connection.execute(s)]
-
 
     def has_table(self, connection, tablename, schema=None):
         current_schema = schema or self.default_schema_name
@@ -1182,7 +1065,7 @@ class MSDialect(default.DefaultDialect):
         s = sql.select([tables.c.table_name],
             sql.and_(
                 tables.c.table_schema == current_schema,
-                tables.c.table_type == 'BASE TABLE'
+                tables.c.table_type == u'BASE TABLE'
             ),
             order_by=[tables.c.table_name]
         )
@@ -1196,7 +1079,7 @@ class MSDialect(default.DefaultDialect):
         s = sql.select([tables.c.table_name],
             sql.and_(
                 tables.c.table_schema == current_schema,
-                tables.c.table_type == 'VIEW'
+                tables.c.table_type == u'VIEW'
             ),
             order_by=[tables.c.table_name]
         )
@@ -1320,11 +1203,11 @@ class MSDialect(default.DefaultDialect):
             table_fullname = "%s.%s" % (current_schema, tablename)
             cursor = connection.execute(
                 "select ident_seed('%s'), ident_incr('%s')" 
-                % (tablename, tablename)
+                % (table_fullname, table_fullname)
                 )
 
             row = cursor.first()
-            if not row is None:
+            if row is not None and row[0] is not None:
                 colmap[ic]['sequence'].update({
                     'start' : int(row[0]),
                     'increment' : int(row[1])

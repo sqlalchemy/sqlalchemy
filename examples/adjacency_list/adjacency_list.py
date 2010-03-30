@@ -2,7 +2,7 @@ from sqlalchemy import MetaData, Table, Column, Sequence, ForeignKey,\
                         Integer, String, create_engine
                         
 from sqlalchemy.orm import sessionmaker, mapper, relationship, backref,\
-                                eagerload_all
+                                joinedload_all
                                 
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
@@ -119,7 +119,7 @@ if __name__ == '__main__':
         "selecting tree on root, using eager loading to join four levels deep.")
     session.expunge_all()
     node = session.query(TreeNode).\
-                        options(eagerload_all("children", "children", 
+                        options(joinedload_all("children", "children", 
                                                 "children", "children")).\
                         filter(TreeNode.name=="rootnode").\
                         first()

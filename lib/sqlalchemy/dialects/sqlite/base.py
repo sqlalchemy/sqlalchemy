@@ -331,6 +331,9 @@ class SQLiteDialect(default.DefaultDialect):
     colspecs = colspecs
     isolation_level = None
 
+    supports_cast = True
+    supports_default_values = True
+
     def __init__(self, isolation_level=None, native_datetime=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         if isolation_level and isolation_level not in ('SERIALIZABLE',
@@ -345,6 +348,13 @@ class SQLiteDialect(default.DefaultDialect):
         # conversions (and perhaps datetime/time as well on some 
         # hypothetical driver ?)
         self.native_datetime = native_datetime
+
+        if self.dbapi is not None:
+            self.supports_default_values = \
+                                self.dbapi.sqlite_version_info >= (3, 3, 8)
+            self.supports_cast = \
+                                self.dbapi.sqlite_version_info >= (3, 2, 3)
+
         
     def on_connect(self):
         if self.isolation_level is not None:
@@ -360,8 +370,9 @@ class SQLiteDialect(default.DefaultDialect):
             return connect
         else:
             return None
-    
-    def table_names(self, connection, schema):
+
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
             master = '%s.sqlite_master' % qschema
@@ -399,10 +410,6 @@ class SQLiteDialect(default.DefaultDialect):
             pass
 
         return (row is not None)
-
-    @reflection.cache
-    def get_table_names(self, connection, schema=None, **kw):
-        return self.table_names(connection, schema)
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):

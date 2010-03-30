@@ -16,7 +16,7 @@ This dialect is *not* tested on SQLAlchemy 0.6.
 """
 from sqlalchemy import sql, schema, types, exc, pool
 from sqlalchemy.sql import compiler, expression
-from sqlalchemy.engine import default, base
+from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import processors
 
 class AcNumeric(types.Numeric):
@@ -299,7 +299,8 @@ class AccessDialect(default.DefaultDialect):
         finally:
             dtbs.Close()
 
-    def table_names(self, connection, schema):
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
         # A fresh DAO connection is opened for each reflection
         # This is necessary, so we get the latest updates
         dtbs = daoEngine.OpenDatabase(connection.engine.url.database)

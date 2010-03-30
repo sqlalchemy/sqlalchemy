@@ -80,7 +80,7 @@ class _Attribute(object):
 # they will be ordered in primary key/insert order, so that we can reconstruct
 # an ElementTree structure from the list.
 mapper(Document, documents, properties={
-    '_nodes':relationship(_Node, lazy=False, cascade="all, delete-orphan")
+    '_nodes':relationship(_Node, lazy='joined', cascade="all, delete-orphan")
 })
 
 # the _Node objects change the way they load so that a list of _Nodes will organize
@@ -89,7 +89,7 @@ mapper(Document, documents, properties={
 # ordering to rows which will suffice.
 mapper(_Node, elements, properties={
     'children':relationship(_Node, lazy=None),  # doesnt load; used only for the save relationship
-    'attributes':relationship(_Attribute, lazy=False, cascade="all, delete-orphan"), # eagerly load attributes
+    'attributes':relationship(_Attribute, lazy='joined', cascade="all, delete-orphan"), # eagerly load attributes
 })
 
 mapper(_Attribute, attributes)

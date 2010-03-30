@@ -207,6 +207,31 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         assert c1 == str(clause)
         assert str(clause2) == str(t1.join(t2, t1.c.col2==t2.c.col3))
     
+    def test_aliased_column_adapt(self):
+        clause = t1.select()
+        
+        aliased = t1.select().alias()
+        aliased2 = t1.alias()
+ 
+        adapter = sql_util.ColumnAdapter(aliased)
+        
+        f = select([
+            adapter.columns[c]
+            for c in aliased2.c
+        ]).select_from(aliased)
+    
+        s = select([aliased2]).select_from(aliased)
+        eq_(str(s), str(f))
+ 
+        f = select([
+            adapter.columns[func.count(aliased2.c.col1)]
+        ]).select_from(aliased)
+        eq_(
+            str(select([func.count(aliased2.c.col1)]).select_from(aliased)),
+            str(f)
+        )
+        
+        
     def test_text(self):
         clause = text("select * from table where foo=:bar", bindparams=[bindparam('bar')])
         c1 = str(clause)

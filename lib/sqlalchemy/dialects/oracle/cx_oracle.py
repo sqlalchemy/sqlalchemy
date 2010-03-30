@@ -207,11 +207,19 @@ class OracleCompiler_cx_oracle(OracleCompiler):
 class OracleExecutionContext_cx_oracle(OracleExecutionContext):
     
     def pre_exec(self):
-        quoted_bind_names = getattr(self.compiled, '_quoted_bind_names', {})
+        quoted_bind_names = \
+            getattr(self.compiled, '_quoted_bind_names', None)
         if quoted_bind_names:
+            if not self.dialect.supports_unicode_binds:
+                quoted_bind_names = \
+                                dict(
+                                    (fromname, toname.encode(self.dialect.encoding)) 
+                                    for fromname, toname in 
+                                    quoted_bind_names.items()
+                                )
             for param in self.parameters:
-                for fromname, toname in self.compiled._quoted_bind_names.iteritems():
-                    param[toname.encode(self.dialect.encoding)] = param[fromname]
+                for fromname, toname in quoted_bind_names.items():
+                    param[toname] = param[fromname]
                     del param[fromname]
 
         if self.dialect.auto_setinputsizes:
@@ -219,14 +227,12 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             # on String, including that outparams/RETURNING
             # breaks for varchars
             self.set_input_sizes(quoted_bind_names, 
-                                     exclude_types=self.dialect._cx_oracle_string_types
+                                 exclude_types=self.dialect._cx_oracle_string_types
                                 )
-            
+
+        # if a single execute, check for outparams
         if len(self.compiled_parameters) == 1:
-            for key in self.compiled.binds:
-                bindparam = self.compiled.binds[key]
-                name = self.compiled.bind_names[bindparam]
-                value = self.compiled_parameters[0][name]
+            for bindparam in self.compiled.binds.values():
                 if bindparam.isoutparam:
                     dbtype = bindparam.type.dialect_impl(self.dialect).\
                                     get_dbapi_type(self.dialect.dbapi)
@@ -238,6 +244,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                                                         " cx_oracle" %
                                                         (name, bindparam.type)
                                                         )
+                    name = self.compiled.bind_names[bindparam]
                     self.out_parameters[name] = self.cursor.var(dbtype)
                     self.parameters[0][quoted_bind_names.get(name, name)] = \
                                                         self.out_parameters[name]
@@ -250,7 +257,10 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
     def get_result_proxy(self):
         if hasattr(self, 'out_parameters') and self.compiled.returning:
-            returning_params = dict((k, v.getvalue()) for k, v in self.out_parameters.items())
+            returning_params = dict(
+                                    (k, v.getvalue()) 
+                                    for k, v in self.out_parameters.items()
+                                )
             return ReturningResultProxy(self, returning_params)
 
         result = None
@@ -264,10 +274,11 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             result = base.ResultProxy(self)
             
         if hasattr(self, 'out_parameters'):
-            if self.compiled_parameters is not None and len(self.compiled_parameters) == 1:
+            if self.compiled_parameters is not None and \
+                    len(self.compiled_parameters) == 1:
                 result.out_parameters = out_parameters = {}
                 
-                for bind, name in self.compiled.bind_names.iteritems():
+                for bind, name in self.compiled.bind_names.items():
                     if name in self.out_parameters:
                         type = bind.type
                         impl_type = type.dialect_impl(self.dialect)
@@ -291,12 +302,14 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 class OracleExecutionContext_cx_oracle_with_unicode(OracleExecutionContext_cx_oracle):
     """Support WITH_UNICODE in Python 2.xx.
     
-    WITH_UNICODE allows cx_Oracle's Python 3 unicode handling behavior under Python 2.x.
-    This mode in some cases disallows and in other cases silently 
-    passes corrupted data when non-Python-unicode strings (a.k.a. plain old Python strings) 
-    are passed as arguments to connect(), the statement sent to execute(), or any of the bind
-    parameter keys or values sent to execute().  This optional context
-    therefore ensures that all statements are passed as Python unicode objects.
+    WITH_UNICODE allows cx_Oracle's Python 3 unicode handling 
+    behavior under Python 2.x. This mode in some cases disallows 
+    and in other cases silently passes corrupted data when 
+    non-Python-unicode strings (a.k.a. plain old Python strings) 
+    are passed as arguments to connect(), the statement sent to execute(), 
+    or any of the bind parameter keys or values sent to execute().  
+    This optional context therefore ensures that all statements are 
+    passed as Python unicode objects.
     
     """
     def __init__(self, *arg, **kw):
@@ -373,17 +386,19 @@ class OracleDialect_cx_oracle(OracleDialect):
         
         if hasattr(self.dbapi, 'version'):
             cx_oracle_ver = tuple([int(x) for x in self.dbapi.version.split('.')])
-            self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
-            self._cx_oracle_native_nvarchar = cx_oracle_ver >= (5, 0)
         else:  
-           cx_oracle_ver = None
+           cx_oracle_ver = (0, 0, 0)
             
         def types(*names):
-            return set([getattr(self.dbapi, name, None) for name in names]).difference([None])
+            return set([
+                        getattr(self.dbapi, name, None) for name in names
+                    ]).difference([None])
 
         self._cx_oracle_string_types = types("STRING", "UNICODE", "NCLOB", "CLOB")
         self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB") 
+        self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
+        self._cx_oracle_native_nvarchar = cx_oracle_ver >= (5, 0)
 
         if cx_oracle_ver is None:
             # this occurs in tests with mock DBAPIs

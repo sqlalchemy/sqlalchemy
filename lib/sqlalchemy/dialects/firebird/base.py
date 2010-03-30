@@ -378,17 +378,14 @@ class FBDialect(default.DefaultDialect):
         c = connection.execute(genqry, [self.denormalize_name(sequence_name)])
         return c.first() is not None
 
-    def table_names(self, connection, schema):
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
         s = """
         SELECT DISTINCT rdb$relation_name
         FROM rdb$relation_fields
         WHERE rdb$system_flag=0 AND rdb$view_context IS NULL
         """
         return [self.normalize_name(row[0]) for row in connection.execute(s)]
-
-    @reflection.cache
-    def get_table_names(self, connection, schema=None, **kw):
-        return self.table_names(connection, schema)
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):

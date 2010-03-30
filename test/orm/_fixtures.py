@@ -378,5 +378,48 @@ class CannedResults(object):
                  keywords=[]),
             Item(id=5,
                  keywords=[])]
+    
+    @property
+    def user_item_keyword_result(self):
+        item1, item2, item3, item4, item5 = \
+             Item(id=1,
+                  keywords=[
+                    Keyword(name='red'),
+                    Keyword(name='big'),
+                    Keyword(name='round')]),\
+             Item(id=2,
+                  keywords=[
+                    Keyword(name='red'),
+                    Keyword(name='small'),
+                    Keyword(name='square')]),\
+             Item(id=3,
+                  keywords=[
+                    Keyword(name='green'),
+                    Keyword(name='big'),
+                    Keyword(name='round')]),\
+             Item(id=4,
+                  keywords=[]),\
+             Item(id=5,
+                  keywords=[])
+
+        user_result = [
+                User(id=7,
+                   orders=[
+                     Order(id=1,
+                           items=[item1, item2, item3]),
+                     Order(id=3,
+                           items=[item3, item4, item5]),
+                     Order(id=5,
+                           items=[item5])]),
+                User(id=8, orders=[]),
+                User(id=9,
+                   orders=[
+                     Order(id=2,
+                           items=[item1, item2, item3]),
+                     Order(id=4,
+                           items=[item1, item5])]),
+                User(id=10, orders=[])]
+        return user_result
+        
 FixtureTest.static = CannedResults()
 

@@ -2,7 +2,7 @@ import datetime, os
 from sqlalchemy import *
 from sqlalchemy import sql
 from sqlalchemy.orm import *
-from sqlalchemy.orm.shard import ShardedSession
+from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.sql import operators
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_

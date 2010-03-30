@@ -342,7 +342,7 @@ class RelationshipTest3(_base.MappedTest):
                  primaryjoin=sa.and_(pages.c.jobno==pageversions.c.jobno,
                                      pages.c.pagename==pageversions.c.pagename),
                  order_by=pageversions.c.version,
-                 backref=backref('page',lazy=False)
+                 backref=backref('page',lazy='joined')
                 )})
         mapper(PageComment, pagecomments, properties={
             'page': relationship(
@@ -666,7 +666,7 @@ class RelationshipTest5(_base.MappedTest):
                order_by=sa.asc(container_select.c.type),
                properties=dict(
                    lineItems=relationship(LineItem,
-                       lazy=True,
+                       lazy='select',
                        cascade='all, delete-orphan',
                        order_by=sa.asc(items.c.id),
                        primaryjoin=sa.and_(

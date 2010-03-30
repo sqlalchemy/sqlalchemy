@@ -205,11 +205,11 @@ class PickleTest(_fixtures.FixtureTest):
         sess.expunge_all()
 
         for opt in [
-            sa.orm.eagerload(User.addresses),
-            sa.orm.eagerload("addresses"),
+            sa.orm.joinedload(User.addresses),
+            sa.orm.joinedload("addresses"),
             sa.orm.defer("name"),
             sa.orm.defer(User.name),
-            sa.orm.eagerload("addresses", User.addresses),
+            sa.orm.joinedload("addresses", User.addresses),
         ]:
             opt2 = pickle.loads(pickle.dumps(opt))
             eq_(opt.key, opt2.key)

@@ -84,6 +84,7 @@ class Query(object):
     _params = util.frozendict()
     _attributes = util.frozendict()
     _with_options = ()
+    _with_hints = ()
     
     def __init__(self, entities, session=None):
         self.session = session
@@ -114,7 +115,8 @@ class Query(object):
                     mapper, selectable, is_aliased_class = _entity_info(entity)
                     if not is_aliased_class and mapper.with_polymorphic:
                         with_polymorphic = mapper._with_polymorphic_mappers
-                        self.__mapper_loads_polymorphically_with(mapper, 
+                        if mapper.mapped_table not in self._polymorphic_adapters:
+                            self.__mapper_loads_polymorphically_with(mapper, 
                                 sql_util.ColumnAdapter(selectable, mapper._equivalent_columns))
                         adapter = None
                     elif is_aliased_class:
@@ -133,7 +135,7 @@ class Query(object):
                 self._polymorphic_adapters[m.mapped_table] = self._polymorphic_adapters[m.local_table] = adapter
 
     def _set_select_from(self, *obj):
-        
+
         fa = []
         for from_obj in obj:
             if isinstance(from_obj, expression._SelectBaseMixin):
@@ -142,9 +144,8 @@ class Query(object):
 
         self._from_obj = tuple(fa)
 
-        # TODO: only use this adapter for from_self() ?   right
-        # now its usage is somewhat arbitrary.
-        if len(self._from_obj) == 1 and isinstance(self._from_obj[0], expression.Alias):
+        if len(self._from_obj) == 1 and \
+            isinstance(self._from_obj[0], expression.Alias):
             equivs = self.__all_equivs()
             self._from_obj_alias = sql_util.ColumnAdapter(self._from_obj[0], equivs)
         
@@ -198,7 +199,13 @@ class Query(object):
     @_generative()
     def _adapt_all_clauses(self):
         self._disable_orm_filtering = True
-
+    
+    def _adapt_col_list(self, cols):
+        return [
+                    self._adapt_clause(expression._literal_as_text(o), True, True) 
+                    for o in cols
+                ]
+        
     def _adapt_clause(self, clause, as_filter, orm_only):
         adapters = []
         if as_filter and self._filter_aliases:
@@ -375,7 +382,8 @@ class Query(object):
                         statement._annotate({'_halt_adapt': True})
 
     def subquery(self):
-        """return the full SELECT statement represented by this Query, embedded within an Alias.
+        """return the full SELECT statement represented by this Query, 
+        embedded within an Alias.
 
         Eager JOIN generation within the query is disabled.
 
@@ -391,11 +399,14 @@ class Query(object):
 
     @_generative()
     def enable_eagerloads(self, value):
-        """Control whether or not eager joins are rendered.
+        """Control whether or not eager joins and subqueries are 
+        rendered.
 
         When set to False, the returned Query will not render
-        eager joins regardless of eagerload() options
-        or mapper-level lazy=False configurations.
+        eager joins regardless of :func:`~sqlalchemy.orm.joinedload`,
+        :func:`~sqlalchemy.orm.subqueryload` options
+        or mapper-level ``lazy='joined'``/``lazy='subquery'``
+        configurations.
 
         This is used primarily when nesting the Query's
         statement into a subquery or other
@@ -502,13 +513,16 @@ class Query(object):
         overwritten.
 
         In particular, it's usually impossible to use this setting with
-        eagerly loaded collections (i.e. any lazy=False) since those
-        collections will be cleared for a new load when encountered in a
-        subsequent result batch.
+        eagerly loaded collections (i.e. any lazy='joined' or 'subquery') 
+        since those collections will be cleared for a new load when 
+        encountered in a subsequent result batch.   In the case of 'subquery'
+        loading, the full result for all rows is fetched which generally
+        defeats the purpose of :meth:`~sqlalchemy.orm.query.Query.yield_per`.
 
         Also note that many DBAPIs do not "stream" results, pre-buffering
         all rows before making them available, including mysql-python and 
-        psycopg2.  yield_per() will also set the ``stream_results`` execution
+        psycopg2.  :meth:`~sqlalchemy.orm.query.Query.yield_per` will also 
+        set the ``stream_results`` execution
         option to ``True``, which currently is only understood by psycopg2
         and causes server side cursors to be used.
         
@@ -618,17 +632,20 @@ class Query(object):
         those being selected.
 
         """
-        fromclause = self.with_labels().enable_eagerloads(False).statement.correlate(None)
+        fromclause = self.with_labels().enable_eagerloads(False).\
+                                    statement.correlate(None)
         q = self._from_selectable(fromclause)
         if entities:
             q._set_entities(entities)
         return q
-
+    
     @_generative()
     def _from_selectable(self, fromclause):
-        self._statement = self._criterion = None
-        self._order_by = self._group_by = self._distinct = False
-        self._limit = self._offset = None
+        for attr in ('_statement', '_criterion', '_order_by', '_group_by',
+                '_limit', '_offset', '_joinpath', '_joinpoint', 
+                '_distinct'
+        ):
+            self.__dict__.pop(attr, None)
         self._set_select_from(fromclause)
         old_entities = self._entities
         self._entities = []
@@ -659,15 +676,24 @@ class Query(object):
             return None
 
     @_generative()
-    def add_column(self, column):
-        """Add a SQL ColumnElement to the list of result columns to be returned."""
+    def add_columns(self, *column):
+        """Add one or more column expressions to the list 
+        of result columns to be returned."""
 
         self._entities = list(self._entities)
         l = len(self._entities)
-        _ColumnEntity(self, column)
+        for c in column:
+            _ColumnEntity(self, c)
         # _ColumnEntity may add many entities if the
         # given arg is a FROM clause
         self._setup_aliasizers(self._entities[l:])
+
+    @util.pending_deprecation("add_column() superceded by add_columns()")
+    def add_column(self, column):
+        """Add a column expression to the list of result columns
+        to be returned."""
+        
+        return self.add_columns(column)
 
     def options(self, *args):
         """Return a new Query object, applying the given list of
@@ -693,6 +719,21 @@ class Query(object):
             for opt in opts:
                 opt.process_query(self)
 
+    @_generative()
+    def with_hint(self, selectable, text, dialect_name=None):
+        """Add an indexing hint for the given entity or selectable to 
+        this :class:`Query`.
+        
+        Functionality is passed straight through to 
+        :meth:`~sqlalchemy.sql.expression.Select.with_hint`, 
+        with the addition that ``selectable`` can be a 
+        :class:`Table`, :class:`Alias`, or ORM entity / mapped class 
+        /etc.
+        """
+        mapper, selectable, is_aliased_class = _entity_info(selectable)
+        
+        self._with_hints += ((selectable, text, dialect_name),)
+        
     @_generative()
     def execution_options(self, **kwargs):
         """ Set non-SQL options which take effect during execution.
@@ -761,7 +802,6 @@ class Query(object):
 
         return self.filter(sql.and_(*clauses))
 
-
     @_generative(_no_statement_condition, _no_limit_offset)
     @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def order_by(self, *criterion):
@@ -770,7 +810,7 @@ class Query(object):
         if len(criterion) == 1 and criterion[0] is None:
             self._order_by = None
         else:
-            criterion = [self._adapt_clause(expression._literal_as_text(o), True, True) for o in criterion]
+            criterion = self._adapt_col_list(criterion)
 
             if self._order_by is False or self._order_by is None:
                 self._order_by = criterion
@@ -784,7 +824,7 @@ class Query(object):
 
         criterion = list(chain(*[_orm_columns(c) for c in criterion]))
 
-        criterion = [self._adapt_clause(expression._literal_as_text(o), True, True) for o in criterion]
+        criterion = self._adapt_col_list(criterion)
 
         if self._group_by is False:
             self._group_by = criterion
@@ -1013,6 +1053,18 @@ class Query(object):
 
                 descriptor, prop = _entity_descriptor(left_entity, onclause)
                 onclause = descriptor
+            
+            # check for q.join(Class.propname, from_joinpoint=True)
+            # and Class is that of the current joinpoint
+            elif from_joinpoint and isinstance(onclause, interfaces.PropComparator):
+                left_entity = onclause.parententity
+                
+                left_mapper, left_selectable, left_is_aliased = \
+                                    _entity_info(self._joinpoint_zero())
+                if left_mapper is left_entity:
+                    left_entity = self._joinpoint_zero()
+                    descriptor, prop = _entity_descriptor(left_entity, onclause.key)
+                    onclause = descriptor
 
             if isinstance(onclause, interfaces.PropComparator):
                 if right_entity is None:
@@ -1022,7 +1074,7 @@ class Query(object):
                         right_entity = of_type
                     else:
                         right_entity = onclause.property.mapper
-                
+            
                 left_entity = onclause.parententity
                 
                 prop = onclause.property
@@ -1051,6 +1103,12 @@ class Query(object):
         if left is None:
             left = self._joinpoint_zero()
 
+        if left is right and \
+                not create_aliases:
+            raise sa_exc.InvalidRequestError(
+                        "Can't construct a join from %s to %s, they are the same entity" % 
+                        (left, right))
+            
         left_mapper, left_selectable, left_is_aliased = _entity_info(left)
         right_mapper, right_selectable, is_aliased_class = _entity_info(right)
 
@@ -1312,7 +1370,7 @@ class Query(object):
            
         first() applies a limit of one within the generated SQL, so that
         only one primary entity row is generated on the server side 
-        (note this may consist of multiple result rows if eagerly loaded
+        (note this may consist of multiple result rows if join-loaded 
         collections are present).
 
         Calling ``first()`` results in an execution of the underlying query.
@@ -2011,7 +2069,10 @@ class Query(object):
                         order_by=context.order_by,
                         **self._select_args
                     )
-
+            
+            for hint in self._with_hints:
+                inner = inner.with_hint(*hint)
+                
             if self._correlate:
                 inner = inner.correlate(*self._correlate)
 
@@ -2066,6 +2127,10 @@ class Query(object):
                             order_by=context.order_by,
                             **self._select_args
                         )
+
+            for hint in self._with_hints:
+                statement = statement.with_hint(*hint)
+                        
             if self._execution_options:
                 statement = statement.execution_options(**self._execution_options)
 
@@ -2166,14 +2231,14 @@ class _MapperEntity(_QueryEntity):
         query._entities.append(self)
 
     def _get_entity_clauses(self, query, context):
-
+            
         adapter = None
         if not self.is_aliased_class and query._polymorphic_adapters:
             adapter = query._polymorphic_adapters.get(self.mapper, None)
 
         if not adapter and self.adapter:
             adapter = self.adapter
-
+        
         if adapter:
             if query._from_obj_alias:
                 ret = adapter.wrap(query._from_obj_alias)
@@ -2246,7 +2311,6 @@ class _MapperEntity(_QueryEntity):
 
     def __str__(self):
         return str(self.mapper)
-
 
 class _ColumnEntity(_QueryEntity):
     """Column/expression based entity."""

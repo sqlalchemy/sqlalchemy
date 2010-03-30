@@ -88,7 +88,7 @@ adodbapi_                  ``mssql+adodbapi``           development  development
 `jTDS JDBC Driver`_        ``mssql+zxjdbc``             no           no            development  yes                yes
 mxodbc_                    ``mssql+mxodbc``             yes          development   no           yes with FreeTDS_  yes
 pyodbc_                    ``mssql+pyodbc``\*           yes          development   no           yes with FreeTDS_  yes
-pymssql_                   ``mssql+pymssql``            development  development   no           yes                yes
+pymssql_                   ``mssql+pymssql``            yes          development   no           yes                yes
 **MySQL**
 `MySQL Connector/J`_       ``mysql+zxjdbc``             no           no            yes          yes                yes
 `MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          partial       no           yes                yes
@@ -487,6 +487,7 @@ Python's standard `logging <http://www.python.org/doc/lib/module-logging.html>`_
 This section assumes familiarity with the above linked logging module.  All logging performed by SQLAlchemy exists underneath the ``sqlalchemy`` namespace, as used by ``logging.getLogger('sqlalchemy')``.  When logging has been configured (i.e. such as via ``logging.basicConfig()``), the general namespace of SA loggers that can be turned on is as follows:
 
 * ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for SQL query output, ``logging.DEBUG`` for query + result set output.
+* ``sqlalchemy.dialects`` - controls custom logging for SQL dialects.  See the documentation of individual dialects for details. 
 * ``sqlalchemy.pool`` - controls connection pool logging.  set to ``logging.INFO`` or lower to log connection pool checkouts/checkins.
 * ``sqlalchemy.orm`` - controls logging of various ORM functions.  set to ``logging.INFO`` for configurational logging as well as unit of work dumps, ``logging.DEBUG`` for extensive logging during query and flush() operations.  Subcategories of ``sqlalchemy.orm`` include:
     * ``sqlalchemy.orm.attributes`` - logs certain instrumented attribute operations, such as triggered callables

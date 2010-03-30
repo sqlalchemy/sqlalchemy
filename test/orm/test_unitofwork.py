@@ -35,7 +35,7 @@ class HistoryTest(_fixtures.FixtureTest):
     def test_backref(self):
         am = mapper(Address, addresses)
         m = mapper(User, users, properties=dict(
-            addresses = relationship(am, backref='user', lazy=False)))
+            addresses = relationship(am, backref='user', lazy='joined')))
 
         session = create_session(autocommit=False)
 
@@ -173,7 +173,7 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
         assert new_a1.t2s[0].d == b1.d
         session.expunge_all()
 
-        new_a1 = (session.query(A).options(sa.orm.eagerload('t2s')).
+        new_a1 = (session.query(A).options(sa.orm.joinedload('t2s')).
                   filter(t1.c.a == a1.a)).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d
@@ -1052,7 +1052,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         """Basic save of one to many."""
 
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=True)
+            addresses = relationship(mapper(Address, addresses), lazy='select')
         ))
         u = User(name= 'one2manytester')
         a = Address(email_address='one2many@test.org')
@@ -1092,7 +1092,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         """Modifying the child items of an object."""
 
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=True)))
+            addresses = relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u1.addresses = []
@@ -1140,7 +1140,7 @@ class OneToManyTest(_fixtures.FixtureTest):
 
         """
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=True)))
+            addresses = relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u2 = User(name='user2')
@@ -1164,7 +1164,7 @@ class OneToManyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_child_move_2(self):
         m = mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy=True)))
+            addresses = relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u2 = User(name='user2')
@@ -1188,7 +1188,7 @@ class OneToManyTest(_fixtures.FixtureTest):
     def test_o2m_delete_parent(self):
         m = mapper(User, users, properties=dict(
             address = relationship(mapper(Address, addresses),
-                               lazy=True,
+                               lazy='select',
                                uselist=False)))
 
         u = User(name='one2onetester')
@@ -1211,7 +1211,7 @@ class OneToManyTest(_fixtures.FixtureTest):
     def test_one_to_one(self):
         m = mapper(User, users, properties=dict(
             address = relationship(mapper(Address, addresses),
-                               lazy=True,
+                               lazy='select',
                                uselist=False)))
 
         u = User(name='one2onetester')
@@ -1231,7 +1231,7 @@ class OneToManyTest(_fixtures.FixtureTest):
     def test_bidirectional(self):
         m1 = mapper(User, users)
         m2 = mapper(Address, addresses, properties=dict(
-            user = relationship(m1, lazy=False, backref='addresses')))
+            user = relationship(m1, lazy='joined', backref='addresses')))
 
 
         u = User(name='test')
@@ -1550,7 +1550,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     def test_m2o_one_to_one(self):
         # TODO: put assertion in here !!!
         m = mapper(Address, addresses, properties=dict(
-            user = relationship(mapper(User, users), lazy=True, uselist=False)))
+            user = relationship(mapper(User, users), lazy='select', uselist=False)))
 
         session = create_session()
 
@@ -1601,7 +1601,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one_1(self):
         m = mapper(Address, addresses, properties=dict(
-            user = relationship(mapper(User, users), lazy=True)))
+            user = relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         u1 = User(name='user1')
@@ -1626,7 +1626,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one_2(self):
         m = mapper(Address, addresses, properties=dict(
-            user = relationship(mapper(User, users), lazy=True)))
+            user = relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         a2 = Address(email_address='emailaddress2')
@@ -1657,7 +1657,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one_3(self):
         m = mapper(Address, addresses, properties=dict(
-            user = relationship(mapper(User, users), lazy=True)))
+            user = relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         u1 = User(name='user1')
@@ -1685,7 +1685,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_bidirectional_no_load(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy=None)})
+            'addresses':relationship(Address, backref='user', lazy='noload')})
         mapper(Address, addresses)
 
         # try it on unsaved objects
@@ -1717,7 +1717,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         m = mapper(Item, items, properties=dict(
                 keywords=relationship(Keyword,
                                   item_keywords,
-                                  lazy=False,
+                                  lazy='joined',
                                   order_by=keywords.c.name)))
 
         data = [Item,
@@ -1823,7 +1823,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         """
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-            keywords = relationship(Keyword, item_keywords, lazy=False),
+            keywords = relationship(Keyword, item_keywords, lazy='joined'),
             ))
 
         i = Item(description='i1')
@@ -1864,7 +1864,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         mapper(Item, items, properties=dict(
             keywords=relationship(Keyword,
                               secondary=item_keywords,
-                              lazy=False,
+                              lazy='joined',
                               order_by=keywords.c.name)))
 
         k1 = Keyword(name='keyword 1')
@@ -1904,14 +1904,14 @@ class ManyToManyTest(_fixtures.FixtureTest):
                primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
                properties=dict(
                  keyword=relationship(mapper(Keyword, keywords, non_primary=True),
-                                  lazy=False,
+                                  lazy='joined',
                                   uselist=False,
                                   order_by=keywords.c.name      # note here is a valid place where order_by can be used
                                   )))                           # on a scalar relationship(); to determine eager ordering of
                                                                 # the parent object within its collection.
 
         mapper(Item, items, properties=dict(
-            keywords=relationship(IKAssociation, lazy=False)))
+            keywords=relationship(IKAssociation, lazy='joined')))
 
         session = create_session()
 
@@ -1946,7 +1946,7 @@ class SaveTest2(_fixtures.FixtureTest):
     def test_m2o_nonmatch(self):
         mapper(User, users)
         mapper(Address, addresses, properties=dict(
-            user = relationship(User, lazy=True, uselist=False)))
+            user = relationship(User, lazy='select', uselist=False)))
 
         session = create_session()
 
@@ -2003,7 +2003,7 @@ class SaveTest3(_base.MappedTest):
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-                keywords = relationship(Keyword, secondary=assoc, lazy=False),))
+                keywords = relationship(Keyword, secondary=assoc, lazy='joined'),))
 
         i = Item()
         k1 = Keyword()

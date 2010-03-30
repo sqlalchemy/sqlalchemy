@@ -747,35 +747,10 @@ class StaticPool(Pool):
 
     """
 
-    def __init__(self, creator, **params):
-        """
-        Construct a StaticPool.
+    @memoized_property
+    def _conn(self):
+        return self._creator()
 
-        :param creator: a callable function that returns a DB-API
-          connection object.  The function will be called with
-          parameters.
-
-        :param echo: If True, connections being pulled and retrieved
-          from the pool will be logged to the standard output, as well
-          as pool sizing information.  Echoing can also be achieved by
-          enabling logging for the "sqlalchemy.pool"
-          namespace. Defaults to False.
-
-        :param reset_on_return: If true, reset the database state of
-          connections returned to the pool.  This is typically a
-          ROLLBACK to release locks and transaction resources.
-          Disable at your own peril.  Defaults to True.
-
-        :param listeners: A list of
-          :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
-          dictionaries of callables that receive events when DB-API
-          connections are created, checked out and checked in to the
-          pool.
-
-        """
-        Pool.__init__(self, creator, **params)
-        self._conn = creator()
-    
     @memoized_property
     def connection(self):
         return _ConnectionRecord(self)
@@ -784,8 +759,9 @@ class StaticPool(Pool):
         return "StaticPool"
 
     def dispose(self):
-        self._conn.close()
-        self._conn = None
+        if '_conn' in self.__dict__:
+            self._conn.close()
+            self._conn = None
 
     def recreate(self):
         self.logger.info("Pool recreating")
@@ -837,7 +813,8 @@ class AssertionPool(Pool):
     
     def dispose(self):
         self._checked_out = False
-        self._conn.close()
+        if self._conn:
+            self._conn.close()
 
     def recreate(self):
         self.logger.info("Pool recreating")

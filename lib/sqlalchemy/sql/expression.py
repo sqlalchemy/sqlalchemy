@@ -3557,6 +3557,7 @@ class Select(_SelectBaseMixin, FromClause):
     __visit_name__ = 'select'
     
     _prefixes = ()
+    _hints = util.frozendict()
     
     def __init__(self, 
                 columns, 
@@ -3659,7 +3660,34 @@ class Select(_SelectBaseMixin, FromClause):
         """Return the displayed list of FromClause elements."""
 
         return self._get_display_froms()
-
+    
+    @_generative
+    def with_hint(self, selectable, text, dialect_name=None):
+        """Add an indexing hint for the given selectable to this :class:`Select`.
+        
+        The text of the hint is written specific to a specific backend, and
+        typically uses Python string substitution syntax to render the name
+        of the table or alias, such as for Oracle::
+        
+            select([mytable]).with_hint(mytable, "+ index(%(name)s ix_mytable)")
+            
+        Would render SQL as::
+        
+            select /*+ index(mytable ix_mytable) */ ... from mytable
+            
+        The ``dialect_name`` option will limit the rendering of a particular hint
+        to a particular backend.  Such as, to add hints for both Oracle and
+        Sybase simultaneously::
+        
+            select([mytable]).\
+                with_hint(mytable, "+ index(%(name)s ix_mytable)", 'oracle').\
+                with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
+        
+        """
+        if not dialect_name:
+            dialect_name = '*'
+        self._hints = self._hints.union({(selectable, dialect_name):text})
+        
     @property
     def type(self):
         raise exc.InvalidRequestError("Select objects don't have a type.  "

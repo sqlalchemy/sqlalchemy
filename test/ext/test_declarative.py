@@ -6,7 +6,9 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, ForeignKeyConstraint, asc, Index
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import relationship, create_session, class_mapper, eagerload, compile_mappers, backref, clear_mappers, polymorphic_union, deferred
+from sqlalchemy.orm import relationship, create_session, class_mapper, \
+                            joinedload, compile_mappers, backref, clear_mappers, \
+                            polymorphic_union, deferred
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.util import classproperty
 
@@ -75,7 +77,9 @@ class DeclarativeTest(DeclarativeTestBase):
                 __table__ = t
                 foo = Column(Integer, primary_key=True)
         # can't specify new columns not already in the table
-        assert_raises_message(sa.exc.ArgumentError, "Can't add additional column 'foo' when specifying __table__", go)
+        assert_raises_message(sa.exc.ArgumentError, 
+                                "Can't add additional column 'foo' when specifying __table__", 
+                                go)
 
         # regular re-mapping works tho
         class Bar(Base):
@@ -84,6 +88,33 @@ class DeclarativeTest(DeclarativeTestBase):
             
         assert class_mapper(Bar).get_property('some_data').columns[0] is t.c.data
     
+    def test_difficult_class(self):
+        """test no getattr() errors with a customized class"""
+
+        # metaclass to mock the way zope.interface breaks getattr()
+        class BrokenMeta(type):
+            def __getattribute__(self, attr):
+                if attr == 'xyzzy':
+                    raise AttributeError, 'xyzzy'
+                else:
+                    return object.__getattribute__(self,attr)
+
+        # even though this class has an xyzzy attribute, getattr(cls,"xyzzy")
+        # fails
+        class BrokenParent(object):
+            __metaclass__ = BrokenMeta
+            xyzzy = "magic"
+
+        # _as_declarative() inspects obj.__class__.__bases__
+        class User(BrokenParent,ComparableEntity):
+            __tablename__ = 'users'
+            id = Column('id', Integer, primary_key=True,
+                test_needs_autoincrement=True)
+            name = Column('name', String(50))
+
+        decl.instrument_declarative(User,{},Base.metadata)
+
+        
     def test_undefer_column_name(self):
         # TODO: not sure if there was an explicit
         # test for this elsewhere
@@ -406,7 +437,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).options(eagerload(User.addresses)).all(), [User(name='u1', addresses=[
+        eq_(sess.query(User).options(joinedload(User.addresses)).all(), [User(name='u1', addresses=[
             Address(email='one'),
             Address(email='two'),
         ])])
@@ -1883,6 +1914,24 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.name,'testing')
         eq_(obj.foo(),'bar1')
         eq_(obj.baz,'fu')
+    
+    def test_not_allowed(self):
+        class MyMixin:
+            foo = Column(Integer, ForeignKey('bar.id'))
+            
+        def go():
+            class MyModel(Base, MyMixin):
+                __tablename__ = 'foo'
+        
+        assert_raises(sa.exc.InvalidRequestError, go)
+        
+        class MyRelMixin:
+            foo = relationship("Bar")
+        def go():
+            class MyModel(Base, MyRelMixin):
+                __tablename__ = 'foo'
+        assert_raises(sa.exc.InvalidRequestError, go)
+        
         
     def test_table_name_inherited(self):
         
@@ -1927,6 +1976,18 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         eq_(MyModel.__table__.name,'mymodel1')
     
+    def test_table_name_dependent_on_subclass(self):
+        class MyHistoryMixin:
+            @classproperty
+            def __tablename__(cls):
+                return cls.parent_name + '_changelog'
+
+        class MyModel(Base, MyHistoryMixin):
+            parent_name = 'foo'
+            id = Column(Integer, primary_key=True)
+            
+        eq_(MyModel.__table__.name, 'foo_changelog')
+        
     def test_table_args_inherited(self):
         
         class MyMixin:

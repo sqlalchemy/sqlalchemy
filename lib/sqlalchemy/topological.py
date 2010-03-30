@@ -141,3 +141,36 @@ def sort(tuples, allitems):
             queue.append(childnode)
     return output
 
+
+def _find_cycles(edges):
+    cycles = {}
+
+    def traverse(node, cycle, goal):
+        for (n, key) in edges.edges_by_parent(node):
+            if key in cycle:
+                continue
+            cycle.add(key)
+            if key is goal:
+                cycset = set(cycle)
+                for x in cycle:
+                    if x in cycles:
+                        existing_set = cycles[x]
+                        existing_set.update(cycset)
+                        for y in existing_set:
+                            cycles[y] = existing_set
+                        cycset = existing_set
+                    else:
+                        cycles[x] = cycset
+            else:
+                traverse(key, cycle, goal)
+            cycle.pop()
+
+    for parent in edges.get_parents():
+        traverse(parent, set(), parent)
+
+    unique_cycles = set(tuple(s) for s in cycles.values())
+    
+    for cycle in unique_cycles:
+        edgecollection = [edge for edge in edges
+                          if edge[0] in cycle and edge[1] in cycle]
+        yield edgecollection

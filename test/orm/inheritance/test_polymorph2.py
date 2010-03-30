@@ -167,14 +167,14 @@ class RelationshipTest2(_base.MappedTest):
         if usedata:
             mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager',
                   properties={
-                    'colleague':relationship(Person, primaryjoin=managers.c.manager_id==people.c.person_id, lazy=True, uselist=False),
+                    'colleague':relationship(Person, primaryjoin=managers.c.manager_id==people.c.person_id, lazy='select', uselist=False),
                     'data':relationship(Data, uselist=False)
                  }
             )
         else:
             mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager',
                   properties={
-                    'colleague':relationship(Person, primaryjoin=managers.c.manager_id==people.c.person_id, lazy=True, uselist=False)
+                    'colleague':relationship(Person, primaryjoin=managers.c.manager_id==people.c.person_id, lazy='select', uselist=False)
                  }
             )
 
@@ -384,7 +384,7 @@ class RelationshipTest4(_base.MappedTest):
         session.expunge_all()
     
         def go():
-            testcar = session.query(Car).options(eagerload('employee')).get(car1.car_id)
+            testcar = session.query(Car).options(joinedload('employee')).get(car1.car_id)
             assert str(testcar.employee) == "Engineer E4, status X"
         self.assert_sql_count(testing.db, go, 1)
 
@@ -407,7 +407,7 @@ class RelationshipTest4(_base.MappedTest):
         # and now for the lightning round, eager !
 
         def go():
-            testcar = session.query(Car).options(eagerload('employee')).get(car1.car_id)
+            testcar = session.query(Car).options(joinedload('employee')).get(car1.car_id)
             assert str(testcar.employee) == "Engineer E4, status X"
         self.assert_sql_count(testing.db, go, 1)
 
@@ -462,7 +462,7 @@ class RelationshipTest5(_base.MappedTest):
         person_mapper   = mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
-        car_mapper      = mapper(Car, cars, properties= {'manager':relationship(manager_mapper, lazy=False)})
+        car_mapper      = mapper(Car, cars, properties= {'manager':relationship(manager_mapper, lazy='joined')})
 
         sess = create_session()
         car1 = Car()
@@ -505,7 +505,7 @@ class RelationshipTest6(_base.MappedTest):
         # to parent.mapped_table
         mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id,
               properties={
-                'colleague':relationship(Manager, primaryjoin=managers.c.colleague_id==managers.c.person_id, lazy=True, uselist=False)
+                'colleague':relationship(Manager, primaryjoin=managers.c.colleague_id==managers.c.person_id, lazy='select', uselist=False)
              }
         )
 
@@ -1049,7 +1049,7 @@ class InheritingEagerTest(_base.MappedTest):
                self.label = label
 
         mapper(Person, people, polymorphic_on=people.c._type,polymorphic_identity='person', properties={
-            'tags': relationship(Tag, secondary=peopleTags,backref='people', lazy=False)
+            'tags': relationship(Tag, secondary=peopleTags,backref='people', lazy='joined')
         })
         mapper(Employee, employees, inherits=Person,polymorphic_identity='employee')
         mapper(Tag, tags)

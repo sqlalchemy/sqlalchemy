@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, backref, eagerload
+from sqlalchemy.orm import mapper, relationship, backref, joinedload
 from sqlalchemy.test.testing import eq_
 from test.engine import _base as engine_base
 from test.orm import _base, _fixtures
@@ -889,7 +889,7 @@ class SessionTest(_fixtures.FixtureTest):
         s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
         s.commit()
         
-        user = s.query(User).options(eagerload(User.addresses)).one()
+        user = s.query(User).options(joinedload(User.addresses)).one()
         user.addresses[0].user # lazyload
         eq_(user, User(name="ed", addresses=[Address(email_address="ed1")]))
         
@@ -897,7 +897,7 @@ class SessionTest(_fixtures.FixtureTest):
         gc_collect()
         assert len(s.identity_map) == 0
 
-        user = s.query(User).options(eagerload(User.addresses)).one()
+        user = s.query(User).options(joinedload(User.addresses)).one()
         user.addresses[0].email_address='ed2'
         user.addresses[0].user # lazyload
         del user
@@ -905,7 +905,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert len(s.identity_map) == 2
         
         s.commit()
-        user = s.query(User).options(eagerload(User.addresses)).one()
+        user = s.query(User).options(joinedload(User.addresses)).one()
         eq_(user, User(name="ed", addresses=[Address(email_address="ed2")]))
         
     @testing.resolve_artifact_names
@@ -918,7 +918,7 @@ class SessionTest(_fixtures.FixtureTest):
         s.add(User(name="ed", address=Address(email_address="ed1")))
         s.commit()
 
-        user = s.query(User).options(eagerload(User.address)).one()
+        user = s.query(User).options(joinedload(User.address)).one()
         user.address.user
         eq_(user, User(name="ed", address=Address(email_address="ed1")))
 
@@ -926,7 +926,7 @@ class SessionTest(_fixtures.FixtureTest):
         gc_collect()
         assert len(s.identity_map) == 0
 
-        user = s.query(User).options(eagerload(User.address)).one()
+        user = s.query(User).options(joinedload(User.address)).one()
         user.address.email_address='ed2'
         user.address.user # lazyload
 
@@ -935,7 +935,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert len(s.identity_map) == 2
         
         s.commit()
-        user = s.query(User).options(eagerload(User.address)).one()
+        user = s.query(User).options(joinedload(User.address)).one()
         eq_(user, User(name="ed", address=Address(email_address="ed2")))
     
     @testing.resolve_artifact_names

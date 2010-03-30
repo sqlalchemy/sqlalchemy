@@ -29,12 +29,34 @@ Currently *not* supported are::
 """
 
 from sqlalchemy.dialects.sybase.base import SybaseDialect, SybaseExecutionContext
-from sqlalchemy.connectors.pyodbc import PyODBCConnector, PyODBCNumeric
+from sqlalchemy.connectors.pyodbc import PyODBCConnector
+import decimal
+from sqlalchemy import types as sqltypes, util, processors
 
-from sqlalchemy import types as sqltypes, util
+class _SybNumeric_pyodbc(sqltypes.Numeric):
+    """Turns Decimals with adjusted() < -6 into floats.
+    
+    It's not yet known how to get decimals with many 
+    significant digits or very large adjusted() into Sybase
+    via pyodbc.
+    
+    """
 
-class _SybNumeric_pyodbc(PyODBCNumeric):
-    convert_large_decimals_to_string = False
+    def bind_processor(self, dialect):
+        super_process = super(_SybNumeric_pyodbc, self).bind_processor(dialect)
+
+        def process(value):
+            if self.asdecimal and \
+                    isinstance(value, decimal.Decimal):
+
+                if value.adjusted() < -6:
+                    return processors.to_float(value)
+
+            if super_process:
+                return super_process(value)
+            else:
+                return value
+        return process
 
 class SybaseExecutionContext_pyodbc(SybaseExecutionContext):
     def set_ddl_autocommit(self, connection, value):
@@ -42,8 +64,6 @@ class SybaseExecutionContext_pyodbc(SybaseExecutionContext):
             connection.autocommit = True
         else:
             connection.autocommit = False
-
-
 
 class SybaseDialect_pyodbc(PyODBCConnector, SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_pyodbc

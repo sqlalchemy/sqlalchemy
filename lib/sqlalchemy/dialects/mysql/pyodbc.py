@@ -1,5 +1,24 @@
 """Support for the MySQL database via the pyodbc adapter.
 
+pyodbc is available at:
+
+    http://pypi.python.org/pypi/pyodbc/
+
+Connecting
+----------
+
+Connect string::
+
+    mysql+pyodbc://<username>:<password>@<dsnname>
+
+Limitations
+-----------
+
+The mysql-pyodbc dialect is subject to unresolved character encoding issues 
+which exist within the current ODBC drivers available.
+(see http://code.google.com/p/pyodbc/issues/detail?id=25).   Consider usage
+of OurSQL, MySQLdb, or MySQL-connector/Python.
+
 """
 
 from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext

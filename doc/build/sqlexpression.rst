@@ -1037,22 +1037,40 @@ Finally, we're back to UPDATE.  Updates work a lot like INSERTS, except there is
 .. sourcecode:: pycon+sql
 
     >>> # change 'jack' to 'ed'
-    {sql}>>> conn.execute(users.update().where(users.c.name=='jack').values(name='ed')) #doctest: +ELLIPSIS
+    {sql}>>> conn.execute(users.update().
+    ...                    where(users.c.name=='jack').
+    ...                    values(name='ed')
+    ...                ) #doctest: +ELLIPSIS
     UPDATE users SET name=? WHERE users.name = ?
     ('ed', 'jack')
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
 
     >>> # use bind parameters
-    >>> u = users.update().where(users.c.name==bindparam('oldname')).values(name=bindparam('newname'))
+    >>> u = users.update().\
+    ...             where(users.c.name==bindparam('oldname')).\
+    ...             values(name=bindparam('newname'))
     {sql}>>> conn.execute(u, oldname='jack', newname='ed') #doctest: +ELLIPSIS
     UPDATE users SET name=? WHERE users.name = ?
     ('ed', 'jack')
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
 
+    >>> # with binds, you can also update many rows at once
+    {sql}>>> conn.execute(u, 
+    ...     {'oldname':'jack', 'newname':'ed'},
+    ...     {'oldname':'wendy', 'newname':'mary'},
+    ...     {'oldname':'jim', 'newname':'jake'},
+    ...     ) #doctest: +ELLIPSIS
+    UPDATE users SET name=? WHERE users.name = ?
+    [('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim')]
+    COMMIT
+    {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
+
     >>> # update a column to an expression.:
-    {sql}>>> conn.execute(users.update().values(fullname="Fullname: " + users.c.name)) #doctest: +ELLIPSIS
+    {sql}>>> conn.execute(users.update().
+    ...                     values(fullname="Fullname: " + users.c.name)
+    ...                 ) #doctest: +ELLIPSIS
     UPDATE users SET fullname=(? || users.name)
     ('Fullname: ',)
     COMMIT

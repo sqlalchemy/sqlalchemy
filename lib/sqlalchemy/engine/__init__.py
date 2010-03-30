@@ -107,10 +107,11 @@ def create_engine(*args, **kwargs):
     arguments sent as options to the dialect and resulting Engine.
 
     The URL is a string in the form
-    ``dialect://user:password@host/dbname[?key=value..]``, where
-    ``dialect`` is a name such as ``mysql``, ``oracle``, ``postgresql``,
-    etc.  Alternatively, the URL can be an instance of
-    :class:`~sqlalchemy.engine.url.URL`.
+    ``dialect+driver://user:password@host/dbname[?key=value..]``, where
+    ``dialect`` is a database name such as ``mysql``, ``oracle``, 
+    ``postgresql``, etc., and ``driver`` the name of a DBAPI, such as 
+    ``psycopg2``, ``pyodbc``, ``cx_oracle``, etc.  Alternatively, 
+    the URL can be an instance of :class:`~sqlalchemy.engine.url.URL`.
 
     `**kwargs` takes a wide variety of options which are routed 
     towards their appropriate components.  Arguments may be 
@@ -120,11 +121,11 @@ def create_engine(*args, **kwargs):
     that are common to most ``create_engine()`` usage.
 
     :param assert_unicode:  Deprecated.  A warning is raised in all cases when a non-Unicode
-      object is passed when SQLAlchemy would coerce into an encoding
-      (note: but **not** when the DBAPI handles unicode objects natively).
-      To suppress or raise this warning to an 
-      error, use the Python warnings filter documented at:
-      http://docs.python.org/library/warnings.html
+        object is passed when SQLAlchemy would coerce into an encoding
+        (note: but **not** when the DBAPI handles unicode objects natively).
+        To suppress or raise this warning to an 
+        error, use the Python warnings filter documented at:
+        http://docs.python.org/library/warnings.html
 
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as
@@ -144,11 +145,6 @@ def create_engine(*args, **kwargs):
         connections. Usage of this function causes connection
         parameters specified in the URL argument to be bypassed.
 
-    :param logging_name:  String identifier which will be used within
-       the "name" field of logging records generated within the
-       "sqlalchemy.engine" logger. Defaults to a hexstring of the 
-       object's id.
-
     :param echo=False: if True, the Engine will log all statements
         as well as a repr() of their parameter lists to the engines
         logger, which defaults to sys.stdout. The ``echo`` attribute of
@@ -157,11 +153,6 @@ def create_engine(*args, **kwargs):
         printed to the standard output as well. This flag ultimately
         controls a Python logger; see :ref:`dbengine_logging` for
         information on how to configure logging directly.
-
-    :param pool_logging_name:  String identifier which will be used within
-       the "name" field of logging records generated within the 
-       "sqlalchemy.pool" logger. Defaults to a hexstring of the object's 
-       id.
 
     :param echo_pool=False: if True, the connection pool will log
         all checkouts/checkins to the logging stream, which defaults to
@@ -178,6 +169,20 @@ def create_engine(*args, **kwargs):
         characters. If less than 6, labels are generated as
         "_(counter)". If ``None``, the value of
         ``dialect.max_identifier_length`` is used instead.
+    
+    :param listeners: A list of one or more 
+        :class:`~sqlalchemy.interfaces.PoolListener` objects which will 
+        receive connection pool events.
+      
+    :param logging_name:  String identifier which will be used within
+        the "name" field of logging records generated within the
+        "sqlalchemy.engine" logger. Defaults to a hexstring of the 
+        object's id.
+
+    :param max_overflow=10: the number of connections to allow in
+        connection pool "overflow", that is connections that can be
+        opened above and beyond the pool_size setting, which defaults
+        to five. this is only used with :class:`~sqlalchemy.pool.QueuePool`.
 
     :param module=None: used by database implementations which
         support multiple DBAPI modules, this is a reference to a DBAPI2
@@ -199,10 +204,10 @@ def create_engine(*args, **kwargs):
         instantiate the pool in this case, you just indicate what type
         of pool to be used.
 
-    :param max_overflow=10: the number of connections to allow in
-        connection pool "overflow", that is connections that can be
-        opened above and beyond the pool_size setting, which defaults
-        to five. this is only used with :class:`~sqlalchemy.pool.QueuePool`.
+    :param pool_logging_name:  String identifier which will be used within
+       the "name" field of logging records generated within the 
+       "sqlalchemy.pool" logger. Defaults to a hexstring of the object's 
+       id.
 
     :param pool_size=5: the number of connections to keep open
         inside the connection pool. This used with :class:`~sqlalchemy.pool.QueuePool` as

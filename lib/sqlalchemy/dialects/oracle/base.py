@@ -225,6 +225,8 @@ ischema_names = {
     'CLOB' : CLOB,
     'NCLOB' : NCLOB,
     'TIMESTAMP' : TIMESTAMP,
+    'TIMESTAMP WITH TIME ZONE' : TIMESTAMP,
+    'INTERVAL DAY TO SECOND' : INTERVAL,
     'RAW' : RAW,
     'FLOAT' : FLOAT,
     'DOUBLE PRECISION' : DOUBLE_PRECISION,
@@ -256,7 +258,13 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
                 "(%d)" % type_.second_precision or
                 "",
         )
-            
+
+    def visit_TIMESTAMP(self, type_):
+        if type_.timezone:
+            return "TIMESTAMP WITH TIME ZONE"
+        else:
+            return "TIMESTAMP"
+
     def visit_DOUBLE_PRECISION(self, type_):
         return self._generate_numeric(type_, "DOUBLE PRECISION")
         
@@ -278,7 +286,10 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
             return "%(name)s(%(precision)s, %(scale)s)" % {'name':name,'precision': precision, 'scale' : scale}
         
     def visit_VARCHAR(self, type_):
-        return "VARCHAR(%(length)s)" % {'length' : type_.length}
+        if self.dialect.supports_char_length:
+            return "VARCHAR(%(length)s CHAR)" % {'length' : type_.length}
+        else:
+            return "VARCHAR(%(length)s)" % {'length' : type_.length}
 
     def visit_NVARCHAR(self, type_):
         return "NVARCHAR2(%(length)s)" % {'length' : type_.length}
@@ -331,6 +342,11 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_match_op(self, binary, **kw):
         return "CONTAINS (%s, %s)" % (self.process(binary.left), self.process(binary.right))
     
+    def get_select_hint_text(self, byfroms):
+        return " ".join(
+            "/*+ %s */" % text for table, text in byfroms.items()
+        )
+        
     def function_argspec(self, fn, **kw):
         if len(fn.clauses) > 0:
             return compiler.SQLCompiler.function_argspec(self, fn, **kw)
@@ -349,7 +365,9 @@ class OracleCompiler(compiler.SQLCompiler):
         if self.dialect.use_ansi:
             return compiler.SQLCompiler.visit_join(self, join, **kwargs)
         else:
-            return self.process(join.left, asfrom=True) + ", " + self.process(join.right, asfrom=True)
+            kwargs['asfrom'] = True
+            return self.process(join.left, **kwargs) + \
+                        ", " + self.process(join.right, **kwargs)
 
     def _get_nonansi_join_whereclause(self, froms):
         clauses = []
@@ -381,14 +399,18 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_sequence(self, seq):
         return self.dialect.identifier_preparer.format_sequence(seq) + ".nextval"
 
-    def visit_alias(self, alias, asfrom=False, **kwargs):
+    def visit_alias(self, alias, asfrom=False, ashint=False, **kwargs):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
-
-        if asfrom:
+        
+        if asfrom or ashint:
             alias_name = isinstance(alias.name, expression._generated_label) and \
                             self._truncated_identifier("alias", alias.name) or alias.name
-            
-            return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + self.preparer.format_alias(alias, alias_name)
+        
+        if ashint:
+            return alias_name
+        elif asfrom:
+            return self.process(alias.original, asfrom=asfrom, **kwargs) + \
+                            " " + self.preparer.format_alias(alias, alias_name)
         else:
             return self.process(alias.original, **kwargs)
 
@@ -561,7 +583,8 @@ class OracleDialect(default.DefaultDialect):
     execution_ctx_cls = OracleExecutionContext
     
     reflection_options = ('oracle_resolve_synonyms', )
-    
+
+    supports_char_length = True    
     
     def __init__(self, 
                 use_ansi=True, 
@@ -575,6 +598,8 @@ class OracleDialect(default.DefaultDialect):
         super(OracleDialect, self).initialize(connection)
         self.implicit_returning = self.server_version_info > (10, ) and \
                                         self.__dict__.get('implicit_returning', True)
+
+        self.supports_char_length = self.server_version_info >= (9, )
 
         if self.server_version_info < (9,):
             self.colspecs = self.colspecs.copy()
@@ -630,18 +655,6 @@ class OracleDialect(default.DefaultDialect):
 
     def _get_default_schema_name(self, connection):
         return self.normalize_name(connection.execute(u'SELECT USER FROM DUAL').scalar())
-
-    def table_names(self, connection, schema):
-        # note that table_names() isnt loading DBLINKed or synonym'ed tables
-        if schema is None:
-            schema = self.default_schema_name
-        s = sql.text(
-            "SELECT table_name FROM all_tables "
-            "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
-            "AND OWNER = :owner "
-            "AND IOT_NAME IS NULL")
-        cursor = connection.execute(s, owner=self.denormalize_name(schema))
-        return [self.normalize_name(row[0]) for row in cursor]
 
     def _resolve_synonym(self, connection, desired_owner=None, desired_synonym=None, desired_table=None):
         """search for a local synonym matching the given desired owner/name.
@@ -712,7 +725,18 @@ class OracleDialect(default.DefaultDialect):
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         schema = self.denormalize_name(schema or self.default_schema_name)
-        return self.table_names(connection, schema)
+
+        # note that table_names() isnt loading DBLINKed or synonym'ed tables
+        if schema is None:
+            schema = self.default_schema_name
+        s = sql.text(
+            "SELECT table_name FROM all_tables "
+            "WHERE nvl(tablespace_name, 'no tablespace') NOT IN ('SYSTEM', 'SYSAUX') "
+            "AND OWNER = :owner "
+            "AND IOT_NAME IS NULL")
+        cursor = connection.execute(s, owner=schema)
+        return [self.normalize_name(row[0]) for row in cursor]
+
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
@@ -742,11 +766,16 @@ class OracleDialect(default.DefaultDialect):
                                           resolve_synonyms, dblink,
                                           info_cache=info_cache)
         columns = []
+        if self.supports_char_length:
+            char_length_col = 'char_length'
+        else:
+            char_length_col = 'data_length'
+ 
         c = connection.execute(sql.text(
-                "SELECT column_name, data_type, data_length, data_precision, data_scale, "
+                "SELECT column_name, data_type, %(char_length_col)s, data_precision, data_scale, "
                 "nullable, data_default FROM ALL_TAB_COLUMNS%(dblink)s "
                 "WHERE table_name = :table_name AND owner = :owner " 
-                "ORDER BY column_id" % {'dblink': dblink}),
+                "ORDER BY column_id" % {'dblink': dblink, 'char_length_col':char_length_col}),
                                table_name=table_name, owner=schema)
 
         for row in c:
@@ -755,8 +784,10 @@ class OracleDialect(default.DefaultDialect):
 
             if coltype == 'NUMBER' :
                 coltype = NUMBER(precision, scale)
-            elif coltype=='CHAR' or coltype=='VARCHAR2':
+            elif coltype in ('VARCHAR2', 'NVARCHAR2', 'CHAR'):
                 coltype = self.ischema_names.get(coltype)(length)
+            elif 'WITH TIME ZONE' in coltype: 
+                coltype = TIMESTAMP(timezone=True)
             else:
                 coltype = re.sub(r'\(\d+\)', '', coltype)
                 try:

@@ -313,7 +313,7 @@ class ConcreteTest(_base.MappedTest):
         self.assert_sql_count(testing.db, go, 2)
         session.expunge_all()
         def go():
-            c2 = session.query(Company).options(eagerload(Company.employees)).get(c.id)
+            c2 = session.query(Company).options(joinedload(Company.employees)).get(c.id)
             assert set([repr(x) for x in c2.employees]) == set(["Engineer Kurt knows how to hack", "Manager Tom knows how to manage things"])
         self.assert_sql_count(testing.db, go, 1)
 
@@ -462,7 +462,7 @@ class PropertyInheritanceTest(_base.MappedTest):
         def go():
             eq_(
                 [C(many_a=[A(aname='a1'), B(bname='b1'), B(bname='b2')]), C(many_a=[A(aname='a2')])],
-                sess.query(C).options(eagerload(C.many_a)).order_by(C.id).all(),
+                sess.query(C).options(joinedload(C.many_a)).order_by(C.id).all(),
             )
         self.assert_sql_count(testing.db, go, 1)
 

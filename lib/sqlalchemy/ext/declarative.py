@@ -507,7 +507,7 @@ Mapped instances then make usage of
 from sqlalchemy.schema import Table, Column, MetaData
 from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property, class_mapper
 from sqlalchemy.orm.interfaces import MapperProperty
-from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty
+from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty
 from sqlalchemy.orm.util import _is_mapped_class
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import util as sql_util
@@ -531,31 +531,41 @@ def instrument_declarative(cls, registry, metadata):
     
 def _as_declarative(cls, classname, dict_):
 
-    # doing it this way enables these attributes to be descriptors,
-    # see below...
-    get_mapper_args = '__mapper_args__' in dict_
-    get_table_args = '__table_args__' in dict_
-    
     # dict_ will be a dictproxy, which we can't write to, and we need to!
     dict_ = dict(dict_)
 
     column_copies = dict()
-
+    unmapped_mixins = False
     for base in cls.__bases__:
         names = dir(base)
         if not _is_mapped_class(base):
+            unmapped_mixins = True
             for name in names:
-                obj = getattr(base,name)
+                obj = getattr(base,name, None)
                 if isinstance(obj, Column):
+                    if obj.foreign_keys:
+                        raise exceptions.InvalidRequestError(
+                            "Columns with foreign keys to other columns "
+                            "are not allowed on declarative mixins at this time."
+                        )
                     dict_[name]=column_copies[obj]=obj.copy()
-            get_mapper_args = get_mapper_args or getattr(base,'__mapper_args__',None)
-            get_table_args = get_table_args or getattr(base,'__table_args__',None)
-            tablename = getattr(base,'__tablename__',None)
-            if tablename:
-                # subtle: if tablename is a descriptor here, we actually
-                # put the wrong value in, but it serves as a marker to get
-                # the right value value...
-                dict_['__tablename__']=tablename
+                elif isinstance(obj, RelationshipProperty):
+                    raise exceptions.InvalidRequestError(
+                                        "relationships are not allowed on "
+                                        "declarative mixins at this time.")
+
+    # doing it this way enables these attributes to be descriptors
+    get_mapper_args = '__mapper_args__' in dict_
+    get_table_args = '__table_args__' in dict_
+    if unmapped_mixins:
+        get_mapper_args = get_mapper_args or getattr(cls,'__mapper_args__',None)
+        get_table_args = get_table_args or getattr(cls,'__table_args__',None)
+        tablename = getattr(cls,'__tablename__',None)
+        if tablename:
+            # subtle: if tablename is a descriptor here, we actually
+            # put the wrong value in, but it serves as a marker to get
+            # the right value value...
+            dict_['__tablename__']=tablename
 
     # now that we know whether or not to get these, get them from the class
     # if we should, enabling them to be decorators
@@ -777,7 +787,7 @@ def _deferred_relationship(cls, prop):
                     prop.parent, arg, n.args[0], cls))
         return return_cls
 
-    if isinstance(prop, PropertyLoader):
+    if isinstance(prop, RelationshipProperty):
         for attr in ('argument', 'order_by', 'primaryjoin', 'secondaryjoin',
                      'secondary', '_foreign_keys', 'remote_side'):
             v = getattr(prop, attr)
