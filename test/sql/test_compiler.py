@@ -2095,6 +2095,20 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
                                     params={'x':1, 'y':2})
         self.assert_compile(i, "INSERT INTO foo (x, y) VALUES ((:param_1 + :x2), :y)",
                                     params={'x2':1, 'y':2})
+    
+    def test_labels_no_collision(self):
+        
+        t = table('foo', column('id'), column('foo_id'))
+        
+        self.assert_compile(
+            t.update().where(t.c.id==5),
+            "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :id_1"
+        )
+
+        self.assert_compile(
+            t.update().where(t.c.id==bindparam(key=t.c.id._label)),
+            "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :foo_id_1"
+        )
         
 class InlineDefaultTest(TestBase, AssertsCompiledSQL):
     def test_insert(self):

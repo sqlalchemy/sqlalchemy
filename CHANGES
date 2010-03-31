@@ -27,6 +27,14 @@ CHANGES
     "delete-orphan", or will simply detach it otherwise.
     [ticket:1754]
 
+- sql
+  - Restored some bind-labeling logic from 0.5 which ensures
+    that tables with column names that overlap another column
+    of the form "<tablename>_<columnname>" won't produce 
+    errors if column._label is used as a bind name during
+    an UPDATE.  Test coverage which wasn't present in 0.5
+    has been added.  [ticket:1755]
+    
 - ext
    - the compiler extension now allows @compiles decorators
      on base classes that extend to child classes, @compiles
