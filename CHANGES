@@ -27,6 +27,10 @@ CHANGES
     "delete-orphan", or will simply detach it otherwise.
     [ticket:1754]
 
+  - Fixed a potential issue in topological cycle detection 
+    introduced in 0.6beta3, for units of work with long 
+    dependency cycles.
+    
 - sql
   - Restored some bind-labeling logic from 0.5 which ensures
     that tables with column names that overlap another column

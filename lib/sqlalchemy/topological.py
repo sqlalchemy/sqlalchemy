@@ -270,7 +270,7 @@ def _find_cycles(edges):
         for (n, key) in edges.edges_by_parent(node):
             if key in cycle:
                 continue
-            cycle.add(key)
+            cycle.append(key)
             if key is goal:
                 cycset = set(cycle)
                 for x in cycle:
@@ -287,7 +287,7 @@ def _find_cycles(edges):
             cycle.pop()
 
     for parent in edges.get_parents():
-        traverse(parent, set(), parent)
+        traverse(parent, [], parent)
 
     unique_cycles = set(tuple(s) for s in cycles.values())
     
