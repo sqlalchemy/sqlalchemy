@@ -191,10 +191,73 @@ class OneToManyDP(DependencyProcessor):
             uow.dependencies.update([
                 (parent_saves, after_save),
                 (after_save, child_saves),
-                (child_deletes, before_delete),
-                (before_delete, parent_deletes)
+                
+                (child_saves, parent_deletes),
+                (before_delete, child_saves),
+                
+                (child_deletes, parent_deletes)
             ])
     
+    def per_saved_state_flush_actions(self, uow, state):
+        if True:
+            parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
+            child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
+            assert parent_saves in uow.cycles
+            assert child_saves in uow.cycles
+        
+        added, updated, deleted = uow.get_attribute_history(state, self.key, passive=True)
+        if not added and not unchanged and not deleted:
+            return
+        
+        save_parent = unitofwork.SaveUpdateState(state)
+        after_save = unitofwork.ProcessState(uow, self, False, state)
+
+        for child_state in added + unchanged + deleted:
+            if child_state is None:
+                continue
+            
+            (deleted, listonly) = uow.states[child_state]
+            if deleted:
+                child_action = unitofwork.DeleteState(child_state)
+            else:
+                child_action = unitofwork.SaveUpdateState(child_state)
+            
+            uow.dependencies.update([
+                (save_parent, after_save),
+                (after_save, child_action),
+            ])
+
+    def per_deleted_state_flush_actions(self, uow, state):
+        if True:
+            parent_deletes = unitofwork.DeleteAll(uow, self.parent)
+            child_deletes = unitofwork.DeleteAll(uow, self.mapper)
+            assert parent_deletes in uow.cycles
+            assert child_deletes in uow.cycles
+
+        added, updated, deleted = uow.get_attribute_history(state, self.key, passive=True)
+        if not added and not unchanged and not deleted:
+            return
+
+        delete_parent = unitofwork.DeleteState(state)
+        after_delete = unitofwork.ProcessState(uow, self, True, state)
+
+        for child_state in added + unchanged + deleted:
+            if child_state is None:
+                continue
+
+            (deleted, listonly) = uow.states[child_state]
+            if deleted:
+                child_action = unitofwork.DeleteState(child_state)
+            else:
+                child_action = unitofwork.SaveUpdateState(child_state)
+
+            uow.dependencies.update([
+                (child_action, )
+                (save_parent, after_save),
+                (after_save, child_action),
+            ])
+        
+        
     def presort_deletes(self, uowcommit, states):
         # head object is being deleted, and we manage its list of child objects
         # the child objects have to have their foreign key to the parent set to NULL
@@ -318,12 +381,11 @@ class ManyToOneDP(DependencyProcessor):
         else:
             unitofwork.GetDependentObjects(uow, self, False, True)
             unitofwork.GetDependentObjects(uow, self, True, True)
-
+            
             uow.dependencies.update([
-                (after_save, parent_saves),
                 (child_saves, after_save),
-                (parent_deletes, before_delete),
-                (before_delete, child_deletes)
+                (after_save, parent_saves),
+                (parent_saves, child_deletes)
             ])
 
     def presort_deletes(self, uowcommit, states):
@@ -375,6 +437,7 @@ class ManyToOneDP(DependencyProcessor):
             if history:
                 for child in history.added:
                     self._synchronize(state, child, None, False, uowcommit)
+                
                 self._conditional_post_update(state, uowcommit, history.sum())
 
 

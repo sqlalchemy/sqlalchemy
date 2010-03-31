@@ -166,16 +166,23 @@ class UOWTransaction(object):
             if not ret:
                 break
         
+        self.cycles = cycles = topological.find_cycles(self.dependencies, self.postsort_actions.values())
+        assert not cycles
+        for rec in cycles:
+            rec.per_state_flush_actions(self)
+
+        for edge in list(self.dependencies):
+            # both nodes in this edge were part of a cycle.
+            # remove that from our deps as it has replaced
+            # itself with per-state actions
+            if cycles.issuperset(edge):
+                self.dependencies.remove(edge)
+            
         sort = topological.sort(self.dependencies, self.postsort_actions.values())
         print sort
         for rec in sort:
             rec.execute(self)
             
-#        if cycles:
-#            break up actions into finer grained actions along those cycles
-            
-#        for rec in topological.sort(self.dependencies, self.actions):
-#            rec.execute()
 
     def finalize_flush_changes(self):
         """mark processed objects as clean / deleted after a successful flush().
@@ -276,6 +283,13 @@ class ProcessAll(PropertyRecMixin, PostSortRec):
         else:
             self.dependency_processor.process_saves(uow, states)
 
+    def per_state_flush_actions(self, uow):
+        for state in self._elements(uow):
+            if self.delete:
+                self.dependency_processor.per_deleted_state_flush_actions(uow, self.dependency_processor, state)
+            else:
+                self.dependency_processor.per_saved_state_flush_actions(uow, self.dependency_processor, state)
+
 class SaveUpdateAll(PostSortRec):
     def __init__(self, uow, mapper):
         self.mapper = mapper
@@ -285,6 +299,10 @@ class SaveUpdateAll(PostSortRec):
             uow.states_for_mapper_hierarchy(self.mapper, False, False),
             uow
         )
+    
+    def per_state_flush_actions(self, uow):
+        for state in uow.states_for_mapper_hierarchy(self.mapper, False, False):
+            SaveUpdateState(uow, state)
         
 class DeleteAll(PostSortRec):
     def __init__(self, uow, mapper):
@@ -295,6 +313,10 @@ class DeleteAll(PostSortRec):
             uow.states_for_mapper_hierarchy(self.mapper, True, False),
             uow
         )
+
+    def per_state_flush_actions(self, uow):
+        for state in uow.states_for_mapper_hierarchy(self.mapper, True, False):
+            DeleteState(uow, state)
 
 class ProcessState(PostSortRec):
     def __init__(self, uow, dependency_processor, delete, state):
