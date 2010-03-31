@@ -139,7 +139,9 @@ class UOWTransaction(object):
                 mapper.per_mapper_flush_actions(self)
             
             self.mappers[mapper].add(state)
-        self.states[state] = (isdelete, listonly)
+            self.states[state] = (isdelete, listonly)
+        elif isdelete or listonly:
+            self.states[state] = (isdelete, listonly)
     
     def states_for_mapper(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)

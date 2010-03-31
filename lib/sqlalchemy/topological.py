@@ -51,9 +51,6 @@ class _EdgeCollection(object):
         
         return self.parent_to_children[node]
         
-    def get_parents(self):
-        return self.parent_to_children.keys()
-
     def pop_node(self, node):
         """Remove all edges where the given node is a parent.
 

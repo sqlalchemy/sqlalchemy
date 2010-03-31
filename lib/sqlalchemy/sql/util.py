@@ -49,8 +49,6 @@ def find_join_source(clauses, join_to):
     else:
         return None, None
 
-    
-    
 def find_tables(clause, check_columns=False, 
                 include_aliases=False, include_joins=False, 
                 include_selects=False, include_crud=False):

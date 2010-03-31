@@ -34,12 +34,78 @@ class RudimentaryFlushTest(UOWTest):
                     {'name': 'u1'} 
                 ),
                 CompiledSQL(
-                    "INSERT INTO addresses (user_id, email_address) VALUES (:user_id, :email_address)",
+                    "INSERT INTO addresses (user_id, email_address) "
+                    "VALUES (:user_id, :email_address)",
                     lambda ctx: {'email_address': 'a1', 'user_id':u1.id} 
                 ),
                 CompiledSQL(
-                    "INSERT INTO addresses (user_id, email_address) VALUES (:user_id, :email_address)",
+                    "INSERT INTO addresses (user_id, email_address) "
+                    "VALUES (:user_id, :email_address)",
                     lambda ctx: {'email_address': 'a2', 'user_id':u1.id} 
                 ),
             )
+        
+        sess.delete(u1)
+        sess.delete(a1)
+        sess.delete(a2)
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                CompiledSQL(
+                    "DELETE FROM addresses WHERE addresses.id = :id",
+                    [{'id':a1.id},{'id':a2.id}]
+                ),
+                CompiledSQL(
+                    "DELETE FROM users WHERE users.id = :id",
+                    {'id':u1.id}
+                ),
+        )
+        
+    def test_many_to_one(self):
+        
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user':relationship(User)
+        })
+        sess = create_session()
+
+        u1 = User(name='u1')
+        a1, a2 = Address(email_address='a1', user=u1), \
+                    Address(email_address='a2', user=u1)
+        sess.add_all([a1, a2])
     
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                CompiledSQL(
+                    "INSERT INTO users (name) VALUES (:name)",
+                    {'name': 'u1'} 
+                ),
+                CompiledSQL(
+                    "INSERT INTO addresses (user_id, email_address) "
+                    "VALUES (:user_id, :email_address)",
+                    lambda ctx: {'email_address': 'a1', 'user_id':u1.id} 
+                ),
+                CompiledSQL(
+                    "INSERT INTO addresses (user_id, email_address) "
+                    "VALUES (:user_id, :email_address)",
+                    lambda ctx: {'email_address': 'a2', 'user_id':u1.id} 
+                ),
+            )
+
+        sess.delete(u1)
+        sess.delete(a1)
+        sess.delete(a2)
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                CompiledSQL(
+                    "DELETE FROM addresses WHERE addresses.id = :id",
+                    [{'id':a1.id},{'id':a2.id}]
+                ),
+                CompiledSQL(
+                    "DELETE FROM users WHERE users.id = :id",
+                    {'id':u1.id}
+                ),
+        )
+        
