@@ -504,7 +504,7 @@ class MapperProperty(object):
         """
         pass
 
-    def get_flush_actions(self, uowtransaction, records, state):
+    def per_property_flush_actions(self, uow):
         pass
         
     def is_primary(self):

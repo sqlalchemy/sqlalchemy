@@ -88,12 +88,19 @@ class UOWTransaction(object):
         # information.
         self.attributes = {}
         
-        self.mappers = collections.defaultdict(set)
-        self.actions = {}
-        self.saves = set()
-        self.deletes = set()
-        self.etc = set()
+        self.mappers = util.defaultdict(set)
+        self.presort_actions = {}
+        self.postsort_actions = {}
+        self.states = {}
         self.dependencies = set()
+    
+    @property
+    def has_work(self):
+        return bool(self.states)
+
+    def is_deleted(self, state):
+        """return true if the given state is marked as deleted within this UOWTransaction."""
+        return state in self.states and self.states[state][0]
         
     def get_attribute_history(self, state, key, passive=True):
         hashkey = ("history", state, key)
@@ -124,39 +131,44 @@ class UOWTransaction(object):
         # if object is not in the overall session, do nothing
         if not self.session._contains_state(state):
             return
-        
-        if state in self.states:
-            return
+
+        if state not in self.states:
+            mapper = _state_mapper(state)
             
-        mapper = _state_mapper(state)
-        self.mappers[mapper].add(state)
-        self._state_collection(isdelete, listonly).add(state)
+            if mapper not in self.mappers:
+                mapper.per_mapper_flush_actions(self)
+            
+            self.mappers[mapper].add(state)
+        self.states[state] = (isdelete, listonly)
     
-    def register_dependency(self, parent, child):
-        self.dependencies.add((parent, child))
-        
-    def _state_collection(self, isdelete, listonly):
-        if isdelete:
-            return self.deletes
-        elif not listonly:
-            return self.saves
-        else:
-            return self.etc
-        
     def states_for_mapper(self, mapper, isdelete, listonly):
-        return iter(self._state_collection(isdelete, listonly)[mapper])
+        checktup = (isdelete, listonly)
+        for state, tup in self.states.iteritems():
+            if tup == checktup:
+                yield state
 
     def states_for_mapper_hierarchy(self, mapper, isdelete, listonly):
-        collection = self._state_collection(isdelete, listonly)
+        checktup = (isdelete, listonly)
         for mapper in mapper.base_mapper.polymorphic_iterator():
-            for state in collection[mapper]:
-                yield state
+            for state, tup in self.states.iteritems():
+                if tup == checktup:
+                    yield state
                 
     def execute(self):
         
-        for mapper in self.mappers:
-            mapper.per_mapper_flush_actions(self)
-
+        while True:
+            ret = False
+            for action in self.presort_actions.values():
+                if action.execute(self):
+                    ret = True
+            if not ret:
+                break
+        
+        sort = topological.sort(self.dependencies, self.postsort_actions.values())
+        print sort
+        for rec in sort:
+            rec.execute(self)
+            
 #        if cycles:
 #            break up actions into finer grained actions along those cycles
             
@@ -168,49 +180,131 @@ class UOWTransaction(object):
 
         this method is called within the flush() method after the
         execute() method has succeeded and the transaction has been committed.
+        
         """
-
-        for elem in self.elements:
-            if elem.isdelete:
-                self.session._remove_newly_deleted(elem.state)
-            elif not elem.listonly:
-                self.session._register_newly_persistent(elem.state)
+        for state, (isdelete, listonly) in self.states.iteritems():
+            if isdelete:
+                self.session._remove_newly_deleted(state)
+            elif not listonly:
+                self.session._register_newly_persistent(state)
 
 log.class_logger(UOWTransaction)
 
-class Rec(object):
-    def __new__(self, uow, *args):
-        key = (self.__class__, ) + args
-        if key in uow.actions:
-            return uow.actions[key]
+class PreSortRec(object):
+    def __new__(cls, uow, *args):
+        key = (cls, ) + args
+        if key in uow.presort_actions:
+            return uow.presort_actions[key]
         else:
-            uow.actions[key] = ret = object.__new__(self)
+            uow.presort_actions[key] = ret = object.__new__(cls)
             return ret
 
-class SaveUpdateAll(Rec):
+class PostSortRec(object):
+    def __new__(cls, uow, *args):
+        key = (cls, ) + args
+        if key in uow.postsort_actions:
+            return uow.postsort_actions[key]
+        else:
+            uow.postsort_actions[key] = ret = object.__new__(cls)
+            return ret
+    
+    def __repr__(self):
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            ",".join(str(x) for x in self.__dict__.values())
+        )
+
+class PropertyRecMixin(object):
+    def __init__(self, uow, dependency_processor, delete, fromparent):
+        self.dependency_processor = dependency_processor
+        self.delete = delete
+        self.fromparent = fromparent
+        
+        self.processed = set()
+        
+        prop = dependency_processor.prop
+        if fromparent:
+            self._mappers = set(
+                m for m in dependency_processor.parent.polymorphic_iterator()
+                if m._props[prop.key] is prop
+            )
+        else:
+            self._mappers = set(
+                dependency_processor.mapper.polymorphic_iterator()
+            )
+
+    def __repr__(self):
+        return "%s(%s, delete=%s)" % (
+            self.__class__.__name__,
+            self.dependency_processor,
+            self.delete
+        )
+
+    def _elements(self, uow):
+        for mapper in self._mappers:
+            for state in uow.mappers[mapper]:
+                if state in self.processed:
+                    continue
+                (isdelete, listonly) = uow.states[state]
+                if isdelete == self.delete:
+                    yield state
+    
+class GetDependentObjects(PropertyRecMixin, PreSortRec):
+    def __init__(self, *args):
+        self.processed = set()
+        super(GetDependentObjects, self).__init__(*args)
+
+    def execute(self, uow):
+        states = list(self._elements(uow))
+        if states:
+            self.processed.update(states)
+            if self.delete:
+                self.dependency_processor.presort_deletes(uow, states)
+            else:
+                self.dependency_processor.presort_saves(uow, states)
+            return True
+        else:
+            return False
+
+class ProcessAll(PropertyRecMixin, PostSortRec):
+    def execute(self, uow):
+        states = list(self._elements(uow))
+        if self.delete:
+            self.dependency_processor.process_deletes(uow, states)
+        else:
+            self.dependency_processor.process_saves(uow, states)
+
+class SaveUpdateAll(PostSortRec):
     def __init__(self, uow, mapper):
         self.mapper = mapper
 
-class DeleteAll(Rec):
-    def __init__(self, mapper):
+    def execute(self, uow):
+        self.mapper._save_obj(
+            uow.states_for_mapper_hierarchy(self.mapper, False, False),
+            uow
+        )
+        
+class DeleteAll(PostSortRec):
+    def __init__(self, uow, mapper):
         self.mapper = mapper
 
-class ProcessAll(Rec):
-    def __init__(self, uow, dependency_processor, delete):
-        self.dependency_processor = dependency_processor
-        self.delete = delete
+    def execute(self, uow):
+        self.mapper._delete_obj(
+            uow.states_for_mapper_hierarchy(self.mapper, True, False),
+            uow
+        )
 
-class ProcessState(Rec):
+class ProcessState(PostSortRec):
     def __init__(self, uow, dependency_processor, delete, state):
         self.dependency_processor = dependency_processor
         self.delete = delete
         self.state = state
         
-class SaveUpdateState(Rec):
+class SaveUpdateState(PostSortRec):
     def __init__(self, uow, state):
         self.state = state
 
-class DeleteState(Rec):
+class DeleteState(PostSortRec):
     def __init__(self, uow, state):
         self.state = state
 

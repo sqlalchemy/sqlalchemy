@@ -189,123 +189,115 @@ class DependencyProcessor(object):
 
 class OneToManyDP(DependencyProcessor):
     
-    def per_mapper_flush_actions(self, uow):
+    def per_property_flush_actions(self, uow):
+        unitofwork.GetDependentObjects(uow, self, False, True)
+        
+        after_save = unitofwork.ProcessAll(uow, self, False, True)
+        before_delete = unitofwork.ProcessAll(uow, self, True, True)
+        
+        parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
+        child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
+        
+        parent_deletes = unitofwork.DeleteAll(uow, self.parent)
+        child_deletes = unitofwork.DeleteAll(uow, self.mapper)
+
         if self.post_update:
-            # ...
+            uow.dependencies.update([
+                (child_saves, after_save),
+                (parent_saves, after_save),
+                (before_delete, parent_deletes),
+                (before_delete, child_deletes),
+            ])
         else:
-            after_save = unitofwork.ProcessAll(uow, self, False)
-            before_delete = unitofwork.ProcessAll(uow, self, True)
+            unitofwork.GetDependentObjects(uow, self, True, True)
             
-            parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
-            child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
-            
-            parent_deletes = unitofwork.DeleteAll(uow, self.parent)
-            child_deletes = unitofwork.DeleteAll(uow, self.mapper)
-            
-            uowtransaction.dependencies.update([
+            uow.dependencies.update([
                 (parent_saves, after_save),
                 (after_save, child_saves),
                 (child_deletes, before_delete),
                 (before_delete, parent_deletes)
             ])
-            
-        
-#    def register_dependencies(self, uowcommit):
-#        if self.post_update:
-#            uowcommit.register_dependency(self.mapper, self.dependency_marker)
-#            uowcommit.register_dependency(self.parent, self.dependency_marker)
-#        else:
-#            uowcommit.register_dependency(self.parent, self.mapper)
-#
-#
-#    def register_processors(self, uowcommit):
-#        if self.post_update:
-#            uowcommit.register_processor(self.dependency_marker, self, self.parent)
-#        else:
-#            uowcommit.register_processor(self.parent, self, self.parent)
-
-
-    def process_dependencies(self, task, deplist, uowcommit, delete = False):
-        if delete:
-            # head object is being deleted, and we manage its list of child objects
-            # the child objects have to have their foreign key to the parent set to NULL
-            # this phase can be called safely for any cascade but is unnecessary if delete cascade
-            # is on.
-            if self.post_update or not self.passive_deletes == 'all':
-                for state in deplist:
-                    history = uowcommit.get_attribute_history(state, self.key, passive=self.passive_deletes)
-                    if history:
-                        for child in history.deleted:
-                            if child is not None and self.hasparent(child) is False:
-                                self._synchronize(state, child, None, True, uowcommit)
-                                self._conditional_post_update(child, uowcommit, [state])
-                        if self.post_update or not self.cascade.delete:
-                            for child in history.unchanged:
-                                if child is not None:
-                                    self._synchronize(state, child, None, True, uowcommit)
-                                    self._conditional_post_update(child, uowcommit, [state])
-        else:
-            for state in deplist:
-                history = uowcommit.get_attribute_history(state, self.key, passive=True)
-                if history:
-                    for child in history.added:
-                        self._synchronize(state, child, None, False, uowcommit)
-                        if child is not None:
-                            self._conditional_post_update(child, uowcommit, [state])
-
-                    for child in history.deleted:
-                        if not self.cascade.delete_orphan and not self.hasparent(child):
-                            self._synchronize(state, child, None, True, uowcommit)
-
-                    if self._pks_changed(uowcommit, state):
-                        for child in history.unchanged:
-                            self._synchronize(state, child, None, False, uowcommit)
-                            
-    def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
-        if delete:
-            # head object is being deleted, and we manage its list of child objects
-            # the child objects have to have their foreign key to the parent set to NULL
-            if not self.post_update:
-                should_null_fks = not self.cascade.delete and not self.passive_deletes == 'all'
-                for state in deplist:
-                    history = uowcommit.get_attribute_history(
-                                                state, self.key, passive=self.passive_deletes)
-                    if history:
-                        for child in history.deleted:
-                            if child is not None and self.hasparent(child) is False:
-                                if self.cascade.delete_orphan:
-                                    uowcommit.register_object(child, isdelete=True)
-                                else:
-                                    uowcommit.register_object(child)
-                        if should_null_fks:
-                            for child in history.unchanged:
-                                if child is not None:
-                                    uowcommit.register_object(child)
-        else:
-            for state in deplist:
-                history = uowcommit.get_attribute_history(state, self.key, passive=True)
-                if history:
-                    for child in history.added:
+    
+    def presort_delete(self, uowcommit, states):
+        # head object is being deleted, and we manage its list of child objects
+        # the child objects have to have their foreign key to the parent set to NULL
+        should_null_fks = not self.cascade.delete and not self.passive_deletes == 'all'
+        for state in states:
+            history = uowcommit.get_attribute_history(
+                                        state, self.key, passive=self.passive_deletes)
+            if history:
+                for child in history.deleted:
+                    if child is not None and self.hasparent(child) is False:
+                        if self.cascade.delete_orphan:
+                            uowcommit.register_object(child, isdelete=True)
+                        else:
+                            uowcommit.register_object(child)
+                if should_null_fks:
+                    for child in history.unchanged:
                         if child is not None:
                             uowcommit.register_object(child)
+    
+    def presort_saves(self, uowcommit, states):
+        for state in states:
+            history = uowcommit.get_attribute_history(state, self.key, passive=True)
+            if history:
+                for child in history.added:
+                    if child is not None:
+                        uowcommit.register_object(child)
+                for child in history.deleted:
+                    if not self.cascade.delete_orphan:
+                        uowcommit.register_object(child, isdelete=False)
+                    elif self.hasparent(child) is False:
+                        uowcommit.register_object(child, isdelete=True)
+                        for c, m in self.mapper.cascade_iterator('delete', child):
+                            uowcommit.register_object(
+                                attributes.instance_state(c),
+                                isdelete=True)
+            if self._pks_changed(uowcommit, state):
+                if not history:
+                    history = uowcommit.get_attribute_history(
+                                        state, self.key, passive=self.passive_updates)
+                if history:
+                    for child in history.unchanged:
+                        if child is not None:
+                            uowcommit.register_object(child)
+    
+    def process_deletes(self, uowcommit, states):
+        # head object is being deleted, and we manage its list of child objects
+        # the child objects have to have their foreign key to the parent set to NULL
+        # this phase can be called safely for any cascade but is unnecessary if delete cascade
+        # is on.
+        if self.post_update or not self.passive_deletes == 'all':
+            for state in states:
+                history = uowcommit.get_attribute_history(state, self.key, passive=self.passive_deletes)
+                if history:
                     for child in history.deleted:
-                        if not self.cascade.delete_orphan:
-                            uowcommit.register_object(child, isdelete=False)
-                        elif self.hasparent(child) is False:
-                            uowcommit.register_object(child, isdelete=True)
-                            for c, m in self.mapper.cascade_iterator('delete', child):
-                                uowcommit.register_object(
-                                    attributes.instance_state(c),
-                                    isdelete=True)
-                if self._pks_changed(uowcommit, state):
-                    if not history:
-                        history = uowcommit.get_attribute_history(
-                                            state, self.key, passive=self.passive_updates)
-                    if history:
+                        if child is not None and self.hasparent(child) is False:
+                            self._synchronize(state, child, None, True, uowcommit)
+                            self._conditional_post_update(child, uowcommit, [state])
+                    if self.post_update or not self.cascade.delete:
                         for child in history.unchanged:
                             if child is not None:
-                                uowcommit.register_object(child)
+                                self._synchronize(state, child, None, True, uowcommit)
+                                self._conditional_post_update(child, uowcommit, [state])
+    
+    def process_saves(self, uowcommit, states):
+        for state in states:
+            history = uowcommit.get_attribute_history(state, self.key, passive=True)
+            if history:
+                for child in history.added:
+                    self._synchronize(state, child, None, False, uowcommit)
+                    if child is not None:
+                        self._conditional_post_update(child, uowcommit, [state])
 
+                for child in history.deleted:
+                    if not self.cascade.delete_orphan and not self.hasparent(child):
+                        self._synchronize(state, child, None, True, uowcommit)
+
+                if self._pks_changed(uowcommit, state):
+                    for child in history.unchanged:
+                        self._synchronize(state, child, None, False, uowcommit)
+        
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         source = state
         dest = child

@@ -1416,7 +1416,7 @@ class Session(object):
         for state in proc:
             flush_context.register_object(state, isdelete=True)
 
-        if len(flush_context.tasks) == 0:
+        if not flush_context.has_work:
             return
 
         flush_context.transaction = transaction = self.begin(

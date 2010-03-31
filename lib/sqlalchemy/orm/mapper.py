@@ -1254,14 +1254,13 @@ class Mapper(object):
         
         return sqlutil.sort_tables(l)
         
-    def per_mapper_flush_actions(self, uowtransaction):
-        unitofwork.SaveUpdateAll(uow, self.base_mapper)
-        unitofwork.DeleteAll(uow, self.base_mapper)
+    def per_mapper_flush_actions(self, uow):
+        saves = unitofwork.SaveUpdateAll(uow, self.base_mapper)
+        deletes = unitofwork.DeleteAll(uow, self.base_mapper)
+        uow.dependencies.add((saves, deletes))
         
         for prop in self._props.values():
-            dp = prop._dependency_processor
-            if dp is not None:
-                dp.per_mapper_flush_actions(uowtransaction)
+            prop.per_property_flush_actions(uow)
         
     def _save_obj(self, states, uowtransaction, postupdate=False, 
                                 post_update_cols=None, single=False):
