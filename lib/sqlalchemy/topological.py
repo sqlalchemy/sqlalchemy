@@ -21,23 +21,8 @@ conditions.
 from sqlalchemy.exc import CircularDependencyError
 from sqlalchemy import util
 
-__all__ = ['sort', 'sort_with_cycles', 'sort_as_tree']
+__all__ = ['sort']
 
-# TODO: obviate the need for a _Node class.
-# a straight tuple should be used.
-class _Node(tuple):
-    """Represent each item in the sort."""
-    
-    def __new__(cls, item):
-        children = []
-        t = tuple.__new__(cls, [item, children])
-        t.item = item
-        t.children = children
-        return t
-    
-    def __hash__(self):
-        return id(self)
-    
 class _EdgeCollection(object):
     """A collection of directed edges."""
 
@@ -52,20 +37,6 @@ class _EdgeCollection(object):
         self.parent_to_children[parentnode].add(childnode)
         self.child_to_parents[childnode].add(parentnode)
 
-    def remove(self, edge):
-        """Remove an edge from this collection.
-
-        Return the childnode if it has no other parents.
-        """
-
-        (parentnode, childnode) = edge
-        self.parent_to_children[parentnode].remove(childnode)
-        self.child_to_parents[childnode].remove(parentnode)
-        if not self.child_to_parents[childnode]:
-            return childnode
-        else:
-            return None
-
     def has_parents(self, node):
         return node in self.child_to_parents and bool(self.child_to_parents[node])
 
@@ -74,7 +45,12 @@ class _EdgeCollection(object):
             return [(node, child) for child in self.parent_to_children[node]]
         else:
             return []
-
+    
+    def outgoing(self, node):
+        """an iterable returning all nodes reached via node's outgoing edges"""
+        
+        return self.parent_to_children[node]
+        
     def get_parents(self):
         return self.parent_to_children.keys()
 
@@ -92,9 +68,6 @@ class _EdgeCollection(object):
                 if not self.child_to_parents[child]:
                     yield child
 
-    def __len__(self):
-        return sum(len(x) for x in self.parent_to_children.values())
-
     def __iter__(self):
         for parent, children in self.parent_to_children.iteritems():
             for child in children:
@@ -108,69 +81,57 @@ def sort(tuples, allitems):
 
     'tuples' is a list of tuples representing a partial ordering.
     """
-    nodes = {}
-    edges = _EdgeCollection()
 
-    for item in list(allitems) + [t[0] for t in tuples] + [t[1] for t in tuples]:
-        item_id = id(item)
-        if item_id not in nodes:
-            nodes[item_id] = _Node(item)
+    edges = _EdgeCollection()
+    nodes = set(allitems)
 
     for t in tuples:
-        id0, id1 = id(t[0]), id(t[1])
-        if t[0] is t[1]:
-            continue
-        childnode = nodes[id1]
-        parentnode = nodes[id0]
-        edges.add((parentnode, childnode))
+        nodes.update(t)
+        edges.add(t)
 
     queue = []
-    for n in nodes.values():
+    for n in nodes:
         if not edges.has_parents(n):
             queue.append(n)
 
     output = []
     while nodes:
         if not queue:
-            raise CircularDependencyError("Circular dependency detected " + 
-                                repr(edges) + repr(queue))
+            raise CircularDependencyError("Circular dependency detected: %r" % edges)
         node = queue.pop()
-        output.append(node.item)
-        del nodes[id(node.item)]
+        output.append(node)
+        nodes.remove(node)
         for childnode in edges.pop_node(node):
             queue.append(childnode)
     return output
 
+def find_cycles(tuples, allitems):
+    # straight from gvr with some mods
+    todo = set(allitems)
+    edges = _EdgeCollection()
 
-def _find_cycles(edges):
-    cycles = {}
-
-    def traverse(node, cycle, goal):
-        for (n, key) in edges.edges_by_parent(node):
-            if key in cycle:
-                continue
-            cycle.add(key)
-            if key is goal:
-                cycset = set(cycle)
-                for x in cycle:
-                    if x in cycles:
-                        existing_set = cycles[x]
-                        existing_set.update(cycset)
-                        for y in existing_set:
-                            cycles[y] = existing_set
-                        cycset = existing_set
-                    else:
-                        cycles[x] = cycset
-            else:
-                traverse(key, cycle, goal)
-            cycle.pop()
-
-    for parent in edges.get_parents():
-        traverse(parent, set(), parent)
-
-    unique_cycles = set(tuple(s) for s in cycles.values())
+    for t in tuples:
+        todo.update(t)
+        edges.add(t)
     
-    for cycle in unique_cycles:
-        edgecollection = [edge for edge in edges
-                          if edge[0] in cycle and edge[1] in cycle]
-        yield edgecollection
+    output = set()
+    
+    while todo:
+        node = todo.pop()
+        stack = [node]
+        while stack:
+            top = stack[-1]
+            for node in edges.outgoing(top):
+                if node in stack:
+                    cyc = stack[stack.index(node):]
+                    todo.difference_update(cyc)
+                    output.update(cyc)
+                    
+                if node in todo:
+                    stack.append(node)
+                    todo.remove(node)
+                    break
+            else:
+                node = stack.pop()
+    return output
+    

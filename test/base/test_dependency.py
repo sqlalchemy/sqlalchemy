@@ -1,6 +1,6 @@
 import sqlalchemy.topological as topological
 from sqlalchemy.test import TestBase
-from sqlalchemy.test.testing import assert_raises
+from sqlalchemy.test.testing import assert_raises, eq_
 from sqlalchemy import exc
 import collections
 
@@ -16,7 +16,7 @@ class DependencySortTest(TestBase):
             for n in result[i:]:
                 assert node not in deps[n]
 
-    def testsort(self):
+    def test_sort_one(self):
         rootnode = 'root'
         node2 = 'node2'
         node3 = 'node3'
@@ -38,7 +38,7 @@ class DependencySortTest(TestBase):
         ]
         self.assert_sort(tuples, topological.sort(tuples, []))
 
-    def testsort2(self):
+    def test_sort_two(self):
         node1 = 'node1'
         node2 = 'node2'
         node3 = 'node3'
@@ -55,7 +55,7 @@ class DependencySortTest(TestBase):
         ]
         self.assert_sort(tuples, topological.sort(tuples, [node7]))
 
-    def testsort4(self):
+    def test_sort_three(self):
         node1 = 'keywords'
         node2 = 'itemkeyowrds'
         node3 = 'items'
@@ -68,7 +68,7 @@ class DependencySortTest(TestBase):
         ]
         self.assert_sort(tuples, topological.sort(tuples, []))
 
-    def testcircular(self):
+    def test_raise_on_cycle_one(self):
         node1 = 'node1'
         node2 = 'node2'
         node3 = 'node3'
@@ -87,7 +87,7 @@ class DependencySortTest(TestBase):
 
         # TODO: test find_cycles
 
-    def testcircular2(self):
+    def test_raise_on_cycle_two(self):
         # this condition was arising from ticket:362
         # and was not treated properly by topological sort
         node1 = 'node1'
@@ -105,7 +105,7 @@ class DependencySortTest(TestBase):
 
         # TODO: test find_cycles
 
-    def testcircular3(self):
+    def test_raise_on_cycle_three(self):
         question, issue, providerservice, answer, provider = "Question", "Issue", "ProviderService", "Answer", "Provider"
 
         tuples = [(question, issue), (providerservice, issue), (provider, question), 
@@ -116,21 +116,137 @@ class DependencySortTest(TestBase):
         
         # TODO: test find_cycles
         
-    def testbigsort(self):
+    def test_large_sort(self):
         tuples = [(i, i + 1) for i in range(0, 1500, 2)]
         self.assert_sort(
             tuples,
             topological.sort(tuples, [])
         )
 
-
-    def testids(self):
+    def test_ticket_1380(self):
         # ticket:1380 regression: would raise a KeyError
         tuples = [(id(i), i) for i in range(3)]
         self.assert_sort(
             tuples,
             topological.sort(tuples, [])
         )
+        
+    def test_find_cycle_one(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        tuples = [
+            (node1, node2),
+            (node3, node1),
+            (node2, node4),
+            (node3, node2),
+            (node2, node3)
+        ]
+
+        eq_(
+            topological.find_cycles(tuples),
+            set([node1, node2, node3])
+        )
+
+    def test_find_multiple_cycles_one(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
+        node6 = 'node6'
+        node7 = 'node7'
+        node8 = 'node8'
+        node9 = 'node9'
+        tuples = [
+            # cycle 1
+            (node1, node2),
+            (node2, node4),
+            (node4, node1),
+
+            # cycle 2
+            (node9, node9),
+
+            # cycle 3
+            (node7, node5),
+            (node5, node7),
+
+            # cycle 4, but only if cycle 1 nodes are present
+            (node1, node6),
+            (node6, node8),
+            (node8, node4),
+
+            (node3, node1),
+            (node3, node2),
+        ]
+        
+        allnodes = set([node1, node2, node3, node4, node5, node6, node7, node8, node9])
+        eq_(
+            topological.find_cycles(tuples, allnodes),
+            set(['node8', 'node1', 'node2', 'node5', 'node4', 'node7', 'node6', 'node9'])
+        )
+
+    def test_find_multiple_cycles_two(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
+        node6 = 'node6'
+        tuples = [
+            # cycle 1
+            (node1, node2),
+            (node2, node4),
+            (node4, node1),
+
+            # cycle 2
+            (node1, node6),
+            (node6, node2),
+            (node2, node4),
+            (node4, node1),
+        ]
+
+        allnodes = set([node1, node2, node3, node4, node5, node6])
+        eq_(
+            topological.find_cycles(tuples, allnodes),
+            set(['node1', 'node2', 'node4'])
+        )
+
+    def test_find_multiple_cycles_three(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
+        node6 = 'node6'
+        tuples = [
+
+            # cycle 1
+            (node1, node2),
+            (node2, node1),
+
+            # cycle 2
+            (node2, node3),
+            (node3, node2),
+
+            # cycle3
+            (node2, node4),
+            (node4, node2),
+            
+            # cycle4
+            (node2, node5),
+            (node5, node6),
+            (node6, node2)
+        ]
+
+        allnodes = set([node1, node2, node3, node4, node5, node6])
+        eq_(
+            topological.find_cycles(tuples, allnodes),
+            allnodes
+        )
+        
+        
         
 
 
