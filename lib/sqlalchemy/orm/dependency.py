@@ -168,6 +168,7 @@ class OneToManyDP(DependencyProcessor):
     
     def per_property_flush_actions(self, uow):
         unitofwork.GetDependentObjects(uow, self, False, True)
+        unitofwork.GetDependentObjects(uow, self, True, True)
         
         after_save = unitofwork.ProcessAll(uow, self, False, True)
         before_delete = unitofwork.ProcessAll(uow, self, True, True)
@@ -186,76 +187,73 @@ class OneToManyDP(DependencyProcessor):
                 (before_delete, child_deletes),
             ])
         else:
-            unitofwork.GetDependentObjects(uow, self, True, True)
-            
             uow.dependencies.update([
                 (parent_saves, after_save),
                 (after_save, child_saves),
-                
+                (after_save, child_deletes),
+
                 (child_saves, parent_deletes),
-                (before_delete, child_saves),
+                (child_deletes, parent_deletes),
                 
-                (child_deletes, parent_deletes)
+                (before_delete, child_saves),
+                (before_delete, child_deletes),
+                
             ])
-    
-    def per_saved_state_flush_actions(self, uow, state):
-        if True:
-            parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
-            child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
-            assert parent_saves in uow.cycles
-            assert child_saves in uow.cycles
-        
-        added, unchanged, deleted = uow.get_attribute_history(state, self.key, passive=True)
-        if not added and not unchanged and not deleted:
-            return
-        
-        save_parent = unitofwork.SaveUpdateState(uow, state)
-        after_save = unitofwork.ProcessState(uow, self, False, state)
 
-        for child_state in added + unchanged + deleted:
+    def per_state_flush_actions(self, uow, state, isdelete):
+        if True:
+            if not isdelete:
+                parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
+                child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
+                assert parent_saves in uow.cycles
+                assert child_saves in uow.cycles
+            else:
+                parent_deletes = unitofwork.DeleteAll(uow, self.parent)
+                child_deletes = unitofwork.DeleteAll(uow, self.mapper)
+                assert parent_deletes in uow.cycles
+                assert child_deletes in uow.cycles
+
+        after_save = unitofwork.ProcessAll(uow, self, False, True)
+        before_delete = unitofwork.ProcessAll(uow, self, True, True)
+        after_save.disabled = True
+        before_delete.disabled = True
+        
+        sum_ = uow.get_attribute_history(state, self.key, passive=True).sum()
+        if not sum_:
+            return
+
+        if not isdelete:
+            save_parent = unitofwork.SaveUpdateState(uow, state)
+            after_save = unitofwork.ProcessState(uow, self, False, state)
+            yield after_save
+        else:
+            delete_parent = unitofwork.DeleteState(uow, state)
+            before_delete = unitofwork.ProcessState(uow, self, True, state)
+            yield before_delete
+            
+        for child_state in sum_:
             if child_state is None:
                 continue
-            
+        
             (deleted, listonly) = uow.states[child_state]
             if deleted:
                 child_action = unitofwork.DeleteState(uow, child_state)
             else:
                 child_action = unitofwork.SaveUpdateState(uow, child_state)
             
-            uow.dependencies.update([
-                (save_parent, after_save),
-                (after_save, child_action),
-            ])
-
-    def per_deleted_state_flush_actions(self, uow, state):
-        if True:
-            parent_deletes = unitofwork.DeleteAll(uow, self.parent)
-            child_deletes = unitofwork.DeleteAll(uow, self.mapper)
-            assert parent_deletes in uow.cycles
-            assert child_deletes in uow.cycles
-
-        added, unchanged, deleted = uow.get_attribute_history(state, self.key, passive=True)
-        if not added and not unchanged and not deleted:
-            return
-
-        delete_parent = unitofwork.DeleteState(uow, state)
-        before_delete = unitofwork.ProcessState(uow, self, True, state)
-
-        for child_state in added + unchanged + deleted:
-            if child_state is None:
-                continue
-
-            (deleted, listonly) = uow.states[child_state]
-            if deleted:
-                child_action = unitofwork.DeleteState(uow, child_state)
+            if not isdelete:
+                uow.dependencies.update([
+                    (save_parent, after_save),
+                    (after_save, child_action),
+                    (save_parent, child_action)
+                ])
             else:
-                child_action = unitofwork.SaveUpdateState(uow, child_state)
-
-            uow.dependencies.update([
-                (child_action, before_delete),
-                (before_delete, delete_parent),
-            ])
-        
+                uow.dependencies.update([
+                    (child_action, before_delete),
+                    (before_delete, delete_parent),
+                    (child_action, delete_parent)
+                ])
+                
         
     def presort_deletes(self, uowcommit, states):
         # head object is being deleted, and we manage its list of child objects

@@ -1207,6 +1207,11 @@ class RelationshipProperty(StrategizedProperty):
         if not self.viewonly and self._dependency_processor:
             self._dependency_processor.per_property_flush_actions(uow)
 
+    def per_state_flush_actions(self, uow, state, isdelete):
+        if not self.viewonly and self._dependency_processor:
+            for rec in self._dependency_processor.per_state_flush_actions(uow, state, isdelete):
+                yield rec
+
     def _create_joins(self, source_polymorphic=False, 
                             source_selectable=None, dest_polymorphic=False, 
                             dest_selectable=None, of_type=None):

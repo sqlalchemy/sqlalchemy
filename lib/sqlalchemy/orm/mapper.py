@@ -1261,6 +1261,18 @@ class Mapper(object):
         
         for prop in self._props.values():
             prop.per_property_flush_actions(uow)
+    
+    def per_state_flush_actions(self, uow, state, isdelete):
+        if isdelete:
+            action = unitofwork.DeleteState(uow, state)
+        else:
+            action = unitofwork.SaveUpdateState(uow, state)
+        
+        yield action
+        for prop in self._props.values():
+            for rec in prop.per_state_flush_actions(uow, state, isdelete):
+                yield rec
+        
         
     def _save_obj(self, states, uowtransaction, postupdate=False, 
                                 post_update_cols=None, single=False):

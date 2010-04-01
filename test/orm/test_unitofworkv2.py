@@ -89,11 +89,11 @@ class RudimentaryFlushTest(UOWTest):
                 sess.flush,
                 CompiledSQL(
                     "UPDATE addresses SET user_id=:user_id WHERE addresses.id = :addresses_id",
-                    [{u'addresses_id': 1, 'user_id': None}]
+                    lambda ctx: [{u'addresses_id': a1.id, 'user_id': None}]
                 ),
                 CompiledSQL(
                     "UPDATE addresses SET user_id=:user_id WHERE addresses.id = :addresses_id",
-                    [{u'addresses_id': 2, 'user_id': None}]
+                    lambda ctx: [{u'addresses_id': a2.id, 'user_id': None}]
                 ),
                 CompiledSQL(
                     "DELETE FROM users WHERE users.id = :id",
@@ -182,11 +182,11 @@ class RudimentaryFlushTest(UOWTest):
                 sess.flush,
                 CompiledSQL(
                     "UPDATE addresses SET user_id=:user_id WHERE addresses.id = :addresses_id",
-                    [{u'addresses_id': 1, 'user_id': None}]
+                    lambda ctx: [{u'addresses_id': a1.id, 'user_id': None}]
                 ),
                 CompiledSQL(
                     "UPDATE addresses SET user_id=:user_id WHERE addresses.id = :addresses_id",
-                    [{u'addresses_id': 2, 'user_id': None}]
+                    lambda ctx: [{u'addresses_id': a2.id, 'user_id': None}]
                 ),
                 CompiledSQL(
                     "DELETE FROM users WHERE users.id = :id",
