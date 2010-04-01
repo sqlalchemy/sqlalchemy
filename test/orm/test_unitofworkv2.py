@@ -245,10 +245,13 @@ class SingleCycleTest(UOWTest):
                 testing.db,
                 sess.flush,
                 AllOf(
-                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':3}),
-                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':2}),
+                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                            lambda ctx:{'id':n3.id}),
+                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                            lambda ctx: {'id':n2.id}),
                 ),
-                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':1})
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                        lambda ctx: {'id':n1.id})
         )
 
     def test_one_to_many_delete_parent(self):
@@ -268,9 +271,42 @@ class SingleCycleTest(UOWTest):
                 testing.db,
                 sess.flush,
                 AllOf(
-                    CompiledSQL("UPDATE nodes SET parent_id=:parent_id WHERE nodes.id = :nodes_id", {'nodes_id':3, 'parent_id':None}),
-                    CompiledSQL("UPDATE nodes SET parent_id=:parent_id WHERE nodes.id = :nodes_id", {'nodes_id':2, 'parent_id':None}),
+                    CompiledSQL("UPDATE nodes SET parent_id=:parent_id WHERE nodes.id = :nodes_id", 
+                        lambda ctx: {'nodes_id':n3.id, 'parent_id':None}),
+                    CompiledSQL("UPDATE nodes SET parent_id=:parent_id WHERE nodes.id = :nodes_id", 
+                        lambda ctx: {'nodes_id':n2.id, 'parent_id':None}),
                 ),
-                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':1})
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                    lambda ctx:{'id':n1.id})
         )
     
+    def test_many_to_one_save(self):
+        mapper(Node, nodes, properties={
+            'parent':relationship(Node, remote_side=nodes.c.id)
+        })
+        sess = create_session()
+
+        n1 = Node(data='n1')
+        n2, n3 = Node(data='n2', parent=n1), Node(data='n3', parent=n1)
+
+        sess.add_all([n2, n3])
+
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+
+                CompiledSQL(
+                    "INSERT INTO nodes (parent_id, data) VALUES (:parent_id, :data)",
+                    {'parent_id': None, 'data': 'n1'}
+                ),
+                AllOf(
+                CompiledSQL(
+                    "INSERT INTO nodes (parent_id, data) VALUES (:parent_id, :data)",
+                    lambda ctx: {'parent_id': n1.id, 'data': 'n2'}
+                ),
+                CompiledSQL(
+                    "INSERT INTO nodes (parent_id, data) VALUES (:parent_id, :data)",
+                    lambda ctx: {'parent_id': n1.id, 'data': 'n3'}
+                ),
+                )
+            )

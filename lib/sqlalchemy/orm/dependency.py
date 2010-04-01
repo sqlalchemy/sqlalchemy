@@ -140,19 +140,6 @@ class DependencyProcessor(object):
     def process_saves(self, uowcommit, states):
         pass
 
-    def whose_dependent_on_who(self, state1, state2):
-        """Given an object pair assuming `obj2` is a child of `obj1`,
-        return a tuple with the dependent object second, or None if
-        there is no dependency.
-
-        """
-        if state1 is state2:
-            return None
-        elif self.direction == ONETOMANY:
-            return (state1, state2)
-        else:
-            return (state2, state1)
-
     def _verify_canload(self, state):
         if state is not None and \
             not self.mapper._canload(state, allow_subtypes=not self.enable_typechecks):
@@ -271,7 +258,6 @@ class OneToManyDP(DependencyProcessor):
             uow.dependencies.update([
                 (child_action, before_delete),
                 (before_delete, delete_parent),
-                (child_action, delete_parent)
             ])
         
     def presort_deletes(self, uowcommit, states):
@@ -396,6 +382,21 @@ class ManyToOneDP(DependencyProcessor):
                 (after_save, parent_saves),
                 (parent_saves, child_deletes),
                 (parent_deletes, child_deletes)
+            ])
+
+    def per_state_dependencies(self, uow, 
+                                    save_parent, 
+                                    delete_parent, 
+                                    child_action, 
+                                    after_save, before_delete, isdelete):
+        if not isdelete:
+            uow.dependencies.update([
+                (child_action, after_save),
+                (after_save, save_parent),
+            ])
+        else:
+            uow.dependencies.update([
+                (delete_parent, child_action)
             ])
 
     def presort_deletes(self, uowcommit, states):
