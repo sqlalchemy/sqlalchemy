@@ -195,7 +195,7 @@ class RudimentaryFlushTest(UOWTest):
         )
 
 class SingleCycleTest(UOWTest):
-    def test_one_to_many(self):
+    def test_one_to_many_save(self):
         mapper(Node, nodes, properties={
             'children':relationship(Node)
         })
@@ -209,36 +209,45 @@ class SingleCycleTest(UOWTest):
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
+                
                 CompiledSQL(
-                    "INSERT INTO nodes (data) VALUES (:data)",
-                    {'data': 'n1'} 
+                    "INSERT INTO nodes (parent_id, data) VALUES (:parent_id, :data)",
+                    {'parent_id': None, 'data': 'n1'}
+                ),
+                AllOf(
+                CompiledSQL(
+                    "INSERT INTO nodes (parent_id, data) VALUES (:parent_id, :data)",
+                    lambda ctx: {'parent_id': n1.id, 'data': 'n2'}
                 ),
                 CompiledSQL(
-                    "INSERT INTO addresses (user_id, email_address) "
-                    "VALUES (:user_id, :email_address)",
-                    lambda ctx: {'email_address': 'a1', 'user_id':u1.id} 
+                    "INSERT INTO nodes (parent_id, data) VALUES (:parent_id, :data)",
+                    lambda ctx: {'parent_id': n1.id, 'data': 'n3'}
                 ),
-                CompiledSQL(
-                    "INSERT INTO addresses (user_id, email_address) "
-                    "VALUES (:user_id, :email_address)",
-                    lambda ctx: {'email_address': 'a2', 'user_id':u1.id} 
-                ),
+                )
             )
+
+    def test_one_to_many_delete_all(self):
+        mapper(Node, nodes, properties={
+            'children':relationship(Node)
+        })
+        sess = create_session()
+
+        n2, n3 = Node(data='n2', children=[]), Node(data='n3', children=[])
+        n1 = Node(data='n1', children=[n2, n3])
+
+        sess.add(n1)
+        sess.flush()
         
-        return
         sess.delete(n1)
         sess.delete(n2)
         sess.delete(n3)
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
-                CompiledSQL(
-                    "DELETE FROM addresses WHERE addresses.id = :id",
-                    [{'id':a1.id},{'id':a2.id}]
+                AllOf(
+                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':3}),
+                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':2}),
                 ),
-                CompiledSQL(
-                    "DELETE FROM users WHERE users.id = :id",
-                    {'id':u1.id}
-                ),
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':1})
         )
     

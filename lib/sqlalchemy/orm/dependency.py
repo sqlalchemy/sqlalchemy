@@ -205,11 +205,11 @@ class OneToManyDP(DependencyProcessor):
             assert parent_saves in uow.cycles
             assert child_saves in uow.cycles
         
-        added, updated, deleted = uow.get_attribute_history(state, self.key, passive=True)
+        added, unchanged, deleted = uow.get_attribute_history(state, self.key, passive=True)
         if not added and not unchanged and not deleted:
             return
         
-        save_parent = unitofwork.SaveUpdateState(state)
+        save_parent = unitofwork.SaveUpdateState(uow, state)
         after_save = unitofwork.ProcessState(uow, self, False, state)
 
         for child_state in added + unchanged + deleted:
@@ -218,9 +218,9 @@ class OneToManyDP(DependencyProcessor):
             
             (deleted, listonly) = uow.states[child_state]
             if deleted:
-                child_action = unitofwork.DeleteState(child_state)
+                child_action = unitofwork.DeleteState(uow, child_state)
             else:
-                child_action = unitofwork.SaveUpdateState(child_state)
+                child_action = unitofwork.SaveUpdateState(uow, child_state)
             
             uow.dependencies.update([
                 (save_parent, after_save),
@@ -234,12 +234,12 @@ class OneToManyDP(DependencyProcessor):
             assert parent_deletes in uow.cycles
             assert child_deletes in uow.cycles
 
-        added, updated, deleted = uow.get_attribute_history(state, self.key, passive=True)
+        added, unchanged, deleted = uow.get_attribute_history(state, self.key, passive=True)
         if not added and not unchanged and not deleted:
             return
 
-        delete_parent = unitofwork.DeleteState(state)
-        after_delete = unitofwork.ProcessState(uow, self, True, state)
+        delete_parent = unitofwork.DeleteState(uow, state)
+        before_delete = unitofwork.ProcessState(uow, self, True, state)
 
         for child_state in added + unchanged + deleted:
             if child_state is None:
@@ -247,14 +247,13 @@ class OneToManyDP(DependencyProcessor):
 
             (deleted, listonly) = uow.states[child_state]
             if deleted:
-                child_action = unitofwork.DeleteState(child_state)
+                child_action = unitofwork.DeleteState(uow, child_state)
             else:
-                child_action = unitofwork.SaveUpdateState(child_state)
+                child_action = unitofwork.SaveUpdateState(uow, child_state)
 
             uow.dependencies.update([
-                (child_action, )
-                (save_parent, after_save),
-                (after_save, child_action),
+                (child_action, before_delete),
+                (before_delete, delete_parent),
             ])
         
         
