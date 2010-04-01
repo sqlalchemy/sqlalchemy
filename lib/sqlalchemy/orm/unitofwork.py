@@ -204,8 +204,8 @@ class UOWTransaction(object):
         
         # execute actions
         sort = topological.sort(self.dependencies, self.postsort_actions.values())
-        #print self.dependencies
-        #print sort
+        print self.dependencies
+        print sort
         for rec in sort:
             rec.execute(self)
             
