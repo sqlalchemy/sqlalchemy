@@ -30,6 +30,10 @@ CHANGES
   - Fixed a potential issue in topological cycle detection 
     introduced in 0.6beta3, for units of work with long 
     dependency cycles.
+
+  - id(obj) is no longer used internally within topological.py,
+    as the sorting functions now require hashable objects
+    only.  [ticket:1756]
     
 - sql
   - Restored some bind-labeling logic from 0.5 which ensures

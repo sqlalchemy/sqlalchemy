@@ -161,21 +161,20 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
     edges = _EdgeCollection()
 
     for item in list(allitems) + [t[0] for t in tuples] + [t[1] for t in tuples]:
-        item_id = id(item)
-        if item_id not in nodes:
-            nodes[item_id] = _Node(item)
+        if item not in nodes:
+            nodes[item] = _Node(item)
 
     for t in tuples:
-        id0, id1 = id(t[0]), id(t[1])
-        if t[0] is t[1]:
+        t0, t1 = t[0], t[1]
+        if t0 is t1:
             if allow_cycles:
-                n = nodes[id0]
+                n = nodes[t0]
                 n.cycles = set([n])
             elif not ignore_self_cycles:
                 raise CircularDependencyError("Self-referential dependency detected: %r" % t)
             continue
-        childnode = nodes[id1]
-        parentnode = nodes[id0]
+        childnode = nodes[t1]
+        parentnode = nodes[t0]
         edges.add((parentnode, childnode))
 
     queue = []
@@ -207,11 +206,11 @@ def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
                 continue
             else:
                 # long cycles not allowed
-                raise CircularDependencyError("Circular dependency detected: %r %r " % (edges, queue))
+                raise CircularDependencyError("Circular dependency detected: %r" % edges)
         node = queue.pop()
         if not hasattr(node, '_cyclical'):
             output.append(node)
-        del nodes[id(node.item)]
+        del nodes[node.item]
         for childnode in edges.pop_node(node):
             queue.append(childnode)
     return output
