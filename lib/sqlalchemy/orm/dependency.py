@@ -385,7 +385,8 @@ class ManyToOneDP(DependencyProcessor):
             uow.dependencies.update([
                 (child_saves, after_save),
                 (after_save, parent_saves),
-                (parent_saves, child_deletes)
+                (parent_saves, child_deletes),
+                (parent_deletes, child_deletes)
             ])
 
     def presort_deletes(self, uowcommit, states):
