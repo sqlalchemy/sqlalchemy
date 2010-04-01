@@ -145,15 +145,15 @@ class UOWTransaction(object):
     
     def states_for_mapper(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
-        for state, tup in self.states.iteritems():
-            if tup == checktup:
+        for state in self.mappers[mapper]:
+            if self.states[state] == checktup:
                 yield state
 
     def states_for_mapper_hierarchy(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
         for mapper in mapper.base_mapper.polymorphic_iterator():
-            for state, tup in self.states.iteritems():
-                if tup == checktup:
+            for state in self.mappers[mapper]:
+                if self.states[state] == checktup:
                     yield state
                 
     def execute(self):

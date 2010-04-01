@@ -79,52 +79,62 @@ class DependencyProcessor(object):
                                         before_delete)
 
     def per_state_flush_actions(self, uow, state, isdelete):
-        if True:
-            if not isdelete:
-                parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
-                child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
-                assert parent_saves in uow.cycles
-                assert child_saves in uow.cycles
-            else:
-                parent_deletes = unitofwork.DeleteAll(uow, self.parent)
-                child_deletes = unitofwork.DeleteAll(uow, self.mapper)
-                assert parent_deletes in uow.cycles
-                assert child_deletes in uow.cycles
-
         after_save = unitofwork.ProcessAll(uow, self, False, True)
         before_delete = unitofwork.ProcessAll(uow, self, True, True)
         after_save.disabled = True
         before_delete.disabled = True
 
-        sum_ = uow.get_attribute_history(state, self.key, passive=True).sum()
-        if not sum_:
-            return
-
+        # check if the "child" side is part of the cycle
+        child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
+        child_deletes = unitofwork.DeleteAll(uow, self.mapper)
+        if child_saves not in uow.cycles:
+            assert child_deletes not in uow.cycles
+            # its not, so we will link per-state
+            # actions to the aggregate "saves", "deletes" actions
+            child_actions = [
+                child_saves, child_deletes
+            ]
+        else:
+            # it is.  see if there's any objects.
+            sum_ = uow.get_attribute_history(state, self.key, passive=True).sum()
+            if not sum_:
+                return
+            child_actions = []
+            for child_state in sum_:
+                if child_state is None or child_state not in uow.states:
+                    continue
+                (deleted, listonly) = uow.states[child_state]
+                if deleted:
+                    child_action = unitofwork.DeleteState(uow, child_state)
+                else:
+                    child_action = unitofwork.SaveUpdateState(uow, child_state)
+                child_actions.append(child_action)
+                    
+        # check if the "parent" side is part of the cycle,
+        # if so break up parent_saves
         if not isdelete:
-            save_parent = unitofwork.SaveUpdateState(uow, state)
+            parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
+            if parent_saves in uow.cycles:
+                parent_saves = unitofwork.SaveUpdateState(uow, state)
+                
             after_save = unitofwork.ProcessState(uow, self, False, state)
             yield after_save
             
-            delete_parent = before_delete = None
+            parent_deletes = before_delete = None
         else:
-            delete_parent = unitofwork.DeleteState(uow, state)
+            parent_deletes = unitofwork.DeleteAll(uow, self.parent)
+            if parent_deletes in uow.cycles:
+                parent_deletes = unitofwork.DeleteState(uow, state)
             before_delete = unitofwork.ProcessState(uow, self, True, state)
             yield before_delete
             
-            save_parent = after_save = None
-
-        for child_state in sum_:
-            if child_state is None:
-                continue
-
-            (deleted, listonly) = uow.states[child_state]
-            if deleted:
-                child_action = unitofwork.DeleteState(uow, child_state)
-            else:
-                child_action = unitofwork.SaveUpdateState(uow, child_state)
-
-            self.per_state_dependencies(uow, save_parent, 
-                                            delete_parent, 
+            parent_saves = after_save = None
+        
+        # establish dependencies between our possibly per-state
+        # parent action and our possibly per-state child action.
+        for child_action in child_actions:
+            self.per_state_dependencies(uow, parent_saves, 
+                                            parent_deletes, 
                                             child_action, 
                                             after_save, before_delete, isdelete)
 

@@ -41,7 +41,7 @@ class SelfReferentialTest(_base.MappedTest):
                 self.data = data
 
     @testing.resolve_artifact_names
-    def testsingle(self):
+    def test_single(self):
         mapper(C1, t1, properties = {
             'c1s':relationship(C1, cascade="all"),
             'parent':relationship(C1,
@@ -59,17 +59,12 @@ class SelfReferentialTest(_base.MappedTest):
         sess.flush()
 
     @testing.resolve_artifact_names
-    def testmanytooneonly(self):
+    def test_many_to_one_only(self):
         """
 
         test that the circular dependency sort can assemble a many-to-one
         dependency processor when only the object on the "many" side is
-        actually in the list of modified objects.  this requires that the
-        circular sort add the other side of the relationship into the
-        UOWTransaction so that the dependency operation can be tacked onto it.
-
-        This also affects inheritance relationships since they rely upon
-        circular sort as well.
+        actually in the list of modified objects.  
 
         """
         mapper(C1, t1, properties={
@@ -91,7 +86,7 @@ class SelfReferentialTest(_base.MappedTest):
         assert c2.parent_c1==c1.c1
 
     @testing.resolve_artifact_names
-    def testcycle(self):
+    def test_cycle(self):
         mapper(C1, t1, properties = {
             'c1s' : relationship(C1, cascade="all"),
             'c2s' : relationship(mapper(C2, t2), cascade="all, delete-orphan")})
