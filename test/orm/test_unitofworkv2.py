@@ -250,4 +250,27 @@ class SingleCycleTest(UOWTest):
                 ),
                 CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':1})
         )
+
+    def test_one_to_many_delete_parent(self):
+        mapper(Node, nodes, properties={
+            'children':relationship(Node)
+        })
+        sess = create_session()
+
+        n2, n3 = Node(data='n2', children=[]), Node(data='n3', children=[])
+        n1 = Node(data='n1', children=[n2, n3])
+
+        sess.add(n1)
+        sess.flush()
+
+        sess.delete(n1)
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                AllOf(
+                    CompiledSQL("UPDATE nodes SET parent_id=:parent_id WHERE nodes.id = :nodes_id", {'nodes_id':3, 'parent_id':None}),
+                    CompiledSQL("UPDATE nodes SET parent_id=:parent_id WHERE nodes.id = :nodes_id", {'nodes_id':2, 'parent_id':None}),
+                ),
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", {'id':1})
+        )
     
