@@ -392,7 +392,7 @@ BaseRowProxy_setrow(BaseRowProxy *self, PyObject *value, void *closure)
         return -1;
     }
 
-    if (!PyTuple_CheckExact(value)) {
+    if (!PySequence_Check(value)) {
         PyErr_SetString(PyExc_TypeError,
                         "The 'row' attribute value must be a sequence");
         return -1;
