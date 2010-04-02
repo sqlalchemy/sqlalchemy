@@ -266,6 +266,9 @@ def relationship(argument, secondary=None, **kwargs):
       a class which extends :class:`RelationshipProperty.Comparator` which
       provides custom SQL clause generation for comparison operations.
 
+    :param doc:
+      docstring which will be applied to the resulting descriptor.
+      
     :param extension:
       an :class:`AttributeExtension` instance, or list of extensions,
       which will be prepended to the list of attribute listeners for
@@ -469,7 +472,7 @@ def relation(*arg, **kw):
 def dynamic_loader(argument, secondary=None, primaryjoin=None,
                    secondaryjoin=None, foreign_keys=None, backref=None,
                    post_update=False, cascade=False, remote_side=None,
-                   enable_typechecks=True, passive_deletes=False,
+                   enable_typechecks=True, passive_deletes=False, doc=None,
                    order_by=None, comparator_factory=None, query_class=None):
     """Construct a dynamically-loading mapper property.
 
@@ -508,7 +511,7 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None,
         secondaryjoin=secondaryjoin, foreign_keys=foreign_keys, backref=backref,
         post_update=post_update, cascade=cascade, remote_side=remote_side,
         enable_typechecks=enable_typechecks, passive_deletes=passive_deletes,
-        order_by=order_by, comparator_factory=comparator_factory,
+        order_by=order_by, comparator_factory=comparator_factory,doc=doc,
         strategy_class=DynaLoader, query_class=query_class)
 
 def column_property(*args, **kwargs):
@@ -538,7 +541,11 @@ def column_property(*args, **kwargs):
           it does not load immediately, and is instead loaded when the
           attribute is first accessed on an instance.  See also
           :func:`~sqlalchemy.orm.deferred`.
-
+      
+      doc
+          optional string that will be applied as the doc on the
+          class-bound descriptor.
+          
       extension
         an :class:`~sqlalchemy.orm.interfaces.AttributeExtension` instance,
         or list of extensions, which will be prepended to the list of
@@ -611,6 +618,10 @@ def composite(class_, *cols, **kwargs):
     comparator_factory
       a class which extends ``sqlalchemy.orm.properties.CompositeProperty.Comparator``
       which provides custom SQL clause generation for comparison operations.
+
+    doc
+      optional string that will be applied as the doc on the
+      class-bound descriptor.
 
     extension
       an :class:`~sqlalchemy.orm.interfaces.AttributeExtension` instance,
@@ -813,7 +824,7 @@ def mapper(class_, local_table=None, *args, **params):
     """
     return Mapper(class_, local_table, *args, **params)
 
-def synonym(name, map_column=False, descriptor=None, comparator_factory=None):
+def synonym(name, map_column=False, descriptor=None, comparator_factory=None, doc=None):
     """Set up `name` as a synonym to another mapped property.
 
     Used with the ``properties`` dictionary sent to  :func:`~sqlalchemy.orm.mapper`.
@@ -851,7 +862,10 @@ def synonym(name, map_column=False, descriptor=None, comparator_factory=None):
     proxy access to the column-based attribute.
 
     """
-    return SynonymProperty(name, map_column=map_column, descriptor=descriptor, comparator_factory=comparator_factory)
+    return SynonymProperty(name, map_column=map_column, 
+                            descriptor=descriptor, 
+                            comparator_factory=comparator_factory,
+                            doc=doc)
 
 def comparable_property(comparator_factory, descriptor=None):
     """Provide query semantics for an unmanaged attribute.

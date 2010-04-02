@@ -34,6 +34,14 @@ CHANGES
   - id(obj) is no longer used internally within topological.py,
     as the sorting functions now require hashable objects
     only.  [ticket:1756]
+
+  - The ORM will set the docstring of all generated descriptors
+    to None by default.  This can be overridden using 'doc'
+    (or if using Sphinx, attribute docstrings work too).
+    
+  - Added kw argument 'doc' to all mapper property callables 
+    as well as Column().  Will assemble the string 'doc' as 
+    the '__doc__' attribute on the descriptor.  
     
 - sql
   - Restored some bind-labeling logic from 0.5 which ensures
