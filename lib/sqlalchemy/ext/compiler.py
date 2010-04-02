@@ -147,8 +147,23 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
   function or stored procedure type of call. Since most databases support
   statements along the line of "SELECT FROM <some function>"
   ``FunctionElement`` adds in the ability to be used in the FROM clause of a
-  ``select()`` construct.
- 
+  ``select()`` construct::
+  
+      from sqlalchemy.sql.expression import FunctionElement
+
+      class coalesce(FunctionElement):
+          name = 'coalesce'
+
+      @compiles(coalesce)
+      def compile(element, compiler, **kw):
+          return "coalesce(%s)" % compiler.process(element.clauses)
+
+      @compiles(coalesce, 'oracle')
+      def compile(element, compiler, **kw):
+          if len(element.clauses) > 2:
+              raise TypeError("coalesce only supports two arguments on Oracle")
+          return "nvl(%s)" % compiler.process(element.clauses)
+
 * :class:`~sqlalchemy.schema.DDLElement` - The root of all DDL expressions,
   like CREATE TABLE, ALTER TABLE, etc. Compilation of ``DDLElement``
   subclasses is issued by a ``DDLCompiler`` instead of a ``SQLCompiler``.
