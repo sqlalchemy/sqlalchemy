@@ -749,8 +749,12 @@ class _GetColumns(object):
         
         mapper = class_mapper(self.cls, compile=False)
         if mapper:
-            prop = mapper.get_property(key)
-            if not isinstance(prop, ColumnProperty):
+            prop = mapper.get_property(key, raiseerr=False)
+            if prop is None:
+                raise exceptions.InvalidRequestError(
+                                        "Class %r does not have a mapped column named %r"
+                                        % (self.cls, key))
+            elif not isinstance(prop, ColumnProperty):
                 raise exceptions.InvalidRequestError(
                                         "Property %r is not an instance of"
                                         " ColumnProperty (i.e. does not correspond"

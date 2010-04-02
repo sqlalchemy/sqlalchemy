@@ -49,6 +49,10 @@ CHANGES
      decorators on child classes that aren't broken by a 
      @compiles decorator on the base class.
    
+   - Declarative will raise an informative error message
+     if a non-mapped class attribute is referenced in the
+     string-based relationship() arguments.
+     
 0.6beta3
 ========
 
