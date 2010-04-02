@@ -44,15 +44,20 @@ CHANGES
     has been added.  [ticket:1755]
     
 - ext
-   - the compiler extension now allows @compiles decorators
-     on base classes that extend to child classes, @compiles
-     decorators on child classes that aren't broken by a 
-     @compiles decorator on the base class.
+  - the compiler extension now allows @compiles decorators
+    on base classes that extend to child classes, @compiles
+    decorators on child classes that aren't broken by a 
+    @compiles decorator on the base class.
    
-   - Declarative will raise an informative error message
-     if a non-mapped class attribute is referenced in the
-     string-based relationship() arguments.
-     
+  - Declarative will raise an informative error message
+    if a non-mapped class attribute is referenced in the
+    string-based relationship() arguments.
+
+- examples
+  - Updated attribute_shard.py example to use a more robust
+    method of searching a Query for binary expressions which
+    compare columns against literal values.
+    
 0.6beta3
 ========
 
