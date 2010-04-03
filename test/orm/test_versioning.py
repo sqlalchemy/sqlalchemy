@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing
-from sqlalchemy import Integer, String, ForeignKey, literal_column, orm
+from sqlalchemy import Integer, String, ForeignKey, literal_column, orm, exc
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, column_property, sessionmaker
 from sqlalchemy.test.testing import eq_, ne_, assert_raises, assert_raises_message
@@ -19,6 +19,7 @@ def make_uuid():
     return _uuids.pop(0)
 
 class VersioningTest(_base.MappedTest):
+    
     @classmethod
     def define_tables(cls, metadata):
         Table('version_table', metadata,
@@ -130,14 +131,8 @@ class VersioningTest(_base.MappedTest):
                 s1.query(Foo).with_lockmode('read').get, f1s1.id
             )
 
-        # load, version is wrong
-        assert_raises(
-                sa.orm.exc.ConcurrentModificationError, 
-                s1.refresh, f1s1, lockmode='read'
-            )
-
-        # reload it
-        s1.query(Foo).populate_existing().get(f1s1.id)
+        # reload it - this expires the old version first
+        s1.refresh(f1s1, lockmode='read')
         
         # now assert version OK
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
@@ -145,9 +140,36 @@ class VersioningTest(_base.MappedTest):
         # assert brand new load is OK too
         s1.close()
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
+
+
+    @testing.emits_warning(r'.*does not support updated rowcount')
+    @engines.close_open_connections
+    @testing.requires.update_nowait
+    @testing.resolve_artifact_names
+    def test_versioncheck_for_update(self):
+        """query.with_lockmode performs a 'version check' on an already loaded instance"""
+
+        s1 = create_session(autocommit=False)
+
+        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        f1s1 = Foo(value='f1 value')
+        s1.add(f1s1)
+        s1.commit()
+
+        s2 = create_session(autocommit=False)
+        f1s2 = s2.query(Foo).get(f1s1.id)
+        s2.refresh(f1s2, lockmode='update')
+        f1s2.value='f1 new value'
         
+        assert_raises(
+            exc.DBAPIError,
+            s1.refresh, f1s1, lockmode='update_nowait'
+        )
+        s1.rollback()
         
-        
+        s2.commit()
+        s1.refresh(f1s1, lockmode='update_nowait')
+        assert f1s1.version_id == f1s2.version_id
 
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections

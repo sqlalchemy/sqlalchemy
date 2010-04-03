@@ -66,6 +66,7 @@ def _register_attribute(strategy, mapper, useobject,
                 callable_=callable_, 
                 active_history=active_history,
                 impl_class=impl_class,
+                doc=prop.doc,
                 **kw
                 )
 

@@ -187,6 +187,18 @@ class DeclarativeTest(DeclarativeTestBase):
             rel = relationship("User", primaryjoin="User.addresses==Foo.id")
         assert_raises_message(exc.InvalidRequestError, "'addresses' is not an instance of ColumnProperty", compile_mappers)
 
+    def test_string_dependency_resolution_two(self):
+        class User(Base, ComparableEntity):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
+            name = Column(String(50))
+        
+        class Bar(Base, ComparableEntity):
+            __tablename__ = 'bar'
+            id = Column(Integer, primary_key=True)
+            rel = relationship("User", primaryjoin="User.id==Bar.__table__.id")
+        assert_raises_message(exc.InvalidRequestError, "does not have a mapped column named '__table__'", compile_mappers)
+
     def test_string_dependency_resolution_no_magic(self):
         """test that full tinkery expressions work as written"""
         

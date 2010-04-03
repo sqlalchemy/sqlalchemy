@@ -9,7 +9,7 @@ from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                         attributes, deferred, exc as orm_exc, defer, undefer,\
-                        strategies, state, lazyload
+                        strategies, state, lazyload, backref
 from test.orm import _base, _fixtures
 
 
@@ -295,9 +295,61 @@ class ExpireTest(_fixtures.FixtureTest):
 
         u.addresses[0].email_address = 'someotheraddress'
         s.expire(u)
-        u.name
-        print attributes.instance_state(u).dict
         assert u.addresses[0].email_address == 'ed@wood.com'
+
+    @testing.resolve_artifact_names
+    def test_refresh_cascade(self):
+        mapper(User, users, properties={
+            'addresses':relationship(Address, cascade="all, refresh-expire")
+        })
+        mapper(Address, addresses)
+        s = create_session()
+        u = s.query(User).get(8)
+        assert u.addresses[0].email_address == 'ed@wood.com'
+
+        u.addresses[0].email_address = 'someotheraddress'
+        s.refresh(u)
+        assert u.addresses[0].email_address == 'ed@wood.com'
+
+    def test_expire_cascade_pending_orphan(self):
+        cascade = 'save-update, refresh-expire, delete, delete-orphan'
+        self._test_cascade_to_pending(cascade, True)
+
+    def test_refresh_cascade_pending_orphan(self):
+        cascade = 'save-update, refresh-expire, delete, delete-orphan'
+        self._test_cascade_to_pending(cascade, False)
+
+    def test_expire_cascade_pending(self):
+        cascade = 'save-update, refresh-expire'
+        self._test_cascade_to_pending(cascade, True)
+
+    def test_refresh_cascade_pending(self):
+        cascade = 'save-update, refresh-expire'
+        self._test_cascade_to_pending(cascade, False)
+        
+    @testing.resolve_artifact_names
+    def _test_cascade_to_pending(self, cascade, expire_or_refresh):
+        mapper(User, users, properties={
+            'addresses':relationship(Address, cascade=cascade)
+        })
+        mapper(Address, addresses)
+        s = create_session()
+
+        u = s.query(User).get(8)
+        a = Address(id=12, email_address='foobar')
+        
+        u.addresses.append(a)
+        if expire_or_refresh:
+            s.expire(u)
+        else:
+            s.refresh(u)
+        if "delete-orphan" in cascade:
+            assert a not in s
+        else:
+            assert a in s
+        
+        assert a not in u.addresses
+        s.flush()
 
     @testing.resolve_artifact_names
     def test_expired_lazy(self):

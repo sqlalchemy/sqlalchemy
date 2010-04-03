@@ -12,6 +12,60 @@ CHANGES
     eagerloading on the reverse many-to-one side, since 
     that loading is by definition unnecessary.  [ticket:1495]
 
+  - Session.refresh() now does an equivalent expire()
+    on the given instance first, so that the "refresh-expire"
+    cascade is propagated.   Previously, refresh() was
+    not affected in any way by the presence of "refresh-expire"
+    cascade.   This is a change in behavior versus that
+    of 0.6beta2, where the "lockmode" flag passed to refresh()
+    would cause a version check to occur.  Since the instance
+    is first expired, refresh() always upgrades the object
+    to the most recent version.
+    
+  - The 'refresh-expire' cascade, when reaching a pending object,
+    will expunge the object if the cascade also includes
+    "delete-orphan", or will simply detach it otherwise.
+    [ticket:1754]
+
+  - Fixed a potential issue in topological cycle detection 
+    introduced in 0.6beta3, for units of work with long 
+    dependency cycles.
+
+  - id(obj) is no longer used internally within topological.py,
+    as the sorting functions now require hashable objects
+    only.  [ticket:1756]
+
+  - The ORM will set the docstring of all generated descriptors
+    to None by default.  This can be overridden using 'doc'
+    (or if using Sphinx, attribute docstrings work too).
+    
+  - Added kw argument 'doc' to all mapper property callables 
+    as well as Column().  Will assemble the string 'doc' as 
+    the '__doc__' attribute on the descriptor.  
+    
+- sql
+  - Restored some bind-labeling logic from 0.5 which ensures
+    that tables with column names that overlap another column
+    of the form "<tablename>_<columnname>" won't produce 
+    errors if column._label is used as a bind name during
+    an UPDATE.  Test coverage which wasn't present in 0.5
+    has been added.  [ticket:1755]
+    
+- ext
+  - the compiler extension now allows @compiles decorators
+    on base classes that extend to child classes, @compiles
+    decorators on child classes that aren't broken by a 
+    @compiles decorator on the base class.
+   
+  - Declarative will raise an informative error message
+    if a non-mapped class attribute is referenced in the
+    string-based relationship() arguments.
+
+- examples
+  - Updated attribute_shard.py example to use a more robust
+    method of searching a Query for binary expressions which
+    compare columns against literal values.
+    
 0.6beta3
 ========
 

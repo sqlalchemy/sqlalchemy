@@ -15,7 +15,8 @@ def sort_tables(tables):
         parent_table = fkey.column.table
         if parent_table in tables:
             child_table = fkey.parent.table
-            tuples.append( ( parent_table, child_table ) )
+            if parent_table is not child_table:
+                tuples.append((parent_table, child_table))
 
     for table in tables:
         visitors.traverse(table, {'schema_visitor':True}, {'foreign_key':visit_foreign_key})    

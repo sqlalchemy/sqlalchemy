@@ -3185,6 +3185,16 @@ class ColumnClause(_Immutable, ColumnElement):
                 label = _escape_for_generated(self.table.name) + "_" + \
                             _escape_for_generated(self.name)
 
+            # ensure the label name doesn't conflict with that
+            # of an existing column
+            if label in self.table.c:
+                _label = label
+                counter = 1
+                while _label in self.table.c:
+                    _label = label + "_" + str(counter)
+                    counter += 1
+                label = _label
+
             return _generated_label(label)
 
         else:

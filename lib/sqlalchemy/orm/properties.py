@@ -58,6 +58,8 @@ class ColumnProperty(StrategizedProperty):
         self.comparator_factory = kwargs.pop('comparator_factory', self.__class__.Comparator)
         self.descriptor = kwargs.pop('descriptor', None)
         self.extension = kwargs.pop('extension', None)
+        self.doc = kwargs.pop('doc', getattr(columns[0], 'doc', None))
+        
         if kwargs:
             raise TypeError(
                 "%s received unexpected keyword argument(s): %s" % (
@@ -80,7 +82,8 @@ class ColumnProperty(StrategizedProperty):
             self.key, 
             comparator=self.comparator_factory(self, mapper), 
             parententity=mapper,
-            property_=self
+            property_=self,
+            doc=self.doc
             )
         
     def do_init(self):
@@ -259,11 +262,12 @@ class SynonymProperty(MapperProperty):
 
     extension = None
 
-    def __init__(self, name, map_column=None, descriptor=None, comparator_factory=None):
+    def __init__(self, name, map_column=None, descriptor=None, comparator_factory=None, doc=None):
         self.name = name
         self.map_column = map_column
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
+        self.doc = doc or (descriptor and descriptor.__doc__) or None
         util.set_creation_order(self)
 
     def setup(self, context, entity, path, adapter, **kwargs):
@@ -303,7 +307,8 @@ class SynonymProperty(MapperProperty):
             comparator=comparator_callable(self, mapper), 
             parententity=mapper,
             property_=self,
-            proxy_property=self.descriptor
+            proxy_property=self.descriptor,
+            doc=self.doc
             )
 
     def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
@@ -316,9 +321,10 @@ class ComparableProperty(MapperProperty):
 
     extension = None
     
-    def __init__(self, comparator_factory, descriptor=None):
+    def __init__(self, comparator_factory, descriptor=None, doc=None):
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
+        self.doc = doc or (descriptor and descriptor.__doc__) or None
         util.set_creation_order(self)
 
     def instrument_class(self, mapper):
@@ -330,7 +336,8 @@ class ComparableProperty(MapperProperty):
             comparator=self.comparator_factory(self, mapper), 
             parententity=mapper,
             property_=self,
-            proxy_property=self.descriptor
+            proxy_property=self.descriptor,
+            doc=self.doc,
             )
 
     def setup(self, context, entity, path, adapter, **kwargs):
@@ -364,6 +371,7 @@ class RelationshipProperty(StrategizedProperty):
         enable_typechecks=True, join_depth=None,
         comparator_factory=None,
         single_parent=False, innerjoin=False,
+        doc=None,
         strategy_class=None, _local_remote_pairs=None, query_class=None):
 
         self.uselist = uselist
@@ -384,7 +392,7 @@ class RelationshipProperty(StrategizedProperty):
         self.enable_typechecks = enable_typechecks
         self.query_class = query_class
         self.innerjoin = innerjoin
-
+        self.doc = doc
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension
@@ -433,7 +441,8 @@ class RelationshipProperty(StrategizedProperty):
             self.key, 
             comparator=self.comparator_factory(self, mapper), 
             parententity=mapper,
-            property_=self
+            property_=self,
+            doc=self.doc,
             )
 
     class Comparator(PropComparator):
@@ -742,6 +751,8 @@ class RelationshipProperty(StrategizedProperty):
         else:
             instances = state.value_as_iterable(self.key, passive=passive)
         
+        skip_pending = type_ == 'refresh-expire' and 'delete-orphan' not in self.cascade
+        
         if instances:
             for c in instances:
                 if c is not None and \
@@ -757,12 +768,17 @@ class RelationshipProperty(StrategizedProperty):
                                                 str(self.parent.class_), 
                                                 str(c.__class__)
                                             ))
+                    instance_state = attributes.instance_state(c)
+                    
+                    if skip_pending and not instance_state.key:
+                        continue
+                        
                     visited_instances.add(c)
 
                     # cascade using the mapper local to this 
                     # object, so that its individual properties are located
-                    instance_mapper = object_mapper(c)
-                    yield (c, instance_mapper, attributes.instance_state(c))
+                    instance_mapper = instance_state.manager.mapper
+                    yield (c, instance_mapper, instance_state)
 
     def _add_reverse_property(self, key):
         other = self.mapper._get_property(key)
@@ -1142,7 +1158,7 @@ class RelationshipProperty(StrategizedProperty):
             parent = self.parent.primary_mapper()
             kwargs.setdefault('viewonly', self.viewonly)
             kwargs.setdefault('post_update', self.post_update)
-            
+
             self.back_populates = backref_key
             relationship = RelationshipProperty(
                                         parent, 
