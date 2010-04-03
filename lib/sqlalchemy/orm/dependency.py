@@ -408,9 +408,10 @@ class ManyToOneDP(DependencyProcessor):
                 (after_save, save_parent),
             ])
         else:
-            uow.dependencies.update([
-                (delete_parent, child_action)
-            ])
+            if isinstance(child_action, unitofwork.DeleteState):
+                uow.dependencies.update([
+                    (delete_parent, child_action)
+                ])
 
     def presort_deletes(self, uowcommit, states):
         if self.cascade.delete or self.cascade.delete_orphan:

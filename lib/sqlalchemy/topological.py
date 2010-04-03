@@ -94,7 +94,8 @@ def sort(tuples, allitems):
     output = []
     while nodes:
         if not queue:
-            raise CircularDependencyError("Circular dependency detected: %r" % edges)
+            raise CircularDependencyError("Circular dependency detected: cycles: %r all edges: %r" % 
+                                                    (find_cycles(tuples, allitems), edges))
         node = queue.pop()
         output.append(node)
         nodes.remove(node)

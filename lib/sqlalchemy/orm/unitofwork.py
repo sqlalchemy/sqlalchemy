@@ -198,6 +198,8 @@ class UOWTransaction(object):
                     self.dependencies.remove(edge)
                     for dep in convert[edge[1]]:
                         self.dependencies.add((edge[0], dep))
+                elif edge[0].disabled or edge[1].disabled:
+                    self.dependencies.remove(edge)
         
             # remove actions that were part of the cycles,
             # or have been marked as "disabled" by the "breaking up"
@@ -208,6 +210,9 @@ class UOWTransaction(object):
         
         # execute actions
         sort = topological.sort(self.dependencies, self.postsort_actions.values())
+        print "------------------------"
+#        import pdb
+#        pdb.set_trace()
         print self.dependencies
         print sort
         for rec in sort:
@@ -361,6 +366,14 @@ class ProcessState(PostSortRec):
             self.dependency_processor.process_deletes(uow, [self.state])
         else:
             self.dependency_processor.process_saves(uow, [self.state])
+
+    def __repr__(self):
+        return "%s(%s, %s, delete=%s)" % (
+            self.__class__.__name__,
+            self.dependency_processor,
+            mapperutil.state_str(self.state),
+            self.delete
+        )
         
 class SaveUpdateState(PostSortRec):
     def __init__(self, uow, state):

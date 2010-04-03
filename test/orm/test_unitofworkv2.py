@@ -310,3 +310,49 @@ class SingleCycleTest(UOWTest):
                 ),
                 )
             )
+
+    def test_many_to_one_delete_all(self):
+        mapper(Node, nodes, properties={
+            'parent':relationship(Node, remote_side=nodes.c.id)
+        })
+        sess = create_session()
+
+        n1 = Node(data='n1')
+        n2, n3 = Node(data='n2', parent=n1), Node(data='n3', parent=n1)
+
+        sess.add_all([n2, n3])
+        sess.flush()
+
+        sess.delete(n1)
+        sess.delete(n2)
+        sess.delete(n3)
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                AllOf(
+                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                            lambda ctx:{'id':n3.id}),
+                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                            lambda ctx: {'id':n2.id}),
+                ),
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                        lambda ctx: {'id':n1.id})
+        )
+
+    def test_bidirectional_mutations_one(self):
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, backref=backref('parent', remote_side=nodes.c.id))
+        })
+        sess = create_session()
+
+        n2, n3 = Node(data='n2', children=[]), Node(data='n3', children=[])
+        n1 = Node(data='n1', children=[n2])
+        sess.add(n1)
+        sess.flush()
+        sess.delete(n2)
+        n1.children.append(n3)
+        sess.flush()
+        
+        sess.delete(n1)
+        sess.delete(n3)
+        sess.flush()
