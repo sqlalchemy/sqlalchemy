@@ -1263,11 +1263,15 @@ class Mapper(object):
             prop.per_property_flush_actions(uow)
     
     def per_state_flush_actions(self, uow, state, isdelete):
+        # keep saves before deletes -
+        # this ensures 'row switch' operations work
         if isdelete:
             action = unitofwork.DeleteState(uow, state)
+            uow.dependencies.add((unitofwork.SaveUpdateAll(uow, self.base_mapper), action))
         else:
             action = unitofwork.SaveUpdateState(uow, state)
-        
+            uow.dependencies.add((action, unitofwork.DeleteAll(uow, self.base_mapper)))
+            
         yield action
         mapper = state.manager.mapper
         for prop in mapper._props.values():
@@ -1354,7 +1358,7 @@ class Mapper(object):
                     self._log_debug(
                         "detected row switch for identity %s.  will update %s, remove %s from "
                         "transaction", instance_key, state_str(state), state_str(existing))
-                            
+                    
                     # remove the "delete" flag from the existing element
                     uowtransaction.remove_state_actions(existing)
                     row_switches[state] = existing

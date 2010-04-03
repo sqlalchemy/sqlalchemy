@@ -338,7 +338,23 @@ class SingleCycleTest(UOWTest):
                 CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
                         lambda ctx: {'id':n1.id})
         )
+    
+    def test_cycle_rowswitch(self):
+        mapper(Node, nodes, properties={
+            'children':relationship(Node)
+        })
+        sess = create_session()
 
+        n2, n3 = Node(data='n2', children=[]), Node(data='n3', children=[])
+        n1 = Node(data='n1', children=[n2])
+
+        sess.add(n1)
+        sess.flush()
+        sess.delete(n2)
+        n3.id = n2.id
+        n1.children.append(n3)
+        sess.flush()
+        
     def test_bidirectional_mutations_one(self):
         mapper(Node, nodes, properties={
             'children':relationship(Node, backref=backref('parent', remote_side=nodes.c.id))

@@ -105,15 +105,7 @@ class UOWTransaction(object):
     def remove_state_actions(self, state):
         """remove pending actions for a state from the uowtransaction."""
         
-        if state in self.states:
-            isdelete, listonly = self.states[state]
-            self.states[state] = (False, True)
-            if isdelete:
-                self.postsort_actions.pop((DeleteState, state), None)
-            else:
-                self.postsort_actions.pop((SaveUpdateState, state), None)
-                
-        
+        self.states[state] = (False, True)
         
     def get_attribute_history(self, state, key, passive=True):
         hashkey = ("history", state, key)
@@ -223,11 +215,9 @@ class UOWTransaction(object):
         
         # execute actions
         sort = topological.sort(self.dependencies, self.postsort_actions.values())
-        print "------------------------"
-#        import pdb
-#        pdb.set_trace()
-        print self.dependencies
-        print sort
+#        print "------------------------"
+#        print self.dependencies
+#        print sort
         for rec in sort:
             rec.execute(self)
             
@@ -411,10 +401,11 @@ class DeleteState(PostSortRec):
 
     def execute(self, uow):
         mapper = self.state.manager.mapper.base_mapper
-        mapper._delete_obj(
-            [self.state],
-            uow
-        )
+        if uow.states[self.state][0]:
+            mapper._delete_obj(
+                [self.state],
+                uow
+            )
 
     def __repr__(self):
         return "%s(%s)" % (

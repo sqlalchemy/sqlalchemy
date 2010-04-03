@@ -79,6 +79,8 @@ class DependencyProcessor(object):
                                         before_delete)
 
     def per_state_flush_actions(self, uow, state, isdelete):
+        # locate and disable the aggregate processors
+        # for this dependency
         after_save = unitofwork.ProcessAll(uow, self, False, True)
         before_delete = unitofwork.ProcessAll(uow, self, True, True)
         after_save.disabled = True
@@ -88,14 +90,20 @@ class DependencyProcessor(object):
         child_saves = unitofwork.SaveUpdateAll(uow, self.mapper.base_mapper)
         child_deletes = unitofwork.DeleteAll(uow, self.mapper.base_mapper)
         if child_saves not in uow.cycles:
+            # based on the current dependencies we use, the saves/
+            # deletes should always be in the 'cycles' collection
+            # together.   if this changes, we will have to break up
+            # this method a bit more.
             assert child_deletes not in uow.cycles
-            # its not, so we will link per-state
+            
+            # child side is not part of the cycle, so we will link per-state
             # actions to the aggregate "saves", "deletes" actions
             child_actions = [
                 (child_saves, False), (child_deletes, True)
             ]
         else:
-            # it is.  see if there's any objects.
+            # child side is part of the cycle.  create dependencies for
+            # each related object.
             sum_ = uow.get_attribute_history(state, self.key, passive=True).sum()
             if not sum_:
                 return
@@ -114,7 +122,7 @@ class DependencyProcessor(object):
                 child_actions.append(child_action)
                     
         # check if the "parent" side is part of the cycle,
-        # if so break up parent_saves
+        # if so break up parent_saves or parent_deletes
         if not isdelete:
             parent_saves = unitofwork.SaveUpdateAll(uow, self.parent.base_mapper)
             if parent_saves in uow.cycles:
