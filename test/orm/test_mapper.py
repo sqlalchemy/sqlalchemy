@@ -1079,24 +1079,23 @@ class MapperTest(_fixtures.FixtureTest):
 
         mapper(B, users)
 
-class DocumentTest(_base.MappedTest):
-    @classmethod
-    def define_tables(cls, metadata):
-        Table('t1', metadata,
+class DocumentTest(testing.TestBase):
+        
+    def test_doc_propagate(self):
+        metadata = MetaData()
+        t1 = Table('t1', metadata,
             Column('col1', Integer, primary_key=True, doc="primary key column"),
             Column('col2', String, doc="data col"),
             Column('col3', String, doc="data col 2"),
             Column('col4', String, doc="data col 3"),
             Column('col5', String),
         )
-        Table('t2', metadata,
+        t2 = Table('t2', metadata,
             Column('col1', Integer, primary_key=True, doc="primary key column"),
             Column('col2', String, doc="data col"),
             Column('col3', Integer, ForeignKey('t1.col1'), doc="foreign key to t1.col1")
         )
-        
-    @testing.resolve_artifact_names
-    def test_doc_propagate(self):
+
         class Foo(object):
             pass
         
