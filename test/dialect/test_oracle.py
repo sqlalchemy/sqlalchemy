@@ -34,9 +34,9 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
     def test_out_params(self):
         result = testing.db.execute(text("begin foo(:x_in, :x_out, :y_out, :z_out); end;", 
                         bindparams=[
-                                bindparam('x_in', Numeric), 
+                                bindparam('x_in', Float), 
                                 outparam('x_out', Integer), 
-                                outparam('y_out', Numeric), 
+                                outparam('y_out', Float), 
                                 outparam('z_out', String)]), 
                                 x_in=5)
         eq_(
@@ -627,6 +627,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             metadata.drop_all()
         
+    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")    
     def test_numerics(self):
         m = MetaData(testing.db)
         t1 = Table('t1', m, 

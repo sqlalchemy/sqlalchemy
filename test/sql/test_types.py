@@ -1057,6 +1057,7 @@ class NumericTest(TestBase):
     def teardown(self):
         metadata.drop_all()
         
+    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")    
     def _do_test(self, type_, input_, output, filter_ = None):
         t = Table('t', metadata, Column('x', type_))
         t.create()
@@ -1067,10 +1068,10 @@ class NumericTest(TestBase):
         if filter_:
             result = set(filter_(x) for x in result)
             output = set(filter_(x) for x in output)
-        print result
-        print output
+        #print result
+        #print output
         eq_(result, output)
-        
+    
     def test_numeric_as_decimal(self):
         self._do_test(
             Numeric(precision=8, scale=4),

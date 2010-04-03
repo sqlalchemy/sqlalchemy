@@ -85,6 +85,11 @@ CHANGES
      render inside of column expressions already assigned a label.
      [ticket:1747]
 
+   - the Numeric type raises an *enormous* warning when expected
+     to convert floats to Decimal from a DBAPI that returns floats.
+     This includes SQLite, Oracle, Sybase, MS-SQL.
+     [ticket:1759]
+     
 - postgresql
    - The psycopg2 dialect will log NOTICE messages via the
      "sqlalchemy.dialects.postgresql" logger name. 

@@ -345,6 +345,7 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
 class OracleDialect_cx_oracle(OracleDialect):
     execution_ctx_cls = OracleExecutionContext_cx_oracle
     statement_compiler = OracleCompiler_cx_oracle
+
     driver = "cx_oracle"
     
     colspecs = colspecs = {
