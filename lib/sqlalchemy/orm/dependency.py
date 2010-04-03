@@ -92,7 +92,7 @@ class DependencyProcessor(object):
             # its not, so we will link per-state
             # actions to the aggregate "saves", "deletes" actions
             child_actions = [
-                child_saves, child_deletes
+                (child_saves, False), (child_deletes, True)
             ]
         else:
             # it is.  see if there's any objects.
@@ -104,13 +104,13 @@ class DependencyProcessor(object):
                 if child_state is None:
                     continue
                 if child_state not in uow.states:
-                    child_action = None
+                    child_action = (None, None)
                 else:
                     (deleted, listonly) = uow.states[child_state]
                     if deleted:
-                        child_action = unitofwork.DeleteState(uow, child_state)
+                        child_action = (unitofwork.DeleteState(uow, child_state), True)
                     else:
-                        child_action = unitofwork.SaveUpdateState(uow, child_state)
+                        child_action = (unitofwork.SaveUpdateState(uow, child_state), False)
                 child_actions.append(child_action)
                     
         # check if the "parent" side is part of the cycle,
@@ -135,11 +135,12 @@ class DependencyProcessor(object):
         
         # establish dependencies between our possibly per-state
         # parent action and our possibly per-state child action.
-        for child_action in child_actions:
+        for (child_action, childisdelete) in child_actions:
             self.per_state_dependencies(uow, parent_saves, 
                                             parent_deletes, 
                                             child_action, 
-                                            after_save, before_delete, isdelete)
+                                            after_save, before_delete, 
+                                            isdelete, childisdelete)
 
     def presort_deletes(self, uowcommit, states):
         pass
@@ -260,7 +261,8 @@ class OneToManyDP(DependencyProcessor):
                                     save_parent, 
                                     delete_parent, 
                                     child_action, 
-                                    after_save, before_delete, isdelete):
+                                    after_save, before_delete, 
+                                    isdelete, childisdelete):
         if not isdelete:
             uow.dependencies.update([
                 (save_parent, after_save),
@@ -401,14 +403,15 @@ class ManyToOneDP(DependencyProcessor):
                                     save_parent, 
                                     delete_parent, 
                                     child_action, 
-                                    after_save, before_delete, isdelete):
+                                    after_save, before_delete, 
+                                    isdelete, childisdelete):
         if not isdelete:
             uow.dependencies.update([
                 (child_action, after_save),
                 (after_save, save_parent),
             ])
         else:
-            if isinstance(child_action, unitofwork.DeleteState):
+            if childisdelete:
                 uow.dependencies.update([
                     (delete_parent, child_action)
                 ])
