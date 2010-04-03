@@ -1340,8 +1340,8 @@ class Mapper(object):
         if not postupdate:
             for state, mapper, connection, has_identity, instance_key in tups:
                 # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
-                # and another instance with the same identity key already exists as persistent.  convert to an
-                # UPDATE if so.
+                # and another instance with the same identity key already exists as persistent. 
+                # convert to an UPDATE if so.
                 if not has_identity and instance_key in uowtransaction.session.identity_map:
                     instance = uowtransaction.session.identity_map[instance_key]
                     existing = attributes.instance_state(instance)
@@ -1356,7 +1356,7 @@ class Mapper(object):
                         "transaction", instance_key, state_str(state), state_str(existing))
                             
                     # remove the "delete" flag from the existing element
-                    uowtransaction.set_row_switch(existing)
+                    uowtransaction.remove_state_actions(existing)
                     row_switches[state] = existing
         
         table_to_mapper = self._sorted_tables

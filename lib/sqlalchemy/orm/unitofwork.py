@@ -101,6 +101,19 @@ class UOWTransaction(object):
     def is_deleted(self, state):
         """return true if the given state is marked as deleted within this UOWTransaction."""
         return state in self.states and self.states[state][0]
+    
+    def remove_state_actions(self, state):
+        """remove pending actions for a state from the uowtransaction."""
+        
+        if state in self.states:
+            isdelete, listonly = self.states[state]
+            self.states[state] = (False, True)
+            if isdelete:
+                self.postsort_actions.pop((DeleteState, state), None)
+            else:
+                self.postsort_actions.pop((SaveUpdateState, state), None)
+                
+        
         
     def get_attribute_history(self, state, key, passive=True):
         hashkey = ("history", state, key)
