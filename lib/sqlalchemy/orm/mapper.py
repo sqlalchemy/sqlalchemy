@@ -1269,7 +1269,8 @@ class Mapper(object):
             action = unitofwork.SaveUpdateState(uow, state)
         
         yield action
-        for prop in self._props.values():
+        mapper = state.manager.mapper
+        for prop in mapper._props.values():
             for rec in prop.per_state_flush_actions(uow, state, isdelete):
                 yield rec
         

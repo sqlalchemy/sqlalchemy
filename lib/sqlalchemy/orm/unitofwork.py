@@ -170,7 +170,9 @@ class UOWTransaction(object):
                 break
         
         # see if the graph of mapper dependencies has cycles.
-        self.cycles = cycles = topological.find_cycles(self.dependencies, self.postsort_actions.values())
+        self.cycles = cycles = topological.find_cycles(
+                                        self.dependencies, 
+                                        self.postsort_actions.values())
         
         if cycles:
             # if yes, break the per-mapper actions into
@@ -184,7 +186,9 @@ class UOWTransaction(object):
             # the per-state actions for those per-mapper actions
             # that were broken up.
             for edge in list(self.dependencies):
-                if cycles.issuperset(edge):
+                if None in edge:
+                    self.dependencies.remove(edge)
+                elif cycles.issuperset(edge):
                     self.dependencies.remove(edge)
                 elif edge[0] in cycles:
                     self.dependencies.remove(edge)
@@ -317,7 +321,8 @@ class ProcessAll(PropertyRecMixin, PostSortRec):
 class SaveUpdateAll(PostSortRec):
     def __init__(self, uow, mapper):
         self.mapper = mapper
-
+        assert mapper is mapper.base_mapper
+        
     def execute(self, uow):
         self.mapper._save_obj(
             uow.states_for_mapper_hierarchy(self.mapper, False, False),
@@ -332,6 +337,7 @@ class SaveUpdateAll(PostSortRec):
 class DeleteAll(PostSortRec):
     def __init__(self, uow, mapper):
         self.mapper = mapper
+        assert mapper is mapper.base_mapper
 
     def execute(self, uow):
         self.mapper._delete_obj(

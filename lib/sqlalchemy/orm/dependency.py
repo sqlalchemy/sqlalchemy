@@ -64,11 +64,11 @@ class DependencyProcessor(object):
         after_save = unitofwork.ProcessAll(uow, self, False, True)
         before_delete = unitofwork.ProcessAll(uow, self, True, True)
 
-        parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
-        child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
+        parent_saves = unitofwork.SaveUpdateAll(uow, self.parent.base_mapper)
+        child_saves = unitofwork.SaveUpdateAll(uow, self.mapper.base_mapper)
 
-        parent_deletes = unitofwork.DeleteAll(uow, self.parent)
-        child_deletes = unitofwork.DeleteAll(uow, self.mapper)
+        parent_deletes = unitofwork.DeleteAll(uow, self.parent.base_mapper)
+        child_deletes = unitofwork.DeleteAll(uow, self.mapper.base_mapper)
         
         self.per_property_dependencies(uow, 
                                         parent_saves, 
@@ -85,8 +85,8 @@ class DependencyProcessor(object):
         before_delete.disabled = True
 
         # check if the "child" side is part of the cycle
-        child_saves = unitofwork.SaveUpdateAll(uow, self.mapper)
-        child_deletes = unitofwork.DeleteAll(uow, self.mapper)
+        child_saves = unitofwork.SaveUpdateAll(uow, self.mapper.base_mapper)
+        child_deletes = unitofwork.DeleteAll(uow, self.mapper.base_mapper)
         if child_saves not in uow.cycles:
             assert child_deletes not in uow.cycles
             # its not, so we will link per-state
@@ -101,19 +101,22 @@ class DependencyProcessor(object):
                 return
             child_actions = []
             for child_state in sum_:
-                if child_state is None or child_state not in uow.states:
+                if child_state is None:
                     continue
-                (deleted, listonly) = uow.states[child_state]
-                if deleted:
-                    child_action = unitofwork.DeleteState(uow, child_state)
+                if child_state not in uow.states:
+                    child_action = None
                 else:
-                    child_action = unitofwork.SaveUpdateState(uow, child_state)
+                    (deleted, listonly) = uow.states[child_state]
+                    if deleted:
+                        child_action = unitofwork.DeleteState(uow, child_state)
+                    else:
+                        child_action = unitofwork.SaveUpdateState(uow, child_state)
                 child_actions.append(child_action)
                     
         # check if the "parent" side is part of the cycle,
         # if so break up parent_saves
         if not isdelete:
-            parent_saves = unitofwork.SaveUpdateAll(uow, self.parent)
+            parent_saves = unitofwork.SaveUpdateAll(uow, self.parent.base_mapper)
             if parent_saves in uow.cycles:
                 parent_saves = unitofwork.SaveUpdateState(uow, state)
                 
@@ -122,7 +125,7 @@ class DependencyProcessor(object):
             
             parent_deletes = before_delete = None
         else:
-            parent_deletes = unitofwork.DeleteAll(uow, self.parent)
+            parent_deletes = unitofwork.DeleteAll(uow, self.parent.base_mapper)
             if parent_deletes in uow.cycles:
                 parent_deletes = unitofwork.DeleteState(uow, state)
             before_delete = unitofwork.ProcessState(uow, self, True, state)
