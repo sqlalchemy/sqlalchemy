@@ -66,6 +66,17 @@ CHANGES
     if a non-mapped class attribute is referenced in the
     string-based relationship() arguments.
 
+- oracle
+  - Now using cx_oracle output converters so that the
+    DBAPI returns natively the kinds of values we prefer:
+    - NUMBER values with positive precision + scale convert
+      to cx_oracle.STRING and then to Decimal.   This 
+      allows perfect precision for the Numeric type when
+      using cx_oracle.  [ticket:1759]
+    - STRING/FIXED_CHAR now convert to unicode natively.
+      SQLAlchemy's String types then don't need to 
+      apply any kind of conversions.
+    
 - examples
   - Updated attribute_shard.py example to use a more robust
     method of searching a Query for binary expressions which

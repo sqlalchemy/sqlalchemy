@@ -627,7 +627,6 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             metadata.drop_all()
         
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")    
     def test_numerics(self):
         m = MetaData(testing.db)
         t1 = Table('t1', m, 
@@ -672,7 +671,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
                     (15.76, float),
                 )):
                     eq_(row[i], val)
-                    assert isinstance(row[i], type_)
+                    assert isinstance(row[i], type_), "%r is not %r" % (row[i], type_)
 
         finally:
             t1.drop()
