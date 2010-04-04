@@ -1334,7 +1334,7 @@ class Mapper(object):
             )
 
         table_to_mapper = self._sorted_tables
-        
+
         for table in table_to_mapper:
             insert = []
             update = []

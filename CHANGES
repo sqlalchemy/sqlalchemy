@@ -42,6 +42,13 @@ CHANGES
   - Added kw argument 'doc' to all mapper property callables 
     as well as Column().  Will assemble the string 'doc' as 
     the '__doc__' attribute on the descriptor.  
+
+  - Usage of version_id_col on a backend that supports 
+    cursor.rowcount for execute() but not executemany() now works
+    when a delete is issued (already worked for saves, since those
+    don't use executemany()). For a backend that doesn't support 
+    cursor.rowcount at all, a warning is emitted the same
+    as with saves.  [ticket:1761]
     
 - sql
   - Restored some bind-labeling logic from 0.5 which ensures
