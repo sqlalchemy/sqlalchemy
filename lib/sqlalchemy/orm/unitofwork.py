@@ -206,15 +206,13 @@ class UOWTransaction(object):
                 elif edge[0].disabled or edge[1].disabled:
                     self.dependencies.remove(edge)
         
-            # remove actions that were part of the cycles,
-            # or have been marked as "disabled" by the "breaking up"
-            # process
-            for k, v in list(self.postsort_actions.items()):
-                if v.disabled or v in cycles:
-                    del self.postsort_actions[k]
+        postsort_actions = set(
+                                [a for a in self.postsort_actions.values() 
+                                if not a.disabled]
+                            ).difference(cycles)
         
         # execute actions
-        sort = topological.sort(self.dependencies, self.postsort_actions.values())
+        sort = topological.sort(self.dependencies, postsort_actions)
 #        print "------------------------"
 #        print self.dependencies
 #        print sort

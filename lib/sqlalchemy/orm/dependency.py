@@ -58,6 +58,12 @@ class DependencyProcessor(object):
         return self._get_instrumented_attribute().hasparent(state)
 
     def per_property_flush_actions(self, uow):
+        """establish actions and dependencies related to a flush.
+        
+        These actions will operate on all relevant states in
+        the aggreagte.
+        
+        """
         unitofwork.GetDependentObjects(uow, self, False, True)
         unitofwork.GetDependentObjects(uow, self, True, True)
 
@@ -79,11 +85,13 @@ class DependencyProcessor(object):
                                         before_delete)
 
     def per_state_flush_actions(self, uow, states, isdelete):
-        for state in states:
-            for rec in self._per_state_flush_actions(uow, state, isdelete):
-                yield rec
-                
-    def _per_state_flush_actions(self, uow, state, isdelete):
+        """establish actions and dependencies related to a flush.
+        
+        These actions will operate on all relevant states 
+        individually.    This occurs only if there are cycles
+        in the 'aggregated' version of events.
+        
+        """
         # locate and disable the aggregate processors
         # for this dependency
         after_save = unitofwork.ProcessAll(uow, self, False, True)
@@ -94,6 +102,7 @@ class DependencyProcessor(object):
         # check if the "child" side is part of the cycle
         child_saves = unitofwork.SaveUpdateAll(uow, self.mapper.base_mapper)
         child_deletes = unitofwork.DeleteAll(uow, self.mapper.base_mapper)
+        
         if child_saves not in uow.cycles:
             # based on the current dependencies we use, the saves/
             # deletes should always be in the 'cycles' collection
@@ -106,54 +115,65 @@ class DependencyProcessor(object):
             child_actions = [
                 (child_saves, False), (child_deletes, True)
             ]
+            child_in_cycles = False
         else:
-            # child side is part of the cycle.  create dependencies for
-            # each related object.
-            sum_ = uow.get_attribute_history(state, self.key, passive=True).sum()
-            if not sum_:
-                return
-            child_actions = []
-            for child_state in sum_:
-                if child_state is None:
-                    continue
-                if child_state not in uow.states:
-                    child_action = (None, None)
-                else:
-                    (deleted, listonly) = uow.states[child_state]
-                    if deleted:
-                        child_action = (unitofwork.DeleteState(uow, child_state), True)
-                    else:
-                        child_action = (unitofwork.SaveUpdateState(uow, child_state), False)
-                child_actions.append(child_action)
-                    
-        # check if the "parent" side is part of the cycle,
-        # if so break up parent_saves or parent_deletes
+            child_in_cycles = True
+        
+        # check if the "parent" side is part of the cycle
         if not isdelete:
             parent_saves = unitofwork.SaveUpdateAll(uow, self.parent.base_mapper)
+            parent_deletes = before_delte = None
             if parent_saves in uow.cycles:
-                parent_saves = unitofwork.SaveUpdateState(uow, state)
-                
-            after_save = unitofwork.ProcessState(uow, self, False, state)
-            yield after_save
-            
-            parent_deletes = before_delete = None
+                parent_in_cycles = True
         else:
             parent_deletes = unitofwork.DeleteAll(uow, self.parent.base_mapper)
-            if parent_deletes in uow.cycles:
-                parent_deletes = unitofwork.DeleteState(uow, state)
-            before_delete = unitofwork.ProcessState(uow, self, True, state)
-            yield before_delete
-            
             parent_saves = after_save = None
+            if parent_deletes in uow.cycles:
+                parent_in_cycles = True
         
-        # establish dependencies between our possibly per-state
-        # parent action and our possibly per-state child action.
-        for (child_action, childisdelete) in child_actions:
-            self.per_state_dependencies(uow, parent_saves, 
-                                            parent_deletes, 
-                                            child_action, 
-                                            after_save, before_delete, 
-                                            isdelete, childisdelete)
+        # now create actions /dependencies for each state.
+        for state in states:
+            if isdelete:
+                before_delete = unitofwork.ProcessState(uow, self, True, state)
+                yield before_delete
+            else:
+                after_save = unitofwork.ProcessState(uow, self, False, state)
+                yield after_save
+                
+            if parent_in_cycles:
+                if isdelete:
+                    parent_deletes = unitofwork.DeleteState(uow, state)
+                else:
+                    parent_saves = unitofwork.SaveUpdateState(uow, state)
+                    
+            if child_in_cycles:
+                # locate each child state associated with the parent action,
+                # create dependencies for each.
+                child_actions = []
+                sum_ = uow.get_attribute_history(state, self.key, passive=True).sum()
+                if not sum_:
+                    continue
+                for child_state in sum_:
+                    if child_state is None:
+                        continue
+                    if child_state not in uow.states:
+                        child_action = (None, None)
+                    else:
+                        (deleted, listonly) = uow.states[child_state]
+                        if deleted:
+                            child_action = (unitofwork.DeleteState(uow, child_state), True)
+                        else:
+                            child_action = (unitofwork.SaveUpdateState(uow, child_state), False)
+                    child_actions.append(child_action)
+                    
+            # establish dependencies between our possibly per-state
+            # parent action and our possibly per-state child action.
+            for (child_action, childisdelete) in child_actions:
+                self.per_state_dependencies(uow, parent_saves, 
+                                                parent_deletes, 
+                                                child_action, 
+                                                after_save, before_delete, 
+                                                isdelete, childisdelete)
 
     def presort_deletes(self, uowcommit, states):
         pass
