@@ -795,6 +795,39 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         assert_raises(sa.exc.DBAPIError, session.flush)
 
 
+class ColumnCollisionTest(_base.MappedTest):
+    """Ensure the mapper doesn't break bind param naming rules on flush."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('book', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('book_id', String(50)),
+            Column('title', String(50))
+        )
+    
+    @testing.resolve_artifact_names
+    def test_naming(self):
+        class Book(_base.ComparableEntity):
+            pass
+    
+        mapper(Book, book)
+        sess = create_session()
+        
+        b1 = Book(book_id='abc', title='def')
+        sess.add(b1)
+        sess.flush()
+        
+        b1.title = 'ghi'
+        sess.flush()
+        sess.close()
+        eq_(
+            sess.query(Book).first(),
+            Book(book_id='abc', title='ghi')
+        )
+        
+        
+        
 class DefaultTest(_base.MappedTest):
     """Exercise mappings on columns with DefaultGenerators.
 

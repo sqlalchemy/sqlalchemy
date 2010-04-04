@@ -27,12 +27,68 @@ CHANGES
     "delete-orphan", or will simply detach it otherwise.
     [ticket:1754]
 
+  - Fixed a potential issue in topological cycle detection 
+    introduced in 0.6beta3, for units of work with long 
+    dependency cycles.
+
+  - id(obj) is no longer used internally within topological.py,
+    as the sorting functions now require hashable objects
+    only.  [ticket:1756]
+
+  - The ORM will set the docstring of all generated descriptors
+    to None by default.  This can be overridden using 'doc'
+    (or if using Sphinx, attribute docstrings work too).
+    
+  - Added kw argument 'doc' to all mapper property callables 
+    as well as Column().  Will assemble the string 'doc' as 
+    the '__doc__' attribute on the descriptor.  
+
+  - Usage of version_id_col on a backend that supports 
+    cursor.rowcount for execute() but not executemany() now works
+    when a delete is issued (already worked for saves, since those
+    don't use executemany()). For a backend that doesn't support 
+    cursor.rowcount at all, a warning is emitted the same
+    as with saves.  [ticket:1761]
+    
+- sql
+  - Restored some bind-labeling logic from 0.5 which ensures
+    that tables with column names that overlap another column
+    of the form "<tablename>_<columnname>" won't produce 
+    errors if column._label is used as a bind name during
+    an UPDATE.  Test coverage which wasn't present in 0.5
+    has been added.  [ticket:1755]
+
+  - the Numeric type raises an *enormous* warning when expected
+    to convert floats to Decimal from a DBAPI that returns floats.
+    This includes SQLite, Oracle, Sybase, MS-SQL.
+    [ticket:1759]
+
 - ext
-   - the compiler extension now allows @compiles decorators
-     on base classes that extend to child classes, @compiles
-     decorators on child classes that aren't broken by a 
-     @compiles decorator on the base class.
+  - the compiler extension now allows @compiles decorators
+    on base classes that extend to child classes, @compiles
+    decorators on child classes that aren't broken by a 
+    @compiles decorator on the base class.
    
+  - Declarative will raise an informative error message
+    if a non-mapped class attribute is referenced in the
+    string-based relationship() arguments.
+
+- oracle
+  - Now using cx_oracle output converters so that the
+    DBAPI returns natively the kinds of values we prefer:
+    - NUMBER values with positive precision + scale convert
+      to cx_oracle.STRING and then to Decimal.   This 
+      allows perfect precision for the Numeric type when
+      using cx_oracle.  [ticket:1759]
+    - STRING/FIXED_CHAR now convert to unicode natively.
+      SQLAlchemy's String types then don't need to 
+      apply any kind of conversions.
+    
+- examples
+  - Updated attribute_shard.py example to use a more robust
+    method of searching a Query for binary expressions which
+    compare columns against literal values.
+    
 0.6beta3
 ========
 

@@ -132,4 +132,3 @@ def find_cycles(tuples, allitems):
             else:
                 node = stack.pop()
     return output
-    
