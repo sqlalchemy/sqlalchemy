@@ -26,26 +26,16 @@ __all__ = ['sort']
 class _EdgeCollection(object):
     """A collection of directed edges."""
 
-    def __init__(self):
+    def __init__(self, edges):
         self.parent_to_children = util.defaultdict(set)
         self.child_to_parents = util.defaultdict(set)
-
-    def add(self, edge):
-        """Add an edge to this collection."""
-
-        parentnode, childnode = edge
-        self.parent_to_children[parentnode].add(childnode)
-        self.child_to_parents[childnode].add(parentnode)
-
+        for parentnode, childnode in edges:
+            self.parent_to_children[parentnode].add(childnode)
+            self.child_to_parents[childnode].add(parentnode)
+            
     def has_parents(self, node):
         return node in self.child_to_parents and bool(self.child_to_parents[node])
 
-    def edges_by_parent(self, node):
-        if node in self.parent_to_children:
-            return [(node, child) for child in self.parent_to_children[node]]
-        else:
-            return []
-    
     def outgoing(self, node):
         """an iterable returning all nodes reached via node's outgoing edges"""
         
@@ -79,12 +69,8 @@ def sort(tuples, allitems):
     'tuples' is a list of tuples representing a partial ordering.
     """
 
-    edges = _EdgeCollection()
+    edges = _EdgeCollection(tuples)
     nodes = set(allitems)
-
-    for t in tuples:
-        nodes.update(t)
-        edges.add(t)
 
     queue = []
     for n in nodes:
@@ -106,12 +92,8 @@ def sort(tuples, allitems):
 def find_cycles(tuples, allitems):
     # straight from gvr with some mods
     todo = set(allitems)
-    edges = _EdgeCollection()
+    edges = _EdgeCollection(tuples)
 
-    for t in tuples:
-        todo.update(t)
-        edges.add(t)
-    
     output = set()
     
     while todo:

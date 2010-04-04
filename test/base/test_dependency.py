@@ -5,7 +5,14 @@ from sqlalchemy import exc
 import collections
 
 class DependencySortTest(TestBase):
-    def assert_sort(self, tuples, result):
+    def assert_sort(self, tuples, allitems=None):
+        
+        if allitems is None:
+            allitems = self._nodes_from_tuples(tuples)
+        else:
+            allitems = self._nodes_from_tuples(tuples).union(allitems)
+            
+        result = topological.sort(tuples, allitems)
         
         deps = collections.defaultdict(set)
         for parent, child in tuples:
@@ -16,6 +23,12 @@ class DependencySortTest(TestBase):
             for n in result[i:]:
                 assert node not in deps[n]
 
+    def _nodes_from_tuples(self, tups):
+        s = set()
+        for tup in tups:
+            s.update(tup)
+        return s
+        
     def test_sort_one(self):
         rootnode = 'root'
         node2 = 'node2'
@@ -36,7 +49,7 @@ class DependencySortTest(TestBase):
             (node4, subnode3),
             (node4, subnode4)
         ]
-        self.assert_sort(tuples, topological.sort(tuples, []))
+        self.assert_sort(tuples)
 
     def test_sort_two(self):
         node1 = 'node1'
@@ -53,7 +66,7 @@ class DependencySortTest(TestBase):
             (node5, node6),
             (node6, node2)
         ]
-        self.assert_sort(tuples, topological.sort(tuples, [node7]))
+        self.assert_sort(tuples, [node7])
 
     def test_sort_three(self):
         node1 = 'keywords'
@@ -66,7 +79,7 @@ class DependencySortTest(TestBase):
             (node1, node3),
             (node3, node2)
         ]
-        self.assert_sort(tuples, topological.sort(tuples, []))
+        self.assert_sort(tuples)
 
     def test_raise_on_cycle_one(self):
         node1 = 'node1'
@@ -82,7 +95,7 @@ class DependencySortTest(TestBase):
             (node3, node1),
             (node4, node1)
         ]
-        allitems = [node1, node2, node3, node4]
+        allitems = self._nodes_from_tuples(tuples)
         assert_raises(exc.CircularDependencyError, topological.sort, tuples, allitems)
 
         # TODO: test find_cycles
@@ -101,7 +114,8 @@ class DependencySortTest(TestBase):
             (node3, node2),
             (node2, node3)
         ]
-        assert_raises(exc.CircularDependencyError, topological.sort, tuples, [])
+        allitems = self._nodes_from_tuples(tuples)
+        assert_raises(exc.CircularDependencyError, topological.sort, tuples, allitems)
 
         # TODO: test find_cycles
 
@@ -112,24 +126,19 @@ class DependencySortTest(TestBase):
                     (question, provider), (providerservice, question), 
                     (provider, providerservice), (question, answer), (issue, question)]
 
-        assert_raises(exc.CircularDependencyError, topological.sort, tuples, [])
+        allitems = self._nodes_from_tuples(tuples)
+        assert_raises(exc.CircularDependencyError, topological.sort, tuples, allitems)
         
         # TODO: test find_cycles
         
     def test_large_sort(self):
         tuples = [(i, i + 1) for i in range(0, 1500, 2)]
-        self.assert_sort(
-            tuples,
-            topological.sort(tuples, [])
-        )
+        self.assert_sort(tuples)
 
     def test_ticket_1380(self):
         # ticket:1380 regression: would raise a KeyError
         tuples = [(id(i), i) for i in range(3)]
-        self.assert_sort(
-            tuples,
-            topological.sort(tuples, [])
-        )
+        self.assert_sort(tuples)
         
     def test_find_cycle_one(self):
         node1 = 'node1'
@@ -145,7 +154,7 @@ class DependencySortTest(TestBase):
         ]
 
         eq_(
-            topological.find_cycles(tuples),
+            topological.find_cycles(tuples, self._nodes_from_tuples(tuples)),
             set([node1, node2, node3])
         )
 

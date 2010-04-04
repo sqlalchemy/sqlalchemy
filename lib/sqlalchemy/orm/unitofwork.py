@@ -195,6 +195,8 @@ class UOWTransaction(object):
                     self.dependencies.remove(edge)
                 elif cycles.issuperset(edge):
                     self.dependencies.remove(edge)
+                elif edge[0].disabled or edge[1].disabled:
+                    self.dependencies.remove(edge)
                 elif edge[0] in cycles:
                     self.dependencies.remove(edge)
                     for dep in convert[edge[0]]:
@@ -203,19 +205,18 @@ class UOWTransaction(object):
                     self.dependencies.remove(edge)
                     for dep in convert[edge[1]]:
                         self.dependencies.add((edge[0], dep))
-                elif edge[0].disabled or edge[1].disabled:
-                    self.dependencies.remove(edge)
         
         postsort_actions = set(
-                                [a for a in self.postsort_actions.values() 
-                                if not a.disabled]
+                                [a for a in self.postsort_actions.values()
+                                if not a.disabled
+                                ]
                             ).difference(cycles)
         
         # execute actions
         sort = topological.sort(self.dependencies, postsort_actions)
-#        print "------------------------"
-#        print self.dependencies
-#        print sort
+        #print "------------------------"
+        #print self.dependencies
+        #print sort
         for rec in sort:
             rec.execute(self)
             

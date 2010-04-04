@@ -94,10 +94,11 @@ class DependencyProcessor(object):
         """
         # locate and disable the aggregate processors
         # for this dependency
-        after_save = unitofwork.ProcessAll(uow, self, False, True)
+        
         before_delete = unitofwork.ProcessAll(uow, self, True, True)
-        after_save.disabled = True
         before_delete.disabled = True
+        after_save = unitofwork.ProcessAll(uow, self, False, True)
+        after_save.disabled = True
 
         # check if the "child" side is part of the cycle
         child_saves = unitofwork.SaveUpdateAll(uow, self.mapper.base_mapper)
@@ -122,7 +123,7 @@ class DependencyProcessor(object):
         # check if the "parent" side is part of the cycle
         if not isdelete:
             parent_saves = unitofwork.SaveUpdateAll(uow, self.parent.base_mapper)
-            parent_deletes = before_delte = None
+            parent_deletes = before_delete = None
             if parent_saves in uow.cycles:
                 parent_in_cycles = True
         else:
@@ -133,19 +134,18 @@ class DependencyProcessor(object):
         
         # now create actions /dependencies for each state.
         for state in states:
+            # I'd like to emit the before_delete/after_save actions
+            # here and have the unit of work not get confused by that
+            # when it alters the list of dependencies...
             if isdelete:
                 before_delete = unitofwork.ProcessState(uow, self, True, state)
-                yield before_delete
+                if parent_in_cycles:
+                    parent_deletes = unitofwork.DeleteState(uow, state)
             else:
                 after_save = unitofwork.ProcessState(uow, self, False, state)
-                yield after_save
-                
-            if parent_in_cycles:
-                if isdelete:
-                    parent_deletes = unitofwork.DeleteState(uow, state)
-                else:
+                if parent_in_cycles:
                     parent_saves = unitofwork.SaveUpdateState(uow, state)
-                    
+                
             if child_in_cycles:
                 # locate each child state associated with the parent action,
                 # create dependencies for each.
@@ -174,7 +174,11 @@ class DependencyProcessor(object):
                                                 child_action, 
                                                 after_save, before_delete, 
                                                 isdelete, childisdelete)
-
+        
+        # ... but at the moment it 
+        # does so we emit a null iterator
+        return iter([])
+        
     def presort_deletes(self, uowcommit, states):
         pass
         
@@ -304,8 +308,8 @@ class OneToManyDP(DependencyProcessor):
             ])
         else:
             uow.dependencies.update([
-                (child_action, before_delete),
-                (before_delete, delete_parent),
+                (before_delete, child_action),
+                (child_action, delete_parent)
             ])
         
     def presort_deletes(self, uowcommit, states):
