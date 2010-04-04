@@ -338,9 +338,11 @@ class SaveUpdateAll(PostSortRec):
         )
     
     def per_state_flush_actions(self, uow):
-        for state in uow.states_for_mapper_hierarchy(self.mapper, False, False):
-            for rec in self.mapper.per_state_flush_actions(uow, state, False):
-                yield rec
+        for rec in self.mapper.per_state_flush_actions(
+                            uow, 
+                            uow.states_for_mapper_hierarchy(self.mapper, False, False), 
+                            False):
+            yield rec
         
 class DeleteAll(PostSortRec):
     def __init__(self, uow, mapper):
@@ -354,9 +356,11 @@ class DeleteAll(PostSortRec):
         )
 
     def per_state_flush_actions(self, uow):
-        for state in uow.states_for_mapper_hierarchy(self.mapper, True, False):
-            for rec in self.mapper.per_state_flush_actions(uow, state, True):
-                yield rec
+        for rec in self.mapper.per_state_flush_actions(
+                            uow, 
+                            uow.states_for_mapper_hierarchy(self.mapper, True, False), 
+                            True):
+            yield rec
 
 class ProcessState(PostSortRec):
     def __init__(self, uow, dependency_processor, delete, state):

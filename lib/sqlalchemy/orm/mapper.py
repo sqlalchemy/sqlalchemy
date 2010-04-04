@@ -1062,6 +1062,7 @@ class Mapper(object):
             item = stack.popleft()
             yield item
             stack.extend(item._inheriting_mappers)
+    
 
     def primary_mapper(self):
         """Return the primary mapper corresponding to this mapper's class key (class)."""
@@ -1247,15 +1248,6 @@ class Mapper(object):
             ret[t] = table_to_mapper[t]
         return ret
 
-    @util.memoized_property
-    def _sorted_table_list(self):
-        l = []
-        for mapper in self.base_mapper.polymorphic_iterator():
-            for t in mapper.tables:
-                l.append(t)
-        
-        return sqlutil.sort_tables(l)
-        
     def per_mapper_flush_actions(self, uow):
         saves = unitofwork.SaveUpdateAll(uow, self.base_mapper)
         deletes = unitofwork.DeleteAll(uow, self.base_mapper)
@@ -1264,20 +1256,51 @@ class Mapper(object):
         for prop in self._props.values():
             prop.per_property_flush_actions(uow)
     
-    def per_state_flush_actions(self, uow, state, isdelete):
-        # keep saves before deletes -
-        # this ensures 'row switch' operations work
-        if isdelete:
-            action = unitofwork.DeleteState(uow, state)
-            uow.dependencies.add((unitofwork.SaveUpdateAll(uow, self.base_mapper), action))
-        else:
-            action = unitofwork.SaveUpdateState(uow, state)
-            uow.dependencies.add((action, unitofwork.DeleteAll(uow, self.base_mapper)))
+    def _property_iterator(self, mappers):
+        """return an iterator of all MapperProperty objects
+        and a list containing all mappers which use that property,
+        descending through the polymorphic hierarchy of this
+        mapper.
+
+        'mappers' is a set which will limit the traversal
+        to just those mappers.
+
+        """
+        props = set()
+        for mapper in self.polymorphic_iterator():
+            if mapper not in mappers:
+                continue
+
+            for prop in mapper._props.values():
+                if prop not in props:
+                    props.add(prop)
+                    yield prop, [m for m in mappers if m._props[prop.key] is prop]
+
+    def per_state_flush_actions(self, uow, states, isdelete):
+        
+        mappers_to_states = util.defaultdict(set)
+        
+        save_all = unitofwork.SaveUpdateAll(uow, self.base_mapper)
+        delete_all = unitofwork.DeleteAll(uow, self.base_mapper)
+        for state in states:
+            # keep saves before deletes -
+            # this ensures 'row switch' operations work
+            if isdelete:
+                action = unitofwork.DeleteState(uow, state)
+                uow.dependencies.add((save_all, action))
+            else:
+                action = unitofwork.SaveUpdateState(uow, state)
+                uow.dependencies.add((action, delete_all))
             
-        yield action
-        mapper = state.manager.mapper
-        for prop in mapper._props.values():
-            for rec in prop.per_state_flush_actions(uow, state, isdelete):
+            mappers_to_states[state.manager.mapper].add(state)
+            yield action
+        
+        for prop, mappers in self._property_iterator(set(mappers_to_states)):
+            states_for_prop = []
+            for mapper in mappers:
+                states_for_prop += list(mappers_to_states[mapper])
+                
+            for rec in prop.per_state_flush_actions(uow, states_for_prop, isdelete):
                 yield rec
         
         

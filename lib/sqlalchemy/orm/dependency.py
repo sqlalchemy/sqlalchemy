@@ -78,7 +78,12 @@ class DependencyProcessor(object):
                                         after_save, 
                                         before_delete)
 
-    def per_state_flush_actions(self, uow, state, isdelete):
+    def per_state_flush_actions(self, uow, states, isdelete):
+        for state in states:
+            for rec in self._per_state_flush_actions(uow, state, isdelete):
+                yield rec
+                
+    def _per_state_flush_actions(self, uow, state, isdelete):
         # locate and disable the aggregate processors
         # for this dependency
         after_save = unitofwork.ProcessAll(uow, self, False, True)
