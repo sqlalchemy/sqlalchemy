@@ -147,10 +147,10 @@ class UOWTransaction(object):
             self.states[state] = (isdelete, listonly)
         elif isdelete or listonly:
             existing_isdelete, existing_listonly = self.states[state]
-            self.states[state] = (
-                                        existing_isdelete or isdelete, 
-                                        existing_listonly and listonly
-                                )
+            if not listonly and existing_listonly:
+                raise Exception("Can't upgrade from listonly to save")
+            if existing_isdelete != isdelete:
+                raise Exception("Can't change delete flag")
     
     def states_for_mapper(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
