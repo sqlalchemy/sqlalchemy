@@ -215,30 +215,13 @@ class UOWTransaction(object):
                             ).difference(cycles)
         
         # execute actions
-        sort = topological.sort(self.dependencies, postsort_actions)
-        print "------------------------"
-        print self.dependencies
-        print sort
-        
         if cycles:
-            # organize into a tree so that groups of nodes can be 
-            # merged together, allowing better maintenance of insert
-            # ordering and other things
-            (head, children) = topological.organize_as_tree(self.dependencies, sort)
-            stack = [(head, children)]
-            
-            head.execute(self)
-            while stack:
-                node, children = stack.pop()
-                if children:
-                    related = set([n[0] for n in children])
-                    while related:
-                        n = related.pop()
-                        n.execute_aggregate(self, related)
-                
-                    stack += children
+            for set_ in topological.sort_as_subsets(self.dependencies, postsort_actions):
+                while set_:
+                    n = set_.pop()
+                    n.execute_aggregate(self, set_)
         else:
-            for rec in sort:
+            for rec in topological.sort(self.dependencies, postsort_actions):
                 rec.execute(self)
             
 

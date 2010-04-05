@@ -12,7 +12,7 @@ class DependencySortTest(TestBase):
         else:
             allitems = self._nodes_from_tuples(tuples).union(allitems)
             
-        result = topological.sort(tuples, allitems)
+        result = list(topological.sort(tuples, allitems))
         
         deps = collections.defaultdict(set)
         for parent, child in tuples:
@@ -96,7 +96,7 @@ class DependencySortTest(TestBase):
             (node4, node1)
         ]
         allitems = self._nodes_from_tuples(tuples)
-        assert_raises(exc.CircularDependencyError, topological.sort, tuples, allitems)
+        assert_raises(exc.CircularDependencyError, list, topological.sort(tuples, allitems))
 
         # TODO: test find_cycles
 
@@ -115,7 +115,7 @@ class DependencySortTest(TestBase):
             (node2, node3)
         ]
         allitems = self._nodes_from_tuples(tuples)
-        assert_raises(exc.CircularDependencyError, topological.sort, tuples, allitems)
+        assert_raises(exc.CircularDependencyError, list, topological.sort(tuples, allitems))
 
         # TODO: test find_cycles
 
@@ -127,7 +127,7 @@ class DependencySortTest(TestBase):
                     (provider, providerservice), (question, answer), (issue, question)]
 
         allitems = self._nodes_from_tuples(tuples)
-        assert_raises(exc.CircularDependencyError, topological.sort, tuples, allitems)
+        assert_raises(exc.CircularDependencyError, list, topological.sort(tuples, allitems))
         
         # TODO: test find_cycles
         
