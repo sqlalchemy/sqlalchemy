@@ -1158,7 +1158,8 @@ class RelationshipProperty(StrategizedProperty):
             parent = self.parent.primary_mapper()
             kwargs.setdefault('viewonly', self.viewonly)
             kwargs.setdefault('post_update', self.post_update)
-
+            kwargs.setdefault('passive_updates', self.passive_updates)
+            
             self.back_populates = backref_key
             relationship = RelationshipProperty(
                                         parent, 

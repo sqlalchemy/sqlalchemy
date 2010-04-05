@@ -146,7 +146,11 @@ class UOWTransaction(object):
             self.mappers[mapper].add(state)
             self.states[state] = (isdelete, listonly)
         elif isdelete or listonly:
-            self.states[state] = (isdelete, listonly)
+            existing_isdelete, existing_listonly = self.states[state]
+            self.states[state] = (
+                                        existing_isdelete or isdelete, 
+                                        existing_listonly and listonly
+                                )
     
     def states_for_mapper(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
@@ -214,9 +218,9 @@ class UOWTransaction(object):
         
         # execute actions
         sort = topological.sort(self.dependencies, postsort_actions)
-        #print "------------------------"
-        #print self.dependencies
-        #print sort
+        print "------------------------"
+        print self.dependencies
+        print sort
         for rec in sort:
             rec.execute(self)
             
@@ -231,7 +235,7 @@ class UOWTransaction(object):
         for state, (isdelete, listonly) in self.states.iteritems():
             if isdelete:
                 self.session._remove_newly_deleted(state)
-            elif not listonly:
+            else: #if not listonly:
                 self.session._register_newly_persistent(state)
 
 log.class_logger(UOWTransaction)

@@ -1253,6 +1253,9 @@ class Mapper(object):
         deletes = unitofwork.DeleteAll(uow, self.base_mapper)
         uow.dependencies.add((saves, deletes))
         
+        for dep in self._dependency_processors:
+            dep.per_property_flush_actions(uow)
+            
         for prop in self._props.values():
             prop.per_property_flush_actions(uow)
     
@@ -1274,7 +1277,7 @@ class Mapper(object):
             for prop in mapper._props.values():
                 if prop not in props:
                     props.add(prop)
-                    yield prop, [m for m in mappers if m._props[prop.key] is prop]
+                    yield prop, [m for m in mappers if m._props.get(prop.key) is prop]
 
     def per_state_flush_actions(self, uow, states, isdelete):
         

@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, Unicode
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, create_session
+from sqlalchemy.orm import mapper, relationship, create_session, backref
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
 
@@ -282,7 +282,6 @@ class NaturalPKTest(_base.MappedTest):
         def go():
             sess.flush()
         if passive_updates:
-            sess.expire(u1, ['addresses'])
             self.assert_sql_count(testing.db, go, 1)
         else:
             self.assert_sql_count(testing.db, go, 3)
@@ -297,7 +296,6 @@ class NaturalPKTest(_base.MappedTest):
             sess.flush()
         # check that the passive_updates is on on the other side
         if passive_updates:
-            sess.expire(u1, ['addresses'])
             self.assert_sql_count(testing.db, go, 1)
         else:
             self.assert_sql_count(testing.db, go, 3)
