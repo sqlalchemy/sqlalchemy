@@ -334,8 +334,7 @@ class DetectKeySwitch(DependencyProcessor):
             for state in uowcommit.session.identity_map.all_states():
                 if not issubclass(state.class_, self.parent.class_):
                     continue
-                obj = state.obj()
-                dict_ = attributes.instance_dict(obj)
+                dict_ = state.dict
                 related = dict_.get(self.key)
                 if related is not None:
                     related_state = attributes.instance_state(dict_[self.key])
