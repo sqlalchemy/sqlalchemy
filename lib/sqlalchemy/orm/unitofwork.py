@@ -145,19 +145,17 @@ class UOWTransaction(object):
             
             self.mappers[mapper].add(state)
             self.states[state] = (isdelete, listonly)
-        elif isdelete or listonly:
+        else:
             existing_isdelete, existing_listonly = self.states[state]
-            if not listonly and existing_listonly:
-                raise Exception("Can't upgrade from listonly to save")
-            if existing_isdelete != isdelete:
-                raise Exception("Can't change delete flag")
+            if isdelete and not existing_delete:
+                raise Exception("Can't upgrade from a save to a delete")
     
     def states_for_mapper(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
         for state in self.mappers[mapper]:
             if self.states[state] == checktup:
                 yield state
-
+        
     def states_for_mapper_hierarchy(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
         for mapper in mapper.base_mapper.polymorphic_iterator():
@@ -235,7 +233,9 @@ class UOWTransaction(object):
         for state, (isdelete, listonly) in self.states.iteritems():
             if isdelete:
                 self.session._remove_newly_deleted(state)
-            else: #if not listonly:
+            else:
+                # if listonly:
+                #   debug... would like to see how many do this
                 self.session._register_newly_persistent(state)
 
 log.class_logger(UOWTransaction)
@@ -272,8 +272,6 @@ class PropertyRecMixin(object):
         self.delete = delete
         self.fromparent = fromparent
         
-        self.processed = set()
-        
         prop = dependency_processor.prop
         if fromparent:
             self._mappers = set(
@@ -291,29 +289,30 @@ class PropertyRecMixin(object):
             self.dependency_processor,
             self.delete
         )
-
+    
+    processed = ()
     def _elements(self, uow):
         for mapper in self._mappers:
             for state in uow.mappers[mapper]:
                 if state in self.processed:
                     continue
                 (isdelete, listonly) = uow.states[state]
-                if isdelete == self.delete:
+                if isdelete == self.delete and not listonly:
                     yield state
     
 class GetDependentObjects(PropertyRecMixin, PreSortRec):
     def __init__(self, *args):
-        self.processed = set()
         super(GetDependentObjects, self).__init__(*args)
-
+        self.processed = set()
+        
     def execute(self, uow):
         states = list(self._elements(uow))
         if states:
-            self.processed.update(states)
             if self.delete:
                 self.dependency_processor.presort_deletes(uow, states)
             else:
                 self.dependency_processor.presort_saves(uow, states)
+            self.processed.update(states)
             return True
         else:
             return False
