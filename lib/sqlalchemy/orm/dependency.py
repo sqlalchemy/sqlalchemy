@@ -326,22 +326,26 @@ class DetectKeySwitch(DependencyProcessor):
     def _process_key_switches(self, deplist, uowcommit):
         switchers = set(s for s in deplist if self._pks_changed(uowcommit, s))
         if switchers:
-            # yes, we're doing a linear search right now through the UOW.  only
-            # takes effect when primary key values have actually changed.
-            # a possible optimization might be to enhance the "hasparents" capability of
-            # attributes to actually store all parent references, but this introduces
-            # more complicated attribute accounting.
-            for s in [elem for elem in uowcommit.session.identity_map.all_states()
-                if issubclass(elem.class_, self.parent.class_) and
-                    self.key in elem.dict and
-                    elem.dict[self.key] is not None and 
-                    attributes.instance_state(elem.dict[self.key]) in switchers
-                ]:
-                uowcommit.register_object(s)
-                sync.populate(
-                            attributes.instance_state(s.dict[self.key]), 
-                            self.mapper, s, self.parent, self.prop.synchronize_pairs, 
-                            uowcommit, self.passive_updates)
+            # if primary key values have actually changed somewhere, perform
+            # a linear search through the UOW in search of a parent.
+            # possible optimizations here include additional accounting within
+            # the attribute system, or allowing a one-to-many attr to circumvent
+            # the need for the search in this direction.
+            for state in uowcommit.session.identity_map.all_states():
+                if not issubclass(state.class_, self.parent.class_):
+                    continue
+                obj = state.obj()
+                dict_ = attributes.instance_dict(obj)
+                related = dict_.get(self.key)
+                if related is not None:
+                    related_state = attributes.instance_state(dict_[self.key])
+                    if related_state in switchers:
+                        uowcommit.register_object(state)
+                        sync.populate(
+                                    related_state, 
+                                    self.mapper, state, 
+                                    self.parent, self.prop.synchronize_pairs, 
+                                    uowcommit, self.passive_updates)
 
     def _pks_changed(self, uowcommit, state):
         return sync.source_modified(uowcommit, state, self.mapper, self.prop.synchronize_pairs)
