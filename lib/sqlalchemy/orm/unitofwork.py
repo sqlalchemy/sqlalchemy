@@ -147,7 +147,7 @@ class UOWTransaction(object):
             self.states[state] = (isdelete, listonly)
         else:
             existing_isdelete, existing_listonly = self.states[state]
-            if isdelete and not existing_delete:
+            if isdelete and not existing_isdelete:
                 raise Exception("Can't upgrade from a save to a delete")
     
     def states_for_mapper(self, mapper, isdelete, listonly):
