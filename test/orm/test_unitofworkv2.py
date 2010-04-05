@@ -372,3 +372,25 @@ class SingleCycleTest(UOWTest):
         sess.delete(n1)
         sess.delete(n3)
         sess.flush()
+        
+    def test_bidirectional_multilevel_save(self):
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, 
+                backref=backref('parent', remote_side=nodes.c.id)
+            )
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n1.children.append(Node(data='n11'))
+        n1.children.append(Node(data='n12'))
+        n1.children.append(Node(data='n13'))
+        n1.children[1].children.append(Node(data='n121'))
+        n1.children[1].children.append(Node(data='n122'))
+        n1.children[1].children.append(Node(data='n123'))
+        sess.add(n1)
+        sess.flush()
+#        self.assert_sql_execution(
+#                testing.db,
+ #               sess.flush,
+ #       )
+        

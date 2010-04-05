@@ -219,8 +219,21 @@ class UOWTransaction(object):
         print "------------------------"
         print self.dependencies
         print sort
-        for rec in sort:
-            rec.execute(self)
+        
+        if cycles:
+            # organize into a tree so that groups of nodes can be 
+            # merged together, allowing better maintenance of insert
+            # ordering and other things
+            (head, children) = topological.organize_as_tree(self.dependencies, sort)
+            stack = [(head, children)]
+            
+            while stack:
+                node, children = stack.pop()
+                node.execute(self)
+                stack += children
+        else:
+            for rec in sort:
+                rec.execute(self)
             
 
     def finalize_flush_changes(self):

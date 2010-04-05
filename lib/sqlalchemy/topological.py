@@ -114,3 +114,50 @@ def find_cycles(tuples, allitems):
             else:
                 node = stack.pop()
     return output
+
+
+def organize_as_tree(tuples, allitems):
+    """Given a list of sorted nodes from a topological sort, organize the
+    nodes into a tree structure, with as many non-dependent nodes
+    set as siblings to each other as possible.
+
+    returns nodes as tuples (item, children).
+    """
+
+    nodes = allitems
+    edges = _EdgeCollection(tuples)
+    children = util.defaultdict(list)
+    
+    if not nodes:
+        return None
+    # a list of all currently independent subtrees as a tuple of
+    # (root_node, set_of_all_tree_nodes, set_of_all_cycle_nodes_in_tree)
+    # order of the list has no semantics for the algorithmic
+    independents = []
+    # in reverse topological order
+    for node in reversed(nodes):
+        # nodes subtree and cycles contain the node itself
+        subtree = set([node])
+        # get a set of dependent nodes of node and its cycles
+        nodealldeps = edges.outgoing(node)
+        if nodealldeps:
+            # iterate over independent node indexes in reverse order so we can efficiently remove them
+            for index in xrange(len(independents) - 1, -1, -1):
+                child, childsubtree = independents[index]
+                # if there is a dependency between this node and an independent node
+                if (childsubtree.intersection(nodealldeps)):
+                    # prepend child to nodes children
+                    # (append should be fine, but previous implemetation used prepend)
+                    children[node][0:0] = [(child, children[child])]
+                    # merge childs subtree and cycles
+                    subtree.update(childsubtree)
+                    # remove the child from list of independent subtrees
+                    independents[index:index+1] = []
+        # add node as a new independent subtree
+        independents.append((node, subtree))
+    # choose an arbitrary node from list of all independent subtrees
+    head = independents.pop()[0]
+    # add all other independent subtrees as a child of the chosen root
+    # used prepend [0:0] instead of extend to maintain exact behaviour of previous implementation
+    children[head][0:0] = [(i[0], children[i[0]]) for i in independents]
+    return (head, children[head])
