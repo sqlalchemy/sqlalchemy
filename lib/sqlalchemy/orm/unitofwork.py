@@ -227,10 +227,16 @@ class UOWTransaction(object):
             (head, children) = topological.organize_as_tree(self.dependencies, sort)
             stack = [(head, children)]
             
+            head.execute(self)
             while stack:
                 node, children = stack.pop()
-                node.execute(self)
-                stack += children
+                if children:
+                    related = set([n[0] for n in children])
+                    while related:
+                        n = related.pop()
+                        n.execute_aggregate(self, related)
+                
+                    stack += children
         else:
             for rec in sort:
                 rec.execute(self)
@@ -273,6 +279,9 @@ class PostSortRec(object):
             uow.postsort_actions[key] = ret = object.__new__(cls)
             return ret
     
+    def execute_aggregate(self, uow, recs):
+        self.execute(uow)
+        
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
@@ -407,6 +416,17 @@ class SaveUpdateState(PostSortRec):
             [self.state],
             uow
         )
+
+    def execute_aggregate(self, uow, recs):
+        cls_ = self.__class__
+        # TODO: have 'mapper' be present on SaveUpdateState already
+        mapper = self.state.manager.mapper.base_mapper
+        
+        our_recs = [r for r in recs 
+                        if r.__class__ is cls_ and 
+                        r.state.manager.mapper.base_mapper is mapper]
+        recs.difference_update(our_recs)
+        mapper._save_obj([self.state] + [r.state for r in our_recs], uow)
 
     def __repr__(self):
         return "%s(%s)" % (
