@@ -884,6 +884,9 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         expr = column('bar', Integer) - 3
         
         eq_(expr.type._type_affinity, Integer)
+
+        expr = bindparam('bar') + bindparam('foo')
+        eq_(expr.type, types.NULLTYPE)
         
     def test_distinct(self):
         s = select([distinct(test_table.c.avalue)])
@@ -894,6 +897,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type
+    
 
 class DateTest(TestBase, AssertsExecutionResults):
     @classmethod

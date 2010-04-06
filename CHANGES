@@ -63,6 +63,9 @@ CHANGES
     This includes SQLite, Oracle, Sybase, MS-SQL.
     [ticket:1759]
 
+  - Fixed an error in expression typing which caused an endless
+    loop for expressions with two NULL types.
+    
 - ext
   - the compiler extension now allows @compiles decorators
     on base classes that extend to child classes, @compiles
