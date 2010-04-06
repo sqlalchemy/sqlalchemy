@@ -4,19 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Topological sorting algorithms.
-
-The topological sort is an algorithm that receives this list of
-dependencies as a *partial ordering*, that is a list of pairs which
-might say, *X is dependent on Y*, *Q is dependent on Z*, but does not
-necessarily tell you anything about Q being dependent on X. Therefore,
-its not a straight sort where every element can be compared to
-another... only some of the elements have any sorting preference, and
-then only towards just some of the other elements.  For a particular
-partial ordering, there can be many possible sorts that satisfy the
-conditions.
-
-"""
+"""Topological sorting algorithms."""
 
 from sqlalchemy.exc import CircularDependencyError
 from sqlalchemy import util

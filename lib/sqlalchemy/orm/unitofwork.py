@@ -230,12 +230,12 @@ class UOWTransaction(object):
                     n = set_.pop()
                     n.execute_aggregate(self, set_)
         else:
-            r = list(topological.sort(
-                                    self.dependencies, 
-                                    postsort_actions))
-            print "-----------"
-            print self.dependencies
-            print r
+            #r = list(topological.sort(
+            #                        self.dependencies, 
+            #                        postsort_actions))
+            #print "-----------"
+            #print self.dependencies
+            #print r
             for rec in topological.sort(
                                     self.dependencies, 
                                     postsort_actions):
