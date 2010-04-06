@@ -742,7 +742,12 @@ class CreateDropTest(TestBase):
     def test_sorter( self ):
         tables = metadata.sorted_tables
         table_names = [t.name for t in tables]
-        self.assert_( table_names == ['users', 'orders', 'items', 'email_addresses'] or table_names ==  ['users', 'email_addresses', 'orders', 'items'])
+        ua = [n for n in table_names if n in ('users', 'email_addresses')]
+        oi = [n for n in table_names if n in ('orders', 'items')]
+        
+        eq_(ua, ['users', 'email_addresses'])
+        eq_(oi, ['orders', 'items'])
+        
 
     def testcheckfirst(self):
         try:
