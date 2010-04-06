@@ -129,9 +129,7 @@ class UOWTransaction(object):
         else:
             return history.as_state()
 
-    def register_object(self, state, isdelete=False, 
-                            listonly=False, postupdate=False, 
-                            post_update_cols=None):
+    def register_object(self, state, isdelete=False, listonly=False):
         
         # if object is not in the overall session, do nothing
         if not self.session._contains_state(state):
@@ -147,8 +145,10 @@ class UOWTransaction(object):
             self.states[state] = (isdelete, listonly)
         else:
             existing_isdelete, existing_listonly = self.states[state]
-            if isdelete and not existing_isdelete:
-                raise Exception("Can't upgrade from a save to a delete")
+            self.states[state] = (
+                existing_isdelete or isdelete,
+                existing_listonly and listonly
+            )
     
     def issue_post_update(self, state, post_update_cols):
         mapper = state.manager.mapper.base_mapper

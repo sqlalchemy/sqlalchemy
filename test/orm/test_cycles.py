@@ -801,7 +801,6 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
         session.add(root)
         session.flush()
 
-        print "-------------------"
         remove_child(root, cats)
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
@@ -826,6 +825,42 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
              lambda ctx:[{'id':cats.id}])
         )
 
+        session.delete(root)
+        self.assert_sql_execution(
+            testing.db, 
+            session.flush,
+            AllOf(
+                CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
+                            "WHERE node.id = :node_id", 
+                            lambda ctx:{'next_sibling_id':None, 'node_id':about.id}),
+                CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
+                            "WHERE node.id = :node_id",
+                            lambda ctx:{'node_id':stories.id, 'next_sibling_id':None})
+            ),
+            AllOf(
+                CompiledSQL("DELETE FROM node WHERE node.id = :id",
+                    lambda ctx:{'id':about.id}
+                ),
+                CompiledSQL("DELETE FROM node WHERE node.id = :id",
+                    lambda ctx:{'id':stories.id}
+                ),
+                CompiledSQL("DELETE FROM node WHERE node.id = :id",
+                    lambda ctx:{'id':bruce.id}
+                ),
+            ),
+            CompiledSQL("DELETE FROM node WHERE node.id = :id",
+                lambda ctx:{'id':root.id}
+            ),
+        )
+        about = Node('about')
+        cats = Node('cats')
+        about.next_sibling = cats
+        cats.prev_sibling = about
+        session.add(about)
+        session.flush()
+        session.delete(about)
+        cats.prev_sibling = None
+        session.flush()
 
 class SelfReferentialPostUpdateTest2(_base.MappedTest):
 

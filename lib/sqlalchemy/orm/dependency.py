@@ -36,8 +36,10 @@ class DependencyProcessor(object):
         self.enable_typechecks = prop.enable_typechecks
         self.key = prop.key
         if not self.prop.synchronize_pairs:
-            raise sa_exc.ArgumentError("Can't build a DependencyProcessor for relationship %s.  "
-                    "No target attributes to populate between parent and child are present" %
+            raise sa_exc.ArgumentError(
+                    "Can't build a DependencyProcessor for relationship %s. "
+                    "No target attributes to populate between parent and "
+                    "child are present" %
                      self.prop)
 
     def _get_instrumented_attribute(self):
@@ -49,7 +51,8 @@ class DependencyProcessor(object):
 
     def hasparent(self, state):
         """return True if the given object instance has a parent,
-        according to the ``InstrumentedAttribute`` handled by this ``DependencyProcessor``.
+        according to the ``InstrumentedAttribute`` handled by this 
+        ``DependencyProcessor``.
         
         """
         # TODO: use correct API for this
@@ -62,6 +65,9 @@ class DependencyProcessor(object):
         the aggreagte.
         
         """
+        if self.post_update and self._check_reverse(uow):
+            return
+        
         unitofwork.GetDependentObjects(uow, self, False, True)
         unitofwork.GetDependentObjects(uow, self, True, True)
 
@@ -90,6 +96,10 @@ class DependencyProcessor(object):
         in the 'aggregated' version of events.
         
         """
+
+        if self.post_update and self._check_reverse(uow):
+            return
+
         # locate and disable the aggregate processors
         # for this dependency
         
@@ -207,65 +217,29 @@ class DependencyProcessor(object):
                     "whose mapper does not inherit from that of %s." % 
                     (state.class_, self.prop, self.mapper.class_))
             
-    def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
-        """Called during a flush to synchronize primary key identifier
-        values between a parent/child object, as well as to an
-        associationrow in the case of many-to-many.
-        
-        """
+    def _synchronize(self, state, 
+                            child, associationrow, 
+                            clearkeys, uowcommit):
         raise NotImplementedError()
 
     def _check_reverse(self, uow):
         for p in self.prop._reverse_property:
             if not p.viewonly and p._dependency_processor and \
-                (unitofwork.ProcessAll, p._dependency_processor, False, True) in \
+                (unitofwork.ProcessAll, 
+                    p._dependency_processor, False, True) in \
                     uow.postsort_actions:
                 return True
         else:
             return False
 
-    def _check_reverse_action(self, uowcommit, parent, child, action):
-        """Determine if an action has been performed by the 'reverse' property of this property.
-        
-        this is used to ensure that only one side of a bidirectional relationship
-        issues a certain operation for a parent/child pair.
-        
-        """
-        for r in self.prop._reverse_property:
-            if not r.viewonly and (r._dependency_processor, action, parent, child) in uowcommit.attributes:
-                return True
-        return False
-    
-    def _performed_action(self, uowcommit, parent, child, action):
-        """Establish that an action has been performed for a certain parent/child pair.
-        
-        Used only for actions that are sensitive to bidirectional double-action,
-        i.e. manytomany, post_update.
-        
-        """
-        uowcommit.attributes[(self, action, parent, child)] = True
-        
     def _conditional_post_update(self, state, uowcommit, related):
-        """Execute a post_update call.
-
-        For relationships that contain the post_update flag, an additional
-        ``UPDATE`` statement may be associated after an ``INSERT`` or
-        before a ``DELETE`` in order to resolve circular row
-        dependencies.
-
-        This method will check for the post_update flag being set on a
-        particular relationship, and given a target object and list of
-        one or more related objects, and execute the ``UPDATE`` if the
-        given related object list contains ``INSERT``s or ``DELETE``s.
-        
-        """
         if state is not None and self.post_update:
             for x in related:
-                if x is not None and not self._check_reverse_action(uowcommit, x, state, "postupdate"):
-                    uowcommit.issue_post_update(state, [r for l, r in self.prop.synchronize_pairs])
-                    #uowcommit.register_object(state, postupdate=True, 
-                    #                post_update_cols=[r for l, r in self.prop.synchronize_pairs])
-                    self._performed_action(uowcommit, x, state, "postupdate")
+                if x is not None:
+                    uowcommit.issue_post_update(
+                            state, 
+                            [r for l, r in self.prop.synchronize_pairs]
+                    )
                     break
 
     def _pks_changed(self, uowcommit, state):
@@ -283,7 +257,6 @@ class OneToManyDP(DependencyProcessor):
                                                 after_save, 
                                                 before_delete):
         if self.post_update:
-            # TODO: childisdelete logic ?
             uow.dependencies.update([
                 (child_saves, after_save),
                 (parent_saves, after_save),
@@ -311,16 +284,30 @@ class OneToManyDP(DependencyProcessor):
                                     isdelete, childisdelete):
         
         if self.post_update:
+            # TODO: this whole block is not covered
+            # by any tests
             if not isdelete:
-                uow.dependencies.update([
-                    (save_parent, after_save),
-                    (child_action, after_save)
-                ])
+                if childisdelete:
+                    uow.dependencies.update([
+                        (save_parent, after_save),
+                        (after_save, child_action)
+                    ])
+                else:
+                    uow.dependencies.update([
+                        (save_parent, after_save),
+                        (child_action, after_save)
+                    ])
             else:
-                uow.dependencies.update([
-                    (before_delete, delete_parent),
-                    (before_delete, child_action)
-                ])
+                if childisdelete:
+                    uow.dependencies.update([
+                        (before_delete, delete_parent),
+                        (before_delete, child_action)
+                    ])
+                else:
+                    uow.dependencies.update([
+                        (before_delete, delete_parent),
+                        (child_action, before_delete)
+                    ])
         elif not isdelete:
             uow.dependencies.update([
                 (save_parent, after_save),
@@ -334,12 +321,16 @@ class OneToManyDP(DependencyProcessor):
             ])
         
     def presort_deletes(self, uowcommit, states):
-        # head object is being deleted, and we manage its list of child objects
-        # the child objects have to have their foreign key to the parent set to NULL
-        should_null_fks = not self.cascade.delete and not self.passive_deletes == 'all'
+        # head object is being deleted, and we manage its list of 
+        # child objects the child objects have to have their 
+        # foreign key to the parent set to NULL
+        should_null_fks = not self.cascade.delete and \
+                            not self.passive_deletes == 'all'
         for state in states:
             history = uowcommit.get_attribute_history(
-                                        state, self.key, passive=self.passive_deletes)
+                                            state, 
+                                            self.key, 
+                                            passive=self.passive_deletes)
             if history:
                 for child in history.deleted:
                     if child is not None and self.hasparent(child) is False:
@@ -354,7 +345,10 @@ class OneToManyDP(DependencyProcessor):
     
     def presort_saves(self, uowcommit, states):
         for state in states:
-            history = uowcommit.get_attribute_history(state, self.key, passive=True)
+            history = uowcommit.get_attribute_history(
+                                            state, 
+                                            self.key, 
+                                            passive=True)
             if history:
                 for child in history.added:
                     if child is not None:
@@ -378,13 +372,17 @@ class OneToManyDP(DependencyProcessor):
                             uowcommit.register_object(child, False, self.passive_updates)
     
     def process_deletes(self, uowcommit, states):
-        # head object is being deleted, and we manage its list of child objects
-        # the child objects have to have their foreign key to the parent set to NULL
-        # this phase can be called safely for any cascade but is unnecessary if delete cascade
+        # head object is being deleted, and we manage its list of 
+        # child objects the child objects have to have their foreign 
+        # key to the parent set to NULL this phase can be called 
+        # safely for any cascade but is unnecessary if delete cascade
         # is on.
         if self.post_update or not self.passive_deletes == 'all':
             for state in states:
-                history = uowcommit.get_attribute_history(state, self.key, passive=self.passive_deletes)
+                history = uowcommit.get_attribute_history(
+                                            state, 
+                                            self.key, 
+                                            passive=self.passive_deletes)
                 if history:
                     for child in history.deleted:
                         if child is not None and self.hasparent(child) is False:
@@ -427,7 +425,11 @@ class OneToManyDP(DependencyProcessor):
                                     self.passive_updates)
 
     def _pks_changed(self, uowcommit, state):
-        return sync.source_modified(uowcommit, state, self.parent, self.prop.synchronize_pairs)
+        return sync.source_modified(
+                            uowcommit, 
+                            state, 
+                            self.parent, 
+                            self.prop.synchronize_pairs)
 
 class ManyToOneDP(DependencyProcessor):
     def __init__(self, prop):
@@ -477,7 +479,6 @@ class ManyToOneDP(DependencyProcessor):
                         (child_action, after_save)
                     ])
             else:
-                # TODO: childisdelete logic here?
                 uow.dependencies.update([
                     (before_delete, delete_parent),
                     (before_delete, child_action)
@@ -668,7 +669,8 @@ class ManyToManyDP(DependencyProcessor):
         if self._check_reverse(uow):
             return
         else:
-            DependencyProcessor.per_state_flush_actions(self, uow, states, isdelete)
+            DependencyProcessor.\
+                    per_state_flush_actions(self, uow, states, isdelete)
             
     def per_property_dependencies(self, uow, parent_saves, 
                                                 child_saves, 
@@ -734,7 +736,8 @@ class ManyToManyDP(DependencyProcessor):
                     self._synchronize(state, child, associationrow, False, uowcommit)
                     secondary_delete.append(associationrow)
 
-        self._run_crud(uowcommit, secondary_insert, secondary_update, secondary_delete)
+        self._run_crud(uowcommit, secondary_insert, 
+                        secondary_update, secondary_delete)
 
     def process_saves(self, uowcommit, states):
         secondary_delete = []
@@ -763,13 +766,23 @@ class ManyToManyDP(DependencyProcessor):
                 
                 for child in history.unchanged:
                     associationrow = {}
-                    sync.update(state, self.parent, associationrow, "old_", self.prop.synchronize_pairs)
-                    sync.update(child, self.mapper, associationrow, "old_", self.prop.secondary_synchronize_pairs)
+                    sync.update(
+                                state, 
+                                self.parent, 
+                                associationrow, 
+                                "old_", 
+                                self.prop.synchronize_pairs)
+                    sync.update(
+                                child, 
+                                self.mapper, 
+                                associationrow, 
+                                "old_", 
+                                self.prop.secondary_synchronize_pairs)
 
-                    #self.syncrules.update(associationrow, state, child, "old_")
                     secondary_update.append(associationrow)
                     
-        self._run_crud(uowcommit, secondary_insert, secondary_update, secondary_delete)
+        self._run_crud(uowcommit, secondary_insert, 
+                        secondary_update, secondary_delete)
         
     def _run_crud(self, uowcommit, secondary_insert, secondary_update, secondary_delete):
         connection = uowcommit.transaction.connection(self.mapper)
@@ -777,22 +790,27 @@ class ManyToManyDP(DependencyProcessor):
         if secondary_delete:
             associationrow = secondary_delete[0]
             statement = self.secondary.delete(sql.and_(*[
-                                c == sql.bindparam(c.key, type_=c.type) for c in self.secondary.c if c.key in associationrow
+                                c == sql.bindparam(c.key, type_=c.type) 
+                                for c in self.secondary.c if c.key in associationrow
                             ]))
             result = connection.execute(statement, secondary_delete)
-            if result.supports_sane_multi_rowcount() and result.rowcount != len(secondary_delete):
-                raise exc.ConcurrentModificationError("Deleted rowcount %d does not match number of "
-                            "secondary table rows deleted from table '%s': %d" % 
-                            (result.rowcount, self.secondary.description, len(secondary_delete)))
+            if result.supports_sane_multi_rowcount() and \
+                        result.rowcount != len(secondary_delete):
+                raise exc.ConcurrentModificationError(
+                        "Deleted rowcount %d does not match number of "
+                        "secondary table rows deleted from table '%s': %d" % 
+                        (result.rowcount, self.secondary.description, len(secondary_delete)))
 
         if secondary_update:
             associationrow = secondary_update[0]
             statement = self.secondary.update(sql.and_(*[
-                                c == sql.bindparam("old_" + c.key, type_=c.type) for c in self.secondary.c if c.key in associationrow
+                                c == sql.bindparam("old_" + c.key, type_=c.type) 
+                                for c in self.secondary.c if c.key in associationrow
                             ]))
             result = connection.execute(statement, secondary_update)
             if result.supports_sane_multi_rowcount() and result.rowcount != len(secondary_update):
-                raise exc.ConcurrentModificationError("Updated rowcount %d does not match number of "
+                raise exc.ConcurrentModificationError(
+                            "Updated rowcount %d does not match number of "
                             "secondary table rows updated from table '%s': %d" % 
                             (result.rowcount, self.secondary.description, len(secondary_update)))
 
@@ -811,5 +829,9 @@ class ManyToManyDP(DependencyProcessor):
                                         self.prop.secondary_synchronize_pairs)
 
     def _pks_changed(self, uowcommit, state):
-        return sync.source_modified(uowcommit, state, self.parent, self.prop.synchronize_pairs)
+        return sync.source_modified(
+                            uowcommit, 
+                            state, 
+                            self.parent, 
+                            self.prop.synchronize_pairs)
 
