@@ -801,12 +801,14 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
         session.add(root)
         session.flush()
 
+        print "-------------------"
         remove_child(root, cats)
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
         self.assert_sql_execution(
             testing.db, 
             session.flush,
+            AllOf(
             CompiledSQL("UPDATE node SET prev_sibling_id=:prev_sibling_id "
              "WHERE node.id = :node_id",
              lambda ctx:{'prev_sibling_id':about.id, 'node_id':stories.id}),
@@ -818,6 +820,7 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
             CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
              "WHERE node.id = :node_id",
              lambda ctx:{'next_sibling_id':None, 'node_id':cats.id}),
+            ),
              
             CompiledSQL("DELETE FROM node WHERE node.id = :id",
              lambda ctx:[{'id':cats.id}])

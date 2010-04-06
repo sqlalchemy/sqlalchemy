@@ -150,6 +150,12 @@ class UOWTransaction(object):
             if isdelete and not existing_isdelete:
                 raise Exception("Can't upgrade from a save to a delete")
     
+    def issue_post_update(self, state, post_update_cols):
+        mapper = state.manager.mapper.base_mapper
+        mapper._save_obj([state], self, \
+                    postupdate=True, \
+                    post_update_cols=set(post_update_cols))
+    
     def states_for_mapper(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
         for state in self.mappers[mapper]:
