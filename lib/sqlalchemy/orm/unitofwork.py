@@ -202,9 +202,9 @@ class UOWTransaction(object):
             # the per-state actions for those per-mapper actions
             # that were broken up.
             for edge in list(self.dependencies):
-                if None in edge or\
-                    cycles.issuperset(edge) or \
-                    edge[0].disabled or edge[1].disabled:
+                if None in edge or \
+                    edge[0].disabled or edge[1].disabled or \
+                    cycles.issuperset(edge):
                     self.dependencies.remove(edge)
                 elif edge[0] in cycles:
                     self.dependencies.remove(edge)
@@ -230,12 +230,6 @@ class UOWTransaction(object):
                     n = set_.pop()
                     n.execute_aggregate(self, set_)
         else:
-            #r = list(topological.sort(
-            #                        self.dependencies, 
-            #                        postsort_actions))
-            #print "-----------"
-            #print self.dependencies
-            #print r
             for rec in topological.sort(
                                     self.dependencies, 
                                     postsort_actions):
@@ -396,11 +390,20 @@ class ProcessState(PostSortRec):
         self.delete = delete
         self.state = state
 
-    def execute(self, uow):
-        if self.delete:
-            self.dependency_processor.process_deletes(uow, [self.state])
+    def execute_aggregate(self, uow, recs):
+        cls_ = self.__class__
+        dependency_processor = self.dependency_processor
+        delete = self.delete
+        our_recs = [r for r in recs 
+                        if r.__class__ is cls_ and 
+                        r.dependency_processor is dependency_processor and
+                        r.delete is delete]
+        recs.difference_update(our_recs)
+        states = [self.state] + [r.state for r in our_recs]
+        if delete:
+            dependency_processor.process_deletes(uow, states)
         else:
-            self.dependency_processor.process_saves(uow, [self.state])
+            dependency_processor.process_saves(uow, states)
 
     def __repr__(self):
         return "%s(%s, %s, delete=%s)" % (
@@ -415,12 +418,6 @@ class SaveUpdateState(PostSortRec):
         self.state = state
         self.mapper = mapper
         
-    def execute(self, uow):
-        self.mapper._save_obj(
-            [self.state],
-            uow
-        )
-
     def execute_aggregate(self, uow, recs):
         cls_ = self.__class__
         mapper = self.mapper
@@ -444,13 +441,6 @@ class DeleteState(PostSortRec):
         self.state = state
         self.mapper = mapper
         
-    def execute(self, uow):
-        if uow.states[self.state][0]:
-            self.mapper._delete_obj(
-                [self.state],
-                uow
-            )
-
     def execute_aggregate(self, uow, recs):
         cls_ = self.__class__
         mapper = self.mapper
