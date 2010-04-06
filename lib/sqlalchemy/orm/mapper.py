@@ -1069,6 +1069,10 @@ class Mapper(object):
         
         return self.class_manager.mapper
 
+    @property
+    def primary_base_mapper(self):
+        return self.class_manager.mapper.base_mapper
+        
     def identity_key_from_row(self, row, adapter=None):
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.
@@ -1248,7 +1252,7 @@ class Mapper(object):
             ret[t] = table_to_mapper[t]
         return ret
 
-    def per_mapper_flush_actions(self, uow):
+    def _per_mapper_flush_actions(self, uow):
         saves = unitofwork.SaveUpdateAll(uow, self.base_mapper)
         deletes = unitofwork.DeleteAll(uow, self.base_mapper)
         uow.dependencies.add((saves, deletes))
@@ -1277,22 +1281,24 @@ class Mapper(object):
             for prop in mapper._props.values():
                 if prop not in props:
                     props.add(prop)
-                    yield prop, [m for m in mappers if m._props.get(prop.key) is prop]
+                    yield prop, [m for m in mappers 
+                                    if m._props.get(prop.key) is prop]
 
-    def per_state_flush_actions(self, uow, states, isdelete):
+    def _per_state_flush_actions(self, uow, states, isdelete):
         
         mappers_to_states = util.defaultdict(set)
         
-        save_all = unitofwork.SaveUpdateAll(uow, self.base_mapper)
-        delete_all = unitofwork.DeleteAll(uow, self.base_mapper)
+        base_mapper = self.base_mapper
+        save_all = unitofwork.SaveUpdateAll(uow, base_mapper)
+        delete_all = unitofwork.DeleteAll(uow, base_mapper)
         for state in states:
             # keep saves before deletes -
             # this ensures 'row switch' operations work
             if isdelete:
-                action = unitofwork.DeleteState(uow, state)
+                action = unitofwork.DeleteState(uow, state, base_mapper)
                 uow.dependencies.add((save_all, action))
             else:
-                action = unitofwork.SaveUpdateState(uow, state)
+                action = unitofwork.SaveUpdateState(uow, state, base_mapper)
                 uow.dependencies.add((action, delete_all))
             
             mappers_to_states[state.manager.mapper].add(state)
@@ -1362,10 +1368,12 @@ class Mapper(object):
                     if 'before_update' in mapper.extension:
                         mapper.extension.before_update(mapper, conn, state.obj())
 
-                # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
-                # and another instance with the same identity key already exists as persistent. 
+                # detect if we have a "pending" instance (i.e. has 
+                # no instance_key attached to it), and another instance 
+                # with the same identity key already exists as persistent. 
                 # convert to an UPDATE if so.
-                if not has_identity and instance_key in uowtransaction.session.identity_map:
+                if not has_identity and \
+                    instance_key in uowtransaction.session.identity_map:
                     instance = uowtransaction.session.identity_map[instance_key]
                     existing = attributes.instance_state(instance)
                     if not uowtransaction.is_deleted(existing):

@@ -244,12 +244,8 @@ class SingleCycleTest(UOWTest):
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
-                AllOf(
-                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
-                            lambda ctx:{'id':n3.id}),
-                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
-                            lambda ctx: {'id':n2.id}),
-                ),
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                        lambda ctx:[{'id':n2.id}, {'id':n3.id}]),
                 CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
                         lambda ctx: {'id':n1.id})
         )
@@ -329,12 +325,8 @@ class SingleCycleTest(UOWTest):
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
-                AllOf(
-                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
-                            lambda ctx:{'id':n3.id}),
-                    CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
-                            lambda ctx: {'id':n2.id}),
-                ),
+                CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
+                        lambda ctx:[{'id':n2.id},{'id':n3.id}]),
                 CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
                         lambda ctx: {'id':n1.id})
         )

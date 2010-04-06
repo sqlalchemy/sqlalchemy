@@ -2198,7 +2198,12 @@ class RowSwitchTest(_base.MappedTest):
             T7(data='third t7', id=3),
             T7(data='fourth t7', id=4),
             ])
+
         sess.delete(o5)
+        assert o5 in sess.deleted
+        assert o5.t7s[0] in sess.deleted
+        assert o5.t7s[1] in sess.deleted
+        
         sess.add(o6)
         sess.flush()
 
