@@ -9,6 +9,7 @@
 from sqlalchemy.exc import CircularDependencyError
 from sqlalchemy import util
 
+
 __all__ = ['sort']
 
 class _EdgeCollection(object):
