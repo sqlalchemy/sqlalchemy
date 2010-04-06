@@ -79,6 +79,12 @@ CHANGES
   - Further reworked the "mixin" logic in declarative to 
     additionally allow __mapper_args__ as a @classproperty
     on a mixin, such as to dynamically assign polymorphic_identity.
+
+- postgresql
+  - Postgresql now reflects sequence names associated with 
+    SERIAL columns correctly, after the name of of the sequence
+    has been changed.  Thanks to Kumar McMillan for the patch.
+    [ticket:1071]
     
 - oracle
   - Now using cx_oracle output converters so that the
