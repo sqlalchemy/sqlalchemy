@@ -271,15 +271,14 @@ class DependencyProcessor(object):
         else:
             return False
 
-    def _conditional_post_update(self, state, uowcommit, related):
-        if state is not None and self.post_update:
-            for x in related:
-                if x is not None:
-                    uowcommit.issue_post_update(
-                            state, 
-                            [r for l, r in self.prop.synchronize_pairs]
-                    )
-                    break
+    def _post_update(self, state, uowcommit, related):
+        for x in related:
+            if x is not None:
+                uowcommit.issue_post_update(
+                        state, 
+                        [r for l, r in self.prop.synchronize_pairs]
+                )
+                break
 
     def _pks_changed(self, uowcommit, state):
         raise NotImplementedError()
@@ -434,7 +433,8 @@ class OneToManyDP(DependencyProcessor):
                                             state, 
                                             child, 
                                             None, True, uowcommit)
-                            self._conditional_post_update(
+                            if self.post_update and child:
+                                    self._post_update(
                                             child, 
                                             uowcommit, 
                                             [state])
@@ -445,7 +445,8 @@ class OneToManyDP(DependencyProcessor):
                                             state, 
                                             child, 
                                             None, True, uowcommit)
-                                self._conditional_post_update(
+                                if self.post_update and child:
+                                    self._post_update(
                                             child, 
                                             uowcommit, 
                                             [state])
@@ -456,8 +457,8 @@ class OneToManyDP(DependencyProcessor):
             if history:
                 for child in history.added:
                     self._synchronize(state, child, None, False, uowcommit)
-                    if child is not None:
-                        self._conditional_post_update(
+                    if child is not None and self.post_update:
+                        self._post_update(
                                             child, 
                                             uowcommit, 
                                             [state])
@@ -611,12 +612,13 @@ class ManyToOneDP(DependencyProcessor):
             # before we can DELETE the row
             for state in states:
                 self._synchronize(state, None, None, True, uowcommit)
-                history = uowcommit.get_attribute_history(
-                                            state, 
-                                            self.key, 
-                                            passive=self.passive_deletes)
-                if history:
-                    self._conditional_post_update(
+                if state and self.post_update:
+                    history = uowcommit.get_attribute_history(
+                                                state, 
+                                                self.key, 
+                                                passive=self.passive_deletes)
+                    if history:
+                        self._post_update(
                                             state, 
                                             uowcommit, 
                                             history.sum())
@@ -628,9 +630,10 @@ class ManyToOneDP(DependencyProcessor):
                 for child in history.added:
                     self._synchronize(state, child, None, False, uowcommit)
                 
-                self._conditional_post_update(
-                                            state, 
-                                            uowcommit, history.sum())
+                if self.post_update:
+                    self._post_update(
+                                        state, 
+                                        uowcommit, history.sum())
 
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         if state is None or (not self.post_update and uowcommit.is_deleted(state)):

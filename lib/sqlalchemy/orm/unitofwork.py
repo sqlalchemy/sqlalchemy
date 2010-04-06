@@ -221,6 +221,11 @@ class UOWTransaction(object):
                                 ]
                             ).difference(cycles)
         
+        #sort = topological.sort(self.dependencies, postsort_actions)
+        #print "--------------"
+        #print self.dependencies
+        #print postsort_actions
+        
         # execute
         if cycles:
             for set_ in topological.sort_as_subsets(
