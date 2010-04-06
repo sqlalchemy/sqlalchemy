@@ -4,19 +4,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""The internals for the Unit Of Work system.
+"""The internals for the unit of work system.
 
-Includes hooks into the attributes package enabling the routing of
-change events to Unit Of Work objects, as well as the flush()
-mechanism which creates a dependency structure that executes change
-operations.
-
-A Unit of Work is essentially a system of maintaining a graph of
-in-memory objects and their modified state.  Objects are maintained as
-unique against their primary key identity using an *identity map*
-pattern.  The Unit of Work then maintains lists of objects that are
-new, dirty, or deleted and provides the capability to flush all those
-changes at once.
+The session's flush() process passes objects to a contextual object
+here, which assembles flush tasks based on mappers and their properties,
+organizes them in order of dependency, and executes.
 
 """
 
@@ -79,11 +71,6 @@ class UOWEventHandler(interfaces.AttributeExtension):
 
 
 class UOWTransaction(object):
-    """Handles the details of organizing and executing transaction
-    tasks during a UnitOfWork object's flush() operation.
-
-    """
-
     def __init__(self, session):
         self.session = session
         self.mapper_flush_opts = session._mapper_flush_opts

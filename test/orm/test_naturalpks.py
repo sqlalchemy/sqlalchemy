@@ -420,7 +420,7 @@ class ReversePKsTest(_base.MappedTest):
         assert session.query(User).get([1, EDITABLE]) is a_editable
 
     
-class SelfRefTest(_base.MappedTest):
+class SelfReferentialTest(_base.MappedTest):
     __unsupported_on__ = ('mssql',) # mssql doesn't allow ON UPDATE on self-referential keys
 
     @classmethod
@@ -441,7 +441,7 @@ class SelfRefTest(_base.MappedTest):
             pass
 
     @testing.resolve_artifact_names
-    def test_onetomany(self):
+    def test_one_to_many(self):
         mapper(Node, nodes, properties={
             'children': relationship(Node,
                                  backref=sa.orm.backref('parentnode',
@@ -464,6 +464,30 @@ class SelfRefTest(_base.MappedTest):
             [n.parent
              for n in sess.query(Node).filter(
                  Node.name.in_(['n11', 'n12', 'n13']))])
+
+    @testing.resolve_artifact_names
+    def test_many_to_one(self):
+        mapper(Node, nodes, properties={
+            'parentnode':relationship(Node, 
+                            remote_side=nodes.c.name, 
+                            passive_updates=True)
+            }
+        )
+
+        sess = create_session()
+        n1 = Node(name='n1')
+        n11 = Node(name='n11', parentnode=n1)
+        n12 = Node(name='n12', parentnode=n1)
+        n13 = Node(name='n13', parentnode=n1)
+        sess.add_all([n1, n11, n12, n13])
+        sess.flush()
+
+        n1.name = 'new n1'
+        sess.flush()
+        eq_(['new n1', 'new n1', 'new n1'],
+             [n.parent
+              for n in sess.query(Node).filter(
+                  Node.name.in_(['n11', 'n12', 'n13']))])
 
 
 class NonPKCascadeTest(_base.MappedTest):

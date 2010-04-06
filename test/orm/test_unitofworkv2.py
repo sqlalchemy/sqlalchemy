@@ -1,6 +1,8 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.test import testing
-from test.orm import _fixtures
+from sqlalchemy.test.schema import Table, Column
+from sqlalchemy import Integer, String, ForeignKey
+from test.orm import _fixtures, _base
 from sqlalchemy.orm import mapper, relationship, backref, create_session
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
 
@@ -385,4 +387,155 @@ class SingleCycleTest(UOWTest):
 #                testing.db,
  #               sess.flush,
  #       )
+
+class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults):
+
+    @classmethod
+    def define_tables(cls, metadata):
+        nodes = Table('nodes', metadata,
+            Column('id', Integer, 
+                            primary_key=True, 
+                            test_needs_autoincrement=True),
+            Column('data', String(30)),
+            Column('favorite_node_id', Integer, ForeignKey('nodes.id'))
+        )
+        
+        node_to_nodes =Table('node_to_nodes', metadata,
+            Column('left_node_id', Integer, 
+                            ForeignKey('nodes.id'),primary_key=True),
+            Column('right_node_id', Integer, 
+                            ForeignKey('nodes.id'),primary_key=True),
+            )
+    
+    @testing.resolve_artifact_names
+    def test_many_to_many_one(self):
+        class Node(Base):
+            pass
+        
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, secondary=node_to_nodes,
+                primaryjoin=nodes.c.id==node_to_nodes.c.left_node_id,
+                secondaryjoin=nodes.c.id==node_to_nodes.c.right_node_id,
+                backref='parents'
+            ),
+            'favorite':relationship(Node, remote_side=nodes.c.id)
+        })
+        
+        sess = create_session()
+        n1 = Node(data='n1')
+        n2 = Node(data='n2')
+        n3 = Node(data='n3')
+        n4 = Node(data='n4')
+        n5 = Node(data='n5')
+        
+        n4.favorite = n3
+        n1.favorite = n5
+        n5.favorite = n2
+        
+        n1.children = [n2, n3, n4]
+        n2.children = [n3, n5]
+        n3.children = [n5, n4]
+        
+        sess.add_all([n1, n2, n3, n4, n5])
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+
+                CompiledSQL(
+                    "INSERT INTO nodes (data, favorite_node_id) "
+                    "VALUES (:data, :favorite_node_id)",
+                    {'data': 'n2', 'favorite_node_id': None}
+                ),
+                CompiledSQL(
+                    "INSERT INTO nodes (data, favorite_node_id) "
+                    "VALUES (:data, :favorite_node_id)", 
+                    {'data': 'n3', 'favorite_node_id': None}),
+                CompiledSQL("INSERT INTO nodes (data, favorite_node_id) "
+                            "VALUES (:data, :favorite_node_id)", 
+                    lambda ctx:{'data': 'n5', 'favorite_node_id': n2.id}),
+                CompiledSQL(
+                    "INSERT INTO nodes (data, favorite_node_id) "
+                    "VALUES (:data, :favorite_node_id)", 
+                    lambda ctx:{'data': 'n4', 'favorite_node_id': n3.id}),
+                CompiledSQL(
+                    "INSERT INTO node_to_nodes (left_node_id, right_node_id) "
+                    "VALUES (:left_node_id, :right_node_id)", 
+                    lambda ctx:[
+                        {'right_node_id': n5.id, 'left_node_id': n3.id}, 
+                        {'right_node_id': n4.id, 'left_node_id': n3.id}, 
+                        {'right_node_id': n3.id, 'left_node_id': n2.id}, 
+                        {'right_node_id': n5.id, 'left_node_id': n2.id}
+                    ]
+                    ),
+                CompiledSQL(
+                    "INSERT INTO nodes (data, favorite_node_id) "
+                    "VALUES (:data, :favorite_node_id)", 
+                    lambda ctx:[{'data': 'n1', 'favorite_node_id': n5.id}]
+                ),
+                CompiledSQL(
+                    "INSERT INTO node_to_nodes (left_node_id, right_node_id) "
+                    "VALUES (:left_node_id, :right_node_id)", 
+                    lambda ctx:[
+                        {'right_node_id': n2.id, 'left_node_id': n1.id}, 
+                        {'right_node_id': n3.id, 'left_node_id': n1.id}, 
+                        {'right_node_id': n4.id, 'left_node_id': n1.id}
+                    ])
+            )
+
+        sess.delete(n1)
+        
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                CompiledSQL(
+                    "DELETE FROM node_to_nodes WHERE "
+                    "node_to_nodes.left_node_id = :left_node_id AND "
+                    "node_to_nodes.right_node_id = :right_node_id",
+                    lambda ctx:[
+                        {'right_node_id': n2.id, 'left_node_id': n1.id}, 
+                        {'right_node_id': n3.id, 'left_node_id': n1.id}, 
+                        {'right_node_id': n4.id, 'left_node_id': n1.id}
+                    ]
+                ),
+                CompiledSQL(
+                    "DELETE FROM nodes WHERE nodes.id = :id",
+                    lambda ctx:{'id': n1.id}
+                ),
+        )
+        
+        for n in [n2, n3, n4, n5]:
+            sess.delete(n)
+            
+        # load these collections
+        # outside of the flush() below
+        n4.children
+        n5.children
+        
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "DELETE FROM node_to_nodes WHERE node_to_nodes.left_node_id "
+                "= :left_node_id AND node_to_nodes.right_node_id = "
+                ":right_node_id",
+                lambda ctx:[
+                    {'right_node_id': n5.id, 'left_node_id': n3.id}, 
+                    {'right_node_id': n4.id, 'left_node_id': n3.id}, 
+                    {'right_node_id': n3.id, 'left_node_id': n2.id}, 
+                    {'right_node_id': n5.id, 'left_node_id': n2.id}
+                ]
+            ),
+            CompiledSQL(
+                "DELETE FROM nodes WHERE nodes.id = :id",
+                lambda ctx:[{'id': n4.id}, {'id': n5.id}]
+            ),
+            CompiledSQL(
+                "DELETE FROM nodes WHERE nodes.id = :id",
+                lambda ctx:[{'id': n2.id}, {'id': n3.id}]
+            ),
+        )
+        
+        
+        
+        
         

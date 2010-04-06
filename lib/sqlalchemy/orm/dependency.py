@@ -110,7 +110,8 @@ class DependencyProcessor(object):
         """
 
         if self.post_update and self._check_reverse(uow):
-            return
+            # TODO: coverage here
+            return iter([])
 
         # locate and disable the aggregate processors
         # for this dependency
@@ -684,7 +685,8 @@ class DetectKeySwitch(DependencyProcessor):
             ])
 
     def per_state_flush_actions(self, uow, states, isdelete):
-        pass
+        # TODO: coverage here
+        return iter([])
         
     def presort_deletes(self, uowcommit, states):
         assert False
@@ -741,9 +743,9 @@ class ManyToManyDP(DependencyProcessor):
             
     def per_state_flush_actions(self, uow, states, isdelete):
         if self._check_reverse(uow):
-            return
+            return iter([])
         else:
-            DependencyProcessor.\
+            return DependencyProcessor.\
                     per_state_flush_actions(self, uow, states, isdelete)
             
     def per_property_dependencies(self, uow, parent_saves, 
@@ -777,15 +779,20 @@ class ManyToManyDP(DependencyProcessor):
                                     after_save, before_delete, 
                                     isdelete, childisdelete):
         if not isdelete:
-            uow.dependencies.update([
-                (save_parent, after_save),
-                (after_save, child_action),
-                (save_parent, child_action)
-            ])
+            if childisdelete:
+                uow.dependencies.update([
+                    (save_parent, after_save),
+                    (after_save, child_action),
+                ])
+            else:
+                uow.dependencies.update([
+                    (save_parent, after_save),
+                    (child_action, after_save),
+                ])
         else:
             uow.dependencies.update([
                 (before_delete, child_action),
-                (child_action, delete_parent)
+                (before_delete, delete_parent)
             ])
         
     def presort_deletes(self, uowcommit, states):

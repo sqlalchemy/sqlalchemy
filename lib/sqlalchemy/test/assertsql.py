@@ -156,12 +156,15 @@ class CompiledSQL(SQLMatchRule):
             if not isinstance(params, list):
                 params = [params]
             
-            # do a positive compare only
-            for param, received in zip(params, _received_parameters):
-                for k, v in param.iteritems():
-                    if k not in received or received[k] != v:
-                        equivalent = False
-                        break
+            while params:
+                param = params.pop(0)
+                if param not in _received_parameters:
+                    equivalent = False
+                    break
+                else:
+                    _received_parameters.remove(param)
+            if _received_parameters:
+                equivalent = False
         else:
             params = {}
 
