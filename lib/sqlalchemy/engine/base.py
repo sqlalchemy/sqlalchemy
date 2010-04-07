@@ -1150,10 +1150,22 @@ class Connection(Connectable):
         else:
             keys = []
 
+        if 'compiled_cache' in self._execution_options:
+            key = self.dialect, elem, tuple(keys), len(params) > 1
+            if key in self._execution_options['compiled_cache']:
+                compiled_sql = self._execution_options['compiled_cache'][key]
+            else:
+                compiled_sql = elem.compile(
+                                dialect=self.dialect, column_keys=keys, 
+                                inline=len(params) > 1)
+                self._execution_options['compiled_cache'][key] = compiled_sql
+        else:
+            compiled_sql = elem.compile(
+                            dialect=self.dialect, column_keys=keys, 
+                            inline=len(params) > 1)
+
         context = self.__create_execution_context(
-                        compiled_sql=elem.compile(
-                                        dialect=self.dialect, column_keys=keys, 
-                                        inline=len(params) > 1),
+                        compiled_sql=compiled_sql,
                         parameters=params
                     )
         return self.__execute_context(context)

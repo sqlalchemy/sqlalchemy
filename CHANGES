@@ -73,6 +73,15 @@ CHANGES
   - Fixed bug in execution_options() feature whereby the existing
     Transaction and other state information from the parent 
     connection would not be propagated to the sub-connection.
+
+  - Added new 'compiled_cache' execution option.  A dictionary 
+    where Compiled objects will be cached when the Connection
+    compiles a clause expression into a dialect- and parameter- 
+    specific Compiled object.  It is the user's responsibility to
+    manage the size of this dictionary, which will have keys
+    corresponding to the dialect, clause element, the column
+    names within the VALUES or SET clause of an INSERT or UPDATE, 
+    as well as the "batch" mode for an INSERT or UPDATE statement.
     
 - ext
   - the compiler extension now allows @compiles decorators
