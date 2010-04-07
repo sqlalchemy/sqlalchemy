@@ -546,6 +546,23 @@ def fixture(table, columns, *rows):
                                     for column_values in rows])
     table.append_ddl_listener('after-create', onload)
 
+def provide_metadata(fn):
+    """Provides a bound MetaData object for a single test, 
+    drops it afterwards."""
+    def maybe(*args, **kw):
+        metadata = schema.MetaData(db)
+        context = dict(fn.func_globals)
+        context['metadata'] = metadata
+        # jython bug #1034
+        rebound = types.FunctionType(
+            fn.func_code, context, fn.func_name, fn.func_defaults,
+            fn.func_closure)
+        try:
+            return rebound(*args, **kw)
+        finally:
+            metadata.drop_all()
+    return function_named(maybe, fn.__name__)
+    
 def resolve_artifact_names(fn):
     """Decorator, augment function globals with tables and classes.
 
