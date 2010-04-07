@@ -2101,27 +2101,6 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert class_mapper(Person).polymorphic_on is Person.__table__.c.type
         eq_(class_mapper(Engineer).polymorphic_identity, 'Engineer')
         
-    def test_mapper_args_classproperty_three(self):
-
-        class Person(Base):
-            __tablename__ = 'people'
-            id = Column(Integer, primary_key=True)
-            discriminator = Column('type', String(50))
-            @classproperty
-            def __mapper_args__(cls):
-                if cls.__name__=='Person':
-                    return dict(polymorphic_on=cls.discriminator)
-                else:
-                    return dict(polymorphic_identity=cls.__name__)
-
-        class Engineer(Person):
-            pass
-
-        compile_mappers()
-
-        assert class_mapper(Person).polymorphic_on is Person.__table__.c.type
-        eq_(class_mapper(Engineer).polymorphic_identity, 'Engineer')
-
     def test_table_args_composite(self):
 
         class MyMixin1:
