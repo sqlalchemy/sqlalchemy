@@ -69,6 +69,10 @@ CHANGES
 
   - Fixed an error in expression typing which caused an endless
     loop for expressions with two NULL types.
+  
+  - Fixed bug in execution_options() feature whereby the existing
+    Transaction and other state information from the parent 
+    connection would not be propagated to the sub-connection.
     
 - ext
   - the compiler extension now allows @compiles decorators
