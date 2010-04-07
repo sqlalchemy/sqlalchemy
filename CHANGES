@@ -50,6 +50,12 @@ CHANGES
     cursor.rowcount at all, a warning is emitted the same
     as with saves.  [ticket:1761]
 
+  - The ORM now short-term caches the "compiled" form of
+    insert() and update() constructs when flushing lists of 
+    objects of all the same class, thereby avoiding redundant
+    compilation per individual INSERT/UPDATE within an 
+    individual flush() call.
+    
   - internal getattr(), setattr(), getcommitted() methods
     on ColumnProperty, CompositeProperty, RelationshipProperty
     have been underscored, signature has changed.
