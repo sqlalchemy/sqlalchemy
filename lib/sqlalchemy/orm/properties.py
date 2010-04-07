@@ -99,14 +99,14 @@ class ColumnProperty(StrategizedProperty):
     def copy(self):
         return ColumnProperty(deferred=self.deferred, group=self.group, *self.columns)
 
-    def getattr(self, state, column):
-        return state.get_impl(self.key).get(state, state.dict)
+    def _getattr(self, state, dict_, column):
+        return state.get_impl(self.key).get(state, dict_)
 
-    def getcommitted(self, state, column, passive=False):
-        return state.get_impl(self.key).get_committed_value(state, state.dict, passive=passive)
+    def _getcommitted(self, state, dict_, column, passive=False):
+        return state.get_impl(self.key).get_committed_value(state, dict_, passive=passive)
 
-    def setattr(self, state, value, column):
-        state.get_impl(self.key).set(state, state.dict, value, None)
+    def _setattr(self, state, dict_, value, column):
+        state.get_impl(self.key).set(state, dict_, value, None)
 
     def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
         if self.key in source_dict:
@@ -164,18 +164,18 @@ class CompositeProperty(ColumnProperty):
         # which issues assertions that do not apply to CompositeColumnProperty
         super(ColumnProperty, self).do_init()
 
-    def getattr(self, state, column):
-        obj = state.get_impl(self.key).get(state, state.dict)
+    def _getattr(self, state, dict_, column):
+        obj = state.get_impl(self.key).get(state, dict_)
         return self.get_col_value(column, obj)
 
-    def getcommitted(self, state, column, passive=False):
+    def _getcommitted(self, state, dict_, column, passive=False):
         # TODO: no coverage here
-        obj = state.get_impl(self.key).get_committed_value(state, state.dict, passive=passive)
+        obj = state.get_impl(self.key).get_committed_value(state, dict_, passive=passive)
         return self.get_col_value(column, obj)
 
-    def setattr(self, state, value, column):
+    def _setattr(self, state, dict_, value, column):
 
-        obj = state.get_impl(self.key).get(state, state.dict)
+        obj = state.get_impl(self.key).get(state, dict_)
         if obj is None:
             obj = self.composite_class(*[None for c in self.columns])
             state.get_impl(self.key).set(state, state.dict, obj, None)

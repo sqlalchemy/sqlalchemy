@@ -14,12 +14,12 @@ def populate(source, source_mapper, dest, dest_mapper,
                         synchronize_pairs, uowcommit, passive_updates):
     for l, r in synchronize_pairs:
         try:
-            value = source_mapper._get_state_attr_by_column(source, l)
+            value = source_mapper._get_state_attr_by_column(source, source.dict, l)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, dest_mapper, r)
 
         try:
-            dest_mapper._set_state_attr_by_column(dest, r, value)
+            dest_mapper._set_state_attr_by_column(dest, dest.dict, r, value)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(True, source_mapper, l, dest_mapper, r)
         
@@ -41,7 +41,7 @@ def clear(dest, dest_mapper, synchronize_pairs):
                                 (r, mapperutil.state_str(dest))
                             )
         try:
-            dest_mapper._set_state_attr_by_column(dest, r, None)
+            dest_mapper._set_state_attr_by_column(dest, dest.dict, r, None)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(True, None, l, dest_mapper, r)
 
@@ -49,7 +49,7 @@ def update(source, source_mapper, dest, old_prefix, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
             oldvalue = source_mapper._get_committed_attr_by_column(source.obj(), l)
-            value = source_mapper._get_state_attr_by_column(source, l)
+            value = source_mapper._get_state_attr_by_column(source, source.dict, l)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
         dest[r.key] = value
@@ -58,7 +58,7 @@ def update(source, source_mapper, dest, old_prefix, synchronize_pairs):
 def populate_dict(source, source_mapper, dict_, synchronize_pairs):
     for l, r in synchronize_pairs:
         try:
-            value = source_mapper._get_state_attr_by_column(source, l)
+            value = source_mapper._get_state_attr_by_column(source, source.dict, l)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
 
