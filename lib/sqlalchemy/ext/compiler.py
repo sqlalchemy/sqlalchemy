@@ -119,6 +119,23 @@ overriding routine and cause an endless loop.   Such as, to add "prefix" to all 
 
 The above compiler will prefix all INSERT statements with "some prefix" when compiled.
 
+Changing Compilation of Types
+=============================
+
+``compiler`` works for types, too, such as below where we implement the MS-SQL specific 'max' keyword for ``String``/``VARCHAR``::
+
+    @compiles(String, 'mssql')
+    @compiles(VARCHAR, 'mssql')
+    def compile_varchar(element, compiler, **kw):
+        if element.length == 'max':
+            return "VARCHAR('max')"
+        else:
+            return compiler.visit_VARCHAR(element, **kw)
+    
+    foo = Table('foo', metadata,
+        Column('data', VARCHAR('max'))
+    )
+
 Subclassing Guidelines
 ======================
 
@@ -175,7 +192,7 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
   used with any expression class that represents a "standalone" SQL statement that
   can be passed directly to an ``execute()`` method.  It is already implicit 
   within ``DDLElement`` and ``FunctionElement``.
-  
+
 """
 
 def compiles(class_, *specs):
