@@ -1519,6 +1519,7 @@ class Mapper(object):
                         update.append((state, state_dict, params, mapper, 
                                         connection, value_params))
 
+            
             if update:
                 mapper = table_to_mapper[table]
                 clause = sql.and_()
@@ -1538,9 +1539,21 @@ class Mapper(object):
 
                 statement = table.update(clause)
 
+                if len(update) > 1:
+                    compiled_cache = {}
+                else:
+                    compiled_cache = None
+
                 rows = 0
                 for state, state_dict, params, mapper, connection, value_params in update:
-                    c = connection.execute(statement.values(value_params), params)
+                    if not value_params and compiled_cache is not None:
+                        c = connection.\
+                                execution_options(
+                                        compiled_cache=compiled_cache).\
+                                        execute(statement, params)
+                    else:
+                        c = connection.execute(statement.values(value_params), params)
+                        
                     mapper._postfetch(uowtransaction, table, 
                                         state, state_dict, c, c.last_updated_params(), value_params)
 
@@ -1561,8 +1574,19 @@ class Mapper(object):
                     
             if insert:
                 statement = table.insert()
+                if len(insert) > 1:
+                    compiled_cache = {}
+                else:
+                    compiled_cache = None
+                    
                 for state, state_dict, params, mapper, connection, value_params in insert:
-                    c = connection.execute(statement.values(value_params), params)
+                    if not value_params and compiled_cache is not None:
+                        c = connection.\
+                                execution_options(
+                                        compiled_cache=compiled_cache).\
+                                        execute(statement, params)
+                    else:
+                        c = connection.execute(statement.values(value_params), params)
                     primary_key = c.inserted_primary_key
 
                     if primary_key is not None:
