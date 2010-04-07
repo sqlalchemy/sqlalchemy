@@ -269,8 +269,26 @@ class ProxyConnectionTest(TestBase):
                 
             assert_stmts(compiled, stmts)
             assert_stmts(cursor, cursor_stmts)
-   
-    @testing.fails_on('mysql+oursql', 'oursql dialect has some extra steps here') 
+    
+    def test_options(self):
+        track = []
+        class TrackProxy(ConnectionProxy):
+            def __getattribute__(self, key):
+                fn = object.__getattribute__(self, key)
+                def go(*arg, **kw):
+                    track.append(fn.__name__)
+                    return fn(*arg, **kw)
+                return go
+        engine = engines.testing_engine(options={'proxy':TrackProxy()})
+        conn = engine.connect()
+        c2 = conn.execution_options(foo='bar')
+        eq_(c2._execution_options, {'foo':'bar'})
+        c2.execute(select([1]))
+        c3 = c2.execution_options(bar='bat')
+        eq_(c3._execution_options, {'foo':'bar', 'bar':'bat'})
+        eq_(track, ['execute', 'cursor_execute'])
+        
+        
     def test_transactional(self):
         track = []
         class TrackProxy(ConnectionProxy):
