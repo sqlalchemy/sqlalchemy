@@ -120,7 +120,18 @@ class TransactionTest(TestBase):
             finally:
                 connection.close()
 
-
+    def test_retains_through_options(self):
+        connection = testing.db.connect()
+        try:
+            transaction = connection.begin()
+            connection.execute(users.insert(), user_id=1, user_name='user1')
+            conn2 = connection.execution_options(dummy=True)
+            conn2.execute(users.insert(), user_id=2, user_name='user2')
+            transaction.rollback()
+            eq_(connection.scalar("select count(1) from query_users"), 0)
+        finally:
+            connection.close()
+        
     def test_nesting(self):
         connection = testing.db.connect()
         transaction = connection.begin()

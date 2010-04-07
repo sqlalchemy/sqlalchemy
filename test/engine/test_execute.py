@@ -111,6 +111,37 @@ class ExecuteTest(TestBase):
             (1, None)
         ])
 
+class CompiledCacheTest(TestBase):
+    @classmethod
+    def setup_class(cls):
+        global users, metadata
+        metadata = MetaData(testing.db)
+        users = Table('users', metadata,
+            Column('user_id', INT, primary_key = True),
+            Column('user_name', VARCHAR(20)),
+        )
+        metadata.create_all()
+
+    @engines.close_first
+    def teardown(self):
+        testing.db.connect().execute(users.delete())
+        
+    @classmethod
+    def teardown_class(cls):
+        metadata.drop_all()
+    
+    def test_cache(self):
+        conn = testing.db.connect()
+        cache = {}
+        cached_conn = conn.execution_options(compiled_cache=cache)
+        
+        ins = users.insert()
+        cached_conn.execute(ins, {'user_name':'u1'})
+        cached_conn.execute(ins, {'user_name':'u2'})
+        cached_conn.execute(ins, {'user_name':'u3'})
+        assert len(cache) == 1
+        eq_(conn.execute("select count(1) from users").scalar(), 3)
+    
 class LogTest(TestBase):
     def _test_logger(self, eng, eng_name, pool_name):
         buf = logging.handlers.BufferingHandler(100)

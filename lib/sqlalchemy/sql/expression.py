@@ -2276,6 +2276,23 @@ class Executable(_Generative):
           of many DBAPIs.  The flag is currently understood only by the
           psycopg2 dialect.
 
+        * compiled_cache - a dictionary where :class:`Compiled` objects
+          will be cached when the :class:`Connection` compiles a clause 
+          expression into a dialect- and parameter-specific 
+          :class:`Compiled` object.   It is the user's responsibility to
+          manage the size of this dictionary, which will have keys
+          corresponding to the dialect, clause element, the column
+          names within the VALUES or SET clause of an INSERT or UPDATE, 
+          as well as the "batch" mode for an INSERT or UPDATE statement.
+          The format of this dictionary is not guaranteed to stay the
+          same in future releases.
+          
+          This option is usually more appropriate
+          to use via the 
+          :meth:`sqlalchemy.engine.base.Connection.execution_options()`
+          method of :class:`Connection`, rather than upon individual 
+          statement objects, though the effect is the same.
+          
         See also:
         
             :meth:`sqlalchemy.engine.base.Connection.execution_options()`

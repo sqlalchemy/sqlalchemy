@@ -13,6 +13,13 @@ http://somethingaboutorange.com/mrl/projects/nose/0.11.1/index.html
 SQLAlchemy implements a nose plugin that must be present when tests are run.
 This plugin is available when SQLAlchemy is installed via setuptools.
 
+NB: You will need to manually install nose, it is unlikely to be pulled
+    down as a dependency of installing SQLAlchemy.
+
+    Nose can be installed with:
+
+    $ easy_install nose
+
 INSTANT TEST RUNNER
 -------------------
 
