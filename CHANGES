@@ -49,6 +49,10 @@ CHANGES
     don't use executemany()). For a backend that doesn't support 
     cursor.rowcount at all, a warning is emitted the same
     as with saves.  [ticket:1761]
+
+  - internal getattr(), setattr(), getcommitted() methods
+    on ColumnProperty, CompositeProperty, RelationshipProperty
+    have been underscored, signature has changed.
     
 - sql
   - Restored some bind-labeling logic from 0.5 which ensures
