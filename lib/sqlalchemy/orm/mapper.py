@@ -1121,7 +1121,8 @@ class Mapper(object):
         return self._primary_key_from_state(state)
 
     def _primary_key_from_state(self, state):
-        return [self._get_state_attr_by_column(state, column) for column in self.primary_key]
+        dict_ = state.dict
+        return [self._get_state_attr_by_column(state, dict_, column) for column in self.primary_key]
 
     def _get_col_to_prop(self, column):
         try:
@@ -1134,18 +1135,19 @@ class Mapper(object):
                 raise orm_exc.UnmappedColumnError("No column %s is configured on mapper %s..." % (column, self))
 
     # TODO: improve names?
-    def _get_state_attr_by_column(self, state, column):
-        return self._get_col_to_prop(column).getattr(state, column)
+    def _get_state_attr_by_column(self, state, dict_, column):
+        return self._get_col_to_prop(column)._getattr(state, dict_, column)
 
-    def _set_state_attr_by_column(self, state, column, value):
-        return self._get_col_to_prop(column).setattr(state, value, column)
+    def _set_state_attr_by_column(self, state, dict_, column, value):
+        return self._get_col_to_prop(column)._setattr(state, dict_, value, column)
 
     def _get_committed_attr_by_column(self, obj, column):
         state = attributes.instance_state(obj)
-        return self._get_committed_state_attr_by_column(state, column)
+        dict_ = attributes.instance_dict(obj)
+        return self._get_committed_state_attr_by_column(state, dict_, column)
 
-    def _get_committed_state_attr_by_column(self, state, column, passive=False):
-        return self._get_col_to_prop(column).getcommitted(state, column, passive=passive)
+    def _get_committed_state_attr_by_column(self, state, dict_, column, passive=False):
+        return self._get_col_to_prop(column)._getcommitted(state, dict_, column, passive=passive)
 
     def _optimized_get_statement(self, state, attribute_names):
         """assemble a WHERE clause which retrieves a given state by primary key, using a minimized set of tables.
@@ -1176,12 +1178,12 @@ class Mapper(object):
                 return
 
             if leftcol.table not in tables:
-                leftval = self._get_committed_state_attr_by_column(state, leftcol, passive=True)
+                leftval = self._get_committed_state_attr_by_column(state, state.dict, leftcol, passive=True)
                 if leftval is attributes.PASSIVE_NO_RESULT:
                     raise ColumnsNotAvailable()
                 binary.left = sql.bindparam(None, leftval, type_=binary.right.type)
             elif rightcol.table not in tables:
-                rightval = self._get_committed_state_attr_by_column(state, rightcol, passive=True)
+                rightval = self._get_committed_state_attr_by_column(state, state.dict, rightcol, passive=True)
                 if rightval is attributes.PASSIVE_NO_RESULT:
                     raise ColumnsNotAvailable()
                 binary.right = sql.bindparam(None, rightval, type_=binary.right.type)
@@ -1394,6 +1396,7 @@ class Mapper(object):
 
             tups.append(
                 (state,
+                    state.dict,
                     mapper,
                     conn,
                     has_identity,
@@ -1407,7 +1410,7 @@ class Mapper(object):
             insert = []
             update = []
 
-            for state, mapper, connection, has_identity, \
+            for state, state_dict, mapper, connection, has_identity, \
                             instance_key, row_switch in tups:
                 if table not in mapper._pks_by_table:
                     continue
@@ -1434,11 +1437,11 @@ class Mapper(object):
                                 value is not None):
                                 params[col.key] = value
                         elif col in pks:
-                            value = mapper._get_state_attr_by_column(state, col)
+                            value = mapper._get_state_attr_by_column(state, state_dict, col)
                             if value is not None:
                                 params[col.key] = value
                         else:
-                            value = mapper._get_state_attr_by_column(state, col)
+                            value = mapper._get_state_attr_by_column(state, state_dict, col)
                             if ((col.default is None and
                                  col.server_default is None) or
                                 value is not None):
@@ -1446,7 +1449,7 @@ class Mapper(object):
                                     value_params[col] = value
                                 else:
                                     params[col.key] = value
-                    insert.append((state, params, mapper, 
+                    insert.append((state, state_dict, params, mapper, 
                                     connection, value_params))
                 else:
                     for col in mapper._cols_by_table[table]:
@@ -1454,6 +1457,7 @@ class Mapper(object):
                             params[col._label] = \
                                         mapper._get_state_attr_by_column(
                                                     row_switch or state, 
+                                                    row_switch and row_switch.dict or state_dict,
                                                     col)
                             params[col.key] = \
                                     mapper.version_id_generator(params[col._label])
@@ -1475,7 +1479,7 @@ class Mapper(object):
                                 col not in post_update_cols:
                                 if col in pks:
                                     params[col._label] = \
-                                                mapper._get_state_attr_by_column(state, col)
+                                                mapper._get_state_attr_by_column(state, state_dict, col)
                                 continue
 
                             prop = mapper._columntoproperty[col]
@@ -1510,9 +1514,9 @@ class Mapper(object):
                                 else:
                                     hasdata = True
                             elif col in pks:
-                                params[col._label] = mapper._get_state_attr_by_column(state, col)
+                                params[col._label] = mapper._get_state_attr_by_column(state, state_dict, col)
                     if hasdata:
-                        update.append((state, params, mapper, 
+                        update.append((state, state_dict, params, mapper, 
                                         connection, value_params))
 
             if update:
@@ -1535,10 +1539,10 @@ class Mapper(object):
                 statement = table.update(clause)
 
                 rows = 0
-                for state, params, mapper, connection, value_params in update:
+                for state, state_dict, params, mapper, connection, value_params in update:
                     c = connection.execute(statement.values(value_params), params)
                     mapper._postfetch(uowtransaction, table, 
-                                        state, c, c.last_updated_params(), value_params)
+                                        state, state_dict, c, c.last_updated_params(), value_params)
 
                     rows += c.rowcount
 
@@ -1557,22 +1561,22 @@ class Mapper(object):
                     
             if insert:
                 statement = table.insert()
-                for state, params, mapper, connection, value_params in insert:
+                for state, state_dict, params, mapper, connection, value_params in insert:
                     c = connection.execute(statement.values(value_params), params)
                     primary_key = c.inserted_primary_key
 
                     if primary_key is not None:
                         # set primary key attributes
                         for i, col in enumerate(mapper._pks_by_table[table]):
-                            if mapper._get_state_attr_by_column(state, col) is None and \
+                            if mapper._get_state_attr_by_column(state, state_dict, col) is None and \
                                                                 len(primary_key) > i:
-                                mapper._set_state_attr_by_column(state, col, primary_key[i])
+                                mapper._set_state_attr_by_column(state, state_dict, col, primary_key[i])
                                 
                     mapper._postfetch(uowtransaction, table, 
-                                        state, c, c.last_inserted_params(), value_params)
+                                        state, state_dict, c, c.last_inserted_params(), value_params)
 
         if not postupdate:
-            for state, mapper, connection, has_identity, \
+            for state, state_dict, mapper, connection, has_identity, \
                             instance_key, row_switch in tups:
 
                 # expire readonly attributes
@@ -1600,7 +1604,7 @@ class Mapper(object):
                         mapper.extension.after_update(mapper, connection, state.obj())
 
     def _postfetch(self, uowtransaction, table, 
-                                state, resultproxy, params, value_params):
+                                state, dict_, resultproxy, params, value_params):
         """Expire attributes in need of newly persisted database state."""
 
         postfetch_cols = resultproxy.postfetch_cols()
@@ -1616,7 +1620,7 @@ class Mapper(object):
 
         for c in generated_cols:
             if c.key in params and c in self._columntoproperty:
-                self._set_state_attr_by_column(state, c, params[c.key])
+                self._set_state_attr_by_column(state, dict_, c, params[c.key])
 
         if postfetch_cols:
             _expire_state(state, state.dict, 
@@ -1675,6 +1679,7 @@ class Mapper(object):
                 mapper.extension.before_delete(mapper, conn, state.obj())
             
             tups.append((state, 
+                    state.dict,
                     _state_mapper(state), 
                     _state_has_identity(state),
                     conn))
@@ -1683,18 +1688,18 @@ class Mapper(object):
 
         for table in reversed(table_to_mapper.keys()):
             delete = util.defaultdict(list)
-            for state, mapper, has_identity, connection in tups:
+            for state, state_dict, mapper, has_identity, connection in tups:
                 if not has_identity or table not in mapper._pks_by_table:
                     continue
 
                 params = {}
                 delete[connection].append(params)
                 for col in mapper._pks_by_table[table]:
-                    params[col.key] = mapper._get_state_attr_by_column(state, col)
+                    params[col.key] = mapper._get_state_attr_by_column(state, state_dict, col)
                 if mapper.version_id_col is not None and \
                             table.c.contains_column(mapper.version_id_col):
                     params[mapper.version_id_col.key] = \
-                                mapper._get_state_attr_by_column(state, mapper.version_id_col)
+                                mapper._get_state_attr_by_column(state, state_dict, mapper.version_id_col)
 
             for connection, del_objects in delete.iteritems():
                 mapper = table_to_mapper[table]
@@ -1745,7 +1750,7 @@ class Mapper(object):
                         (c.rowcount, len(del_objects))
                     )
 
-        for state, mapper, has_identity, connection in tups:
+        for state, state_dict, mapper, has_identity, connection in tups:
             if 'after_delete' in mapper.extension:
                 mapper.extension.after_delete(mapper, connection, state.obj())
 
@@ -1862,12 +1867,13 @@ class Mapper(object):
                         context.version_check and \
                         self._get_state_attr_by_column(
                                         state, 
+                                        dict_, 
                                         self.version_id_col) != row[version_id_col]:
                                         
                     raise orm_exc.ConcurrentModificationError(
                             "Instance '%s' version of %s does not match %s" 
                             % (state_str(state), 
-                                    self._get_state_attr_by_column(state, self.version_id_col),
+                                    self._get_state_attr_by_column(state, dict_, self.version_id_col),
                                     row[version_id_col]))
             elif refresh_state:
                 # out of band refresh_state detected (i.e. its not in the session.identity_map)
@@ -2055,7 +2061,7 @@ def _event_on_resurrect(state, instance):
     # of the dict based on the mapping.
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
     for col, val in zip(instrumenting_mapper.primary_key, state.key[1]):
-        instrumenting_mapper._set_state_attr_by_column(state, col, val)
+        instrumenting_mapper._set_state_attr_by_column(state, state.dict, col, val)
     
     
 def _sort_states(states):
