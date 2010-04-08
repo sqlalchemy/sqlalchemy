@@ -510,6 +510,8 @@ class MapperProperty(object):
         Establishes a topological dependency between two mappers
         which will affect the order in which mappers persist data.
         
+        This method is deprecated.
+
         """
 
         pass
@@ -518,10 +520,11 @@ class MapperProperty(object):
         """Called by the ``Mapper`` in response to the UnitOfWork
         calling the ``Mapper``'s register_processors operation.
         Establishes a processor object between two mappers which
-        will link data and state between parent/child objects.
+        will synchronize state between parent/child objects.
+
+        This method is deprecated.
         
         """
-
         pass
         
     def is_primary(self):

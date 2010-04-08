@@ -4,7 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Dumps out a string representation of a UOWTask structure"""
+"""Dumps out a string representation of a UOWTask structure.
+
+This module is deprecated and will be removed once
+[ticket:1742] is complete.
+
+"""
 
 from sqlalchemy.orm import unitofwork
 from sqlalchemy.orm import util as mapperutil

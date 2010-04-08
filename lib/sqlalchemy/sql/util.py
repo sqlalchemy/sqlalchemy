@@ -20,7 +20,7 @@ def sort_tables(tables):
 
     for table in tables:
         visitors.traverse(table, {'schema_visitor':True}, {'foreign_key':visit_foreign_key})    
-    return topological.sort(tuples, tables)
+    return topological._sort(tuples, tables)
 
 def find_join_source(clauses, join_to):
     """Given a list of FROM clauses and a selectable, 

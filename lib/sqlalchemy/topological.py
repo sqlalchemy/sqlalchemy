@@ -6,57 +6,46 @@
 
 """Topological sorting algorithms.
 
-The topological sort is an algorithm that receives this list of
-dependencies as a *partial ordering*, that is a list of pairs which
-might say, *X is dependent on Y*, *Q is dependent on Z*, but does not
-necessarily tell you anything about Q being dependent on X. Therefore,
-its not a straight sort where every element can be compared to
-another... only some of the elements have any sorting preference, and
-then only towards just some of the other elements.  For a particular
-partial ordering, there can be many possible sorts that satisfy the
-conditions.
+All functions and classes in this module are currently deprecated,
+and will be replaced by a much simpler and more efficient
+system in an upcoming release.  See [ticket:1742] for 
+details.
 
 """
 
 from sqlalchemy.exc import CircularDependencyError
 from sqlalchemy import util
 
-__all__ = ['sort', 'sort_with_cycles', 'sort_as_tree']
-
-def sort(tuples, allitems):
+def _sort(tuples, allitems):
     """sort the given list of items by dependency.
     
-    'tuples' is a list of tuples representing a partial ordering.
+    deprecated.   a new sort with slightly different 
+    behavior will replace this method in an upcoming release.
     """
     
-    return [n.item for n in _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=True)]
+    return [n.item for n in _sort_impl(tuples, allitems, 
+                                    allow_cycles=False, 
+                                    ignore_self_cycles=True)]
 
-def sort_with_cycles(tuples, allitems):
+def _sort_with_cycles(tuples, allitems):
     """sort the given list of items by dependency, cutting out cycles.
-    
-    returns results as an iterable of 2-tuples, containing the item,
-    and a list containing items involved in a cycle with this item, if any.
-    
-    'tuples' is a list of tuples representing a partial ordering.
+
+    deprecated.   a new approach to cycle detection will
+    be introduced in an upcoming release.
     """
     
-    return [(n.item, [n.item for n in n.cycles or []]) for n in _sort(tuples, allitems, allow_cycles=True)]
+    return [(n.item, [n.item for n in n.cycles or []]) 
+                for n in _sort_impl(tuples, allitems, allow_cycles=True)]
     
-def sort_as_tree(tuples, allitems, with_cycles=False):
+def _sort_as_tree(tuples, allitems, with_cycles=False):
     """sort the given list of items by dependency, and return results
     as a hierarchical tree structure.
     
-    returns results as an iterable of 3-tuples, containing the item,
-    a list containing items involved in a cycle with this item, if any,
-    and a list of child tuples.  
-    
-    if with_cycles is False, the returned structure is of the same form
-    but the second element of each tuple, i.e. the 'cycles', is an empty list.
-    
-    'tuples' is a list of tuples representing a partial ordering.
+    deprecated.  a new approach to "grouped" topological sorting
+    will be introduced in an upcoming release.
     """
 
-    return _organize_as_tree(_sort(tuples, allitems, allow_cycles=with_cycles))
+    return _organize_as_tree(_sort_impl(tuples, allitems, allow_cycles=with_cycles))
 
 
 class _Node(object):
@@ -156,7 +145,7 @@ class _EdgeCollection(object):
     def __repr__(self):
         return repr(list(self))
 
-def _sort(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
+def _sort_impl(tuples, allitems, allow_cycles=False, ignore_self_cycles=False):
     nodes = {}
     edges = _EdgeCollection()
 
@@ -221,6 +210,8 @@ def _organize_as_tree(nodes):
     set as siblings to each other as possible.
     
     returns nodes as 3-tuples (item, cycles, children).
+    
+    this function is deprecated.
     """
 
     if not nodes:
@@ -263,6 +254,9 @@ def _organize_as_tree(nodes):
     return (head.item, [n.item for n in head.cycles or []], head.children)
 
 def _find_cycles(edges):
+    """
+    this function is deprecated.
+    """
     cycles = {}
 
     def traverse(node, cycle, goal):

@@ -6,9 +6,12 @@
 
 """Relationship dependencies.
 
-Bridges the ``PropertyLoader`` (i.e. a ``relationship()``) and the
+Bridges the ``RelationshipLoader`` (i.e. a ``relationship()``) and the
 ``UOWTransaction`` together to allow processing of relationship()-based
 dependencies at flush time.
+
+A large portion of this module will be reworked in an 
+upcoming release.   See [ticket:1742] for details.
 
 """
 
@@ -546,11 +549,8 @@ class ManyToManyDP(DependencyProcessor):
 class MapperStub(object):
     """Represent a many-to-many dependency within a flush 
     context. 
-     
-    The UOWTransaction corresponds dependencies to mappers.   
-    MapperStub takes the place of the "association table" 
-    so that a depedendency can be corresponded to it.
-
+    
+    This object is deprecated.
     """
     
     def __init__(self, parent, mapper, key):
