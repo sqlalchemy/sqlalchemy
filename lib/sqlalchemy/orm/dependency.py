@@ -162,6 +162,16 @@ class DependencyProcessor(object):
         
         # now create actions /dependencies for each state.
         for state in states:
+            # detect if there's anything changed or loaded
+            # by a preprocessor on this state/attribute.  if not,
+            # we should be able to skip it entirely.
+            sum_ = uow.get_attribute_history(
+                                            state, 
+                                            self.key, 
+                                            passive=True).sum()
+            if not sum_:
+                continue
+
             # I'd like to emit the before_delete/after_save actions
             # here and have the unit of work not get confused by that
             # when it alters the list of dependencies...
@@ -181,15 +191,7 @@ class DependencyProcessor(object):
                                                 parent_base_mapper)
                 
             if child_in_cycles:
-                # locate each child state associated with the parent action,
-                # create dependencies for each.
                 child_actions = []
-                sum_ = uow.get_attribute_history(
-                                                state, 
-                                                self.key, 
-                                                passive=True).sum()
-                if not sum_:
-                    continue
                 for child_state in sum_:
                     if child_state is None:
                         continue
