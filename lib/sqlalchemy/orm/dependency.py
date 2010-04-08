@@ -70,6 +70,11 @@ class DependencyProcessor(object):
         
         unitofwork.GetDependentObjects(uow, self, False, True)
         unitofwork.GetDependentObjects(uow, self, True, True)
+        
+        
+    def _has_flush_activity(self, uow):
+        if self.post_update and self._check_reverse(uow):
+            return
 
         after_save = unitofwork.ProcessAll(uow, self, False, True)
         before_delete = unitofwork.ProcessAll(uow, self, True, True)
@@ -99,6 +104,7 @@ class DependencyProcessor(object):
                                         child_deletes, 
                                         after_save, 
                                         before_delete)
+        
 
     def per_state_flush_actions(self, uow, states, isdelete):
         """establish actions and dependencies related to a flush.
@@ -109,17 +115,26 @@ class DependencyProcessor(object):
         
         """
 
+        # TODO: this check sucks.  somehow get mapper to 
+        # not even call this.
+        if ('has_flush_activity', self) not in uow.attributes:
+            return
+        
+        # TODO: why are we calling this ? shouldnt per_property
+        # have stopped us from getting keyhere ?
         if self.post_update and self._check_reverse(uow):
             # TODO: coverage here
-            return iter([])
+            return
 
         # locate and disable the aggregate processors
         # for this dependency
         
-        before_delete = unitofwork.ProcessAll(uow, self, True, True)
-        before_delete.disabled = True
-        after_save = unitofwork.ProcessAll(uow, self, False, True)
-        after_save.disabled = True
+        if isdelete:
+            before_delete = unitofwork.ProcessAll(uow, self, True, True)
+            before_delete.disabled = True
+        else:
+            after_save = unitofwork.ProcessAll(uow, self, False, True)
+            after_save.disabled = True
 
         # check if the "child" side is part of the cycle
         
@@ -222,15 +237,12 @@ class DependencyProcessor(object):
                                                 after_save, before_delete, 
                                                 isdelete, childisdelete)
         
-        # ... but at the moment it 
-        # does so we emit a null iterator
-        return iter([])
         
     def presort_deletes(self, uowcommit, states):
-        pass
+        return False
         
     def presort_saves(self, uowcommit, states):
-        pass
+        return False
         
     def process_deletes(self, uowcommit, states):
         pass
@@ -238,6 +250,20 @@ class DependencyProcessor(object):
     def process_saves(self, uowcommit, states):
         pass
 
+    def _prop_has_changes(self, uowcommit, states):
+        for s in states:
+            # TODO: add a high speed method 
+            # to InstanceState which returns:  attribute
+            # has a non-None value, or had one
+            history = uowcommit.get_attribute_history(
+                                            s, 
+                                            self.key, 
+                                            passive=True)
+            if history and not history.empty():
+                return True
+        else:
+            return False
+        
     def _verify_canload(self, state):
         if state is not None and \
             not self.mapper._canload(state, allow_subtypes=not self.enable_typechecks):
@@ -266,11 +292,8 @@ class DependencyProcessor(object):
         
         """
         for p in self.prop._reverse_property:
-            if not p.viewonly and p._dependency_processor and \
-                (unitofwork.ProcessAll, 
-                    p._dependency_processor, False, True) in \
-                    uow.postsort_actions:
-                return True
+            if not p.viewonly and p._dependency_processor:
+                return p.key < self.key
         else:
             return False
 
@@ -367,6 +390,7 @@ class OneToManyDP(DependencyProcessor):
         # foreign key to the parent set to NULL
         should_null_fks = not self.cascade.delete and \
                             not self.passive_deletes == 'all'
+
         for state in states:
             history = uowcommit.get_attribute_history(
                                             state, 
@@ -383,7 +407,8 @@ class OneToManyDP(DependencyProcessor):
                     for child in history.unchanged:
                         if child is not None:
                             uowcommit.register_object(child)
-    
+        
+            
     def presort_saves(self, uowcommit, states):
         for state in states:
             history = uowcommit.get_attribute_history(
@@ -415,7 +440,7 @@ class OneToManyDP(DependencyProcessor):
                                         child, 
                                         False, 
                                         self.passive_updates)
-    
+        
     def process_deletes(self, uowcommit, states):
         # head object is being deleted, and we manage its list of 
         # child objects the child objects have to have their foreign 
@@ -587,7 +612,7 @@ class ManyToOneDP(DependencyProcessor):
                                                             'delete', child):
                             uowcommit.register_object(
                                 attributes.instance_state(c), isdelete=True)
-
+        
     def presort_saves(self, uowcommit, states):
         for state in states:
             uowcommit.register_object(state)
@@ -597,6 +622,7 @@ class ManyToOneDP(DependencyProcessor):
                                         self.key, 
                                         passive=self.passive_deletes)
                 if history:
+                    ret = True
                     for child in history.deleted:
                         if self.hasparent(child) is False:
                             uowcommit.register_object(child, isdelete=True)
@@ -674,6 +700,10 @@ class DetectKeySwitch(DependencyProcessor):
             # so that mapper save_obj() gets a hold of changes
             unitofwork.GetDependentObjects(uow, self, False, False)
         else:
+            
+            ##### TODO ########
+            # Get this out of here if self.parent.base_mapper isn't in the flush!!!!
+            
             # for passive updates, register objects in the process stage
             # so that we avoid ManyToOneDP's registering the object without
             # the listonly flag in its own preprocess stage (results in UPDATE)
@@ -686,9 +716,11 @@ class DetectKeySwitch(DependencyProcessor):
                 (parent_saves, after_save)
             ])
 
+    def _has_flush_activity(self, uow):
+        pass
+        
     def per_state_flush_actions(self, uow, states, isdelete):
-        # TODO: coverage here
-        return iter([])
+        pass
         
     def presort_deletes(self, uowcommit, states):
         assert False
@@ -742,12 +774,18 @@ class ManyToManyDP(DependencyProcessor):
             unitofwork.GetDependentObjects(uow, self, False, True)
         else:
             DependencyProcessor.per_property_flush_actions(self, uow)
+
+    def _has_flush_activity(self, uow):
+        if self._check_reverse(uow):
+            return
+        else:
+            DependencyProcessor._has_flush_activity(self, uow)
             
     def per_state_flush_actions(self, uow, states, isdelete):
         if self._check_reverse(uow):
-            return iter([])
+            return
         else:
-            return DependencyProcessor.\
+            DependencyProcessor.\
                     per_state_flush_actions(self, uow, states, isdelete)
             
     def per_property_dependencies(self, uow, parent_saves, 
@@ -798,9 +836,20 @@ class ManyToManyDP(DependencyProcessor):
             ])
         
     def presort_deletes(self, uowcommit, states):
-        pass
-
+        if not self.passive_deletes:
+            for state in states:
+                history = uowcommit.get_attribute_history(
+                                        state, 
+                                        self.key, 
+                                        passive=self.passive_deletes)
+        
     def presort_saves(self, uowcommit, states):
+        for state in states:
+            history = uowcommit.get_attribute_history(
+                                    state, 
+                                    self.key, 
+                                    False)
+
         if not self.cascade.delete_orphan:
             return
             
@@ -818,7 +867,7 @@ class ManyToManyDP(DependencyProcessor):
                                                     child):
                             uowcommit.register_object(
                                 attributes.instance_state(c), isdelete=True)
-
+        
     def process_deletes(self, uowcommit, states):
         secondary_delete = []
         secondary_insert = []

@@ -320,7 +320,8 @@ class SingleCycleTest(UOWTest):
 
         sess.add_all([n2, n3])
         sess.flush()
-
+        
+        print "-------------------------------------------------"
         sess.delete(n1)
         sess.delete(n2)
         sess.delete(n3)
@@ -437,6 +438,7 @@ class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults):
         n3.children = [n5, n4]
         
         sess.add_all([n1, n2, n3, n4, n5])
+        
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,

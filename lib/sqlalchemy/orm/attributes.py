@@ -1257,6 +1257,12 @@ class History(tuple):
     def __nonzero__(self):
         return self != HISTORY_BLANK
     
+    def empty(self):
+        return not bool(
+                        (self.added or self.deleted)
+                        or self.unchanged and self.unchanged != [None]
+                    ) 
+        
     def sum(self):
         return (self.added or []) +\
                 (self.unchanged or []) +\

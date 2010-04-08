@@ -156,6 +156,8 @@ class CompiledSQL(SQLMatchRule):
             if not isinstance(params, list):
                 params = [params]
             
+            all_params = list(params)
+            all_received = list(_received_parameters)
             while params:
                 param = params.pop(0)
                 if param not in _received_parameters:
@@ -171,7 +173,7 @@ class CompiledSQL(SQLMatchRule):
         self._result = equivalent
         if not self._result:
             self._errmsg = "Testing for compiled statement %r partial params %r, " \
-                    "received %r with params %r" % (self.statement, params, _received_statement, _received_parameters)
+                    "received %r with params %r" % (self.statement, all_params, _received_statement, all_received)
     
         
 class CountStatements(AssertRule):

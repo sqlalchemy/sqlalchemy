@@ -208,10 +208,11 @@ class UOWTransaction(object):
                                 ]
                             ).difference(cycles)
         
-        #sort = topological.sort(self.dependencies, postsort_actions)
+        sort = topological.sort(self.dependencies, postsort_actions)
         #print "--------------"
         #print self.dependencies
-        #print postsort_actions
+        print postsort_actions
+        print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
         
         # execute
         if cycles:
@@ -318,6 +319,7 @@ class GetDependentObjects(PropertyRecMixin, PreSortRec):
         self.processed = set()
         
     def execute(self, uow):
+        
         states = list(self._elements(uow))
         if states:
             if self.delete:
@@ -325,6 +327,13 @@ class GetDependentObjects(PropertyRecMixin, PreSortRec):
             else:
                 self.dependency_processor.presort_saves(uow, states)
             self.processed.update(states)
+
+            if ('has_flush_activity', self.dependency_processor) not in uow.attributes:
+                # TODO: wont be calling self.fromparent here once detectkeyswitch works
+                if not self.fromparent or self.dependency_processor._prop_has_changes(uow, states):
+                    self.dependency_processor._has_flush_activity(uow)
+                    uow.attributes[('has_flush_activity', self.dependency_processor)] = True
+            
             return True
         else:
             return False
@@ -338,6 +347,11 @@ class ProcessAll(PropertyRecMixin, PostSortRec):
             self.dependency_processor.process_saves(uow, states)
 
     def per_state_flush_actions(self, uow):
+        # we let the mappers call this,
+        # so that a ProcessAll which is between two mappers that
+        # are part of a cycle (but the ProcessAll itself is not 
+        # in the cycle), also becomes a per-state processor,
+        # and a dependency between the two states as well
         return iter([])
         
 class SaveUpdateAll(PostSortRec):

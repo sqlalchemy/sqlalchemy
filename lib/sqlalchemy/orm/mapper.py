@@ -1306,14 +1306,15 @@ class Mapper(object):
             mappers_to_states[state.manager.mapper].add(state)
             yield action
         
+        # TODO: can't we just loop through the frigging entries 
+        # that are already in the uow instead of this goofy 
+        # polymorphic BS ?
         for prop, mappers in self._property_iterator(set(mappers_to_states)):
             states_for_prop = []
             for mapper in mappers:
                 states_for_prop += list(mappers_to_states[mapper])
-                
-            for rec in prop.per_state_flush_actions(uow, states_for_prop, isdelete):
-                yield rec
-        
+            
+            prop.per_state_flush_actions(uow, states_for_prop, isdelete)
         
     def _save_obj(self, states, uowtransaction, postupdate=False, 
                                 post_update_cols=None, single=False):
