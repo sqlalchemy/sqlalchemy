@@ -16,15 +16,15 @@ from sqlalchemy import util
 __all__ = ['sort', 'sort_as_subsets', 'find_cycles']
 
 def sort_as_subsets(tuples, allitems):
-    output = set()
-
-    todo = set(allitems)
 
     edges = util.defaultdict(set)
     for parent, child in tuples:
         edges[child].add(parent)
     
+    todo = set(allitems)
+
     while todo:
+        output = set()
         for node in list(todo):
             if not todo.intersection(edges[node]):
                 output.add(node)
@@ -36,7 +36,6 @@ def sort_as_subsets(tuples, allitems):
 
         todo.difference_update(output)
         yield output
-        output = set()
 
 def sort(tuples, allitems):
     """sort the given list of items by dependency.
