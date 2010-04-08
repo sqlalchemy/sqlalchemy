@@ -32,7 +32,9 @@ class ExecuteTest(TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except('firebird', 'maxdb', 'sqlite', '+pyodbc', '+mxodbc', '+zxjdbc', 'mysql+oursql')
+    @testing.fails_on_everything_except('firebird', 'maxdb', 
+                                        'sqlite', '+pyodbc', 
+                                        '+mxodbc', '+zxjdbc', 'mysql+oursql')
     def test_raw_qmark(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (?, ?)", (1,"jack"))
@@ -70,7 +72,8 @@ class ExecuteTest(TestBase):
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
     @testing.skip_if(lambda: testing.against('mysql+mysqldb'), 'db-api flaky')
-    @testing.fails_on_everything_except('postgresql+psycopg2', 'postgresql+pypostgresql', 'mysql+mysqlconnector')
+    @testing.fails_on_everything_except('postgresql+psycopg2', 
+                                    'postgresql+pypostgresql', 'mysql+mysqlconnector')
     def test_raw_python(self):
         for conn in (testing.db, testing.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)",
@@ -117,7 +120,7 @@ class CompiledCacheTest(TestBase):
         global users, metadata
         metadata = MetaData(testing.db)
         users = Table('users', metadata,
-            Column('user_id', INT, primary_key = True),
+            Column('user_id', INT, primary_key=True, test_needs_autoincrement=True),
             Column('user_name', VARCHAR(20)),
         )
         metadata.create_all()
