@@ -3,7 +3,8 @@ from sqlalchemy.test import testing
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey
 from test.orm import _fixtures, _base
-from sqlalchemy.orm import mapper, relationship, backref, create_session
+from sqlalchemy.orm import mapper, relationship, backref, \
+                            create_session, unitofwork, attributes
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
 
 from test.orm._fixtures import keywords, addresses, Base, Keyword,  \
@@ -14,6 +15,23 @@ from test.orm._fixtures import keywords, addresses, Base, Keyword,  \
 
 class UOWTest(_fixtures.FixtureTest, testing.AssertsExecutionResults):
     run_inserts = None
+
+    def _assert_uow_size(self,
+        session, 
+        expected
+    ):
+        uow = unitofwork.UOWTransaction(session)
+        deleted = set(session._deleted)
+        new = set(session._new)
+        dirty = set(session._dirty_states).difference(deleted)
+        for s in new.union(dirty):
+            uow.register_object(s)
+        for d in deleted:
+            uow.register_object(d, isdelete=True)
+        postsort_actions = uow._generate_actions()
+        print postsort_actions
+        eq_(len(postsort_actions), expected, postsort_actions)
+    
 
 class RudimentaryFlushTest(UOWTest):
 
@@ -195,6 +213,43 @@ class RudimentaryFlushTest(UOWTest):
                     {'id':u1.id}
                 ),
         )
+
+    def test_o2m_flush_size(self):
+        mapper(User, users, properties={
+            'addresses':relationship(Address),
+        })
+        mapper(Address, addresses)
+
+        sess = create_session()
+        u1 = User(name='ed')
+        sess.add(u1)
+        self._assert_uow_size(sess, 2)
+
+        sess.flush()
+
+        u1.name='jack'
+
+        self._assert_uow_size(sess, 2)
+        sess.flush()
+
+        a1 = Address(email_address='foo')
+        sess.add(a1)
+        sess.flush()
+
+        u1.addresses.append(a1)
+
+        self._assert_uow_size(sess, 6)
+
+        sess.flush()
+
+        sess = create_session()
+        u1 = sess.query(User).first()
+        u1.name='ed'
+        self._assert_uow_size(sess, 2)
+
+        u1.addresses
+        self._assert_uow_size(sess, 6)
+
 
 class SingleCycleTest(UOWTest):
     def test_one_to_many_save(self):
@@ -389,6 +444,40 @@ class SingleCycleTest(UOWTest):
  #               sess.flush,
  #       )
 
+    def test_singlecycle_flush_size(self):
+        mapper(Node, nodes, properties={
+            'children':relationship(Node)
+        })
+        sess = create_session()
+        n1 = Node(data='ed')
+        sess.add(n1)
+        self._assert_uow_size(sess, 2)
+
+        sess.flush()
+    
+        n1.data='jack'
+
+        self._assert_uow_size(sess, 2)
+        sess.flush()
+    
+        n2 = Node(data='foo')
+        sess.add(n2)
+        sess.flush()
+    
+        n1.children.append(n2)
+
+        self._assert_uow_size(sess, 4)
+    
+        sess.flush()
+    
+        sess = create_session()
+        n1 = sess.query(Node).first()
+        n1.data='ed'
+        self._assert_uow_size(sess, 2)
+    
+        n1.children
+        self._assert_uow_size(sess, 3)
+
 class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults):
 
     @classmethod
@@ -536,8 +625,5 @@ class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults):
                 lambda ctx:[{'id': n2.id}, {'id': n3.id}]
             ),
         )
-        
-        
-        
         
         

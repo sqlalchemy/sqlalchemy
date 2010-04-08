@@ -158,9 +158,8 @@ class UOWTransaction(object):
             for state in self.mappers[mapper]:
                 if self.states[state] == checktup:
                     yield state
-                
-    def execute(self):
-        
+    
+    def _generate_actions(self):
         # execute presort_actions, until all states
         # have been processed.   a presort_action might
         # add new states to the uow.
@@ -171,12 +170,12 @@ class UOWTransaction(object):
                     ret = True
             if not ret:
                 break
-        
+
         # see if the graph of mapper dependencies has cycles.
         self.cycles = cycles = topological.find_cycles(
                                         self.dependencies, 
                                         self.postsort_actions.values())
-        
+
         if cycles:
             # if yes, break the per-mapper actions into
             # per-state actions
@@ -202,20 +201,23 @@ class UOWTransaction(object):
                     for dep in convert[edge[1]]:
                         self.dependencies.add((edge[0], dep))
         
-        postsort_actions = set(
+        return set(
                                 [a for a in self.postsort_actions.values()
                                 if not a.disabled
                                 ]
                             ).difference(cycles)
+
+    def execute(self):
+        postsort_actions = self._generate_actions()
         
-        sort = topological.sort(self.dependencies, postsort_actions)
+        #sort = topological.sort(self.dependencies, postsort_actions)
         #print "--------------"
         #print self.dependencies
-        print postsort_actions
-        print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
+        #print postsort_actions
+        #print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
         
         # execute
-        if cycles:
+        if self.cycles:
             for set_ in topological.sort_as_subsets(
                                             self.dependencies, 
                                             postsort_actions):
