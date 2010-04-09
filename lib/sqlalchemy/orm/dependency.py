@@ -691,26 +691,7 @@ class DetectKeySwitch(DependencyProcessor):
         if self.prop._reverse_property:
             return
         
-        if not self.passive_updates:
-            # for non-passive updates, register in the preprocess stage
-            # so that mapper save_obj() gets a hold of changes
-            unitofwork.GetDependentObjects(uow, self, False, False)
-        else:
-            
-            ##### TODO ########
-            # Get this out of here if self.parent.base_mapper isn't in the flush!!!!
-            
-            # for passive updates, register objects in the process stage
-            # so that we avoid ManyToOneDP's registering the object without
-            # the listonly flag in its own preprocess stage (results in UPDATE)
-            # statements being emitted
-            parent_saves = unitofwork.SaveUpdateAll(
-                                                uow, 
-                                                self.parent.base_mapper)
-            after_save = unitofwork.ProcessAll(uow, self, False, False)
-            uow.dependencies.update([
-                (parent_saves, after_save)
-            ])
+        unitofwork.GetDependentObjects(uow, self, False, False)
 
     def _has_flush_activity(self, uow):
         pass
@@ -721,9 +702,27 @@ class DetectKeySwitch(DependencyProcessor):
     def presort_deletes(self, uowcommit, states):
         assert False
 
-    def presort_saves(self, uowcommit, states):
-        assert not self.passive_updates
-        self._process_key_switches(states, uowcommit)
+    def presort_saves(self, uow, states):
+        if self.passive_updates:
+            # for passive updates, register objects in the process stage
+            # so that we avoid ManyToOneDP's registering the object without
+            # the listonly flag in its own preprocess stage (results in UPDATE)
+            # statements being emitted
+            for s in states:
+                if self._pks_changed(uow, s):
+                    parent_saves = unitofwork.SaveUpdateAll(
+                                                    uow, 
+                                                    self.parent.base_mapper)
+                    after_save = unitofwork.ProcessAll(uow, self, False, False)
+                    uow.dependencies.update([
+                        (parent_saves, after_save)
+                    ])
+                    return
+                
+        else:
+            # for non-passive updates, register in the preprocess stage
+            # so that mapper save_obj() gets a hold of changes
+            self._process_key_switches(states, uow)
         
     def process_deletes(self, uowcommit, states):
         assert False
@@ -767,23 +766,9 @@ class ManyToManyDP(DependencyProcessor):
         
     def per_property_flush_actions(self, uow):
         if self._check_reverse(uow):
-            unitofwork.GetDependentObjects(uow, self, False, True)
-        else:
-            DependencyProcessor.per_property_flush_actions(self, uow)
+            return
+        DependencyProcessor.per_property_flush_actions(self, uow)
 
-    def _has_flush_activity(self, uow):
-        if self._check_reverse(uow):
-            return
-        else:
-            DependencyProcessor._has_flush_activity(self, uow)
-            
-    def per_state_flush_actions(self, uow, states, isdelete):
-        if self._check_reverse(uow):
-            return
-        else:
-            DependencyProcessor.\
-                    per_state_flush_actions(self, uow, states, isdelete)
-            
     def per_property_dependencies(self, uow, parent_saves, 
                                                 child_saves, 
                                                 parent_deletes, 

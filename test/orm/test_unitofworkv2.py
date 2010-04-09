@@ -214,6 +214,16 @@ class RudimentaryFlushTest(UOWTest):
                 ),
         )
 
+    def test_m2o_flush_size(self):
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user':relationship(User, passive_updates=True)
+        })
+        sess = create_session()
+        u1 = User(name='ed')
+        sess.add(u1)
+        self._assert_uow_size(sess, 2)
+        
     def test_o2m_flush_size(self):
         mapper(User, users, properties={
             'addresses':relationship(Address),

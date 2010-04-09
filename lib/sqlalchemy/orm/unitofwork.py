@@ -224,8 +224,8 @@ class UOWTransaction(object):
         #sort = topological.sort(self.dependencies, postsort_actions)
         #print "--------------"
         #print self.dependencies
-        #print postsort_actions
-        #print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
+        print postsort_actions
+        print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
         
         # execute
         if self.cycles:
@@ -357,18 +357,17 @@ class ProcessAll(PropertyRecMixin, PostSortRec):
         uow.deps[self.dependency_processor.parent.base_mapper].add(self.dependency_processor)
         
     def execute(self, uow):
-        states = list(self._elements(uow))
+        states = self._elements(uow)
         if self.delete:
             self.dependency_processor.process_deletes(uow, states)
         else:
             self.dependency_processor.process_saves(uow, states)
 
     def per_state_flush_actions(self, uow):
-        # we let the mappers call this,
-        # so that a ProcessAll which is between two mappers that
-        # are part of a cycle (but the ProcessAll itself is not 
-        # in the cycle), also becomes a per-state processor,
-        # and a dependency between the two states as well
+        # this is handled by SaveUpdateAll and DeleteAll,
+        # since a ProcessAll should unconditionally be pulled
+        # into per-state if either the parent/child mappers
+        # are part of a cycle
         return iter([])
         
 class SaveUpdateAll(PostSortRec):
