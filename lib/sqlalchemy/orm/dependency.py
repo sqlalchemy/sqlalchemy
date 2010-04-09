@@ -714,10 +714,9 @@ class DetectKeySwitch(DependencyProcessor):
 
     def prop_has_changes(self, uow, states, isdelete):
         if not isdelete and self.passive_updates:
-            for s in states:
-                if self._pks_changed(uow, s):
-                    return True
-                    
+            d = self._key_switchers(uow, states)
+            return bool(d)
+            
         return False
         
     def process_deletes(self, uowcommit, states):
@@ -731,8 +730,23 @@ class DetectKeySwitch(DependencyProcessor):
         assert self.passive_updates
         self._process_key_switches(states, uowcommit)
     
+    def _key_switchers(self, uow, states):
+        if ('pk_switchers', self) in uow.attributes:
+            switched, notswitched = uow.attributes[('pk_switchers', self)]
+        else:
+            uow.attributes[('pk_switchers', self)] = (switched, notswitched) = (set(), set())
+            
+        allstates = switched.union(notswitched)
+        for s in states:
+            if s not in allstates:
+                if self._pks_changed(uow, s):
+                    switched.add(s)
+                else:
+                    notswitched.add(s)
+        return switched
+            
     def _process_key_switches(self, deplist, uowcommit):
-        switchers = set(s for s in deplist if self._pks_changed(uowcommit, s))
+        switchers = self._key_switchers(uowcommit, deplist)
         if switchers:
             # if primary key values have actually changed somewhere, perform
             # a linear search through the UOW in search of a parent.
