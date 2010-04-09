@@ -2209,3 +2209,84 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert col.table is not None
         
         eq_(MyModel.__mapper__.always_refresh,True)
+
+    def test_single_table_no_propagation(self):
+
+        class IdColumn:
+            id = Column(Integer, primary_key=True)
+
+        class BaseType(Base, IdColumn):
+            __tablename__ = 'base'
+            discriminator = Column('python_type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            value = Column(Integer())
+
+        class SpecificType1(BaseType):
+            __mapper_args__ = dict(polymorphic_identity='type1')
+
+        class SpecificType2(BaseType):
+            __mapper_args__ = dict(polymorphic_identity='type2')
+
+    def test_joined_table_propagation(self):
+
+        class IdColumn:
+            id = Column(Integer, primary_key=True) 
+    
+        class BaseType(Base, IdColumn):
+            __tablename__ = 'base'
+            discriminator = Column('python_type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            value = Column(Integer())  
+
+        class SpecificType1(BaseType):
+            __tablename__ = 'type1'
+            __mapper_args__ = dict(polymorphic_identity='type1')
+
+        class SpecificType2(BaseType):
+            __tablename__ = 'type2'
+            __mapper_args__ = dict(polymorphic_identity='type2')
+
+    def test_tablename_propagation(self):
+        # ie: we want joined table
+        class TableNameMixin:
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()
+
+        class BaseType(Base, TableNameMixin):
+            discriminator = Column('python_type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            value = Column(Integer())  
+            id = Column(Integer, primary_key=True) 
+
+        class SpecificType1(BaseType):
+            __mapper_args__ = dict(polymorphic_identity='type1')
+            id = Column(Integer, primary_key=True) 
+
+        class SpecificType2(BaseType):
+            __mapper_args__ = dict(polymorphic_identity='type2')
+            id = Column(Integer, primary_key=True) 
+            
+    def test_tablename_no_propagation(self):
+        # ie: we want single table
+        
+        class TableNameMixin:
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()
+
+        class BaseType(Base, TableNameMixin):
+            __tablename__ = 'base'
+            discriminator = Column('python_type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            id = Column(Integer, primary_key=True) 
+            value = Column(Integer())  
+
+        class SpecificType1(BaseType):
+            __tablename__ = 'type1'
+            __mapper_args__ = dict(polymorphic_identity='type1')
+
+        class SpecificType2(BaseType):
+            __tablename__ = 'type2'
+            __mapper_args__ = dict(polymorphic_identity='type2')
+
