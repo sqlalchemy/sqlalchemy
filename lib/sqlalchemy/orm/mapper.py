@@ -1260,10 +1260,10 @@ class Mapper(object):
         uow.dependencies.add((saves, deletes))
         
         for dep in self._dependency_processors:
-            dep.per_property_flush_actions(uow)
+            dep.per_property_preprocessors(uow)
             
         for prop in self._props.values():
-            prop.per_property_flush_actions(uow)
+            prop.per_property_preprocessors(uow)
     
     def _per_state_flush_actions(self, uow, states, isdelete):
         

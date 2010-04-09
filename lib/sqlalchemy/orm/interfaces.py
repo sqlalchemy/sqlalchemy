@@ -504,12 +504,9 @@ class MapperProperty(object):
         """
         pass
 
-    def per_property_flush_actions(self, uow):
+    def per_property_preprocessors(self, uow):
         pass
 
-    def per_state_flush_actions(self, uow, state, isdelete):
-        return iter([])
-        
     def is_primary(self):
         """Return True if this ``MapperProperty``'s mapper is the
         primary mapper for its class.

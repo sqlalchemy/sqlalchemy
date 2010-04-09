@@ -58,7 +58,7 @@ class DependencyProcessor(object):
         # TODO: use correct API for this
         return self._get_instrumented_attribute().hasparent(state)
 
-    def per_property_flush_actions(self, uow):
+    def per_property_preprocessors(self, uow):
         """establish actions and dependencies related to a flush.
         
         These actions will operate on all relevant states in
@@ -68,11 +68,10 @@ class DependencyProcessor(object):
         if self.post_update and self._check_reverse(uow):
             return
         
-        unitofwork.GetDependentObjects(uow, self, False, True)
-        unitofwork.GetDependentObjects(uow, self, True, True)
+        uow.register_preprocessor(self, True)
         
         
-    def _has_flush_activity(self, uow):
+    def per_property_flush_actions(self, uow):
         if self.post_update and self._check_reverse(uow):
             return
 
@@ -118,7 +117,7 @@ class DependencyProcessor(object):
         # assertions to ensure this method isn't being
         # called unnecessarily.  can comment these out when 
         # code is stable
-        assert ('has_flush_activity', self) in uow.attributes
+        #assert ('has_flush_activity', self) in uow.attributes
         assert not self.post_update or not self._check_reverse(uow)
         
 
@@ -246,7 +245,7 @@ class DependencyProcessor(object):
     def process_saves(self, uowcommit, states):
         pass
 
-    def _prop_has_changes(self, uowcommit, states):
+    def prop_has_changes(self, uowcommit, states, isdelete):
         for s in states:
             # TODO: add a high speed method 
             # to InstanceState which returns:  attribute
@@ -687,50 +686,52 @@ class DetectKeySwitch(DependencyProcessor):
     
     """
 
-    def per_property_flush_actions(self, uow):
+    def per_property_preprocessors(self, uow):
         if self.prop._reverse_property:
             return
         
-        unitofwork.GetDependentObjects(uow, self, False, False)
+        uow.register_preprocessor(self, False)
 
-    def _has_flush_activity(self, uow):
-        pass
+    def per_property_flush_actions(self, uow):
+        parent_saves = unitofwork.SaveUpdateAll(
+                                        uow, 
+                                        self.parent.base_mapper)
+        after_save = unitofwork.ProcessAll(uow, self, False, False)
+        uow.dependencies.update([
+            (parent_saves, after_save)
+        ])
         
     def per_state_flush_actions(self, uow, states, isdelete):
         pass
         
     def presort_deletes(self, uowcommit, states):
-        assert False
+        pass
 
     def presort_saves(self, uow, states):
-        if self.passive_updates:
-            # for passive updates, register objects in the process stage
-            # so that we avoid ManyToOneDP's registering the object without
-            # the listonly flag in its own preprocess stage (results in UPDATE)
-            # statements being emitted
-            for s in states:
-                if self._pks_changed(uow, s):
-                    parent_saves = unitofwork.SaveUpdateAll(
-                                                    uow, 
-                                                    self.parent.base_mapper)
-                    after_save = unitofwork.ProcessAll(uow, self, False, False)
-                    uow.dependencies.update([
-                        (parent_saves, after_save)
-                    ])
-                    return
-                
-        else:
+        if not self.passive_updates:
             # for non-passive updates, register in the preprocess stage
             # so that mapper save_obj() gets a hold of changes
             self._process_key_switches(states, uow)
+
+    def prop_has_changes(self, uow, states, isdelete):
+        if not isdelete and self.passive_updates:
+            for s in states:
+                if self._pks_changed(uow, s):
+                    return True
+                    
+        return False
         
     def process_deletes(self, uowcommit, states):
         assert False
 
     def process_saves(self, uowcommit, states):
+        # for passive updates, register objects in the process stage
+        # so that we avoid ManyToOneDP's registering the object without
+        # the listonly flag in its own preprocess stage (results in UPDATE)
+        # statements being emitted
         assert self.passive_updates
         self._process_key_switches(states, uowcommit)
-
+    
     def _process_key_switches(self, deplist, uowcommit):
         switchers = set(s for s in deplist if self._pks_changed(uowcommit, s))
         if switchers:
@@ -764,10 +765,10 @@ class DetectKeySwitch(DependencyProcessor):
 
 class ManyToManyDP(DependencyProcessor):
         
-    def per_property_flush_actions(self, uow):
+    def per_property_preprocessors(self, uow):
         if self._check_reverse(uow):
             return
-        DependencyProcessor.per_property_flush_actions(self, uow)
+        DependencyProcessor.per_property_preprocessors(self, uow)
 
     def per_property_dependencies(self, uow, parent_saves, 
                                                 child_saves, 
