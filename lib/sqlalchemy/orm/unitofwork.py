@@ -248,8 +248,8 @@ class UOWTransaction(object):
         #sort = topological.sort(self.dependencies, postsort_actions)
         #print "--------------"
         #print self.dependencies
-        print postsort_actions
-        print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
+        #print postsort_actions
+        #print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
         
         # execute
         if self.cycles:
