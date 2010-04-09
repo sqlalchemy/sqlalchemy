@@ -466,7 +466,7 @@ class SingleCycleTest(UOWTest):
     
         n1.children.append(n2)
 
-        self._assert_uow_size(sess, 4)
+        self._assert_uow_size(sess, 3)
     
         sess.flush()
     
@@ -476,7 +476,7 @@ class SingleCycleTest(UOWTest):
         self._assert_uow_size(sess, 2)
     
         n1.children
-        self._assert_uow_size(sess, 3)
+        self._assert_uow_size(sess, 2)
 
 class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults):
 

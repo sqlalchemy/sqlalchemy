@@ -115,16 +115,12 @@ class DependencyProcessor(object):
         
         """
 
-        # TODO: this check sucks.  somehow get mapper to 
-        # not even call this.
-        if ('has_flush_activity', self) not in uow.attributes:
-            return
+        # assertions to ensure this method isn't being
+        # called unnecessarily.  can comment these out when 
+        # code is stable
+        assert ('has_flush_activity', self) in uow.attributes
+        assert not self.post_update or not self._check_reverse(uow)
         
-        # TODO: why are we calling this ? shouldnt per_property
-        # have stopped us from getting keyhere ?
-        if self.post_update and self._check_reverse(uow):
-            # TODO: coverage here
-            return
 
         # locate and disable the aggregate processors
         # for this dependency

@@ -1265,30 +1265,7 @@ class Mapper(object):
         for prop in self._props.values():
             prop.per_property_flush_actions(uow)
     
-    def _property_iterator(self, mappers):
-        """return an iterator of all MapperProperty objects
-        and a list containing all mappers which use that property,
-        descending through the polymorphic hierarchy of this
-        mapper.
-
-        'mappers' is a set which will limit the traversal
-        to just those mappers.
-
-        """
-        props = set()
-        for mapper in self.polymorphic_iterator():
-            if mapper not in mappers:
-                continue
-
-            for prop in mapper._props.values():
-                if prop not in props:
-                    props.add(prop)
-                    yield prop, [m for m in mappers 
-                                    if m._props.get(prop.key) is prop]
-
     def _per_state_flush_actions(self, uow, states, isdelete):
-        
-        mappers_to_states = util.defaultdict(set)
         
         base_mapper = self.base_mapper
         save_all = unitofwork.SaveUpdateAll(uow, base_mapper)
@@ -1303,18 +1280,7 @@ class Mapper(object):
                 action = unitofwork.SaveUpdateState(uow, state, base_mapper)
                 uow.dependencies.add((action, delete_all))
             
-            mappers_to_states[state.manager.mapper].add(state)
             yield action
-        
-        # TODO: can't we just loop through the frigging entries 
-        # that are already in the uow instead of this goofy 
-        # polymorphic BS ?
-        for prop, mappers in self._property_iterator(set(mappers_to_states)):
-            states_for_prop = []
-            for mapper in mappers:
-                states_for_prop += list(mappers_to_states[mapper])
-            
-            prop.per_state_flush_actions(uow, states_for_prop, isdelete)
         
     def _save_obj(self, states, uowtransaction, postupdate=False, 
                                 post_update_cols=None, single=False):

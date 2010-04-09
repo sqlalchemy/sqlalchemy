@@ -79,6 +79,7 @@ class UOWTransaction(object):
         # information.
         self.attributes = {}
         
+        self.deps = util.defaultdict(set)
         self.mappers = util.defaultdict(set)
         self.presort_actions = {}
         self.postsort_actions = {}
@@ -146,6 +147,16 @@ class UOWTransaction(object):
                     postupdate=True, \
                     post_update_cols=set(post_update_cols))
     
+    @util.memoized_property
+    def _mapper_for_dep(self):
+        return util.PopulateDict(
+                    lambda tup:tup[0]._props.get(tup[1].key) is tup[1].prop
+                )
+    
+    def filter_states_for_dep(self, dep, states):
+        mapper_for_dep = self._mapper_for_dep
+        return [s for s in states if mapper_for_dep[(s.manager.mapper, dep)]]
+        
     def states_for_mapper(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
         for state in self.mappers[mapper]:
@@ -341,6 +352,10 @@ class GetDependentObjects(PropertyRecMixin, PreSortRec):
             return False
 
 class ProcessAll(PropertyRecMixin, PostSortRec):
+    def __init__(self, uow, *args):
+        super(ProcessAll, self).__init__(uow, *args)
+        uow.deps[self.dependency_processor.parent.base_mapper].add(self.dependency_processor)
+        
     def execute(self, uow):
         states = list(self._elements(uow))
         if self.delete:
@@ -368,11 +383,16 @@ class SaveUpdateAll(PostSortRec):
         )
     
     def per_state_flush_actions(self, uow):
+        states = list(uow.states_for_mapper_hierarchy(self.mapper, False, False))
         for rec in self.mapper._per_state_flush_actions(
                             uow, 
-                            uow.states_for_mapper_hierarchy(self.mapper, False, False), 
+                            states, 
                             False):
             yield rec
+            
+        for dep in uow.deps[self.mapper]:
+            states_for_prop = uow.filter_states_for_dep(dep, states)
+            dep.per_state_flush_actions(uow, states_for_prop, False)
         
 class DeleteAll(PostSortRec):
     def __init__(self, uow, mapper):
@@ -386,11 +406,16 @@ class DeleteAll(PostSortRec):
         )
 
     def per_state_flush_actions(self, uow):
+        states = list(uow.states_for_mapper_hierarchy(self.mapper, True, False))
         for rec in self.mapper._per_state_flush_actions(
                             uow, 
-                            uow.states_for_mapper_hierarchy(self.mapper, True, False), 
+                            states, 
                             True):
             yield rec
+            
+        for dep in uow.deps[self.mapper]:
+            states_for_prop = uow.filter_states_for_dep(dep, states)
+            dep.per_state_flush_actions(uow, states_for_prop, True)
 
 class ProcessState(PostSortRec):
     def __init__(self, uow, dependency_processor, delete, state):
