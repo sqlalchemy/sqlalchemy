@@ -2230,21 +2230,27 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_joined_table_propagation(self):
 
         class IdColumn:
-            id = Column(Integer, primary_key=True) 
+            # this one shouldn't propagate
+            id = Column(Integer, primary_key=True)
+
+        class CommonColumn:
+            # this one should propagate
+            timestamp = Column(Integer, primary_key=True) 
     
-        class BaseType(Base, IdColumn):
+        class BaseType(Base, IdColumn, CommonColumn):
             __tablename__ = 'base'
             discriminator = Column('python_type', String(50))
             __mapper_args__= dict(polymorphic_on=discriminator)
-            value = Column(Integer())  
 
         class SpecificType1(BaseType):
             __tablename__ = 'type1'
             __mapper_args__ = dict(polymorphic_identity='type1')
+            id = Column(Integer, ForeignKey('base.id'), primary_key=True)
 
         class SpecificType2(BaseType):
             __tablename__ = 'type2'
             __mapper_args__ = dict(polymorphic_identity='type2')
+            id = Column(Integer, ForeignKey('base.id'), primary_key=True)
 
     def test_tablename_propagation(self):
         # ie: we want joined table
@@ -2261,11 +2267,11 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class SpecificType1(BaseType):
             __mapper_args__ = dict(polymorphic_identity='type1')
-            id = Column(Integer, primary_key=True) 
+            id = Column(Integer, ForeignKey('basetype.id'), primary_key=True)
 
         class SpecificType2(BaseType):
             __mapper_args__ = dict(polymorphic_identity='type2')
-            id = Column(Integer, primary_key=True) 
+            id = Column(Integer, ForeignKey('basetype.id'), primary_key=True)
             
     def test_tablename_no_propagation(self):
         # ie: we want single table
