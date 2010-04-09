@@ -539,11 +539,8 @@ def _as_declarative(cls, classname, dict_):
     mapper_args = {}
     table_args = None
     
-    def _is_mixin(klass):
-        return not _is_mapped_class(klass) and klass is not cls
-    
     for base in cls.__mro__:
-        if _is_mixin(base):
+        if not _is_mapped_class(base) and base is not cls:
             for name in dir(base):
                 if name == '__mapper_args__':
                     if not mapper_args:
