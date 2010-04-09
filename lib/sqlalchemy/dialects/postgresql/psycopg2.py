@@ -68,7 +68,7 @@ from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, \
                                             PGIdentifierPreparer, PGExecutionContext, \
-                                            ENUM, ARRAY
+                                            ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -80,18 +80,18 @@ class _PGNumeric(sqltypes.Numeric):
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            if coltype in (700, 701, 1021, 1022):
+            if coltype in _FLOAT_TYPES:
                 return processors.to_decimal_processor_factory(decimal.Decimal)
-            elif coltype in (1700, 1231):
+            elif coltype in _DECIMAL_TYPES:
                 # pg8000 returns Decimal natively for 1700
                 return None
             else:
                 raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)
         else:
-            if coltype in (700, 701, 1021, 1022):
+            if coltype in _FLOAT_TYPES:
                 # pg8000 returns float natively for 701
                 return None
-            elif coltype in (1700, 1231):
+            elif coltype in _DECIMAL_TYPES:
                 return processors.to_float
             else:
                 raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)

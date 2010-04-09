@@ -1326,11 +1326,12 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             exception_cls = eng.dialect.dbapi.ProgrammingError
         assert_raises(exception_cls, eng.execute, "show transaction isolation level")
     
-    @testing.only_on('postgresql+psycopg2', 
-                        "this assertion isn't used on others, "
-                        "except pg8000 which circumvents it")
+    @testing.fails_on('+zxjdbc', 
+                        "psycopg2/pg8000 specific assertion")
+    @testing.fails_on('pypostgresql', 
+                        "psycopg2/pg8000 specific assertion")
     def test_numeric_raise(self):
-        stmt = text("select 'hi' as hi", typemap={'hi':Numeric})
+        stmt = text("select cast('hi' as char) as hi", typemap={'hi':Numeric})
         assert_raises(
             exc.InvalidRequestError,
             testing.db.execute, stmt
