@@ -3,3 +3,4 @@ syntax:regexp
 ^doc/build/output
 .pyc$
 .orig$
+.egg-info
