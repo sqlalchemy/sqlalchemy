@@ -117,7 +117,6 @@ class DependencyProcessor(object):
         # assertions to ensure this method isn't being
         # called unnecessarily.  can comment these out when 
         # code is stable
-        #assert ('has_flush_activity', self) in uow.attributes
         assert not self.post_update or not self._check_reverse(uow)
         
 

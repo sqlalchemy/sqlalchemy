@@ -13,9 +13,7 @@ from test.orm._fixtures import keywords, addresses, Base, Keyword,  \
             order_items, Item, Order, Node, \
             composite_pk_table, CompositePk
 
-class UOWTest(_fixtures.FixtureTest, testing.AssertsExecutionResults):
-    run_inserts = None
-
+class AssertsUOW(object):
     def _assert_uow_size(self,
         session, 
         expected
@@ -31,6 +29,10 @@ class UOWTest(_fixtures.FixtureTest, testing.AssertsExecutionResults):
         postsort_actions = uow._generate_actions()
         print postsort_actions
         eq_(len(postsort_actions), expected, postsort_actions)
+
+class UOWTest(_fixtures.FixtureTest, testing.AssertsExecutionResults, AssertsUOW):
+    run_inserts = None
+
     
 
 class RudimentaryFlushTest(UOWTest):
@@ -223,7 +225,7 @@ class RudimentaryFlushTest(UOWTest):
         u1 = User(name='ed')
         sess.add(u1)
         self._assert_uow_size(sess, 2)
-        
+
     def test_o2m_flush_size(self):
         mapper(User, users, properties={
             'addresses':relationship(Address),
@@ -488,7 +490,50 @@ class SingleCycleTest(UOWTest):
         n1.children
         self._assert_uow_size(sess, 2)
 
-class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults):
+class SingleCyclePlusAttributeTest(_base.MappedTest, testing.AssertsExecutionResults, AssertsUOW):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('nodes', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+            Column('data', String(30))
+        )
+        
+        Table('foobars', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+        )
+
+    @testing.resolve_artifact_names
+    def test_flush_size(self):
+        class Node(Base):
+            pass
+        class FooBar(Base):
+            pass
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node),
+            'foobars':relationship(FooBar)
+        })
+        mapper(FooBar, foobars)
+
+        sess = create_session()
+        n1 = Node(data='n1')
+        n2 = Node(data='n2')
+        n1.children.append(n2)
+        sess.add(n1)
+        # ensure "foobars" doesn't get yanked in here
+        self._assert_uow_size(sess, 3)
+        
+        n1.foobars.append(FooBar())
+        # saveupdateall/deleteall for FooBar added here,
+        # plus processstate node.foobars 
+        # currently the "all" procs stay in pairs
+        self._assert_uow_size(sess, 6)
+        
+        sess.flush()
+
+class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults, AssertsUOW):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -635,5 +680,4 @@ class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults):
                 lambda ctx:[{'id': n2.id}, {'id': n3.id}]
             ),
         )
-        
-        
+    

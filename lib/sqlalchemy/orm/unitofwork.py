@@ -80,8 +80,9 @@ class UOWTransaction(object):
         self.attributes = {}
         
         # dictionary of mappers to sets of 
-        # DependencyProcessors which have that mapper
-        # as a parent.
+        # DependencyProcessors, which are also 
+        # set to be part of the sorted flush actions,
+        # which have that mapper as a parent.
         self.deps = util.defaultdict(set)
         
         # dictionary of mappers to sets of InstanceState
@@ -151,7 +152,6 @@ class UOWTransaction(object):
     
     def register_preprocessor(self, processor, fromparent):
         self.presort_actions.add(Preprocess(processor, fromparent))
-        self.deps[processor.parent.base_mapper].add(processor)
             
     def register_object(self, state, isdelete=False, listonly=False):
         if not self.session._contains_state(state):
@@ -248,8 +248,8 @@ class UOWTransaction(object):
         #sort = topological.sort(self.dependencies, postsort_actions)
         #print "--------------"
         #print self.dependencies
-        #print postsort_actions
-        #print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
+        print postsort_actions
+        print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
         
         # execute
         if self.cycles:
@@ -360,6 +360,7 @@ class ProcessAll(IterateMappersMixin, PostSortRec):
         self.dependency_processor = dependency_processor
         self.delete = delete
         self.fromparent = fromparent
+        uow.deps[dependency_processor.parent.base_mapper].add(dependency_processor)
         
     def execute(self, uow):
         states = self._elements(uow)
