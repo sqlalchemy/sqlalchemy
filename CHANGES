@@ -132,6 +132,13 @@ CHANGES
     has been changed.  Thanks to Kumar McMillan for the patch.
     [ticket:1071]
     
+  - Repaired missing import in psycopg2._PGNumeric type when 
+    unknown numeric is received.
+
+  - psycopg2/pg8000 dialects now aware of REAL[], FLOAT[], 
+    DOUBLE_PRECISION[], NUMERIC[] return types without
+    raising an exception.
+    
 - oracle
   - Now using cx_oracle output converters so that the
     DBAPI returns natively the kinds of values we prefer:
