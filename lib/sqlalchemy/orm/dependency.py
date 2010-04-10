@@ -10,7 +10,7 @@
 
 from sqlalchemy import sql, util
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy.orm import attributes, exc, sync, unitofwork
+from sqlalchemy.orm import attributes, exc, sync, unitofwork, util as mapperutil
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 
 
@@ -42,21 +42,13 @@ class DependencyProcessor(object):
                     "child are present" %
                      self.prop)
 
-    def _get_instrumented_attribute(self):
-        """Return the ``InstrumentedAttribute`` handled by this
-        ``DependencyProecssor``.
-        
-        """
-        return self.parent.class_manager.get_impl(self.key)
-
     def hasparent(self, state):
         """return True if the given object instance has a parent,
         according to the ``InstrumentedAttribute`` handled by this 
         ``DependencyProcessor``.
         
         """
-        # TODO: use correct API for this
-        return self._get_instrumented_attribute().hasparent(state)
+        return self.parent.class_manager.get_impl(self.key).hasparent(state)
 
     def per_property_preprocessors(self, uow):
         """establish actions and dependencies related to a flush.
@@ -326,7 +318,7 @@ class OneToManyDP(DependencyProcessor):
                 (parent_saves, after_save),
                 (after_save, child_saves),
                 (after_save, child_deletes),
-
+    
                 (child_saves, parent_deletes),
                 (child_deletes, parent_deletes),
 
@@ -397,6 +389,7 @@ class OneToManyDP(DependencyProcessor):
                             uowcommit.register_object(child, isdelete=True)
                         else:
                             uowcommit.register_object(child)
+                
                 if should_null_fks:
                     for child in history.unchanged:
                         if child is not None:
@@ -404,15 +397,23 @@ class OneToManyDP(DependencyProcessor):
         
             
     def presort_saves(self, uowcommit, states):
+        children_added = uowcommit.memo(('children_added', self), set)
+        
         for state in states:
+            pks_changed = self._pks_changed(uowcommit, state)
+            
             history = uowcommit.get_attribute_history(
                                             state, 
                                             self.key, 
-                                            passive=True)
+                                            passive=not pks_changed 
+                                                    or self.passive_updates)
             if history:
                 for child in history.added:
                     if child is not None:
-                        uowcommit.register_object(child)
+                        uowcommit.register_object(child, cancel_delete=True)
+
+                children_added.update(history.added)
+
                 for child in history.deleted:
                     if not self.cascade.delete_orphan:
                         uowcommit.register_object(child, isdelete=False)
@@ -422,11 +423,8 @@ class OneToManyDP(DependencyProcessor):
                             uowcommit.register_object(
                                 attributes.instance_state(c),
                                 isdelete=True)
-            if self._pks_changed(uowcommit, state):
-                if not history:
-                    history = uowcommit.get_attribute_history(
-                                        state, self.key, 
-                                        passive=self.passive_updates)
+
+            if pks_changed:
                 if history:
                     for child in history.unchanged:
                         if child is not None:
@@ -442,6 +440,8 @@ class OneToManyDP(DependencyProcessor):
         # safely for any cascade but is unnecessary if delete cascade
         # is on.
         if self.post_update or not self.passive_deletes == 'all':
+            children_added = uowcommit.memo(('children_added', self), set)
+
             for state in states:
                 history = uowcommit.get_attribute_history(
                                             state, 
@@ -461,7 +461,8 @@ class OneToManyDP(DependencyProcessor):
                                             uowcommit, 
                                             [state])
                     if self.post_update or not self.cascade.delete:
-                        for child in history.unchanged:
+                        for child in set(history.unchanged).\
+                                            difference(children_added):
                             if child is not None:
                                 self._synchronize(
                                             state, 
@@ -472,7 +473,11 @@ class OneToManyDP(DependencyProcessor):
                                             child, 
                                             uowcommit, 
                                             [state])
-    
+                        # technically, we can even remove each child from the
+                        # collection here too.  but this would be a somewhat 
+                        # inconsistent behavior since it wouldn't happen if the old
+                        # parent wasn't deleted but child was moved.
+                            
     def process_saves(self, uowcommit, states):
         for state in states:
             history = uowcommit.get_attribute_history(state, self.key, passive=True)
@@ -731,10 +736,10 @@ class DetectKeySwitch(DependencyProcessor):
         self._process_key_switches(states, uowcommit)
     
     def _key_switchers(self, uow, states):
-        if ('pk_switchers', self) in uow.attributes:
-            switched, notswitched = uow.attributes[('pk_switchers', self)]
-        else:
-            uow.attributes[('pk_switchers', self)] = (switched, notswitched) = (set(), set())
+        switched, notswitched = uow.memo(
+                                        ('pk_switchers', self), 
+                                        lambda: (set(), set())
+                                    )
             
         allstates = switched.union(notswitched)
         for s in states:

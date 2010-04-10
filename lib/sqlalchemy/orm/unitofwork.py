@@ -12,13 +12,12 @@ organizes them in order of dependency, and executes.
 
 """
 
-from sqlalchemy import util, log, topological
+from sqlalchemy import util, topological
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import _state_mapper
 
 # Load lazily
-object_session = None
 _state_session = None
 
 class UOWEventHandler(interfaces.AttributeExtension):
@@ -90,10 +89,10 @@ class UOWTransaction(object):
         # as a parent.
         self.mappers = util.defaultdict(set)
         
-        # a set of Preprocess objects, which gather
+        # a dictionary of Preprocess objects, which gather
         # additional states impacted by the flush
         # and determine if a flush action is needed
-        self.presort_actions = set()
+        self.presort_actions = {}
         
         # dictionary of PostSortRec objects, each 
         # one issues work during the flush within
@@ -121,6 +120,13 @@ class UOWTransaction(object):
         
         return state in self.states and self.states[state][0]
     
+    def memo(self, key, callable_):
+        if key in self.attributes:
+            return self.attributes[key]
+        else:
+            self.attributes[key] = ret = callable_()
+            return ret
+            
     def remove_state_actions(self, state):
         """remove pending actions for a state from the uowtransaction."""
         
@@ -139,10 +145,10 @@ class UOWTransaction(object):
             # if the cached lookup was "passive" and now we want non-passive, do a non-passive
             # lookup and re-cache
             if cached_passive and not passive:
-                history = attributes.get_state_history(state, key, passive=False)
+                history = state.get_history(key, passive=False)
                 self.attributes[hashkey] = (history, passive)
         else:
-            history = attributes.get_state_history(state, key, passive=passive)
+            history = state.get_history(key, passive=passive)
             self.attributes[hashkey] = (history, passive)
 
         if not history or not state.get_impl(key).uses_objects:
@@ -151,9 +157,12 @@ class UOWTransaction(object):
             return history.as_state()
     
     def register_preprocessor(self, processor, fromparent):
-        self.presort_actions.add(Preprocess(processor, fromparent))
+        key = (processor, fromparent)
+        if key not in self.presort_actions:
+            self.presort_actions[key] = Preprocess(processor, fromparent)
             
-    def register_object(self, state, isdelete=False, listonly=False):
+    def register_object(self, state, isdelete=False, 
+                            listonly=False, cancel_delete=False):
         if not self.session._contains_state(state):
             return
 
@@ -166,11 +175,8 @@ class UOWTransaction(object):
             self.mappers[mapper].add(state)
             self.states[state] = (isdelete, listonly)
         else:
-            existing_isdelete, existing_listonly = self.states[state]
-            self.states[state] = (
-                existing_isdelete or isdelete,
-                existing_listonly and listonly
-            )
+            if not listonly and (isdelete or cancel_delete):
+                self.states[state] = (isdelete, False)
     
     def issue_post_update(self, state, post_update_cols):
         mapper = state.manager.mapper.base_mapper
@@ -180,11 +186,23 @@ class UOWTransaction(object):
     
     @util.memoized_property
     def _mapper_for_dep(self):
+        """return a dynamic mapping of (Mapper, DependencyProcessor) to 
+        True or False, indicating if the DependencyProcessor operates 
+        on objects of that Mapper.
+        
+        The result is stored in the dictionary persistently once
+        calculated.
+        
+        """
         return util.PopulateDict(
                     lambda tup:tup[0]._props.get(tup[1].key) is tup[1].prop
                 )
     
     def filter_states_for_dep(self, dep, states):
+        """Filter the given list of InstanceStates to those relevant to the 
+        given DependencyProcessor.
+        
+        """
         mapper_for_dep = self._mapper_for_dep
         return [s for s in states if mapper_for_dep[(s.manager.mapper, dep)]]
         
@@ -196,12 +214,16 @@ class UOWTransaction(object):
                     yield state
     
     def _generate_actions(self):
+        """Generate the full, unsorted collection of PostSortRecs as
+        well as dependency pairs for this UOWTransaction.
+        
+        """
         # execute presort_actions, until all states
         # have been processed.   a presort_action might
         # add new states to the uow.
         while True:
             ret = False
-            for action in list(self.presort_actions):
+            for action in list(self.presort_actions.values()):
                 if action.execute(self):
                     ret = True
             if not ret:
@@ -211,7 +233,7 @@ class UOWTransaction(object):
         self.cycles = cycles = topological.find_cycles(
                                         self.dependencies, 
                                         self.postsort_actions.values())
-
+        
         if cycles:
             # if yes, break the per-mapper actions into
             # per-state actions
@@ -248,7 +270,7 @@ class UOWTransaction(object):
         #sort = topological.sort(self.dependencies, postsort_actions)
         #print "--------------"
         #print self.dependencies
-        #print postsort_actions
+        #print list(sort)
         #print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
         
         # execute
@@ -280,8 +302,6 @@ class UOWTransaction(object):
                 # if listonly:
                 #   debug... would like to see how many do this
                 self.session._register_newly_persistent(state)
-
-log.class_logger(UOWTransaction)
 
 class IterateMappersMixin(object):
     def _mappers(self, uow):

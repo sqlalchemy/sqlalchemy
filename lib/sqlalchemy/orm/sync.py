@@ -75,8 +75,7 @@ def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
         history = uowcommit.get_attribute_history(source, prop.key, passive=True)
-        if len(history.deleted):
-            return True
+        return bool(history.deleted)
     else:
         return False
 

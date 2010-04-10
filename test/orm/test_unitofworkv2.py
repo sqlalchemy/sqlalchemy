@@ -14,10 +14,7 @@ from test.orm._fixtures import keywords, addresses, Base, Keyword,  \
             composite_pk_table, CompositePk
 
 class AssertsUOW(object):
-    def _assert_uow_size(self,
-        session, 
-        expected
-    ):
+    def _get_test_uow(self, session):
         uow = unitofwork.UOWTransaction(session)
         deleted = set(session._deleted)
         new = set(session._new)
@@ -26,14 +23,19 @@ class AssertsUOW(object):
             uow.register_object(s)
         for d in deleted:
             uow.register_object(d, isdelete=True)
+        return uow
+        
+    def _assert_uow_size(self,
+        session, 
+        expected
+    ):
+        uow = self._get_test_uow(session)
         postsort_actions = uow._generate_actions()
         print postsort_actions
         eq_(len(postsort_actions), expected, postsort_actions)
 
 class UOWTest(_fixtures.FixtureTest, testing.AssertsExecutionResults, AssertsUOW):
     run_inserts = None
-
-    
 
 class RudimentaryFlushTest(UOWTest):
 
@@ -215,7 +217,7 @@ class RudimentaryFlushTest(UOWTest):
                     {'id':u1.id}
                 ),
         )
-
+    
     def test_m2o_flush_size(self):
         mapper(User, users)
         mapper(Address, addresses, properties={

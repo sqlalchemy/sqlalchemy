@@ -1156,7 +1156,6 @@ class UnsavedOrphansTest3(_base.MappedTest):
         assert c not in s, "Should expunge customer when both parents are gone"
 
         
-        
 class DoubleParentOrphanTest(_base.MappedTest):
     """test orphan detection for an entity with two parent relationships"""
 
@@ -1276,6 +1275,151 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
         eq_(sess.query(A).get(a1.id),
             A(name='a1', bs=[B(name='b1'), B(name='b2'), B(name='b3')]))
 
+class O2MConflictTest(_base.MappedTest):
+    """test that O2M dependency detects a change in parent, does the
+    right thing, and even updates the collection/attribute.
+    
+    """
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("parent", metadata,
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True)
+        )
+        Table("child", metadata,
+            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('parent_id', Integer, ForeignKey('parent.id'), nullable=False)
+        )
+    
+    @classmethod
+    def setup_classes(cls):
+        class Parent(_base.ComparableEntity):
+            pass
+        class Child(_base.ComparableEntity):
+            pass
+    
+    @testing.resolve_artifact_names
+    def _do_delete_old_test(self):
+        sess = create_session()
+        
+        p1, p2, c1 = Parent(), Parent(), Child()
+        if Parent.child.property.uselist:
+            p1.child.append(c1)
+        else:
+            p1.child = c1
+        sess.add_all([p1, c1])
+        sess.flush()
+        
+        sess.delete(p1)
+        
+        if Parent.child.property.uselist:
+            p2.child.append(c1)
+        else:
+            p2.child = c1
+        sess.add(p2)
+
+        sess.flush()
+        eq_(sess.query(Child).filter(Child.parent_id==p2.id).all(), [c1])
+
+    @testing.resolve_artifact_names
+    def _do_move_test(self):
+        sess = create_session()
+
+        p1, p2, c1 = Parent(), Parent(), Child()
+        if Parent.child.property.uselist:
+            p1.child.append(c1)
+        else:
+            p1.child = c1
+        sess.add_all([p1, c1])
+        sess.flush()
+
+        if Parent.child.property.uselist:
+            p2.child.append(c1)
+        else:
+            p2.child = c1
+        sess.add(p2)
+
+        sess.flush()
+        eq_(sess.query(Child).filter(Child.parent_id==p2.id).all(), [c1])
+        
+    @testing.resolve_artifact_names
+    def test_o2o_delete_old(self):
+        mapper(Parent, parent, properties={
+            'child':relationship(Child, uselist=False)
+        })
+        mapper(Child, child)
+        self._do_delete_old_test()
+        self._do_move_test()
+
+    @testing.resolve_artifact_names
+    def test_o2m_delete_old(self):
+        mapper(Parent, parent, properties={
+            'child':relationship(Child, uselist=True)
+        })
+        mapper(Child, child)
+        self._do_delete_old_test()
+        self._do_move_test()
+
+    @testing.resolve_artifact_names
+    def test_o2o_backref_delete_old(self):
+        mapper(Parent, parent, properties={
+            'child':relationship(Child, uselist=False, backref='parent')
+        })
+        mapper(Child, child)
+        self._do_delete_old_test()
+        self._do_move_test()
+        
+    @testing.resolve_artifact_names
+    def test_o2o_delcascade_delete_old(self):
+        mapper(Parent, parent, properties={
+            'child':relationship(Child, uselist=False, cascade="all, delete")
+        })
+        mapper(Child, child)
+        self._do_delete_old_test()
+        self._do_move_test()
+
+    @testing.resolve_artifact_names
+    def test_o2o_delorphan_delete_old(self):
+        mapper(Parent, parent, properties={
+            'child':relationship(Child, uselist=False, cascade="all, delete, delete-orphan")
+        })
+        mapper(Child, child)
+        self._do_delete_old_test()
+        self._do_move_test()
+
+    @testing.resolve_artifact_names
+    def test_o2o_delorphan_backref_delete_old(self):
+        mapper(Parent, parent, properties={
+            'child':relationship(Child, uselist=False, 
+                                        cascade="all, delete, delete-orphan", 
+                                        backref='parent')
+        })
+        mapper(Child, child)
+        self._do_delete_old_test()
+        self._do_move_test()
+
+    @testing.resolve_artifact_names
+    def test_o2o_backref_delorphan_delete_old(self):
+        mapper(Parent, parent)
+        mapper(Child, child, properties = {
+            'parent' : relationship(Parent, uselist=False, single_parent=True, 
+                                backref=backref('child', uselist=False), 
+                                cascade="all,delete,delete-orphan")
+        })
+        self._do_delete_old_test()
+        self._do_move_test()
+
+    @testing.resolve_artifact_names
+    def test_o2m_backref_delorphan_delete_old(self):
+        mapper(Parent, parent)
+        mapper(Child, child, properties = {
+            'parent' : relationship(Parent, uselist=False, single_parent=True, 
+                                backref=backref('child', uselist=True), 
+                                cascade="all,delete,delete-orphan")
+        })
+        self._do_delete_old_test()
+        self._do_move_test()
+        
 
 class PartialFlushTest(_base.MappedTest):
     """test cascade behavior as it relates to object lists passed to flush().
