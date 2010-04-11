@@ -134,7 +134,16 @@ CHANGES
     - STRING/FIXED_CHAR now convert to unicode natively.
       SQLAlchemy's String types then don't need to 
       apply any kind of conversions.
-    
+
+- firebird
+   - The functionality of result.rowcount is now disabled
+     by default, and can be re-enabled using the 'enable_rowcount'
+     flag with create_engine(), as well as the 'enable_rowcount'
+     execution context flag on a per-execute basis.  This because 
+     cursor.rowcount requires cursor access (can't be evaluated 
+     lazily since the result auto-closes) and also incurs an 
+     expensive round-trip.  
+     
 - examples
   - Updated attribute_shard.py example to use a more robust
     method of searching a Query for binary expressions which
