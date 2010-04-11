@@ -35,6 +35,10 @@ CHANGES
     as the sorting functions now require hashable objects
     only.  [ticket:1756]
     
+- engines
+  - The C extension now also works with DBAPIs which use custom
+    sequences as row (and not only tuples). [ticket:1757]
+
 - sql
   - Restored some bind-labeling logic from 0.5 which ensures
     that tables with column names that overlap another column
