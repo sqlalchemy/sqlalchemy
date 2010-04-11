@@ -2892,18 +2892,13 @@ class Join(FromClause):
           select, for columns that are calculated to be "equivalent"
           based on the join criterion of this :class:`Join`. This will
           recursively apply to any joins directly nested by this one
-          as well.  This flag is specific to a particular use case
-          by the ORM and is deprecated as of 0.6.
+          as well.
 
         :param \**kwargs: all other kwargs are sent to the 
           underlying :func:`select()` function.
 
         """
         if fold_equivalents:
-            global sql_util
-            if not sql_util:
-                from sqlalchemy.sql import util as sql_util
-            util.warn_deprecated("fold_equivalents is deprecated.")
             collist = sql_util.folded_equivalents(self)
         else:
             collist = [self.left, self.right]
