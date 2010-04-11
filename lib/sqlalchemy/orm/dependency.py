@@ -13,15 +13,6 @@ import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.orm import attributes, exc, sync, unitofwork, util as mapperutil
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 
-
-def create_dependency_processor(prop):
-    types = {
-        ONETOMANY : OneToManyDP,
-        MANYTOONE: ManyToOneDP,
-        MANYTOMANY : ManyToManyDP,
-    }
-    return types[prop.direction](prop)
-
 class DependencyProcessor(object):
     def __init__(self, prop):
         self.prop = prop
@@ -41,7 +32,11 @@ class DependencyProcessor(object):
                     "No target attributes to populate between parent and "
                     "child are present" %
                      self.prop)
-
+    
+    @classmethod
+    def from_relationship(cls, prop):
+        return _direction_to_processor[prop.direction](prop)
+        
     def hasparent(self, state):
         """return True if the given object instance has a parent,
         according to the ``InstrumentedAttribute`` handled by this 
@@ -1009,4 +1004,10 @@ class ManyToManyDP(DependencyProcessor):
                             state, 
                             self.parent, 
                             self.prop.synchronize_pairs)
+
+_direction_to_processor = {
+    ONETOMANY : OneToManyDP,
+    MANYTOONE: ManyToOneDP,
+    MANYTOMANY : ManyToManyDP,
+}
 

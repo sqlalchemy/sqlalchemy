@@ -1194,7 +1194,8 @@ class RelationshipProperty(StrategizedProperty):
             self.uselist = self.direction is not MANYTOONE
 
         if not self.viewonly:
-            self._dependency_processor = dependency.create_dependency_processor(self)
+            self._dependency_processor = \
+                        dependency.DependencyProcessor.from_relationship(self)
     
     @util.memoized_property
     def _use_get(self):
