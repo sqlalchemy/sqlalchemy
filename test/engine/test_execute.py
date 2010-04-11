@@ -181,7 +181,28 @@ class LogTest(TestBase):
             "0x...%s" % hex(id(eng.pool))[-4:],
         )
         
-    
+class RowInterpTest(TestBase):
+    def test_nontuple_row(self):
+        """ensure the C version of BaseRowProxy handles 
+        duck-type-dependent rows."""
+        
+        from sqlalchemy.engine import RowProxy
+
+        class MyList(object):
+            def __init__(self, l):
+                self.l = l
+
+            def __len__(self):
+                return len(self.l)
+
+            def __getitem__(self, i):
+                return list.__getitem__(self.l, i)
+
+        proxy = RowProxy(object(), MyList(['value']), [None], {'key': (None, 0), 0: (None, 0)})
+        eq_(list(proxy), ['value'])
+        eq_(proxy[0], 'value')
+        eq_(proxy['key'], 'value')
+        
 class ProxyConnectionTest(TestBase):
 
     @testing.fails_on('firebird', 'Data type unknown')
