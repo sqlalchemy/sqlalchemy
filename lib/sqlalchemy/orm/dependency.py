@@ -278,8 +278,9 @@ class DependencyProcessor(object):
         
         """
         for p in self.prop._reverse_property:
-            if not p.viewonly and p._dependency_processor:
-                return p.key < self.key
+            if not p.viewonly and p._dependency_processor and \
+                uow.has_dep(p._dependency_processor):
+                return True
         else:
             return False
 

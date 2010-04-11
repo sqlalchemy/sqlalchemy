@@ -156,6 +156,9 @@ class UOWTransaction(object):
         else:
             return history.as_state()
     
+    def has_dep(self, processor):
+        return (processor, True) in self.presort_actions
+        
     def register_preprocessor(self, processor, fromparent):
         key = (processor, fromparent)
         if key not in self.presort_actions:

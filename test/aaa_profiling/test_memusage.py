@@ -301,7 +301,7 @@ class MemUsageTest(EnsureZeroed):
             # dont need to clear_mappers()
             del B
             del A
-
+            
         metadata.create_all()
         try:
             go()
