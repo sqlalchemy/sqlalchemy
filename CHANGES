@@ -68,6 +68,10 @@ CHANGES
     an UPDATE.  Test coverage which wasn't present in 0.5
     has been added.  [ticket:1755]
 
+  - somejoin.select(fold_equivalents=True) is no longer 
+    deprecated, and will eventually be rolled into a more 
+    comprehensive version of the feature for [ticket:1729].
+    
   - the Numeric type raises an *enormous* warning when expected
     to convert floats to Decimal from a DBAPI that returns floats.
     This includes SQLite, Oracle, Sybase, MS-SQL.
