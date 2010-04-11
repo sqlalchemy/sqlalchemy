@@ -34,6 +34,31 @@ CHANGES
   - id(obj) is no longer used internally within topological.py,
     as the sorting functions now require hashable objects
     only.  [ticket:1756]
+
+  - The ORM will set the docstring of all generated descriptors
+    to None by default.  This can be overridden using 'doc'
+    (or if using Sphinx, attribute docstrings work too).
+    
+  - Added kw argument 'doc' to all mapper property callables 
+    as well as Column().  Will assemble the string 'doc' as 
+    the '__doc__' attribute on the descriptor.  
+
+  - Usage of version_id_col on a backend that supports 
+    cursor.rowcount for execute() but not executemany() now works
+    when a delete is issued (already worked for saves, since those
+    don't use executemany()). For a backend that doesn't support 
+    cursor.rowcount at all, a warning is emitted the same
+    as with saves.  [ticket:1761]
+
+  - The ORM now short-term caches the "compiled" form of
+    insert() and update() constructs when flushing lists of 
+    objects of all the same class, thereby avoiding redundant
+    compilation per individual INSERT/UPDATE within an 
+    individual flush() call.
+    
+  - internal getattr(), setattr(), getcommitted() methods
+    on ColumnProperty, CompositeProperty, RelationshipProperty
+    have been underscored, signature has changed.
     
 - engines
   - The C extension now also works with DBAPIs which use custom
@@ -46,6 +71,31 @@ CHANGES
     errors if column._label is used as a bind name during
     an UPDATE.  Test coverage which wasn't present in 0.5
     has been added.  [ticket:1755]
+
+  - somejoin.select(fold_equivalents=True) is no longer 
+    deprecated, and will eventually be rolled into a more 
+    comprehensive version of the feature for [ticket:1729].
+    
+  - the Numeric type raises an *enormous* warning when expected
+    to convert floats to Decimal from a DBAPI that returns floats.
+    This includes SQLite, Oracle, Sybase, MS-SQL.
+    [ticket:1759]
+
+  - Fixed an error in expression typing which caused an endless
+    loop for expressions with two NULL types.
+  
+  - Fixed bug in execution_options() feature whereby the existing
+    Transaction and other state information from the parent 
+    connection would not be propagated to the sub-connection.
+
+  - Added new 'compiled_cache' execution option.  A dictionary 
+    where Compiled objects will be cached when the Connection
+    compiles a clause expression into a dialect- and parameter- 
+    specific Compiled object.  It is the user's responsibility to
+    manage the size of this dictionary, which will have keys
+    corresponding to the dialect, clause element, the column
+    names within the VALUES or SET clause of an INSERT or UPDATE, 
+    as well as the "batch" mode for an INSERT or UPDATE statement.
     
 - ext
   - the compiler extension now allows @compiles decorators
@@ -57,6 +107,34 @@ CHANGES
     if a non-mapped class attribute is referenced in the
     string-based relationship() arguments.
 
+  - Further reworked the "mixin" logic in declarative to 
+    additionally allow __mapper_args__ as a @classproperty
+    on a mixin, such as to dynamically assign polymorphic_identity.
+
+- postgresql
+  - Postgresql now reflects sequence names associated with 
+    SERIAL columns correctly, after the name of of the sequence
+    has been changed.  Thanks to Kumar McMillan for the patch.
+    [ticket:1071]
+    
+  - Repaired missing import in psycopg2._PGNumeric type when 
+    unknown numeric is received.
+
+  - psycopg2/pg8000 dialects now aware of REAL[], FLOAT[], 
+    DOUBLE_PRECISION[], NUMERIC[] return types without
+    raising an exception.
+    
+- oracle
+  - Now using cx_oracle output converters so that the
+    DBAPI returns natively the kinds of values we prefer:
+    - NUMBER values with positive precision + scale convert
+      to cx_oracle.STRING and then to Decimal.   This 
+      allows perfect precision for the Numeric type when
+      using cx_oracle.  [ticket:1759]
+    - STRING/FIXED_CHAR now convert to unicode natively.
+      SQLAlchemy's String types then don't need to 
+      apply any kind of conversions.
+    
 - examples
   - Updated attribute_shard.py example to use a more robust
     method of searching a Query for binary expressions which

@@ -535,43 +535,46 @@ def _as_declarative(cls, classname, dict_):
     dict_ = dict(dict_)
 
     column_copies = dict()
-    unmapped_mixins = False
-    for base in cls.__bases__:
-        names = dir(base)
-        if not _is_mapped_class(base):
-            unmapped_mixins = True
-            for name in names:
-                obj = getattr(base,name, None)
-                if isinstance(obj, Column):
-                    if obj.foreign_keys:
-                        raise exceptions.InvalidRequestError(
-                            "Columns with foreign keys to other columns "
-                            "are not allowed on declarative mixins at this time."
-                        )
-                    dict_[name]=column_copies[obj]=obj.copy()
-                elif isinstance(obj, RelationshipProperty):
-                    raise exceptions.InvalidRequestError(
-                                        "relationships are not allowed on "
-                                        "declarative mixins at this time.")
-
-    # doing it this way enables these attributes to be descriptors
-    get_mapper_args = '__mapper_args__' in dict_
-    get_table_args = '__table_args__' in dict_
-    if unmapped_mixins:
-        get_mapper_args = get_mapper_args or getattr(cls,'__mapper_args__',None)
-        get_table_args = get_table_args or getattr(cls,'__table_args__',None)
-        tablename = getattr(cls,'__tablename__',None)
-        if tablename:
-            # subtle: if tablename is a descriptor here, we actually
-            # put the wrong value in, but it serves as a marker to get
-            # the right value value...
-            dict_['__tablename__']=tablename
-
-    # now that we know whether or not to get these, get them from the class
-    # if we should, enabling them to be decorators
-    mapper_args = get_mapper_args and cls.__mapper_args__ or {}
-    table_args = get_table_args and cls.__table_args__ or None
+    mixin_table_args = None
+    mapper_args = {}
+    table_args = None
     
+    def _is_mixin(klass):
+        return not _is_mapped_class(klass) and klass is not cls
+    
+    for base in cls.__mro__:
+        if _is_mixin(base):
+            for name in dir(base):
+                if name == '__mapper_args__':
+                    if not mapper_args:
+                        mapper_args = cls.__mapper_args__
+                elif name == '__table_args__':
+                    if not table_args:
+                        table_args = mixin_table_args = cls.__table_args__
+                elif name == '__tablename__':
+                    if '__tablename__' not in dict_:
+                        dict_['__tablename__'] = cls.__tablename__
+                else:
+                    obj = getattr(base,name, None)
+                    if isinstance(obj, Column):
+                        if obj.foreign_keys:
+                            raise exceptions.InvalidRequestError(
+                                "Columns with foreign keys to other columns "
+                                "are not allowed on declarative mixins at this time."
+                            )
+                        dict_[name]=column_copies[obj]=obj.copy()
+                    elif isinstance(obj, RelationshipProperty):
+                        raise exceptions.InvalidRequestError(
+                                            "relationships are not allowed on "
+                                            "declarative mixins at this time.")
+        elif base is cls:
+            if '__mapper_args__' in dict_:
+                mapper_args = cls.__mapper_args__
+            if '__table_args__' in dict_:
+                table_args = cls.__table_args__
+            if '__tablename__' in dict_:
+                dict_['__tablename__'] = cls.__tablename__
+                
     # make sure that column copies are used rather than the original columns
     # from any mixins
     for k, v in mapper_args.iteritems():
@@ -681,7 +684,7 @@ def _as_declarative(cls, classname, dict_):
         if table is None:
             # single table inheritance.
             # ensure no table args
-            if table_args is not None:
+            if table_args is not None and table_args is not mixin_table_args:
                 raise exceptions.ArgumentError(
                     "Can't place __table_args__ on an inherited class with no table."
                     )

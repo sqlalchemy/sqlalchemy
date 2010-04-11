@@ -80,6 +80,10 @@ from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, VARCHAR, \
         CHAR, TEXT, FLOAT, NUMERIC, \
         DATE, BOOLEAN
 
+_DECIMAL_TYPES = (1700, 1231)
+_FLOAT_TYPES = (700, 701, 1021, 1022)
+
+
 class REAL(sqltypes.Float):
     __visit_name__ = "REAL"
 
@@ -814,7 +818,8 @@ class PGDialect(default.DefaultDialect):
         result = connection.execute(
             sql.text(u"SELECT relname FROM pg_class c "
                 "WHERE relkind = 'r' "
-                "AND '%s' = (select nspname from pg_namespace n where n.oid = c.relnamespace) " %
+                "AND '%s' = (select nspname from pg_namespace n "
+                "where n.oid = c.relnamespace) " %
                 current_schema,
                 typemap = {'relname':sqltypes.Unicode}
             )
@@ -832,7 +837,8 @@ class PGDialect(default.DefaultDialect):
         SELECT relname
         FROM pg_class c
         WHERE relkind = 'v'
-          AND '%(schema)s' = (select nspname from pg_namespace n where n.oid = c.relnamespace)
+          AND '%(schema)s' = (select nspname from pg_namespace n 
+          where n.oid = c.relnamespace)
         """ % dict(schema=current_schema)
         # Py3K
         #view_names = [row[0] for row in connection.execute(s)]
@@ -870,7 +876,8 @@ class PGDialect(default.DefaultDialect):
         SQL_COLS = """
             SELECT a.attname,
               pg_catalog.format_type(a.atttypid, a.atttypmod),
-              (SELECT substring(d.adsrc for 128) FROM pg_catalog.pg_attrdef d
+              (SELECT substring(pg_catalog.pg_get_expr(d.adbin, d.adrelid) for 128) 
+                FROM pg_catalog.pg_attrdef d
                WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum AND a.atthasdef)
               AS DEFAULT,
               a.attnotnull, a.attnum, a.attrelid as table_oid

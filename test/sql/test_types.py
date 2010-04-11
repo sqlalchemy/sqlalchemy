@@ -275,8 +275,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         """assert expected values for 'native unicode' mode"""
        
         if \
-	     (testing.against('mssql+pyodbc') and not testing.db.dialect.freetds) or \
-              testing.against('oracle+cx_oracle'):
+	     (testing.against('mssql+pyodbc') and not testing.db.dialect.freetds):
             assert testing.db.dialect.returns_unicode_strings == 'conditional'
             return
         
@@ -296,6 +295,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                 ('mysql','mysqlconnector'),
                 ('sqlite','pysqlite'),
                 ('oracle','zxjdbc'),
+                ('oracle','cx_oracle'),
             )), \
             "name: %s driver %s returns_unicode_strings=%s" % \
                                         (testing.db.name, 
@@ -481,16 +481,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             eq_(a, b)
 
             x = utf8_row['plain_varchar_no_coding_error']
-            if testing.against('oracle+cx_oracle'):
-                # TODO: not sure yet what produces this exact string as of yet
-                # ('replace' does not AFAICT)
-                eq_(
-                      x,
-                      'Alors vous imaginez ma surprise, au lever du jour, quand une '
-                      'drole de petit voix m?a reveille. Elle disait: < S?il vous plait? '
-                      'dessine-moi un mouton! >'
-                 )
-            elif testing.against('mssql+pyodbc') and not testing.db.dialect.freetds:
+            if testing.against('mssql+pyodbc') and not testing.db.dialect.freetds:
                 # TODO: no clue what this is
                 eq_(
                       x,
@@ -893,6 +884,9 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         expr = column('bar', Integer) - 3
         
         eq_(expr.type._type_affinity, Integer)
+
+        expr = bindparam('bar') + bindparam('foo')
+        eq_(expr.type, types.NULLTYPE)
         
     def test_distinct(self):
         s = select([distinct(test_table.c.avalue)])
@@ -903,6 +897,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type
+    
 
 class DateTest(TestBase, AssertsExecutionResults):
     @classmethod
@@ -1057,6 +1052,7 @@ class NumericTest(TestBase):
     def teardown(self):
         metadata.drop_all()
         
+    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")    
     def _do_test(self, type_, input_, output, filter_ = None):
         t = Table('t', metadata, Column('x', type_))
         t.create()
@@ -1067,10 +1063,10 @@ class NumericTest(TestBase):
         if filter_:
             result = set(filter_(x) for x in result)
             output = set(filter_(x) for x in output)
-        print result
-        print output
+        #print result
+        #print output
         eq_(result, output)
-        
+    
     def test_numeric_as_decimal(self):
         self._do_test(
             Numeric(precision=8, scale=4),
@@ -1171,7 +1167,6 @@ class NumericTest(TestBase):
         )
     
     @testing.fails_on('sqlite', 'TODO')
-    @testing.fails_on('oracle', 'TODO')
     @testing.fails_on('postgresql+pg8000', 'TODO')
     @testing.fails_on("firebird", "Precision must be from 1 to 18")
     @testing.fails_on("sybase+pysybase", "TODO")

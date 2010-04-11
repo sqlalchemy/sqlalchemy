@@ -228,7 +228,21 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
             ).scalar()
             eq_(round_decimal(ret, 9), result)
     
-    
+    @testing.provide_metadata
+    def test_arrays(self):
+        t1 = Table('t', metadata, 
+            Column('x', postgresql.ARRAY(Float)),
+            Column('y', postgresql.ARRAY(postgresql.REAL)),
+            Column('z', postgresql.ARRAY(postgresql.DOUBLE_PRECISION)),
+            Column('q', postgresql.ARRAY(Numeric))
+        )
+        metadata.create_all()
+        t1.insert().execute(x=[5], y=[5], z=[6], q=[6.4])
+        row = t1.select().execute().first()
+        eq_(
+            row, 
+            ([5], [5], [6], [decimal.Decimal("6.4")])
+        )
         
 class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     __only_on__ = 'postgresql'
@@ -1069,6 +1083,35 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             t.drop(checkfirst=True)
 
+    def test_renamed_sequence_reflection(self):
+        m1 = MetaData(testing.db)
+        t = Table('t', m1, 
+            Column('id', Integer, primary_key=True)
+        )
+        m1.create_all()
+        try:
+            m2 = MetaData(testing.db)
+            t2 = Table('t', m2, autoload=True, implicit_returning=False)
+            eq_(t2.c.id.server_default.arg.text, "nextval('t_id_seq'::regclass)")
+            
+            r = t2.insert().execute()
+            eq_(r.inserted_primary_key, [1])
+            
+            testing.db.connect().\
+                            execution_options(autocommit=True).\
+                            execute("alter table t_id_seq rename to foobar_id_seq")
+                            
+            m3 = MetaData(testing.db)
+            t3 = Table('t', m3, autoload=True, implicit_returning=False)
+            eq_(t3.c.id.server_default.arg.text, "nextval('foobar_id_seq'::regclass)")
+
+            r = t3.insert().execute()
+            eq_(r.inserted_primary_key, [2])
+            
+        finally:
+            m1.drop_all()
+        
+        
     def test_distinct_on(self):
         t = Table('mytable', MetaData(testing.db),
                   Column('id', Integer, primary_key=True),
@@ -1282,8 +1325,18 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         else:
             exception_cls = eng.dialect.dbapi.ProgrammingError
         assert_raises(exception_cls, eng.execute, "show transaction isolation level")
-
-
+    
+    @testing.fails_on('+zxjdbc', 
+                        "psycopg2/pg8000 specific assertion")
+    @testing.fails_on('pypostgresql', 
+                        "psycopg2/pg8000 specific assertion")
+    def test_numeric_raise(self):
+        stmt = text("select cast('hi' as char) as hi", typemap={'hi':Numeric})
+        assert_raises(
+            exc.InvalidRequestError,
+            testing.db.execute, stmt
+        )
+        
 class TimezoneTest(TestBase):
     """Test timezone-aware datetimes.
 

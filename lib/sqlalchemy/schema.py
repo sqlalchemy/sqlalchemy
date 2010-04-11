@@ -535,6 +535,10 @@ class Column(SchemaItem, expression.ColumnClause):
             Contrast this argument to ``server_default`` which creates a 
             default generator on the database side.
         
+        :param doc: optional String that can be used by the ORM or similar
+            to document attributes.   This attribute does not render SQL
+            comments (a future attribute 'comment' will achieve that).
+            
         :param key: An optional string identifier which will identify this
             ``Column`` object on the :class:`Table`. When a key is provided,
             this is the only identifier referencing the ``Column`` within the
@@ -651,6 +655,7 @@ class Column(SchemaItem, expression.ColumnClause):
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
         self.quote = kwargs.pop('quote', None)
+        self.doc = kwargs.pop('doc', None)
         self.onupdate = kwargs.pop('onupdate', None)
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = set()

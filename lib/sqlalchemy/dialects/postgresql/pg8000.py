@@ -26,23 +26,24 @@ from sqlalchemy import util, exc
 from sqlalchemy import processors
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, \
-                PGCompiler, PGIdentifierPreparer, PGExecutionContext
+                PGCompiler, PGIdentifierPreparer, PGExecutionContext,\
+                _DECIMAL_TYPES, _FLOAT_TYPES
 
 class _PGNumeric(sqltypes.Numeric):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            if coltype in (700, 701):
+            if coltype in _FLOAT_TYPES:
                 return processors.to_decimal_processor_factory(decimal.Decimal)
-            elif coltype == 1700:
+            elif coltype in _DECIMAL_TYPES:
                 # pg8000 returns Decimal natively for 1700
                 return None
             else:
                 raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)
         else:
-            if coltype in (700, 701):
+            if coltype in _FLOAT_TYPES:
                 # pg8000 returns float natively for 701
                 return None
-            elif coltype == 1700:
+            elif coltype in _DECIMAL_TYPES:
                 return processors.to_float
             else:
                 raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)

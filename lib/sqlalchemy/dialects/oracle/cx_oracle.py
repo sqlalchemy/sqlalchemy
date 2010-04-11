@@ -6,6 +6,9 @@ Driver
 The Oracle dialect uses the cx_oracle driver, available at 
 http://cx-oracle.sourceforge.net/ .   The dialect has several behaviors 
 which are specifically tailored towards compatibility with this module.
+Version 5.0 or greater is **strongly** recommended, as SQLAlchemy makes
+extensive use of the cx_oracle output converters for numeric and 
+string conversions.
 
 Connecting
 ----------
@@ -38,33 +41,21 @@ URL, or as keyword arguments to :func:`~sqlalchemy.create_engine()` are:
 Unicode
 -------
 
-As of cx_oracle 5, Python unicode objects can be bound directly to statements, 
-and it appears that cx_oracle can handle these even without NLS_LANG being set.
-SQLAlchemy tests for version 5 and will pass unicode objects straight to cx_oracle
-if this is the case.  For older versions of cx_oracle, SQLAlchemy will encode bind
-parameters normally using dialect.encoding as the encoding.
+cx_oracle 5 fully supports Python unicode objects.   SQLAlchemy will pass
+all unicode strings directly to cx_oracle, and additionally uses an output
+handler so that all string based result values are returned as unicode as well.
 
 LOB Objects
 -----------
 
-cx_oracle presents some challenges when fetching LOB objects.  A LOB object in a result set
-is presented by cx_oracle as a cx_oracle.LOB object which has a read() method.  By default, 
-SQLAlchemy converts these LOB objects into Python strings.  This is for two reasons.  First,
-the LOB object requires an active cursor association, meaning if you were to fetch many rows
-at once such that cx_oracle had to go back to the database and fetch a new batch of rows,
-the LOB objects in the already-fetched rows are now unreadable and will raise an error. 
-SQLA "pre-reads" all LOBs so that their data is fetched before further rows are read.  
-The size of a "batch of rows" is controlled by the cursor.arraysize value, which SQLAlchemy
-defaults to 50 (cx_oracle normally defaults this to one).  
+cx_oracle returns oracle LOBs using the cx_oracle.LOB object.  SQLAlchemy converts
+these to strings so that the interface of the Binary type is consistent with that of
+other backends, and so that the linkage to a live cursor is not needed in scenarios
+like result.fetchmany() and result.fetchall().   This means that by default, LOB
+objects are fully fetched unconditionally by SQLAlchemy, and the linkage to a live
+cursor is broken.  
 
-Secondly, the LOB object is not a standard DBAPI return value so SQLAlchemy seeks to 
-"normalize" the results to look more like that of other DBAPIs.
-
-The conversion of LOB objects by this dialect is unique in SQLAlchemy in that it takes place
-for all statement executions, even plain string-based statements for which SQLA has no awareness
-of result typing.  This is so that calls like fetchmany() and fetchall() can work in all cases
-without raising cursor errors.  The conversion of LOB in all cases, as well as the "prefetch"
-of LOB objects, can be disabled using auto_convert_lobs=False.  
+To disable this processing, pass ``auto_convert_lobs=False`` to :func:`create_engine()`.
 
 Two Phase Transaction Support
 -----------------------------
@@ -78,16 +69,33 @@ from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, \
                                         RESERVED_WORDS, OracleExecutionContext
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.engine import base
-from sqlalchemy import types as sqltypes, util, exc
+from sqlalchemy import types as sqltypes, util, exc, processors
 from datetime import datetime
 import random
+from decimal import Decimal
 
 class _OracleNumeric(sqltypes.Numeric):
-    # cx_oracle accepts Decimal objects, but returns
-    # floats
     def bind_processor(self, dialect):
+        # cx_oracle accepts Decimal objects and floats
         return None
-        
+
+    def result_processor(self, dialect, coltype):
+        # we apply a connection output handler that 
+        # returns Decimal for positive precision + scale NUMBER 
+        # types
+        if dialect.supports_native_decimal:
+            if self.asdecimal and self.scale is None:
+                processors.to_decimal_processor_factory(Decimal)
+            elif not self.asdecimal and self.scale > 0:
+                return processors.to_float
+            else:
+                return None
+        else:
+            # cx_oracle 4 behavior, will assume 
+            # floats
+            return super(_OracleNumeric, self).\
+                            result_processor(dialect, coltype)
+            
 class _OracleDate(sqltypes.Date):
     def bind_processor(self, dialect):
         return None
@@ -127,17 +135,9 @@ class _NativeUnicodeMixin(object):
             return super(_NativeUnicodeMixin, self).bind_processor(dialect)
     # end Py2K
     
-    def result_processor(self, dialect, coltype):
-        # if we know cx_Oracle will return unicode,
-        # don't process results
-        if dialect._cx_oracle_with_unicode:
-            return None
-        elif self.convert_unicode != 'force' and \
-                    dialect._cx_oracle_native_nvarchar and \
-                    coltype in dialect._cx_oracle_unicode_types:
-            return None
-        else:
-            return super(_NativeUnicodeMixin, self).result_processor(dialect, coltype)
+    # we apply a connection output handler that returns
+    # unicode in all cases, so the "native_unicode" flag 
+    # will be set for the default String.result_processor.
     
 class _OracleChar(_NativeUnicodeMixin, sqltypes.CHAR):
     def get_dbapi_type(self, dbapi):
@@ -163,7 +163,7 @@ class _OracleUnicodeText(_LOBMixin, _NativeUnicodeMixin, sqltypes.UnicodeText):
         if lob_processor is None:
             return None
 
-        string_processor = _NativeUnicodeMixin.result_processor(self, dialect, coltype)
+        string_processor = sqltypes.UnicodeText.result_processor(self, dialect, coltype)
 
         if string_processor is None:
             return lob_processor
@@ -253,6 +253,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
         c = self._connection.connection.cursor()
         if self.dialect.arraysize:
             c.arraysize = self.dialect.arraysize
+
         return c
 
     def get_result_proxy(self):
@@ -345,6 +346,7 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
 class OracleDialect_cx_oracle(OracleDialect):
     execution_ctx_cls = OracleExecutionContext_cx_oracle
     statement_compiler = OracleCompiler_cx_oracle
+
     driver = "cx_oracle"
     
     colspecs = colspecs = {
@@ -361,7 +363,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         sqltypes.CHAR : _OracleChar,
         sqltypes.Integer : _OracleInteger,  # this is only needed for OUT parameters.
                                             # it would be nice if we could not use it otherwise.
-        oracle.NUMBER : oracle.NUMBER, # don't let this get converted
         oracle.RAW: _OracleRaw,
         sqltypes.Unicode: _OracleNVarChar,
         sqltypes.NVARCHAR : _OracleNVarChar,
@@ -388,7 +389,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             cx_oracle_ver = tuple([int(x) for x in self.dbapi.version.split('.')])
         else:  
            cx_oracle_ver = (0, 0, 0)
-            
+        
         def types(*names):
             return set([
                         getattr(self.dbapi, name, None) for name in names
@@ -398,6 +399,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB") 
         self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
+        self.supports_native_decimal = cx_oracle_ver >= (5, 0)
         self._cx_oracle_native_nvarchar = cx_oracle_ver >= (5, 0)
 
         if cx_oracle_ver is None:
@@ -446,6 +448,26 @@ class OracleDialect_cx_oracle(OracleDialect):
         import cx_Oracle
         return cx_Oracle
 
+    def on_connect(self):
+        cx_Oracle = self.dbapi
+        def output_type_handler(cursor, name, defaultType, size, precision, scale):
+            # convert all NUMBER with precision + positive scale to Decimal.
+            # this effectively allows "native decimal" mode.
+            if defaultType == cx_Oracle.NUMBER and precision and scale > 0:
+                return cursor.var(
+                            cx_Oracle.STRING, 
+                            255, 
+                            outconverter=Decimal, 
+                            arraysize=cursor.arraysize)
+            # allow all strings to come back natively as Unicode
+            elif defaultType in (cx_Oracle.STRING, cx_Oracle.FIXED_CHAR):
+                return cursor.var(unicode, size, cursor.arraysize)
+            
+        def on_connect(conn):
+            conn.outputtypehandler = output_type_handler
+            
+        return on_connect
+    
     def create_connect_args(self, url):
         dialect_opts = dict(url.query)
         for opt in ('use_ansi', 'auto_setinputsizes', 'auto_convert_lobs',

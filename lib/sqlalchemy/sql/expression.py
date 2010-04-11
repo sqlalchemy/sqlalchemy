@@ -2276,6 +2276,23 @@ class Executable(_Generative):
           of many DBAPIs.  The flag is currently understood only by the
           psycopg2 dialect.
 
+        * compiled_cache - a dictionary where :class:`Compiled` objects
+          will be cached when the :class:`Connection` compiles a clause 
+          expression into a dialect- and parameter-specific 
+          :class:`Compiled` object.   It is the user's responsibility to
+          manage the size of this dictionary, which will have keys
+          corresponding to the dialect, clause element, the column
+          names within the VALUES or SET clause of an INSERT or UPDATE, 
+          as well as the "batch" mode for an INSERT or UPDATE statement.
+          The format of this dictionary is not guaranteed to stay the
+          same in future releases.
+          
+          This option is usually more appropriate
+          to use via the 
+          :meth:`sqlalchemy.engine.base.Connection.execution_options()`
+          method of :class:`Connection`, rather than upon individual 
+          statement objects, though the effect is the same.
+          
         See also:
         
             :meth:`sqlalchemy.engine.base.Connection.execution_options()`
@@ -2875,18 +2892,13 @@ class Join(FromClause):
           select, for columns that are calculated to be "equivalent"
           based on the join criterion of this :class:`Join`. This will
           recursively apply to any joins directly nested by this one
-          as well.  This flag is specific to a particular use case
-          by the ORM and is deprecated as of 0.6.
+          as well.
 
         :param \**kwargs: all other kwargs are sent to the 
           underlying :func:`select()` function.
 
         """
         if fold_equivalents:
-            global sql_util
-            if not sql_util:
-                from sqlalchemy.sql import util as sql_util
-            util.warn_deprecated("fold_equivalents is deprecated.")
             collist = sql_util.folded_equivalents(self)
         else:
             collist = [self.left, self.right]

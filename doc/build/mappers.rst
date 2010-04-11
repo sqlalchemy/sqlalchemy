@@ -477,7 +477,9 @@ It also accepts a second argument ``selectable`` which replaces the automatic jo
     # custom selectable
     query.with_polymorphic([Engineer, Manager], employees.outerjoin(managers).outerjoin(engineers))
 
-:func:`~sqlalchemy.orm.query.Query.with_polymorphic` is also needed when you wish to add filter criterion that is specific to one or more subclasses, so that those columns are available to the WHERE clause:
+:func:`~sqlalchemy.orm.query.Query.with_polymorphic` is also needed
+when you wish to add filter criteria that are specific to one or more
+subclasses; It makes the subclasses' columns available to the WHERE clause:
 
 .. sourcecode:: python+sql
 

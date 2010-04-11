@@ -1079,7 +1079,50 @@ class MapperTest(_fixtures.FixtureTest):
 
         mapper(B, users)
 
+class DocumentTest(testing.TestBase):
+        
+    def test_doc_propagate(self):
+        metadata = MetaData()
+        t1 = Table('t1', metadata,
+            Column('col1', Integer, primary_key=True, doc="primary key column"),
+            Column('col2', String, doc="data col"),
+            Column('col3', String, doc="data col 2"),
+            Column('col4', String, doc="data col 3"),
+            Column('col5', String),
+        )
+        t2 = Table('t2', metadata,
+            Column('col1', Integer, primary_key=True, doc="primary key column"),
+            Column('col2', String, doc="data col"),
+            Column('col3', Integer, ForeignKey('t1.col1'), doc="foreign key to t1.col1")
+        )
 
+        class Foo(object):
+            pass
+        
+        class Bar(object):
+            pass
+            
+        mapper(Foo, t1, properties={
+            'bars':relationship(Bar, 
+                                    doc="bar relationship", 
+                                    backref=backref('foo',doc='foo relationship')
+                                ),
+            'foober':column_property(t1.c.col3, doc='alternate data col'),
+            'hoho':synonym(t1.c.col4, doc="syn of col4")
+        })
+        mapper(Bar, t2)
+        compile_mappers()
+        eq_(Foo.col1.__doc__, "primary key column")
+        eq_(Foo.col2.__doc__, "data col")
+        eq_(Foo.col5.__doc__, None)
+        eq_(Foo.foober.__doc__, "alternate data col")
+        eq_(Foo.bars.__doc__, "bar relationship")
+        eq_(Foo.hoho.__doc__, "syn of col4")
+        eq_(Bar.col1.__doc__, "primary key column")
+        eq_(Bar.foo.__doc__, "foo relationship")
+        
+        
+        
 class OptionsTest(_fixtures.FixtureTest):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')

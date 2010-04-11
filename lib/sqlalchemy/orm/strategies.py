@@ -66,6 +66,7 @@ def _register_attribute(strategy, mapper, useobject,
                 callable_=callable_, 
                 active_history=active_history,
                 impl_class=impl_class,
+                doc=prop.doc,
                 **kw
                 )
 
@@ -591,6 +592,7 @@ class LoadLazyAttribute(object):
                 val = instance_mapper.\
                                 _get_committed_state_attr_by_column(
                                     state,
+                                    state.dict,
                                     strategy._equated_columns[primary_key],
                                     **kw)
                 if val is attributes.PASSIVE_NO_RESULT:

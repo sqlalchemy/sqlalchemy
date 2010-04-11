@@ -1,4 +1,4 @@
-import sqlalchemy.topological as topological
+from sqlalchemy import topological
 from sqlalchemy.test import TestBase
 
 
@@ -56,7 +56,7 @@ class DependencySortTest(TestBase):
             (node4, subnode3),
             (node4, subnode4)
         ]
-        head = topological.sort_as_tree(tuples, [])
+        head = topological._sort_as_tree(tuples, [])
         self.assert_sort(tuples, head)
 
     def testsort2(self):
@@ -74,7 +74,7 @@ class DependencySortTest(TestBase):
             (node5, node6),
             (node6, node2)
         ]
-        head = topological.sort_as_tree(tuples, [node7])
+        head = topological._sort_as_tree(tuples, [node7])
         self.assert_sort(tuples, head, [node7])
 
     def testsort3(self):
@@ -87,9 +87,9 @@ class DependencySortTest(TestBase):
             (node3, node2),
             (node1,node3)
         ]
-        head1 = topological.sort_as_tree(tuples, [node1, node2, node3])
-        head2 = topological.sort_as_tree(tuples, [node3, node1, node2])
-        head3 = topological.sort_as_tree(tuples, [node3, node2, node1])
+        head1 = topological._sort_as_tree(tuples, [node1, node2, node3])
+        head2 = topological._sort_as_tree(tuples, [node3, node1, node2])
+        head3 = topological._sort_as_tree(tuples, [node3, node2, node1])
 
         # TODO: figure out a "node == node2" function
         #self.assert_(str(head1) == str(head2) == str(head3))
@@ -108,7 +108,7 @@ class DependencySortTest(TestBase):
             (node1, node3),
             (node3, node2)
         ]
-        head = topological.sort_as_tree(tuples, [])
+        head = topological._sort_as_tree(tuples, [])
         self.assert_sort(tuples, head)
 
     def testsort5(self):
@@ -131,7 +131,7 @@ class DependencySortTest(TestBase):
             node3,
             node4
         ]
-        head = topological.sort_as_tree(tuples, allitems, with_cycles=True)
+        head = topological._sort_as_tree(tuples, allitems, with_cycles=True)
         self.assert_sort(tuples, head)
 
     def testcircular(self):
@@ -149,7 +149,7 @@ class DependencySortTest(TestBase):
             (node4, node1)
         ]
         allitems = [node1, node2, node3, node4]
-        head = topological.sort_as_tree(tuples, allitems, with_cycles=True)
+        head = topological._sort_as_tree(tuples, allitems, with_cycles=True)
         self.assert_sort(tuples, head)
 
     def testcircular2(self):
@@ -166,7 +166,7 @@ class DependencySortTest(TestBase):
             (node3, node2),
             (node2, node3)
         ]
-        head = topological.sort_as_tree(tuples, [], with_cycles=True)
+        head = topological._sort_as_tree(tuples, [], with_cycles=True)
         self.assert_sort(tuples, head)
 
     def testcircular3(self):
@@ -174,16 +174,16 @@ class DependencySortTest(TestBase):
 
         tuples = [(question, issue), (providerservice, issue), (provider, question), (question, provider), (providerservice, question), (provider, providerservice), (question, answer), (issue, question)]
 
-        head = topological.sort_as_tree(tuples, [], with_cycles=True)
+        head = topological._sort_as_tree(tuples, [], with_cycles=True)
         self.assert_sort(tuples, head)
 
     def testbigsort(self):
         tuples = [(i, i + 1) for i in range(0, 1500, 2)]
-        head = topological.sort_as_tree(tuples, [])
+        head = topological._sort_as_tree(tuples, [])
 
 
     def testids(self):
         # ticket:1380 regression: would raise a KeyError
-        topological.sort([(id(i), i) for i in range(3)], [])
+        topological._sort([(id(i), i) for i in range(3)], [])
 
 

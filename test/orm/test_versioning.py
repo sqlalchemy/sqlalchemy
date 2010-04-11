@@ -102,7 +102,7 @@ class VersioningTest(_base.MappedTest):
         s1.delete(f1)
         s1.delete(f2)
 
-        if testing.db.dialect.supports_sane_multi_rowcount:
+        if testing.db.dialect.supports_sane_rowcount:
             assert_raises(sa.orm.exc.ConcurrentModificationError, s1.commit)
         else:
             s1.commit()

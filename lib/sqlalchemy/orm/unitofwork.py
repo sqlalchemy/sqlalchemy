@@ -4,19 +4,17 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""The internals for the Unit Of Work system.
+"""The internals for the unit of work system.
 
-Includes hooks into the attributes package enabling the routing of
-change events to Unit Of Work objects, as well as the flush()
-mechanism which creates a dependency structure that executes change
-operations.
+The session's flush() process passes objects to a contextual object
+here, which assembles flush tasks based on mappers and their properties,
+organizes them in order of dependency, and executes.
 
-A Unit of Work is essentially a system of maintaining a graph of
-in-memory objects and their modified state.  Objects are maintained as
-unique against their primary key identity using an *identity map*
-pattern.  The Unit of Work then maintains lists of objects that are
-new, dirty, or deleted and provides the capability to flush all those
-changes at once.
+Most of the code in this module is obsolete, and will 
+be replaced by a much simpler and more efficient
+system in an upcoming release.  See [ticket:1742] for 
+details.
+
 
 """
 
@@ -40,7 +38,8 @@ class UOWEventHandler(interfaces.AttributeExtension):
         self.key = key
 
     def append(self, state, item, initiator):
-        # process "save_update" cascade rules for when an instance is appended to the list of another instance
+        # process "save_update" cascade rules for when 
+        # an instance is appended to the list of another instance
         sess = _state_session(state)
         if sess:
             prop = _state_mapper(state).get_property(self.key)
@@ -74,15 +73,8 @@ class UOWEventHandler(interfaces.AttributeExtension):
 
 
 class UOWTransaction(object):
-    """Handles the details of organizing and executing transaction
-    tasks during a UnitOfWork object's flush() operation.
-
-    The central operation is to form a graph of nodes represented by the
-    ``UOWTask`` class, which is then traversed by a ``UOWExecutor`` object
-    that issues SQL and instance-synchronizing operations via the related
-    packages.
-    """
-
+    """Represent the state of a flush operation in progress."""
+    
     def __init__(self, session):
         self.session = session
         self.mapper_flush_opts = session._mapper_flush_opts
@@ -94,7 +86,8 @@ class UOWTransaction(object):
         # dictionary of mappers to UOWTasks
         self.tasks = {}
 
-        # dictionary used by external actors to store arbitrary state
+        # dictionary used by external actors 
+        # to store arbitrary state
         # information.
         self.attributes = {}
         
@@ -169,8 +162,6 @@ class UOWTransaction(object):
     def get_task_by_mapper(self, mapper, dontcreate=False):
         """return UOWTask element corresponding to the given mapper.
 
-        Will create a new UOWTask, including a UOWTask corresponding to the
-        "base" inherited mapper, if needed, unless the dontcreate flag is True.
         
         """
         try:
@@ -195,16 +186,13 @@ class UOWTransaction(object):
             return task
 
     def register_dependency(self, mapper, dependency):
-        """register a dependency between two mappers.
-
-        Called by ``mapper.PropertyLoader`` to register the objects
-        handled by one mapper being dependent on the objects handled
-        by another.
-
-        """
+        """register a dependency between two mappers."""
+        
         # correct for primary mapper
-        # also convert to the "base mapper", the parentmost task at the top of an inheritance chain
-        # dependency sorting is done via non-inheriting mappers only, dependencies between mappers
+        # also convert to the "base mapper", the parentmost 
+        # task at the top of an inheritance chain
+        # dependency sorting is done via non-inheriting 
+        # mappers only, dependencies between mappers
         # in the same inheritance chain is done at the per-object level
         mapper = mapper.primary_mapper().base_mapper
         dependency = dependency.primary_mapper().base_mapper
@@ -226,14 +214,7 @@ class UOWTransaction(object):
         task.dependencies.add(up)
 
     def execute(self):
-        """Execute this UOWTransaction.
-
-        This will organize all collected UOWTasks into a dependency-sorted
-        list which is then traversed using the traversal scheme
-        encoded in the UOWExecutor class.  Operations to mappers and dependency
-        processors are fired off in order to issue SQL to the database and
-        synchronize instance attributes with database values and related
-        foreign key values."""
+        """Execute this steps assembled into this UOWTransaction."""
 
         # pre-execute dependency processors.  this process may
         # result in new tasks, objects and/or dependency processors being added,
@@ -281,7 +262,7 @@ class UOWTransaction(object):
                 self.session._register_newly_persistent(elem.state)
 
     def _sort_dependencies(self):
-        nodes = topological.sort_with_cycles(self.dependencies,
+        nodes = topological._sort_with_cycles(self.dependencies,
             [t.mapper for t in self.tasks.itervalues() if t.base_task is t]
         )
 
@@ -302,7 +283,10 @@ class UOWTransaction(object):
 log.class_logger(UOWTransaction)
 
 class UOWTask(object):
-    """A collection of mapped states corresponding to a particular mapper."""
+    """A collection of mapped states corresponding to a particular mapper.
+    
+    This object is deprecated.
+    """
     
     def __init__(self, uowtransaction, mapper, base_task=None):
         self.uowtransaction = uowtransaction
@@ -339,30 +323,6 @@ class UOWTask(object):
         """Return an iterator of UOWTask objects corresponding to the
         inheritance sequence of this UOWTask's mapper.
 
-        e.g. if mapper B and mapper C inherit from mapper A, and
-        mapper D inherits from B:
-
-            mapperA -> mapperB -> mapperD
-                    -> mapperC
-
-        the inheritance sequence starting at mapper A is a depth-first
-        traversal:
-
-            [mapperA, mapperB, mapperD, mapperC]
-
-        this method will therefore return
-
-            [UOWTask(mapperA), UOWTask(mapperB), UOWTask(mapperD),
-             UOWTask(mapperC)]
-
-        The concept of "polymporphic iteration" is adapted into
-        several property-based iterators which return object
-        instances, UOWTaskElements and UOWDependencyProcessors in an
-        order corresponding to this sequence of parent UOWTasks.  This
-        is used to issue operations related to inheritance-chains of
-        mappers in the proper order based on dependencies between
-        those mappers.
-
         """
         for mapper in self.inheriting_mappers:
             t = self.base_task._inheriting_tasks.get(mapper, None)
@@ -370,9 +330,9 @@ class UOWTask(object):
                 yield t
 
     def is_empty(self):
-        """return True if this UOWTask is 'empty', meaning it has no child items.
+        """return True if this UOWTask is 'empty', 
+        meaning it has no child items.
 
-        used only for debugging output.
         """
 
         return not self._objects and not self.dependencies
@@ -386,19 +346,17 @@ class UOWTask(object):
         rec.update(listonly, isdelete)
 
     def append_postupdate(self, state, post_update_cols):
-        """issue a 'post update' UPDATE statement via this object's mapper immediately.
+        """issue a 'post update' UPDATE statement via 
+        this object's mapper immediately.
 
-        this operation is used only with relationships that specify the `post_update=True`
-        flag.
         """
 
-        # postupdates are UPDATED immeditely (for now)
-        # convert post_update_cols list to a Set so that __hash__() is used to compare columns
-        # instead of __eq__()
-        self.mapper._save_obj([state], self.uowtransaction, postupdate=True, post_update_cols=set(post_update_cols))
+        self.mapper._save_obj([state], self.uowtransaction, 
+                            postupdate=True, post_update_cols=set(post_update_cols))
 
     def __contains__(self, state):
-        """return True if the given object is contained within this UOWTask or inheriting tasks."""
+        """return True if the given object is contained 
+        within this UOWTask or inheriting tasks."""
 
         for task in self.polymorphic_tasks:
             if state in task._objects:
@@ -407,7 +365,8 @@ class UOWTask(object):
             return False
 
     def is_deleted(self, state):
-        """return True if the given object is marked as to be deleted within this UOWTask."""
+        """return True if the given object is marked 
+        as to be deleted within this UOWTask."""
 
         try:
             return self._objects[state].isdelete
@@ -477,10 +436,15 @@ class UOWTask(object):
         return self.cyclical_dependencies
 
     def _sort_circular_dependencies(self, trans, cycles):
-        """Topologically sort individual entities with row-level dependencies.
+        """sort row-level dependencies.
         
-        Builds a modified UOWTask structure, and is invoked when the
-        per-mapper topological structure is found to have cycles.
+        Note that this method is a total disaster, as it was 
+        bolted onto the originally simple unit-of-work
+        system after more complex mappings revealed 
+        the presence of inter-row rependencies - this occured
+        well within version 0.1 and despite many fixes 
+        has remained the most legacy code within SQLAlchemy.  
+        It is gone without a trace after [ticket:1742].
         
         """
 
@@ -492,7 +456,8 @@ class UOWTask(object):
             if depprocessor not in tasks:
                 tasks[depprocessor] = UOWDependencyProcessor(
                                             depprocessor.processor, 
-                                            UOWTask(self.uowtransaction, depprocessor.targettask.mapper)
+                                            UOWTask(self.uowtransaction,
+                                             depprocessor.targettask.mapper)
                                       )
             tasks[depprocessor].targettask.append(target_state, isdelete=isdelete)
             
@@ -529,7 +494,8 @@ class UOWTask(object):
                         isdelete = taskelement.isdelete
 
                         # list of dependent objects from this object
-                        (added, unchanged, deleted) = dep.get_object_dependencies(state, trans, passive=True)
+                        (added, unchanged, deleted) = dep.get_object_dependencies(
+                                                    state, trans, passive=True)
                         if not added and not unchanged and not deleted:
                             continue
 
@@ -551,9 +517,11 @@ class UOWTask(object):
                                 tuples.append(whosdep)
 
                                 if whosdep[0] is state:
-                                    set_processor_for_state(whosdep[0], dep, whosdep[0], isdelete=isdelete)
+                                    set_processor_for_state(whosdep[0], dep, whosdep[0],
+                                                            isdelete=isdelete)
                                 else:
-                                    set_processor_for_state(whosdep[0], dep, whosdep[1], isdelete=isdelete)
+                                    set_processor_for_state(whosdep[0], dep, whosdep[1],
+                                                            isdelete=isdelete)
                             else:
                                 # TODO: no test coverage here
                                 set_processor_for_state(state, dep, state, isdelete=isdelete)
@@ -567,11 +535,7 @@ class UOWTask(object):
         # dependency - keep non-dependent objects
         # grouped together, so that insert ordering as determined
         # by session.add() is maintained.
-        # An alternative might be to represent the "insert order"
-        # as part of the topological sort itself, which would
-        # eliminate the need for this step (but may make the original
-        # topological sort more expensive)
-        head = topological.sort_as_tree(tuples, object_to_original_task.iterkeys())
+        head = topological._sort_as_tree(tuples, object_to_original_task.iterkeys())
         if head is not None:
             original_to_tasks = {}
             stack = [(head, t)]
@@ -588,7 +552,8 @@ class UOWTask(object):
                 else:
                     task = original_to_tasks[(parenttask, originating_task)]
 
-                task.append(state, originating_task._objects[state].listonly, isdelete=originating_task._objects[state].isdelete)
+                task.append(state, originating_task._objects[state].listonly,
+                            isdelete=originating_task._objects[state].isdelete)
 
                 if state in dependencies:
                     task.cyclical_dependencies.update(dependencies[state].itervalues())
@@ -614,10 +579,9 @@ class UOWTask(object):
         return ("UOWTask(%s) Mapper: '%r'" % (hex(id(self)), self.mapper))
 
 class UOWTaskElement(object):
-    """Corresponds to a single InstanceState to be saved, deleted,
-    or otherwise marked as having dependencies.  A collection of
-    UOWTaskElements are held by a UOWTask.
-
+    """Represent a single state to be saved.
+    
+    This object is deprecated.
     """
     def __init__(self, state):
         self.state = state
@@ -642,11 +606,9 @@ class UOWTaskElement(object):
         )
 
 class UOWDependencyProcessor(object):
-    """In between the saving and deleting of objects, process
-    dependent data, such as filling in a foreign key on a child item
-    from a new primary key, or deleting association rows before a
-    delete.  This object acts as a proxy to a DependencyProcessor.
+    """Represent tasks in between inserts/updates/deletes.
 
+    This object is deprecated.
     """
     def __init__(self, processor, targettask):
         self.processor = processor
@@ -674,19 +636,8 @@ class UOWDependencyProcessor(object):
         return hash((self.processor, self.targettask))
 
     def preexecute(self, trans):
-        """preprocess all objects contained within this ``UOWDependencyProcessor``s target task.
-
-        This may locate additional objects which should be part of the
-        transaction, such as those affected deletes, orphans to be
-        deleted, etc.
-
-        Once an object is preprocessed, its ``UOWTaskElement`` is marked as processed.  If subsequent
-        changes occur to the ``UOWTaskElement``, its processed flag is reset, and will require processing
-        again.
-
-        Return True if any objects were preprocessed, or False if no
-        objects were preprocessed.  If True is returned, the parent ``UOWTransaction`` will
-        ultimately call ``preexecute()`` again on all processors until no new objects are processed.
+        """preprocess all objects contained within 
+        this ``UOWDependencyProcessor``s target task.
         """
 
         def getobj(elem):
@@ -710,7 +661,8 @@ class UOWDependencyProcessor(object):
         return ret
 
     def execute(self, trans, delete):
-        """process all objects contained within this ``UOWDependencyProcessor``s target task."""
+        """process all objects contained within this 
+        ``UOWDependencyProcessor``s target task."""
 
 
         elements = [e for e in 
@@ -729,15 +681,18 @@ class UOWDependencyProcessor(object):
     def whose_dependent_on_who(self, state1, state2):
         """establish which object is operationally dependent amongst a parent/child
         using the semantics stated by the dependency processor.
-
-        This method is used to establish a partial ordering (set of dependency tuples)
-        when toplogically sorting on a per-instance basis.
-
         """
         return self.processor.whose_dependent_on_who(state1, state2)
 
 class UOWExecutor(object):
-    """Encapsulates the execution traversal of a UOWTransaction structure."""
+    """Encapsulates the execution traversal 
+    of a UOWTransaction structure.
+    
+    This part of the approach is the core flaw that's 
+    being removed with [ticket:1742], as it necessitates
+    deep levels of recursion.
+    
+    """
 
     def execute(self, trans, tasks, isdelete=None):
         if isdelete is not True:

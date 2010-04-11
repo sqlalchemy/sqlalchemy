@@ -192,11 +192,6 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'users'
             id = Column(Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column(String(50))
-            addresses = relationship("Address", order_by="desc(Address.email)", 
-                primaryjoin="User.id==Address.user_id", foreign_keys="[Address.user_id]",
-                backref=backref('user', primaryjoin="User.id==Address.user_id", foreign_keys="[Address.user_id]")
-                )
-        
         
         class Bar(Base, ComparableEntity):
             __tablename__ = 'bar'
@@ -2057,7 +2052,55 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             id =  Column(Integer, primary_key=True)
 
         eq_(MyModel.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+    
+    def test_mapper_args_classproperty(self):
+        class ComputedMapperArgs:
+            @classproperty
+            def __mapper_args__(cls):
+                if cls.__name__=='Person':
+                    return dict(polymorphic_on=cls.discriminator)
+                else:
+                    return dict(polymorphic_identity=cls.__name__)
 
+        class Person(Base,ComputedMapperArgs):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            discriminator = Column('type', String(50))
+
+        class Engineer(Person):
+            pass
+
+        compile_mappers()
+
+        assert class_mapper(Person).polymorphic_on is Person.__table__.c.type
+        eq_(class_mapper(Engineer).polymorphic_identity, 'Engineer')
+
+    def test_mapper_args_classproperty_two(self):
+        # same as test_mapper_args_classproperty, but
+        # we repeat ComputedMapperArgs on both classes
+        # for no apparent reason.
+        
+        class ComputedMapperArgs:
+            @classproperty
+            def __mapper_args__(cls):
+                if cls.__name__=='Person':
+                    return dict(polymorphic_on=cls.discriminator)
+                else:
+                    return dict(polymorphic_identity=cls.__name__)
+
+        class Person(Base,ComputedMapperArgs):
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            discriminator = Column('type', String(50))
+
+        class Engineer(Person, ComputedMapperArgs):
+            pass
+
+        compile_mappers()
+
+        assert class_mapper(Person).polymorphic_on is Person.__table__.c.type
+        eq_(class_mapper(Engineer).polymorphic_identity, 'Engineer')
+        
     def test_table_args_composite(self):
 
         class MyMixin1:
