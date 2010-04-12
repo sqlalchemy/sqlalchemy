@@ -2282,17 +2282,14 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 return cls.__name__.lower()
 
         class BaseType(Base, TableNameMixin):
-            __tablename__ = 'base'
             discriminator = Column('python_type', String(50))
             __mapper_args__= dict(polymorphic_on=discriminator)
             id = Column(Integer, primary_key=True) 
             value = Column(Integer())  
 
         class SpecificType1(BaseType):
-            __tablename__ = 'type1'
             __mapper_args__ = dict(polymorphic_identity='type1')
 
         class SpecificType2(BaseType):
-            __tablename__ = 'type2'
             __mapper_args__ = dict(polymorphic_identity='type2')
 
