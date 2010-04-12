@@ -537,35 +537,39 @@ def _as_declarative(cls, classname, dict_):
     column_copies = dict()
     
     mapper_args ={}
+    propagate = True
     table_args = None
     tablename = None
-    
+
     for base in cls.__mro__:
-        if not _is_mapped_class(base):
+        if _is_mapped_class(base):
+            propagate = False
+        else:
             for name,obj in vars(base).items():
                 if name == '__mapper_args__':
                     if not mapper_args:
                         mapper_args = cls.__mapper_args__
-                elif name == '__table_args__':
-                    if not table_args:
-                        table_args = cls.__table_args__
-                elif name == '__tablename__':
-                    if not tablename:
-                        tablename = cls.__tablename__
-                elif base is not cls:
-                    if isinstance(obj, Column):
-                        if obj.foreign_keys:
+                elif propagate:
+                    if name == '__table_args__' and propagate:
+                        if not table_args:
+                            table_args = cls.__table_args__
+                    elif name == '__tablename__':
+                        if not tablename and propagate:
+                            tablename = cls.__tablename__
+                    elif base is not cls:
+                        if isinstance(obj, Column):
+                            if obj.foreign_keys:
+                                raise exceptions.InvalidRequestError(
+                                    "Columns with foreign keys to other columns "
+                                    "are not allowed on declarative mixins at this time."
+                                )
+                            if name not in dict_:
+                                dict_[name]=column_copies[obj]=obj.copy()
+                        elif isinstance(obj, RelationshipProperty):
                             raise exceptions.InvalidRequestError(
-                                "Columns with foreign keys to other columns "
-                                "are not allowed on declarative mixins at this time."
-                            )
-                        if name not in dict_:
-                            dict_[name]=column_copies[obj]=obj.copy()
-                    elif isinstance(obj, RelationshipProperty):
-                        raise exceptions.InvalidRequestError(
-                                            "relationships are not allowed on "
-                                            "declarative mixins at this time.")
-                
+                                                "relationships are not allowed on "
+                                                "declarative mixins at this time.")
+
     # make sure that column copies are used rather than the original columns
     # from any mixins
     for k, v in mapper_args.iteritems():
