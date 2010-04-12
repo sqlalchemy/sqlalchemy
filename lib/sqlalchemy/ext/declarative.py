@@ -535,42 +535,36 @@ def _as_declarative(cls, classname, dict_):
     dict_ = dict(dict_)
 
     column_copies = dict()
-    mixin_table_args = None
-    mapper_args = {}
+    
+    mapper_args ={}
     table_args = None
+    tablename = None
     
     for base in cls.__mro__:
-        if not _is_mapped_class(base) and base is not cls:
-            for name in dir(base):
+        if not _is_mapped_class(base):
+            for name,obj in vars(base).items():
                 if name == '__mapper_args__':
                     if not mapper_args:
                         mapper_args = cls.__mapper_args__
                 elif name == '__table_args__':
                     if not table_args:
-                        table_args = mixin_table_args = cls.__table_args__
+                        table_args = cls.__table_args__
                 elif name == '__tablename__':
-                    if '__tablename__' not in dict_:
-                        dict_['__tablename__'] = cls.__tablename__
-                else:
-                    obj = getattr(base,name, None)
+                    if not tablename:
+                        tablename = cls.__tablename__
+                elif base is not cls:
                     if isinstance(obj, Column):
                         if obj.foreign_keys:
                             raise exceptions.InvalidRequestError(
                                 "Columns with foreign keys to other columns "
                                 "are not allowed on declarative mixins at this time."
                             )
-                        dict_[name]=column_copies[obj]=obj.copy()
+                        if name not in dict_:
+                            dict_[name]=column_copies[obj]=obj.copy()
                     elif isinstance(obj, RelationshipProperty):
                         raise exceptions.InvalidRequestError(
                                             "relationships are not allowed on "
                                             "declarative mixins at this time.")
-        elif base is cls:
-            if '__mapper_args__' in dict_:
-                mapper_args = cls.__mapper_args__
-            if '__table_args__' in dict_:
-                table_args = cls.__table_args__
-            if '__tablename__' in dict_:
-                dict_['__tablename__'] = cls.__tablename__
                 
     # make sure that column copies are used rather than the original columns
     # from any mixins
@@ -616,10 +610,7 @@ def _as_declarative(cls, classname, dict_):
 
     table = None
     if '__table__' not in dict_:
-        if '__tablename__' in dict_:
-            # see above: if __tablename__ is a descriptor, this
-            # means we get the right value used!
-            tablename = cls.__tablename__
+        if tablename is not None:
             
             if isinstance(table_args, dict):
                 args, table_kw = (), table_args
@@ -681,7 +672,7 @@ def _as_declarative(cls, classname, dict_):
         if table is None:
             # single table inheritance.
             # ensure no table args
-            if table_args is not None and table_args is not mixin_table_args:
+            if table_args is not None and table_args:
                 raise exceptions.ArgumentError(
                     "Can't place __table_args__ on an inherited class with no table."
                     )
