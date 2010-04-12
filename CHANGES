@@ -60,6 +60,10 @@ CHANGES
     on ColumnProperty, CompositeProperty, RelationshipProperty
     have been underscored, signature has changed.
     
+- engines
+  - The C extension now also works with DBAPIs which use custom
+    sequences as row (and not only tuples). [ticket:1757]
+
 - sql
   - Restored some bind-labeling logic from 0.5 which ensures
     that tables with column names that overlap another column
@@ -68,6 +72,10 @@ CHANGES
     an UPDATE.  Test coverage which wasn't present in 0.5
     has been added.  [ticket:1755]
 
+  - somejoin.select(fold_equivalents=True) is no longer 
+    deprecated, and will eventually be rolled into a more 
+    comprehensive version of the feature for [ticket:1729].
+    
   - the Numeric type raises an *enormous* warning when expected
     to convert floats to Decimal from a DBAPI that returns floats.
     This includes SQLite, Oracle, Sybase, MS-SQL.
@@ -126,7 +134,16 @@ CHANGES
     - STRING/FIXED_CHAR now convert to unicode natively.
       SQLAlchemy's String types then don't need to 
       apply any kind of conversions.
-    
+
+- firebird
+   - The functionality of result.rowcount is now disabled
+     by default, and can be re-enabled using the 'enable_rowcount'
+     flag with create_engine(), as well as the 'enable_rowcount'
+     execution context flag on a per-execute basis.  This because 
+     cursor.rowcount requires cursor access (can't be evaluated 
+     lazily since the result auto-closes) and also incurs an 
+     expensive round-trip.  
+     
 - examples
   - Updated attribute_shard.py example to use a more robust
     method of searching a Query for binary expressions which
