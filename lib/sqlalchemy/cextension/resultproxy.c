@@ -150,8 +150,8 @@ BaseRowProxy_processvalues(PyObject *values, PyObject *processors, int astuple)
     PyObject **valueptr, **funcptr, **resultptr;
     PyObject *func, *result, *processed_value, *values_fastseq;
 
-    num_values = Py_SIZE(values);
-    num_processors = Py_SIZE(processors);
+    num_values = PySequence_Length(values);
+    num_processors = PyList_Size(processors);
     if (num_values != num_processors) {
         PyErr_Format(PyExc_RuntimeError,
             "number of values in row (%d) differ from number of column "
@@ -225,7 +225,7 @@ BaseRowProxy_iter(BaseRowProxy *self)
 static Py_ssize_t
 BaseRowProxy_length(BaseRowProxy *self)
 {
-    return Py_SIZE(self->row);
+    return PySequence_Length(self->row);
 }
 
 static PyObject *
@@ -233,7 +233,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
 {
     PyObject *processors, *values;
     PyObject *processor, *value;
-    PyObject *record, *result, *indexobject;
+    PyObject *row, *record, *result, *indexobject;
     PyObject *exc_module, *exception;
     char *cstr_key;
     long index;
@@ -303,7 +303,11 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
     if (processor == NULL)
         return NULL;
 
-    value = PyTuple_GetItem(self->row, index);
+    row = self->row;
+    if (PyTuple_CheckExact(row))
+        value = PyTuple_GetItem(row, index);
+    else
+        value = PySequence_GetItem(row, index);
     if (value == NULL)
         return NULL;
 

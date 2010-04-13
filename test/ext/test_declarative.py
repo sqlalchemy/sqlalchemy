@@ -2038,8 +2038,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         class Specific(General):
             __mapper_args__ = {'polymorphic_identity':'specific'}
 
+        assert Specific.__table__ is General.__table__
         eq_(General.__table__.kwargs,{'mysql_engine': 'InnoDB'})
-        eq_(Specific.__table__.kwargs,{'mysql_engine': 'InnoDB'})
     
     def test_table_args_overridden(self):
         
@@ -2209,3 +2209,148 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert col.table is not None
         
         eq_(MyModel.__mapper__.always_refresh,True)
+
+    def test_single_table_no_propagation(self):
+
+        class IdColumn:
+            id = Column(Integer, primary_key=True)
+
+        class Generic(Base, IdColumn):
+            __tablename__ = 'base'
+            discriminator = Column('type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            value = Column(Integer())
+
+        class Specific(Generic):
+            __mapper_args__ = dict(polymorphic_identity='specific')
+
+        assert Specific.__table__ is Generic.__table__
+        eq_(Generic.__table__.c.keys(),['type', 'value', 'id'])
+        assert class_mapper(Specific).polymorphic_on is Generic.__table__.c.type
+        eq_(class_mapper(Specific).polymorphic_identity, 'specific')
+
+    def test_joined_table_propagation(self):
+
+        class CommonMixin:
+            
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()
+            
+            __table_args__ = {'mysql_engine':'InnoDB'}
+            
+            timestamp = Column(Integer) 
+            id = Column(Integer, primary_key=True)
+    
+        class Generic(Base, CommonMixin):
+            discriminator = Column('python_type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+
+        class Specific(Generic):
+            __mapper_args__ = dict(polymorphic_identity='specific')
+            id = Column(Integer, ForeignKey('generic.id'), primary_key=True)
+        eq_(Generic.__table__.name,'generic')
+        eq_(Specific.__table__.name,'specific')
+        eq_(Generic.__table__.c.keys(),['python_type', 'timestamp', 'id'])
+        eq_(Specific.__table__.c.keys(),['id', 'timestamp'])
+        eq_(Generic.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+        eq_(Specific.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+            
+    def test_some_propagation(self):
+        
+        class CommonMixin:
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()
+            __table_args__ = {'mysql_engine':'InnoDB'}
+            timestamp = Column(Integer) 
+
+        class BaseType(Base, CommonMixin):
+            discriminator = Column('type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            id = Column(Integer, primary_key=True) 
+            value = Column(Integer())  
+
+        class Single(BaseType):
+            __tablename__ = None
+            __mapper_args__ = dict(polymorphic_identity='type1')
+
+        class Joined(BaseType):
+            __mapper_args__ = dict(polymorphic_identity='type2')
+            id = Column(Integer, ForeignKey('basetype.id'), primary_key=True)
+
+        eq_(BaseType.__table__.name,'basetype')
+        eq_(BaseType.__table__.c.keys(),['type', 'id', 'value', 'timestamp'])
+        eq_(BaseType.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+
+        assert Single.__table__ is BaseType.__table__
+
+        eq_(Joined.__table__.name,'joined')
+        eq_(Joined.__table__.c.keys(),['id','timestamp'])
+        eq_(Joined.__table__.kwargs,{'mysql_engine': 'InnoDB'})
+            
+    def test_non_propagating_mixin(self):
+
+        class NoJoinedTableNameMixin:
+            @classproperty
+            def __tablename__(cls):
+                if decl.has_inherited_table(cls):
+                    return None
+                return cls.__name__.lower()
+
+        class BaseType(Base, NoJoinedTableNameMixin):
+            discriminator = Column('type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            id = Column(Integer, primary_key=True) 
+            value = Column(Integer())  
+
+        class Specific(BaseType):
+            __mapper_args__ = dict(polymorphic_identity='specific')
+
+        eq_(BaseType.__table__.name,'basetype')
+        eq_(BaseType.__table__.c.keys(),['type', 'id', 'value'])
+
+        assert Specific.__table__ is BaseType.__table__
+        assert class_mapper(Specific).polymorphic_on is BaseType.__table__.c.type
+        eq_(class_mapper(Specific).polymorphic_identity, 'specific')
+
+    def test_non_propagating_mixin_used_for_joined(self):
+
+        class TableNameMixin:
+            @classproperty
+            def __tablename__(cls):
+                if (decl.has_inherited_table(cls) and
+                    TableNameMixin not in cls.__bases__):
+                    return None
+                return cls.__name__.lower()
+
+        class BaseType(Base, TableNameMixin):
+            discriminator = Column('type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            id = Column(Integer, primary_key=True) 
+            value = Column(Integer())  
+
+        class Specific(BaseType, TableNameMixin):
+            __mapper_args__ = dict(polymorphic_identity='specific')
+            id = Column(Integer, ForeignKey('basetype.id'), primary_key=True)
+            
+        eq_(BaseType.__table__.name,'basetype')
+        eq_(BaseType.__table__.c.keys(),['type', 'id', 'value'])
+        eq_(Specific.__table__.name,'specific')
+        eq_(Specific.__table__.c.keys(),['id'])
+
+    def test_single_back_propagate(self):
+
+        class ColumnMixin:
+            timestamp = Column(Integer) 
+
+        class BaseType(Base):
+            __tablename__ = 'foo'
+            discriminator = Column('type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            id = Column(Integer, primary_key=True) 
+
+        class Specific(BaseType,ColumnMixin):
+            __mapper_args__ = dict(polymorphic_identity='specific')
+            
+        eq_(BaseType.__table__.c.keys(),['type', 'id', 'timestamp'])

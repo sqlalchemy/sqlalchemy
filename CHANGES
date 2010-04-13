@@ -83,6 +83,10 @@ CHANGES
     on ColumnProperty, CompositeProperty, RelationshipProperty
     have been underscored, signature has changed.
     
+- engines
+  - The C extension now also works with DBAPIs which use custom
+    sequences as row (and not only tuples). [ticket:1757]
+
 - sql
   - Restored some bind-labeling logic from 0.5 which ensures
     that tables with column names that overlap another column
@@ -153,7 +157,18 @@ CHANGES
     - STRING/FIXED_CHAR now convert to unicode natively.
       SQLAlchemy's String types then don't need to 
       apply any kind of conversions.
-    
+
+- firebird
+   - The functionality of result.rowcount can be disabled on a
+     per-engine basis by setting 'enable_rowcount=False' 
+     on create_engine().  Normally, cursor.rowcount is called
+     after any UPDATE or DELETE statement unconditionally,
+     because the cursor is then closed and Firebird requires
+     an open cursor in order to get a rowcount.  This 
+     call is slightly expensive however so it can be disabled.
+     To re-enable on a per-execution basis, the 
+     'enable_rowcount=True' execution option may be used.
+     
 - examples
   - Updated attribute_shard.py example to use a more robust
     method of searching a Query for binary expressions which

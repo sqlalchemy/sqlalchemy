@@ -1,9 +1,8 @@
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, assert_raises
 import re
 from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, bindparam, select
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing, engines
 import logging
@@ -181,7 +180,67 @@ class LogTest(TestBase):
             "0x...%s" % hex(id(eng.pool))[-4:],
         )
         
-    
+class ResultProxyTest(TestBase):
+    def test_nontuple_row(self):
+        """ensure the C version of BaseRowProxy handles 
+        duck-type-dependent rows."""
+        
+        from sqlalchemy.engine import RowProxy
+
+        class MyList(object):
+            def __init__(self, l):
+                self.l = l
+
+            def __len__(self):
+                return len(self.l)
+
+            def __getitem__(self, i):
+                return list.__getitem__(self.l, i)
+
+        proxy = RowProxy(object(), MyList(['value']), [None], {'key': (None, 0), 0: (None, 0)})
+        eq_(list(proxy), ['value'])
+        eq_(proxy[0], 'value')
+        eq_(proxy['key'], 'value')
+
+    @testing.provide_metadata
+    def test_no_rowcount_on_selects_inserts(self):
+        """assert that rowcount is only called on deletes and updates.
+
+        This because cursor.rowcount can be expensive on some dialects
+        such as Firebird.
+
+        """
+
+        engine = engines.testing_engine()
+        metadata.bind = engine
+        
+        t = Table('t1', metadata,
+            Column('data', String(10))
+        )
+        metadata.create_all()
+
+        class BreakRowcountMixin(object):
+            @property
+            def rowcount(self):
+                assert False
+        
+        execution_ctx_cls = engine.dialect.execution_ctx_cls
+        engine.dialect.execution_ctx_cls = type("FakeCtx", 
+                                            (BreakRowcountMixin, 
+                                            execution_ctx_cls), 
+                                            {})
+
+        try:
+            r = t.insert().execute({'data':'d1'}, {'data':'d2'}, {'data': 'd3'})
+            eq_(
+                t.select().execute().fetchall(),
+                [('d1', ), ('d2',), ('d3', )]
+            )
+            assert_raises(AssertionError, t.update().execute, {'data':'d4'})
+            assert_raises(AssertionError, t.delete().execute)
+        finally:
+            engine.dialect.execution_ctx_cls = execution_ctx_cls
+        
 class ProxyConnectionTest(TestBase):
 
     @testing.fails_on('firebird', 'Data type unknown')

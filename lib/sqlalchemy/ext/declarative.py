@@ -476,6 +476,102 @@ you implement a class property with a function. For example::
 
         id =  Column(Integer, primary_key=True)
 
+Controlling table inheritance with mix-ins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``__tablename__`` attribute in conjunction with the hierarchy of
+the classes involved controls what type of table inheritance, if any,
+is configured by the declarative extension.
+
+If the ``__tablename__`` is computed by a mix-in, you may need to
+control which classes get the computed attribute in order to get the
+type of table inheritance you require.
+
+For example, if you had a mix-in that computes ``__tablename__`` but
+where you wanted to use that mix-in in a single table inheritance
+hierarchy, you can explicitly specify ``__tablename__`` as ``None`` to
+indicate that the class should not have a table mapped::
+
+    from sqlalchemy.util import classproperty
+
+    class Tablename:
+        @classproperty
+        def __tablename__(cls):
+            return cls.__name__.lower()
+
+    class Person(Base,Tablename):
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        __tablename__ = None
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        primary_language = Column(String(50))
+
+Alternatively, you can make the mix-in intelligent enough to only
+return a ``__tablename__`` in the event that no table is already
+mapped in the inheritance hierarchy. To help with this, a
+:func:`~sqlalchemy.ext.declarative.has_inherited_table` helper
+function is provided that returns ``True`` if a parent class already
+has a mapped table. 
+
+As an examply, here's a mix-in that will only allow single table
+inheritance::
+
+    from sqlalchemy.util import classproperty
+    from sqlalchemy.ext.declarative import has_inherited_table
+
+    class Tablename:
+        @classproperty
+        def __tablename__(cls):
+            if has_inherited_table(cls):
+                return None
+            return cls.__name__.lower()
+
+    class Person(Base,Tablename):
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        __tablename__ = None
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        primary_language = Column(String(50))
+
+If you want to use a similar pattern with a mix of single and joined
+table inheritance, you would need a slightly different mix-in and use
+it on any joined table child classes in addition to their parent
+classes::
+
+    from sqlalchemy.util import classproperty
+    from sqlalchemy.ext.declarative import has_inherited_table
+
+    class Tablename:
+        @classproperty
+        def __tablename__(cls):
+            if (decl.has_inherited_table(cls) and
+                TableNameMixin not in cls.__bases__):
+                return None
+            return cls.__name__.lower()
+
+    class Person(Base,Tablename):
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        # This is single table inheritance
+        __tablename__ = None
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        primary_language = Column(String(50))
+
+    class Manager(Person,Tablename):
+        # This is joinded table inheritance
+        __tablename__ = None
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        preferred_recreation = Column(String(50))
+
 Class Constructor
 =================
 
@@ -528,53 +624,65 @@ def instrument_declarative(cls, registry, metadata):
     cls._decl_class_registry = registry
     cls.metadata = metadata
     _as_declarative(cls, cls.__name__, cls.__dict__)
-    
+
+def has_inherited_table(cls):
+    """Given a class, return True if any of the classes it inherits from has a mapped
+    table, otherwise return False.
+    """
+    for class_ in cls.__mro__:
+        if getattr(class_,'__table__',None) is not None:
+            return True
+    return False
+
 def _as_declarative(cls, classname, dict_):
 
     # dict_ will be a dictproxy, which we can't write to, and we need to!
     dict_ = dict(dict_)
 
     column_copies = dict()
-    mixin_table_args = None
-    mapper_args = {}
-    table_args = None
+    potential_columns = dict()
     
-    def _is_mixin(klass):
-        return not _is_mapped_class(klass) and klass is not cls
+    mapper_args ={}
+    table_args = inherited_table_args = None
+    tablename = None
+    parent_columns = None
     
     for base in cls.__mro__:
-        if _is_mixin(base):
-            for name in dir(base):
+        if _is_mapped_class(base):
+            parent_columns = base.__table__.c.keys()
+        else:
+            for name,obj in vars(base).items():
                 if name == '__mapper_args__':
                     if not mapper_args:
                         mapper_args = cls.__mapper_args__
-                elif name == '__table_args__':
-                    if not table_args:
-                        table_args = mixin_table_args = cls.__table_args__
                 elif name == '__tablename__':
-                    if '__tablename__' not in dict_:
-                        dict_['__tablename__'] = cls.__tablename__
-                else:
-                    obj = getattr(base,name, None)
+                    if not tablename:
+                        tablename = cls.__tablename__
+                elif name == '__table_args__':
+                    if not table_args:                        
+                        table_args = cls.__table_args__
+                        if base is not cls:
+                            inherited_table_args = True
+                elif base is not cls:
                     if isinstance(obj, Column):
                         if obj.foreign_keys:
                             raise exceptions.InvalidRequestError(
                                 "Columns with foreign keys to other columns "
                                 "are not allowed on declarative mixins at this time."
                             )
-                        dict_[name]=column_copies[obj]=obj.copy()
+                        if name not in dict_:
+                            potential_columns[name]=column_copies[obj]=obj.copy()
                     elif isinstance(obj, RelationshipProperty):
                         raise exceptions.InvalidRequestError(
                                             "relationships are not allowed on "
                                             "declarative mixins at this time.")
-        elif base is cls:
-            if '__mapper_args__' in dict_:
-                mapper_args = cls.__mapper_args__
-            if '__table_args__' in dict_:
-                table_args = cls.__table_args__
-            if '__tablename__' in dict_:
-                dict_['__tablename__'] = cls.__tablename__
-                
+    # apply inherited columns as we should
+    for k, v in potential_columns.items():
+        if tablename or k not in parent_columns:
+            dict_[k]=v
+    if inherited_table_args and not tablename:
+        table_args = None
+
     # make sure that column copies are used rather than the original columns
     # from any mixins
     for k, v in mapper_args.iteritems():
@@ -619,10 +727,7 @@ def _as_declarative(cls, classname, dict_):
 
     table = None
     if '__table__' not in dict_:
-        if '__tablename__' in dict_:
-            # see above: if __tablename__ is a descriptor, this
-            # means we get the right value used!
-            tablename = cls.__tablename__
+        if tablename is not None:
             
             if isinstance(table_args, dict):
                 args, table_kw = (), table_args
@@ -684,7 +789,7 @@ def _as_declarative(cls, classname, dict_):
         if table is None:
             # single table inheritance.
             # ensure no table args
-            if table_args is not None and table_args is not mixin_table_args:
+            if table_args:
                 raise exceptions.ArgumentError(
                     "Can't place __table_args__ on an inherited class with no table."
                     )

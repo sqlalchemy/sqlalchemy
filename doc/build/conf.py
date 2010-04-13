@@ -67,7 +67,7 @@ release = sqlalchemy.__version__
 #today_fmt = '%B %d, %Y'
 
 # List of documents that shouldn't be included in the build.
-unused_docs = ['output.txt']
+unused_docs = ['copyright']
 
 # List of directories, relative to source directory, that shouldn't be searched
 # for source files.

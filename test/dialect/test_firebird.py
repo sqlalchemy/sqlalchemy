@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy import *
 from sqlalchemy.databases import firebird
 from sqlalchemy.exc import ProgrammingError
@@ -265,6 +265,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 class MiscTest(TestBase):
     __only_on__ = 'firebird'
 
+    @testing.provide_metadata
     def test_strlen(self):
         # On FB the length() function is implemented by an external
         # UDF, strlen().  Various SA tests fail because they pass a
@@ -272,22 +273,47 @@ class MiscTest(TestBase):
         # the maximum string length the UDF was declared to accept).
         # This test checks that at least it works ok in other cases.
 
-        meta = MetaData(testing.db)
-        t = Table('t1', meta,
+        t = Table('t1', metadata,
             Column('id', Integer, Sequence('t1idseq'), primary_key=True),
             Column('name', String(10))
         )
-        meta.create_all()
-        try:
-            t.insert(values=dict(name='dante')).execute()
-            t.insert(values=dict(name='alighieri')).execute()
-            select([func.count(t.c.id)],func.length(t.c.name)==5).execute().first()[0] == 1
-        finally:
-            meta.drop_all()
+        metadata.create_all()
+        t.insert(values=dict(name='dante')).execute()
+        t.insert(values=dict(name='alighieri')).execute()
+        select([func.count(t.c.id)],func.length(t.c.name)==5).execute().first()[0] == 1
 
     def test_server_version_info(self):
         version = testing.db.dialect.server_version_info
         assert len(version) == 3, "Got strange version info: %s" % repr(version)
+
+    @testing.provide_metadata
+    def test_rowcount_flag(self):
+        engine = engines.testing_engine(options={'enable_rowcount':True})
+        assert engine.dialect.supports_sane_rowcount
+        metadata.bind = engine
+        t = Table('t1', metadata,
+            Column('data', String(10))
+        )
+        metadata.create_all()
+        r = t.insert().execute({'data':'d1'}, {'data':'d2'}, {'data': 'd3'})
+        r = t.update().where(t.c.data=='d2').values(data='d3').execute()
+        eq_(r.rowcount, 1)
+        r = t.delete().where(t.c.data == 'd3').execute()
+        eq_(r.rowcount, 2)
+        
+        r = t.delete().execution_options(enable_rowcount=False).execute()
+        eq_(r.rowcount, -1)
+        
+        engine = engines.testing_engine(options={'enable_rowcount':False})
+        assert not engine.dialect.supports_sane_rowcount
+        metadata.bind = engine
+        r = t.insert().execute({'data':'d1'}, {'data':'d2'}, {'data':'d3'})
+        r = t.update().where(t.c.data=='d2').values(data='d3').execute()
+        eq_(r.rowcount, -1)
+        r = t.delete().where(t.c.data == 'd3').execute()
+        eq_(r.rowcount, -1)
+        r = t.delete().execution_options(enable_rowcount=True).execute()
+        eq_(r.rowcount, 1)
 
     def test_percents_in_text(self):
         for expr, result in (
