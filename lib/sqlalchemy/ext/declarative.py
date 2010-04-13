@@ -550,11 +550,11 @@ def _as_declarative(cls, classname, dict_):
                     if not mapper_args:
                         mapper_args = cls.__mapper_args__
                 elif propagate:
-                    if name == '__table_args__' and propagate:
+                    if name == '__table_args__':
                         if not table_args:
                             table_args = cls.__table_args__
                     elif name == '__tablename__':
-                        if not tablename and propagate:
+                        if not tablename:
                             tablename = cls.__tablename__
                     elif base is not cls:
                         if isinstance(obj, Column):
