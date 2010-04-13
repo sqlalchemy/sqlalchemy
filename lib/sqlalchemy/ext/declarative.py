@@ -535,14 +535,17 @@ def _as_declarative(cls, classname, dict_):
     dict_ = dict(dict_)
 
     column_copies = dict()
+    potential_columns = dict()
     
     mapper_args ={}
-    table_args = None
-    inherited_table_args = False
+    table_args = inherited_table_args = None
     tablename = None
-
+    parent_columns = None
+    
     for base in cls.__mro__:
-        if not _is_mapped_class(base):
+        if _is_mapped_class(base):
+            parent_columns = base.__table__.c.keys()
+        else:
             for name,obj in vars(base).items():
                 if name == '__mapper_args__':
                     if not mapper_args:
@@ -563,11 +566,17 @@ def _as_declarative(cls, classname, dict_):
                                 "are not allowed on declarative mixins at this time."
                             )
                         if name not in dict_:
-                            dict_[name]=column_copies[obj]=obj.copy()
+                            potential_columns[name]=column_copies[obj]=obj.copy()
                     elif isinstance(obj, RelationshipProperty):
                         raise exceptions.InvalidRequestError(
                                             "relationships are not allowed on "
                                             "declarative mixins at this time.")
+    # apply inherited columns as we should
+    for k, v in potential_columns.items():
+        if tablename or k not in parent_columns:
+            dict_[k]=v
+    if inherited_table_args and not tablename:
+        table_args = None
 
     # make sure that column copies are used rather than the original columns
     # from any mixins
@@ -675,7 +684,7 @@ def _as_declarative(cls, classname, dict_):
         if table is None:
             # single table inheritance.
             # ensure no table args
-            if table_args and not inherited_table_args:
+            if table_args:
                 raise exceptions.ArgumentError(
                     "Can't place __table_args__ on an inherited class with no table."
                     )
