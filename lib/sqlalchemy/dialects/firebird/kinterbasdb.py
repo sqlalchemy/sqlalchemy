@@ -19,15 +19,19 @@ Kinterbasedb backend specific keyword arguments are:
 * concurrency_level - set the backend policy with regards to threading issues: by default
   SQLAlchemy uses policy 1 (see details__).
 
-* enable_rowcount - False by default, this enables the usage of "cursor.rowcount" with the 
-  Kinterbasdb dialect.   When disabled, SQLAlchemy's ResultProxy will
-  return -1 for result.rowcount.   The rationale here is that Kinterbasdb
-  requires a second round trip to the database when .rowcount is called - 
-  since SQLA's resultproxy automatically closes the cursor after a 
-  non-result-returning statement, rowcount must be called, if at all,
-  before the result object is returned.   The behavior can also be 
-  controlled on a per-execution basis using the `enable_rowcount`
-  option with :meth:`execution_options()`::
+* enable_rowcount - True by default, setting this to False disables 
+  the usage of "cursor.rowcount" with the 
+  Kinterbasdb dialect, which SQLAlchemy ordinarily calls upon automatically
+  after any UPDATE or DELETE statement.   When disabled, SQLAlchemy's 
+  ResultProxy will return -1 for result.rowcount.   The rationale here is 
+  that Kinterbasdb requires a second round trip to the database when 
+  .rowcount is called -  since SQLA's resultproxy automatically closes 
+  the cursor after a non-result-returning statement, rowcount must be 
+  called, if at all, before the result object is returned.   Additionally,
+  cursor.rowcount may not return correct results with older versions
+  of Firebird, and setting this flag to False will also cause the SQLAlchemy ORM
+  to ignore its usage. The behavior can also be controlled on a per-execution 
+  basis using the `enable_rowcount` option with :meth:`execution_options()`::
   
       conn = engine.connect().execution_options(enable_rowcount=True)
       r = conn.execute(stmt)
@@ -77,7 +81,7 @@ class FBDialect_kinterbasdb(FBDialect):
         
     )
     
-    def __init__(self, type_conv=200, concurrency_level=1, enable_rowcount=False, **kwargs):
+    def __init__(self, type_conv=200, concurrency_level=1, enable_rowcount=True, **kwargs):
         super(FBDialect_kinterbasdb, self).__init__(**kwargs)
         self.enable_rowcount = enable_rowcount
         self.type_conv = type_conv

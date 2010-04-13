@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, assert_raises
 from sqlalchemy import *
 from sqlalchemy.databases import firebird
 from sqlalchemy.exc import ProgrammingError
@@ -304,7 +304,6 @@ class MiscTest(TestBase):
         r = t.delete().execution_options(enable_rowcount=False).execute()
         eq_(r.rowcount, -1)
         
-        
         engine = engines.testing_engine(options={'enable_rowcount':False})
         assert not engine.dialect.supports_sane_rowcount
         metadata.bind = engine
@@ -315,7 +314,7 @@ class MiscTest(TestBase):
         eq_(r.rowcount, -1)
         r = t.delete().execution_options(enable_rowcount=True).execute()
         eq_(r.rowcount, 1)
-        
+
     def test_percents_in_text(self):
         for expr, result in (
             (text("select '%' from rdb$database"), '%'),
