@@ -2289,14 +2289,13 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(Joined.__table__.c.keys(),['id','timestamp'])
         eq_(Joined.__table__.kwargs,{'mysql_engine': 'InnoDB'})
             
-    def test_tablename_propagation(self):
+    def test_has_inherited_table(self):
 
         class NoJoinedTableNameMixin:
             @classproperty
             def __tablename__(cls):
-                for class_ in cls.__mro__:
-                    if getattr(class_,'__table__',None) is not None:
-                        return None
+                if decl.has_inherited_table(cls):
+                    return None
                 return cls.__name__.lower()
 
         class BaseType(Base, NoJoinedTableNameMixin):

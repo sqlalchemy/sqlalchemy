@@ -528,7 +528,16 @@ def instrument_declarative(cls, registry, metadata):
     cls._decl_class_registry = registry
     cls.metadata = metadata
     _as_declarative(cls, cls.__name__, cls.__dict__)
-    
+
+def has_inherited_table(cls):
+    """Given a class, return True if any of the classes it inherits from has a mapped
+    table, otherwise return False.
+    """
+    for class_ in cls.__mro__:
+        if getattr(class_,'__table__',None) is not None:
+            return True
+    return False
+
 def _as_declarative(cls, classname, dict_):
 
     # dict_ will be a dictproxy, which we can't write to, and we need to!
