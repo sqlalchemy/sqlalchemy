@@ -2256,7 +2256,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(Generic.__table__.kwargs,{'mysql_engine': 'InnoDB'})
         eq_(Specific.__table__.kwargs,{'mysql_engine': 'InnoDB'})
             
-    def test_tablename_some_propagation(self):
+    def test_some_propagation(self):
         
         class CommonMixin:
             @classproperty
@@ -2289,7 +2289,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(Joined.__table__.c.keys(),['id','timestamp'])
         eq_(Joined.__table__.kwargs,{'mysql_engine': 'InnoDB'})
             
-    def test_has_inherited_table(self):
+    def test_non_propagating_mixin(self):
 
         class NoJoinedTableNameMixin:
             @classproperty
@@ -2313,6 +2313,30 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert Specific.__table__ is BaseType.__table__
         assert class_mapper(Specific).polymorphic_on is BaseType.__table__.c.type
         eq_(class_mapper(Specific).polymorphic_identity, 'specific')
+
+    def test_non_propagating_mixin_used_for_joined(self):
+
+        class TableNameMixin:
+            @classproperty
+            def __tablename__(cls):
+                if decl.has_inherited_table(cls) and TableNameMixin not in cls.__bases__:
+                    return None
+                return cls.__name__.lower()
+
+        class BaseType(Base, TableNameMixin):
+            discriminator = Column('type', String(50))
+            __mapper_args__= dict(polymorphic_on=discriminator)
+            id = Column(Integer, primary_key=True) 
+            value = Column(Integer())  
+
+        class Specific(BaseType, TableNameMixin):
+            __mapper_args__ = dict(polymorphic_identity='specific')
+            id = Column(Integer, ForeignKey('basetype.id'), primary_key=True)
+            
+        eq_(BaseType.__table__.name,'basetype')
+        eq_(BaseType.__table__.c.keys(),['type', 'id', 'value'])
+        eq_(Specific.__table__.name,'specific')
+        eq_(Specific.__table__.c.keys(),['id'])
 
     def test_single_back_propagate(self):
 
