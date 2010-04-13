@@ -548,9 +548,12 @@ class SQLCompiler(engine.Compiled):
                         )
                 elif getattr(existing, '_is_crud', False):
                     raise exc.CompileError(
-                            "Bind parameter name '%s' is reserved "
-                            "for the VALUES or SET clause of this insert/update statement." 
-                            % bindparam.key
+                            "bindparam() name '%s' is reserved "
+                            "for automatic usage in the VALUES or SET clause of this "
+                            "insert/update statement.   Please use a " 
+                            "name other than column name when using bindparam() "
+                            "with insert() or update() (for example, 'b_%s')."
+                            % (bindparam.key, bindparam.key)
                         )
                     
         self.binds[bindparam.key] = self.binds[name] = bindparam
@@ -906,9 +909,12 @@ class SQLCompiler(engine.Compiled):
         bindparam._is_crud = True
         if col.key in self.binds:
             raise exc.CompileError(
-                    "Bind parameter name '%s' is reserved "
-                    "for the VALUES or SET clause of this insert/update statement." 
-                    % col.key
+                    "bindparam() name '%s' is reserved "
+                    "for automatic usage in the VALUES or SET clause of this "
+                    "insert/update statement.   Please use a " 
+                    "name other than column name when using bindparam() "
+                    "with insert() or update() (for example, 'b_%s')."
+                    % (col.key, col.key)
                 )
             
         self.binds[col.key] = bindparam
