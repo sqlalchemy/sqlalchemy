@@ -2252,7 +2252,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(Generic.__table__.name,'generic')
         eq_(Specific.__table__.name,'specific')
         eq_(Generic.__table__.c.keys(),['python_type', 'timestamp', 'id'])
-        eq_(Specific.__table__.c.keys(),['timestamp', 'id'])
+        eq_(Specific.__table__.c.keys(),['id', 'timestamp'])
         eq_(Generic.__table__.kwargs,{'mysql_engine': 'InnoDB'})
         eq_(Specific.__table__.kwargs,{'mysql_engine': 'InnoDB'})
             
