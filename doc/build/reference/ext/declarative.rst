@@ -10,6 +10,8 @@ API Reference
 
 .. autofunction:: _declarative_constructor
 
+.. autofunction:: has_inherited_table
+
 .. autofunction:: synonym_for
 
 .. autofunction:: comparable_using

@@ -2319,7 +2319,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         class TableNameMixin:
             @classproperty
             def __tablename__(cls):
-                if decl.has_inherited_table(cls) and TableNameMixin not in cls.__bases__:
+                if (decl.has_inherited_table(cls) and
+                    TableNameMixin not in cls.__bases__):
                     return None
                 return cls.__name__.lower()
 

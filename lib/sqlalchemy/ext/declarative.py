@@ -476,6 +476,102 @@ you implement a class property with a function. For example::
 
         id =  Column(Integer, primary_key=True)
 
+Controlling table inheritance with mix-ins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``__tablename__`` attribute in conjunction with the hierarchy of
+the classes involved controls what type of table inheritance, if any,
+is configured by the declarative extension.
+
+If the ``__tablename__`` is computed by a mix-in, you may need to
+control which classes get the computed attribute in order to get the
+type of table inheritance you require.
+
+For example, if you had a mix-in that computes ``__tablename__`` but
+where you wanted to use that mix-in in a single table inheritance
+hierarchy, you can explicitly specify ``__tablename__`` as ``None`` to
+indicate that the class should not have a table mapped::
+
+    from sqlalchemy.util import classproperty
+
+    class Tablename:
+        @classproperty
+        def __tablename__(cls):
+            return cls.__name__.lower()
+
+    class Person(Base,Tablename):
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        __tablename__ = None
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        primary_language = Column(String(50))
+
+Alternatively, you can make the mix-in intelligent enough to only
+return a ``__tablename__`` in the event that no table is already
+mapped in the inheritance hierarchy. To help with this, a
+:func:`~sqlalchemy.ext.declarative.has_inherited_table` helper
+function is provided that returns ``True`` if a parent class already
+has a mapped table. 
+
+As an examply, here's a mix-in that will only allow single table
+inheritance::
+
+    from sqlalchemy.util import classproperty
+    from sqlalchemy.ext.declarative import has_inherited_table
+
+    class Tablename:
+        @classproperty
+        def __tablename__(cls):
+            if has_inherited_table(cls):
+                return None
+            return cls.__name__.lower()
+
+    class Person(Base,Tablename):
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        __tablename__ = None
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        primary_language = Column(String(50))
+
+If you want to use a similar pattern with a mix of single and joined
+table inheritance, you would need a slightly different mix-in and use
+it on any joined table child classes in addition to their parent
+classes::
+
+    from sqlalchemy.util import classproperty
+    from sqlalchemy.ext.declarative import has_inherited_table
+
+    class Tablename:
+        @classproperty
+        def __tablename__(cls):
+            if (decl.has_inherited_table(cls) and
+                TableNameMixin not in cls.__bases__):
+                return None
+            return cls.__name__.lower()
+
+    class Person(Base,Tablename):
+        id = Column(Integer, primary_key=True)
+        discriminator = Column('type', String(50))
+        __mapper_args__ = {'polymorphic_on': discriminator}
+
+    class Engineer(Person):
+        # This is single table inheritance
+        __tablename__ = None
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        primary_language = Column(String(50))
+
+    class Manager(Person,Tablename):
+        # This is joinded table inheritance
+        __tablename__ = None
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        preferred_recreation = Column(String(50))
+
 Class Constructor
 =================
 
