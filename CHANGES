@@ -4,8 +4,9 @@
 CHANGES
 =======
 
-0.6uow_refactor
-===============
+0.6.0
+=====
+
 - orm
   - Unit of work internals have been rewritten.  Units of work
     with large numbers of objects interdependent objects 
@@ -19,18 +20,14 @@ CHANGES
     work to be done, filtered through a single topological sort 
     for correct ordering.  Flush actions are assembled using 
     far fewer steps and less memory. [ticket:1742]
-  
+
   - one-to-many relationships now maintain a list of positive
     parent-child associations within the flush, preventing
     previous parents marked as deleted from cascading a 
     delete or NULL foreign key set on those child objects,
     despite the end-user not removing the child from the old
     association. [ticket:1764]
-  
-0.6.0
-=====
 
-- orm
   - A collection lazy load will switch off default 
     eagerloading on the reverse many-to-one side, since 
     that loading is by definition unnecessary.  [ticket:1495]

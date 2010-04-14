@@ -168,9 +168,6 @@ class DependencyProcessor(object):
             if not sum_:
                 continue
 
-            # I'd like to emit the before_delete/after_save actions
-            # here and have the unit of work not get confused by that
-            # when it alters the list of dependencies...
             if isdelete:
                 before_delete = unitofwork.ProcessState(uow, self, True, state)
                 if parent_in_cycles:
