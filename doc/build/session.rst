@@ -322,7 +322,7 @@ The :func:`~sqlalchemy.orm.session.Session.close`  method issues a :func:`~sqlal
 Refreshing / Expiring
 ---------------------
 
-To assist with the Session's "sticky" behavior of instances which are present, individual objects can have all of their attributes immediately re-loaded from the database, or marked as "expired" which will cause a re-load to occur upon the next access of any of the object's mapped attributes.  This includes all relationships, so lazy-loaders will be re-initialized, eager relationships will be repopulated.  Any changes marked on the object are discarded::
+To assist with the Session's "sticky" behavior of instances which are present, individual objects can have all of their attributes immediately re-loaded from the database, or marked as "expired" which will cause a re-load to occur upon the next access of any of the object's mapped attributes.  Any changes marked on the object are discarded::
 
     # immediately re-load attributes on obj1, obj2
     session.refresh(obj1)
@@ -333,7 +333,9 @@ To assist with the Session's "sticky" behavior of instances which are present, i
     session.expire(obj1)
     session.expire(obj2)
 
-:func:`~sqlalchemy.orm.session.Session.refresh` and :func:`~sqlalchemy.orm.session.Session.expire` also support being passed a list of individual attribute names in which to be refreshed.  These names can reference any attribute, column-based or relationship based::
+When an expired object reloads, all non-deferred column-based attributes are loaded in one query.  Current behavior for expired relationship-based attributes is that they load individually upon access - this behavior may be enhanced in a future release.   When a refresh is invoked on an object, the ultimate operation is equivalent to a :meth:`Query.get`, so any relationships configured with eager loading should also load within the scope of the refresh operation.
+
+:func:`~sqlalchemy.orm.session.Session.refresh` and :func:`~sqlalchemy.orm.session.Session.expire` also support being passed a list of individual attribute names in which to be refreshed.  These names can refer to any attribute, column-based or relationship based::
 
     # immediately re-load the attributes 'hello', 'world' on obj1, obj2
     session.refresh(obj1, ['hello', 'world'])
