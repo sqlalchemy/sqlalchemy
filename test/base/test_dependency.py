@@ -1,8 +1,7 @@
 import sqlalchemy.topological as topological
 from sqlalchemy.test import TestBase
 from sqlalchemy.test.testing import assert_raises, eq_
-from sqlalchemy import exc
-import collections
+from sqlalchemy import exc, util
 
 class DependencySortTest(TestBase):
     def assert_sort(self, tuples, allitems=None):
@@ -14,7 +13,7 @@ class DependencySortTest(TestBase):
             
         result = list(topological.sort(tuples, allitems))
         
-        deps = collections.defaultdict(set)
+        deps = util.defaultdict(set)
         for parent, child in tuples:
             deps[parent].add(child)
         
