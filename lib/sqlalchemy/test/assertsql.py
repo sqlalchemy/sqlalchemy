@@ -160,6 +160,9 @@ class CompiledSQL(SQLMatchRule):
             all_received = list(_received_parameters)
             while params:
                 param = params.pop(0)
+                for k, v in context.compiled.params.iteritems():
+                    param.setdefault(k, v)
+                    
                 if param not in _received_parameters:
                     equivalent = False
                     break
