@@ -189,6 +189,26 @@ class Inspector(object):
 
         return pkeys
 
+    def get_pk_constraint(self, table_name, schema=None, **kw):
+        """Return information about primary key constraint on `table_name`.
+
+        Given a string `table_name`, and an optional string `schema`, return
+        primary key information as a dictionary with these keys:
+        
+        constrained_columns
+          a list of column names that make up the primary key
+        
+        name
+          optional name of the primary key constraint.
+
+        """
+        pkeys = self.dialect.get_pk_constraint(self.conn, table_name, schema,
+                                              info_cache=self.info_cache,
+                                              **kw)
+
+        return pkeys
+        
+
     def get_foreign_keys(self, table_name, schema=None, **kw):
         """Return information about foreign_keys in `table_name`.
 
@@ -208,6 +228,9 @@ class Inspector(object):
           a list of column names in the referred table that correspond to
           constrained_columns
 
+        name
+          optional name of the foreign key constraint.
+          
         \**kw
           other options passed to the dialect's get_foreign_keys() method.
 
@@ -318,12 +341,14 @@ class Inspector(object):
             raise exc.NoSuchTableError(table.name)
 
         # Primary keys
-        primary_key_constraint = sa_schema.PrimaryKeyConstraint(*[
-            table.c[pk] for pk in self.get_primary_keys(table_name, schema, **tblkw)
-            if pk in table.c
-        ])
+        pk_cons = self.get_pk_constraint(table_name, schema, **tblkw)
+        if pk_cons:
+            primary_key_constraint = sa_schema.PrimaryKeyConstraint(*[
+                table.c[pk] for pk in pk_cons['constrained_columns']
+                if pk in table.c
+            ], name=pk_cons.get('name'))
 
-        table.append_constraint(primary_key_constraint)
+            table.append_constraint(primary_key_constraint)
 
         # Foreign keys
         fkeys = self.get_foreign_keys(table_name, schema, **tblkw)

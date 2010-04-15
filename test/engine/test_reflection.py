@@ -4,8 +4,7 @@ from sqlalchemy import types as sql_types
 from sqlalchemy import schema
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import MetaData
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.test import TestBase, ComparesTables, \
                             testing, engines, AssertsCompiledSQL
@@ -966,10 +965,11 @@ def createTables(meta, schema=None):
         test_needs_fk=True,
     )
     addresses = Table('email_addresses', meta,
-        Column('address_id', sa.Integer, primary_key = True),
+        Column('address_id', sa.Integer),
         Column('remote_user_id', sa.Integer,
                sa.ForeignKey(users.c.user_id)),
         Column('email_address', sa.String(20)),
+        sa.PrimaryKeyConstraint('address_id', name='email_ad_pk'),
         schema=schema,
         test_needs_fk=True,
     )
@@ -1148,10 +1148,17 @@ class ComponentReflectionTest(TestBase):
             users_pkeys = insp.get_primary_keys(users.name,
                                                 schema=schema)
             eq_(users_pkeys,  ['user_id'])
-            addr_pkeys = insp.get_primary_keys(addresses.name,
-                                               schema=schema)
+            addr_cons = insp.get_pk_constraint(addresses.name,
+                                                schema=schema)
+                                                
+            addr_pkeys = addr_cons['constrained_columns']
             eq_(addr_pkeys,  ['address_id'])
-
+            
+            @testing.requires.reflects_pk_names
+            def go():
+                eq_(addr_cons['name'], 'email_ad_pk')
+            go()
+            
         finally:
             addresses.drop()
             users.drop()

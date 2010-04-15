@@ -116,6 +116,11 @@ CHANGES
     corresponding to the dialect, clause element, the column
     names within the VALUES or SET clause of an INSERT or UPDATE, 
     as well as the "batch" mode for an INSERT or UPDATE statement.
+  
+  - Added get_pk_constraint() to reflection.Inspector, similar
+    to get_primary_keys() except returns a dict that includes the
+    name of the constraint, for supported backends (PG so far).
+    [ticket:1769]
     
 - ext
   - the compiler extension now allows @compiles decorators
@@ -143,7 +148,10 @@ CHANGES
   - psycopg2/pg8000 dialects now aware of REAL[], FLOAT[], 
     DOUBLE_PRECISION[], NUMERIC[] return types without
     raising an exception.
-    
+
+  - Postgresql reflects the name of primary key constraints,
+    if one exists.  [ticket:1769]
+        
 - oracle
   - Now using cx_oracle output converters so that the
     DBAPI returns natively the kinds of values we prefer:

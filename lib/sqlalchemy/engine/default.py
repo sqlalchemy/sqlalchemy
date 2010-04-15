@@ -205,6 +205,17 @@ class DefaultDialect(base.Dialect):
         insp = reflection.Inspector.from_engine(connection)
         return insp.reflecttable(table, include_columns)
 
+    def get_pk_constraint(self, conn, table_name, schema=None, **kw):
+        """Compatiblity method, adapts the result of get_primary_keys()
+        for those dialects which don't implement get_pk_constraint().
+        
+        """
+        return {
+            'constrained_columns':
+                        self.get_primary_keys(conn, table_name, 
+                                                schema=schema, **kw)
+        }
+        
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
             raise exc.IdentifierError(

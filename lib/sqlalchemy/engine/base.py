@@ -260,8 +260,23 @@ class Dialect(object):
         Given a :class:`~sqlalchemy.engine.Connection`, a string
         `table_name`, and an optional string `schema`, return primary
         key information as a list of column names.
-        """
 
+        """
+        raise NotImplementedError()
+
+    def get_pk_constraint(self, table_name, schema=None, **kw):
+        """Return information about the primary key constraint on `table_name`.
+
+        Given a string `table_name`, and an optional string `schema`, return
+        primary key information as a dictionary with these keys:
+
+        constrained_columns
+          a list of column names that make up the primary key
+
+        name
+          optional name of the primary key constraint.
+
+        """
         raise NotImplementedError()
 
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
