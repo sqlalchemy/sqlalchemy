@@ -159,7 +159,7 @@ class CompiledSQL(SQLMatchRule):
             all_params = list(params)
             all_received = list(_received_parameters)
             while params:
-                param = params.pop(0)
+                param = dict(params.pop(0))
                 for k, v in context.compiled.params.iteritems():
                     param.setdefault(k, v)
                     
