@@ -343,10 +343,10 @@ class Inspector(object):
         # Primary keys
         pk_cons = self.get_pk_constraint(table_name, schema, **tblkw)
         if pk_cons:
-            primary_key_constraint = sa_schema.PrimaryKeyConstraint(*[
-                table.c[pk] for pk in pk_cons['constrained_columns']
-                if pk in table.c
-            ], name=pk_cons.get('name'))
+            primary_key_constraint = sa_schema.PrimaryKeyConstraint(name=pk_cons.get('name'), 
+                *[table.c[pk] for pk in pk_cons['constrained_columns']
+                if pk in table.c]
+            )
 
             table.append_constraint(primary_key_constraint)
 
