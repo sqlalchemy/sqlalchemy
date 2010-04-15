@@ -421,7 +421,8 @@ class ReversePKsTest(_base.MappedTest):
 
     
 class SelfReferentialTest(_base.MappedTest):
-    __unsupported_on__ = ('mssql',) # mssql doesn't allow ON UPDATE on self-referential keys
+    __unsupported_on__ = ('mssql','mysql') # mssql, mysql don't allow 
+                                           # ON UPDATE on self-referential keys
 
     @classmethod
     def define_tables(cls, metadata):
@@ -433,7 +434,9 @@ class SelfReferentialTest(_base.MappedTest):
         Table('nodes', metadata,
               Column('name', String(50), primary_key=True),
               Column('parent', String(50),
-                     ForeignKey('nodes.name', **fk_args)))
+                     ForeignKey('nodes.name', **fk_args)),
+                test_needs_fk=True
+                     )
 
     @classmethod
     def setup_classes(cls):
@@ -465,12 +468,20 @@ class SelfReferentialTest(_base.MappedTest):
              for n in sess.query(Node).filter(
                  Node.name.in_(['n11', 'n12', 'n13']))])
 
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
+    def test_many_to_one_passive(self):
+        self._test_many_to_one(True)
+
+    def test_many_to_one_nonpassive(self):
+        self._test_many_to_one(False)
+
     @testing.resolve_artifact_names
-    def test_many_to_one(self):
+    def _test_many_to_one(self, passive):
         mapper(Node, nodes, properties={
             'parentnode':relationship(Node, 
                             remote_side=nodes.c.name, 
-                            passive_updates=True)
+                            passive_updates=passive)
             }
         )
 
@@ -484,6 +495,8 @@ class SelfReferentialTest(_base.MappedTest):
 
         n1.name = 'new n1'
         sess.flush()
+        if passive:
+            sess.expire_all()
         eq_(['new n1', 'new n1', 'new n1'],
              [n.parent
               for n in sess.query(Node).filter(
