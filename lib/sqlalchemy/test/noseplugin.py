@@ -51,7 +51,7 @@ class NoseSQLAlchemy(Plugin):
             callback=_engine_strategy,
             help="Engine strategy (plain or threadlocal, defaults to plain)")
         opt("--reversetop", action="store_true", dest="reversetop", default=False,
-            help="Reverse the collection ordering for topological sorts (helps "
+            help="Use a random-ordering set implementation in the ORM (helps "
                   "reveal dependency issues)")
         opt("--unhashable", action="store_true", dest="unhashable", default=False,
             help="Disallow SQLAlchemy from performing a hash() on mapped test objects.")

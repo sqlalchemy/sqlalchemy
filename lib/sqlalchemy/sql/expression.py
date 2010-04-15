@@ -2898,6 +2898,9 @@ class Join(FromClause):
           underlying :func:`select()` function.
 
         """
+        global sql_util
+        if not sql_util:
+            from sqlalchemy.sql import util as sql_util
         if fold_equivalents:
             collist = sql_util.folded_equivalents(self)
         else:

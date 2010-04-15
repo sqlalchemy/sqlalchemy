@@ -9,10 +9,6 @@
 from sqlalchemy.exc import CircularDependencyError
 from sqlalchemy import util
 
-# this enables random orderings for iterated subsets
-# of non-dependent items.
-#from sqlalchemy.test.util import RandomSet as set
-
 __all__ = ['sort', 'sort_as_subsets', 'find_cycles']
 
 def sort_as_subsets(tuples, allitems):

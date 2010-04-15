@@ -173,7 +173,8 @@ class CompiledSQL(SQLMatchRule):
         self._result = equivalent
         if not self._result:
             self._errmsg = "Testing for compiled statement %r partial params %r, " \
-                    "received %r with params %r" % (self.statement, all_params, _received_statement, all_received)
+                    "received %r with params %r" % \
+                    (self.statement, all_params, _received_statement, all_received)
     
         
 class CountStatements(AssertRule):

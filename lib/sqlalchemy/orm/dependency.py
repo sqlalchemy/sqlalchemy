@@ -101,12 +101,6 @@ class DependencyProcessor(object):
         
         """
 
-        # assertions to ensure this method isn't being
-        # called unnecessarily.  can comment these out when 
-        # code is stable
-        assert not self.post_update or not self._check_reverse(uow)
-        
-
         # locate and disable the aggregate processors
         # for this dependency
         
@@ -776,11 +770,6 @@ class DetectKeySwitch(DependencyProcessor):
 
 class ManyToManyDP(DependencyProcessor):
         
-    def per_property_preprocessors(self, uow):
-        if self._check_reverse(uow):
-            return
-        DependencyProcessor.per_property_preprocessors(self, uow)
-
     def per_property_dependencies(self, uow, parent_saves, 
                                                 child_saves, 
                                                 parent_deletes, 
@@ -860,11 +849,27 @@ class ManyToManyDP(DependencyProcessor):
                                                     child):
                             uowcommit.register_object(
                                 attributes.instance_state(c), isdelete=True)
-        
+    
+    def _get_reversed_processed_set(self, uow):
+        if not self.prop._reverse_property:
+            return None
+
+        process_key = tuple(sorted(
+                        [self.key] + 
+                        [p.key for p in self.prop._reverse_property]
+                    ))
+        return uow.memo(
+                            ('reverse_key', process_key), 
+                            set
+                        )
+
     def process_deletes(self, uowcommit, states):
         secondary_delete = []
         secondary_insert = []
         secondary_update = []
+        
+        processed = self._get_reversed_processed_set(uowcommit)
+        
         for state in states:
             history = uowcommit.get_attribute_history(
                                     state, 
@@ -872,7 +877,9 @@ class ManyToManyDP(DependencyProcessor):
                                     passive=self.passive_deletes)
             if history:
                 for child in history.non_added():
-                    if child is None:
+                    if child is None or \
+                        (processed is not None and (state, child) in processed) or \
+                        not uowcommit.session._contains_state(child):
                         continue
                     associationrow = {}
                     self._synchronize(
@@ -881,7 +888,10 @@ class ManyToManyDP(DependencyProcessor):
                                         associationrow, 
                                         False, uowcommit)
                     secondary_delete.append(associationrow)
-
+                
+                if processed is not None:
+                    processed.update((c, state) for c in history.non_added())
+                
         self._run_crud(uowcommit, secondary_insert, 
                         secondary_update, secondary_delete)
 
@@ -890,11 +900,14 @@ class ManyToManyDP(DependencyProcessor):
         secondary_insert = []
         secondary_update = []
 
+        processed = self._get_reversed_processed_set(uowcommit)
+        
         for state in states:
             history = uowcommit.get_attribute_history(state, self.key)
             if history:
                 for child in history.added:
-                    if child is None:
+                    if child is None or \
+                            (processed is not None and (state, child) in processed):
                         continue
                     associationrow = {}
                     self._synchronize(state, 
@@ -903,7 +916,9 @@ class ManyToManyDP(DependencyProcessor):
                                         False, uowcommit)
                     secondary_insert.append(associationrow)
                 for child in history.deleted:
-                    if child is None:
+                    if child is None or \
+                            (processed is not None and (state, child) in processed) or \
+                            not uowcommit.session._contains_state(child):
                         continue
                     associationrow = {}
                     self._synchronize(state, 
@@ -911,7 +926,10 @@ class ManyToManyDP(DependencyProcessor):
                                         associationrow, 
                                         False, uowcommit)
                     secondary_delete.append(associationrow)
-
+                
+                if processed is not None:
+                    processed.update((c, state) for c in history.added + history.deleted)
+                
             if not self.passive_updates and \
                     self._pks_changed(uowcommit, state):
                 if not history:
@@ -935,13 +953,14 @@ class ManyToManyDP(DependencyProcessor):
 
                     secondary_update.append(associationrow)
                     
+
         self._run_crud(uowcommit, secondary_insert, 
                         secondary_update, secondary_delete)
         
     def _run_crud(self, uowcommit, secondary_insert, 
                                         secondary_update, secondary_delete):
         connection = uowcommit.transaction.connection(self.mapper)
-
+        
         if secondary_delete:
             associationrow = secondary_delete[0]
             statement = self.secondary.delete(sql.and_(*[

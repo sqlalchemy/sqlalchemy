@@ -1,6 +1,5 @@
 import optparse, os, sys, re, ConfigParser, time, warnings
 
-
 # 2to3
 import StringIO
 
@@ -166,15 +165,9 @@ post_configure['table_options'] = _set_table_options
 
 def _reverse_topological(options, file_config):
     if options.reversetop:
-        from sqlalchemy.orm import unitofwork
+        from sqlalchemy.orm import unitofwork, session, mapper, dependency
         from sqlalchemy import topological
-        class RevQueueDepSort(topological.QueueDependencySorter):
-            def __init__(self, tuples, allitems):
-                self.tuples = list(tuples)
-                self.allitems = list(allitems)
-                self.tuples.reverse()
-                self.allitems.reverse()
-        topological.QueueDependencySorter = RevQueueDepSort
-        unitofwork.DependencySorter = RevQueueDepSort
+        from sqlalchemy.test.util import RandomSet
+        topological.set = unitofwork.set = session.set = mapper.set = dependency.set = RandomSet
 post_configure['topological'] = _reverse_topological
 

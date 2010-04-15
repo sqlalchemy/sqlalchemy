@@ -1,7 +1,7 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.test import testing
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, func
 from test.orm import _fixtures, _base
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, unitofwork, attributes
@@ -585,50 +585,20 @@ class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults, Asse
         
         sess.add_all([n1, n2, n3, n4, n5])
         
-        self.assert_sql_execution(
-                testing.db,
-                sess.flush,
-
-                CompiledSQL(
-                    "INSERT INTO nodes (data, favorite_node_id) "
-                    "VALUES (:data, :favorite_node_id)",
-                    {'data': 'n2', 'favorite_node_id': None}
-                ),
-                CompiledSQL(
-                    "INSERT INTO nodes (data, favorite_node_id) "
-                    "VALUES (:data, :favorite_node_id)", 
-                    {'data': 'n3', 'favorite_node_id': None}),
-                CompiledSQL("INSERT INTO nodes (data, favorite_node_id) "
-                            "VALUES (:data, :favorite_node_id)", 
-                    lambda ctx:{'data': 'n5', 'favorite_node_id': n2.id}),
-                CompiledSQL(
-                    "INSERT INTO nodes (data, favorite_node_id) "
-                    "VALUES (:data, :favorite_node_id)", 
-                    lambda ctx:{'data': 'n4', 'favorite_node_id': n3.id}),
-                CompiledSQL(
-                    "INSERT INTO node_to_nodes (left_node_id, right_node_id) "
-                    "VALUES (:left_node_id, :right_node_id)", 
-                    lambda ctx:[
-                        {'right_node_id': n5.id, 'left_node_id': n3.id}, 
-                        {'right_node_id': n4.id, 'left_node_id': n3.id}, 
-                        {'right_node_id': n3.id, 'left_node_id': n2.id}, 
-                        {'right_node_id': n5.id, 'left_node_id': n2.id}
-                    ]
-                    ),
-                CompiledSQL(
-                    "INSERT INTO nodes (data, favorite_node_id) "
-                    "VALUES (:data, :favorite_node_id)", 
-                    lambda ctx:[{'data': 'n1', 'favorite_node_id': n5.id}]
-                ),
-                CompiledSQL(
-                    "INSERT INTO node_to_nodes (left_node_id, right_node_id) "
-                    "VALUES (:left_node_id, :right_node_id)", 
-                    lambda ctx:[
-                        {'right_node_id': n2.id, 'left_node_id': n1.id}, 
-                        {'right_node_id': n3.id, 'left_node_id': n1.id}, 
-                        {'right_node_id': n4.id, 'left_node_id': n1.id}
-                    ])
-            )
+        # can't really assert the SQL on this easily
+        # since there's too many ways to insert the rows.
+        # so check the end result
+        sess.flush()
+        eq_(
+            sess.query(node_to_nodes.c.left_node_id, node_to_nodes.c.right_node_id).\
+                    order_by(node_to_nodes.c.left_node_id, node_to_nodes.c.right_node_id).\
+                    all(), 
+            sorted([
+                    (n1.id, n2.id), (n1.id, n3.id), (n1.id, n4.id), 
+                    (n2.id, n3.id), (n2.id, n5.id), 
+                    (n3.id, n5.id), (n3.id, n4.id)
+                ])
+        )
 
         sess.delete(n1)
         
@@ -653,7 +623,7 @@ class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults, Asse
         
         for n in [n2, n3, n4, n5]:
             sess.delete(n)
-            
+        
         # load these collections
         # outside of the flush() below
         n4.children
