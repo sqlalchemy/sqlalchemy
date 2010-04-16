@@ -118,7 +118,7 @@ class EscapesDefaultsTest(testing.TestBase):
             Column(u'special_col', Integer, Sequence('special_col'), primary_key=True),
             Column('data', String(50)) # to appease SQLite without DEFAULT VALUES
             )
-        t1.create()
+        metadata.create_all()
 
         try:
             engine = metadata.bind
@@ -134,6 +134,6 @@ class EscapesDefaultsTest(testing.TestBase):
             # ensure that executioncontext._exec_default() is encoding.
             t1.insert().execute(data='foo')
         finally:
-            t1.drop()
+            metadata.drop_all()
 
 
