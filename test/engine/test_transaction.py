@@ -553,14 +553,14 @@ class TLTransactionTest(TestBase):
             Column('user_name', VARCHAR(20)),
             test_needs_acid=True,
         )
-        users.create(tlengine)
+        metadata.create_all(tlengine)
 
     def teardown(self):
         tlengine.execute(users.delete()).close()
 
     @classmethod
     def teardown_class(cls):
-        users.drop(tlengine)
+        metadata.drop_all(tlengine)
         tlengine.dispose()
     
     def setup(self):

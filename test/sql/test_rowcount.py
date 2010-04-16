@@ -11,7 +11,7 @@ class FoundRowsTest(TestBase, AssertsExecutionResults):
     def setup_class(cls):
         metadata = MetaData(testing.db)
 
-        global employees_table
+        global employees_table, metadata
 
         employees_table = Table('employees', metadata,
             Column('employee_id', Integer, 
@@ -20,7 +20,7 @@ class FoundRowsTest(TestBase, AssertsExecutionResults):
             Column('name', String(50)),
             Column('department', String(1)),
         )
-        employees_table.create()
+        metadata.create_all()
 
     def setup(self):
         global data
@@ -41,7 +41,7 @@ class FoundRowsTest(TestBase, AssertsExecutionResults):
 
     @classmethod
     def teardown_class(cls):
-        employees_table.drop()
+        metadata.drop_all()
 
     def testbasic(self):
         s = employees_table.select()

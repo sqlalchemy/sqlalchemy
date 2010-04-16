@@ -585,7 +585,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
 
     @classmethod
     def setup_class(cls):
-        global binary_table, MyPickleType
+        global binary_table, MyPickleType, metadata
 
         class MyPickleType(types.TypeDecorator):
             impl = PickleType
@@ -599,8 +599,9 @@ class BinaryTest(TestBase, AssertsExecutionResults):
                 if value:
                     value.stuff = 'this is the right stuff'
                 return value
-
-        binary_table = Table('binary_table', MetaData(testing.db),
+        
+        metadata = MetaData(testing.db)
+        binary_table = Table('binary_table', metadata,
             Column('primary_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', LargeBinary),
             Column('data_slice', LargeBinary(100)),
@@ -608,7 +609,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
             Column('pickled', PickleType),
             Column('mypickle', MyPickleType)
         )
-        binary_table.create()
+        metadata.create_all()
 
     @engines.close_first
     def teardown(self):
@@ -616,7 +617,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
 
     @classmethod
     def teardown_class(cls):
-        binary_table.drop()
+        metadata.drop_all()
 
     def test_round_trip(self):
         testobj1 = pickleable.Foo('im foo 1')
