@@ -156,7 +156,6 @@ class DDLEventTest(TestBase):
         metadata.drop_all(bind)
         assert canary.state == 'after-create'
 
-    @testing.future
     def test_metadata_table_isolation(self):
         metadata, table, bind = self.metadata, self.table, self.bind
 
@@ -166,8 +165,6 @@ class DDLEventTest(TestBase):
         metadata_canary = self.Canary(metadata, bind)
         metadata.ddl_listeners['before-create'].append(metadata_canary.before_create)
 
-        # currently, table.create() routes through the same execution
-        # path that metadata.create_all() does
         self.table.create(self.bind)
         assert metadata_canary.state == None
 

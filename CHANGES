@@ -121,6 +121,9 @@ CHANGES
     to get_primary_keys() except returns a dict that includes the
     name of the constraint, for supported backends (PG so far).
     [ticket:1769]
+
+  - Table.create() and Table.drop() no longer apply metadata-
+    level create/drop events.  [ticket:1771]
     
 - ext
   - the compiler extension now allows @compiles decorators

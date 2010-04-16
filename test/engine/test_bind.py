@@ -31,16 +31,14 @@ class BindTest(testing.TestBase):
                 table.drop(*args[0], **args[1])
                 assert not table.exists(*args[0], **args[1])
 
-    def test_create_drop_err(self):
+    def test_create_drop_err_metadata(self):
         metadata = MetaData()
         table = Table('test_table', metadata,
             Column('foo', Integer))
-
+        
         for meth in [
             metadata.create_all,
             metadata.drop_all,
-            table.create,
-            table.drop,
         ]:
             try:
                 meth()
@@ -54,27 +52,7 @@ class BindTest(testing.TestBase):
                     "against.  Either execute with an explicit connection or "
                     "assign the MetaData's .bind to enable implicit execution.")
 
-        for meth in [
-            table.exists,
-            # future:
-            #table.create,
-            #table.drop,
-        ]:
-            try:
-                meth()
-                assert False
-            except exc.UnboundExecutionError, e:
-                eq_(
-                    str(e),
-                    "The Table 'test_table' "
-                    "is not bound to an Engine or Connection.  "
-                    "Execution can not proceed without a database to execute "
-                    "against.  Either execute with an explicit connection or "
-                    "assign this Table's .metadata.bind to enable implicit "
-                    "execution.")
-
-    @testing.future
-    def test_create_drop_err2(self):
+    def test_create_drop_err_table(self):
         metadata = MetaData()
         table = Table('test_table', metadata,
             Column('foo', Integer))

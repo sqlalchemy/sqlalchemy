@@ -70,11 +70,11 @@ class ClauseVisitor(object):
     
     __traverse_options__ = {}
     
-    def traverse_single(self, obj):
+    def traverse_single(self, obj, **kw):
         for v in self._visitor_iterator:
             meth = getattr(v, "visit_%s" % obj.__visit_name__, None)
             if meth:
-                return meth(obj)
+                return meth(obj, **kw)
     
     def iterate(self, obj):
         """traverse the given expression structure, returning an iterator of all elements."""

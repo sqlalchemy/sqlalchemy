@@ -1497,14 +1497,14 @@ class Engine(Connectable, log.Identified):
         self.pool = self.pool.recreate()
 
     def create(self, entity, connection=None, **kwargs):
-        """Create a table or index within this engine's database connection given a schema.Table object."""
+        """Create a table or index within this engine's database connection given a schema object."""
 
         from sqlalchemy.engine import ddl
 
         self._run_visitor(ddl.SchemaGenerator, entity, connection=connection, **kwargs)
 
     def drop(self, entity, connection=None, **kwargs):
-        """Drop a table or index within this engine's database connection given a schema.Table object."""
+        """Drop a table or index within this engine's database connection given a schema object."""
 
         from sqlalchemy.engine import ddl
 

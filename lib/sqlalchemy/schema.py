@@ -405,15 +405,23 @@ class Table(SchemaItem, expression.TableClause):
         """Issue a ``CREATE`` statement for this table.
 
         See also ``metadata.create_all()``.
+
         """
-        self.metadata.create_all(bind=bind, checkfirst=checkfirst, tables=[self])
+
+        if bind is None:
+            bind = _bind_or_error(self)
+        bind.create(self, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=False):
         """Issue a ``DROP`` statement for this table.
 
         See also ``metadata.drop_all()``.
+
         """
-        self.metadata.drop_all(bind=bind, checkfirst=checkfirst, tables=[self])
+        if bind is None:
+            bind = _bind_or_error(self)
+        bind.drop(self, checkfirst=checkfirst)
+        
 
     def tometadata(self, metadata, schema=RETAIN_SCHEMA):
         """Return a copy of this ``Table`` associated with a different ``MetaData``."""
