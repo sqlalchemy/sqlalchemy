@@ -130,7 +130,9 @@ class UOWTransaction(object):
     def remove_state_actions(self, state):
         """remove pending actions for a state from the uowtransaction."""
         
-        self.states[state] = (False, True)
+        isdelete = self.states[state][0]
+        
+        self.states[state] = (isdelete, True)
         
     def get_attribute_history(self, state, key, passive=True):
         """facade to attributes.get_state_history(), including caching of results."""

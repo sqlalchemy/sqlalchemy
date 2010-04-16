@@ -653,3 +653,55 @@ class SingleCycleM2MTest(_base.MappedTest, testing.AssertsExecutionResults, Asse
             ),
         )
     
+class RowswitchAccountingTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('parent', metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        Table('child', metadata, 
+            Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
+        )
+    
+    @testing.resolve_artifact_names
+    def test_accounting_for_rowswitch(self):
+        class Parent(object):
+            def __init__(self, id):
+                self.id = id
+                self.child = Child()
+        class Child(object):
+            pass
+
+        mapper(Parent, parent, properties={
+            'child':relationship(Child, uselist=False, cascade="all, delete-orphan", backref="parent")
+        })
+        mapper(Child, child)
+        
+        sess = create_session(autocommit=False)
+
+        p1 = Parent(1)
+        sess.add(p1)
+        sess.commit()
+
+        sess.close()
+        p2 = Parent(1)
+        p3 = sess.merge(p2)
+
+        old = attributes.get_history(p3, 'child')[2][0]
+        assert old in sess
+
+        sess.flush()
+
+        assert p3.child._sa_instance_state.session_id == sess.hash_key
+        assert p3.child in sess
+
+        p4 = Parent(1)
+        p5 = sess.merge(p4)
+
+        old = attributes.get_history(p5, 'child')[2][0]
+        assert old in sess
+
+        sess.flush()
+
+
+
