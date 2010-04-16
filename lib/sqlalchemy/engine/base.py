@@ -1532,7 +1532,7 @@ class Engine(Connectable, log.Identified):
         else:
             conn = connection
         try:
-            visitorcallable(self.dialect, conn, **kwargs).traverse(element)
+            visitorcallable(self.dialect, conn, **kwargs).traverse_single(element)
         finally:
             if connection is None:
                 conn.close()
