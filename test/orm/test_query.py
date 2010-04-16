@@ -3750,7 +3750,7 @@ class ExternalColumnsTest(QueryTest):
 
     def test_external_columns_bad(self):
 
-        assert_raises_message(sa_exc.ArgumentError, "not represented in mapper's table", mapper, User, users, properties={
+        assert_raises_message(sa_exc.ArgumentError, "not represented in the mapper's table", mapper, User, users, properties={
             'concat': (users.c.id * 2),
         })
         clear_mappers()

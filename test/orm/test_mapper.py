@@ -157,7 +157,7 @@ class MapperTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_column_not_present(self):
-        assert_raises_message(sa.exc.ArgumentError, "not represented in mapper's table", mapper, User, users, properties={
+        assert_raises_message(sa.exc.ArgumentError, "not represented in the mapper's table", mapper, User, users, properties={
             'foo':addresses.c.user_id
         })
         

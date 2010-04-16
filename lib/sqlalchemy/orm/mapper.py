@@ -560,18 +560,21 @@ class Mapper(object):
                             self.mapped_table._reset_exported()
                         mc = self.mapped_table.corresponding_column(c)
                         if mc is None:
-                            raise sa_exc.ArgumentError("Column '%s' is not represented in mapper's table.  "
+                            raise sa_exc.ArgumentError("When configuring property '%s' on %s, "
+                                "column '%s' is not represented in the mapper's table.  "
                                 "Use the `column_property()` function to force this column "
-                                "to be mapped as a read-only attribute." % c)
+                                "to be mapped as a read-only attribute." % (key, self, c))
                     mapped_column.append(mc)
                 prop = ColumnProperty(*mapped_column)
             else:
-                raise sa_exc.ArgumentError("WARNING: column '%s' conflicts with property '%r'.  "
+                raise sa_exc.ArgumentError("WARNING: when configuring property '%s' on %s, column '%s' "
+                    "conflicts with property '%r'.  "
                     "To resolve this, map the column to the class under a different "
                     "name in the 'properties' dictionary.  Or, to remove all awareness "
                     "of the column entirely (including its availability as a foreign key), "
                     "use the 'include_properties' or 'exclude_properties' mapper arguments "
-                    "to control specifically which table columns get mapped." % (column.key, prop))
+                    "to control specifically which table columns get mapped." % 
+                    (key, self, column.key, prop))
 
         if isinstance(prop, ColumnProperty):
             col = self.mapped_table.corresponding_column(prop.columns[0])
