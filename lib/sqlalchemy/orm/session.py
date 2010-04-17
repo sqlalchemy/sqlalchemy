@@ -1337,7 +1337,8 @@ class Session(object):
         if objects:
             util.warn_deprecated(
                 "The 'objects' argument to session.flush() is deprecated; "
-                "Please do not add objects to the session which should not yet be persisted.")
+                "Please do not add objects to the session which should not "
+                "yet be persisted.")
         
         if self._flushing:
             raise sa_exc.InvalidRequestError("Session is already flushing")
@@ -1400,7 +1401,10 @@ class Session(object):
                     ["any parent '%s' instance "
                      "via that classes' '%s' attribute" %
                      (cls.__name__, key)
-                     for (key, cls) in chain(*(m.delete_orphans for m in _state_mapper(state).iterate_to_root()))])
+                     for (key, cls) in chain(*(
+                         m.delete_orphans for m in _state_mapper(state).iterate_to_root()
+                        ))
+                    ])
                 raise exc.FlushError(
                     "Instance %s is an unsaved, pending instance and is an "
                     "orphan (is not attached to %s)" % (

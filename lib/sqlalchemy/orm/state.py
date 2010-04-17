@@ -313,9 +313,7 @@ class InstanceState(object):
         return self.obj()
         
     def modified_event(self, dict_, attr, should_copy, previous, passive=PASSIVE_OFF):
-        needs_committed = attr.key not in self.committed_state
-
-        if needs_committed:
+        if attr.key not in self.committed_state:
             if previous is NEVER_SET:
                 if passive:
                     if attr.key in dict_:
@@ -326,17 +324,16 @@ class InstanceState(object):
             if should_copy and previous not in (None, NO_VALUE, NEVER_SET):
                 previous = attr.copy(previous)
 
-            if needs_committed:
-                self.committed_state[attr.key] = previous
+            self.committed_state[attr.key] = previous
 
         if not self.modified:
             instance_dict = self._instance_dict()
             if instance_dict:
                 instance_dict._modified.add(self)
 
-        self.modified = True
-        if self._strong_obj is None:
             self._strong_obj = self.obj()
+
+            self.modified = True
 
     def commit(self, dict_, keys):
         """Commit attributes.

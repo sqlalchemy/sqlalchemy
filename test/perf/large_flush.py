@@ -70,7 +70,7 @@ mapper(A, a_table, inherits=Object, polymorphic_identity='A',
 
 SA_Metadata.create_all(engine)
 
-@profiling.profiled('large_flush', always=True, sort=['cumulative'])
+@profiling.profiled('large_flush', always=True, sort=['file'])
 def generate_error():
     q = Q()
     for j in range(100): #at 306 the error does not pop out (depending on recursion depth)

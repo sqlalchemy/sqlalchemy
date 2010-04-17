@@ -139,9 +139,9 @@ except ImportError:
                                             dict.__repr__(self))
 
 class frozendict(dict):
+    @property
     def _blocked_attribute(obj):
         raise AttributeError, "A frozendict cannot be modified."
-    _blocked_attribute = property(_blocked_attribute)
 
     __delitem__ = __setitem__ = clear = _blocked_attribute
     pop = popitem = setdefault = update = _blocked_attribute

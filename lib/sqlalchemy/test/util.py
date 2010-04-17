@@ -64,4 +64,15 @@ class RandomSet(set):
         self.remove(item)
         return item
         
+    def union(self, other):
+        return RandomSet(set.union(self, other))
+    
+    def difference(self, other):
+        return RandomSet(set.difference(self, other))
+        
+    def intersection(self, other):
+        return RandomSet(set.intersection(self, other))
+        
+    def copy(self):
+        return RandomSet(self)
         
