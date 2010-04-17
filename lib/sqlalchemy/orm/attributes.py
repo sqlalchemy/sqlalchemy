@@ -500,10 +500,9 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
             self, state, v)
 
     def check_mutable_modified(self, state, dict_):
-        added, \
-        unchanged, \
-        deleted = self.get_history(state, dict_, passive=PASSIVE_NO_INITIALIZE)
-        return bool(added or deleted)
+        v = dict_.get(self.key, NO_VALUE)
+        a, u, d = History.from_attribute(self, state, v)
+        return bool(a or d)
 
     def get(self, state, dict_, passive=PASSIVE_OFF):
         if self.key not in state.mutable_dict:
@@ -1291,7 +1290,7 @@ class History(tuple):
              and instance_state(c) or None
              for c in self.deleted],
             )
-    
+        
     @classmethod
     def from_attribute(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, NEVER_SET)
