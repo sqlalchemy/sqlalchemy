@@ -117,8 +117,10 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     for type, table in table_map.iteritems():
         if typecolname is not None:
             result.append(sql.select([col(name, table) for name in colnames] +
-                                     [sql.literal_column("'%s'" % type).label(typecolname)],
-                                     from_obj=[table]))
+                             [sql.literal_column(
+                                sql_util._quote_ddl_expr(type)).label(typecolname)
+                              ],
+                             from_obj=[table]))
         else:
             result.append(sql.select([col(name, table) for name in colnames],
                                      from_obj=[table]))
