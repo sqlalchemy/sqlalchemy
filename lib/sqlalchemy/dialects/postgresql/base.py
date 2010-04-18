@@ -142,6 +142,15 @@ class UUID(sqltypes.TypeEngine):
 PGUuid = UUID
 
 class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
+    """Postgresql ARRAY type.
+    
+    Represents values as Python lists.
+    
+    **Note:** be sure to read the notes for 
+    :class:`~sqlalchemy.types.MutableType` regarding ORM 
+    performance implications.
+    
+    """
     __visit_name__ = 'ARRAY'
     
     def __init__(self, item_type, mutable=True):

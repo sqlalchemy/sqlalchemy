@@ -459,10 +459,71 @@ class TypeDecorator(AbstractType):
 
 
 class MutableType(object):
-    """A mixin that marks a Type as holding a mutable object.
+    """A mixin that marks a :class:`TypeEngine` as representing
+    a mutable Python object type.
 
-    :meth:`copy_value` and :meth:`compare_values` should be customized
-    as needed to match the needs of the object.
+    "mutable" means that changes can occur in place to a value 
+    of this type.   Examples includes Python lists, dictionaries,
+    and sets, as well as user-defined objects.  The primary
+    need for identification of "mutable" types is by the ORM, 
+    which applies special rules to such values in order to guarantee 
+    that changes are detected.  These rules may have a significant 
+    performance impact, described below.
+    
+    A :class:`MutableType` usually allows a flag called
+    ``mutable=True`` to enable/disable the "mutability" flag,
+    represented on this class by :meth:`is_mutable`.  Examples 
+    include :class:`PickleType` and 
+    :class:`~sqlalchemy.dialects.postgresql.base.ARRAY`.  Setting
+    this flag to ``False`` effectively disables any mutability-
+    specific behavior by the ORM.
+    
+    :meth:`copy_value` and :meth:`compare_values` represent a copy
+    and compare function for values of this type - implementing
+    subclasses should override these appropriately.
+
+    The usage of mutable types has significant performance
+    implications when using the ORM. In order to detect changes, the
+    ORM must create a copy of the value when it is first
+    accessed, so that changes to the current value can be compared
+    against the "clean" database-loaded value. Additionally, when the
+    ORM checks to see if any data requires flushing, it must scan
+    through all instances in the session which are known to have
+    "mutable" attributes and compare the current value of each
+    one to its "clean"
+    value. So for example, if the Session contains 6000 objects (a
+    fairly large amount) and autoflush is enabled, every individual
+    execution of :class:`Query` will require a full scan of that subset of
+    the 6000 objects that have mutable attributes, possibly resulting
+    in tens of thousands of additional method calls for every query.
+    
+    Note that for small numbers (< 100 in the Session at a time)
+    of objects with "mutable" values, the performance degradation is 
+    negligible.  In most cases it's likely that the convenience allowed 
+    by "mutable" change detection outweighs the performance penalty.
+    
+    It is perfectly fine to represent "mutable" data types with the
+    "mutable" flag set to False, which eliminates any performance
+    issues. It means that the ORM will only reliably detect changes
+    for values of this type if a newly modified value is of a different 
+    identity (i.e., ``id(value)``) than what was present before - 
+    i.e., instead of operations like these::
+    
+        myobject.somedict['foo'] = 'bar'
+        myobject.someset.add('bar')
+        myobject.somelist.append('bar')
+        
+    You'd instead say::
+    
+        myobject.somevalue = {'foo':'bar'}
+        myobject.someset = myobject.someset.union(['bar'])
+        myobject.somelist = myobject.somelist + ['bar']
+        
+    A future release of SQLAlchemy will include instrumented
+    collection support for mutable types, such that at least usage of
+    plain Python datastructures will be able to emit events for
+    in-place changes, removing the need for pessimistic scanning for
+    changes.
 
     """
 
@@ -1365,13 +1426,16 @@ class Enum(String, SchemaType):
             return super(Enum, self).adapt(impltype)
 
 class PickleType(MutableType, TypeDecorator):
-    """Holds Python objects.
+    """Holds Python objects, which are serialized using pickle.
 
     PickleType builds upon the Binary type to apply Python's
     ``pickle.dumps()`` to incoming objects, and ``pickle.loads()`` on
     the way out, allowing any pickleable Python object to be stored as
     a serialized binary field.
 
+    **Note:** be sure to read the notes for :class:`MutableType` regarding
+    ORM performance implications.
+    
     """
 
     impl = LargeBinary
