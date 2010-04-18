@@ -337,7 +337,7 @@ class Mapper(object):
                 raise sa_exc.InvalidRequestError(
                     "Class %s has no primary mapper configured.  Configure "
                     "a primary mapper first before setting up a non primary "
-                    "Mapper.")
+                    "Mapper." % self.class_)
             self.class_manager = manager
             _mapper_registry[self] = True
             return
