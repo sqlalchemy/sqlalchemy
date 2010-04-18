@@ -21,6 +21,11 @@ CHANGES
     for correct ordering.  Flush actions are assembled using 
     far fewer steps and less memory. [ticket:1742]
 
+  - Along with the UOW rewrite, this also removes an issue
+    introduced in 0.6beta3 regarding topological cycle detection 
+    for units of work with long dependency cycles.  We now use
+    an algorithm written by Guido (thanks Guido!).
+
   - one-to-many relationships now maintain a list of positive
     parent-child associations within the flush, preventing
     previous parents marked as deleted from cascading a 
@@ -46,10 +51,6 @@ CHANGES
     will expunge the object if the cascade also includes
     "delete-orphan", or will simply detach it otherwise.
     [ticket:1754]
-
-  - Fixed a potential issue in topological cycle detection 
-    introduced in 0.6beta3, for units of work with long 
-    dependency cycles.
 
   - id(obj) is no longer used internally within topological.py,
     as the sorting functions now require hashable objects
@@ -78,7 +79,8 @@ CHANGES
     
   - internal getattr(), setattr(), getcommitted() methods
     on ColumnProperty, CompositeProperty, RelationshipProperty
-    have been underscored, signature has changed.
+    have been underscored (i.e. are private), signature has 
+    changed.
     
 - engines
   - The C extension now also works with DBAPIs which use custom
@@ -98,8 +100,7 @@ CHANGES
     
   - the Numeric type raises an *enormous* warning when expected
     to convert floats to Decimal from a DBAPI that returns floats.
-    This includes SQLite, Oracle, Sybase, MS-SQL.
-    [ticket:1759]
+    This includes SQLite, Sybase, MS-SQL. [ticket:1759]
 
   - Fixed an error in expression typing which caused an endless
     loop for expressions with two NULL types.
