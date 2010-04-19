@@ -3,7 +3,14 @@
 =======
 CHANGES
 =======
-
+0.6.1
+=====
+- oracle
+  - Added a check for cx_oracle versions lower than version 5,
+    in which case the incompatible "output type handler" won't 
+    be used.   This will impact decimal accuracy and some
+    unicode handling issues.  [ticket:1775]
+    
 0.6.0
 =====
 

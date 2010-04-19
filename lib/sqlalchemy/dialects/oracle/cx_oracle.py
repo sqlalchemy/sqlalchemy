@@ -386,9 +386,9 @@ class OracleDialect_cx_oracle(OracleDialect):
         self.auto_convert_lobs = auto_convert_lobs
         
         if hasattr(self.dbapi, 'version'):
-            cx_oracle_ver = tuple([int(x) for x in self.dbapi.version.split('.')])
+            self.cx_oracle_ver = tuple([int(x) for x in self.dbapi.version.split('.')])
         else:  
-           cx_oracle_ver = (0, 0, 0)
+            self.cx_oracle_ver = (0, 0, 0)
         
         def types(*names):
             return set([
@@ -398,15 +398,15 @@ class OracleDialect_cx_oracle(OracleDialect):
         self._cx_oracle_string_types = types("STRING", "UNICODE", "NCLOB", "CLOB")
         self._cx_oracle_unicode_types = types("UNICODE", "NCLOB")
         self._cx_oracle_binary_types = types("BFILE", "CLOB", "NCLOB", "BLOB") 
-        self.supports_unicode_binds = cx_oracle_ver >= (5, 0)
-        self.supports_native_decimal = cx_oracle_ver >= (5, 0)
-        self._cx_oracle_native_nvarchar = cx_oracle_ver >= (5, 0)
+        self.supports_unicode_binds = self.cx_oracle_ver >= (5, 0)
+        self.supports_native_decimal = self.cx_oracle_ver >= (5, 0)
+        self._cx_oracle_native_nvarchar = self.cx_oracle_ver >= (5, 0)
 
-        if cx_oracle_ver is None:
+        if self.cx_oracle_ver is None:
             # this occurs in tests with mock DBAPIs
             self._cx_oracle_string_types = set()
             self._cx_oracle_with_unicode = False
-        elif cx_oracle_ver >= (5,) and not hasattr(self.dbapi, 'UNICODE'):
+        elif self.cx_oracle_ver >= (5,) and not hasattr(self.dbapi, 'UNICODE'):
             # cx_Oracle WITH_UNICODE mode.  *only* python
             # unicode objects accepted for anything
             self.supports_unicode_statements = True
@@ -428,7 +428,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         else:
             self._cx_oracle_with_unicode = False
 
-        if cx_oracle_ver is None or \
+        if self.cx_oracle_ver is None or \
                     not self.auto_convert_lobs or \
                     not hasattr(self.dbapi, 'CLOB'):
             self.dbapi_type_map = {}
@@ -449,6 +449,10 @@ class OracleDialect_cx_oracle(OracleDialect):
         return cx_Oracle
 
     def on_connect(self):
+        if self.cx_oracle_ver < (5,):
+            # no output type handlers before version 5
+            return
+            
         cx_Oracle = self.dbapi
         def output_type_handler(cursor, name, defaultType, size, precision, scale):
             # convert all NUMBER with precision + positive scale to Decimal.
