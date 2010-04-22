@@ -5,6 +5,11 @@ CHANGES
 =======
 0.6.1
 =====
+- sql
+  - Fixed bug that prevented implicit RETURNING from functioning
+    properly with composite primary key that contained zeroes.
+    [ticket:1778]
+    
 - oracle
   - Added a check for cx_oracle versions lower than version 5,
     in which case the incompatible "output type handler" won't 

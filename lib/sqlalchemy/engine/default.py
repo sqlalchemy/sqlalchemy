@@ -576,9 +576,14 @@ class DefaultExecutionContext(base.ExecutionContext):
         table = self.compiled.statement.table
         row = resultproxy.fetchone()
 
-        self._inserted_primary_key = [v is not None and v or row[c] 
-            for c, v in zip(table.primary_key, self._inserted_primary_key)
-        ]
+        ipk = []
+        for c, v in zip(table.primary_key, self._inserted_primary_key):
+            if v is not None:
+                ipk.append(v)
+            else:
+                ipk.append(row[c])
+        
+        self._inserted_primary_key = ipk
 
     def last_inserted_params(self):
         return self._last_inserted_params
