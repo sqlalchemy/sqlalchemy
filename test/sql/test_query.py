@@ -160,6 +160,15 @@ class QueryTest(TestBase):
                     {'id':'id1'},
                     {'id':'id1', 'bar':'hi'},
                 ),
+                (
+                    {'unsupported':['sqlite']},
+                    Table("t6", metadata,
+                        Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                        Column('bar', Integer, primary_key=True)
+                    ),
+                    {'bar':0},
+                    {'id':1, 'bar':0},
+                ),
             ]:
                 if testing.db.name in supported['unsupported']:
                     continue

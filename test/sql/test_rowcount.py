@@ -9,9 +9,8 @@ class FoundRowsTest(TestBase, AssertsExecutionResults):
     
     @classmethod
     def setup_class(cls):
-        metadata = MetaData(testing.db)
-
         global employees_table, metadata
+        metadata = MetaData(testing.db)
 
         employees_table = Table('employees', metadata,
             Column('employee_id', Integer, 
