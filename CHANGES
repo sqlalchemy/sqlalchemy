@@ -31,6 +31,10 @@ CHANGES
     has_sequence() to work with older versions of Firebird
     that don't provide labels for result columns. [ticket:1521]
     
+  - Added integer coercion to the "type_conv" attribute when 
+    passed via query string, so that it is properly interpreted
+    by Kinterbasdb. [ticket:1779]
+    
 0.6.0
 =====
 

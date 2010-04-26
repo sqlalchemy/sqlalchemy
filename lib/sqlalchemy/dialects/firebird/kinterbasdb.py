@@ -100,10 +100,12 @@ class FBDialect_kinterbasdb(FBDialect):
             opts['host'] = "%s/%s" % (opts['host'], opts['port'])
             del opts['port']
         opts.update(url.query)
-
+        
+        util.coerce_kw_type(opts, 'type_conv', int)
+        
         type_conv = opts.pop('type_conv', self.type_conv)
         concurrency_level = opts.pop('concurrency_level', self.concurrency_level)
-
+        
         if self.dbapi is not None:
             initialized = getattr(self.dbapi, 'initialized', None)
             if initialized is None:
