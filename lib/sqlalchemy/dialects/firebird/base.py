@@ -358,7 +358,7 @@ class FBDialect(default.DefaultDialect):
         """Return ``True`` if the given table exists, ignoring the `schema`."""
 
         tblqry = """
-        SELECT 1 FROM rdb$database
+        SELECT 1 AS has_table FROM rdb$database
         WHERE EXISTS (SELECT rdb$relation_name
                       FROM rdb$relations
                       WHERE rdb$relation_name=?)
@@ -370,7 +370,7 @@ class FBDialect(default.DefaultDialect):
         """Return ``True`` if the given sequence (generator) exists."""
 
         genqry = """
-        SELECT 1 FROM rdb$database
+        SELECT 1 AS has_sequence FROM rdb$database
         WHERE EXISTS (SELECT rdb$generator_name
                       FROM rdb$generators
                       WHERE rdb$generator_name=?)

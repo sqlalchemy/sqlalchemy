@@ -25,6 +25,11 @@ CHANGES
     in which case the incompatible "output type handler" won't 
     be used.   This will impact decimal accuracy and some
     unicode handling issues.  [ticket:1775]
+
+- firebird
+  - Added a label to the query used within has_table() and 
+    has_sequence() to work with older versions of Firebird
+    that don't provide labels for result columns. [ticket:1521]
     
 0.6.0
 =====
