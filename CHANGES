@@ -5,6 +5,10 @@ CHANGES
 =======
 0.6.1
 =====
+- orm
+  - Fixed regression introduced in 0.6.0 involving improper
+    history accounting on mutable attributes.  [ticket:1782]
+    
 - sql
   - Fixed bug that prevented implicit RETURNING from functioning
     properly with composite primary key that contained zeroes.

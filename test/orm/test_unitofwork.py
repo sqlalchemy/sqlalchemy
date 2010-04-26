@@ -11,7 +11,7 @@ from sqlalchemy.test import engines, testing, pickleable
 from sqlalchemy import Integer, String, ForeignKey, literal_column
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relationship, create_session, column_property
+from sqlalchemy.orm import mapper, relationship, create_session, column_property, attributes
 from sqlalchemy.test.testing import eq_, ne_
 from test.orm import _base, _fixtures
 from test.engine import _base as engine_base
@@ -344,6 +344,21 @@ class MutableTypesTest(_base.MappedTest):
 
         assert session.query(Foo).one().data == pickleable.Bar(4, 19)
 
+    @testing.resolve_artifact_names
+    def test_resurrect_two(self):
+        f1 = Foo()
+        f1.data = pickleable.Bar(4,5)
+        session = create_session(autocommit=False)
+        session.add(f1)
+        session.commit()
+        
+        session = create_session(autocommit=False)
+        f1 = session.query(Foo).first()
+        del f1 # modified flag flips by accident
+        gc.collect()
+        f1 = session.query(Foo).first()
+        assert not attributes.instance_state(f1).modified
+        
     @testing.resolve_artifact_names
     def test_unicode(self):
         """Equivalent Unicode values are not flagged as changed."""

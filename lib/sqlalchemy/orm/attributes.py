@@ -500,8 +500,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
             self, state, v)
 
     def check_mutable_modified(self, state, dict_):
-        v = dict_.get(self.key, NO_VALUE)
-        a, u, d = History.from_attribute(self, state, v)
+        a, u, d = self.get_history(state, dict_)
         return bool(a or d)
 
     def get(self, state, dict_, passive=PASSIVE_OFF):
