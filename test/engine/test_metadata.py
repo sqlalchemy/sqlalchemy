@@ -106,7 +106,14 @@ class MetaDataTest(TestBase, ComparesTables):
         for k in kw:
             eq_(getattr(fk1c, k), kw[k])
             eq_(getattr(fk2c, k), kw[k])
-        
+    
+    def test_fk_construct(self):
+        c1 = Column('foo', Integer)
+        c2 = Column('bar', Integer)
+        m = MetaData()
+        t1 = Table('t', m, c1, c2)
+        fk1 = ForeignKeyConstraint(('foo', ), ('bar', ), table=t1)
+        assert fk1 in t1.constraints
         
     @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_to_metadata(self):

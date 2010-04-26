@@ -12,6 +12,9 @@ CHANGES
   
   - Fixed errant space character when generating ADD CONSTRAINT
     for a named UNIQUE constraint.
+
+  - Fixed "table" argument on constructor of ForeginKeyConstraint
+    [ticket:1571]
     
 - oracle
   - Added a check for cx_oracle versions lower than version 5,

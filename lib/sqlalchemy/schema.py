@@ -1568,7 +1568,7 @@ class ForeignKeyConstraint(Constraint):
                     link_to_name=self.link_to_name
                 )
 
-        if table:
+        if table is not None:
             self._set_parent(table)
     
     @property
