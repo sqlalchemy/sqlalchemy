@@ -376,13 +376,13 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
         t2.append_constraint(constraint)
         self.assert_compile(
             schema.AddConstraint(constraint),
-            "ALTER TABLE t2 ADD CONSTRAINT uq_cst  UNIQUE (a, b)"
+            "ALTER TABLE t2 ADD CONSTRAINT uq_cst UNIQUE (a, b)"
         )
         
         constraint = UniqueConstraint(t2.c.a, t2.c.b, name="uq_cs2")
         self.assert_compile(
             schema.AddConstraint(constraint),
-            "ALTER TABLE t2 ADD CONSTRAINT uq_cs2  UNIQUE (a, b)"
+            "ALTER TABLE t2 ADD CONSTRAINT uq_cs2 UNIQUE (a, b)"
         )
         
         assert t.c.a.primary_key is False

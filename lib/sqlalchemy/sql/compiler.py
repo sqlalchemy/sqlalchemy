@@ -1299,7 +1299,7 @@ class DDLCompiler(engine.Compiled):
     def visit_unique_constraint(self, constraint):
         text = ""
         if constraint.name is not None:
-            text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
+            text += "CONSTRAINT %s" % self.preparer.format_constraint(constraint)
         text += " UNIQUE (%s)" % (', '.join(self.preparer.quote(c.name, c.quote) for c in constraint))
         text += self.define_constraint_deferrability(constraint)
         return text

@@ -9,6 +9,9 @@ CHANGES
   - Fixed bug that prevented implicit RETURNING from functioning
     properly with composite primary key that contained zeroes.
     [ticket:1778]
+  
+  - Fixed errant space character when generating ADD CONSTRAINT
+    for a named UNIQUE constraint.
     
 - oracle
   - Added a check for cx_oracle versions lower than version 5,
