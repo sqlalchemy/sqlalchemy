@@ -12,6 +12,7 @@ the MIT License: http://www.opensource.org/licenses/mit-license.php
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
 #define PY_SSIZE_T_MIN INT_MIN
+typedef Py_ssize_t (*lenfunc)(PyObject *);
 #endif
 
 
@@ -162,7 +163,7 @@ BaseRowProxy_processvalues(PyObject *values, PyObject *processors, int astuple)
         PyErr_Format(PyExc_RuntimeError,
             "number of values in row (%d) differ from number of column "
             "processors (%d)",
-            num_values, num_processors);
+            (int)num_values, (int)num_processors);
         return NULL;
     }
 
