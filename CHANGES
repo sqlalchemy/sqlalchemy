@@ -20,6 +20,10 @@ CHANGES
   - Fixed "table" argument on constructor of ForeginKeyConstraint
     [ticket:1571]
 
+  - Fixed bug in connection pool cursor wrapper whereby if a
+    cursor threw an exception on close(), the logging of the 
+    message would fail.  [ticket:1786]
+    
 - engines
   - Fixed building the C extensions on Python 2.4. [ticket:1781]
     

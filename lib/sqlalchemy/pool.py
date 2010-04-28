@@ -454,7 +454,7 @@ class _CursorFairy(object):
                 ex_text = str(e)
             except TypeError:
                 ex_text = repr(e)
-            self.__parent._logger.warn("Error closing cursor: %s", ex_text)
+            self._parent._logger.warn("Error closing cursor: %s", ex_text)
 
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise

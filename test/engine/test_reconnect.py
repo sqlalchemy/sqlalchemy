@@ -177,6 +177,34 @@ class MockReconnectTest(TestBase):
         assert not conn.invalidated
         assert len(dbapi.connections) == 1
 
+class CursorErrTest(TestBase):
+
+    def setup(self):
+        global db, dbapi
+        
+        class MDBAPI(MockDBAPI):
+            def connect(self, *args, **kwargs):
+                return MConn(self)
+            
+        class MConn(MockConnection):
+            def cursor(self):
+                return MCursor(self)
+
+        class MCursor(MockCursor):
+            def close(self):
+                raise Exception("explode")
+
+        dbapi = MDBAPI()
+
+        # create engine using our current dburi
+        db = tsa.create_engine('postgresql://foo:bar@localhost/test', module=dbapi, _initialize=False)
+    
+    def test_cursor_explode(self):
+        conn = db.connect()
+        result = conn.execute("select foo")
+        result.close()
+        conn.close()
+        
 engine = None
 class RealReconnectTest(TestBase):
     def setup(self):
