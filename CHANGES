@@ -19,6 +19,9 @@ CHANGES
 
   - Fixed "table" argument on constructor of ForeginKeyConstraint
     [ticket:1571]
+
+- engines
+  - Fixed building the C extensions on Python 2.4. [ticket:1781]
     
 - oracle
   - Added a check for cx_oracle versions lower than version 5,
