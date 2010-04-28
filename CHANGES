@@ -29,6 +29,12 @@ CHANGES
     be used.   This will impact decimal accuracy and some
     unicode handling issues.  [ticket:1775]
 
+  - oracle_xe 5 doesn't accept a Python unicode object in 
+    its connect string in normal Python 2.x mode - so we coerce
+    to str() directly.  non-ascii characters aren't supported
+    in connect strings here since we don't know what encoding
+    we could use.  [ticket:1670]
+
 - firebird
   - Added a label to the query used within has_table() and 
     has_sequence() to work with older versions of Firebird

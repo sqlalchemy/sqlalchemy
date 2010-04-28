@@ -505,6 +505,11 @@ class OracleDialect_cx_oracle(OracleDialect):
             for k, v in opts.items():
                 if isinstance(v, str):
                     opts[k] = unicode(v)
+        else:
+            for k, v in opts.items():
+                if isinstance(v, unicode):
+                    opts[k] = str(v)
+          
         # end Py2K
 
         if 'mode' in url.query:
