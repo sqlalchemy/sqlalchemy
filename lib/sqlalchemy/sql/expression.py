@@ -34,8 +34,8 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import Visitable, cloned_traverse
 import operator
 
-functions, schema, sql_util, sqltypes = None, None, None, None
-DefaultDialect, ClauseAdapter, Annotated = None, None, None
+functions, sql_util, sqltypes = None, None, None
+DefaultDialect = None
 
 __all__ = [
     'Alias', 'ClauseElement',
@@ -1075,10 +1075,10 @@ class ClauseElement(Visitable):
         dictionary.
         
         """
-        global Annotated
-        if Annotated is None:
-            from sqlalchemy.sql.util import Annotated
-        return Annotated(self, values)
+        global sql_util
+        if sql_util is None:
+            from sqlalchemy.sql import util as sql_util
+        return sql_util.Annotated(self, values)
 
     def _deannotate(self):
         """return a copy of this ClauseElement with an empty annotations
@@ -1973,10 +1973,11 @@ class FromClause(Selectable):
         object, returning a copy of this :class:`FromClause`.
         
         """
-        global ClauseAdapter
-        if ClauseAdapter is None:
-            from sqlalchemy.sql.util import ClauseAdapter
-        return ClauseAdapter(alias).traverse(self)
+
+        global sql_util
+        if sql_util is None:
+            from sqlalchemy.sql import util as sql_util
+        return sql_util.ClauseAdapter(alias).traverse(self)
 
     def correspond_on_equivalents(self, column, equivalents):
         """Return corresponding_column for the given column, or if None

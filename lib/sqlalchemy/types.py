@@ -1285,9 +1285,8 @@ class SchemaType(object):
     def create(self, bind=None, checkfirst=False):
         """Issue CREATE ddl for this type, if applicable."""
         
-        from sqlalchemy.schema import _bind_or_error
         if bind is None:
-            bind = _bind_or_error(self)
+            bind = schema._bind_or_error(self)
         t = self.dialect_impl(bind.dialect)
         if t is not self and isinstance(t, SchemaType):
             t.create(bind=bind, checkfirst=checkfirst)
@@ -1295,9 +1294,8 @@ class SchemaType(object):
     def drop(self, bind=None, checkfirst=False):
         """Issue DROP ddl for this type, if applicable."""
 
-        from sqlalchemy.schema import _bind_or_error
         if bind is None:
-            bind = _bind_or_error(self)
+            bind = schema._bind_or_error(self)
         t = self.dialect_impl(bind.dialect)
         if t is not self and isinstance(t, SchemaType):
             t.drop(bind=bind, checkfirst=checkfirst)

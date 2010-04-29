@@ -288,7 +288,6 @@ class Annotated(object):
 # so that the resulting objects are pickleable.
 annotated_classes = {}
 
-from sqlalchemy.sql import expression
 for cls in expression.__dict__.values() + [schema.Column, schema.Table]:
     if isinstance(cls, type) and issubclass(cls, expression.ClauseElement):
         exec "class Annotated%s(Annotated, cls):\n" \
