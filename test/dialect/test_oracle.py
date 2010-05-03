@@ -280,6 +280,22 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                         "WHERE mytable.myid = myothertable.otherid(+)) anon_1 "
                         "WHERE thirdtable.userid = anon_1.myid(+)", 
                         dialect=oracle.dialect(use_ansi=False))
+    
+        q = select([table1.c.name]).where(table1.c.name=='foo')
+        self.assert_compile(q, 
+                "SELECT mytable.name FROM mytable WHERE mytable.name = :name_1", 
+                dialect=oracle.dialect(use_ansi=False))
+
+        subq = select([table3.c.otherstuff]).\
+                    where(table3.c.otherstuff==table1.c.name).\
+                    label('bar')
+        q = select([table1.c.name, subq])
+        self.assert_compile(q, 
+                "SELECT mytable.name, "
+                "(SELECT thirdtable.otherstuff FROM thirdtable "
+                "WHERE thirdtable.otherstuff = mytable.name) AS bar FROM mytable", 
+                dialect=oracle.dialect(use_ansi=False))
+
         
     def test_alias_outer_join(self):
         address_types = table('address_types',

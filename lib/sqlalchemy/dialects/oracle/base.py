@@ -380,7 +380,8 @@ class OracleCompiler(compiler.SQLCompiler):
                             binary.left = _OuterJoinColumn(binary.left)
                         elif binary.right.table is join.right:
                             binary.right = _OuterJoinColumn(binary.right)
-                clauses.append(visitors.cloned_traverse(join.onclause, {}, {'binary':visit_binary}))
+                clauses.append(visitors.cloned_traverse(join.onclause, {},
+                                {'binary':visit_binary}))
             else:
                 clauses.append(join.onclause)
             
@@ -391,7 +392,11 @@ class OracleCompiler(compiler.SQLCompiler):
         for f in froms:
             if isinstance(f, expression.Join):
                 visit_join(f)
-        return sql.and_(*clauses)
+        
+        if not clauses:
+            return None
+        else:
+            return sql.and_(*clauses)
 
     def visit_outer_join_column(self, vc):
         return self.process(vc.column) + "(+)"

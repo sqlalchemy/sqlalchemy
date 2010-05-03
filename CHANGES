@@ -26,6 +26,9 @@ CHANGES
     be used.   This will impact decimal accuracy and some
     unicode handling issues.  [ticket:1775]
 
+  - Fixed use_ansi=False mode, which was producing broken 
+    WHERE clauses in pretty much all cases.  [ticket:1790]
+    
 - firebird
   - Added a label to the query used within has_table() and 
     has_sequence() to work with older versions of Firebird
