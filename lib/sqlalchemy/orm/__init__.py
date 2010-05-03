@@ -136,13 +136,6 @@ def scoped_session(session_factory, scopefunc=None):
       Session.commit()
       Session.close()
 
-    To map classes so that new instances are saved in the current Session
-    automatically, as well as to provide session-aware class attributes such
-    as "query", use the `mapper` classmethod from the scoped session::
-
-      mapper = Session.mapper
-      mapper(Class, table, ...)
-
     """
     return ScopedSession(session_factory, scopefunc=scopefunc)
 

@@ -25,9 +25,6 @@ psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.cre
   at a time are fetched over the wire to reduce conversational overhead.
 * *use_native_unicode* - Enable the usage of Psycopg2 "native unicode" mode per connection.  True  
   by default.
-* *isolation_level* - Sets the transaction isolation level for each transaction
-  within the engine. Valid isolation levels are `READ_COMMITTED`,
-  `READ_UNCOMMITTED`, `REPEATABLE_READ`, and `SERIALIZABLE`.
 
 Transactions
 ------------

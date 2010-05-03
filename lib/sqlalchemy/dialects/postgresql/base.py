@@ -36,6 +36,14 @@ PostgreSQL 8.2 supports an ``INSERT...RETURNING`` syntax which SQLAlchemy suppor
 as well.  A future release of SQLA will use this feature by default in lieu of 
 sequence pre-execution in order to retrieve new primary key values, when available.
 
+Transaction Isolation Level
+---------------------------
+
+:func:`create_engine` accepts an ``isolation_level`` parameter which results in 
+the command ``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL <level>``
+being invoked for every new connection.   Valid values for this parameter are 
+``READ_COMMITTED``,  ``READ_UNCOMMITTED``, ``REPEATABLE_READ``, and ``SERIALIZABLE``.
+
 INSERT/UPDATE...RETURNING
 -------------------------
 

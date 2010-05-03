@@ -147,7 +147,7 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
 
     twophase
       When ``True``, all transactions will be started using
-      :mod:~sqlalchemy.engine_TwoPhaseTransaction. During a ``commit()``, after
+      :mod:`~sqlalchemy.engine_TwoPhaseTransaction`. During a ``commit()``, after
       ``flush()`` has been issued for all attached databases, the
       ``prepare()`` method on each database's ``TwoPhaseTransaction`` will be
       called. This allows each database to roll back the entire transaction,
@@ -1616,7 +1616,6 @@ def _state_session(state):
     return None
 
 # Lazy initialization to avoid circular imports
-unitofwork.object_session = object_session
 unitofwork._state_session = _state_session
 from sqlalchemy.orm import mapper
 mapper._expire_state = _expire_state

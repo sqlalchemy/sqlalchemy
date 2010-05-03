@@ -54,8 +54,9 @@ class MockReconnectTest(TestBase):
         global db, dbapi
         dbapi = MockDBAPI()
 
-        # create engine using our current dburi
-        db = tsa.create_engine('postgresql://foo:bar@localhost/test', module=dbapi, _initialize=False)
+        db = tsa.create_engine(
+                    'postgresql://foo:bar@localhost/test', 
+                    module=dbapi, _initialize=False)
 
         # monkeypatch disconnect checker
         db.dialect.is_disconnect = lambda e: isinstance(e, MockDisconnect)
@@ -177,6 +178,38 @@ class MockReconnectTest(TestBase):
         assert not conn.invalidated
         assert len(dbapi.connections) == 1
 
+class CursorErrTest(TestBase):
+
+    def setup(self):
+        global db, dbapi
+        
+        class MDBAPI(MockDBAPI):
+            def connect(self, *args, **kwargs):
+                return MConn(self)
+            
+        class MConn(MockConnection):
+            def cursor(self):
+                return MCursor(self)
+
+        class MCursor(MockCursor):
+            def close(self):
+                raise Exception("explode")
+
+        dbapi = MDBAPI()
+
+        db = tsa.create_engine(
+                    'postgresql://foo:bar@localhost/test', 
+                    module=dbapi, _initialize=False)
+    
+    def test_cursor_explode(self):
+        conn = db.connect()
+        result = conn.execute("select foo")
+        result.close()
+        conn.close()
+    
+    def teardown(self):
+        db.dispose()
+        
 engine = None
 class RealReconnectTest(TestBase):
     def setup(self):

@@ -19,6 +19,13 @@ CHANGES
 
   - Fixed "table" argument on constructor of ForeginKeyConstraint
     [ticket:1571]
+
+  - Fixed bug in connection pool cursor wrapper whereby if a
+    cursor threw an exception on close(), the logging of the 
+    message would fail.  [ticket:1786]
+    
+- engines
+  - Fixed building the C extensions on Python 2.4. [ticket:1781]
     
 - oracle
   - Added a check for cx_oracle versions lower than version 5,
@@ -29,6 +36,12 @@ CHANGES
   - Fixed use_ansi=False mode, which was producing broken 
     WHERE clauses in pretty much all cases.  [ticket:1790]
     
+  - oracle_xe 5 doesn't accept a Python unicode object in 
+    its connect string in normal Python 2.x mode - so we coerce
+    to str() directly.  non-ascii characters aren't supported
+    in connect strings here since we don't know what encoding
+    we could use.  [ticket:1670]
+
 - firebird
   - Added a label to the query used within has_table() and 
     has_sequence() to work with older versions of Firebird
