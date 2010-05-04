@@ -756,7 +756,6 @@ The concepts of creating SQL expressions have been introduced.  What's left are 
 Bind Parameter Objects
 ----------------------
 
-
 Throughout all these examples, SQLAlchemy is busy creating bind parameters wherever literal expressions occur.  You can also specify your own bind parameters with your own names, and use the same statement repeatedly.  The database dialect converts to the appropriate named or positional style, as here where it converts to positional for SQLite:
 
 .. sourcecode:: pycon+sql
@@ -1028,11 +1027,40 @@ The ``select()`` function can take keyword arguments ``order_by``, ``group_by`` 
     ()
     {stop}[(2, 1, u'jack@msn.com')]
 
-Updates
-========
+Inserts and Updates
+===================
 
 
-Finally, we're back to UPDATE.  Updates work a lot like INSERTS, except there is an additional WHERE clause that can be specified.
+Finally, we're back to INSERT for some more detail. The :func:`~sqlalchemy.sql.expression.insert` construct provides a ``values()`` method which can be used to send any value or clause expression to the VALUES portion of the INSERT::
+
+    # insert from a function
+    users.insert().values(id=12, name=func.upper('jack'))
+    
+    # insert from a concatenation expression
+    addresses.insert().values(email_address = name + '@' + host)
+
+``values()`` can be mixed with per-execution values::
+
+    conn.execute(
+        users.insert().values(name=func.upper('jack')),
+        fullname='Jack Jones'
+    )
+    
+:func:`~sqlalchemy.sql.expression.bindparam` constructs can be passed, however the names of the table's columns are reserved for the "automatic" generation of bind names::
+
+    users.insert().values(id=bindparam('_id'), name=bindaparam('_name'))
+
+    # insert many rows at once:
+    conn.execute(
+        users.insert().values(id=bindparam('_id'), name=bindaparam('_name')),
+        [
+            {'_id':1, '_name':'name1'},
+            {'_id':2, '_name':'name2'},
+            {'_id':3, '_name':'name3'},
+        ]
+    )
+    
+Updates work a lot like INSERTS, except there is an additional WHERE clause that can be specified:
 
 .. sourcecode:: pycon+sql
 
