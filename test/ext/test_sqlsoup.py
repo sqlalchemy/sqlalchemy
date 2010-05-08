@@ -283,6 +283,12 @@ class SQLSoupTest(TestBase):
         db = sqlsoup.SqlSoup(engine)
         tablename = 'loans'
         eq_(db.entity(tablename), db.loans)
+
+    def test_entity_with_different_base(self):
+        class subclass(object):
+            pass
+        db = sqlsoup.SqlSoup(engine, base=subclass)
+        assert issubclass(db.entity('loans'), subclass)
         
     def test_filter_by_order_by(self):
         db = sqlsoup.SqlSoup(engine)

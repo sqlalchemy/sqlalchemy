@@ -50,7 +50,12 @@ CHANGES
   - Added integer coercion to the "type_conv" attribute when 
     passed via query string, so that it is properly interpreted
     by Kinterbasdb. [ticket:1779]
-    
+
+- sqlsoup
+  - the SqlSoup constructor accepts a `base` argument which specifies
+    the base class to use for mapped classes, the default being
+    `object`.  [ticket:1783]
+
 0.6.0
 =====
 

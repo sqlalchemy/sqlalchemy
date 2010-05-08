@@ -395,7 +395,7 @@ def _selectable_name(selectable):
             x = x[1:]
         return x
 
-def _class_for_table(session, engine, selectable, **mapper_kwargs):
+def _class_for_table(session, engine, selectable, base_cls=object, **mapper_kwargs):
     selectable = expression._clause_element_as_expr(selectable)
     mapname = 'Mapped' + _selectable_name(selectable)
     # Py2K
@@ -405,9 +405,9 @@ def _class_for_table(session, engine, selectable, **mapper_kwargs):
     # end Py2K
     
     if isinstance(selectable, Table):
-        klass = TableClassType(mapname, (object,), {})
+        klass = TableClassType(mapname, (base_cls,), {})
     else:
-        klass = SelectableClassType(mapname, (object,), {})
+        klass = SelectableClassType(mapname, (base_cls,), {})
 
     def _compare(self, o):
         L = list(self.__class__.c.keys())
@@ -451,14 +451,17 @@ def _class_for_table(session, engine, selectable, **mapper_kwargs):
     return klass
 
 class SqlSoup(object):
-    def __init__(self, engine_or_metadata, **kw):
+    def __init__(self, engine_or_metadata, base=object, **kw):
         """Initialize a new ``SqlSoup``.
+
+        `base` is the class that all created entity classes should subclass.
 
         `args` may either be an ``SQLEngine`` or a set of arguments
         suitable for passing to ``create_engine``.
         """
         
         self.session = kw.pop('session', Session)
+        self.base=base
         
         if isinstance(engine_or_metadata, MetaData):
             self._metadata = engine_or_metadata
@@ -537,7 +540,7 @@ class SqlSoup(object):
             if not table.primary_key.columns:
                 raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys())))
             if table.columns:
-                t = _class_for_table(self.session, self.engine, table)
+                t = _class_for_table(self.session, self.engine, table, self.base)
             else:
                 t = None
             self._cache[attr] = t
