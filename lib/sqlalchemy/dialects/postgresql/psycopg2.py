@@ -9,6 +9,11 @@ with this module.
 
 Note that psycopg1 is **not** supported.
 
+Unicode
+-------
+
+By default, the Psycopg2 driver uses the ``psycopg2.extensions.UNICODE`` extension, such that the DBAPI receives and returns all strings as Python Unicode objects directly - SQLAlchemy passes these values through without change.   Note that this setting requires that the PG client encoding be set to one which can accomodate the kind of character data being passed - typically ``utf-8``.   If the Postgresql database is configured for ``SQL_ASCII`` encoding, which is often the default for PG installations, it may be necessary for non-ascii strings to be encoded into a specific encoding before being passed to the DBAPI. If changing the database's client encoding setting is not an option, specify ``use_native_unicode=False`` as a keyword argument to ``create_engine()``, and take note of the ``encoding`` setting as well, which also defaults to ``utf-8``.   Note that disabling "native unicode" mode has a slight performance penalty, as SQLAlchemy now must translate unicode strings to/from an encoding such as utf-8, a task that is handled more efficiently within the Psycopg2 driver natively.   
+
 Connecting
 ----------
 
