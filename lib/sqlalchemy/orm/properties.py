@@ -97,18 +97,23 @@ class ColumnProperty(StrategizedProperty):
                                        self.columns[0], self.key))
 
     def copy(self):
-        return ColumnProperty(deferred=self.deferred, group=self.group, *self.columns)
+        return ColumnProperty(
+                        deferred=self.deferred, 
+                        group=self.group, 
+                        *self.columns)
 
     def _getattr(self, state, dict_, column):
         return state.get_impl(self.key).get(state, dict_)
 
     def _getcommitted(self, state, dict_, column, passive=False):
-        return state.get_impl(self.key).get_committed_value(state, dict_, passive=passive)
+        return state.get_impl(self.key).\
+                    get_committed_value(state, dict_, passive=passive)
 
     def _setattr(self, state, dict_, value, column):
         state.get_impl(self.key).set(state, dict_, value, None)
 
-    def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
+    def merge(self, session, source_state, source_dict, dest_state, 
+                                dest_dict, load, _recursive):
         if self.key in source_dict:
             value = source_dict[self.key]
         
@@ -118,7 +123,7 @@ class ColumnProperty(StrategizedProperty):
                 impl = dest_state.get_impl(self.key)
                 impl.set(dest_state, dest_dict, value, None)
         else:
-            if self.key not in dest_dict:
+            if dest_state.has_identity and self.key not in dest_dict:
                 dest_state.expire_attributes(dest_dict, [self.key])
                 
     def get_col_value(self, column, value):
@@ -130,7 +135,9 @@ class ColumnProperty(StrategizedProperty):
             if self.adapter:
                 return self.adapter(self.prop.columns[0])
             else:
-                return self.prop.columns[0]._annotate({"parententity": self.mapper, "parentmapper":self.mapper})
+                return self.prop.columns[0]._annotate({
+                                                "parententity": self.mapper,
+                                                "parentmapper":self.mapper})
                 
         def operate(self, op, *other, **kwargs):
             return op(self.__clause_element__(), *other, **kwargs)

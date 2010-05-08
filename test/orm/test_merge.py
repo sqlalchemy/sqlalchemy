@@ -928,6 +928,19 @@ class MergeTest(_fixtures.FixtureTest):
         sess.commit()
 
     @testing.resolve_artifact_names
+    def test_dont_expire_pending(self):
+        """test that pending instances aren't expired during a merge."""
+        
+        mapper(User, users)
+        u = User(id=7)
+        sess = create_session(autoflush=True, autocommit=False)
+        u = sess.merge(u)
+        assert not bool(attributes.instance_state(u).expired_attributes)
+        def go():
+            eq_(u.name, None)
+        self.assert_sql_count(testing.db, go, 0)
+    
+    @testing.resolve_artifact_names
     def test_option_state(self):
         """test that the merged takes on the MapperOption characteristics
         of that which is merged.

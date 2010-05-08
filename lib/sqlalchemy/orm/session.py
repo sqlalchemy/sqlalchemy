@@ -17,7 +17,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.util import object_mapper as _object_mapper
 from sqlalchemy.orm.util import class_mapper as _class_mapper
 from sqlalchemy.orm.util import (
-    _class_to_mapper, _state_has_identity, _state_mapper,
+    _class_to_mapper, _state_mapper,
     )
 from sqlalchemy.orm.mapper import Mapper, _none_set
 from sqlalchemy.orm.unitofwork import UOWTransaction
@@ -1018,9 +1018,9 @@ class Session(object):
             if state.key is None:
                 state.key = instance_key
             elif state.key != instance_key:
-                # primary key switch.
-                # use discard() in case another state has already replaced this
-                # one in the identity map (see test/orm/test_naturalpks.py ReversePKsTest)
+                # primary key switch. use discard() in case another 
+                # state has already replaced this one in the identity 
+                # map (see test/orm/test_naturalpks.py ReversePKsTest)
                 self.identity_map.discard(state)
                 state.key = instance_key
             
@@ -1396,7 +1396,7 @@ class Session(object):
             
         for state in proc:
             is_orphan = _state_mapper(state)._is_orphan(state)
-            if is_orphan and not _state_has_identity(state):
+            if is_orphan and not state.has_identity:
                 path = ", nor ".join(
                     ["any parent '%s' instance "
                      "via that classes' '%s' attribute" %

@@ -27,7 +27,7 @@ from sqlalchemy.orm.interfaces import (
     MapperProperty, EXT_CONTINUE, PropComparator
     )
 from sqlalchemy.orm.util import (
-     ExtensionCarrier, _INSTRUMENTOR, _class_to_mapper, _state_has_identity,
+     ExtensionCarrier, _INSTRUMENTOR, _class_to_mapper, 
      _state_mapper, class_mapper, instance_str, state_str,
      )
 
@@ -603,20 +603,25 @@ class Mapper(object):
                 # column is coming in after _readonly_props was initialized; check
                 # for 'readonly'
                 if hasattr(self, '_readonly_props') and \
-                    (not hasattr(col, 'table') or col.table not in self._cols_by_table):
+                    (not hasattr(col, 'table') or 
+                    col.table not in self._cols_by_table):
                         self._readonly_props.add(prop)
 
             else:
-                # if column is coming in after _cols_by_table was initialized, ensure the col is in the
-                # right set
-                if hasattr(self, '_cols_by_table') and col.table in self._cols_by_table and col not in self._cols_by_table[col.table]:
+                # if column is coming in after _cols_by_table was 
+                # initialized, ensure the col is in the right set
+                if hasattr(self, '_cols_by_table') and \
+                                    col.table in self._cols_by_table and \
+                                    col not in self._cols_by_table[col.table]:
                     self._cols_by_table[col.table].add(col)
             
             # if this ColumnProperty represents the "polymorphic discriminator"
             # column, mark it.  We'll need this when rendering columns
             # in SELECT statements.
             if not hasattr(prop, '_is_polymorphic_discriminator'):
-                prop._is_polymorphic_discriminator = (col is self.polymorphic_on or prop.columns[0] is self.polymorphic_on)
+                prop._is_polymorphic_discriminator = \
+                                    (col is self.polymorphic_on or
+                                    prop.columns[0] is self.polymorphic_on)
                 
             self.columns[key] = col
             for col in prop.columns:
@@ -801,7 +806,7 @@ class Mapper(object):
         for mapper in self.iterate_to_root():
             for (key, cls) in mapper.delete_orphans:
                 if attributes.manager_of_class(cls).has_parent(
-                    state, key, optimistic=_state_has_identity(state)):
+                    state, key, optimistic=state.has_identity):
                     return False
             o = o or bool(mapper.delete_orphans)
         return o
@@ -1326,7 +1331,7 @@ class Mapper(object):
                 connection_callable(self, state.obj()) or \
                 connection
 
-            has_identity = _state_has_identity(state)
+            has_identity = state.has_identity
             mapper = _state_mapper(state)
             instance_key = state.key or mapper._identity_key_from_state(state)
 
@@ -1525,7 +1530,8 @@ class Mapper(object):
                         c = connection.execute(statement.values(value_params), params)
                         
                     mapper._postfetch(uowtransaction, table, 
-                                        state, state_dict, c, c.last_updated_params(), value_params)
+                                        state, state_dict, c, 
+                                        c.last_updated_params(), value_params)
 
                     rows += c.rowcount
 
@@ -1562,12 +1568,14 @@ class Mapper(object):
                     if primary_key is not None:
                         # set primary key attributes
                         for i, col in enumerate(mapper._pks_by_table[table]):
-                            if mapper._get_state_attr_by_column(state, state_dict, col) is None and \
-                                                                len(primary_key) > i:
-                                mapper._set_state_attr_by_column(state, state_dict, col, primary_key[i])
+                            if mapper._get_state_attr_by_column(state, state_dict, col) \
+                                        is None and len(primary_key) > i:
+                                mapper._set_state_attr_by_column(state, state_dict, col,
+                                                                    primary_key[i])
                                 
                     mapper._postfetch(uowtransaction, table, 
-                                        state, state_dict, c, c.last_inserted_params(), value_params)
+                                        state, state_dict, c, c.last_inserted_params(),
+                                        value_params)
 
         if not postupdate:
             for state, state_dict, mapper, connection, has_identity, \
@@ -1577,7 +1585,7 @@ class Mapper(object):
                 readonly = state.unmodified.intersection(
                     p.key for p in mapper._readonly_props
                 )
-
+                
                 if readonly:
                     _expire_state(state, state.dict, readonly)
 
@@ -1675,7 +1683,7 @@ class Mapper(object):
             tups.append((state, 
                     state.dict,
                     _state_mapper(state), 
-                    _state_has_identity(state),
+                    state.has_identity,
                     conn))
 
         table_to_mapper = self._sorted_tables
@@ -2070,8 +2078,8 @@ def _load_scalar_attributes(state, attribute_names):
         raise orm_exc.DetachedInstanceError("Instance %s is not bound to a Session; "
                     "attribute refresh operation cannot proceed" % (state_str(state)))
 
-    has_key = _state_has_identity(state)
-
+    has_key = state.has_identity
+    
     result = False
     if mapper.inherits and not mapper.concrete:
         statement = mapper._optimized_get_statement(state, attribute_names)
@@ -2086,6 +2094,7 @@ def _load_scalar_attributes(state, attribute_names):
             identity_key = state.key
         else:
             identity_key = mapper._identity_key_from_state(state)
+        
         result = session.query(mapper)._get(
                                             identity_key, 
                                             refresh_state=state, 
@@ -2094,4 +2103,6 @@ def _load_scalar_attributes(state, attribute_names):
     # if instance is pending, a refresh operation 
     # may not complete (even if PK attributes are assigned)
     if has_key and result is None:
-        raise orm_exc.ObjectDeletedError("Instance '%s' has been deleted." % state_str(state))
+        raise orm_exc.ObjectDeletedError(
+                            "Instance '%s' has been deleted." % 
+                            state_str(state))

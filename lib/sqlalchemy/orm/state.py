@@ -43,6 +43,10 @@ class InstanceState(object):
     @util.memoized_property
     def callables(self):
         return {}
+
+    @property
+    def has_identity(self):
+        return bool(self.key)
         
     def detach(self):
         if self.session_id:
@@ -219,6 +223,14 @@ class InstanceState(object):
         If all attributes are expired, the "expired" flag is set to True.
         
         """
+        # we would like to assert that 'self.key is not None' here, 
+        # but there are many cases where the mapper will expire
+        # a newly persisted instance within the flush, before the
+        # key is assigned, and even cases where the attribute refresh
+        # occurs fully, within the flush(), before this key is assigned.
+        # the key is assigned late within the flush() to assist in
+        # "key switch" bookkeeping scenarios.
+        
         if attribute_names is None:
             attribute_names = self.manager.keys()
             self.expired = True

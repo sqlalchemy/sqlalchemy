@@ -239,7 +239,7 @@ class DeferredColumnLoader(LoaderStrategy):
                                         path, adapter, **kwargs)
     
     def _class_level_loader(self, state):
-        if not mapperutil._state_has_identity(state):
+        if not state.has_identity:
             return None
             
         return LoadDeferredColumns(state, self.key)
@@ -465,7 +465,7 @@ class LazyLoader(AbstractRelationshipLoader):
         return criterion
         
     def _class_level_loader(self, state):
-        if not mapperutil._state_has_identity(state):
+        if not state.has_identity:
             return None
 
         return LoadLazyAttribute(state, self.key)

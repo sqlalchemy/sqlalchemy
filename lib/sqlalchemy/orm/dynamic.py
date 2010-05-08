@@ -19,7 +19,7 @@ from sqlalchemy.orm import (
     attributes, object_session, util as mapperutil, strategies, object_mapper
     )
 from sqlalchemy.orm.query import Query
-from sqlalchemy.orm.util import _state_has_identity, has_identity
+from sqlalchemy.orm.util import has_identity
 from sqlalchemy.orm import attributes, collections
 
 class DynaLoader(strategies.AbstractRelationshipLoader):
@@ -116,7 +116,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         collection_history = self._modified_event(state, dict_)
         new_values = list(iterable)
 
-        if _state_has_identity(state):
+        if state.has_identity:
             old_collection = list(self.get(state, dict_))
         else:
             old_collection = []

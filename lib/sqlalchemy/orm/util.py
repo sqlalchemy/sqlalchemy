@@ -612,10 +612,7 @@ def _class_to_mapper(class_or_mapper, compile=True):
 
 def has_identity(object):
     state = attributes.instance_state(object)
-    return _state_has_identity(state)
-
-def _state_has_identity(state):
-    return bool(state.key)
+    return state.has_identity
 
 def _is_mapped_class(cls):
     global mapperlib
