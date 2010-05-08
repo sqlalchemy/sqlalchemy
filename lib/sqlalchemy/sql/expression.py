@@ -1522,9 +1522,10 @@ class _CompareMixin(ColumnOperators):
             # column selectable that does not export itself as a FROM clause
             return self.__compare( op, seq_or_selectable.as_scalar(), negate=negate_op)
 
-        elif isinstance(seq_or_selectable, Selectable):
+        elif isinstance(seq_or_selectable, (Selectable, _TextClause)):
             return self.__compare( op, seq_or_selectable, negate=negate_op)
-
+        
+            
         # Handle non selectable arguments as sequences
         args = []
         for o in seq_or_selectable:
@@ -2357,6 +2358,12 @@ class _TextClause(Executable, ClauseElement):
             return list(self.typemap)[0]
         else:
             return None
+
+    def self_group(self, against=None):
+        if against is operators.in_op:
+            return _Grouping(self)
+        else:
+            return self
 
     def _copy_internals(self, clone=_clone):
         self.bindparams = dict((b.key, clone(b))

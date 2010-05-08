@@ -13,6 +13,11 @@ CHANGES
     instance if that instance is "pending".  [ticket:1789]
 
 - sql
+  - expr.in_() now accepts a text() construct as the argument.
+    Grouping parenthesis are added automatically, i.e. usage
+    is like `col.in_(text("select id from table"))`.
+    [ticket:1793]
+
   - Fixed bug that prevented implicit RETURNING from functioning
     properly with composite primary key that contained zeroes.
     [ticket:1778]

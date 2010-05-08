@@ -1589,6 +1589,15 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.assert_compile(~table1.c.myid.in_(select([table2.c.otherid])),
         "mytable.myid NOT IN (SELECT myothertable.otherid FROM myothertable)")
 
+        # text
+        self.assert_compile(
+                table1.c.myid.in_(
+                        text("SELECT myothertable.otherid FROM myothertable")
+                    ),
+                    "mytable.myid IN (SELECT myothertable.otherid "
+                    "FROM myothertable)"
+        )
+
         # test empty in clause
         self.assert_compile(table1.c.myid.in_([]),
         "mytable.myid != mytable.myid")
