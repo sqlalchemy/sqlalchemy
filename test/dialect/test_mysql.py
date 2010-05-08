@@ -1069,6 +1069,9 @@ class SQLTest(TestBase, AssertsCompiledSQL):
     def test_utc_timestamp(self):
         self.assert_compile(func.utc_timestamp(), "UTC_TIMESTAMP")
 
+    def test_sysdate(self):
+        self.assert_compile(func.sysdate(), "SYSDATE()")
+        
     def test_cast(self):
         t = sql.table('t', sql.column('col'))
         m = mysql
@@ -1237,7 +1240,10 @@ class ExecutionTest(TestBase):
         meta.reflect(cx)
         eq_(cx.dialect._connection_charset, charset)
         cx.close()
-
+    
+    def test_sysdate(self):
+        d = testing.db.scalar(func.sysdate())
+        assert isinstance(d, datetime.datetime)
 
 class MatchTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'mysql'

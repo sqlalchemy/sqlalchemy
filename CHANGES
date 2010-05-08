@@ -26,7 +26,11 @@ CHANGES
     
 - engines
   - Fixed building the C extensions on Python 2.4. [ticket:1781]
-    
+
+- mysql
+  - func.sysdate() emits "SYSDATE()", i.e. with the ending
+    parenthesis, on MySQL.  [ticket:1794]
+
 - oracle
   - Added a check for cx_oracle versions lower than version 5,
     in which case the incompatible "output type handler" won't 

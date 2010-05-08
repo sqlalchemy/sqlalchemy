@@ -1145,6 +1145,9 @@ class MySQLCompiler(compiler.SQLCompiler):
     
     def visit_utc_timestamp_func(self, fn, **kw):
         return "UTC_TIMESTAMP"
+    
+    def visit_sysdate_func(self, fn, **kw):
+        return "SYSDATE()"
         
     def visit_concat_op(self, binary, **kw):
         return "concat(%s, %s)" % (self.process(binary.left), self.process(binary.right))
