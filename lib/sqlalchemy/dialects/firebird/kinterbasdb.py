@@ -144,7 +144,8 @@ class FBDialect_kinterbasdb(FBDialect):
             msg = str(e)
             return ('Unable to complete network request to host' in msg or
                     'Invalid connection state' in msg or
-                    'Invalid cursor state' in msg)
+                    'Invalid cursor state' in msg or 
+                    'connection shutdown' in msg)
         else:
             return False
 

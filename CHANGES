@@ -51,6 +51,9 @@ CHANGES
     passed via query string, so that it is properly interpreted
     by Kinterbasdb. [ticket:1779]
 
+  - Added 'connection shutdown' to the list of exception strings
+    which indicate a dropped connection.  [ticket:1646]
+
 - sqlsoup
   - the SqlSoup constructor accepts a `base` argument which specifies
     the base class to use for mapped classes, the default being
