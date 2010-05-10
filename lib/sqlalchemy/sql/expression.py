@@ -1037,6 +1037,18 @@ class ClauseElement(Visitable):
 
         return c
 
+    @property
+    def _constructor(self):
+        """return the 'constructor' for this ClauseElement.
+        
+        This is for the purposes for creating a new object of 
+        this type.   Usually, its just the element's __class__.  
+        However, the "Annotated" version of the object overrides
+        to return the class of its proxied element.
+
+        """
+        return self.__class__
+
     @util.memoized_property
     def _cloned_set(self):
         """Return the set consisting all cloned anscestors of this
@@ -3244,7 +3256,7 @@ class ColumnClause(_Immutable, ColumnElement):
         # propagate the "is_literal" flag only if we are keeping our name,
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
-        c = ColumnClause(
+        c = self._constructor(
                     name or self.name, 
                     selectable=selectable, 
                     type_=self.type, 

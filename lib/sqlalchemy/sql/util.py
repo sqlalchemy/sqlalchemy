@@ -265,6 +265,10 @@ class Annotated(object):
     
     def _deannotate(self):
         return self.__element
+
+    @property
+    def _constructor(self):
+        return self.__element.__class__
         
     def _clone(self):
         clone = self.__element._clone()

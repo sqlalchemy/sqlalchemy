@@ -855,7 +855,7 @@ class Column(SchemaItem, expression.ColumnClause):
         
         """
         fk = [ForeignKey(f.column) for f in self.foreign_keys]
-        c = Column(
+        c = self._constructor(
             name or self.name, 
             self.type, 
             key = name or self.key, 

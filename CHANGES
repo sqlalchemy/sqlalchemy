@@ -31,7 +31,13 @@ CHANGES
   - Fixed bug in connection pool cursor wrapper whereby if a
     cursor threw an exception on close(), the logging of the 
     message would fail.  [ticket:1786]
-    
+
+  - the _make_proxy() method of ColumnClause and Column now use
+    self.__class__ to determine the class of object to be returned
+    instead of hardcoding to ColumnClause/Column, making it slightly 
+    easier to produce specific subclasses of these which work in 
+    alias/subquery situations.
+
 - engines
   - Fixed building the C extensions on Python 2.4. [ticket:1781]
 
