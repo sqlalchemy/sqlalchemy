@@ -26,6 +26,11 @@ CHANGES
     is like `col.in_(text("select id from table"))`.
     [ticket:1793]
 
+  - Added table.add_is_dependent_on(othertable), allows manual
+    placement of dependency rules between two Table objects
+    for use within create_all(), drop_all(), sorted_tables.
+    [ticket:1801]
+
   - Fixed bug that prevented implicit RETURNING from functioning
     properly with composite primary key that contained zeroes.
     [ticket:1778]

@@ -224,6 +224,7 @@ class Table(SchemaItem, expression.TableClause):
         self._columns = expression.ColumnCollection()
         self._set_primary_key(PrimaryKeyConstraint())
         self._foreign_keys = util.OrderedSet()
+        self._extra_dependencies = set()
         self.ddl_listeners = util.defaultdict(list)
         self.kwargs = {}
         if self.schema is not None:
@@ -338,6 +339,20 @@ class Table(SchemaItem, expression.TableClause):
 
         return self.metadata and self.metadata.bind or None
 
+    def add_is_dependent_on(self, table):
+        """Add a 'dependency' for this Table.
+        
+        This is another Table object which must be created
+        first before this one can, or dropped after this one.
+        
+        Usually, dependencies between tables are determined via 
+        ForeignKey objects.   However, for other situations that 
+        create dependencies outside of foreign keys (rules, inheriting),
+        this method can manually establish such a link.
+        
+        """
+        self._extra_dependencies.add(table)
+        
     def append_column(self, column):
         """Append a ``Column`` to this ``Table``."""
 

@@ -250,6 +250,25 @@ class MetaDataTest(TestBase, ComparesTables):
         eq_(str(table_c.join(table2_c).onclause), str(table_c.c.myid == table2_c.c.myid))
         eq_(str(table_c.join(table2_c).onclause), "myschema.mytable.myid = myschema.othertable.myid")
 
+    def test_manual_dependencies(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('foo', Integer))
+        b = Table('b', meta, Column('foo', Integer))
+        c = Table('c', meta, Column('foo', Integer))
+        d = Table('d', meta, Column('foo', Integer))
+        e = Table('e', meta, Column('foo', Integer))
+        
+        e.add_is_dependent_on(c)
+        a.add_is_dependent_on(b)
+        b.add_is_dependent_on(d)
+        e.add_is_dependent_on(b)
+        c.add_is_dependent_on(a)
+        eq_(
+            meta.sorted_tables,
+            [d, b, a, c, e]
+        )
+        
+        
     def test_tometadata_strip_schema(self):
         meta = MetaData()
 

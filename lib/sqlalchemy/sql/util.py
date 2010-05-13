@@ -22,6 +22,11 @@ def sort_tables(tables):
         visitors.traverse(table, 
                             {'schema_visitor':True}, 
                             {'foreign_key':visit_foreign_key})
+
+        tuples.extend(
+            [parent, table] for parent in table._extra_dependencies
+        )
+                            
     return list(topological.sort(tuples, tables))
 
 def find_join_source(clauses, join_to):
