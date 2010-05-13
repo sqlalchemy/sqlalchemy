@@ -38,6 +38,9 @@ CHANGES
     easier to produce specific subclasses of these which work in 
     alias/subquery situations.
 
+  - func.XXX() doesn't inadvertently resolve to non-Function 
+    classes (e.g. fixes func.text()).  [ticket:1798]
+
 - engines
   - Fixed building the C extensions on Python 2.4. [ticket:1781]
 

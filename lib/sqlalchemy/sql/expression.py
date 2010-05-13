@@ -855,7 +855,9 @@ class _FunctionGenerator(object):
             if functions is None:
                 from sqlalchemy.sql import functions
             func = getattr(functions, self.__names[-1].lower(), None)
-            if func is not None:
+            if func is not None and \
+                    isinstance(func, type) and \
+                    issubclass(func, Function):
                 return func(*c, **o)
 
         return Function(

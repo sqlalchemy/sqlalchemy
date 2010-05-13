@@ -69,7 +69,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             ('random', oracle.dialect())
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
-
+    
+    def test_namespacing_conflicts(self):
+        self.assert_compile(func.text('foo'), 'text(:text_1)')
+        
     def test_generic_count(self):
         assert isinstance(func.count().type, sqltypes.Integer)
 
