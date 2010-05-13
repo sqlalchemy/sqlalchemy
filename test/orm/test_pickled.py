@@ -3,7 +3,7 @@ import pickle
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy.test.testing import assert_raises_message
-from sqlalchemy import Integer, String, ForeignKey, exc
+from sqlalchemy import Integer, String, ForeignKey, exc, MetaData
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                             sessionmaker, attributes, interfaces,\
@@ -218,6 +218,49 @@ class PickleTest(_fixtures.FixtureTest):
         
         u2 = pickle.loads(pickle.dumps(u1))
         
+    def test_collection_setstate(self):
+        """test a particular cycle that requires CollectionAdapter 
+        to not rely upon InstanceState to deserialize."""
+        
+        global Child1, Child2, Parent, Screen
+        
+        m = MetaData()
+        c1 = Table('c1', m, 
+            Column('parent_id', String, 
+                        ForeignKey('p.id'), primary_key=True)
+        )
+        c2 = Table('c2', m,
+            Column('parent_id', String, 
+                        ForeignKey('p.id'), primary_key=True)
+        )
+        p = Table('p', m,
+            Column('id', String, primary_key=True)
+        )
+        class Child1(_base.ComparableEntity):
+            pass
+
+        class Child2(_base.ComparableEntity):
+            pass
+
+        class Parent(_base.ComparableEntity):
+            pass
+        
+        mapper(Parent, p, properties={
+            'children1':relationship(Child1),
+            'children2':relationship(Child2)
+        })
+        mapper(Child1, c1)
+        mapper(Child2, c2)
+        class Screen(object):
+           def __init__(self, obj, parent=None):
+               self.obj = obj
+               self.parent = parent
+
+        obj = Parent()
+        screen1 = Screen(obj)
+        screen1.errors = [obj.children1, obj.children2]
+        screen2 = Screen(Child2(), screen1)
+        pickle.loads(pickle.dumps(screen2))
         
 class PolymorphicDeferredTest(_base.MappedTest):
     @classmethod

@@ -471,15 +471,20 @@ class CollectionAdapter(object):
 
     """
     def __init__(self, attr, owner_state, data):
-        self.attr = attr
-        # TODO: figure out what this being a weakref buys us
+        self._key = attr.key
         self._data = weakref.ref(data)
         self.owner_state = owner_state
         self.link_to_self(data)
+    
+    @property
+    def data(self):
+        "The entity collection being adapted."
+        return self._data()
 
-    data = property(lambda s: s._data(),
-                    doc="The entity collection being adapted.")
-
+    @util.memoized_property
+    def attr(self):
+        return self.owner_state.manager[self._key].impl
+        
     def link_to_self(self, data):
         """Link a collection to this adapter, and fire a link event."""
         setattr(data, '_sa_adapter', self)
@@ -619,12 +624,12 @@ class CollectionAdapter(object):
                                     initiator=initiator)
 
     def __getstate__(self):
-        return {'key': self.attr.key,
+        return {'key': self._key,
                 'owner_state': self.owner_state,
                 'data': self.data}
 
     def __setstate__(self, d):
-        self.attr = getattr(d['owner_state'].obj().__class__, d['key']).impl
+        self._key = d['key']
         self.owner_state = d['owner_state']
         self._data = weakref.ref(d['data'])
 
