@@ -585,7 +585,10 @@ class CollectionAdapter(object):
 
         """
         if initiator is not False and item is not None:
-            return self.attr.fire_append_event(self.owner_state, self.owner_state.dict, item, initiator)
+            return self.attr.fire_append_event(
+                                    self.owner_state, 
+                                    self.owner_state.dict, 
+                                    item, initiator)
         else:
             return item
 
@@ -598,7 +601,10 @@ class CollectionAdapter(object):
 
         """
         if initiator is not False and item is not None:
-            self.attr.fire_remove_event(self.owner_state, self.owner_state.dict, item, initiator)
+            self.attr.fire_remove_event(
+                                    self.owner_state, 
+                                    self.owner_state.dict, 
+                                    item, initiator)
 
     def fire_pre_remove_event(self, initiator=None):
         """Notify that an entity is about to be removed from the collection.
@@ -607,7 +613,10 @@ class CollectionAdapter(object):
         fire_remove_event().
 
         """
-        self.attr.fire_pre_remove_event(self.owner_state, self.owner_state.dict, initiator=initiator)
+        self.attr.fire_pre_remove_event(
+                                    self.owner_state, 
+                                    self.owner_state.dict, 
+                                    initiator=initiator)
 
     def __getstate__(self):
         return {'key': self.attr.key,
