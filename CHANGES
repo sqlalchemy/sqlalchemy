@@ -16,6 +16,10 @@ CHANGES
     fail during deserialize where parent InstanceState not
     yet unserialized.  [ticket:1802]
 
+  - Added internal warning in case an instance without a 
+    full PK happened to be expired and then was asked
+    to refresh. [ticket:1797]
+
 - sql
   - expr.in_() now accepts a text() construct as the argument.
     Grouping parenthesis are added automatically, i.e. usage

@@ -2095,6 +2095,15 @@ def _load_scalar_attributes(state, attribute_names):
         else:
             identity_key = mapper._identity_key_from_state(state)
         
+        if (_none_set.issubset(identity_key) and \
+                not mapper.allow_partial_pks) or \
+                _none_set.issuperset(identity_key):
+            util.warn("Instance %s to be refreshed doesn't "
+                        "contain a full primary key - can't be refreshed "
+                        "(and shouldn't be expired, either)." 
+                        % state_str(state))
+            return
+        
         result = session.query(mapper)._get(
                                             identity_key, 
                                             refresh_state=state, 
