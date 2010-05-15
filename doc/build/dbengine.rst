@@ -3,7 +3,7 @@
 ================
 Database Engines
 ================
-The **Engine** is the starting point for any SQLAlchemy application.  It's "home base" for the actual database and its DBAPI, delivered to the SQLAlchemy application through a connection pool and a **Dialect**, which describes how to talk to a specific kind of database/DBAPI combination.
+The **Engine** is the starting point for any SQLAlchemy application.  It's "home base" for the actual database and its DBAPI, delivered to the SQLAlchemy application through a connection pool and a **Dialect**, which describes how to talk to a specific kind of database/DBAPI combination.   
 
 The general structure is this::
 
@@ -22,6 +22,8 @@ Creating an engine is just a matter of issuing a single call, :func:`create_engi
     engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
 
 The above engine invokes the ``postgresql`` dialect and a connection pool which references ``localhost:5432``.
+
+Note that the appropriate usage of :func:`create_engine()` is once per particular configuration, held globally for the lifetime of a single application process (not including child processes via ``fork()`` - these would require a new engine).   A single :class:`~sqlalchemy.engine.base.Engine` manages connections on behalf of the process and is intended to be called upon in a concurrent fashion.   Creating engines for each particular operation is not the intended usage.
 
 The engine can be used directly to issue SQL to the database.  The most generic way is to use connections, which you get via the ``connect()`` method::
 

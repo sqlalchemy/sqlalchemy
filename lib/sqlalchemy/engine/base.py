@@ -1493,6 +1493,29 @@ class Engine(Connectable, log.Identified):
         return 'Engine(%s)' % str(self.url)
 
     def dispose(self):
+        """Dispose of the connection pool used by this :class:`Engine`.
+
+        A new connection pool is created immediately after the old one has
+        been disposed.   This new pool, like all SQLAlchemy connection pools,
+        does not make any actual connections to the database until one is 
+        first requested.   
+        
+        This method has two general use cases:
+        
+         * When a dropped connection is detected, it is assumed that all
+           connections held by the pool are potentially dropped, and 
+           the entire pool is replaced.
+           
+         * An application may want to use :meth:`dispose` within a test 
+           suite that is creating multiple engines.
+           
+        It is critical to note that :meth:`dispose` does **not** guarantee
+        that the application will release all open database connections - only
+        those connections that are checked into the pool are closed.   
+        Connections which remain checked out or have been detached from
+        the engine are not affected. 
+        
+        """
         self.pool.dispose()
         self.pool = self.pool.recreate()
 
