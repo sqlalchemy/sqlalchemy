@@ -493,9 +493,11 @@ class Column(SchemaItem, expression.ColumnClause):
           The ``type`` argument may be the second positional argument
           or specified by keyword.
 
-          If this column also contains a :class:`ForeignKey`,
-          the type argument may be left as ``None`` in which case the
-          type assigned will be that of the referenced column.
+          There is partial support for automatic detection of the 
+          type based on that of a :class:`ForeignKey` associated 
+          with this column, if the type is specified as ``None``. 
+          However, this feature is not fully implemented and 
+          may not function in all cases.
 
         :param \*args: Additional positional arguments include various 
           :class:`SchemaItem` derived constructs which will be applied 
