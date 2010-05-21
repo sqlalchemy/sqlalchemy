@@ -9,6 +9,10 @@ CHANGES
   - Fixed regression introduced in 0.6.0 involving improper
     history accounting on mutable attributes.  [ticket:1782]
   
+  - Fixed regression introduced in 0.6.0 unit of work refactor
+    that broke updates for bi-directional relationship()
+    with post_update=True. [ticket:1807]
+    
   - session.merge() will not expire attributes on the returned
     instance if that instance is "pending".  [ticket:1789]
 

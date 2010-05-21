@@ -8,7 +8,8 @@ T1/T2.
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, backref, create_session
+from sqlalchemy.orm import mapper, relationship, backref, \
+                            create_session, sessionmaker
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.assertsql import RegexSQL, ExactSQL, CompiledSQL, AllOf
 from test.orm import _base
@@ -532,10 +533,10 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Person(_base.BasicEntity):
+        class Person(_base.ComparableEntity):
             pass
 
-        class Ball(_base.BasicEntity):
+        class Ball(_base.ComparableEntity):
             pass
 
     @testing.resolve_artifact_names
@@ -613,6 +614,52 @@ class OneToManyManyToOneTest(_base.MappedTest):
             ExactSQL("DELETE FROM ball WHERE ball.id = :id", None), # lambda ctx:[{'id': 1L}, {'id': 4L}, {'id': 3L}, {'id': 2L}])
             ExactSQL("DELETE FROM person WHERE person.id = :id", lambda ctx:[{'id': p.id}])
         )
+
+    @testing.resolve_artifact_names
+    def test_post_update_backref(self):
+        """test bidirectional post_update."""
+        
+        mapper(Ball, ball)
+        mapper(Person, person, properties=dict(
+            balls=relationship(Ball,
+                           primaryjoin=ball.c.person_id == person.c.id,
+                           remote_side=ball.c.person_id, post_update=True,
+                           backref=backref('person', post_update=True)
+                           ),
+           favorite=relationship(Ball,
+                             primaryjoin=person.c.favorite_ball_id == ball.c.id,
+                             remote_side=person.c.favorite_ball_id)
+            
+            ))
+        
+        sess = sessionmaker()()
+        p1 = Person(data='p1')
+        p2 = Person(data='p2')
+        p3 = Person(data='p3')
+        
+        b1 = Ball(data='b1')
+        
+        b1.person = p1
+        sess.add_all([p1, p2, p3])
+        sess.commit()
+        
+        # switch here.  the post_update
+        # on ball.person can't get tripped up
+        # by the fact that there's a "reverse" prop.
+        b1.person = p2
+        sess.commit()
+        eq_(
+            p2, b1.person
+        )
+
+        # do it the other way 
+        p3.balls.append(b1)
+        sess.commit()
+        eq_(
+            p3, b1.person
+        )
+        
+
 
     @testing.resolve_artifact_names
     def test_post_update_o2m(self):
