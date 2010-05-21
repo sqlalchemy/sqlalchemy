@@ -130,7 +130,7 @@ python-sybase_             ``sybase+pysybase``          partial      development
 .. _mxodbc: http://www.egenix.com/products/python/mxODBC/
 .. _FreeTDS: http://www.freetds.org/
 .. _adodbapi: http://adodbapi.sourceforge.net/
-.. _pymssql: http://pymssql.sourceforge.net/
+.. _pymssql: http://code.google.com/p/pymssql/
 .. _jTDS JDBC Driver: http://jtds.sourceforge.net/
 .. _ibm-db: http://code.google.com/p/ibm-db/
 .. _informixdb: http://informixdb.sourceforge.net/
