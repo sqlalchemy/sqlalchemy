@@ -30,6 +30,11 @@ CHANGES
     is like `col.in_(text("select id from table"))`.
     [ticket:1793]
 
+  - Columns of _Binary type (i.e. LargeBinary, BLOB, etc.)
+    will coerce a "basestring" on the right side into a 
+    _Binary as well so that required DBAPI processing 
+    takes place.
+    
   - Added table.add_is_dependent_on(othertable), allows manual
     placement of dependency rules between two Table objects
     for use within create_all(), drop_all(), sorted_tables.

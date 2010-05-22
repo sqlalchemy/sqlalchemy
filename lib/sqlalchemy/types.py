@@ -1191,6 +1191,12 @@ class _Binary(TypeEngine):
             process = processors.to_str
         return process
     # end Py2K
+
+    def _coerce_compared_value(self, op, value):
+        if isinstance(value, basestring):
+            return self
+        else:
+            return super(_Binary, self)._coerce_compared_value(op, value)
     
     def adapt(self, impltype):
         return impltype(length=self.length)
