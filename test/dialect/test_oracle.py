@@ -5,7 +5,7 @@ from sqlalchemy import *
 from sqlalchemy import types as sqltypes, exc
 from sqlalchemy.sql import table, column
 from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, assert_raises
+from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy.test.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
@@ -113,6 +113,25 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM "
             "AS ora_rn FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable "
             "ORDER BY sometable.col2) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1")
+
+        s = select([t], for_update=True).limit(10).order_by(t.c.col2)
+        self.assert_compile(
+            s,
+            "SELECT col1, col2 FROM (SELECT sometable.col1 "
+            "AS col1, sometable.col2 AS col2 FROM sometable "
+            "ORDER BY sometable.col2) WHERE ROWNUM <= :ROWNUM_1 FOR UPDATE"
+        )
+        
+        s = select([t], for_update=True).limit(10).offset(20).order_by(t.c.col2)
+        self.assert_compile(
+            s,
+            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM "
+            "AS ora_rn FROM (SELECT sometable.col1 AS col1, "
+            "sometable.col2 AS col2 FROM sometable ORDER BY "
+            "sometable.col2) WHERE ROWNUM <= :ROWNUM_1) WHERE "
+            "ora_rn > :ora_rn_1 FOR UPDATE"
+        )
+        
     
     def test_long_labels(self):
         dialect = default.DefaultDialect()
@@ -924,9 +943,45 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
 
 class ExecuteTest(TestBase):
     __only_on__ = 'oracle'
+    
+    
     def test_basic(self):
         eq_(
             testing.db.execute("/*+ this is a comment */ SELECT 1 FROM DUAL").fetchall(),
             [(1,)]
         )
 
+    @testing.provide_metadata
+    def test_limit_offset_for_update(self):
+        # oracle can't actually do the ROWNUM thing with FOR UPDATE
+        # very well.
+        
+        t = Table('t1', metadata, Column('id', Integer, primary_key=True),
+            Column('data', Integer)
+        )
+        metadata.create_all()
+        
+        t.insert().execute(
+            {'id':1, 'data':1},
+            {'id':2, 'data':7},
+            {'id':3, 'data':12},
+            {'id':4, 'data':15},
+            {'id':5, 'data':32},
+        )
+        
+        # here, we can't use ORDER BY.
+        eq_(
+            t.select(for_update=True).limit(2).execute().fetchall(),
+            [(1, 1),
+             (2, 7)]
+        )
+
+        # here, its impossible.  But we'd prefer it to raise ORA-02014
+        # instead of issuing a syntax error.
+        assert_raises_message(
+            exc.DatabaseError,
+            "ORA-02014",
+            t.select(for_update=True).limit(2).offset(3).execute
+        )
+        
+        

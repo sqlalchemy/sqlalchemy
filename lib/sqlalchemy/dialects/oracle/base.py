@@ -479,7 +479,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 limitselect._oracle_visit = True
                 limitselect._is_wrapper = True
-
+                
                 # If needed, add the limiting clause
                 if select._limit is not None:
                     max_row = select._limit
@@ -490,22 +490,24 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # If needed, add the ora_rn, and wrap again with offset.
                 if select._offset is None:
+                    limitselect.for_update = select.for_update
                     select = limitselect
                 else:
-                     limitselect = limitselect.column(
+                    limitselect = limitselect.column(
                              sql.literal_column("ROWNUM").label("ora_rn"))
-                     limitselect._oracle_visit = True
-                     limitselect._is_wrapper = True
+                    limitselect._oracle_visit = True
+                    limitselect._is_wrapper = True
 
-                     offsetselect = sql.select(
+                    offsetselect = sql.select(
                              [c for c in limitselect.c if c.key!='ora_rn'])
-                     offsetselect._oracle_visit = True
-                     offsetselect._is_wrapper = True
+                    offsetselect._oracle_visit = True
+                    offsetselect._is_wrapper = True
 
-                     offsetselect.append_whereclause(
+                    offsetselect.append_whereclause(
                              sql.literal_column("ora_rn")>select._offset)
 
-                     select = offsetselect
+                    offsetselect.for_update = select.for_update
+                    select = offsetselect
 
         kwargs['iswrapper'] = getattr(select, '_is_wrapper', False)
         return compiler.SQLCompiler.visit_select(self, select, **kwargs)
@@ -514,7 +516,9 @@ class OracleCompiler(compiler.SQLCompiler):
         return ""
 
     def for_update_clause(self, select):
-        if select.for_update == "nowait":
+        if self.is_subquery():
+            return ""
+        elif select.for_update == "nowait":
             return " FOR UPDATE NOWAIT"
         else:
             return super(OracleCompiler, self).for_update_clause(select)
