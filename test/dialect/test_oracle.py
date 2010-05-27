@@ -356,7 +356,47 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             except_(t1.select(), t2.select()),
             "SELECT t1.c1, t1.c2, t1.c3 FROM t1 MINUS SELECT t2.c1, t2.c2, t2.c3 FROM t2"
         )
-        
+
+class CompatFlagsTest(TestBase, AssertsCompiledSQL):
+    __only_on__ = 'oracle'
+    
+    def test_ora8_flags(self):
+        def server_version_info(self):
+            return (8, 2, 5)
+            
+        dialect = oracle.dialect()
+        dialect._get_server_version_info = server_version_info
+        dialect.initialize(testing.db.connect())
+        assert not dialect._supports_char_length
+        assert not dialect._supports_nchar
+        assert not dialect.use_ansi
+        self.assert_compile(String(50),"VARCHAR(50)",dialect=dialect)
+        self.assert_compile(Unicode(50),"VARCHAR(50)",dialect=dialect)
+        self.assert_compile(UnicodeText(),"CLOB",dialect=dialect)
+
+    def test_default_flags(self):
+        """test with no initialization or server version info"""
+        dialect = oracle.dialect()
+        assert dialect._supports_char_length
+        assert dialect._supports_nchar
+        assert dialect.use_ansi
+        self.assert_compile(String(50),"VARCHAR(50 CHAR)",dialect=dialect)
+        self.assert_compile(Unicode(50),"NVARCHAR2(50)",dialect=dialect)
+        self.assert_compile(UnicodeText(),"NCLOB",dialect=dialect)
+    
+    def test_ora10_flags(self):
+        def server_version_info(self):
+            return (10, 2, 5)
+        dialect = oracle.dialect()
+        dialect._get_server_version_info = server_version_info
+        dialect.initialize(testing.db.connect())
+        assert dialect._supports_char_length
+        assert dialect._supports_nchar
+        assert dialect.use_ansi
+        self.assert_compile(String(50),"VARCHAR(50 CHAR)",dialect=dialect)
+        self.assert_compile(Unicode(50),"NVARCHAR2(50)",dialect=dialect)
+        self.assert_compile(UnicodeText(),"NCLOB",dialect=dialect)
+    
 class MultiSchemaTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
     
@@ -772,27 +812,15 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             metadata.drop_all()
        
     def test_char_length(self):
-        self.assert_compile(
-            VARCHAR(50),
-            "VARCHAR(50 CHAR)",
-        )
+        self.assert_compile(VARCHAR(50),"VARCHAR(50 CHAR)")
 
         oracle8dialect = oracle.dialect()
-        oracle8dialect.supports_char_length = False
-        self.assert_compile(
-            VARCHAR(50),
-            "VARCHAR(50)",
-            dialect=oracle8dialect
-        )
+        oracle8dialect._supports_char_length = False
+        self.assert_compile(VARCHAR(50),"VARCHAR(50)",dialect=oracle8dialect)
 
-        self.assert_compile(
-            NVARCHAR(50),
-            "NVARCHAR2(50)",
-        )
-        self.assert_compile(
-            CHAR(50),
-            "CHAR(50)",
-        )
+        self.assert_compile(NVARCHAR(50),"NVARCHAR2(50)")
+        self.assert_compile(CHAR(50),"CHAR(50)")
+        
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
               Column("c1", VARCHAR(50)),
@@ -808,8 +836,6 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             eq_(t2.c.c3.type.length, 200)
         finally:
             t1.drop()
-
-
  
     def test_longstring(self):
         metadata = MetaData(testing.db)

@@ -78,6 +78,13 @@ CHANGES
 
   - Fixed use_ansi=False mode, which was producing broken 
     WHERE clauses in pretty much all cases.  [ticket:1790]
+
+  - Re-established support for Oracle 8 with cx_oracle, 
+    including that use_ansi is set to False automatically, 
+    NVARCHAR2 and NCLOB are not rendered for Unicode, 
+    "native unicode" check doesn't fail, cx_oracle 
+    "native unicode" mode is disabled, VARCHAR() is emitted 
+    with bytes count instead of char count. [ticket:1808]
     
   - oracle_xe 5 doesn't accept a Python unicode object in 
     its connect string in normal Python 2.x mode - so we coerce

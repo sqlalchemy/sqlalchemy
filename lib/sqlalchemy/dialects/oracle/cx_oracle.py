@@ -45,6 +45,9 @@ cx_oracle 5 fully supports Python unicode objects.   SQLAlchemy will pass
 all unicode strings directly to cx_oracle, and additionally uses an output
 handler so that all string based result values are returned as unicode as well.
 
+Note that this behavior is disabled when Oracle 8 is detected, as it has been 
+observed that issues remain when passing Python unicodes to cx_oracle with Oracle 8.
+
 LOB Objects
 -----------
 
@@ -444,6 +447,11 @@ class OracleDialect_cx_oracle(OracleDialect):
                 self.dbapi.BLOB: oracle.BLOB(),
                 self.dbapi.BINARY: oracle.RAW(),
             }
+
+    def initialize(self, connection):
+        super(OracleDialect_cx_oracle, self).initialize(connection)
+        if self._is_oracle_8:
+            self.supports_unicode_binds = False
     
     @classmethod
     def dbapi(cls):

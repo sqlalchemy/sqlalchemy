@@ -95,9 +95,21 @@ and specify "passive_updates=False" on each relationship().
 Oracle 8 Compatibility
 ----------------------
 
-When using Oracle 8, a "use_ansi=False" flag is available which converts all
-JOIN phrases into the WHERE clause, and in the case of LEFT OUTER JOIN
-makes use of Oracle's (+) operator.
+When Oracle 8 is detected, the dialect internally configures itself to the following
+behaviors:
+
+* the use_ansi flag is set to False.  This has the effect of converting all
+  JOIN phrases into the WHERE clause, and in the case of LEFT OUTER JOIN
+  makes use of Oracle's (+) operator.
+
+* the NVARCHAR2 and NCLOB datatypes are no longer generated as DDL when 
+  the :class:`~sqlalchemy.types.Unicode` is used - VARCHAR2 and CLOB are issued 
+  instead.   This because these types don't seem to work correctly on Oracle 8
+  even though they are available.  The :class:`~sqlalchemy.types.NVARCHAR` 
+  and :class:`~sqlalchemy.dialects.oracle.NCLOB` types will always generate NVARCHAR2 and NCLOB.
+
+* the "native unicode" mode is disabled when using cx_oracle, i.e. SQLAlchemy 
+  encodes all Python unicode objects to "string" before passing in as bind parameters.
 
 Synonym/DBLINK Reflection
 -------------------------
@@ -184,9 +196,9 @@ class INTERVAL(sqltypes.TypeEngine):
         within available DBAPIs (cx_oracle and zxjdbc).
         
         :param day_precision: the day precision value.  this is the number of digits
-        to store for the day field.  Defaults to "2"
+          to store for the day field.  Defaults to "2"
         :param second_precision: the second precision value.  this is the number of digits
-        to store for the fractional seconds field.  Defaults to "6".
+          to store for the fractional seconds field.  Defaults to "6".
         
         """
         self.day_precision = day_precision
@@ -247,7 +259,10 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_FLOAT(type_)
         
     def visit_unicode(self, type_):
-        return self.visit_NVARCHAR(type_)
+        if self.dialect._supports_nchar:
+            return self.visit_NVARCHAR(type_)
+        else:
+            return self.visit_VARCHAR(type_)
     
     def visit_INTERVAL(self, type_):
         return "INTERVAL DAY%s TO SECOND%s" % (
@@ -286,7 +301,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
             return "%(name)s(%(precision)s, %(scale)s)" % {'name':name,'precision': precision, 'scale' : scale}
         
     def visit_VARCHAR(self, type_):
-        if self.dialect.supports_char_length:
+        if self.dialect._supports_char_length:
             return "VARCHAR(%(length)s CHAR)" % {'length' : type_.length}
         else:
             return "VARCHAR(%(length)s)" % {'length' : type_.length}
@@ -298,7 +313,10 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self.visit_CLOB(type_)
 
     def visit_unicode_text(self, type_):
-        return self.visit_NCLOB(type_)
+        if self.dialect._supports_nchar:
+            return self.visit_NCLOB(type_)
+        else:
+            return self.visit_CLOB(type_)
 
     def visit_large_binary(self, type_):
         return self.visit_BLOB(type_)
@@ -593,8 +611,6 @@ class OracleDialect(default.DefaultDialect):
     
     reflection_options = ('oracle_resolve_synonyms', )
 
-    supports_char_length = True    
-    
     def __init__(self, 
                 use_ansi=True, 
                 optimize_limits=False, 
@@ -608,12 +624,24 @@ class OracleDialect(default.DefaultDialect):
         self.implicit_returning = self.server_version_info > (10, ) and \
                                         self.__dict__.get('implicit_returning', True)
 
-        self.supports_char_length = self.server_version_info >= (9, )
-
-        if self.server_version_info < (9,):
+        if self._is_oracle_8:
             self.colspecs = self.colspecs.copy()
             self.colspecs.pop(sqltypes.Interval)
+            self.use_ansi = False
 
+    @property
+    def _is_oracle_8(self):
+        return self.server_version_info and \
+                    self.server_version_info < (9, )
+        
+    @util.memoized_property
+    def _supports_char_length(self):
+        return not self._is_oracle_8
+
+    @util.memoized_property
+    def _supports_nchar(self):
+        return not self._is_oracle_8
+        
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT
         pass
@@ -775,7 +803,7 @@ class OracleDialect(default.DefaultDialect):
                                           resolve_synonyms, dblink,
                                           info_cache=info_cache)
         columns = []
-        if self.supports_char_length:
+        if self._supports_char_length:
             char_length_col = 'char_length'
         else:
             char_length_col = 'data_length'

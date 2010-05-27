@@ -150,6 +150,9 @@ on all databases.
 .. autoclass:: NCHAR
   :show-inheritance:
 
+.. autoclass:: NVARCHAR
+  :show-inheritance:
+
 .. autoclass:: NUMERIC
   :show-inheritance:
 

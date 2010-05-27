@@ -663,7 +663,9 @@ class BinaryTest(TestBase, AssertsExecutionResults):
             eq_(testobj2, l[1]['pickled'])
             eq_(testobj3.moredata, l[0]['mypickle'].moredata)
             eq_(l[0]['mypickle'].stuff, 'this is the right stuff')
-    
+
+    @testing.fails_on('oracle+cx_oracle', 'oracle fairly grumpy about binary '
+                                        'data, not really known how to make this work')
     def test_comparison(self):
         """test that type coercion occurs on comparison for binary"""
         
