@@ -674,7 +674,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         
         data = os.urandom(32)
         binary_table.insert().execute(data=data)
-        eq_(binary_table.select().where(binary_table.c.data==data).count().scalar(), 1)
+        eq_(binary_table.select().where(binary_table.c.data==data).alias().count().scalar(), 1)
         
         
     def load_stream(self, name):

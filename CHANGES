@@ -70,6 +70,11 @@ CHANGES
   - func.sysdate() emits "SYSDATE()", i.e. with the ending
     parenthesis, on MySQL.  [ticket:1794]
 
+- sqlite
+  - Fixed concatenation of constraints when "PRIMARY KEY" 
+    constraint gets moved to column level due to SQLite
+    AUTOINCREMENT keyword being rendered.  [ticket:1812]
+    
 - oracle
   - Added a check for cx_oracle versions lower than version 5,
     in which case the incompatible "output type handler" won't 

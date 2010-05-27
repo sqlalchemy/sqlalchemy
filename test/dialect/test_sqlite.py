@@ -566,6 +566,19 @@ class TestAutoIncrement(TestBase, AssertsCompiledSQL):
             dialect=sqlite.dialect()
         )
 
+    def test_sqlite_autoincrement_constraint(self):
+        table = Table('autoinctable', MetaData(),
+                      Column('id', Integer, primary_key=True),
+                      Column('x', Integer, default=None),
+                      UniqueConstraint('x'),
+                      sqlite_autoincrement=True)
+        self.assert_compile(
+            schema.CreateTable(table),
+            "CREATE TABLE autoinctable (id INTEGER NOT NULL "
+            "PRIMARY KEY AUTOINCREMENT, x INTEGER, UNIQUE (x))",
+            dialect=sqlite.dialect()
+        )
+
     def test_sqlite_no_autoincrement(self):
         table = Table('noautoinctable', MetaData(),
                       Column('id', Integer, primary_key=True),

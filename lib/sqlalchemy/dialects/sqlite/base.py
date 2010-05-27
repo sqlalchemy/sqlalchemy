@@ -266,7 +266,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
                 c.table.kwargs.get('sqlite_autoincrement', False) and \
                 isinstance(c.type, sqltypes.Integer) and \
                 not c.foreign_keys:
-                return ''
+                return None
  
         return super(SQLiteDDLCompiler, self).\
                     visit_primary_key_constraint(constraint)

@@ -275,7 +275,7 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
         
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE tbl (a INTEGER, b INTEGER  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
+            "CREATE TABLE tbl (a INTEGER, b INTEGER CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
         )
     
     def test_use_alter(self):
