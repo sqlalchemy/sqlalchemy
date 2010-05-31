@@ -1316,7 +1316,8 @@ class Mapper(object):
     
     def _save_obj(self, states, uowtransaction, postupdate=False, 
                                 post_update_cols=None, single=False):
-        """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
+        """Issue ``INSERT`` and/or ``UPDATE`` statements for a list 
+        of objects.
 
         This is called within the context of a UOWTransaction during a
         flush operation.
@@ -1339,7 +1340,8 @@ class Mapper(object):
                                 single=True)
             return
 
-        cached_connections = util.PopulateDict(lambda conn:conn.execution_options(
+        cached_connections = util.PopulateDict(
+            lambda conn:conn.execution_options(
             compiled_cache=self._compiled_cache.setdefault(conn.engine, {})
         ))
 
@@ -1370,10 +1372,12 @@ class Mapper(object):
                 # call before_XXX extensions
                 if not has_identity:
                     if 'before_insert' in mapper.extension:
-                        mapper.extension.before_insert(mapper, conn, state.obj())
+                        mapper.extension.before_insert(
+                                            mapper, conn, state.obj())
                 else:
                     if 'before_update' in mapper.extension:
-                        mapper.extension.before_update(mapper, conn, state.obj())
+                        mapper.extension.before_update(
+                                            mapper, conn, state.obj())
 
                 # detect if we have a "pending" instance (i.e. has 
                 # no instance_key attached to it), and another instance 
@@ -1381,13 +1385,15 @@ class Mapper(object):
                 # convert to an UPDATE if so.
                 if not has_identity and \
                     instance_key in uowtransaction.session.identity_map:
-                    instance = uowtransaction.session.identity_map[instance_key]
+                    instance = \
+                        uowtransaction.session.identity_map[instance_key]
                     existing = attributes.instance_state(instance)
                     if not uowtransaction.is_deleted(existing):
                         raise orm_exc.FlushError(
                             "New instance %s with identity key %s conflicts "
                             "with persistent instance %s" % 
-                            (state_str(state), instance_key, state_str(existing)))
+                            (state_str(state), instance_key,
+                             state_str(existing)))
 
                     self._log_debug(
                         "detected row switch for identity %s.  "
@@ -1433,7 +1439,8 @@ class Mapper(object):
                 if isinsert:
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
-                            params[col.key] = mapper.version_id_generator(None)
+                            params[col.key] = \
+                              mapper.version_id_generator(None)
                         elif mapper.polymorphic_on is not None and \
                                 mapper.polymorphic_on.shares_lineage(col):
                             value = mapper.polymorphic_identity
@@ -1442,11 +1449,15 @@ class Mapper(object):
                                 value is not None):
                                 params[col.key] = value
                         elif col in pks:
-                            value = mapper._get_state_attr_by_column(state, state_dict, col)
+                            value = \
+                             mapper._get_state_attr_by_column(
+                                                state, state_dict, col)
                             if value is not None:
                                 params[col.key] = value
                         else:
-                            value = mapper._get_state_attr_by_column(state, state_dict, col)
+                            value = \
+                              mapper._get_state_attr_by_column(
+                                                state, state_dict, col)
                             if ((col.default is None and
                                  col.server_default is None) or
                                 value is not None):
@@ -1460,68 +1471,84 @@ class Mapper(object):
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
                             params[col._label] = \
-                                        mapper._get_state_attr_by_column(
-                                                    row_switch or state, 
-                                                    row_switch and row_switch.dict or state_dict,
-                                                    col)
+                                mapper._get_state_attr_by_column(
+                                            row_switch or state, 
+                                            row_switch and row_switch.dict 
+                                                        or state_dict,
+                                            col)
                             params[col.key] = \
                                     mapper.version_id_generator(params[col._label])
 
-                            # HACK: check for history, in case the history is only
-                            # in a different table than the one where the version_id_col
-                            # is.
+                            # HACK: check for history, in case the 
+                            # history is only
+                            # in a different table than the one 
+                            # where the version_id_col is.
                             for prop in mapper._columntoproperty.itervalues():
                                 history = attributes.get_state_history(
                                                 state, prop.key, passive=True)
                                 if history.added:
                                     hasdata = True
                         elif mapper.polymorphic_on is not None and \
-                                mapper.polymorphic_on.shares_lineage(col) and \
+                            mapper.polymorphic_on.shares_lineage(col) and \
                                 col not in pks:
                             pass
                         else:
                             if post_update_cols is not None and \
                                 col not in post_update_cols:
                                 if col in pks:
-                                    params[col._label] = \
-                                                mapper._get_state_attr_by_column(
-                                                                state, state_dict, col)
+                                    params[col._label] = mapper.\
+                                                _get_state_attr_by_column(
+                                                    state, state_dict, col)
                                 continue
 
                             prop = mapper._columntoproperty[col]
-                            history = attributes.get_state_history(state, prop.key, passive=True)
+                            history = attributes.get_state_history(
+                                            state, prop.key, passive=True)
                             if history.added:
-                                if isinstance(history.added[0], sql.ClauseElement):
+                                if isinstance(history.added[0],
+                                                sql.ClauseElement):
                                     value_params[col] = history.added[0]
                                 else:
-                                    params[col.key] = prop.get_col_value(col, history.added[0])
+                                    params[col.key] = \
+                                        prop.get_col_value(col,
+                                                            history.added[0])
 
                                 if col in pks:
                                     if history.deleted:
-                                        # if passive_updates and sync detected this was a 
-                                        # pk->pk sync, use the new value to locate the row, 
-                                        # since the DB would already have set this
+                                        # if passive_updates and sync detected
+                                        # this was a  pk->pk sync, use the new
+                                        # value to locate the row, since the
+                                        # DB would already have set this
                                         if ("pk_cascaded", state, col) in \
-                                                        uowtransaction.attributes:
+                                                        uowtransaction.\
+                                                        attributes:
                                             params[col._label] = \
-                                                    prop.get_col_value(col, history.added[0])
+                                                    prop.get_col_value(col,
+                                                        history.added[0])
                                         else:
-                                            # use the old value to locate the row
+                                            # use the old value to 
+                                            # locate the row
                                             params[col._label] = \
-                                                    prop.get_col_value(col, history.deleted[0])
+                                                    prop.get_col_value(col,
+                                                        history.deleted[0])
                                         hasdata = True
                                     else:
                                         # row switch logic can reach us here
-                                        # remove the pk from the update params so the update doesn't
-                                        # attempt to include the pk in the update statement
+                                        # remove the pk from the update params
+                                        # so the update doesn't
+                                        # attempt to include the pk in the
+                                        # update statement
                                         del params[col.key]
                                         params[col._label] = \
-                                                    prop.get_col_value(col, history.added[0])
+                                                    prop.get_col_value(col,
+                                                      history.added[0])
                                 else:
                                     hasdata = True
                             elif col in pks:
-                                params[col._label] = mapper._get_state_attr_by_column(
-                                                                    state, state_dict, col)
+                                params[col._label] = \
+                                        mapper._get_state_attr_by_column(
+                                                        state,
+                                                        state_dict, col)
                     if hasdata:
                         update.append((state, state_dict, params, mapper, 
                                         connection, value_params))
@@ -1557,9 +1584,12 @@ class Mapper(object):
                             connection, value_params in update:
                     
                     if value_params:
-                        c = connection.execute(statement.values(value_params), params)
+                        c = connection.execute(
+                                            statement.values(value_params),
+                                            params)
                     else:
-                        c = cached_connections[connection].execute(statement, params)
+                        c = cached_connections[connection].\
+                                            execute(statement, params)
                         
                     mapper._postfetch(uowtransaction, table, 
                                         state, state_dict, c, 
@@ -1587,22 +1617,28 @@ class Mapper(object):
                             connection, value_params in insert:
 
                     if value_params:
-                        c = connection.execute(statement.values(value_params), params)
+                        c = connection.execute(
+                                            statement.values(value_params),
+                                            params)
                     else:
-                        c = cached_connections[connection].execute(statement, params)
+                        c = cached_connections[connection].\
+                                            execute(statement, params)
                     
                     primary_key = c.inserted_primary_key
 
                     if primary_key is not None:
                         # set primary key attributes
                         for i, col in enumerate(mapper._pks_by_table[table]):
-                            if mapper._get_state_attr_by_column(state, state_dict, col) \
+                            if mapper._get_state_attr_by_column(
+                                        state, state_dict, col) \
                                         is None and len(primary_key) > i:
-                                mapper._set_state_attr_by_column(state, state_dict, col,
-                                                                    primary_key[i])
+                                mapper._set_state_attr_by_column(
+                                        state, state_dict, col,
+                                        primary_key[i])
                                 
                     mapper._postfetch(uowtransaction, table, 
-                                        state, state_dict, c, c.last_inserted_params(),
+                                        state, state_dict, c,
+                                        c.last_inserted_params(),
                                         value_params)
 
         if not postupdate:
@@ -1628,13 +1664,16 @@ class Mapper(object):
                 # call after_XXX extensions
                 if not has_identity:
                     if 'after_insert' in mapper.extension:
-                        mapper.extension.after_insert(mapper, connection, state.obj())
+                        mapper.extension.after_insert(
+                                            mapper, connection, state.obj())
                 else:
                     if 'after_update' in mapper.extension:
-                        mapper.extension.after_update(mapper, connection, state.obj())
+                        mapper.extension.after_update(
+                                            mapper, connection, state.obj())
 
     def _postfetch(self, uowtransaction, table, 
-                                state, dict_, resultproxy, params, value_params):
+                        state, dict_, resultproxy, 
+                        params, value_params):
         """Expire attributes in need of newly persisted database state."""
 
         postfetch_cols = resultproxy.postfetch_cols()
@@ -1678,7 +1717,8 @@ class Mapper(object):
             cols = set(table.c)
             for m in self.iterate_to_root():
                 if m._inherits_equated_pairs and \
-                            cols.intersection([l for l, r in m._inherits_equated_pairs]):
+                    cols.intersection(
+                        [l for l, r in m._inherits_equated_pairs]):
                     result[table].append((m, m._inherits_equated_pairs))
         
         return result
@@ -1698,7 +1738,8 @@ class Mapper(object):
             connection_callable = None
         
         tups = []
-        cached_connections = util.PopulateDict(lambda conn:conn.execution_options(
+        cached_connections = util.PopulateDict(
+            lambda conn:conn.execution_options(
             compiled_cache=self._compiled_cache.setdefault(conn.engine, {})
         ))
         
@@ -1730,11 +1771,14 @@ class Mapper(object):
                 params = {}
                 delete[connection].append(params)
                 for col in mapper._pks_by_table[table]:
-                    params[col.key] = mapper._get_state_attr_by_column(state, state_dict, col)
+                    params[col.key] = \
+                            mapper._get_state_attr_by_column(
+                                            state, state_dict, col)
                 if mapper.version_id_col is not None and \
                             table.c.contains_column(mapper.version_id_col):
                     params[mapper.version_id_col.key] = \
-                                mapper._get_state_attr_by_column(state, state_dict,
+                                mapper._get_state_attr_by_column(
+                                        state, state_dict,
                                         mapper.version_id_col)
 
             mapper = table_to_mapper[table]
@@ -1744,7 +1788,8 @@ class Mapper(object):
             def delete_stmt():
                 clause = sql.and_()
                 for col in mapper._pks_by_table[table]:
-                    clause.clauses.append(col == sql.bindparam(col.key, type_=col.type))
+                    clause.clauses.append(
+                            col == sql.bindparam(col.key, type_=col.type))
 
                 if need_version_id:
                     clause.clauses.append(
@@ -1774,10 +1819,11 @@ class Mapper(object):
                             c = connection.execute(statement, params)
                             rows += c.rowcount
                     else:
-                        util.warn("Dialect %s does not support deleted rowcount "
-                                "- versioning cannot be verified." % 
-                                c.dialect.dialect_description,
-                                stacklevel=12)
+                        util.warn(
+                            "Dialect %s does not support deleted rowcount "
+                            "- versioning cannot be verified." % 
+                            c.dialect.dialect_description,
+                            stacklevel=12)
                         connection.execute(statement, del_objects)
                 else:
                     c = connection.execute(statement, del_objects)
