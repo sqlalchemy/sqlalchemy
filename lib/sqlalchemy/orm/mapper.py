@@ -1338,7 +1338,11 @@ class Mapper(object):
                                 post_update_cols=post_update_cols, 
                                 single=True)
             return
-        
+
+        cached_connections = util.PopulateDict(lambda conn:conn.execution_options(
+            compiled_cache=self._compiled_cache.setdefault(conn.engine, {})
+        ))
+
         # if session has a connection callable,
         # organize individual states with the connection 
         # to use for insert/update
@@ -1356,7 +1360,7 @@ class Mapper(object):
                 conn = connection_callable(self, state.obj())
             else:
                 conn = connection
-
+                
             has_identity = state.has_identity
             mapper = _state_mapper(state)
             instance_key = state.key or mapper._identity_key_from_state(state)
@@ -1406,8 +1410,6 @@ class Mapper(object):
             )
 
         table_to_mapper = self._sorted_tables
-
-        compiled_cache = self._compiled_cache
 
         for table in table_to_mapper:
             insert = []
@@ -1482,7 +1484,8 @@ class Mapper(object):
                                 col not in post_update_cols:
                                 if col in pks:
                                     params[col._label] = \
-                                                mapper._get_state_attr_by_column(state, state_dict, col)
+                                                mapper._get_state_attr_by_column(
+                                                                state, state_dict, col)
                                 continue
 
                             prop = mapper._columntoproperty[col]
@@ -1556,11 +1559,7 @@ class Mapper(object):
                     if value_params:
                         c = connection.execute(statement.values(value_params), params)
                     else:
-                        c = connection.\
-                                execution_options(compiled_cache=\
-                                            compiled_cache.setdefault(
-                                                connection.engine, {})
-                                        ).execute(statement, params)
+                        c = cached_connections[connection].execute(statement, params)
                         
                     mapper._postfetch(uowtransaction, table, 
                                         state, state_dict, c, 
@@ -1590,11 +1589,7 @@ class Mapper(object):
                     if value_params:
                         c = connection.execute(statement.values(value_params), params)
                     else:
-                        c = connection.\
-                                execution_options(compiled_cache=\
-                                            compiled_cache.setdefault(
-                                                    connection.engine, {})
-                                        ).execute(statement, params)
+                        c = cached_connections[connection].execute(statement, params)
                     
                     primary_key = c.inserted_primary_key
 
@@ -1703,6 +1698,10 @@ class Mapper(object):
             connection_callable = None
         
         tups = []
+        cached_connections = util.PopulateDict(lambda conn:conn.execution_options(
+            compiled_cache=self._compiled_cache.setdefault(conn.engine, {})
+        ))
+        
         for state in _sort_states(states):
             mapper = _state_mapper(state)
 
@@ -1721,8 +1720,6 @@ class Mapper(object):
                     conn))
 
         table_to_mapper = self._sorted_tables
-        
-        compiled_cache = self._compiled_cache
         
         for table in reversed(table_to_mapper.keys()):
             delete = util.defaultdict(list)
@@ -1764,10 +1761,7 @@ class Mapper(object):
                 statement = self._memo(('delete', table), delete_stmt)
                 rows = -1
 
-                connection = connection.execution_options(
-                                compiled_cache=compiled_cache.setdefault(
-                                                    connection.engine, 
-                                                    {}))
+                connection = cached_connections[connection]
 
                 if need_version_id and \
                         not connection.dialect.supports_sane_multi_rowcount:
