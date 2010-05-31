@@ -785,10 +785,7 @@ class Query(object):
         method is used.
 
         """
-        _execution_options = self._execution_options.copy()
-        for key, value in kwargs.items():
-            _execution_options[key] = value
-        self._execution_options = _execution_options
+        self._execution_options = self._execution_options.union(kwargs)
 
     @_generative()
     def with_lockmode(self, mode):

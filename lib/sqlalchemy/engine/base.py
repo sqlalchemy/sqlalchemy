@@ -799,7 +799,7 @@ class Connection(Connectable):
 
     Provides execution support for string-based SQL statements as well
     as ClauseElement, Compiled and DefaultGenerator objects.  Provides
-    a begin method to return Transaction objects.
+    a :meth:`begin` method to return Transaction objects.
 
     The Connection object is **not** thread-safe.
 
@@ -807,7 +807,6 @@ class Connection(Connectable):
       single: thread safety; Connection
       
     """
-    _execution_options = util.frozendict()
     
     def __init__(self, engine, connection=None, close_with_result=False,
                  _branch=False, _execution_options=None):
@@ -828,7 +827,9 @@ class Connection(Connectable):
         self._echo = self.engine._should_log_info()
         if _execution_options:
             self._execution_options =\
-                self._execution_options.union(_execution_options)
+                engine._execution_options.union(_execution_options)
+        else:
+            self._execution_options = engine._execution_options
 
     def _branch(self):
         """Return a new Connection which references this Connection's
@@ -1557,8 +1558,12 @@ class Engine(Connectable, log.Identified):
 
     """
 
+    _execution_options = util.frozendict()
+
     def __init__(self, pool, dialect, url, 
-                        logging_name=None, echo=None, proxy=None):
+                        logging_name=None, echo=None, proxy=None,
+                        execution_options=None
+                        ):
         self.pool = pool
         self.url = url
         self.dialect = dialect
@@ -1571,6 +1576,20 @@ class Engine(Connectable, log.Identified):
             self.Connection = _proxy_connection_cls(Connection, proxy)
         else:
             self.Connection = Connection
+        if execution_options:
+            self.update_execution_options(**execution_options)
+    
+    def update_execution_options(self, **opt):
+        """update the execution_options dictionary of this :class:`Engine`.
+        
+        For details on execution_options, see
+        :meth:`Connection.execution_options` as well as
+        :meth:`sqlalchemy.sql.expression.Executable.execution_options`.
+        
+        
+        """
+        self._execution_options = \
+                self._execution_options.union(opt)
 
     @property
     def name(self):

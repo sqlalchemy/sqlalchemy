@@ -109,7 +109,10 @@ class Pool(log.Identified):
 
         """
         if logging_name:
-            self.logging_name = logging_name
+            self.logging_name = self._orig_logging_name = logging_name
+        else:
+            self._orig_logging_name = None
+            
         self.logger = log.instance_logger(self, echoflag=echo)
         self._threadconns = threading.local()
         self._creator = creator
@@ -498,6 +501,7 @@ class SingletonThreadPool(Pool):
             pool_size=self.size, 
             recycle=self._recycle, 
             echo=self.echo, 
+            logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal, 
             listeners=self.listeners)
 
@@ -624,6 +628,7 @@ class QueuePool(Pool):
         return QueuePool(self._creator, pool_size=self._pool.maxsize, 
                           max_overflow=self._max_overflow, timeout=self._timeout, 
                           recycle=self._recycle, echo=self.echo, 
+                          logging_name=self._orig_logging_name,
                           use_threadlocal=self._use_threadlocal, listeners=self.listeners)
 
     def do_return_conn(self, conn):
@@ -730,6 +735,7 @@ class NullPool(Pool):
         return NullPool(self._creator, 
             recycle=self._recycle, 
             echo=self.echo, 
+            logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal, 
             listeners=self.listeners)
 
@@ -770,6 +776,7 @@ class StaticPool(Pool):
                               use_threadlocal=self._use_threadlocal,
                               reset_on_return=self._reset_on_return,
                               echo=self.echo,
+                              logging_name=self._orig_logging_name,
                               listeners=self.listeners)
 
     def create_connection(self):
@@ -819,6 +826,7 @@ class AssertionPool(Pool):
     def recreate(self):
         self.logger.info("Pool recreating")
         return AssertionPool(self._creator, echo=self.echo, 
+                            logging_name=self._orig_logging_name,
                             listeners=self.listeners)
         
     def do_get(self):

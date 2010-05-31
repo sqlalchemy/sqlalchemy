@@ -68,13 +68,13 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
 
     Options:
 
-    autocommit
-      Defaults to ``False``. When ``True``, the ``Session`` does not keep a
-      persistent transaction running, and will acquire connections from the
-      engine on an as-needed basis, returning them immediately after their
-      use. Flushes will begin and commit (or possibly rollback) their own
-      transaction if no transaction is present. When using this mode, the
-      `session.begin()` method may be used to begin a transaction explicitly.
+    :param autocommit: Defaults to ``False``. When ``True``, the ``Session``
+      does not keep a persistent transaction running, and will acquire
+      connections from the engine on an as-needed basis, returning them
+      immediately after their use. Flushes will begin and commit (or possibly
+      rollback) their own transaction if no transaction is present. When using
+      this mode, the `session.begin()` method may be used to begin a
+      transaction explicitly.
 
       Leaving it on its default value of ``False`` means that the ``Session``
       will acquire a connection and begin a transaction the first time it is
@@ -83,30 +83,27 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
       by any of these methods, the ``Session`` is ready for the next usage,
       which will again acquire and maintain a new connection/transaction.
 
-    autoflush
-      When ``True``, all query operations will issue a ``flush()`` call to
-      this ``Session`` before proceeding. This is a convenience feature so
-      that ``flush()`` need not be called repeatedly in order for database
-      queries to retrieve results. It's typical that ``autoflush`` is used in
-      conjunction with ``autocommit=False``.  In this scenario, explicit calls
-      to ``flush()`` are rarely needed; you usually only need to call
-      ``commit()`` (which flushes) to finalize changes.
+    :param autoflush: When ``True``, all query operations will issue a 
+       ``flush()`` call to this ``Session`` before proceeding. This is a
+       convenience feature so that ``flush()`` need not be called repeatedly
+       in order for database queries to retrieve results. It's typical that
+       ``autoflush`` is used in conjunction with ``autocommit=False``. In this
+       scenario, explicit calls to ``flush()`` are rarely needed; you usually
+       only need to call ``commit()`` (which flushes) to finalize changes.
 
-    bind
-      An optional ``Engine`` or ``Connection`` to which this ``Session``
-      should be bound. When specified, all SQL operations performed by this
-      session will execute via this connectable.
+    :param bind: An optional ``Engine`` or ``Connection`` to which this
+       ``Session`` should be bound. When specified, all SQL operations
+       performed by this session will execute via this connectable.
 
-    binds
-      An optional dictionary, which contains more granular "bind" information
-      than the ``bind`` parameter provides. This dictionary can map individual
-      ``Table`` instances as well as ``Mapper`` instances to individual
-      ``Engine`` or ``Connection`` objects. Operations which proceed relative
-      to a particular ``Mapper`` will consult this dictionary for the direct
-      ``Mapper`` instance as well as the mapper's ``mapped_table`` attribute
-      in order to locate an connectable to use. The full resolution is
-      described in the ``get_bind()`` method of ``Session``. Usage looks
-      like::
+    :param binds: An optional dictionary which contains more granular "bind"
+       information than the ``bind`` parameter provides. This dictionary can
+       map individual ``Table`` instances as well as ``Mapper`` instances to
+       individual ``Engine`` or ``Connection`` objects. Operations which
+       proceed relative to a particular ``Mapper`` will consult this
+       dictionary for the direct ``Mapper`` instance as well as the mapper's
+       ``mapped_table`` attribute in order to locate an connectable to use.
+       The full resolution is described in the ``get_bind()`` method of
+       ``Session``. Usage looks like::
 
         sess = Session(binds={
             SomeMappedClass: create_engine('postgresql://engine1'),
@@ -116,53 +113,52 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
 
       Also see the ``bind_mapper()`` and ``bind_table()`` methods.
 
-    \class_
-      Specify an alternate class other than ``sqlalchemy.orm.session.Session``
-      which should be used by the returned class.  This is the only argument
-      that is local to the ``sessionmaker()`` function, and is not sent
-      directly to the constructor for ``Session``.
+    :param \class_: Specify an alternate class other than
+       ``sqlalchemy.orm.session.Session`` which should be used by the returned
+       class. This is the only argument that is local to the
+       ``sessionmaker()`` function, and is not sent directly to the
+       constructor for ``Session``.
 
-    _enable_transaction_accounting
-      Defaults to ``True``.  A legacy-only flag which when ``False``
-      disables *all* 0.5-style object accounting on transaction boundaries,
-      including auto-expiry of instances on rollback and commit, maintenance of
-      the "new" and "deleted" lists upon rollback, and autoflush
-      of pending changes upon begin(), all of which are interdependent.
+    :param _enable_transaction_accounting:  Defaults to ``True``.  A
+       legacy-only flag which when ``False`` disables *all* 0.5-style object
+       accounting on transaction boundaries, including auto-expiry of
+       instances on rollback and commit, maintenance of the "new" and
+       "deleted" lists upon rollback, and autoflush of pending changes upon
+       begin(), all of which are interdependent.
 
-    expire_on_commit
-      Defaults to ``True``. When ``True``, all instances will be fully expired after
-      each ``commit()``, so that all attribute/object access subsequent to a completed
-      transaction will load from the most recent database state.
+    :param expire_on_commit:  Defaults to ``True``. When ``True``, all
+       instances will be fully expired after each ``commit()``, so that all
+       attribute/object access subsequent to a completed transaction will load
+       from the most recent database state.
 
-    extension
-      An optional :class:`~sqlalchemy.orm.session.SessionExtension` instance, or
-      a list of such instances, which
-      will receive pre- and post- commit and flush events, as well as a
-      post-rollback event.  User- defined code may be placed within these
-      hooks using a user-defined subclass of ``SessionExtension``.
+    :param extension: An optional 
+       :class:`~sqlalchemy.orm.session.SessionExtension` instance, or a list
+       of such instances, which will receive pre- and post- commit and flush
+       events, as well as a post-rollback event. User- defined code may be
+       placed within these hooks using a user-defined subclass of
+       ``SessionExtension``.
 
-    query_cls
-      Class which should be used to create new Query objects, as returned
-      by the ``query()`` method.  Defaults to :class:`~sqlalchemy.orm.query.Query`.
+    :param query_cls:  Class which should be used to create new Query objects,
+       as returned by the ``query()`` method. Defaults to
+       :class:`~sqlalchemy.orm.query.Query`.
 
-    twophase
-      When ``True``, all transactions will be started using
-      :mod:`~sqlalchemy.engine_TwoPhaseTransaction`. During a ``commit()``, after
-      ``flush()`` has been issued for all attached databases, the
-      ``prepare()`` method on each database's ``TwoPhaseTransaction`` will be
-      called. This allows each database to roll back the entire transaction,
-      before each transaction is committed.
+    :param twophase:  When ``True``, all transactions will be started using
+        :mod:`~sqlalchemy.engine_TwoPhaseTransaction`. During a ``commit()``,
+        after ``flush()`` has been issued for all attached databases, the
+        ``prepare()`` method on each database's ``TwoPhaseTransaction`` will
+        be called. This allows each database to roll back the entire
+        transaction, before each transaction is committed.
 
-    weak_identity_map
-      When set to the default value of ``True``, a weak-referencing map is
-      used; instances which are not externally referenced will be garbage
-      collected immediately. For dereferenced instances which have pending
-      changes present, the attribute management system will create a temporary
-      strong-reference to the object which lasts until the changes are flushed
-      to the database, at which point it's again dereferenced. Alternatively,
-      when using the value ``False``, the identity map uses a regular Python
-      dictionary to store instances. The session will maintain all instances
-      present until they are removed using expunge(), clear(), or purge().
+    :param weak_identity_map:  When set to the default value of ``True``, a
+       weak-referencing map is used; instances which are not externally
+       referenced will be garbage collected immediately. For dereferenced
+       instances which have pending changes present, the attribute management
+       system will create a temporary strong-reference to the object which
+       lasts until the changes are flushed to the database, at which point
+       it's again dereferenced. Alternatively, when using the value ``False``,
+       the identity map uses a regular Python dictionary to store instances.
+       The session will maintain all instances present until they are removed
+       using expunge(), clear(), or purge().
 
     """
     kwargs['bind'] = bind
@@ -516,14 +512,17 @@ class Session(object):
     public_methods = (
         '__contains__', '__iter__', 'add', 'add_all', 'begin', 'begin_nested',
         'close', 'commit', 'connection', 'delete', 'execute', 'expire',
-        'expire_all', 'expunge', 'expunge_all', 'flush', 'get_bind', 'is_modified', 
+        'expire_all', 'expunge', 'expunge_all', 'flush', 'get_bind',
+        'is_modified', 
         'merge', 'query', 'refresh', 'rollback', 
         'scalar')
-
+    
+    
     def __init__(self, bind=None, autoflush=True, expire_on_commit=True,
                 _enable_transaction_accounting=True,
                  autocommit=False, twophase=False, 
-                 weak_identity_map=True, binds=None, extension=None, query_cls=query.Query):
+                 weak_identity_map=True, binds=None, extension=None,
+                 query_cls=query.Query):
         """Construct a new Session.
 
         Arguments to ``Session`` are described using the
@@ -552,7 +551,6 @@ class Session(object):
         self.extensions = util.to_list(extension) or []
         self._query_cls = query_cls
         self._mapper_flush_opts = {}
-
         if binds is not None:
             for mapperortable, bind in binds.iteritems():
                 if isinstance(mapperortable, (type, Mapper)):

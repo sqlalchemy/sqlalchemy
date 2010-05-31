@@ -164,6 +164,10 @@ def create_engine(*args, **kwargs):
         translations, both by engine-wide unicode conversion as well as
         the ``Unicode`` type object.
 
+    :param execution_options: Dictionary execution options which will
+        be applied to all connections.  See
+        :meth:`~sqlalchemy.engine.base.Connection.execution_options`
+        
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many
         characters. If less than 6, labels are generated as

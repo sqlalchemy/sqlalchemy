@@ -37,7 +37,8 @@ class TLEngine(base.Engine):
         self._connections = util.threading.local()
         proxy = kwargs.get('proxy')
         if proxy:
-            self.TLConnection = base._proxy_connection_cls(TLConnection, proxy)
+            self.TLConnection = base._proxy_connection_cls(
+                                        TLConnection, proxy)
         else:
             self.TLConnection = TLConnection
 

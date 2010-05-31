@@ -139,7 +139,8 @@ class Mapper(object):
         self._clause_adapter = None
         self._requires_row_aliasing = False
         self._inherits_equated_pairs = None
-
+        self._memoized_values = {}
+        
         if allow_null_pks:
             util.warn_deprecated('the allow_null_pks option to Mapper() is '
                                 'deprecated.  It is now allow_partial_pks=False|True, '
@@ -259,6 +260,7 @@ class Mapper(object):
             for mapper in self.iterate_to_root():
                 util.reset_memoized(mapper, '_equivalent_columns')
                 util.reset_memoized(mapper, '_sorted_tables')
+                util.reset_memoized(mapper, '_compiled_cache')
                 
             if self.order_by is False and not self.concrete and self.inherits.order_by is not False:
                 self.order_by = self.inherits.order_by
@@ -560,14 +562,16 @@ class Mapper(object):
                             self.mapped_table._reset_exported()
                         mc = self.mapped_table.corresponding_column(c)
                         if mc is None:
-                            raise sa_exc.ArgumentError("When configuring property '%s' on %s, "
-                                "column '%s' is not represented in the mapper's table.  "
-                                "Use the `column_property()` function to force this column "
-                                "to be mapped as a read-only attribute." % (key, self, c))
+                            raise sa_exc.ArgumentError(
+                            "When configuring property '%s' on %s, "
+                            "column '%s' is not represented in the mapper's table.  "
+                            "Use the `column_property()` function to force this column "
+                            "to be mapped as a read-only attribute." % (key, self, c))
                     mapped_column.append(mc)
                 prop = ColumnProperty(*mapped_column)
             else:
-                raise sa_exc.ArgumentError("WARNING: when configuring property '%s' on %s, column '%s' "
+                raise sa_exc.ArgumentError(
+                    "WARNING: when configuring property '%s' on %s, column '%s' "
                     "conflicts with property '%r'.  "
                     "To resolve this, map the column to the class under a different "
                     "name in the 'properties' dictionary.  Or, to remove all awareness "
@@ -1186,12 +1190,16 @@ class Mapper(object):
                 return
 
             if leftcol.table not in tables:
-                leftval = self._get_committed_state_attr_by_column(state, state.dict, leftcol, passive=True)
+                leftval = self._get_committed_state_attr_by_column(
+                                                    state, state.dict, 
+                                                    leftcol, passive=True)
                 if leftval is attributes.PASSIVE_NO_RESULT:
                     raise ColumnsNotAvailable()
                 binary.left = sql.bindparam(None, leftval, type_=binary.right.type)
             elif rightcol.table not in tables:
-                rightval = self._get_committed_state_attr_by_column(state, state.dict, rightcol, passive=True)
+                rightval = self._get_committed_state_attr_by_column(
+                                                    state, state.dict, 
+                                                    rightcol, passive=True)
                 if rightval is attributes.PASSIVE_NO_RESULT:
                     raise ColumnsNotAvailable()
                 binary.right = sql.bindparam(None, rightval, type_=binary.right.type)
@@ -1204,7 +1212,12 @@ class Mapper(object):
                 if mapper.local_table in tables:
                     start = True
                 if start and not mapper.single:
-                    allconds.append(visitors.cloned_traverse(mapper.inherit_condition, {}, {'binary':visit_binary}))
+                    allconds.append(visitors.cloned_traverse(
+                                                mapper.inherit_condition, 
+                                                {}, 
+                                                {'binary':visit_binary}
+                                        )
+                                    )
         except ColumnsNotAvailable:
             return None
 
@@ -1250,6 +1263,10 @@ class Mapper(object):
                 visitables.pop()
 
     @util.memoized_property
+    def _compiled_cache(self):
+        return weakref.WeakKeyDictionary()
+
+    @util.memoized_property
     def _sorted_tables(self):
         table_to_mapper = {}
         for mapper in self.base_mapper.polymorphic_iterator():
@@ -1289,7 +1306,14 @@ class Mapper(object):
                 uow.dependencies.add((action, delete_all))
             
             yield action
-        
+    
+    def _memo(self, key, callable_):
+        if key in self._memoized_values:
+            return self._memoized_values[key]
+        else:
+            self._memoized_values[key] = value = callable_()
+            return value
+    
     def _save_obj(self, states, uowtransaction, postupdate=False, 
                                 post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
@@ -1326,10 +1350,12 @@ class Mapper(object):
             connection_callable = None
 
         tups = []
+        
         for state in _sort_states(states):
-            conn = connection_callable and \
-                connection_callable(self, state.obj()) or \
-                connection
+            if connection_callable:
+                conn = connection_callable(self, state.obj())
+            else:
+                conn = connection
 
             has_identity = state.has_identity
             mapper = _state_mapper(state)
@@ -1380,6 +1406,8 @@ class Mapper(object):
             )
 
         table_to_mapper = self._sorted_tables
+
+        compiled_cache = self._compiled_cache
 
         for table in table_to_mapper:
             insert = []
@@ -1489,45 +1517,50 @@ class Mapper(object):
                                 else:
                                     hasdata = True
                             elif col in pks:
-                                params[col._label] = mapper._get_state_attr_by_column(state, state_dict, col)
+                                params[col._label] = mapper._get_state_attr_by_column(
+                                                                    state, state_dict, col)
                     if hasdata:
                         update.append((state, state_dict, params, mapper, 
                                         connection, value_params))
 
             
             if update:
-                mapper = table_to_mapper[table]
-                clause = sql.and_()
                 
-                for col in mapper._pks_by_table[table]:
-                    clause.clauses.append(
-                                        col == 
-                                        sql.bindparam(col._label, type_=col.type)
-                                    )
+                mapper = table_to_mapper[table]
 
                 needs_version_id = mapper.version_id_col is not None and \
                             table.c.contains_column(mapper.version_id_col)
 
-                if needs_version_id:
-                    clause.clauses.append(mapper.version_id_col ==\
-                            sql.bindparam(mapper.version_id_col._label, type_=col.type))
+                def update_stmt():
+                    clause = sql.and_()
+                
+                    for col in mapper._pks_by_table[table]:
+                        clause.clauses.append(
+                                            col ==  sql.bindparam(col._label,
+                                                        type_=col.type)
+                                        )
 
-                statement = table.update(clause)
+                    if needs_version_id:
+                        clause.clauses.append(mapper.version_id_col ==\
+                                sql.bindparam(mapper.version_id_col._label,
+                                                type_=col.type))
 
-                if len(update) > 1:
-                    compiled_cache = {}
-                else:
-                    compiled_cache = None
-
+                    return table.update(clause)
+                
+                statement = self._memo(('update', table), update_stmt)
+                
                 rows = 0
-                for state, state_dict, params, mapper, connection, value_params in update:
-                    if not value_params and compiled_cache is not None:
-                        c = connection.\
-                                execution_options(
-                                        compiled_cache=compiled_cache).\
-                                        execute(statement, params)
-                    else:
+                for state, state_dict, params, mapper, \
+                            connection, value_params in update:
+                    
+                    if value_params:
                         c = connection.execute(statement.values(value_params), params)
+                    else:
+                        c = connection.\
+                                execution_options(compiled_cache=\
+                                            compiled_cache.setdefault(
+                                                connection.engine, {})
+                                        ).execute(statement, params)
                         
                     mapper._postfetch(uowtransaction, table, 
                                         state, state_dict, c, 
@@ -1549,20 +1582,20 @@ class Mapper(object):
                             stacklevel=12)
                     
             if insert:
-                statement = table.insert()
-                if len(insert) > 1:
-                    compiled_cache = {}
-                else:
-                    compiled_cache = None
-                    
-                for state, state_dict, params, mapper, connection, value_params in insert:
-                    if not value_params and compiled_cache is not None:
-                        c = connection.\
-                                execution_options(
-                                        compiled_cache=compiled_cache).\
-                                        execute(statement, params)
-                    else:
+                statement = self._memo(('insert', table), table.insert)
+
+                for state, state_dict, params, mapper, \
+                            connection, value_params in insert:
+
+                    if value_params:
                         c = connection.execute(statement.values(value_params), params)
+                    else:
+                        c = connection.\
+                                execution_options(compiled_cache=\
+                                            compiled_cache.setdefault(
+                                                    connection.engine, {})
+                                        ).execute(statement, params)
+                    
                     primary_key = c.inserted_primary_key
 
                     if primary_key is not None:
@@ -1672,11 +1705,12 @@ class Mapper(object):
         tups = []
         for state in _sort_states(states):
             mapper = _state_mapper(state)
+
+            if connection_callable:
+                conn = connection_callable(self, state.obj())
+            else:
+                conn = connection
         
-            conn = connection_callable and \
-                connection_callable(self, state.obj()) or \
-                connection
-            
             if 'before_delete' in mapper.extension:
                 mapper.extension.before_delete(mapper, conn, state.obj())
             
@@ -1687,7 +1721,9 @@ class Mapper(object):
                     conn))
 
         table_to_mapper = self._sorted_tables
-
+        
+        compiled_cache = self._compiled_cache
+        
         for table in reversed(table_to_mapper.keys()):
             delete = util.defaultdict(list)
             for state, state_dict, mapper, has_identity, connection in tups:
@@ -1701,16 +1737,17 @@ class Mapper(object):
                 if mapper.version_id_col is not None and \
                             table.c.contains_column(mapper.version_id_col):
                     params[mapper.version_id_col.key] = \
-                                mapper._get_state_attr_by_column(state, state_dict, mapper.version_id_col)
+                                mapper._get_state_attr_by_column(state, state_dict,
+                                        mapper.version_id_col)
 
-            for connection, del_objects in delete.iteritems():
-                mapper = table_to_mapper[table]
+            mapper = table_to_mapper[table]
+            need_version_id = mapper.version_id_col is not None and \
+                table.c.contains_column(mapper.version_id_col)
+
+            def delete_stmt():
                 clause = sql.and_()
                 for col in mapper._pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.key, type_=col.type))
-
-                need_version_id = mapper.version_id_col is not None and \
-                    table.c.contains_column(mapper.version_id_col)
 
                 if need_version_id:
                     clause.clauses.append(
@@ -1721,8 +1758,16 @@ class Mapper(object):
                         )
                     )
 
-                statement = table.delete(clause)
+                return table.delete(clause)
+
+            for connection, del_objects in delete.iteritems():
+                statement = self._memo(('delete', table), delete_stmt)
                 rows = -1
+
+                connection = connection.execution_options(
+                                compiled_cache=compiled_cache.setdefault(
+                                                    connection.engine, 
+                                                    {}))
 
                 if need_version_id and \
                         not connection.dialect.supports_sane_multi_rowcount:

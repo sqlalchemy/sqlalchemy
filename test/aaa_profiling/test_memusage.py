@@ -1,16 +1,18 @@
 from sqlalchemy.test.testing import eq_
-from sqlalchemy.orm import mapper, relationship, create_session, clear_mappers, sessionmaker
+from sqlalchemy.orm import mapper, relationship, create_session, clear_mappers, \
+                            sessionmaker, class_mapper
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.util import jython
 import operator
-from sqlalchemy.test import testing
-from sqlalchemy import MetaData, Integer, String, ForeignKey, PickleType
+from sqlalchemy.test import testing, engines
+from sqlalchemy import MetaData, Integer, String, ForeignKey, PickleType, create_engine
 from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
 from sqlalchemy.test.util import gc_collect
 import gc
+import weakref
 from test.orm import _base
 
 if jython:
@@ -26,6 +28,7 @@ class B(_base.ComparableEntity):
 def profile_memory(func):
     # run the test 50 times.  if length of gc.get_objects()
     # keeps growing, assert false
+    
     def profile(*args):
         gc_collect()
         samples = [0 for x in range(0, 50)]
@@ -33,6 +36,7 @@ def profile_memory(func):
             func(*args)
             gc_collect()
             samples[x] = len(gc.get_objects())
+                
         print "sample gc sizes:", samples
 
         assert len(_sessions) == 0
@@ -124,6 +128,64 @@ class MemUsageTest(EnsureZeroed):
             for a in alist:
                 sess.delete(a)
             sess.flush()
+        go()
+
+        metadata.drop_all()
+        del m1, m2, m3
+        assert_no_mappers()
+
+    @testing.crashes('sqlite', ':memory: connection not suitable here')
+    def test_orm_many_engines(self):
+        metadata = MetaData(testing.db)
+
+        table1 = Table("mytable", metadata,
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('col2', String(30)))
+
+        table2 = Table("mytable2", metadata,
+            Column('col1', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('col2', String(30)),
+            Column('col3', Integer, ForeignKey("mytable.col1")))
+
+        metadata.create_all()
+
+        m1 = mapper(A, table1, properties={
+            "bs":relationship(B, cascade="all, delete", order_by=table2.c.col1)},
+            order_by=table1.c.col1)
+        m2 = mapper(B, table2)
+
+        m3 = mapper(A, table1, non_primary=True)
+
+        @profile_memory
+        def go():
+            engine = engines.testing_engine(options={'logging_name':'FOO', 'pool_logging_name':'BAR'})
+            sess = create_session(bind=engine)
+            
+            a1 = A(col2="a1")
+            a2 = A(col2="a2")
+            a3 = A(col2="a3")
+            a1.bs.append(B(col2="b1"))
+            a1.bs.append(B(col2="b2"))
+            a3.bs.append(B(col2="b3"))
+            for x in [a1,a2,a3]:
+                sess.add(x)
+            sess.flush()
+            sess.expunge_all()
+
+            alist = sess.query(A).all()
+            eq_(
+                [
+                    A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]),
+                    A(col2="a2", bs=[]),
+                    A(col2="a3", bs=[B(col2="b3")])
+                ],
+                alist)
+
+            for a in alist:
+                sess.delete(a)
+            sess.flush()
+            sess.close()
+            engine.dispose()
         go()
 
         metadata.drop_all()

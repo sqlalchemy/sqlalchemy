@@ -112,6 +112,21 @@ class ExecuteTest(TestBase):
         eq_(testing.db.execute(users_autoinc.select()).fetchall(), [
             (1, None)
         ])
+        
+    def test_engine_level_options(self):
+        eng = engines.testing_engine(options={
+            'execution_options':{'foo':'bar'}
+        })
+        conn = eng.contextual_connect()
+        eq_(conn._execution_options['foo'], 'bar')
+        eq_(conn.execution_options(bat='hoho')._execution_options['foo'], 'bar')
+        eq_(conn.execution_options(bat='hoho')._execution_options['bat'], 'hoho')
+        eq_(conn.execution_options(foo='hoho')._execution_options['foo'], 'hoho')
+        
+        eng.update_execution_options(foo='hoho')
+        conn = eng.contextual_connect()
+        eq_(conn._execution_options['foo'], 'hoho')
+        
 
 class CompiledCacheTest(TestBase):
     @classmethod
@@ -171,6 +186,10 @@ class LogTest(TestBase):
         }
         eng = engines.testing_engine(options=options)
         self._test_logger(eng, "myenginename", "mypoolname")
+        
+        eng.dispose()
+        self._test_logger(eng, "myenginename", "mypoolname")
+        
 
     def test_unnamed_logger(self):
         eng = engines.testing_engine(options={'echo':'debug', 'echo_pool':'debug'})
