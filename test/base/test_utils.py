@@ -112,6 +112,52 @@ class ColumnCollectionTest(TestBase):
         assert (cc1==cc2).compare(c1 == c2)
         assert not (cc1==cc3).compare(c2 == c3)
 
+
+
+class LRUTest(TestBase):
+
+    def test_lru(self):                
+        class item(object):
+            def __init__(self, id):
+                self.id = id
+
+            def __str__(self):
+                return "item id %d" % self.id
+
+        l = util.LRUCache(10, threshold=.2)
+
+        for id in range(1,20):
+            l[id] = item(id)
+
+        # first couple of items should be gone
+        assert 1 not in l
+        assert 2 not in l
+
+        # next batch over the threshold of 10 should be present
+        for id_ in range(11,20):
+            assert id_ in l
+
+        l[12]
+        l[15]
+        l[23] = item(23)
+        l[24] = item(24)
+        l[25] = item(25)
+        l[26] = item(26)
+        l[27] = item(27)
+
+        assert 11 not in l
+        assert 13 not in l
+
+        for id_ in (25, 24, 23, 14, 12, 19, 18, 17, 16, 15):
+            assert id_ in l
+
+        i1 = l[25]
+        i2 = item(25)
+        l[25] = i2
+        assert 25 in l
+        assert l[25] is i2
+        
+
 class ImmutableSubclass(str):
     pass
 

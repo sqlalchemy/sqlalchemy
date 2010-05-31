@@ -30,7 +30,9 @@ CHANGES
     the expression objects are cached by the mapper after 
     the first create, and their compiled form is stored
     persistently in a cache dictionary for the duration of
-    the related Engine.
+    the related Engine.  The cache is an LRUCache for the
+    rare case that a mapper receives an extremely
+    high number of different column patterns as UPDATEs.
     
 - sql
   - expr.in_() now accepts a text() construct as the argument.

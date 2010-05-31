@@ -43,6 +43,7 @@ _new_mappers = False
 _already_compiling = False
 _none_set = frozenset([None])
 
+
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
 
@@ -97,7 +98,9 @@ class Mapper(object):
                  include_properties=None,
                  exclude_properties=None,
                  passive_updates=True,
-                 eager_defaults=False):
+                 eager_defaults=False,
+                 _compiled_cache_size=100,
+                 ):
         """Construct a new mapper.
 
         Mappers are normally constructed via the :func:`~sqlalchemy.orm.mapper`
@@ -140,6 +143,7 @@ class Mapper(object):
         self._requires_row_aliasing = False
         self._inherits_equated_pairs = None
         self._memoized_values = {}
+        self._compiled_cache_size = _compiled_cache_size
         
         if allow_null_pks:
             util.warn_deprecated('the allow_null_pks option to Mapper() is '
@@ -1264,7 +1268,7 @@ class Mapper(object):
 
     @util.memoized_property
     def _compiled_cache(self):
-        return weakref.WeakKeyDictionary()
+        return util.LRUCache(self._compiled_cache_size)
 
     @util.memoized_property
     def _sorted_tables(self):
@@ -1342,7 +1346,7 @@ class Mapper(object):
 
         cached_connections = util.PopulateDict(
             lambda conn:conn.execution_options(
-            compiled_cache=self._compiled_cache.setdefault(conn.engine, {})
+            compiled_cache=self._compiled_cache
         ))
 
         # if session has a connection callable,
@@ -1740,7 +1744,7 @@ class Mapper(object):
         tups = []
         cached_connections = util.PopulateDict(
             lambda conn:conn.execution_options(
-            compiled_cache=self._compiled_cache.setdefault(conn.engine, {})
+            compiled_cache=self._compiled_cache
         ))
         
         for state in _sort_states(states):

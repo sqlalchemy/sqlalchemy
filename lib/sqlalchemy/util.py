@@ -19,6 +19,7 @@ except ImportError:
 
 py3k = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 jython = sys.platform.startswith('java')
+win32 = sys.platform.startswith('win')
 
 if py3k:
     set_types = set
@@ -1542,6 +1543,54 @@ class WeakIdentityMapping(weakref.WeakKeyDictionary):
     def _ref(self, object):
         return self._keyed_weakref(object, self._cleanup)
 
+import time
+if win32 or jython:
+    time_func = time.clock
+else:
+    time_func = time.time 
+
+class LRUCache(dict):
+    def __init__(self, capacity=100, threshold=.5):
+        self.capacity = capacity
+        self.threshold = threshold
+
+    def __getitem__(self, key):
+        item = dict.__getitem__(self, key)
+        item[2] = time_func()
+        return item[1]
+
+    def values(self):
+        return [i[1] for i in dict.values(self)]
+
+    def setdefault(self, key, value):
+        if key in self:
+            return self[key]
+        else:
+            self[key] = value
+            return value
+
+    def __setitem__(self, key, value):
+        item = dict.get(self, key)
+        if item is None:
+            item = [key, value, time_func()]
+            dict.__setitem__(self, key, item)
+        else:
+            item[1] = value
+        self._manage_size()
+
+    def _manage_size(self):
+        while len(self) > self.capacity + self.capacity * self.threshold:
+            bytime = sorted(dict.values(self), 
+                            key=operator.itemgetter(2),
+                            reverse=True)
+            for item in bytime[self.capacity:]:
+                try:
+                    del self[item[0]]
+                except KeyError:
+                    # if we couldnt find a key, most 
+                    # likely some other thread broke in 
+                    # on us. loop around and try again
+                    break
 
 def warn(msg, stacklevel=3):
     if isinstance(msg, basestring):
