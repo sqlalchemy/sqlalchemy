@@ -212,7 +212,8 @@ class MemUsageTest(EnsureZeroed):
         metadata = MetaData(testing.db)
         
         wide_table = Table('t', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True,
+                                test_needs_autoincrement=True),
             *[Column('col%d' % i, Integer) for i in range(10)]
         )
         
