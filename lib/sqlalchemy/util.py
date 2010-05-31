@@ -1550,6 +1550,10 @@ else:
     time_func = time.time 
 
 class LRUCache(dict):
+    """Dictionary with 'squishy' removal of least
+    recently used items.
+    
+    """
     def __init__(self, capacity=100, threshold=.5):
         self.capacity = capacity
         self.threshold = threshold
