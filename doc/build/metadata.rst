@@ -221,7 +221,15 @@ Binding the MetaData to the Engine is a **completely optional** feature.   The a
     # generate a SELECT statement and execute
     result = engine.execute(users_table.select())
 
-Should you use bind ?   It's probably best to start without it.   If you find yourself constantly needing to specify the same :class:`~sqlalchemy.engine.base.Engine` object throughout the entire application, consider binding as a convenience feature which is applicable to applications that don't have multiple engines in use and don't have the need to reference connections explicitly.    It should also be noted that an application which is focused on using the SQLAlchemy ORM will not be dealing explicitly with :class:`~sqlalchemy.engine.base.Engine` or :class:`~sqlalchemy.engine.base.Connection` objects very much in any case, so it's probably less confusing and more "future proof" to not use the `bind` attribute.
+Should you use bind ?   It's probably best to start without it, and wait for a specific need to arise.  Bind is useful if:
+
+* You aren't using the ORM, are usually using "connectionless" execution, and find yourself constantly needing to specify the same :class:`~sqlalchemy.engine.base.Engine` object throughout the entire application.  Bind can be used here to provide "implicit" execution.
+* Your application has multiple schemas that correspond to different engines.  Using one :class:`~sqlalchemy.schema.MetaData` for each schema, bound to each engine, provides a decent place to delineate between the schemas.  The ORM will also integrate with this approach, where the :class:`Session` will naturally use the engine that is bound to each table via its metadata (provided the :class:`Session` itself has no ``bind`` configured.).
+
+Alternatively, the ``bind`` attribute of :class:`~sqlalchemy.schema.MetaData` is *confusing* if:
+
+* Your application talks to multiple database engines at different times, which use the *same* set of :class:`Table` objects.   It's usually confusing and unnecessary to begin to create "copies" of :class:`Table` objects just so that different engines can be used for different operations.  An example is an application that writes data to a "master" database while performing read-only operations from a "read slave".   A global :class:`~sqlalchemy.schema.MetaData` object is *not* appropriate for per-request switching like this, although a :class:`~sqlalchemy.schema.ThreadLocalMetaData` object is.
+* You are using the ORM :class:`Session` to handle which class/table is bound to which engine, or you are using the :class:`Session` to manage switching between engines.   Its a good idea to keep the "binding of tables to engines" in one place - either using :class:`~sqlalchemy.schema.MetaData` only (the :class:`Session` can of course be present, it just has no ``bind`` configured), or using :class:`Session` only (the ``bind`` attribute of :class:`~sqlalchemy.schema.MetaData` is left empty).
 
 Reflecting Tables
 -----------------

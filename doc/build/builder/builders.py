@@ -27,6 +27,8 @@ class MakoBridge(TemplateBridge):
         context['prevtopic'] = context.pop('prev', None)
         context['nexttopic'] = context.pop('next', None)
         context['mako_layout'] = self.layout == 'html' and 'static_base.mako' or 'site_base.mako'
+        # sphinx 1.0b2 doesn't seem to be providing _ for some reason...
+        context.setdefault('_', lambda x:x)
         return self.lookup.get_template(template).render_unicode(**context)
         
     
@@ -34,6 +36,8 @@ class MakoBridge(TemplateBridge):
         context['prevtopic'] = context.pop('prev', None)
         context['nexttopic'] = context.pop('next', None)
         context['mako_layout'] = self.layout == 'html' and 'static_base.mako' or 'site_base.mako'
+        # sphinx 1.0b2 doesn't seem to be providing _ for some reason...
+        context.setdefault('_', lambda x:x)
         return Template(template, lookup=self.lookup,
             format_exceptions=True, 
             imports=[
