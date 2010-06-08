@@ -562,7 +562,19 @@ class EnumTest(TestBase):
                 (3, 'one'),
             ]
         )
-
+    
+    def test_adapt(self):
+        from sqlalchemy.dialects.postgresql import ENUM
+        e1 = Enum('one','two','three', native_enum=False)
+        eq_(e1.adapt(ENUM).native_enum, False)
+        e1 = Enum('one','two','three', native_enum=True)
+        eq_(e1.adapt(ENUM).native_enum, True)
+        e1 = Enum('one','two','three', name='foo', schema='bar')
+        eq_(e1.adapt(ENUM).name, 'foo')
+        eq_(e1.adapt(ENUM).schema, 'bar')
+        
+        
+        
     @testing.fails_on('mysql+mysqldb', "MySQL seems to issue a 'data truncated' warning.")
     def test_constraint(self):
         assert_raises(exc.DBAPIError, 

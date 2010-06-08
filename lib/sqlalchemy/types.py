@@ -1424,6 +1424,7 @@ class Enum(String, SchemaType):
                         schema=self.schema, 
                         metadata=self.metadata,
                         convert_unicode=self.convert_unicode,
+                        native_enum=self.native_enum,
                         *self.enums
                         )
         else:

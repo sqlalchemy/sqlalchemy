@@ -3,6 +3,13 @@
 =======
 CHANGES
 =======
+0.6.2
+=====
+- sql
+  - Fixed bug in Enum type which blew away native_enum
+    flag when used with TypeDecorators or other adaption
+    scenarios.
+    
 0.6.1
 =====
 - orm
