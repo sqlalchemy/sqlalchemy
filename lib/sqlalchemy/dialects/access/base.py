@@ -194,7 +194,7 @@ class AccessDialect(default.DefaultDialect):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    def do_execute(self, cursor, statement, params, **kwargs):
+    def do_execute(self, cursor, statement, params, context=None):
         if params == {}:
             params = ()
         super(AccessDialect, self).do_execute(cursor, statement, params, **kwargs)

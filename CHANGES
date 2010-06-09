@@ -9,6 +9,10 @@ CHANGES
   - Fixed bug in Enum type which blew away native_enum
     flag when used with TypeDecorators or other adaption
     scenarios.
+
+- firebird
+  - Fixed incorrect signature in do_execute(), error 
+    introduced in 0.6.1. [ticket:1823]
     
 0.6.1
 =====

@@ -605,7 +605,7 @@ class FBDialect(default.DefaultDialect):
 
         return indexes.values()
 
-    def do_execute(self, cursor, statement, parameters, **kwargs):
+    def do_execute(self, cursor, statement, parameters, context=None):
         # kinterbase does not accept a None, but wants an empty list
         # when there are no arguments.
         cursor.execute(statement, parameters or [])
