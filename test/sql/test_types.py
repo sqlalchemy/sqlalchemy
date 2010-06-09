@@ -573,8 +573,6 @@ class EnumTest(TestBase):
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
         
-        
-        
     @testing.fails_on('mysql+mysqldb', "MySQL seems to issue a 'data truncated' warning.")
     def test_constraint(self):
         assert_raises(exc.DBAPIError, 

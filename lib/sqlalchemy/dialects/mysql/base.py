@@ -907,7 +907,7 @@ class ENUM(sqltypes.Enum, _StringType):
 
         """
         self.quoting = kw.pop('quoting', 'auto')
-
+        
         if self.quoting == 'auto' and len(enums):
             # What quoting character are we using?
             q = None
@@ -937,6 +937,7 @@ class ENUM(sqltypes.Enum, _StringType):
         kw.pop('schema', None)
         kw.pop('name', None)
         kw.pop('quote', None)
+        kw.pop('native_enum', None)
         _StringType.__init__(self, length=length, **kw)
         sqltypes.Enum.__init__(self, *enums)
     
