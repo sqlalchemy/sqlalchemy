@@ -556,7 +556,7 @@ class PGInspector(reflection.Inspector):
     def get_table_oid(self, table_name, schema=None):
         """Return the oid from `table_name` and `schema`."""
 
-        return self.dialect.get_table_oid(self.conn, table_name, schema,
+        return self.dialect.get_table_oid(self.bind, table_name, schema,
                                           info_cache=self.info_cache)
 
 class CreateEnumType(schema._CreateDropBase):

@@ -1035,6 +1035,12 @@ class ComponentReflectionTest(TestBase):
         
         self.assert_('test_schema' in insp.get_schema_names())
 
+    def test_dialect_initialize(self):
+        engine = engines.testing_engine()
+        assert not hasattr(engine.dialect, 'default_schema_name')
+        insp = Inspector(engine)
+        assert hasattr(engine.dialect, 'default_schema_name')
+        
     def test_get_default_schema_name(self):
         insp = Inspector(testing.db)
         eq_(insp.default_schema_name, testing.db.dialect.default_schema_name)

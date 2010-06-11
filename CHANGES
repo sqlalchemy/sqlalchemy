@@ -10,6 +10,10 @@ CHANGES
     flag when used with TypeDecorators or other adaption
     scenarios.
 
+  - Inspector hits bind.connect() when invoked to ensure
+    initialize has been called.  the internal name ".conn"
+    is changed to ".bind", since that's what it is.
+    
 - firebird
   - Fixed incorrect signature in do_execute(), error 
     introduced in 0.6.1. [ticket:1823]
