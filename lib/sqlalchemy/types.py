@@ -729,7 +729,7 @@ class String(Concatenable, TypeEngine):
                         if isinstance(value, str):
                         # end Py2K
                             util.warn("Unicode type received non-unicode bind "
-                                      "param value %r" % value)
+                                      "param value.")
                         return value
                     return process
                 else:
@@ -741,7 +741,7 @@ class String(Concatenable, TypeEngine):
                         return encoder(value, self.unicode_error)[0]
                     elif value is not None:
                         util.warn("Unicode type received non-unicode bind "
-                                  "param value %r" % value)
+                                  "param value")
                     return value
             return process
         else:

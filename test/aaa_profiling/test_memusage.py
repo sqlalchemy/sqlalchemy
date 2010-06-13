@@ -7,7 +7,7 @@ from sqlalchemy.util import jython
 import operator
 from sqlalchemy.test import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
-                            PickleType, create_engine
+                            PickleType, create_engine, Unicode
 from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
@@ -248,6 +248,29 @@ class MemUsageTest(EnsureZeroed):
             session.close()
             counter[0] += 1
             
+        try:
+            go()
+        finally:
+            metadata.drop_all()
+    
+    def test_unicode_warnings(self):
+        metadata = MetaData(testing.db)
+        table1 = Table("mytable", metadata,
+            Column('col1', Integer, primary_key=True,
+                                test_needs_autoincrement=True),
+            Column('col2', Unicode(30)))
+        
+        metadata.create_all()
+        
+        i = [1]
+        @testing.emits_warning()
+        @profile_memory
+        def go():
+            # execute with a non-unicode object.
+            # a warning is emitted, this warning shouldn't
+            # clog up memory.
+            testing.db.execute(table1.select().where(table1.c.col2=='foo%d' % i[0]))
+            i[0] += 1
         try:
             go()
         finally:

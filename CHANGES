@@ -6,6 +6,14 @@ CHANGES
 0.6.2
 =====
 - sql
+  - The warning emitted by the Unicode and String types
+    with convert_unicode=True no longer embeds the actual
+    value passed.   This so that the Python warning
+    registry does not continue to grow in size, the warning
+    is emitted once as per the warning filter settings, 
+    and large string values don't pollute the output.
+    [ticket:1822]
+    
   - Fixed bug in Enum type which blew away native_enum
     flag when used with TypeDecorators or other adaption
     scenarios.
