@@ -45,14 +45,34 @@ def cache(fn, self, con, *args, **kw):
 class Inspector(object):
     """Performs database schema inspection.
 
-    The Inspector acts as a proxy to the dialects' reflection methods and
-    provides higher level functions for accessing database schema information.
+    The Inspector acts as a proxy to the reflection methods of the
+    :class:`~sqlalchemy.engine.base.Dialect`, providing a
+    consistent interface as well as caching support for previously
+    fetched metadata.
+    
+    The preferred method to construct an :class:`Inspector` is via the
+    :meth:`Inspector.from_engine` method.   I.e.::
+    
+        engine = create_engine('...')
+        insp = Inspector.from_engine(engine)
+    
+    Where above, the :class:`~sqlalchemy.engine.base.Dialect` may opt
+    to return an :class:`Inspector` subclass that provides additional
+    methods specific to the dialect's target database.
+    
     """
 
     def __init__(self, bind):
-        """Initialize the instance.
+        """Initialize a new :class:`Inspector`.
 
-        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`
+        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`, 
+          which is typically an instance of 
+          :class:`~sqlalchemy.engine.base.Engine` or 
+          :class:`~sqlalchemy.engine.base.Connection`.
+        
+        For a dialect-specific instance of :class:`Inspector`, see
+        :meth:`Inspector.from_engine`
+
         """
 
         # ensure initialized
@@ -70,13 +90,35 @@ class Inspector(object):
         self.info_cache = {}
 
     @classmethod
-    def from_engine(cls, engine):
-        if hasattr(engine.dialect, 'inspector'):
-            return engine.dialect.inspector(engine)
-        return Inspector(engine)
+    def from_engine(cls, bind):
+        """Construct a new dialect-specific Inspector object from the given engine or connection.
+
+        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`, 
+          which is typically an instance of 
+          :class:`~sqlalchemy.engine.base.Engine` or 
+          :class:`~sqlalchemy.engine.base.Connection`.
+        
+        This method differs from direct a direct constructor call of :class:`Inspector`
+        in that the :class:`~sqlalchemy.engine.base.Dialect` is given a chance to provide
+        a dialect-specific :class:`Inspector` instance, which may provide additional
+        methods.
+        
+        See the example at :class:`Inspector`.
+        
+        """
+        if hasattr(bind.dialect, 'inspector'):
+            return bind.dialect.inspector(engine)
+        return Inspector(bind)
 
     @property
     def default_schema_name(self):
+        """Return the default schema name presented by the dialect
+        for the current engine's database user.
+        
+        E.g. this is typically ``public`` for Postgresql and ``dbo``
+        for SQL Server.
+        
+        """
         return self.dialect.default_schema_name
 
     def get_schema_names(self):
@@ -125,6 +167,11 @@ class Inspector(object):
         return tnames
 
     def get_table_options(self, table_name, schema=None, **kw):
+        """Return a dictionary of options specified when the table of the given name was created.
+        
+        This currently includes some options that apply to MySQL tables.
+        
+        """
         if hasattr(self.dialect, 'get_table_options'):
             return self.dialect.get_table_options(self.bind, table_name, schema,
                                                   info_cache=self.info_cache,
@@ -271,7 +318,25 @@ class Inspector(object):
         return indexes
 
     def reflecttable(self, table, include_columns):
-
+        """Given a Table object, load its internal constructs based on introspection.
+        
+        This is the underlying method used by most dialects to produce 
+        table reflection.  Direct usage is like::
+        
+            from sqlalchemy import create_engine, MetaData, Table
+            from sqlalchemy.engine import reflection
+            
+            engine = create_engine('...')
+            meta = MetaData()
+            user_table = Table('user', meta)
+            insp = Inspector.from_engine(engine)
+            insp.reflecttable(user_table, None)
+            
+        :param table: a :class:`~sqlalchemy.schema.Table` instance.
+        :param include_columns: a list of string column names to include
+          in the reflection process.  If ``None``, all columns are reflected.
+            
+        """
         dialect = self.bind.dialect
 
         # MySQL dialect does this.  Applicable with other dialects?

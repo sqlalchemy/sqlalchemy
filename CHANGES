@@ -17,7 +17,10 @@ CHANGES
 - firebird
   - Fixed incorrect signature in do_execute(), error 
     introduced in 0.6.1. [ticket:1823]
-    
+
+- documentation
+  - Added documentation for the Inspector. [ticket:1820]
+  
 0.6.1
 =====
 - orm

@@ -8,6 +8,7 @@ sqlalchemy
     pooling
     expressions
     schema
+    inspector
     types
     interfaces
     util

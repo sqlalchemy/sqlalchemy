@@ -231,6 +231,8 @@ Alternatively, the ``bind`` attribute of :class:`~sqlalchemy.schema.MetaData` is
 * Your application talks to multiple database engines at different times, which use the *same* set of :class:`Table` objects.   It's usually confusing and unnecessary to begin to create "copies" of :class:`Table` objects just so that different engines can be used for different operations.  An example is an application that writes data to a "master" database while performing read-only operations from a "read slave".   A global :class:`~sqlalchemy.schema.MetaData` object is *not* appropriate for per-request switching like this, although a :class:`~sqlalchemy.schema.ThreadLocalMetaData` object is.
 * You are using the ORM :class:`Session` to handle which class/table is bound to which engine, or you are using the :class:`Session` to manage switching between engines.   Its a good idea to keep the "binding of tables to engines" in one place - either using :class:`~sqlalchemy.schema.MetaData` only (the :class:`Session` can of course be present, it just has no ``bind`` configured), or using :class:`Session` only (the ``bind`` attribute of :class:`~sqlalchemy.schema.MetaData` is left empty).
 
+.. _metadata_reflection:
+
 Reflecting Tables
 -----------------
 
@@ -302,6 +304,11 @@ The :class:`~sqlalchemy.schema.MetaData` object can also get a listing of tables
     meta.reflect(bind=someengine)
     for table in reversed(meta.sorted_tables):
         someengine.execute(table.delete())
+
+Fine Grained Reflection with Inspector
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A low level interface which provides a backend-agnostic system of loading lists of schema, table, column, and constraint descriptions from a given database is also available.  This is known as the "Inspector" and is described in the API documentation at :ref:`inspector_api_toplevel`.
 
 Specifying the Schema Name
 ---------------------------
