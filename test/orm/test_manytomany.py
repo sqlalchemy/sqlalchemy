@@ -82,14 +82,15 @@ class M2MTest(_base.MappedTest):
     def test_circular(self):
         """test a many-to-many relationship from a table to itself."""
 
-        Place.mapper = mapper(Place, place)
-
-        Place.mapper.add_property('places', relationship(
-            Place.mapper, secondary=place_place, primaryjoin=place.c.place_id==place_place.c.pl1_id,
-            secondaryjoin=place.c.place_id==place_place.c.pl2_id,
-            order_by=place_place.c.pl2_id,
-            lazy='select',
-            ))
+        mapper(Place, place, properties={
+            'places': relationship(
+                        Place,
+                        secondary=place_place, 
+                        primaryjoin=place.c.place_id==place_place.c.pl1_id,
+                        secondaryjoin=place.c.place_id==place_place.c.pl2_id,
+                        order_by=place_place.c.pl2_id
+                )
+        })
 
         sess = create_session()
         p1 = Place('place1')
@@ -127,6 +128,34 @@ class M2MTest(_base.MappedTest):
 
         [sess.delete(p) for p in p1,p2,p3,p4,p5,p6,p7]
         sess.flush()
+
+    @testing.resolve_artifact_names
+    def test_circular_mutation(self):
+        """Test that a mutation in a self-ref m2m of both sides succeeds."""
+
+        mapper(Place, place, properties={
+            'child_places': relationship(
+                        Place,
+                        secondary=place_place, 
+                        primaryjoin=place.c.place_id==place_place.c.pl1_id,
+                        secondaryjoin=place.c.place_id==place_place.c.pl2_id,
+                        order_by=place_place.c.pl2_id,
+                        backref='parent_places'
+                )
+        })
+
+        sess = create_session()
+        p1 = Place('place1')
+        p2 = Place('place2')
+        p2.parent_places = [p1]
+        sess.add_all([p1, p2])
+        p1.parent_places.append(p2)
+        sess.flush()
+        
+        sess.expire_all()
+        assert p1 in p2.parent_places
+        assert p2 in p1.parent_places
+        
 
     @testing.resolve_artifact_names
     def test_double(self):

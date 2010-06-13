@@ -5,6 +5,13 @@ CHANGES
 =======
 0.6.2
 =====
+- orm
+  - Fixed bug regarding flushes on self-referential 
+    bi-directional many-to-many relationships, where
+    two objects made to mutually reference each other
+    in one flush would fail to insert a row for both
+    sides.  Regression from 0.5. [ticket:1824]
+    
 - sql
   - The warning emitted by the Unicode and String types
     with convert_unicode=True no longer embeds the actual

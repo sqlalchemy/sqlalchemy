@@ -870,7 +870,7 @@ class ManyToManyDP(DependencyProcessor):
         secondary_update = []
         
         processed = self._get_reversed_processed_set(uowcommit)
-        
+        tmp = set()
         for state in states:
             history = uowcommit.get_attribute_history(
                                     state, 
@@ -890,8 +890,10 @@ class ManyToManyDP(DependencyProcessor):
                                         False, uowcommit)
                     secondary_delete.append(associationrow)
                 
-                if processed is not None:
-                    processed.update((c, state) for c in history.non_added())
+                tmp.update((c, state) for c in history.non_added())
+
+        if processed is not None:
+            processed.update(tmp)
                 
         self._run_crud(uowcommit, secondary_insert, 
                         secondary_update, secondary_delete)
@@ -902,7 +904,8 @@ class ManyToManyDP(DependencyProcessor):
         secondary_update = []
 
         processed = self._get_reversed_processed_set(uowcommit)
-        
+        tmp = set()
+
         for state in states:
             history = uowcommit.get_attribute_history(state, self.key)
             if history:
@@ -928,8 +931,7 @@ class ManyToManyDP(DependencyProcessor):
                                         False, uowcommit)
                     secondary_delete.append(associationrow)
                 
-                if processed is not None:
-                    processed.update((c, state) for c in history.added + history.deleted)
+                tmp.update((c, state) for c in history.added + history.deleted)
                 
             if not self.passive_updates and \
                     self._pks_changed(uowcommit, state):
@@ -954,7 +956,9 @@ class ManyToManyDP(DependencyProcessor):
 
                     secondary_update.append(associationrow)
                     
-
+        if processed is not None:
+            processed.update(tmp)
+            
         self._run_crud(uowcommit, secondary_insert, 
                         secondary_update, secondary_delete)
         
