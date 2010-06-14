@@ -29,6 +29,12 @@ CHANGES
     initialize has been called.  the internal name ".conn"
     is changed to ".bind", since that's what it is.
     
+  - Modified the internals of "column annotation" such that
+    a custom Column subclass can safely override
+    _constructor to return Column, for the purposes of 
+    making "configurational" column classes that aren't 
+    involved in proxying, etc.
+    
 - firebird
   - Fixed incorrect signature in do_execute(), error 
     introduced in 0.6.1. [ticket:1823]

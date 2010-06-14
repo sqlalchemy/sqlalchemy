@@ -598,6 +598,24 @@ class DerivedTest(TestBase, AssertsExecutionResults):
         assert not t2.select().alias('foo').is_derived_from(t1)
 
 class AnnotationsTest(TestBase):
+    def test_custom_constructions(self):
+        from sqlalchemy.schema import Column
+        class MyColumn(Column):
+            def __init__(self):
+                Column.__init__(self, 'foo', Integer)
+            _constructor = Column
+            
+        t1 = Table('t1', MetaData(), MyColumn())
+        s1 = t1.select()
+        assert isinstance(t1.c.foo, MyColumn)
+        assert isinstance(s1.c.foo, Column)
+
+        annot_1 = t1.c.foo._annotate({})
+        s2 = select([annot_1])
+        assert isinstance(s2.c.foo, Column)
+        annot_2 = s1._annotate({})
+        assert isinstance(annot_2.c.foo, Column)
+        
     def test_annotated_corresponding_column(self):
         table1 = table('table1', column("col1"))
         

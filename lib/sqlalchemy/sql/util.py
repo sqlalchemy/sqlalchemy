@@ -273,7 +273,7 @@ class Annotated(object):
 
     @property
     def _constructor(self):
-        return self.__element.__class__
+        return self.__element._constructor
         
     def _clone(self):
         clone = self.__element._clone()
