@@ -1898,6 +1898,17 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.id,1)
         eq_(obj.name,'testing')
         eq_(obj.foo(),'bar1')
+
+    def test_unique_column(self):
+        
+        class MyMixin(object):
+            id = Column(Integer, primary_key=True)
+            value = Column(String, unique=True)
+
+        class MyModel(Base, MyMixin):
+            __tablename__ = 'test'
+        
+        assert MyModel.__table__.c.value.unique
         
     def test_hierarchical_bases(self):
 

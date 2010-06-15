@@ -849,6 +849,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 key = self.key, 
                 primary_key = self.primary_key, 
                 nullable = self.nullable, 
+                unique = self.unique, 
                 quote=self.quote, 
                 index=self.index, 
                 autoincrement=self.autoincrement, 

@@ -52,6 +52,10 @@ CHANGES
     _constructor to return Column, for the purposes of 
     making "configurational" column classes that aren't 
     involved in proxying, etc.
+
+  - Column.copy() takes along the "unique" attribute
+    among others, fixes [ticket:1829] regarding declarative
+    mixins
     
 - firebird
   - Fixed incorrect signature in do_execute(), error 

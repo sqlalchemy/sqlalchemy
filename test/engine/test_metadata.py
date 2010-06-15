@@ -40,13 +40,14 @@ class MetaDataTest(TestBase, ComparesTables):
     def test_uninitialized_column_copy(self):
         for col in [
             Column('foo', String(), nullable=False),
+            Column('baz', String(), unique=True),
             Column(Integer(), primary_key=True),
             Column('bar', Integer(), Sequence('foo_seq'), primary_key=True, key='bar'),
             Column(Integer(), ForeignKey('bat.blah')),
             Column('bar', Integer(), ForeignKey('bat.blah'), primary_key=True, key='bar'),
         ]:
             c2 = col.copy()
-            for attr in ('name', 'type', 'nullable', 'primary_key', 'key'):
+            for attr in ('name', 'type', 'nullable', 'primary_key', 'key', 'unique'):
                 eq_(getattr(col, attr), getattr(c2, attr))
             eq_(len(col.foreign_keys), len(c2.foreign_keys))
             if col.default:
