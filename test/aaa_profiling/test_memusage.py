@@ -255,7 +255,7 @@ class MemUsageTest(EnsureZeroed):
     
     @testing.fails_if(lambda:
                         testing.db.dialect.name == 'sqlite' and 
-                        testing.db.dialect.dbapi.version >= (2,5),
+                        testing.db.dialect.dbapi.version_info >= (2,5),
                         "Newer pysqlites generate warnings here too and have similar issues."
                     )
     def test_unicode_warnings(self):
