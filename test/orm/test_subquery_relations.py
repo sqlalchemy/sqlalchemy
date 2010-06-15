@@ -1,7 +1,7 @@
 from sqlalchemy.test.testing import eq_, is_, is_not_
 from sqlalchemy.test import testing
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, bindparam
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
                 mapper, relationship, clear_mappers,\
                 create_session, lazyload, aliased, joinedload,\
@@ -42,6 +42,45 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
         self.assert_sql_count(testing.db, go, 2)
 
+    @testing.resolve_artifact_names
+    def test_from_get(self):
+        mapper(User, users, properties={
+            'addresses':relationship(
+                            mapper(Address, addresses), 
+                            order_by=Address.id)
+        })
+        sess = create_session()
+        
+        q = sess.query(User).options(subqueryload(User.addresses))
+        def go():
+            eq_(
+                    User(id=7, addresses=[
+                            Address(id=1, email_address='jack@bean.com')]),
+                    q.get(7)
+            )
+        
+        self.assert_sql_count(testing.db, go, 2)
+
+    @testing.resolve_artifact_names
+    def test_from_params(self):
+        mapper(User, users, properties={
+            'addresses':relationship(
+                            mapper(Address, addresses), 
+                            order_by=Address.id)
+        })
+        sess = create_session()
+
+        q = sess.query(User).options(subqueryload(User.addresses))
+        def go():
+            eq_(
+                    User(id=7, addresses=[
+                            Address(id=1, email_address='jack@bean.com')]),
+                    q.filter(User.id==bindparam('foo')).params(foo=7).one()
+            )
+
+        self.assert_sql_count(testing.db, go, 2)
+        
+        
     @testing.resolve_artifact_names
     def test_many_to_many(self):
         mapper(Keyword, keywords)

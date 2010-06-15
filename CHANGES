@@ -12,6 +12,15 @@ CHANGES
     in one flush would fail to insert a row for both
     sides.  Regression from 0.5. [ticket:1824]
     
+  - Query.statement, Query.subquery(), etc. now transfer
+    the values of bind parameters, i.e. those specified
+    by query.params(), into the resulting SQL expression.
+    Previously the values would not be transferred
+    and bind parameters would come out as None.
+    
+  - Subquery-eager-loading now works with Query objects
+    which include params(), as well as get() Queries.
+    
 - sql
   - The warning emitted by the Unicode and String types
     with convert_unicode=True no longer embeds the actual

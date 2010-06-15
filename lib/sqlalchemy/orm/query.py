@@ -399,8 +399,11 @@ class Query(object):
         
         """
 
-        return self._compile_context(labels=self._with_labels).\
-                        statement._annotate({'_halt_adapt': True})
+        stmt = self._compile_context(labels=self._with_labels).\
+                        statement
+        if self._params:
+            stmt = stmt.params(self._params)
+        return stmt._annotate({'_halt_adapt': True})
 
     def subquery(self):
         """return the full SELECT statement represented by this Query, 

@@ -700,6 +700,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # reformat the original query
         # to look only for significant columns
         q = orig_query._clone()
+
         # TODO: why does polymporphic etc. require hardcoding 
         # into _adapt_col_list ?  Does query.add_columns(...) work
         # with polymorphic loading ?

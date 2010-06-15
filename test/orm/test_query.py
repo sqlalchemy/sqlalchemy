@@ -584,6 +584,14 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         
         eq_(User(id=7), q.one())
         
+    def test_param_transfer(self):
+        session = create_session()
+        
+        q = session.query(User.id).filter(User.id==bindparam('foo')).params(foo=7).subquery()
+        
+        q = session.query(User).filter(User.id==q)
+        
+        eq_(User(id=7), q.one())
         
     def test_in(self):
         session = create_session()
