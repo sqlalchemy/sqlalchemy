@@ -253,6 +253,11 @@ class MemUsageTest(EnsureZeroed):
         finally:
             metadata.drop_all()
     
+    @testing.fails_if(lambda:
+                        testing.db.dialect.name == 'sqlite' and 
+                        testing.db.dialect.dbapi.version >= (2,5),
+                        "Newer pysqlites generate warnings here too and have similar issues."
+                    )
     def test_unicode_warnings(self):
         metadata = MetaData(testing.db)
         table1 = Table("mytable", metadata,
