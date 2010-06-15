@@ -107,7 +107,7 @@ class Inspector(object):
         
         """
         if hasattr(bind.dialect, 'inspector'):
-            return bind.dialect.inspector(engine)
+            return bind.dialect.inspector(bind)
         return Inspector(bind)
 
     @property
