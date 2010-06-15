@@ -2,14 +2,15 @@
 Primary key changing capabilities and passive/non-passive cascading updates.
 
 """
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.test.testing import eq_, ne_, assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, Unicode
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, backref
+from sqlalchemy.orm.session import make_transient
 from sqlalchemy.test.testing import eq_
-from test.orm import _base
+from test.orm import _base, _fixtures
 
 class NaturalPKTest(_base.MappedTest):
 
@@ -149,11 +150,15 @@ class NaturalPKTest(_base.MappedTest):
         def go():
             sess.flush()
         if not passive_updates:
-            self.assert_sql_count(testing.db, go, 4) # test passive_updates=False; load addresses, update user, update 2 addresses
+            self.assert_sql_count(testing.db, go, 4) # test passive_updates=False; 
+                                                    #load addresses, update user, update 2 addresses
         else:
             self.assert_sql_count(testing.db, go, 1) # test passive_updates=True; update user
         sess.expunge_all()
-        assert User(username='jack', addresses=[Address(username='jack'), Address(username='jack')]) == sess.query(User).get('jack')
+        assert User(username='jack', addresses=[
+                                        Address(username='jack'), 
+                                        Address(username='jack')]) == \
+                            sess.query(User).get('jack')
 
         u1 = sess.query(User).get('jack')
         u1.addresses = []
@@ -363,6 +368,38 @@ class NaturalPKTest(_base.MappedTest):
         r = sess.query(Item).with_parent(u2).all()
         eq_(Item(itemname='item2'), r[0])
 
+class TransientExceptionTesst(_fixtures.FixtureTest):
+    run_inserts = None
+    
+    @testing.resolve_artifact_names
+    def test_transient_exception(self):
+        """An object that goes from a pk value to transient/pending
+        doesn't count as a "pk" switch.
+        
+        """
+        mapper(User, users)
+        mapper(Address, addresses, properties={'user':relationship(User)})
+        
+        sess = create_session()
+        u1 = User(id=5, name='u1')
+        ad1 = Address(email_address='e1', user=u1)
+        sess.add_all([u1, ad1])
+        sess.flush()
+        
+        make_transient(u1)
+        u1.id = None
+        u1.username='u2'
+        sess.add(u1)
+        sess.flush()
+        
+        eq_(ad1.user_id, 5)
+        
+        sess.expire_all()
+        eq_(ad1.user_id, 5)
+        ne_(u1.id, 5)
+        ne_(u1.id, None)
+        eq_(sess.query(User).count(), 2)
+        
 class ReversePKsTest(_base.MappedTest):
     """reverse the primary keys of two entities and ensure bookkeeping succeeds."""
     

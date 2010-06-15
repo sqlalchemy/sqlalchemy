@@ -776,7 +776,7 @@ class DetectKeySwitch(DependencyProcessor):
                                     uowcommit, self.passive_updates)
 
     def _pks_changed(self, uowcommit, state):
-        return sync.source_modified(uowcommit, 
+        return state.has_identity and sync.source_modified(uowcommit, 
                                     state, 
                                     self.mapper, 
                                     self.prop.synchronize_pairs)

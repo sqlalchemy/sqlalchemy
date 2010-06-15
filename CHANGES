@@ -20,6 +20,15 @@ CHANGES
     
   - Subquery-eager-loading now works with Query objects
     which include params(), as well as get() Queries.
+
+  - Can now call make_transient() on an instance that
+    is referenced by parent objects via many-to-one,
+    without the parent's foreign key value getting
+    temporarily set to None - this was a function
+    of the "detect primary key switch" flush handler.
+    It now ignores objects that are no longer 
+    in the "persistent" state, and the parent's 
+    foreign key identifier is left unaffected.
     
 - sql
   - The warning emitted by the Unicode and String types
