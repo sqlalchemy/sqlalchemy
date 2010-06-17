@@ -13,7 +13,7 @@ basic add/delete mutation.
 
 from sqlalchemy import log, util
 from sqlalchemy import exc as sa_exc
-from sqlalchemy.orm import exc as sa_exc
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.sql import operators
 from sqlalchemy.orm import (
     attributes, object_session, util as mapperutil, strategies, object_mapper
