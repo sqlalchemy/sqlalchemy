@@ -222,6 +222,20 @@ class GetTest(QueryTest):
             'SELECT users.id AS users_id, users.name AS users_name FROM users WHERE users.id = ?'
             )
 
+class OrderByTest(QueryTest, AssertsCompiledSQL):
+    def test_cancel_order_by(self):
+        s = create_session()
+        
+        q = s.query(User).order_by(User.id)
+        self.assert_compile(q, 
+            "SELECT users.id AS users_id, users.name AS users_name FROM users ORDER BY users.id",
+            use_default_dialect=True)
+
+        q = q.order_by(None)
+        self.assert_compile(q, 
+                "SELECT users.id AS users_id, users.name AS users_name FROM users",
+                use_default_dialect=True)
+        
 class InvalidGenerationsTest(QueryTest):
     def test_no_limit_offset(self):
         s = create_session()
