@@ -29,6 +29,16 @@ CHANGES
     It now ignores objects that are no longer 
     in the "persistent" state, and the parent's 
     foreign key identifier is left unaffected.
+
+  - query.order_by() now accepts False, which cancels
+    any existing order_by() state on the Query, allowing
+    subsequent generative methods to be called which do 
+    not support ORDER BY.  This is not the same as the 
+    already existing feature of passing None, which 
+    suppresses any existing order_by() settings, including 
+    those configured on the mapper.  False will make it
+    as though order_by() was never called, while
+    None is an active setting.
     
 - sql
   - The warning emitted by the Unicode and String types

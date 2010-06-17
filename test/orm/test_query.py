@@ -222,21 +222,7 @@ class GetTest(QueryTest):
             'SELECT users.id AS users_id, users.name AS users_name FROM users WHERE users.id = ?'
             )
 
-class OrderByTest(QueryTest, AssertsCompiledSQL):
-    def test_cancel_order_by(self):
-        s = create_session()
-        
-        q = s.query(User).order_by(User.id)
-        self.assert_compile(q, 
-            "SELECT users.id AS users_id, users.name AS users_name FROM users ORDER BY users.id",
-            use_default_dialect=True)
-
-        q = q.order_by(None)
-        self.assert_compile(q, 
-                "SELECT users.id AS users_id, users.name AS users_name FROM users",
-                use_default_dialect=True)
-        
-class InvalidGenerationsTest(QueryTest):
+class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_no_limit_offset(self):
         s = create_session()
         
@@ -316,6 +302,30 @@ class InvalidGenerationsTest(QueryTest):
         assert_raises(sa_exc.InvalidRequestError, q.from_statement, text("select * from table"))
         assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
         
+    def test_cancel_order_by(self):
+        s = create_session()
+
+        q = s.query(User).order_by(User.id)
+        self.assert_compile(q, 
+            "SELECT users.id AS users_id, users.name AS users_name FROM users ORDER BY users.id",
+            use_default_dialect=True)
+
+        assert_raises(sa_exc.InvalidRequestError, q._no_select_modifiers, "foo")
+
+        q = q.order_by(None)
+        self.assert_compile(q, 
+                "SELECT users.id AS users_id, users.name AS users_name FROM users",
+                use_default_dialect=True)
+
+        assert_raises(sa_exc.InvalidRequestError, q._no_select_modifiers, "foo")
+
+        q = q.order_by(False)
+        self.assert_compile(q, 
+                "SELECT users.id AS users_id, users.name AS users_name FROM users",
+                use_default_dialect=True)
+
+        # after False was set, this should pass
+        q._no_select_modifiers("foo")
         
     def test_mapper_zero(self):
         s = create_session()

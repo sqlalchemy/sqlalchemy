@@ -854,17 +854,34 @@ class Query(object):
     @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def order_by(self, *criterion):
         """apply one or more ORDER BY criterion to the query and return 
-        the newly resulting ``Query``"""
+        the newly resulting ``Query``
+        
+        All existing ORDER BY settings can be suppressed by 
+        passing ``None`` - this will suppress any ORDER BY configured
+        on mappers as well.
+        
+        Alternatively, an existing ORDER BY setting on the Query
+        object can be entirely cancelled by passing ``False`` 
+        as the value - use this before calling methods where
+        an ORDER BY is invalid.
+        
+        """
 
-        if len(criterion) == 1 and criterion[0] is None:
-            self._order_by = None
+        if len(criterion) == 1:
+            if criterion[0] is False:
+                if '_order_by' in self.__dict__:
+                    del self._order_by
+                return
+            if criterion[0] is None:
+                self._order_by = None
+                return
+                
+        criterion = self._adapt_col_list(criterion)
+
+        if self._order_by is False or self._order_by is None:
+            self._order_by = criterion
         else:
-            criterion = self._adapt_col_list(criterion)
-
-            if self._order_by is False or self._order_by is None:
-                self._order_by = criterion
-            else:
-                self._order_by = self._order_by + criterion
+            self._order_by = self._order_by + criterion
 
     @_generative(_no_statement_condition, _no_limit_offset)
     @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
