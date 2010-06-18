@@ -545,10 +545,11 @@ class ManyToOneDP(DependencyProcessor):
             uow.dependencies.update([
                 (child_saves, after_save),
                 (parent_saves, after_save),
-                (before_delete, parent_deletes),
-                (before_delete, child_deletes),
                 (after_save, child_post_updates),
+
+                (after_save, child_pre_updates),
                 (before_delete, child_pre_updates),
+
                 (child_pre_updates, child_deletes),
             ])
         else:
@@ -567,36 +568,30 @@ class ManyToOneDP(DependencyProcessor):
                                     isdelete, childisdelete):
 
         if self.post_update:
-
+            
             if not isdelete:
-                child_post_updates = unitofwork.PostUpdateThing(
+                parent_post_updates = unitofwork.PostUpdateThing(
                                                     uow, self.parent.primary_base_mapper, False)
                 if childisdelete:
                     uow.dependencies.update([
-                        (save_parent, after_save),
-                        (after_save, child_action), # can remove
-                        
-                        (after_save, child_post_updates),
-                        (child_post_updates, child_action)
+                        (after_save, parent_post_updates),
+                        (parent_post_updates, child_action)
                     ])
                 else:
                     uow.dependencies.update([
                         (save_parent, after_save),
                         (child_action, after_save),
                         
-                        (after_save, child_post_updates)
+                        (after_save, parent_post_updates)
                     ])
             else:
-                child_pre_updates = unitofwork.PostUpdateThing(
+                parent_pre_updates = unitofwork.PostUpdateThing(
                                                     uow, self.parent.primary_base_mapper, True)
 
                 uow.dependencies.update([
-                    (before_delete, delete_parent), # can remove
-                    (before_delete, child_action), # can remove
-                    
-                    (before_delete, child_pre_updates),
-                    (child_pre_updates, delete_parent),
-                    (child_pre_updates, child_action)
+                    (before_delete, parent_pre_updates),
+                    (parent_pre_updates, delete_parent),
+                    (parent_pre_updates, child_action)
                 ])
                     
         elif not isdelete:
