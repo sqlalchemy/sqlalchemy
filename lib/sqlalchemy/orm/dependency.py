@@ -291,10 +291,14 @@ class OneToManyDP(DependencyProcessor):
                                                 before_delete,
                                                 ):
         if self.post_update:
-            child_post_updates = unitofwork.PostUpdateThing(
-                                                uow, self.mapper.primary_base_mapper, False)
-            child_pre_updates = unitofwork.PostUpdateThing(
-                                                uow, self.mapper.primary_base_mapper, True)
+            child_post_updates = unitofwork.IssuePostUpdate(
+                                            uow, 
+                                            self.mapper.primary_base_mapper, 
+                                            False)
+            child_pre_updates = unitofwork.IssuePostUpdate(
+                                            uow, 
+                                            self.mapper.primary_base_mapper, 
+                                            True)
             
             uow.dependencies.update([
                 (child_saves, after_save),
@@ -328,10 +332,14 @@ class OneToManyDP(DependencyProcessor):
         
         if self.post_update:
 
-            child_post_updates = unitofwork.PostUpdateThing(
-                                                uow, self.mapper.primary_base_mapper, False)
-            child_pre_updates = unitofwork.PostUpdateThing(
-                                                uow, self.mapper.primary_base_mapper, True)
+            child_post_updates = unitofwork.IssuePostUpdate(
+                                            uow, 
+                                            self.mapper.primary_base_mapper, 
+                                            False)
+            child_pre_updates = unitofwork.IssuePostUpdate(
+                                            uow, 
+                                            self.mapper.primary_base_mapper, 
+                                            True)
             
             # TODO: this whole block is not covered
             # by any tests
@@ -457,10 +465,8 @@ class OneToManyDP(DependencyProcessor):
                                             child, 
                                             None, True, uowcommit)
                             if self.post_update and child:
-                                    self._post_update(
-                                            child, 
-                                            uowcommit, 
-                                            [state])
+                                self._post_update(child, uowcommit, [state])
+                                
                     if self.post_update or not self.cascade.delete:
                         for child in set(history.unchanged).\
                                             difference(children_added):
@@ -470,10 +476,8 @@ class OneToManyDP(DependencyProcessor):
                                             child, 
                                             None, True, uowcommit)
                                 if self.post_update and child:
-                                    self._post_update(
-                                            child, 
-                                            uowcommit, 
-                                            [state])
+                                    self._post_update(child, uowcommit, [state])
+                                    
                         # technically, we can even remove each child from the
                         # collection here too.  but this would be a somewhat 
                         # inconsistent behavior since it wouldn't happen if the old
@@ -486,11 +490,7 @@ class OneToManyDP(DependencyProcessor):
                 for child in history.added:
                     self._synchronize(state, child, None, False, uowcommit)
                     if child is not None and self.post_update:
-                        self._post_update(
-                                            child, 
-                                            uowcommit, 
-                                            [state]
-                                            )
+                        self._post_update(child, uowcommit, [state])
 
                 for child in history.deleted:
                     if not self.cascade.delete_orphan and \
@@ -537,10 +537,14 @@ class ManyToOneDP(DependencyProcessor):
                                         before_delete):
 
         if self.post_update:
-            parent_post_updates = unitofwork.PostUpdateThing(
-                                                uow, self.parent.primary_base_mapper, False)
-            parent_pre_updates = unitofwork.PostUpdateThing(
-                                                uow, self.parent.primary_base_mapper, True)
+            parent_post_updates = unitofwork.IssuePostUpdate(
+                                            uow, 
+                                            self.parent.primary_base_mapper, 
+                                            False)
+            parent_pre_updates = unitofwork.IssuePostUpdate(
+                                            uow, 
+                                            self.parent.primary_base_mapper, 
+                                            True)
 
             uow.dependencies.update([
                 (child_saves, after_save),
@@ -570,8 +574,10 @@ class ManyToOneDP(DependencyProcessor):
         if self.post_update:
             
             if not isdelete:
-                parent_post_updates = unitofwork.PostUpdateThing(
-                                                    uow, self.parent.primary_base_mapper, False)
+                parent_post_updates = unitofwork.IssuePostUpdate(
+                                                uow, 
+                                                self.parent.primary_base_mapper, 
+                                                False)
                 if childisdelete:
                     uow.dependencies.update([
                         (after_save, parent_post_updates),
@@ -585,8 +591,10 @@ class ManyToOneDP(DependencyProcessor):
                         (after_save, parent_post_updates)
                     ])
             else:
-                parent_pre_updates = unitofwork.PostUpdateThing(
-                                                    uow, self.parent.primary_base_mapper, True)
+                parent_pre_updates = unitofwork.IssuePostUpdate(
+                                                uow, 
+                                                self.parent.primary_base_mapper, 
+                                                True)
 
                 uow.dependencies.update([
                     (before_delete, parent_pre_updates),
@@ -667,10 +675,7 @@ class ManyToOneDP(DependencyProcessor):
                                                 self.key, 
                                                 passive=self.passive_deletes)
                     if history:
-                        self._post_update(
-                                            state, 
-                                            uowcommit, 
-                                            history.sum())
+                        self._post_update(state, uowcommit, history.sum())
 
     def process_saves(self, uowcommit, states):
         for state in states:
@@ -680,9 +685,7 @@ class ManyToOneDP(DependencyProcessor):
                     self._synchronize(state, child, None, False, uowcommit)
                 
                 if self.post_update:
-                    self._post_update(
-                                        state, 
-                                        uowcommit, history.sum())
+                    self._post_update(state, uowcommit, history.sum())
 
     def _synchronize(self, state, child, associationrow, clearkeys, uowcommit):
         if state is None or (not self.post_update and uowcommit.is_deleted(state)):

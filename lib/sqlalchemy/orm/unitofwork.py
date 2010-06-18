@@ -110,6 +110,10 @@ class UOWTransaction(object):
         # or insert/updated, or just refreshed
         self.states = {}
     
+        # tracks InstanceStates which will be receiving
+        # a "post update" call.  Keys are mappers,
+        # values are a set of states and a set of the 
+        # columns which should be included in the update.
         self.post_update_states = util.defaultdict(lambda: (set(), set()))
         
     @property
@@ -417,7 +421,7 @@ class ProcessAll(IterateMappersMixin, PostSortRec):
                 if isdelete == self.delete and not listonly:
                     yield state
 
-class PostUpdateThing(PostSortRec):
+class IssuePostUpdate(PostSortRec):
     def __init__(self, uow, mapper, isdelete):
         self.mapper = mapper
         self.isdelete = isdelete

@@ -925,7 +925,7 @@ class SelfReferentialPostUpdateTest2(_base.MappedTest):
             pass
 
     @testing.resolve_artifact_names
-    def test_basic(self):
+    def test_one(self):
         """
         Test that post_update remembers to be involved in update operations as
         well, since it replaces the normal dependency processing completely

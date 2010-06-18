@@ -11,6 +11,15 @@ CHANGES
     two objects made to mutually reference each other
     in one flush would fail to insert a row for both
     sides.  Regression from 0.5. [ticket:1824]
+  
+  - the post_update feature of relationship() has been
+    reworked architecturally to integrate more closely
+    with the new 0.6 unit of work.  The motivation 
+    for the change is so that multiple "post update"
+    calls, each affecting different foreign key
+    columns of the same row, are executed in a single
+    UPDATE statement, rather than one UPDATE 
+    statement per column per row.
     
   - Query.statement, Query.subquery(), etc. now transfer
     the values of bind parameters, i.e. those specified
