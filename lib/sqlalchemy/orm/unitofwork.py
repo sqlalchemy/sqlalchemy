@@ -430,9 +430,7 @@ class IssuePostUpdate(PostSortRec):
         states, cols = uow.post_update_states[self.mapper]
         states = [s for s in states if uow.states[s][0] == self.isdelete]
         
-        self.mapper._save_obj(states, uow, \
-                            postupdate=True, \
-                            post_update_cols=cols)
+        self.mapper._post_update(states, uow, cols)
 
 class SaveUpdateAll(PostSortRec):
     def __init__(self, uow, mapper):

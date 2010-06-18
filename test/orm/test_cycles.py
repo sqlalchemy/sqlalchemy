@@ -713,44 +713,30 @@ class OneToManyManyToOneTest(_base.MappedTest):
              "VALUES (:favorite_ball_id, :data)",
              lambda ctx:{'favorite_ball_id':b.id, 'data':'some data'}),
 
-            AllOf(
-            CompiledSQL("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b.id}),
-
-            CompiledSQL("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b2.id}),
-
-            CompiledSQL("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b3.id}),
-
-            CompiledSQL("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id':p.id,'ball_id':b4.id})
+             CompiledSQL("UPDATE ball SET person_id=:person_id "
+              "WHERE ball.id = :ball_id",
+              lambda ctx:[
+                {'person_id':p.id,'ball_id':b.id},
+                {'person_id':p.id,'ball_id':b2.id},
+                {'person_id':p.id,'ball_id':b3.id},
+                {'person_id':p.id,'ball_id':b4.id}
+                ]
             ),
+
         )
         
         sess.delete(p)
         
         self.assert_sql_execution(testing.db, sess.flush, 
-            AllOf(CompiledSQL("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id': None, 'ball_id': b.id}),
-
             CompiledSQL("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id': None, 'ball_id': b2.id}),
-
-            CompiledSQL("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id': None, 'ball_id': b3.id}),
-
-            CompiledSQL("UPDATE ball SET person_id=:person_id "
-             "WHERE ball.id = :ball_id",
-             lambda ctx:{'person_id': None, 'ball_id': b4.id})),
-
+                "WHERE ball.id = :ball_id",
+                lambda ctx:[
+                    {'person_id': None, 'ball_id': b.id},
+                    {'person_id': None, 'ball_id': b2.id},
+                    {'person_id': None, 'ball_id': b3.id},
+                    {'person_id': None, 'ball_id': b4.id}
+                ]
+            ),
             CompiledSQL("DELETE FROM person WHERE person.id = :id",
              lambda ctx:[{'id':p.id}]),
 
@@ -874,16 +860,16 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
         )
 
         session.delete(root)
+
         self.assert_sql_execution(
             testing.db, 
             session.flush,
-            AllOf(
-                CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
-                            "WHERE node.id = :node_id", 
-                            lambda ctx:{'next_sibling_id':None, 'node_id':about.id}),
-                CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
-                            "WHERE node.id = :node_id",
-                            lambda ctx:{'node_id':stories.id, 'next_sibling_id':None})
+            CompiledSQL("UPDATE node SET next_sibling_id=:next_sibling_id "
+                "WHERE node.id = :node_id", 
+                lambda ctx: [
+                            {'node_id': about.id, 'next_sibling_id': None}, 
+                            {'node_id': stories.id, 'next_sibling_id': None}
+                        ]
             ),
             AllOf(
                 CompiledSQL("DELETE FROM node WHERE node.id = :id",

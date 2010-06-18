@@ -19,7 +19,9 @@ CHANGES
     calls, each affecting different foreign key
     columns of the same row, are executed in a single
     UPDATE statement, rather than one UPDATE 
-    statement per column per row.
+    statement per column per row.   Multiple row
+    updates are also batched into executemany()s as 
+    possible, while maintaining consistent row ordering.
     
   - Query.statement, Query.subquery(), etc. now transfer
     the values of bind parameters, i.e. those specified
