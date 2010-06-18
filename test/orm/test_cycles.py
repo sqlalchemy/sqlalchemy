@@ -1018,3 +1018,113 @@ class SelfReferentialPostUpdateTest3(_base.MappedTest):
         p1.child = None
         session.flush()
         
+        p2.child = None
+        session.flush()
+        
+class PostUpdateBatchingTest(_base.MappedTest):
+    """test that lots of post update cols batch together into a single UPDATE."""
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('parent', metadata,
+              Column('id', Integer, primary_key=True,
+                     test_needs_autoincrement=True),
+              Column('name', String(50), nullable=False),
+              Column('c1_id', Integer,
+                     ForeignKey('child1.id', use_alter=True, name='c1'), nullable=True),
+              Column('c2_id', Integer,
+                    ForeignKey('child2.id', use_alter=True, name='c2'), nullable=True),
+              Column('c3_id', Integer,
+                       ForeignKey('child3.id', use_alter=True, name='c3'), nullable=True)
+            )
+
+        Table('child1', metadata,
+           Column('id', Integer, primary_key=True,
+                  test_needs_autoincrement=True),
+           Column('name', String(50), nullable=False),
+           Column('parent_id', Integer,
+                  ForeignKey('parent.id'), nullable=False))
+
+        Table('child2', metadata,
+             Column('id', Integer, primary_key=True,
+                    test_needs_autoincrement=True),
+             Column('name', String(50), nullable=False),
+             Column('parent_id', Integer,
+                    ForeignKey('parent.id'), nullable=False))
+                    
+        Table('child3', metadata,
+           Column('id', Integer, primary_key=True,
+                  test_needs_autoincrement=True),
+           Column('name', String(50), nullable=False),
+           Column('parent_id', Integer,
+                  ForeignKey('parent.id'), nullable=False))
+
+    @classmethod
+    def setup_classes(cls):
+        class Parent(_base.BasicEntity):
+            def __init__(self, name=''):
+                self.name = name
+        class Child1(_base.BasicEntity):
+            def __init__(self, name=''):
+                self.name = name
+        class Child2(_base.BasicEntity):
+            def __init__(self, name=''):
+                self.name = name
+        class Child3(_base.BasicEntity):
+            def __init__(self, name=''):
+                self.name = name
+    
+    @testing.resolve_artifact_names
+    def test_one(self):
+        mapper(Parent, parent, properties={
+            'c1s':relationship(Child1, primaryjoin=child1.c.parent_id==parent.c.id),
+            'c2s':relationship(Child2, primaryjoin=child2.c.parent_id==parent.c.id),
+            'c3s':relationship(Child3, primaryjoin=child3.c.parent_id==parent.c.id),
+            
+            'c1':relationship(Child1, primaryjoin=child1.c.id==parent.c.c1_id, post_update=True),
+            'c2':relationship(Child2, primaryjoin=child2.c.id==parent.c.c2_id, post_update=True),
+            'c3':relationship(Child3, primaryjoin=child3.c.id==parent.c.c3_id, post_update=True),
+        })
+        mapper(Child1, child1)
+        mapper(Child2, child2)
+        mapper(Child3, child3)
+        
+        sess = create_session()
+        
+        p1 = Parent('p1')
+        c11, c12, c13 = Child1('c1'), Child1('c2'), Child1('c3')
+        c21, c22, c23 = Child2('c1'), Child2('c2'), Child2('c3')
+        c31, c32, c33 = Child3('c1'), Child3('c2'), Child3('c3')
+        
+        p1.c1s = [c11, c12, c13]
+        p1.c2s = [c21, c22, c23]
+        p1.c3s = [c31, c32, c33]
+        sess.add(p1)
+        sess.flush()
+        
+        p1.c1 = c12
+        p1.c2 = c23
+        p1.c3 = c31
+
+        self.assert_sql_execution(
+            testing.db, 
+            sess.flush,
+            CompiledSQL(
+                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, "
+                "c3_id=:c3_id WHERE parent.id = :parent_id",
+                lambda ctx: {'c2_id': c23.id, 'parent_id': p1.id, 'c1_id': c12.id, 'c3_id': c31.id}
+            )
+        )
+
+        p1.c1 = p1.c2 = p1.c3 = None
+
+        self.assert_sql_execution(
+            testing.db, 
+            sess.flush,
+            CompiledSQL(
+                "UPDATE parent SET c1_id=:c1_id, c2_id=:c2_id, "
+                "c3_id=:c3_id WHERE parent.id = :parent_id",
+                lambda ctx: {'c2_id': None, 'parent_id': p1.id, 'c1_id': None, 'c3_id': None}
+            )
+        )
+        

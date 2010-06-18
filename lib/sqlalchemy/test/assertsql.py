@@ -138,7 +138,7 @@ class CompiledSQL(SQLMatchRule):
         if not context:
             return
 
-        _received_parameters = context.compiled_parameters
+        _received_parameters = list(context.compiled_parameters)
         
         # recompile from the context, using the default dialect
         compiled = context.compiled.statement.\
@@ -178,6 +178,7 @@ class CompiledSQL(SQLMatchRule):
             self._errmsg = "Testing for compiled statement %r partial params %r, " \
                     "received %r with params %r" % \
                     (self.statement, all_params, _received_statement, all_received)
+            #print self._errmsg
     
         
 class CountStatements(AssertRule):

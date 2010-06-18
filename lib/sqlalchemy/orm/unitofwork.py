@@ -274,10 +274,10 @@ class UOWTransaction(object):
     def execute(self):
         postsort_actions = self._generate_actions()
         
-        sort = topological.sort(self.dependencies, postsort_actions)
+        #sort = topological.sort(self.dependencies, postsort_actions)
         #print "--------------"
         #print self.dependencies
-        print list(sort)
+        #print list(sort)
         #print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
         
         # execute
