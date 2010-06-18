@@ -110,7 +110,7 @@ class UOWTransaction(object):
         # or insert/updated, or just refreshed
         self.states = {}
     
-        self.post_update_states = util.defaultdict(set)
+        self.post_update_states = util.defaultdict(lambda: (set(), set()))
         
     @property
     def has_work(self):
@@ -185,14 +185,11 @@ class UOWTransaction(object):
             if not listonly and (isdelete or cancel_delete):
                 self.states[state] = (isdelete, False)
     
-    def issue_post_update(self, state, post_update_cols, immediate):
-        if immediate:
-            mapper = state.manager.mapper.base_mapper
-            mapper._save_obj([state], self, \
-                        postupdate=True, \
-                        post_update_cols=set(post_update_cols))
-        else:
-            self.post_update_states[state].update(post_update_cols)
+    def issue_post_update(self, state, post_update_cols):
+        mapper = state.manager.mapper.base_mapper
+        states, cols = self.post_update_states[mapper]
+        states.add(state)
+        cols.update(post_update_cols)
     
     @util.memoized_property
     def _mapper_for_dep(self):
@@ -426,18 +423,12 @@ class PostUpdateThing(PostSortRec):
         self.isdelete = isdelete
 
     def execute(self, uow):
-        states = []
-        update_cols = set()
-
-        for state in uow.states_for_mapper_hierarchy(self.mapper, self.isdelete, False):
-            if state not in uow.post_update_states:
-                continue
-            states.append(state)    
-            update_cols.update(uow.post_update_states[state])
-
+        states, cols = uow.post_update_states[self.mapper]
+        states = [s for s in states if uow.states[s][0] == self.isdelete]
+        
         self.mapper._save_obj(states, uow, \
                             postupdate=True, \
-                            post_update_cols=update_cols)
+                            post_update_cols=cols)
 
 class SaveUpdateAll(PostSortRec):
     def __init__(self, uow, mapper):

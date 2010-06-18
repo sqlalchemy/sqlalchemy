@@ -1018,6 +1018,3 @@ class SelfReferentialPostUpdateTest3(_base.MappedTest):
         p1.child = None
         session.flush()
         
-        
-        
-
