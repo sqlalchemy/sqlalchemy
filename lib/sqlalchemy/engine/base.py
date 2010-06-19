@@ -2212,7 +2212,7 @@ class ResultProxy(object):
         consistent across backends.
         
         Usage of this method is normally unnecessary; the
-        inserted_primary_key method provides a
+        :attr:`~ResultProxy.inserted_primary_key` attribute provides a
         tuple of primary key values for a newly inserted row,
         regardless of database backend.
         
@@ -2299,7 +2299,7 @@ class ResultProxy(object):
 
     @util.deprecated("Use inserted_primary_key")
     def last_inserted_ids(self):
-        """deprecated.  use inserted_primary_key."""
+        """deprecated.  use :attr:`~ResultProxy.inserted_primary_key`."""
         
         return self.inserted_primary_key
         

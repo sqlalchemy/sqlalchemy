@@ -105,7 +105,13 @@ CHANGES
      
 - documentation
   - Added documentation for the Inspector. [ticket:1820]
-  
+
+  - Fixed @memoized_property and @memoized_instancemethod
+    decorators so that Sphinx documentation picks up 
+    these attributes and methods, such as 
+    ResultProxy.inserted_primary_key. [ticket:1830]
+    
+    
 0.6.1
 =====
 - orm

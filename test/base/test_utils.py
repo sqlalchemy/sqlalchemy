@@ -83,6 +83,40 @@ class FrozenDictTest(TestBase):
         for loads, dumps in picklers():
             print loads(dumps(d))
         
+
+class MemoizedAttrTest(TestBase):
+    def test_memoized_property(self):
+        val = [20]
+        class Foo(object):
+            @util.memoized_property
+            def bar(self):
+                v = val[0]
+                val[0] += 1
+                return v
+                
+        ne_(Foo.bar, None)
+        f1 = Foo()
+        assert 'bar' not in f1.__dict__
+        eq_(f1.bar, 20)
+        eq_(f1.bar, 20)
+        eq_(val[0], 21)
+        eq_(f1.__dict__['bar'] , 20)
+
+    def test_memoized_instancemethod(self):
+        val = [20]
+        class Foo(object):
+            @util.memoized_instancemethod
+            def bar(self):
+                v = val[0]
+                val[0] += 1
+                return v
+
+        ne_(Foo.bar, None)
+        f1 = Foo()
+        assert 'bar' not in f1.__dict__
+        eq_(f1.bar(), 20)
+        eq_(f1.bar(), 20)
+        eq_(val[0], 21)
         
 class ColumnCollectionTest(TestBase):
     def test_in(self):

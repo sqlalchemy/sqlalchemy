@@ -1422,7 +1422,7 @@ class memoized_property(object):
 
     def __get__(self, obj, cls):
         if obj is None:
-            return None
+            return self
         obj.__dict__[self.__name__] = result = self.fget(obj)
         return result
 
@@ -1442,7 +1442,7 @@ class memoized_instancemethod(object):
 
     def __get__(self, obj, cls):
         if obj is None:
-            return None
+            return self
         def oneshot(*args, **kw):
             result = self.fget(obj, *args, **kw)
             memo = lambda *a, **kw: result
