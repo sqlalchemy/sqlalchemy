@@ -89,17 +89,17 @@ Note the :class:`~sqlalchemy.schema.ForeignKey` object used in this table - this
     employees.c.employee_id.type
     employees.c.employee_id.nullable
     employees.c.employee_id.primary_key
-    employees.c.employee_dept.foreign_key
+    employees.c.employee_dept.foreign_keys
 
     # get the "key" of a column, which defaults to its name, but can
     # be any user-defined string:
-    employees.c.name.key
+    employees.c.employee_name.key
 
     # access a column's table:
     employees.c.employee_id.table is employees
 
     # get the table related by a foreign key
-    fcolumn = employees.c.employee_dept.foreign_key.column.table
+    list(employees.c.employee_dept.foreign_keys)[0].column.table
 
 .. _metadata_binding:
 
