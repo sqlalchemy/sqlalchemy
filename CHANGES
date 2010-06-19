@@ -77,6 +77,11 @@ CHANGES
   - Column.copy() takes along the "unique" attribute
     among others, fixes [ticket:1829] regarding declarative
     mixins
+
+- mysql
+  - MySQL dialect doesn't emit CAST() for MySQL version 
+    detected < 4.0.2.  This allows the unicode
+    check on connect to proceed. [ticket:1826]
     
 - firebird
   - Fixed incorrect signature in do_execute(), error 

@@ -1187,6 +1187,9 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def visit_cast(self, cast, **kwargs):
         # No cast until 4, no decimals until 5.
+        if not self.dialect._supports_cast:
+            return self.process(cast.clause)
+        
         type_ = self.process(cast.typeclause)
         if type_ is None:
             return self.process(cast.clause)
@@ -1761,8 +1764,14 @@ class MySQLDialect(default.DefaultDialect):
         if self._server_ansiquotes:
             # if ansiquotes == True, build a new IdentifierPreparer
             # with the new setting
-            self.identifier_preparer = self.preparer(self, server_ansiquotes=self._server_ansiquotes)
+            self.identifier_preparer = self.preparer(self,
+                                                    server_ansiquotes=self._server_ansiquotes)
 
+    @property
+    def _supports_cast(self):
+        return self.server_version_info is None or \
+                    self.server_version_info >= (4, 0, 2)
+        
     @reflection.cache
     def get_schema_names(self, connection, **kw):
         rp = connection.execute("SHOW schemas")

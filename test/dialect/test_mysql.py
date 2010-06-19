@@ -1162,7 +1162,20 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 
         for type_, expected in specs:
             self.assert_compile(cast(t.c.col, type_), expected)
-
+    
+    def test_no_cast_pre_4(self):
+        self.assert_compile(
+                    cast(Column('foo', Integer), String),
+                    "CAST(foo AS CHAR)",
+            )
+        dialect = mysql.dialect()
+        dialect.server_version_info = (3, 2, 3)
+        self.assert_compile(
+                    cast(Column('foo', Integer), String),
+                    "foo",
+                    dialect=dialect
+            )
+        
     def test_extract(self):
         t = sql.table('t', sql.column('col1'))
 
