@@ -645,7 +645,7 @@ def _as_declarative(cls, classname, dict_):
     mapper_args ={}
     table_args = inherited_table_args = None
     tablename = None
-    parent_columns = None
+    parent_columns = ()
     
     for base in cls.__mro__:
         if _is_mapped_class(base):
@@ -670,7 +670,9 @@ def _as_declarative(cls, classname, dict_):
                                 "Columns with foreign keys to other columns "
                                 "are not allowed on declarative mixins at this time."
                             )
-                        if name not in dict_:
+                        if name not in dict_ and not (
+                                '__table__' in dict_ and name in dict_['__table__'].c
+                                ):
                             potential_columns[name]=column_copies[obj]=obj.copy()
                     elif isinstance(obj, RelationshipProperty):
                         raise exceptions.InvalidRequestError(

@@ -2365,3 +2365,60 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __mapper_args__ = dict(polymorphic_identity='specific')
             
         eq_(BaseType.__table__.c.keys(),['type', 'id', 'timestamp'])
+
+    def test_table_in_model_and_same_column_in_mixin(self):
+        
+        class ColumnMixin:
+            data = Column(Integer)
+        
+        class Model(Base, ColumnMixin):
+            __table__ = Table(
+                'foo',
+                Base.metadata,
+                Column('data', Integer),
+                Column('id', Integer, primary_key=True) 
+                )
+        
+        model_col = Model.__table__.c.data
+        mixin_col = ColumnMixin.data
+        assert model_col is not mixin_col
+        eq_(model_col.name, 'data')
+        assert model_col.type.__class__ is mixin_col.type.__class__
+    
+    def test_table_in_model_and_different_named_column_in_mixin(self):
+        
+        class ColumnMixin:
+            tada = Column(Integer)
+        
+        def go():
+            class Model(Base, ColumnMixin):
+                __table__ = Table(
+                    'foo',
+                    Base.metadata,
+                    Column('data', Integer),
+                    Column('id', Integer, primary_key=True)
+                    )
+        
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Can't add additional column 'tada' when specifying __table__",
+            go)
+    
+    def test_table_in_model_overrides_different_typed_column_in_mixin(self):
+        
+        class ColumnMixin:
+            data = Column(String)
+        
+        class Model(Base, ColumnMixin):
+            __table__ = Table(
+                'foo',
+                Base.metadata,
+                Column('data', Integer),
+                Column('id', Integer, primary_key=True)
+                )
+
+        model_col = Model.__table__.c.data
+        mixin_col = ColumnMixin.data
+        assert model_col is not mixin_col
+        eq_(model_col.name, 'data')
+        assert model_col.type.__class__ is Integer

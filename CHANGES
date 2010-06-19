@@ -87,6 +87,13 @@ CHANGES
   - Fixed incorrect signature in do_execute(), error 
     introduced in 0.6.1. [ticket:1823]
 
+- declarative
+   - a mixin class can now define a column that matches
+     one which is present on a __table__ defined on a 
+     subclass.  It cannot, however, define one that is 
+     not present in the __table__, and the error message
+     here now works.  [ticket:1821]
+     
 - documentation
   - Added documentation for the Inspector. [ticket:1820]
   
