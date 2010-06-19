@@ -366,6 +366,12 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
             
         dialect = oracle.dialect()
         dialect._get_server_version_info = server_version_info
+
+        # before connect, assume modern DB
+        assert dialect._supports_char_length
+        assert dialect._supports_nchar
+        assert dialect.use_ansi
+
         dialect.initialize(testing.db.connect())
         assert not dialect._supports_char_length
         assert not dialect._supports_nchar
@@ -396,6 +402,7 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(String(50),"VARCHAR(50 CHAR)",dialect=dialect)
         self.assert_compile(Unicode(50),"NVARCHAR2(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"NCLOB",dialect=dialect)
+    
     
 class MultiSchemaTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'

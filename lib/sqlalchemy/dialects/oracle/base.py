@@ -634,11 +634,11 @@ class OracleDialect(default.DefaultDialect):
         return self.server_version_info and \
                     self.server_version_info < (9, )
         
-    @util.memoized_property
+    @property
     def _supports_char_length(self):
         return not self._is_oracle_8
 
-    @util.memoized_property
+    @property
     def _supports_nchar(self):
         return not self._is_oracle_8
         

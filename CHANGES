@@ -82,6 +82,11 @@ CHANGES
   - MySQL dialect doesn't emit CAST() for MySQL version 
     detected < 4.0.2.  This allows the unicode
     check on connect to proceed. [ticket:1826]
+
+- oracle:
+  - Fixed ora-8 compatibility flags such that they
+    don't cache a stale value from before the first
+    database connection actually occurs. [ticket:1819]
     
 - firebird
   - Fixed incorrect signature in do_execute(), error 
