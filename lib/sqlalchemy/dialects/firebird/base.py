@@ -78,9 +78,9 @@ from sqlalchemy.engine import base, default, reflection
 from sqlalchemy.sql import compiler
 
 
-from sqlalchemy.types import (BIGINT, BLOB, BOOLEAN, CHAR, DATE,
+from sqlalchemy.types import (BIGINT, BLOB, BOOLEAN, DATE,
                               FLOAT, INTEGER, NUMERIC, SMALLINT,
-                              TEXT, TIME, TIMESTAMP, VARCHAR)
+                              TEXT, TIME, TIMESTAMP)
 
 
 RESERVED_WORDS = set([
@@ -123,6 +123,27 @@ RESERVED_WORDS = set([
     ])
 
 
+class _StringType(sqltypes.String):
+    """Base for Firebird string types."""
+
+    def __init__(self, charset = None, **kw):
+        self.charset = charset
+        super(_StringType, self).__init__(**kw)
+
+class VARCHAR(_StringType, sqltypes.VARCHAR):
+    """Firebird VARCHAR type"""
+    __visit_name__ = 'VARCHAR'
+
+    def __init__(self, length = None, **kwargs):
+        super(VARCHAR, self).__init__(length=length, **kwargs) 
+
+class CHAR(_StringType, sqltypes.CHAR):
+    """Firebird CHAR type"""
+    __visit_name__ = 'CHAR'
+
+    def __init__(self, length = None, **kwargs):
+        super(CHAR, self).__init__(length=length, **kwargs)
+
 colspecs = {
 }
 
@@ -158,6 +179,22 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_BLOB(self, type_):
         return "BLOB SUB_TYPE 0"
+
+    def _extend_string(self, type_, basic):
+        charset = getattr(type_, 'charset',  None)
+        if charset is None:
+            return basic
+        else:
+            return '%s CHARACTER SET %s' % (basic, charset)
+
+    def visit_CHAR(self, type_):
+        basic = super(FBTypeCompiler, self).visit_CHAR(type_)
+        return self._extend_string(type_, basic)
+
+    def visit_VARCHAR(self, type_):
+        basic = super(FBTypeCompiler, self).visit_VARCHAR(type_)
+        return self._extend_string(type_, basic)
+        
 
 
 class FBCompiler(sql.compiler.SQLCompiler):

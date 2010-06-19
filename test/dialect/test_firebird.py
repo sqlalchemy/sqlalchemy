@@ -259,6 +259,22 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         i = insert(table1, values=dict(name='foo')).returning(func.length(table1.c.name))
         self.assert_compile(i, "INSERT INTO mytable (name) VALUES (:name) RETURNING char_length(mytable.name) AS length_1")
 
+    def test_charset(self):
+        """Exercise CHARACTER SET  options on string types."""
+
+        columns = [
+            (firebird.CHAR, [1], {},
+             'CHAR(1)'),
+            (firebird.CHAR, [1], {'charset' : 'OCTETS'},
+              'CHAR(1) CHARACTER SET OCTETS'),
+            (firebird.VARCHAR, [1], {},
+             'VARCHAR(1)'),
+            (firebird.VARCHAR, [1], {'charset' : 'OCTETS'},
+             'VARCHAR(1) CHARACTER SET OCTETS'),
+        ]
+        
+        for type_, args, kw, res in columns:
+            self.assert_compile(type_(*args, **kw), res)
 
 
 

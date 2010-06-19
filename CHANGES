@@ -92,6 +92,10 @@ CHANGES
   - Fixed incorrect signature in do_execute(), error 
     introduced in 0.6.1. [ticket:1823]
 
+  - Firebird dialect adds CHAR, VARCHAR types which
+    accept a "charset" flag, to support Firebird
+    "CHARACTER SET" clause.  [ticket:1813]
+  
 - declarative
    - a mixin class can now define a column that matches
      one which is present on a __table__ defined on a 

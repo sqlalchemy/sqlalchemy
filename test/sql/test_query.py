@@ -809,6 +809,7 @@ class QueryTest(TestBase):
         assert len(r) == 0
     
     @testing.emits_warning('.*empty sequence.*')
+    @testing.fails_on('firebird', 'uses sql-92 bind rules')
     def test_literal_in(self):
         """similar to test_bind_in but use a bind with a value."""
 
