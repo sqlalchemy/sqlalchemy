@@ -633,18 +633,49 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
 
     def test_like(self):
         for expr, check, dialect in [
-            (table1.c.myid.like('somstr'), "mytable.myid LIKE :myid_1", None),
-            (~table1.c.myid.like('somstr'), "mytable.myid NOT LIKE :myid_1", None),
-            (table1.c.myid.like('somstr', escape='\\'), "mytable.myid LIKE :myid_1 ESCAPE '\\'", None),
-            (~table1.c.myid.like('somstr', escape='\\'), "mytable.myid NOT LIKE :myid_1 ESCAPE '\\'", None),
-            (table1.c.myid.ilike('somstr', escape='\\'), "lower(mytable.myid) LIKE lower(:myid_1) ESCAPE '\\'", None),
-            (~table1.c.myid.ilike('somstr', escape='\\'), "lower(mytable.myid) NOT LIKE lower(:myid_1) ESCAPE '\\'", None),
-            (table1.c.myid.ilike('somstr', escape='\\'), "mytable.myid ILIKE %(myid_1)s ESCAPE '\\'", postgresql.PGDialect()),
-            (~table1.c.myid.ilike('somstr', escape='\\'), "mytable.myid NOT ILIKE %(myid_1)s ESCAPE '\\'", postgresql.PGDialect()),
-            (table1.c.name.ilike('%something%'), "lower(mytable.name) LIKE lower(:name_1)", None),
-            (table1.c.name.ilike('%something%'), "mytable.name ILIKE %(name_1)s", postgresql.PGDialect()),
-            (~table1.c.name.ilike('%something%'), "lower(mytable.name) NOT LIKE lower(:name_1)", None),
-            (~table1.c.name.ilike('%something%'), "mytable.name NOT ILIKE %(name_1)s", postgresql.PGDialect()),
+            (
+                table1.c.myid.like('somstr'), 
+                "mytable.myid LIKE :myid_1", None),
+            (
+                ~table1.c.myid.like('somstr'), 
+                "mytable.myid NOT LIKE :myid_1", None),
+            (
+                table1.c.myid.like('somstr', escape='\\'), 
+                "mytable.myid LIKE :myid_1 ESCAPE '\\'", 
+                None),
+            (
+                ~table1.c.myid.like('somstr', escape='\\'), 
+                "mytable.myid NOT LIKE :myid_1 ESCAPE '\\'", 
+                None),
+            (
+                table1.c.myid.ilike('somstr', escape='\\'), 
+                "lower(mytable.myid) LIKE lower(:myid_1) ESCAPE '\\'", 
+                None),
+            (
+                ~table1.c.myid.ilike('somstr', escape='\\'), 
+                "lower(mytable.myid) NOT LIKE lower(:myid_1) ESCAPE '\\'", 
+                None),
+            (
+                table1.c.myid.ilike('somstr', escape='\\'), 
+                    "mytable.myid ILIKE %(myid_1)s ESCAPE '\\\\'", 
+                    postgresql.PGDialect()),
+            (
+                ~table1.c.myid.ilike('somstr', escape='\\'), 
+                "mytable.myid NOT ILIKE %(myid_1)s ESCAPE '\\\\'", 
+                postgresql.PGDialect()),
+            (
+                table1.c.name.ilike('%something%'), 
+                "lower(mytable.name) LIKE lower(:name_1)", None),
+            (
+                table1.c.name.ilike('%something%'), 
+                "mytable.name ILIKE %(name_1)s", postgresql.PGDialect()),
+            (
+                ~table1.c.name.ilike('%something%'), 
+                "lower(mytable.name) NOT LIKE lower(:name_1)", None),
+            (
+                ~table1.c.name.ilike('%something%'), 
+                "mytable.name NOT ILIKE %(name_1)s", 
+                postgresql.PGDialect()),
         ]:
             self.assert_compile(expr, check, dialect=dialect)
     
