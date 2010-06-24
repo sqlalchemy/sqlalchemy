@@ -1796,6 +1796,7 @@ class BOOLEAN(Boolean):
 
 NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
+STRINGTYPE = String()
 
 # using VARCHAR/NCHAR so that we dont get the genericized "String"
 # type which usually resolves to TEXT/CLOB

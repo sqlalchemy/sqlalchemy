@@ -1017,7 +1017,21 @@ class SQLTest(TestBase, AssertsCompiledSQL):
         eq_(
             gen(True, ['high_priority', sql.text('sql_cache')]),
             'SELECT high_priority sql_cache DISTINCT q')
+        
+    def test_backslash_escaping(self):
+        self.assert_compile(
+            sql.column('foo').like('bar', escape='\\'),
+            "foo LIKE %s ESCAPE '\\\\'"
+        )
 
+        dialect = mysql.dialect()
+        dialect._backslash_escapes=False
+        self.assert_compile(
+            sql.column('foo').like('bar', escape='\\'),
+            "foo LIKE %s ESCAPE '\\'",
+            dialect=dialect
+        )
+        
     def test_limit(self):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))
 
@@ -1221,7 +1235,46 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             ")ENGINE=InnoDB"
         )
 
+class SQLModeDetectionTest(TestBase):
+    __only_on__ = 'mysql'
+    
+    def _options(self, modes):
+        class SetOptions(object):
+            def first_connect(self, con, record):
+                self.connect(con, record)
+            def connect(self, con, record):
+                cursor = con.cursor()
+                cursor.execute("set sql_mode='%s'" % (",".join(modes)))
+        return engines.testing_engine(options={"listeners":[SetOptions()]})
+        
+    def test_backslash_escapes(self):
+        engine = self._options(['NO_BACKSLASH_ESCAPES'])
+        c = engine.connect()
+        assert not engine.dialect._backslash_escapes
+        c.close()
+        engine.dispose()
 
+        engine = self._options([])
+        c = engine.connect()
+        assert engine.dialect._backslash_escapes
+        c.close()
+        engine.dispose()
+
+    def test_ansi_quotes(self):
+        engine = self._options(['ANSI_QUOTES'])
+        c = engine.connect()
+        assert engine.dialect._server_ansiquotes
+        c.close()
+        engine.dispose()
+
+    def test_combination(self):
+        engine = self._options(['ANSI_QUOTES,NO_BACKSLASH_ESCAPES'])
+        c = engine.connect()
+        assert engine.dialect._server_ansiquotes
+        assert not engine.dialect._backslash_escapes
+        c.close()
+        engine.dispose()
+        
 class RawReflectionTest(TestBase):
     def setup(self):
         dialect = mysql.dialect()

@@ -324,12 +324,23 @@ class PGCompiler(compiler.SQLCompiler):
     def visit_ilike_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s ILIKE %s' % (self.process(binary.left), self.process(binary.right)) \
-            + (escape and ' ESCAPE \'%s\'' % escape or '')
+                + (escape and 
+                        (' ESCAPE ' + self.render_literal_value(escape, None))
+                        or '')
 
     def visit_notilike_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s NOT ILIKE %s' % (self.process(binary.left), self.process(binary.right)) \
-            + (escape and ' ESCAPE \'%s\'' % escape or '')
+                + (escape and 
+                        (' ESCAPE ' + self.render_literal_value(escape, None))
+                        or '')
+
+    def render_literal_value(self, value, type_):
+        value = super(PGCompiler, self).render_literal_value(value, type_)
+        # TODO: need to inspect "standard_conforming_strings"
+        if self.dialect._backslash_escapes:
+            value = value.replace('\\', '\\\\')
+        return value
 
     def visit_sequence(self, seq):
         if seq.optional:
@@ -624,6 +635,9 @@ class PGDialect(default.DefaultDialect):
     execution_ctx_cls = PGExecutionContext
     inspector = PGInspector
     isolation_level = None
+
+    # TODO: need to inspect "standard_conforming_strings"
+    _backslash_escapes = True
 
     def __init__(self, isolation_level=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)

@@ -59,6 +59,10 @@ CHANGES
     is emitted once as per the warning filter settings, 
     and large string values don't pollute the output.
     [ticket:1822]
+
+  - The argument to "ESCAPE" of a LIKE operator or similar
+    is passed through render_literal_value(), which may 
+    implement escaping of backslashes.  [ticket:1400]
     
   - Fixed bug in Enum type which blew away native_enum
     flag when used with TypeDecorators or other adaption
@@ -78,11 +82,28 @@ CHANGES
     among others, fixes [ticket:1829] regarding declarative
     mixins
 
+- postgresql
+  - render_literal_value() is overridden which escapes
+    backslashes, currently applies to the ESCAPE clause
+    of LIKE and similar expressions.   
+    Ultimately this will have to detect the value of 
+    "standard_conforming_strings" for full behavior.  
+    [ticket:1400]
+  
 - mysql
   - MySQL dialect doesn't emit CAST() for MySQL version 
     detected < 4.0.2.  This allows the unicode
     check on connect to proceed. [ticket:1826]
 
+  - MySQL dialect now detects NO_BACKSLASH_ESCAPES sql
+    mode, in addition to ANSI_QUOTES.  
+    
+  - render_literal_value() is overridden which escapes
+    backslashes, currently applies to the ESCAPE clause
+    of LIKE and similar expressions.   This behavior
+    is derived from detecting the value of 
+    NO_BACKSLASH_ESCAPES.  [ticket:1400]
+    
 - oracle:
   - Fixed ora-8 compatibility flags such that they
     don't cache a stale value from before the first

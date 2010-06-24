@@ -376,13 +376,21 @@ class QueryTest(TestBase):
         )
 
         for expr, result in (
-            (select([users.c.user_id]).where(users.c.user_name.startswith('apple')), [(1,)]),
-            (select([users.c.user_id]).where(users.c.user_name.contains('i % t')), [(5,)]),
-            (select([users.c.user_id]).where(users.c.user_name.endswith('anas')), [(3,)]),
+            (select([users.c.user_id]).\
+                    where(users.c.user_name.startswith('apple')), [(1,)]),
+            (select([users.c.user_id]).\
+                    where(users.c.user_name.contains('i % t')), [(5,)]),
+            (select([users.c.user_id]).\
+                    where(
+                        users.c.user_name.endswith('anas')
+                    ), [(3,)]),
+            (select([users.c.user_id]).\
+                    where(
+                        users.c.user_name.contains('i % t', escape='\\')
+                    ), [(5,)]),
         ):
             eq_(expr.execute().fetchall(), result)
     
-
     @testing.fails_on("firebird", "see dialect.test_firebird:MiscTest.test_percents_in_text")
     @testing.fails_on("oracle", "neither % nor %% are accepted")
     @testing.fails_on("+pg8000", "can't interpret result column from '%%'")

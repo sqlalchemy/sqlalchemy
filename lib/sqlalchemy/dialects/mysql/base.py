@@ -1196,6 +1196,12 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)
 
+    def render_literal_value(self, value, type_):
+        value = super(MySQLCompiler, self).render_literal_value(value, type_)
+        if self.dialect._backslash_escapes:
+            value = value.replace('\\', '\\\\')
+        return value
+        
     def get_select_precolumns(self, select):
         if isinstance(select._distinct, basestring):
             return select._distinct.upper() + " "
@@ -1639,6 +1645,12 @@ class MySQLDialect(default.DefaultDialect):
     ischema_names = ischema_names
     preparer = MySQLIdentifierPreparer
     
+    # default SQL compilation settings -
+    # these are modified upon initialize(), 
+    # i.e. first connect
+    _backslash_escapes = True
+    _server_ansiquotes = False
+    
     def __init__(self, use_ansiquotes=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
 
@@ -1760,7 +1772,7 @@ class MySQLDialect(default.DefaultDialect):
         self._connection_charset = self._detect_charset(connection)
         self._server_casing = self._detect_casing(connection)
         self._server_collations = self._detect_collations(connection)
-        self._server_ansiquotes = self._detect_ansiquotes(connection)
+        self._detect_ansiquotes(connection)
         if self._server_ansiquotes:
             # if ansiquotes == True, build a new IdentifierPreparer
             # with the new setting
@@ -2019,8 +2031,11 @@ class MySQLDialect(default.DefaultDialect):
                 mode_no = int(mode)
                 mode = (mode_no | 4 == mode_no) and 'ANSI_QUOTES' or ''
 
-        return 'ANSI_QUOTES' in mode
-
+        self._server_ansiquotes = 'ANSI_QUOTES' in mode
+        
+        # as of MySQL 5.0.1
+        self._backslash_escapes = 'NO_BACKSLASH_ESCAPES' not in mode
+        
     def _show_create_table(self, connection, table, charset=None,
                            full_name=None):
         """Run SHOW CREATE TABLE for a ``Table``."""

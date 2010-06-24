@@ -494,28 +494,36 @@ class SQLCompiler(engine.Compiled):
         return '%s LIKE %s' % (
                                     self.process(binary.left, **kw), 
                                     self.process(binary.right, **kw)) \
-            + (escape and ' ESCAPE \'%s\'' % escape or '')
+            + (escape and 
+                    (' ESCAPE ' + self.render_literal_value(escape, None))
+                    or '')
 
     def visit_notlike_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s NOT LIKE %s' % (
                                     self.process(binary.left, **kw), 
                                     self.process(binary.right, **kw)) \
-            + (escape and ' ESCAPE \'%s\'' % escape or '')
+            + (escape and 
+                    (' ESCAPE ' + self.render_literal_value(escape, None))
+                    or '')
         
     def visit_ilike_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return 'lower(%s) LIKE lower(%s)' % (
                                             self.process(binary.left, **kw), 
                                             self.process(binary.right, **kw)) \
-            + (escape and ' ESCAPE \'%s\'' % escape or '')
+            + (escape and 
+                    (' ESCAPE ' + self.render_literal_value(escape, None))
+                    or '')
     
     def visit_notilike_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return 'lower(%s) NOT LIKE lower(%s)' % (
                                             self.process(binary.left, **kw), 
                                             self.process(binary.right, **kw)) \
-            + (escape and ' ESCAPE \'%s\'' % escape or '')
+            + (escape and 
+                    (' ESCAPE ' + self.render_literal_value(escape, None))
+                    or '')
         
     def _operator_dispatch(self, operator, element, fn, **kw):
         if util.callable(operator):
