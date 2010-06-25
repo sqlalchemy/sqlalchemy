@@ -89,7 +89,12 @@ CHANGES
     Ultimately this will have to detect the value of 
     "standard_conforming_strings" for full behavior.  
     [ticket:1400]
-  
+
+  - Won't generate "CREATE TYPE" / "DROP TYPE" if
+    using types.Enum on a PG version prior to 8.3 - 
+    the supports_native_enum flag is fully
+    honored.  [ticket:1836]
+    
 - mysql
   - MySQL dialect doesn't emit CAST() for MySQL version 
     detected < 4.0.2.  This allows the unicode

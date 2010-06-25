@@ -260,10 +260,16 @@ PGArray = ARRAY
 class ENUM(sqltypes.Enum):
 
     def create(self, bind=None, checkfirst=True):
+        if not bind.dialect.supports_native_enum:
+            return
+            
         if not checkfirst or not bind.dialect.has_type(bind, self.name, schema=self.schema):
             bind.execute(CreateEnumType(self))
 
     def drop(self, bind=None, checkfirst=True):
+        if not bind.dialect.supports_native_enum:
+            return
+
         if not checkfirst or bind.dialect.has_type(bind, self.name, schema=self.schema):
             bind.execute(DropEnumType(self))
         

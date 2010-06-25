@@ -349,6 +349,50 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             
         finally:
             metadata.drop_all()
+    
+    def test_non_native_type(self):
+        metadata = MetaData()
+        t1 = Table('foo', metadata,
+            Column('bar', Enum('one', 'two', 'three', name='myenum', native_enum=False))
+        )
+        
+        def go():
+            t1.create(testing.db)
+        
+        try:
+            self.assert_sql(testing.db, go, [], with_sequences=[
+                (
+                    "CREATE TABLE foo (\tbar VARCHAR(5), \t"
+                    "CONSTRAINT myenum CHECK (bar IN ('one', 'two', 'three')))",
+                    {}
+                )]
+            )
+        finally:
+            metadata.drop_all(testing.db)
+        
+    def test_non_native_dialect(self):
+        engine = engines.testing_engine()
+        engine.connect()
+        engine.dialect.supports_native_enum = False
+        
+        metadata = MetaData()
+        t1 = Table('foo', metadata,
+            Column('bar', Enum('one', 'two', 'three', name='myenum'))
+        )
+        
+        def go():
+            t1.create(engine)
+        
+        try:
+            self.assert_sql(engine, go, [], with_sequences=[
+                (
+                    "CREATE TABLE foo (\tbar VARCHAR(5), \t"
+                    "CONSTRAINT myenum CHECK (bar IN ('one', 'two', 'three')))",
+                    {}
+                )]
+            )
+        finally:
+            metadata.drop_all(engine)
         
     def test_standalone_enum(self):
         metadata = MetaData(testing.db)
