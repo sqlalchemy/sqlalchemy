@@ -259,7 +259,7 @@ class Annotated(object):
         self.__dict__ = element.__dict__.copy()
         self.__element = element
         self._annotations = values
-
+        
     def _annotate(self, values):
         _values = self._annotations.copy()
         _values.update(values)
@@ -270,7 +270,10 @@ class Annotated(object):
     
     def _deannotate(self):
         return self.__element
-
+    
+    def _compiler_dispatch(self, visitor, **kw):
+        return self.__element.__class__._compiler_dispatch(self, visitor, **kw)
+        
     @property
     def _constructor(self):
         return self.__element._constructor
@@ -300,7 +303,6 @@ annotated_classes = {}
 for cls in expression.__dict__.values() + [schema.Column, schema.Table]:
     if isinstance(cls, type) and issubclass(cls, expression.ClauseElement):
         exec "class Annotated%s(Annotated, cls):\n" \
-             "    __visit_name__ = cls.__visit_name__\n"\
              "    pass" % (cls.__name__, ) in locals()
         exec "annotated_classes[cls] = Annotated%s" % (cls.__name__)
 

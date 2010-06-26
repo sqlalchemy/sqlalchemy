@@ -1,7 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
-                                    FunctionElement
+                                    FunctionElement, Select
 from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import table, column
@@ -98,9 +98,34 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
                 t1,
                 select([t1]).where(t1.c.x>5)
             ),
-            "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z FROM mytable WHERE mytable.x > :x_1)"
+            "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z "
+            "FROM mytable WHERE mytable.x > :x_1)"
         )
-
+    
+    def test_annotations(self):
+        """test that annotated clause constructs use the 
+        decorated class' compiler.
+        
+        """
+        t1 = table('t1', column('c1'), column('c2'))
+        
+        dispatch = Select._compiler_dispatch
+        try:
+            @compiles(Select)
+            def compile(element, compiler, **kw):
+                return "OVERRIDE"
+            
+            s1 = select([t1])
+            self.assert_compile(
+                s1, "OVERRIDE"
+            )
+            self.assert_compile(
+                s1._annotate({}),
+                "OVERRIDE"
+            )
+        finally:
+            Select._compiler_dispatch = dispatch
+            
     def test_dialect_specific(self):
         class AddThingy(DDLElement):
             __visit_name__ = 'add_thingy'
