@@ -822,7 +822,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(VARCHAR(50),"VARCHAR(50 CHAR)")
 
         oracle8dialect = oracle.dialect()
-        oracle8dialect._supports_char_length = False
+        oracle8dialect.server_version_info = (8, 0)
         self.assert_compile(VARCHAR(50),"VARCHAR(50)",dialect=oracle8dialect)
 
         self.assert_compile(NVARCHAR(50),"NVARCHAR2(50)")
