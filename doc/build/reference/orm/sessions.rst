@@ -6,6 +6,8 @@ Sessions
 
 .. autofunction:: create_session
 
+.. autofunction:: make_transient
+
 .. autofunction:: scoped_session
 
 .. autofunction:: sessionmaker
