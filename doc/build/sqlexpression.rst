@@ -211,7 +211,7 @@ Connectionless / Implicit Execution
 ====================================
 
 
-We're executing our :class:`~sqlalchemy.sql.expression.Insert` using a :class:`~sqlalchemy.engine.base.Connection`.  There's two options that allow you to not have to deal with the connection part.  You can execute in the **connectionless** style, using the engine, which opens and closes a connection for you:
+We're executing our :class:`~sqlalchemy.sql.expression.Insert` using a :class:`~sqlalchemy.engine.base.Connection`.  There's two options that allow you to not have to deal with the connection part.  You can execute in the **connectionless** style, using the engine, which checks out from the connection pool a connection for you, performs the execute operation with that connection, and then checks the connection back into the pool upon completion of the operation:
 
 .. sourcecode:: pycon+sql
 
@@ -299,7 +299,7 @@ But another way, whose usefulness will become apparent later on, is to use the :
     name: fred ; fullname: Fred Flintstone
     name: mary ; fullname: Mary Contrary
 
-Result sets which have pending rows remaining should be explicitly closed before discarding.  While the resources referenced by the :class:`~sqlalchemy.engine.base.ResultProxy` will be closed when the object is garbage collected, it's better to make it explicit as some database APIs are very picky about such things:
+Result sets which have pending rows remaining should be explicitly closed before discarding.  While the cursor and connection resources referenced by the :class:`~sqlalchemy.engine.base.ResultProxy` will be respectively closed and returned to the connection pool when the object is garbage collected, it's better to make it explicit as some database APIs are very picky about such things:
 
 .. sourcecode:: pycon+sql
 
