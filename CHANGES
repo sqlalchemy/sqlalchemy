@@ -50,6 +50,20 @@ CHANGES
     those configured on the mapper.  False will make it
     as though order_by() was never called, while
     None is an active setting.
+
+  - An instance which is moved to "transient", has
+    an incomplete or missing set of primary key 
+    attributes, and contains expired attributes, will
+    raise an InvalidRequestError if an expired attribute
+    is accessed, instead of getting a recursion overflow.
+
+  - The make_transient() function is now in the generated
+    documentation.
+    
+  - make_transient() removes all "loader" callables from
+    the state being made transient, removing any
+    "expired" state - all unloaded attributes reset back
+    to undefined, None/empty on access.
     
 - sql
   - The warning emitted by the Unicode and String types

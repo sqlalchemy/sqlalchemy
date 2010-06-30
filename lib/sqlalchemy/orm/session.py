@@ -1592,11 +1592,19 @@ def make_transient(instance):
     such that it's as though the object were newly constructed,
     except retaining its values.
     
+    Attributes which were "expired" or deferred at the
+    instance level are reverted to undefined, and 
+    will not trigger any loads.
+    
     """
     state = attributes.instance_state(instance)
     s = _state_session(state)
     if s:
         s._expunge_state(state)
+
+    # remove expired state and 
+    # deferred callables
+    state.callables.clear()
     del state.key
     
     

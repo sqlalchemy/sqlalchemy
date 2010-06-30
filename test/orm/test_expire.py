@@ -221,7 +221,23 @@ class ExpireTest(_fixtures.FixtureTest):
         assert 'name' not in u.__dict__
         sess.add(u)
         assert u.name == 'jack'
+    
+    @testing.resolve_artifact_names
+    def test_no_instance_key_no_pk(self):
+        # same as test_no_instance_key, but the PK columns
+        # are absent.  ensure an error is raised.
+        mapper(User, users)
+        sess = create_session()
+        u = sess.query(User).get(7)
 
+        sess.expire(u, attribute_names=['name', 'id'])
+        sess.expunge(u)
+        attributes.instance_state(u).key = None
+        assert 'name' not in u.__dict__
+        sess.add(u)
+        assert_raises(sa_exc.InvalidRequestError, getattr, u, 'name')
+        
+        
     @testing.resolve_artifact_names
     def test_expire_preserves_changes(self):
         """test that the expire load operation doesn't revert post-expire changes"""

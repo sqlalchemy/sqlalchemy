@@ -250,6 +250,15 @@ class SessionTest(_fixtures.FixtureTest):
         sess.add(u1)
         assert u1 in sess.new
         
+        # test expired attributes 
+        # get unexpired
+        u1 = sess.query(User).first()
+        sess.expire(u1)
+        make_transient(u1)
+        assert u1.id is None
+        assert u1.name is None
+
+        
     @testing.resolve_artifact_names
     def test_autoflush_expressions(self):
         """test that an expression which is dependent on object state is 

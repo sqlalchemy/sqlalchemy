@@ -2407,6 +2407,14 @@ def _load_scalar_attributes(state, attribute_names):
         if has_key:
             identity_key = state.key
         else:
+            # this codepath is rare - only valid when inside a flush, and the
+            # object is becoming persistent but hasn't yet been assigned an identity_key.
+            # check here to ensure we have the attrs we need.
+            pk_attrs = [mapper._get_col_to_prop(col).key for col in mapper.primary_key]
+            if state.expired_attributes.intersection(pk_attrs):
+                raise sa_exc.InvalidRequestError("Instance %s cannot be refreshed - it's not "
+                                                " persistent and does not "
+                                                "contain a full primary key." % state_str(state))
             identity_key = mapper._identity_key_from_state(state)
         
         if (_none_set.issubset(identity_key) and \
