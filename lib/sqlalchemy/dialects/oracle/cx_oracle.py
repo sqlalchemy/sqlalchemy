@@ -86,10 +86,11 @@ class _OracleNumeric(sqltypes.Numeric):
         # we apply a connection output handler that 
         # returns Decimal for positive precision + scale NUMBER 
         # types
+        
         if dialect.supports_native_decimal:
             if self.asdecimal and self.scale is None:
                 processors.to_decimal_processor_factory(Decimal)
-            elif not self.asdecimal and self.scale > 0:
+            elif not self.asdecimal:
                 return processors.to_float
             else:
                 return None
@@ -465,9 +466,15 @@ class OracleDialect_cx_oracle(OracleDialect):
             
         cx_Oracle = self.dbapi
         def output_type_handler(cursor, name, defaultType, size, precision, scale):
-            # convert all NUMBER with precision + positive scale to Decimal.
+            # convert all NUMBER with precision + positive scale to Decimal,
+            # or zero precision and 0 or neg scale, indicates "don't know",
             # this effectively allows "native decimal" mode.
-            if defaultType == cx_Oracle.NUMBER and precision and scale > 0:
+
+            if defaultType == cx_Oracle.NUMBER \
+                and (
+                    (precision and scale > 0) or \
+                    (not precision and scale <= 0)
+                ):
                 return cursor.var(
                             cx_Oracle.STRING, 
                             255, 

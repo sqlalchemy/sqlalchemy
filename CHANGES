@@ -131,6 +131,18 @@ CHANGES
   - Fixed ora-8 compatibility flags such that they
     don't cache a stale value from before the first
     database connection actually occurs. [ticket:1819]
+
+  - Oracle's "native decimal" metadata begins to return
+    ambiguous typing information about numerics
+    when columns are embedded in subqueries as well
+    as when ROWNUM is consulted with subqueries, as we 
+    do for limit/offset.  We've added these ambiguous 
+    conditions to the cx_oracle "convert to Decimal()" 
+    handler, so that we receive numerics as Decimal 
+    in more cases instead of as floats.  These are 
+    then converted, if requested, into Integer
+    or Float, or otherwise kept as the lossless
+    Decimal [ticket:1840].
     
 - firebird
   - Fixed incorrect signature in do_execute(), error 

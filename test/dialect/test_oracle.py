@@ -758,6 +758,90 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             t1.drop()
     
+    @testing.provide_metadata
+    def test_numerics_broken_inspection(self):
+        """Numeric scenarios where Oracle type info is 'broken',
+        returning us precision, scale of the form (0, 0) or (0, -127).
+        We convert to Decimal and let int()/float() processors take over.
+        
+        """
+        
+        # this test requires cx_oracle 5
+        
+        foo = Table('foo', metadata,
+            Column('idata', Integer),
+            Column('ndata', Numeric(20, 2)),
+            Column('fdata', Float()),
+        )
+        foo.create()
+        
+        foo.insert().execute(
+            {'idata':5, 'ndata':Decimal("45.6"), 'fdata':45.68392}
+        )
+
+        stmt = """
+        SELECT 
+            idata,
+            ndata,
+            fdata
+        FROM foo
+        """
+        eq_(
+            testing.db.execute(stmt).fetchall(), 
+            [(5, Decimal('45.6'), 45.683920000000001)]
+        )
+        
+        stmt = """
+        SELECT 
+            (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
+            (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) FROM DUAL) AS ndata,
+            (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) AS fdata
+        FROM dual
+        """
+        eq_(
+            testing.db.execute(stmt).fetchall(), 
+            [(Decimal('5'), Decimal('45.6'), Decimal('45.68392'))]
+        )
+        eq_(
+            testing.db.execute(text(stmt, 
+                                typemap={
+                                        'idata':Integer(), 
+                                        'ndata':Numeric(20, 2), 
+                                        'fdata':Float()
+                                })).fetchall(),
+            [(5, Decimal('45.6'), 45.683920000000001)]
+        )
+        
+        stmt = """
+        SELECT 
+                anon_1.idata AS anon_1_idata,
+                anon_1.ndata AS anon_1_ndata,
+                anon_1.fdata AS anon_1_fdata
+        FROM (SELECT idata, ndata, fdata
+        FROM (
+            SELECT 
+                (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
+                (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) FROM DUAL) AS ndata,
+                (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) AS fdata
+            FROM dual
+        )
+        WHERE ROWNUM >= 0) anon_1
+        """
+        eq_(
+            testing.db.execute(stmt).fetchall(), 
+            [(Decimal('5'), Decimal('45.6'), Decimal('45.68392'))]
+        )
+        eq_(
+            testing.db.execute(text(stmt, 
+                                typemap={
+                                        'anon_1_idata':Integer(), 
+                                        'anon_1_ndata':Numeric(20, 2), 
+                                        'anon_1_fdata':Float()
+                                })).fetchall(),
+            [(5, Decimal('45.6'), 45.683920000000001)]
+        )
+
+        
     def test_reflect_dates(self):
         metadata = MetaData(testing.db)
         Table(
