@@ -1725,6 +1725,23 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON addresses.id = orders.address_id"
             , use_default_dialect=True
         )
+    
+    def test_common_mistake(self):
+        sess = create_session()
+        
+        subq = sess.query(User).subquery()
+        assert_raises_message(
+            sa_exc.ArgumentError, "You appear to be passing a clause expression",
+            sess.query(User).join, subq, User.name==subq.c.name)
+
+        subq = sess.query(Order).subquery()
+        assert_raises_message(
+            sa_exc.ArgumentError, "You appear to be passing a clause expression",
+            sess.query(User).join, subq, User.id==subq.c.user_id)
+
+        assert_raises_message(
+            sa_exc.ArgumentError, "You appear to be passing a clause expression",
+            sess.query(User).join, Order, User.id==Order.user_id)
         
     def test_single_prop(self):
         sess = create_session()

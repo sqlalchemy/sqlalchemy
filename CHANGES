@@ -6,6 +6,11 @@ CHANGES
 0.6.2
 =====
 - orm
+  - Query.join() will check for a call of the
+    form query.join(target, clause_expression), 
+    i.e. missing the tuple, and raise an informative
+    error message that this is the wrong calling form.
+    
   - Fixed bug regarding flushes on self-referential 
     bi-directional many-to-many relationships, where
     two objects made to mutually reference each other

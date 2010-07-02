@@ -1110,7 +1110,15 @@ class Query(object):
 
         if not from_joinpoint:
             self._reset_joinpoint()
-
+        
+        if len(keys) >= 2 and \
+                isinstance(keys[1], expression.ClauseElement) and \
+                not isinstance(keys[1], expression.FromClause):
+            raise sa_exc.ArgumentError(
+                        "You appear to be passing a clause expression as the second "
+                        "argument to query.join().   Did you mean to use the form "
+                        "query.join((target, onclause))?  Note the tuple.")
+            
         for arg1 in util.to_list(keys):
             if isinstance(arg1, tuple):
                 arg1, arg2 = arg1
@@ -1326,9 +1334,10 @@ class Query(object):
         if clause is None:
             raise sa_exc.InvalidRequestError(
                     "Could not find a FROM clause to join from")
-            
+
         clause = orm_join(clause, right, onclause, 
-                            isouter=outerjoin, join_to_left=join_to_left)
+                                isouter=outerjoin, join_to_left=join_to_left)
+            
         self._from_obj = self._from_obj + (clause,)
 
     def _reset_joinpoint(self):
