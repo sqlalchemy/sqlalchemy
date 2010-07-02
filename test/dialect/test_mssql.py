@@ -9,7 +9,7 @@ from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import pyodbc, mxodbc
 from sqlalchemy.engine import url
 from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, emits_warning_on
+from sqlalchemy.test.testing import eq_, emits_warning_on, assert_raises_message
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
@@ -751,6 +751,14 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
         connection = dialect.create_connect_args(u)
         eq_([['DRIVER={SQL Server};Server=hostspec;Database=database;UID=username;PWD=password'], {}], connection)
 
+    def test_bad_freetds_warning(self):
+        engine = engines.testing_engine()
+        def _bad_version(connection):
+            return (95, 10, 255)
+        engine.dialect._get_server_version_info = _bad_version
+        assert_raises_message(
+            exc.SAWarning, "Unrecognized server version info", engine.connect
+        )
 
 class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
     __only_on__ = 'mssql'

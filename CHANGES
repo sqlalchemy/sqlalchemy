@@ -148,6 +148,13 @@ CHANGES
     then converted, if requested, into Integer
     or Float, or otherwise kept as the lossless
     Decimal [ticket:1840].
+
+- mssql
+  - If server_version_info is outside the usual
+    range of (8, ), (9, ), (10, ), a warning is emitted
+    which suggests checking that the FreeTDS version 
+    configuration is using 7.0 or 8.0, not 4.2.
+    [ticket:1825]
     
 - firebird
   - Fixed incorrect signature in do_execute(), error 

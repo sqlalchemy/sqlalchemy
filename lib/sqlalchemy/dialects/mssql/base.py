@@ -1015,6 +1015,16 @@ class MSDialect(default.DefaultDialect):
     
     def initialize(self, connection):
         super(MSDialect, self).initialize(connection)
+        if self.server_version_info[0] not in range(8, 17):
+            # FreeTDS with version 4.2 seems to report here
+            # a number like "95.10.255".  Don't know what 
+            # that is.  So emit warning.
+            util.warn(
+                "Unrecognized server version info '%s'.   Version specific "
+                "behaviors may not function properly.   If using ODBC "
+                "with FreeTDS, ensure server version 7.0 or 8.0, not 4.2, "
+                "is configured in the FreeTDS configuration." %
+                ".".join(str(x) for x in self.server_version_info) )
         if self.server_version_info >= MS_2005_VERSION and \
                     'implicit_returning' not in self.__dict__:
             self.implicit_returning = True
