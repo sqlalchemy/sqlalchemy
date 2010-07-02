@@ -562,11 +562,14 @@ class QueuePool(Pool):
           connection object.  The function will be called with
           parameters.
 
-        :param pool_size: The size of the pool to be maintained. This
-          is the largest number of connections that will be kept
-          persistently in the pool. Note that the pool begins with no
-          connections; once this number of connections is requested,
-          that number of connections will remain. Defaults to 5.
+        :param pool_size: The size of the pool to be maintained,
+          defaults to 5. This is the largest number of connections that
+          will be kept persistently in the pool. Note that the pool
+          begins with no connections; once this number of connections
+          is requested, that number of connections will remain.
+          ``pool_size`` can be set to 0 to indicate no size limit; to
+          disable pooling, use a :class:`~sqlalchemy.pool.NullPool`
+          instead.
 
         :param max_overflow: The maximum overflow size of the
           pool. When the number of checked-out connections reaches the

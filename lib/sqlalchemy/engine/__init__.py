@@ -215,7 +215,10 @@ def create_engine(*args, **kwargs):
 
     :param pool_size=5: the number of connections to keep open
         inside the connection pool. This used with :class:`~sqlalchemy.pool.QueuePool` as
-        well as :class:`~sqlalchemy.pool.SingletonThreadPool`.
+        well as :class:`~sqlalchemy.pool.SingletonThreadPool`.  With
+        :class:`~sqlalchemy.pool.QueuePool`, a ``pool_size`` setting
+        of 0 indicates no limit; to disable pooling, set ``poolclass`` to
+        :class:`~sqlalchemy.pool.NullPool` instead.
 
     :param pool_recycle=-1: this setting causes the pool to recycle
         connections after the given number of seconds has passed. It
