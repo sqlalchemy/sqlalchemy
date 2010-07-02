@@ -125,7 +125,39 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             )
         finally:
             Select._compiler_dispatch = dispatch
+            if hasattr(Select, '_compiler_dispatcher'):
+                del Select._compiler_dispatcher
             
+    def test_default_on_existing(self):
+        """test that the existing compiler function remains
+        as 'default' when overriding the compilation of an
+        existing construct."""
+        
+
+        t1 = table('t1', column('c1'), column('c2'))
+        
+        dispatch = Select._compiler_dispatch
+        try:
+            
+            @compiles(Select, 'sqlite')
+            def compile(element, compiler, **kw):
+                return "OVERRIDE"
+            
+            s1 = select([t1])
+            self.assert_compile(
+                s1, "SELECT t1.c1, t1.c2 FROM t1",
+            )
+
+            from sqlalchemy.dialects.sqlite import base as sqlite
+            self.assert_compile(
+                s1, "OVERRIDE",
+                dialect=sqlite.dialect()
+            )
+        finally:
+            Select._compiler_dispatch = dispatch
+            if hasattr(Select, '_compiler_dispatcher'):
+                del Select._compiler_dispatcher
+        
     def test_dialect_specific(self):
         class AddThingy(DDLElement):
             __visit_name__ = 'add_thingy'

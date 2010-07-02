@@ -170,7 +170,15 @@ CHANGES
      subclass.  It cannot, however, define one that is 
      not present in the __table__, and the error message
      here now works.  [ticket:1821]
-     
+
+- compiler extension
+  - The 'default' compiler is automatically copied over
+    when overriding the compilation of a built in
+    clause construct, so no KeyError is raised if the
+    user-defined compiler is specific to certain 
+    backends and compilation for a different backend
+    is invoked. [ticket:1838]
+    
 - documentation
   - Added documentation for the Inspector. [ticket:1820]
 

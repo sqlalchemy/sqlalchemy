@@ -198,9 +198,13 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
 def compiles(class_, *specs):
     def decorate(fn):
         existing = class_.__dict__.get('_compiler_dispatcher', None)
+        existing_dispatch = class_.__dict__.get('_compiler_dispatch')
         if not existing:
             existing = _dispatcher()
-
+            
+            if existing_dispatch:
+                existing.specs['default'] = existing_dispatch
+                
             # TODO: why is the lambda needed ?
             setattr(class_, '_compiler_dispatch', lambda *arg, **kw: existing(*arg, **kw))
             setattr(class_, '_compiler_dispatcher', existing)
@@ -208,6 +212,7 @@ def compiles(class_, *specs):
         if specs:
             for s in specs:
                 existing.specs[s] = fn
+
         else:
             existing.specs['default'] = fn
         return fn
