@@ -1022,10 +1022,24 @@ class Numeric(_DateAffinity, TypeEngine):
     def _expression_adaptations(self):
         return {
             operators.mul:{
-                Interval:Interval
+                Interval:Interval,
+                Numeric:Numeric,
             },
+            # Py2K
+            operators.div:{
+                Numeric:Numeric,
+            },
+            # end Py2K
+            operators.truediv:{
+                Numeric:Numeric,
+            },
+            operators.add:{
+                Numeric:Numeric,
+            },
+            operators.sub:{
+                Numeric:Numeric,
+            }
         }
-
 
 class Float(Numeric):
     """A type for ``float`` numbers.  
@@ -1059,6 +1073,29 @@ class Float(Numeric):
             return processors.to_decimal_processor_factory(_python_Decimal)
         else:
             return None
+
+    @util.memoized_property
+    def _expression_adaptations(self):
+        return {
+            operators.mul:{
+                Interval:Interval,
+                Numeric:Float,
+            },
+            # Py2K
+            operators.div:{
+                Numeric:Float,
+            },
+            # end Py2K
+            operators.truediv:{
+                Numeric:Float,
+            },
+            operators.add:{
+                Numeric:Float,
+            },
+            operators.sub:{
+                Numeric:Float,
+            }
+        }
 
 
 class DateTime(_DateAffinity, TypeEngine):

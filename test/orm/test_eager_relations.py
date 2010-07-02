@@ -1710,8 +1710,11 @@ class SubqueryTest(_base.MappedTest):
             })
 
             session = create_session()
-            session.add(User(name='joe', tags=[Tag(score1=5.0, score2=3.0), Tag(score1=55.0, score2=1.0)]))
-            session.add(User(name='bar', tags=[Tag(score1=5.0, score2=4.0), Tag(score1=50.0, score2=1.0), Tag(score1=15.0, score2=2.0)]))
+            session.add(User(name='joe', tags=[Tag(score1=5.0, score2=3.0), 
+                                                Tag(score1=55.0, score2=1.0)]))
+            session.add(User(name='bar', tags=[Tag(score1=5.0, score2=4.0), 
+                                                Tag(score1=50.0, score2=1.0), 
+                                                Tag(score1=15.0, score2=2.0)]))
             session.flush()
             session.expunge_all()
 

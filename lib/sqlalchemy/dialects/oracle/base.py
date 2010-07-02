@@ -578,9 +578,9 @@ class OracleIdentifierPreparer(compiler.IdentifierPreparer):
         
 class OracleExecutionContext(default.DefaultExecutionContext):
     def fire_sequence(self, seq):
-        return self._execute_scalar("SELECT " + 
+        return int(self._execute_scalar("SELECT " + 
                     self.dialect.identifier_preparer.format_sequence(seq) + 
-                    ".nextval FROM DUAL")
+                    ".nextval FROM DUAL"))
     
 class OracleDialect(default.DefaultDialect):
     name = 'oracle'

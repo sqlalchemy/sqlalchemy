@@ -1057,7 +1057,8 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
 
         seq = Sequence("My_Seq", schema="Some_Schema")
         assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
-
+    
+    
 class ExecuteTest(TestBase):
     __only_on__ = 'oracle'
     
@@ -1067,7 +1068,17 @@ class ExecuteTest(TestBase):
             testing.db.execute("/*+ this is a comment */ SELECT 1 FROM DUAL").fetchall(),
             [(1,)]
         )
-
+    
+    def test_sequences_are_integers(self):
+        seq = Sequence('foo_seq')
+        seq.create(testing.db)
+        try:
+            val = testing.db.execute(seq)
+            eq_(val, 1)
+            assert type(val) is int
+        finally:
+            seq.drop(testing.db)
+            
     @testing.provide_metadata
     def test_limit_offset_for_update(self):
         # oracle can't actually do the ROWNUM thing with FOR UPDATE
