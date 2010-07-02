@@ -2236,7 +2236,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __mapper_args__ = dict(polymorphic_identity='specific')
 
         assert Specific.__table__ is Generic.__table__
-        eq_(Generic.__table__.c.keys(),['type', 'value', 'id'])
+        eq_(Generic.__table__.c.keys(),['id', 'type', 'value'])
         assert class_mapper(Specific).polymorphic_on is Generic.__table__.c.type
         eq_(class_mapper(Specific).polymorphic_identity, 'specific')
 
@@ -2262,8 +2262,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             id = Column(Integer, ForeignKey('generic.id'), primary_key=True)
         eq_(Generic.__table__.name,'generic')
         eq_(Specific.__table__.name,'specific')
-        eq_(Generic.__table__.c.keys(),['python_type', 'timestamp', 'id'])
-        eq_(Specific.__table__.c.keys(),['id', 'timestamp'])
+        eq_(Generic.__table__.c.keys(),['timestamp', 'id', 'python_type'])
+        eq_(Specific.__table__.c.keys(),['timestamp', 'id'])
         eq_(Generic.__table__.kwargs,{'mysql_engine': 'InnoDB'})
         eq_(Specific.__table__.kwargs,{'mysql_engine': 'InnoDB'})
             
@@ -2291,13 +2291,13 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             id = Column(Integer, ForeignKey('basetype.id'), primary_key=True)
 
         eq_(BaseType.__table__.name,'basetype')
-        eq_(BaseType.__table__.c.keys(),['type', 'id', 'value', 'timestamp'])
+        eq_(BaseType.__table__.c.keys(),['timestamp', 'type', 'id', 'value', ])
         eq_(BaseType.__table__.kwargs,{'mysql_engine': 'InnoDB'})
 
         assert Single.__table__ is BaseType.__table__
 
         eq_(Joined.__table__.name,'joined')
-        eq_(Joined.__table__.c.keys(),['id','timestamp'])
+        eq_(Joined.__table__.c.keys(),['timestamp','id'])
         eq_(Joined.__table__.kwargs,{'mysql_engine': 'InnoDB'})
             
     def test_non_propagating_mixin(self):
@@ -2422,3 +2422,20 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert model_col is not mixin_col
         eq_(model_col.name, 'data')
         assert model_col.type.__class__ is Integer
+
+    def test_mixin_column_ordering(self):
+        
+        class Foo(object):
+            col1 = Column(Integer)
+            col3 = Column(Integer)
+            
+        class Bar(object):
+            col2 = Column(Integer)
+            col4 = Column(Integer)
+            
+        class Model(Base, Foo, Bar):
+            id = Column(Integer, primary_key=True)
+            __tablename__ = 'model'
+
+        eq_(Model.__table__.c.keys(),
+            ['col1', 'col3', 'col2', 'col4', 'id'])

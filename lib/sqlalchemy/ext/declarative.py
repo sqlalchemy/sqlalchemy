@@ -673,7 +673,8 @@ def _as_declarative(cls, classname, dict_):
                         if name not in dict_ and not (
                                 '__table__' in dict_ and name in dict_['__table__'].c
                                 ):
-                            potential_columns[name]=column_copies[obj]=obj.copy()
+                            potential_columns[name] = column_copies[obj] = obj.copy()
+                            column_copies[obj]._creation_order = obj._creation_order
                     elif isinstance(obj, RelationshipProperty):
                         raise exceptions.InvalidRequestError(
                                             "relationships are not allowed on "
