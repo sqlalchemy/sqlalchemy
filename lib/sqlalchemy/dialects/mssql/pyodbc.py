@@ -121,13 +121,16 @@ class _MSNumeric_pyodbc(sqltypes.Numeric):
         else:
             if (len(value._int) - 1) > value.adjusted():
                 result = "%s%s.%s" % (
-                        (value < 0 and '-' or ''),
-                        "".join([str(s) for s in value._int][0:value.adjusted() + 1]),
-                        "".join([str(s) for s in value._int][value.adjusted() + 1:]))
+                (value < 0 and '-' or ''),
+                "".join(
+                    [str(s) for s in value._int][0:value.adjusted() + 1]),
+                "".join(
+                    [str(s) for s in value._int][value.adjusted() + 1:]))
             else:
                 result = "%s%s" % (
-                        (value < 0 and '-' or ''),
-                        "".join([str(s) for s in value._int][0:value.adjusted() + 1]))
+                (value < 0 and '-' or ''),
+                "".join(
+                    [str(s) for s in value._int][0:value.adjusted() + 1]))
         return result
     
     
@@ -135,7 +138,8 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
     _embedded_scope_identity = False
     
     def pre_exec(self):
-        """where appropriate, issue "select scope_identity()" in the same statement.
+        """where appropriate, issue "select scope_identity()" in the same
+        statement.
         
         Background on why "scope_identity()" is preferable to "@@identity":
         http://msdn.microsoft.com/en-us/library/ms190315.aspx
@@ -148,7 +152,8 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
         
         super(MSExecutionContext_pyodbc, self).pre_exec()
 
-        # don't embed the scope_identity select into an "INSERT .. DEFAULT VALUES"
+        # don't embed the scope_identity select into an 
+        # "INSERT .. DEFAULT VALUES"
         if self._select_lastrowid and \
                 self.dialect.use_scope_identity and \
                 len(self.parameters[0]):
@@ -159,7 +164,8 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
     def post_exec(self):
         if self._embedded_scope_identity:
             # Fetch the last inserted id from the manipulated statement
-            # We may have to skip over a number of result sets with no data (due to triggers, etc.)
+            # We may have to skip over a number of result sets with 
+            # no data (due to triggers, etc.)
             while True:
                 try:
                     # fetchall() ensures the cursor is consumed 
@@ -192,6 +198,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     def __init__(self, description_encoding='latin-1', **params):
         super(MSDialect_pyodbc, self).__init__(**params)
         self.description_encoding = description_encoding
-        self.use_scope_identity = self.dbapi and hasattr(self.dbapi.Cursor, 'nextset')
+        self.use_scope_identity = self.dbapi and \
+                        hasattr(self.dbapi.Cursor, 'nextset')
         
 dialect = MSDialect_pyodbc

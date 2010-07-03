@@ -141,7 +141,9 @@ class InfoSQLCompiler(compiler.SQLCompiler):
 class InfoDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, first_pk=False):
         colspec = self.preparer.format_column(column)
-        if column.primary_key and len(column.foreign_keys)==0 and column.autoincrement and \
+        if column.primary_key and \
+                    len(column.foreign_keys)==0 and \
+                    column.autoincrement and \
            isinstance(column.type, sqltypes.Integer) and first_pk:
             colspec += " SERIAL"
         else:
@@ -158,7 +160,8 @@ class InfoDDLCompiler(compiler.DDLCompiler):
 
 class InfoIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(self, dialect):
-        super(InfoIdentifierPreparer, self).__init__(dialect, initial_quote="'")
+        super(InfoIdentifierPreparer, self).\
+                        __init__(dialect, initial_quote="'")
 
     def format_constraint(self, constraint):
         # informix doesnt support names for constraints
@@ -199,16 +202,19 @@ class InformixDialect(default.DefaultDialect):
         return [row[0] for row in connection.execute(s)]
 
     def has_table(self, connection, table_name, schema=None):
-        cursor = connection.execute("""select tabname from systables where tabname=?""", table_name.lower())
+        cursor = connection.execute(
+                """select tabname from systables where tabname=?""",
+                table_name.lower())
         return cursor.first() is not None
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
-        c = connection.execute ("""select colname , coltype , collength , t3.default , t1.colno from
-                            syscolumns as t1 , systables as t2 , OUTER sysdefaults as t3
-                                    where t1.tabid = t2.tabid and t2.tabname=? 
-                                      and t3.tabid = t2.tabid and t3.colno = t1.colno
-                                    order by t1.colno""", table.name.lower())
+        c = connection.execute(
+            """select colname, coltype, collength, t3.default, t1.colno from
+                syscolumns as t1 , systables as t2 , OUTER sysdefaults as t3
+                where t1.tabid = t2.tabid and t2.tabname=? 
+                  and t3.tabid = t2.tabid and t3.colno = t1.colno
+                order by t1.colno""", table.name.lower())
         columns = []
         for name, colattr, collength, default, colno in rows:
             name = name.lower()
@@ -250,7 +256,8 @@ class InformixDialect(default.DefaultDialect):
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
         # FK
-        c = connection.execute("""select t1.constrname as cons_name , t1.constrtype as cons_type ,
+        c = connection.execute(
+        """select t1.constrname as cons_name , t1.constrtype as cons_type ,
                  t4.colname as local_column , t7.tabname as remote_table ,
                  t6.colname as remote_column
             from sysconstraints as t1 , systables as t2 ,
@@ -261,7 +268,8 @@ class InformixDialect(default.DefaultDialect):
              and t3.tabid = t2.tabid and t3.idxname = t1.idxname
              and t4.tabid = t2.tabid and t4.colno = t3.part1
              and t5.constrid = t1.constrid and t8.constrid = t5.primary
-             and t6.tabid = t5.ptabid and t6.colno = t9.part1 and t9.idxname = t8.idxname
+             and t6.tabid = t5.ptabid and t6.colno = t9.part1 and t9.idxname =
+             t8.idxname
              and t7.tabid = t5.ptabid""", table.name.lower())
 
 
@@ -276,11 +284,13 @@ class InformixDialect(default.DefaultDialect):
 
         fkeys = util.defaultdict(fkey_rec)
 
-        for cons_name, cons_type, local_column, remote_table, remote_column in rows:
+        for cons_name, cons_type, local_column, \
+                    remote_table, remote_column in rows:
 
             rec = fkeys[cons_name]
             rec['name'] = cons_name
-            local_cols, remote_cols = rec['constrained_columns'], rec['referred_columns']
+            local_cols, remote_cols = \
+                        rec['constrained_columns'], rec['referred_columns']
 
             if not rec['referred_table']:
                 rec['referred_table'] = remote_table
@@ -292,12 +302,14 @@ class InformixDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
-        c = connection.execute("""select t4.colname as local_column
-                from sysconstraints as t1 , systables as t2 ,
-                     sysindexes as t3 , syscolumns as t4
-               where t1.tabid = t2.tabid and t2.tabname=? and t1.constrtype = 'P'
-                 and t3.tabid = t2.tabid and t3.idxname = t1.idxname
-                 and t4.tabid = t2.tabid and t4.colno = t3.part1""", table.name.lower())
+        c = connection.execute(
+            """select t4.colname as local_column
+            from sysconstraints as t1 , systables as t2 ,
+                 sysindexes as t3 , syscolumns as t4
+           where t1.tabid = t2.tabid and t2.tabname=? and t1.constrtype = 'P'
+             and t3.tabid = t2.tabid and t3.idxname = t1.idxname
+             and t4.tabid = t2.tabid and t4.colno = t3.part1""",
+             table.name.lower())
         return [r[0] for r in c.fetchall()]
 
     @reflection.cache

@@ -18,23 +18,30 @@ Connection is via DSN::
 Execution Modes
 ~~~~~~~~~~~~~~~
 
-mxODBC features two styles of statement execution, using the ``cursor.execute()``
-and ``cursor.executedirect()`` methods (the second being an extension to the 
-DBAPI specification).   The former makes use of the native
-parameter binding services of the ODBC driver, while the latter uses string escaping.
-The primary advantage to native parameter binding is that the same statement, when
-executed many times, is only prepared once.   Whereas the primary advantage to the
-latter is that the rules for bind parameter placement are relaxed.   MS-SQL has very 
-strict rules for native binds, including that they cannot be placed within the argument
-lists of function calls, anywhere outside the FROM, or even within subqueries within the
-FROM clause - making the usage of bind parameters within SELECT statements impossible for 
-all but the most simplistic statements.  For this reason, the mxODBC dialect uses the 
-"native" mode by default only for INSERT, UPDATE, and DELETE statements, and uses the
-escaped string mode for all other statements.   This behavior can be controlled completely
-via :meth:`~sqlalchemy.sql.expression.Executable.execution_options`
-using the ``native_odbc_execute`` flag with a value of ``True`` or ``False``, where a value of 
-``True`` will unconditionally use native bind parameters and a value of ``False`` will 
-uncondtionally use string-escaped parameters.
+mxODBC features two styles of statement execution, using the
+``cursor.execute()`` and ``cursor.executedirect()`` methods (the second being
+an extension to the DBAPI specification). The former makes use of a particular
+API call specific to the SQL Server Native Client ODBC driver known
+SQLDescribeParam, while the latter does not.
+
+mxODBC apparently only makes repeated use of a single prepared statement
+when SQLDescribeParam is used. The advantage to prepared statement reuse is
+one of performance. The disadvantage is that SQLDescribeParam has a limited
+set of scenarios in which bind parameters are understood, including that they
+cannot be placed within the argument lists of function calls, anywhere outside
+the FROM, or even within subqueries within the FROM clause - making the usage
+of bind parameters within SELECT statements impossible for all but the most
+simplistic statements.
+
+For this reason, the mxODBC dialect uses the "native" mode by default only for
+INSERT, UPDATE, and DELETE statements, and uses the escaped string mode for
+all other statements. 
+
+This behavior can be controlled via
+:meth:`~sqlalchemy.sql.expression.Executable.execution_options` using the
+``native_odbc_execute`` flag with a value of ``True`` or ``False``, where a
+value of ``True`` will unconditionally use native bind parameters and a value
+of ``False`` will uncondtionally use string-escaped parameters.
 
 """
 
@@ -46,7 +53,8 @@ from sqlalchemy import util
 from sqlalchemy.connectors.mxodbc import MxODBCConnector
 from sqlalchemy.dialects.mssql.pyodbc import MSExecutionContext_pyodbc
 from sqlalchemy.dialects.mssql.base import (MSExecutionContext, MSDialect, 
-                                            MSSQLCompiler, MSSQLStrictCompiler,
+                                            MSSQLCompiler,
+                                            MSSQLStrictCompiler,
                                             _MSDateTime, _MSDate, TIME)
 
 

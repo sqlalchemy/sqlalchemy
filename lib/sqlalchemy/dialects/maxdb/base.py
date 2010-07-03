@@ -479,7 +479,8 @@ class MaxDBCompiler(compiler.SQLCompiler):
         'UTCDATE', 'UTCDIFF'])
 
     def visit_mod(self, binary, **kw):
-        return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+        return "mod(%s, %s)" % \
+                    (self.process(binary.left), self.process(binary.right))
         
     def default_from(self):
         return ' FROM DUAL'
@@ -532,8 +533,9 @@ class MaxDBCompiler(compiler.SQLCompiler):
         if sequence.optional:
             return None
         else:
-            return (self.dialect.identifier_preparer.format_sequence(sequence) +
-                    ".NEXTVAL")
+            return (
+                self.dialect.identifier_preparer.format_sequence(sequence) +
+                ".NEXTVAL")
 
     class ColumnSnagger(visitors.ClauseVisitor):
         def __init__(self):
@@ -862,7 +864,8 @@ class MaxDBDialect(default.DefaultDialect):
 
     def _get_default_schema_name(self, connection):
         return self.identifier_preparer._normalize_name(
-                connection.execute('SELECT CURRENT_SCHEMA FROM DUAL').scalar())
+                connection.execute(
+                        'SELECT CURRENT_SCHEMA FROM DUAL').scalar())
 
     def has_table(self, connection, table_name, schema=None):
         denormalize = self.identifier_preparer._denormalize_name
@@ -1027,8 +1030,9 @@ class MaxDBDialect(default.DefaultDialect):
                              autoload=True, autoload_with=connection,
                              **table_kw)
 
-            constraint = schema.ForeignKeyConstraint(columns, referants, link_to_name=True,
-                                                     **constraint_kw)
+            constraint = schema.ForeignKeyConstraint(
+                            columns, referants, link_to_name=True,
+                            **constraint_kw)
             table.append_constraint(constraint)
 
     def has_sequence(self, connection, name):

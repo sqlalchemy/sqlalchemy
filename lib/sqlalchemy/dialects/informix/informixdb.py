@@ -38,7 +38,8 @@ class InformixDialect_informixdb(InformixDialect):
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):
-            return 'closed the connection' in str(e) or 'connection not open' in str(e)
+            return 'closed the connection' in str(e) \
+                    or 'connection not open' in str(e)
         else:
             return False
 

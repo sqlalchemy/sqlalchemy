@@ -114,7 +114,8 @@ class MxODBCConnector(Connector):
             return False
 
     def _get_server_version_info(self, connection):
-        # eGenix suggests using conn.dbms_version instead of what we're doing here
+        # eGenix suggests using conn.dbms_version instead 
+        # of what we're doing here
         dbapi_con = connection.connection
         version = []
         r = re.compile('[.\-]')

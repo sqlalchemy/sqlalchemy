@@ -1,4 +1,5 @@
-from sqlalchemy.dialects.mssql import base, pyodbc, adodbapi, pymssql, zxjdbc, mxodbc
+from sqlalchemy.dialects.mssql import base, pyodbc, adodbapi, \
+                                    pymssql, zxjdbc, mxodbc
 
 base.dialect = pyodbc.dialect
 

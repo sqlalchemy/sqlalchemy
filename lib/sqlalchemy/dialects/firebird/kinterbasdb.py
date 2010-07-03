@@ -13,11 +13,12 @@ The connection URL is of the form
 
 Kinterbasedb backend specific keyword arguments are:
 
-* type_conv - select the kind of mapping done on the types: by default SQLAlchemy
-  uses 200 with Unicode, datetime and decimal support (see details__).
+* type_conv - select the kind of mapping done on the types: by default  
+  SQLAlchemy uses 200 with Unicode, datetime and decimal support (see
+  details__).
 
-* concurrency_level - set the backend policy with regards to threading issues: by default
-  SQLAlchemy uses policy 1 (see details__).
+* concurrency_level - set the backend policy with regards to threading 
+  issues: by default SQLAlchemy uses policy 1 (see details__).
 
 * enable_rowcount - True by default, setting this to False disables 
   the usage of "cursor.rowcount" with the 
@@ -29,9 +30,10 @@ Kinterbasedb backend specific keyword arguments are:
   the cursor after a non-result-returning statement, rowcount must be 
   called, if at all, before the result object is returned.   Additionally,
   cursor.rowcount may not return correct results with older versions
-  of Firebird, and setting this flag to False will also cause the SQLAlchemy ORM
-  to ignore its usage. The behavior can also be controlled on a per-execution 
-  basis using the `enable_rowcount` option with :meth:`execution_options()`::
+  of Firebird, and setting this flag to False will also cause the 
+  SQLAlchemy ORM to ignore its usage. The behavior can also be controlled on a
+  per-execution basis using the `enable_rowcount` option with
+  :meth:`execution_options()`::
   
       conn = engine.connect().execution_options(enable_rowcount=True)
       r = conn.execute(stmt)
@@ -81,7 +83,8 @@ class FBDialect_kinterbasdb(FBDialect):
         
     )
     
-    def __init__(self, type_conv=200, concurrency_level=1, enable_rowcount=True, **kwargs):
+    def __init__(self, type_conv=200, concurrency_level=1,
+                            enable_rowcount=True, **kwargs):
         super(FBDialect_kinterbasdb, self).__init__(**kwargs)
         self.enable_rowcount = enable_rowcount
         self.type_conv = type_conv
@@ -104,7 +107,8 @@ class FBDialect_kinterbasdb(FBDialect):
         util.coerce_kw_type(opts, 'type_conv', int)
         
         type_conv = opts.pop('type_conv', self.type_conv)
-        concurrency_level = opts.pop('concurrency_level', self.concurrency_level)
+        concurrency_level = opts.pop('concurrency_level',
+                                    self.concurrency_level)
         
         if self.dbapi is not None:
             initialized = getattr(self.dbapi, 'initialized', None)
@@ -113,7 +117,8 @@ class FBDialect_kinterbasdb(FBDialect):
                 # http://kinterbasdb.cvs.sourceforge.net/viewvc/kinterbasdb/Kinterbasdb-3.0/__init__.py?r1=1.95&r2=1.96
                 initialized = getattr(self.dbapi, '_initialized', False)
             if not initialized:
-                self.dbapi.init(type_conv=type_conv, concurrency_level=concurrency_level)
+                self.dbapi.init(type_conv=type_conv,
+                                    concurrency_level=concurrency_level)
         return ([], opts)
 
     def _get_server_version_info(self, connection):
@@ -136,11 +141,13 @@ class FBDialect_kinterbasdb(FBDialect):
         version = fbconn.server_version
         m = match('\w+-V(\d+)\.(\d+)\.(\d+)\.(\d+) \w+ (\d+)\.(\d+)', version)
         if not m:
-            raise AssertionError("Could not determine version from string '%s'" % version)
+            raise AssertionError(
+                    "Could not determine version from string '%s'" % version)
         return tuple([int(x) for x in m.group(5, 6, 4)])
 
     def is_disconnect(self, e):
-        if isinstance(e, (self.dbapi.OperationalError, self.dbapi.ProgrammingError)):
+        if isinstance(e, (self.dbapi.OperationalError,
+                            self.dbapi.ProgrammingError)):
             msg = str(e)
             return ('Unable to complete network request to host' in msg or
                     'Invalid connection state' in msg or

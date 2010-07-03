@@ -9,7 +9,8 @@ import sys
 class MSDateTime_adodbapi(MSDateTime):
     def result_processor(self, dialect, coltype):
         def process(value):
-            # adodbapi will return datetimes with empty time values as datetime.date() objects.
+            # adodbapi will return datetimes with empty time 
+            # values as datetime.date() objects.
             # Promote them back to full datetime.datetime()
             if type(value) is datetime.date:
                 return datetime.datetime(value.year, value.month, value.day)
@@ -41,7 +42,8 @@ class MSDialect_adodbapi(MSDialect):
 
         connectors = ["Provider=SQLOLEDB"]
         if 'port' in keys:
-            connectors.append ("Data Source=%s, %s" % (keys.get("host"), keys.get("port")))
+            connectors.append ("Data Source=%s, %s" % 
+                                (keys.get("host"), keys.get("port")))
         else:
             connectors.append ("Data Source=%s" % keys.get("host"))
         connectors.append ("Initial Catalog=%s" % keys.get("database"))
@@ -54,6 +56,7 @@ class MSDialect_adodbapi(MSDialect):
         return [[";".join (connectors)], {}]
 
     def is_disconnect(self, e):
-        return isinstance(e, self.dbapi.adodbapi.DatabaseError) and "'connection failure'" in str(e)
+        return isinstance(e, self.dbapi.adodbapi.DatabaseError) and \
+                            "'connection failure'" in str(e)
 
 dialect = MSDialect_adodbapi

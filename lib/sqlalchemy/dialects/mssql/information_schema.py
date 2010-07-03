@@ -64,9 +64,14 @@ ref_constraints = Table("REFERENTIAL_CONSTRAINTS", ischema,
     Column("CONSTRAINT_CATALOG", CoerceUnicode, key="constraint_catalog"),
     Column("CONSTRAINT_SCHEMA", CoerceUnicode, key="constraint_schema"),
     Column("CONSTRAINT_NAME", CoerceUnicode, key="constraint_name"),
-    Column("UNIQUE_CONSTRAINT_CATLOG", CoerceUnicode, key="unique_constraint_catalog"),  # TODO: is CATLOG misspelled ?
-    Column("UNIQUE_CONSTRAINT_SCHEMA", CoerceUnicode, key="unique_constraint_schema"),
-    Column("UNIQUE_CONSTRAINT_NAME", CoerceUnicode, key="unique_constraint_name"),
+    # TODO: is CATLOG misspelled ?
+    Column("UNIQUE_CONSTRAINT_CATLOG", CoerceUnicode,
+                                        key="unique_constraint_catalog"),  
+                                        
+    Column("UNIQUE_CONSTRAINT_SCHEMA", CoerceUnicode,
+                                        key="unique_constraint_schema"),
+    Column("UNIQUE_CONSTRAINT_NAME", CoerceUnicode,
+                                        key="unique_constraint_name"),
     Column("MATCH_OPTION", String, key="match_option"),
     Column("UPDATE_RULE", String, key="update_rule"),
     Column("DELETE_RULE", String, key="delete_rule"),

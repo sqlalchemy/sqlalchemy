@@ -1,12 +1,12 @@
 __all__ = (
 #    'access',
-#    'firebird',
+    'firebird',
 #    'informix',
 #    'maxdb',
-#    'mssql',
+    'mssql',
     'mysql',
     'oracle',
     'postgresql',
     'sqlite',
-#    'sybase',
+    'sybase',
     )

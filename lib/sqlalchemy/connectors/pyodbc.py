@@ -43,15 +43,18 @@ class PyODBCConnector(Connector):
         if 'odbc_connect' in keys:
             connectors = [urllib.unquote_plus(keys.pop('odbc_connect'))]
         else:
-            dsn_connection = 'dsn' in keys or ('host' in keys and 'database' not in keys)
+            dsn_connection = 'dsn' in keys or \
+                            ('host' in keys and 'database' not in keys)
             if dsn_connection:
-                connectors= ['dsn=%s' % (keys.pop('host', '') or keys.pop('dsn', ''))]
+                connectors= ['dsn=%s' % (keys.pop('host', '') or \
+                            keys.pop('dsn', ''))]
             else:
                 port = ''
                 if 'port' in keys and not 'port' in query:
                     port = ',%d' % int(keys.pop('port'))
 
-                connectors = ["DRIVER={%s}" % keys.pop('driver', self.pyodbc_driver_name),
+                connectors = ["DRIVER={%s}" % 
+                                keys.pop('driver', self.pyodbc_driver_name),
                               'Server=%s%s' % (keys.pop('host', ''), port),
                               'Database=%s' % keys.pop('database', '') ]
 
@@ -62,12 +65,13 @@ class PyODBCConnector(Connector):
             else:
                 connectors.append("Trusted_Connection=Yes")
 
-            # if set to 'Yes', the ODBC layer will try to automagically convert 
-            # textual data from your database encoding to your client encoding 
-            # This should obviously be set to 'No' if you query a cp1253 encoded 
-            # database from a latin1 client... 
+            # if set to 'Yes', the ODBC layer will try to automagically
+            # convert textual data from your database encoding to your 
+            # client encoding.  This should obviously be set to 'No' if 
+            # you query a cp1253 encoded database from a latin1 client... 
             if 'odbc_autotranslate' in keys:
-                connectors.append("AutoTranslate=%s" % keys.pop("odbc_autotranslate"))
+                connectors.append("AutoTranslate=%s" %
+                                    keys.pop("odbc_autotranslate"))
 
             connectors.extend(['%s=%s' % (k,v) for k,v in keys.iteritems()])
         return [[";".join (connectors)], connect_args]
@@ -89,7 +93,9 @@ class PyODBCConnector(Connector):
 
         dbapi_con = connection.connection
 
-        self.freetds = bool(re.match(r".*libtdsodbc.*\.so",  dbapi_con.getinfo(pyodbc.SQL_DRIVER_NAME)))
+        self.freetds = bool(re.match(r".*libtdsodbc.*\.so", 
+                            dbapi_con.getinfo(pyodbc.SQL_DRIVER_NAME)
+                            ))
 
         # the "Py2K only" part here is theoretical.
         # have not tried pyodbc + python3.1 yet.
