@@ -165,6 +165,15 @@ CHANGES
     "CHARACTER SET" clause.  [ticket:1813]
   
 - declarative
+   - Added support for @classproperty to provide 
+     any kind of schema/mapping construct from a 
+     declarative mixin, including columns with foreign 
+     keys, relationships, column_property, deferred.
+     This solves all such issues on declarative mixins.
+     An error is raised if any MapperProperty subclass
+     is specified on a mixin without using @classproperty.
+     [ticket:1751] [ticket:1796] [ticket:1805]
+     
    - a mixin class can now define a column that matches
      one which is present on a __table__ defined on a 
      subclass.  It cannot, however, define one that is 

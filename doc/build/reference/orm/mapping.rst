@@ -91,3 +91,6 @@ Internals
 
 .. autoclass:: sqlalchemy.orm.mapper.Mapper
    :members:
+
+.. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
+  :members:

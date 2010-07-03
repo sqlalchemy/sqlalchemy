@@ -82,7 +82,7 @@ automatically::
     Base = declarative_base(bind=create_engine('sqlite://'))
 
 Alternatively, by way of the normal
-:class:`~sqlalchemy.schema.MetaData` behaviour, the ``bind`` attribute
+:class:`~sqlalchemy.schema.MetaData` behavior, the ``bind`` attribute
 of the class level accessor can be assigned at any time as follows::
 
     Base.metadata.bind = create_engine('sqlite://')
@@ -101,10 +101,7 @@ Configuring Relationships
 
 Relationships to other classes are done in the usual way, with the added
 feature that the class specified to :func:`~sqlalchemy.orm.relationship`
-may be a string name (note that :func:`~sqlalchemy.orm.relationship` is 
-only available as of SQLAlchemy 0.6beta2, and in all prior versions is known
-as :func:`~sqlalchemy.orm.relation`, 
-including 0.5 and 0.4).  The "class registry" associated with ``Base``
+may be a string name.  The "class registry" associated with ``Base``
 is used at mapper compilation time to resolve the name into the actual
 class object, which is expected to have been defined once the mapper
 configuration is used:: 
@@ -421,74 +418,199 @@ requires usage of :func:`~sqlalchemy.orm.util.polymorphic_union`::
         __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
     
 
-Mix-in Classes
+Mixin Classes
 ==============
 
 A common need when using :mod:`~sqlalchemy.ext.declarative` is to
 share some functionality, often a set of columns, across many
-classes. The normal python idiom would be to put this common code into
+classes. The normal Python idiom would be to put this common code into
 a base class and have all the other classes subclass this class.
 
 When using :mod:`~sqlalchemy.ext.declarative`, this need is met by
-using a "mix-in class". A mix-in class is one that isn't mapped to a
+using a "mixin class". A mixin class is one that isn't mapped to a
 table and doesn't subclass the declarative :class:`Base`. For example::
 
     class MyMixin(object):
     
-        __table_args__ = {'mysql_engine':'InnoDB'}             
-        __mapper_args__=dict(always_refresh=True)
+        __table_args__ = {'mysql_engine': 'InnoDB'}
+        __mapper_args__= {'always_refresh': True}
+        
         id =  Column(Integer, primary_key=True)
 
-        def foo(self):
-            return 'bar'+str(self.id)
+
+    class MyModel(Base,MyMixin):
+        __tablename__ = 'test'
+
+        name = Column(String(1000))
+
+Where above, the class ``MyModel`` will contain an "id" column
+as well as ``__table_args__`` and ``__mapper_args__`` defined
+by the ``MyMixin`` mixin class.
+
+Mixing in Columns
+~~~~~~~~~~~~~~~~~
+
+The most basic way to specify a column on a mixin is by simple 
+declaration::
+
+    class TimestampMixin(object):
+        created_at = Column(DateTime, default=func.now())
+
+    class MyModel(Base, TimestampMixin):
+        __tablename__ = 'test'
+
+        id =  Column(Integer, primary_key=True)
+        name = Column(String(1000))
+
+Where above, all declarative classes that include ``TimestampMixin``
+will also have a column ``created_at`` that applies a timestamp to 
+all row insertions.
+
+Those familiar with the SQLAlchemy expression language know that 
+the object identity of clause elements defines their role in a schema.
+Two ``Table`` objects ``a`` and ``b`` may both have a column called 
+``id``, but the way these are differentiated is that ``a.c.id`` 
+and ``b.c.id`` are two distinct Python objects, referencing their
+parent tables ``a`` and ``b`` respectively.
+
+In the case of the mixin column, it seems that only one
+:class:`Column` object is explicitly created, yet the ultimate 
+``created_at`` column above must exist as a distinct Python object
+for each separate destination class.  To accomplish this, the declarative
+extension creates a **copy** of each :class:`Column` object encountered on 
+a class that is detected as a mixin.
+
+This copy mechanism is limited to simple columns that have no foreign
+keys, as a :class:`ForeignKey` itself contains references to columns
+which can't be properly recreated at this level.  For columns that 
+have foreign keys, as well as for the variety of mapper-level constructs
+that require destination-explicit context, the
+:func:`~sqlalchemy.util.classproperty` decorator is provided so that
+patterns common to many classes can be defined as callables::
+
+    from sqlalchemy.util import classproperty
+    
+    class ReferenceAddressMixin(object):
+        @classproperty
+        def address_id(cls):
+            return Column(Integer, ForeignKey('address.id'))
+            
+    class User(Base, ReferenceAddressMixin):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        
+Where above, the ``address_id`` class-level callable is executed at the 
+point at which the ``User`` class is constructed, and the declarative
+extension can use the resulting :class:`Column` object as returned by
+the method without the need to copy it.
+
+Columns generated by :func:`~sqlalchemy.util.classproperty` can also be
+referenced by ``__mapper_args__`` to a limited degree, currently 
+by ``polymorphic_on`` and ``version_id_col``, by specifying the 
+classdecorator itself into the dictionary - the declarative extension
+will resolve them at class construction time::
+
+    class MyMixin:
+        @classproperty
+        def type_(cls):
+            return Column(String(50))
+
+        __mapper_args__= {'polymorphic_on':type_}
 
     class MyModel(Base,MyMixin):
         __tablename__='test'
-        name = Column(String(1000), nullable=False, index=True)
+        id =  Column(Integer, primary_key=True)
+    
+.. note:: The usage of :func:`~sqlalchemy.util.classproperty` with mixin 
+   columns is a new feature as of SQLAlchemy 0.6.2.
 
-As the above example shows, ``__table_args__`` and ``__mapper_args__``
-can both be abstracted out into a mix-in if you use common values for
-these across many classes.
+Mixing in Relationships
+~~~~~~~~~~~~~~~~~~~~~~~
 
-However, particularly in the case of ``__table_args__``, you may want
-to combine some parameters from several mix-ins with those you wish to
-define on the class iteself. To help with this, a
-:func:`~sqlalchemy.util.classproperty` decorator is provided that lets
-you implement a class property with a function. For example::
+Relationships created by :func:`~sqlalchemy.orm.relationship` are provided
+exclusively using the :func:`~sqlalchemy.util.classproperty` approach,
+eliminating any ambiguity which could arise when copying a relationship
+and its possibly column-bound contents.  Below is an example which 
+combines a foreign key column and a relationship so that two classes
+``Foo`` and ``Bar`` can both be configured to reference a common
+target class via many-to-one::
 
-    from sqlalchemy.util import classproperty
+    class RefTargetMixin(object):
+        @classproperty
+        def target_id(cls):
+            return Column('target_id', ForeignKey('target.id'))
+    
+        @classproperty
+        def target(cls):
+            return relationship("Target")
+    
+    class Foo(Base, RefTargetMixin):
+        __tablename__ = 'foo'
+        id = Column(Integer, primary_key=True)
+    
+    class Bar(Base, RefTargetMixin):
+        __tablename__ = 'bar'
+        id = Column(Integer, primary_key=True)
+                    
+    class Target(Base):
+        __tablename__ = 'target'
+        id = Column(Integer, primary_key=True)
 
-    class MySQLSettings:
-        __table_args__ = {'mysql_engine':'InnoDB'}             
+:func:`~sqlalchemy.orm.relationship` definitions which require explicit
+primaryjoin, order_by etc. expressions should use the string forms 
+for these arguments, so that they are evaluated as late as possible.  
+To reference the mixin class in these expressions, use the given ``cls``
+to get it's name::
 
-    class MyOtherMixin:
-        __table_args__ = {'info':'foo'}
+    class RefTargetMixin(object):
+        @classproperty
+        def target_id(cls):
+            return Column('target_id', ForeignKey('target.id'))
+        
+        @classproperty
+        def target(cls):
+            return relationship("Target",
+                primaryjoin="Target.id==%s.target_id" % cls.__name__
+            )
 
-    class MyModel(Base,MySQLSettings,MyOtherMixin):
-        __tablename__='my_model'
+.. note:: The usage of :func:`~sqlalchemy.util.classproperty` with mixin 
+   relationships is a new feature as of SQLAlchemy 0.6.2.
+
+
+Mixing in deferred(), column_property(), etc.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Like :func:`~sqlalchemy.orm.relationship`, all :class:`~sqlalchemy.orm.interfaces.MapperProperty`
+subclasses such as :func:`~sqlalchemy.orm.deferred`, 
+:func:`~sqlalchemy.orm.column_property`, etc. ultimately involve references
+to columns, and therefore have the :func:`~sqlalchemy.util.classproperty` requirement so that no reliance on copying is needed::
+
+    class SomethingMixin(object):
 
         @classproperty
-        def __table_args__(self):
-            args = dict()
-            args.update(MySQLSettings.__table_args__)
-            args.update(MyOtherMixin.__table_args__)
-            return args
+        def dprop(cls):
+            return deferred(Column(Integer))
 
-        id =  Column(Integer, primary_key=True)
+    class Something(Base, SomethingMixin):
+        __tablename__ = "something"
 
-Controlling table inheritance with mix-ins
+.. note:: The usage of :func:`~sqlalchemy.util.classproperty` with mixin 
+   mapper properties is a new feature as of SQLAlchemy 0.6.2.
+
+
+Controlling table inheritance with mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``__tablename__`` attribute in conjunction with the hierarchy of
 the classes involved controls what type of table inheritance, if any,
 is configured by the declarative extension.
 
-If the ``__tablename__`` is computed by a mix-in, you may need to
+If the ``__tablename__`` is computed by a mixin, you may need to
 control which classes get the computed attribute in order to get the
 type of table inheritance you require.
 
-For example, if you had a mix-in that computes ``__tablename__`` but
-where you wanted to use that mix-in in a single table inheritance
+For example, if you had a mixin that computes ``__tablename__`` but
+where you wanted to use that mixin in a single table inheritance
 hierarchy, you can explicitly specify ``__tablename__`` as ``None`` to
 indicate that the class should not have a table mapped::
 
@@ -509,14 +631,14 @@ indicate that the class should not have a table mapped::
         __mapper_args__ = {'polymorphic_identity': 'engineer'}
         primary_language = Column(String(50))
 
-Alternatively, you can make the mix-in intelligent enough to only
+Alternatively, you can make the mixin intelligent enough to only
 return a ``__tablename__`` in the event that no table is already
 mapped in the inheritance hierarchy. To help with this, a
 :func:`~sqlalchemy.ext.declarative.has_inherited_table` helper
 function is provided that returns ``True`` if a parent class already
 has a mapped table. 
 
-As an examply, here's a mix-in that will only allow single table
+As an example, here's a mixin that will only allow single table
 inheritance::
 
     from sqlalchemy.util import classproperty
@@ -540,7 +662,7 @@ inheritance::
         primary_language = Column(String(50))
 
 If you want to use a similar pattern with a mix of single and joined
-table inheritance, you would need a slightly different mix-in and use
+table inheritance, you would need a slightly different mixin and use
 it on any joined table child classes in addition to their parent
 classes::
 
@@ -571,6 +693,36 @@ classes::
         __tablename__ = None
         __mapper_args__ = {'polymorphic_identity': 'engineer'}
         preferred_recreation = Column(String(50))
+
+Combining Table/Mapper Arguments from Multiple Mixins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the case of ``__table_args__`` or ``__mapper_args__``, you may want
+to combine some parameters from several mixins with those you wish to
+define on the class iteself.  The 
+:func:`~sqlalchemy.util.classproperty` decorator can be used here
+to create user-defined collation routines that pull from multiple
+collections::
+
+    from sqlalchemy.util import classproperty
+
+    class MySQLSettings:
+        __table_args__ = {'mysql_engine':'InnoDB'}             
+
+    class MyOtherMixin:
+        __table_args__ = {'info':'foo'}
+
+    class MyModel(Base,MySQLSettings,MyOtherMixin):
+        __tablename__='my_model'
+
+        @classproperty
+        def __table_args__(self):
+            args = dict()
+            args.update(MySQLSettings.__table_args__)
+            args.update(MyOtherMixin.__table_args__)
+            return args
+
+        id =  Column(Integer, primary_key=True)
 
 Class Constructor
 =================
@@ -639,10 +791,10 @@ def _as_declarative(cls, classname, dict_):
     # dict_ will be a dictproxy, which we can't write to, and we need to!
     dict_ = dict(dict_)
 
-    column_copies = dict()
-    potential_columns = dict()
+    column_copies = {}
+    potential_columns = {}
     
-    mapper_args ={}
+    mapper_args = {}
     table_args = inherited_table_args = None
     tablename = None
     parent_columns = ()
@@ -664,30 +816,42 @@ def _as_declarative(cls, classname, dict_):
                         if base is not cls:
                             inherited_table_args = True
                 elif base is not cls:
+                    # we're a mixin.
+                    
                     if isinstance(obj, Column):
                         if obj.foreign_keys:
                             raise exceptions.InvalidRequestError(
-                                "Columns with foreign keys to other columns "
-                                "are not allowed on declarative mixins at this time."
-                            )
+                            "Columns with foreign keys to other columns "
+                            "must be declared as @classproperty callables "
+                            "on declarative mixin classes. ")
                         if name not in dict_ and not (
-                                '__table__' in dict_ and name in dict_['__table__'].c
+                                '__table__' in dict_ and 
+                                name in dict_['__table__'].c
                                 ):
-                            potential_columns[name] = column_copies[obj] = obj.copy()
-                            column_copies[obj]._creation_order = obj._creation_order
-                    elif isinstance(obj, RelationshipProperty):
+                            potential_columns[name] = \
+                                    column_copies[obj] = \
+                                    obj.copy()
+                            column_copies[obj]._creation_order = \
+                                    obj._creation_order
+                    elif isinstance(obj, MapperProperty):
                         raise exceptions.InvalidRequestError(
-                                            "relationships are not allowed on "
-                                            "declarative mixins at this time.")
+                            "Mapper properties (i.e. deferred,"
+                            "column_property(), relationship(), etc.) must "
+                            "be declared as @classproperty callables "
+                            "on declarative mixin classes.")
+                    elif isinstance(obj, util.classproperty):
+                        dict_[name] = column_copies[obj] = getattr(cls, name)
+
     # apply inherited columns as we should
     for k, v in potential_columns.items():
         if tablename or k not in parent_columns:
-            dict_[k]=v
+            dict_[k] = v
+            
     if inherited_table_args and not tablename:
         table_args = None
 
-    # make sure that column copies are used rather than the original columns
-    # from any mixins
+    # make sure that column copies are used rather 
+    # than the original columns from any mixins
     for k, v in mapper_args.iteritems():
         mapper_args[k] = column_copies.get(v,v)
     
