@@ -2512,6 +2512,39 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
                     filter(MyOtherModel.prop_hoho=='bar').one(),
             m2
         )
+    
+    def test_doc(self):
+        """test documentation transfer.
+        
+        the documentation situation with @classproperty is
+        problematic.   at least see if mapped subclasses
+        get the doc.
+        
+        """
+
+        class MyMixin(object):
+            @classproperty
+            def type_(cls):
+                """this is a document."""
+                return Column(String(50))
+
+            @classproperty
+            def t2(cls):
+                """this is another document."""
+                return column_property(Column(String(50)))
+                
+        class MyModel(Base,MyMixin):
+            __tablename__='test'
+            id =  Column(Integer, primary_key=True)
+        compile_mappers()
+        eq_(
+            MyModel.type_.__doc__,
+            'this is a document.'
+        )
+        eq_(
+            MyModel.t2.__doc__,
+            'this is another document.'
+        )
         
     def test_column_in_mapper_args(self):
         class MyMixin(object):
@@ -2601,6 +2634,8 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
         )
         sess.expire_all()
         eq_(f1.target, t1)
+        
+        
         
     def test_relationship(self):
         self._test_relationship(False)

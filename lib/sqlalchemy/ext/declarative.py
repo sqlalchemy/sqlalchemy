@@ -840,7 +840,11 @@ def _as_declarative(cls, classname, dict_):
                             "be declared as @classproperty callables "
                             "on declarative mixin classes.")
                     elif isinstance(obj, util.classproperty):
-                        dict_[name] = column_copies[obj] = getattr(cls, name)
+                        dict_[name] = ret = \
+                                column_copies[obj] = getattr(cls, name)
+                        if isinstance(ret, (Column, MapperProperty)) and \
+                            ret.doc is None:
+                            ret.doc = obj.__doc__
 
     # apply inherited columns as we should
     for k, v in potential_columns.items():
