@@ -609,7 +609,7 @@ def composite(class_, *cols, **kwargs):
       accessed on an instance.  See also :func:`~sqlalchemy.orm.deferred`.
 
     comparator_factory
-      a class which extends ``sqlalchemy.orm.properties.CompositeProperty.Comparator``
+      a class which extends :class:`~sqlalchemy.orm.properties.CompositeProperty.Comparator`
       which provides custom SQL clause generation for comparison operations.
 
     doc
@@ -630,20 +630,20 @@ def composite(class_, *cols, **kwargs):
 
 def backref(name, **kwargs):
     """Create a back reference with explicit arguments, which are the same
-    arguments one can send to ``relationship()``.
+    arguments one can send to :func:`relationship`.
 
-    Used with the `backref` keyword argument to ``relationship()`` in
+    Used with the `backref` keyword argument to :func:`relationship` in
     place of a string argument.
 
     """
     return (name, kwargs)
 
 def deferred(*columns, **kwargs):
-    """Return a ``DeferredColumnProperty``, which indicates this
+    """Return a :class:`DeferredColumnProperty`, which indicates this
     object attributes should only be loaded from its corresponding
     table column when first accessed.
 
-    Used with the `properties` dictionary sent to ``mapper()``.
+    Used with the `properties` dictionary sent to :func:`mapper`.
 
     """
     return ColumnProperty(deferred=True, *columns, **kwargs)
@@ -678,7 +678,7 @@ def mapper(class_, local_table=None, *args, **params):
             together for efficiency.  setting to False indicates that an instance
             will be fully saved before saving the next instance, which includes
             inserting/updating all table rows corresponding to the entity as well
-            as calling all ``MapperExtension`` methods corresponding to the save
+            as calling all :class:`MapperExtension` methods corresponding to the save
             operation.
 
         :param column_prefix: A string which will be prepended to the `key` name of all Columns when
@@ -711,18 +711,18 @@ def mapper(class_, local_table=None, *args, **params):
 
 
         :param inherit_condition: For joined table inheritance, a SQL expression (constructed
-            ``ClauseElement``) which will define how the two tables are joined;
+            :class:`~sqlalchemy.expression.sql.ClauseElement`) which will define how the two tables are joined;
             defaults to a natural join between the two tables.
 
         :param inherit_foreign_keys: When inherit_condition is used and the condition contains no
             ForeignKey columns, specify the "foreign" columns of the join
             condition in this list.  else leave as None.
 
-        :param non_primary: Construct a ``Mapper`` that will define only the selection of
+        :param non_primary: Construct a :class:`Mapper` that will define only the selection of
             instances, not their persistence.  Any number of non_primary mappers
             may be created for a particular class.
 
-        :param order_by: A single ``Column`` or list of ``Columns`` for which
+        :param order_by: A single :class:`Column` or list of :class:`Column` objects for which
             selection operations should use as the default ordering for entities.
             Defaults to the OID/ROWID of the table if any, or the first primary
             key column of the table.
