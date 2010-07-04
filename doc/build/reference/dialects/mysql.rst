@@ -6,8 +6,6 @@ MySQL
 MySQL Column Types
 ------------------
 
-.. automodule:: sqlalchemy.dialects.mysql
-    
 .. autoclass:: NUMERIC
    :members: __init__
    :show-inheritance:

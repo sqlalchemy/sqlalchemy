@@ -239,6 +239,9 @@ pre {
     font-weight: bold;
 }
 
+.viewcode-back, .viewcode-link {
+    float:right;
+}
 .prerelease {
     border: solid #c25757 2px;
     border-radius: 4px;

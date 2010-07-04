@@ -9,9 +9,6 @@ Oracle Column Types
 In addition to those types at :ref:`types`, datatypes specific to the
 Oracle dialect include those listed here.
 
-.. automodule:: sqlalchemy.dialects.oracle
-
-
 .. autoclass:: BFILE
   :members: __init__
   :show-inheritance:
