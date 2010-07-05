@@ -25,6 +25,9 @@ A plain vanilla run of all tests using sqlite can be run via setup.py:
 
     $ python setup.py test
     
+(NOTE: this command is broken for Python 2.7 with nose 0.11.3, see 
+Nose issue 340.  You will need to use 'nosetests' directly, see below.)
+    
 Setuptools will take care of the rest !   To run nose directly and have
 its full set of options available, read on...
 
@@ -47,6 +50,9 @@ RUNNING ALL TESTS
 To run all tests:
 
     $ nosetests
+
+(NOTE: if running with Python 2.7 and nose 0.11.3, add "-w test/" to the command.
+Again this is a Nose issue, see Nose issue 342.)
 
 If you're running the tests on Microsoft Windows, then there is an additional
 argument that must be passed to nosetests:
