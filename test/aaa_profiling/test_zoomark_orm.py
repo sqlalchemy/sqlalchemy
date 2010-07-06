@@ -312,7 +312,8 @@ class ZooMarkTest(TestBase):
         self.test_baseline_4_expressions()
 
     @profiling.function_call_count(1313, {'2.6+cextension':1236,
-                                            '2.7+cextension':1207})
+                                            '2.7+cextension':1207},
+                                            variance=0.1)
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 

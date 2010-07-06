@@ -17,8 +17,9 @@ from sqlalchemy.engine import base, reflection
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy import exc, types as sqltypes, util
 
-AUTOCOMMIT_REGEXP = re.compile(r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
-                               re.I | re.UNICODE)
+AUTOCOMMIT_REGEXP = re.compile(
+            r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
+            re.I | re.UNICODE)
 
 
 class DefaultDialect(base.Dialect):
@@ -85,16 +86,19 @@ class DefaultDialect(base.Dialect):
                  
         if not getattr(self, 'ported_sqla_06', True):
             util.warn(
-                "The %s dialect is not yet ported to SQLAlchemy 0.6" % self.name)
+                "The %s dialect is not yet ported to SQLAlchemy 0.6" %
+                self.name)
         
         self.convert_unicode = convert_unicode
         if assert_unicode:
-            util.warn_deprecated("assert_unicode is deprecated. "
-                                "SQLAlchemy emits a warning in all cases where it "
-                                "would otherwise like to encode a Python unicode object "
-                                "into a specific encoding but a plain bytestring is received. "
-                                "This does *not* apply to DBAPIs that coerce Unicode natively."
-                                )
+            util.warn_deprecated(
+                "assert_unicode is deprecated. "
+                "SQLAlchemy emits a warning in all cases where it "
+                "would otherwise like to encode a Python unicode object "
+                "into a specific encoding but a plain bytestring is "
+                "received. "
+                "This does *not* apply to DBAPIs that coerce Unicode "
+                "natively.")
             
         self.encoding = encoding
         self.positional = False
@@ -113,13 +117,17 @@ class DefaultDialect(base.Dialect):
         self.type_compiler = self.type_compiler(self)
 
         if label_length and label_length > self.max_identifier_length:
-            raise exc.ArgumentError("Label length of %d is greater than this dialect's"
-                                    " maximum identifier length of %d" %
-                                    (label_length, self.max_identifier_length))
+            raise exc.ArgumentError(
+                    "Label length of %d is greater than this dialect's"
+                    " maximum identifier length of %d" %
+                    (label_length, self.max_identifier_length))
         self.label_length = label_length
 
         if not hasattr(self, 'description_encoding'):
-            self.description_encoding = getattr(self, 'description_encoding', encoding)
+            self.description_encoding = getattr(
+                                            self, 
+                                            'description_encoding', 
+                                            encoding)
     
     @property
     def dialect_description(self):
@@ -127,11 +135,13 @@ class DefaultDialect(base.Dialect):
         
     def initialize(self, connection):
         try:
-            self.server_version_info = self._get_server_version_info(connection)
+            self.server_version_info = \
+                            self._get_server_version_info(connection)
         except NotImplementedError:
             self.server_version_info = None
         try:
-            self.default_schema_name = self._get_default_schema_name(connection)
+            self.default_schema_name = \
+                            self._get_default_schema_name(connection)
         except NotImplementedError:
             self.default_schema_name = None
 
@@ -142,8 +152,8 @@ class DefaultDialect(base.Dialect):
     def on_connect(self):
         """return a callable which sets up a newly created DBAPI connection.
         
-        This is used to set dialect-wide per-connection options such as isolation
-        modes, unicode modes, etc.
+        This is used to set dialect-wide per-connection options such as
+        isolation modes, unicode modes, etc.
         
         If a callable is returned, it will be assembled into a pool listener
         that receives the direct DBAPI connection, with all wrappers removed.
@@ -169,7 +179,8 @@ class DefaultDialect(base.Dialect):
                     cast_to(
                         expression.select( 
                         [expression.cast(
-                            expression.literal_column("'test unicode returns'"), type_)
+                            expression.literal_column(
+                                    "'test unicode returns'"), type_)
                         ]).compile(dialect=self)
                     )
                 )
@@ -428,11 +439,12 @@ class DefaultExecutionContext(base.ExecutionContext):
             return {}
         
     def _execute_scalar(self, stmt):
-        """Execute a string statement on the current cursor, returning a scalar result.
+        """Execute a string statement on the current cursor, returning a
+        scalar result.
         
-        Used to fire off sequences, default phrases, and "select lastrowid" 
-        types of statements individually
-        or in the context of a parent INSERT or UPDATE statement.
+        Used to fire off sequences, default phrases, and "select lastrowid"
+        types of statements individually or in the context of a parent INSERT
+        or UPDATE statement.
         
         """
 
