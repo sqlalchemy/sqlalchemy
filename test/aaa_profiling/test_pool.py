@@ -20,7 +20,8 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
 
     @profiling.function_call_count(64, {'2.4': 42, '2.7':59, 
                                             '2.7+cextension':59,
-                                            '3.0':65, '3.1':65})
+                                            '3.0':65, '3.1':65},
+                                            variance=.10)
     def test_first_connect(self):
         conn = pool.connect()
 
@@ -29,7 +30,8 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
         conn.close()
 
         @profiling.function_call_count(32, {'2.4': 21, '2.7':29,
-                                            '2.7+cextension':29})
+                                            '2.7+cextension':29},
+                                            variance=.10)
         def go():
             conn2 = pool.connect()
             return conn2
