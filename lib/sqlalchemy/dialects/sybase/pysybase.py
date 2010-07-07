@@ -23,7 +23,7 @@ kind at this time.
 
 from sqlalchemy import types as sqltypes, processors
 from sqlalchemy.dialects.sybase.base import SybaseDialect, \
-                                        SybaseExecutionContext, SybaseSQLCompiler
+                            SybaseExecutionContext, SybaseSQLCompiler
 
 
 class _SybNumeric(sqltypes.Numeric):
@@ -83,11 +83,13 @@ class SybaseDialect_pysybase(SybaseDialect):
 
     def _get_server_version_info(self, connection):
        vers = connection.scalar("select @@version_number")
-       # i.e. 15500, 15000, 12500 == (15, 5, 0, 0), (15, 0, 0, 0), (12, 5, 0, 0)
+       # i.e. 15500, 15000, 12500 == (15, 5, 0, 0), (15, 0, 0, 0), 
+       # (12, 5, 0, 0)
        return (vers / 1000, vers % 1000 / 100, vers % 100 / 10, vers % 10)
 
     def is_disconnect(self, e):
-        if isinstance(e, (self.dbapi.OperationalError, self.dbapi.ProgrammingError)):
+        if isinstance(e, (self.dbapi.OperationalError,
+                            self.dbapi.ProgrammingError)):
             msg = str(e)
             return ('Unable to complete network request to host' in msg or
                     'Invalid connection state' in msg or

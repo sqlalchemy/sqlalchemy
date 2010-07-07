@@ -28,7 +28,8 @@ Currently *not* supported are::
     
 """
 
-from sqlalchemy.dialects.sybase.base import SybaseDialect, SybaseExecutionContext
+from sqlalchemy.dialects.sybase.base import SybaseDialect,\
+                                            SybaseExecutionContext
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 import decimal
 from sqlalchemy import types as sqltypes, util, processors
@@ -43,7 +44,8 @@ class _SybNumeric_pyodbc(sqltypes.Numeric):
     """
 
     def bind_processor(self, dialect):
-        super_process = super(_SybNumeric_pyodbc, self).bind_processor(dialect)
+        super_process = super(_SybNumeric_pyodbc,self).\
+                                    bind_processor(dialect)
 
         def process(value):
             if self.asdecimal and \

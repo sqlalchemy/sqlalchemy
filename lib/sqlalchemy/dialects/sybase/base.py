@@ -214,7 +214,8 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
             insert_has_sequence = seq_column is not None
             
             if insert_has_sequence:
-                self._enable_identity_insert = seq_column.key in self.compiled_parameters[0]
+                self._enable_identity_insert = \
+                                seq_column.key in self.compiled_parameters[0]
             else:
                 self._enable_identity_insert = False
             
@@ -227,12 +228,16 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
             # database settings.  this error message should be improved to 
             # include a note about that.
             if not self.should_autocommit:
-                raise exc.InvalidRequestError("The Sybase dialect only supports "
-                                            "DDL in 'autocommit' mode at this time.")
+                raise exc.InvalidRequestError(
+                        "The Sybase dialect only supports "
+                        "DDL in 'autocommit' mode at this time.")
 
-            self.root_connection.engine.logger.info("AUTOCOMMIT (Assuming no Sybase 'ddl in tran')")
+            self.root_connection.engine.logger.info(
+                        "AUTOCOMMIT (Assuming no Sybase 'ddl in tran')")
 
-            self.set_ddl_autocommit(self.root_connection.connection.connection, True)
+            self.set_ddl_autocommit(
+                        self.root_connection.connection.connection, 
+                        True)
             
 
     def post_exec(self):
@@ -242,8 +247,8 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
        if self._enable_identity_insert:
             self.cursor.execute(
                         "SET IDENTITY_INSERT %s OFF" %  
-                                self.dialect.identifier_preparer.
-                                    format_table(self.compiled.statement.table)
+                            self.dialect.identifier_preparer.
+                            format_table(self.compiled.statement.table)
                         )
 
     def get_lastrowid(self):
@@ -289,10 +294,12 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 
     def visit_extract(self, extract, **kw):
         field = self.extract_map.get(extract.field, extract.field)
-        return 'DATEPART("%s", %s)' % (field, self.process(extract.expr, **kw))
+        return 'DATEPART("%s", %s)' % (
+                            field, self.process(extract.expr, **kw))
 
     def for_update_clause(self, select):
-        # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use
+        # "FOR UPDATE" is only allowed on "DECLARE CURSOR" 
+        # which SQLAlchemy doesn't use
         return ''
 
     def order_by_clause(self, select, **kw):
@@ -309,18 +316,21 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 class SybaseDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + \
-                                   self.dialect.type_compiler.process(column.type)
+                        self.dialect.type_compiler.process(column.type)
 
         if column.table is None:
-            raise exc.InvalidRequestError("The Sybase dialect requires Table-bound "\
-                                                   "columns in order to generate DDL")
+            raise exc.InvalidRequestError(
+                        "The Sybase dialect requires Table-bound "
+                       "columns in order to generate DDL")
         seq_col = column.table._autoincrement_column
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if seq_col is column:
-            sequence = isinstance(column.default, sa_schema.Sequence) and column.default
+            sequence = isinstance(column.default, sa_schema.Sequence) \
+                                    and column.default
             if sequence:
-                start, increment = sequence.start or 1, sequence.increment or 1
+                start, increment = sequence.start or 1, \
+                                    sequence.increment or 1
             else:
                 start, increment = 1, 1
             if (start, increment) == (1, 1):
@@ -345,7 +355,8 @@ class SybaseDDLCompiler(compiler.DDLCompiler):
         index = drop.element
         return "\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(index.table.name),
-            self.preparer.quote(self._validate_identifier(index.name, False), index.quote)
+            self.preparer.quote(
+                    self._validate_identifier(index.name, False), index.quote)
             )
 
 class SybaseIdentifierPreparer(compiler.IdentifierPreparer):
@@ -371,7 +382,8 @@ class SybaseDialect(default.DefaultDialect):
 
     def _get_default_schema_name(self, connection):
         return connection.scalar(
-                     text("SELECT user_name() as user_name", typemap={'user_name':Unicode})
+                     text("SELECT user_name() as user_name",
+                     typemap={'user_name':Unicode})
              )
 
     def initialize(self, connection):
