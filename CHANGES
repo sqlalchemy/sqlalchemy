@@ -3,6 +3,17 @@
 =======
 CHANGES
 =======
+0.6.3
+=====
+- orm
+  - Removed errant many-to-many load in unitofwork 
+    which triggered unnecessarily on expired/unloaded 
+    collections. This load now takes place only if 
+    passive_updates is False and the parent primary 
+    key has changed, or if passive_deletes is False 
+    and a delete of the parent has occurred.
+    [ticket:1845]
+  
 0.6.2
 =====
 - orm

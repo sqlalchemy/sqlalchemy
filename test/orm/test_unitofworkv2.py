@@ -223,6 +223,47 @@ class RudimentaryFlushTest(UOWTest):
                 ),
         )
     
+    def test_many_to_many(self):
+        mapper(Item, items, properties={
+            'keywords':relationship(Keyword, secondary=item_keywords)
+        })
+        mapper(Keyword, keywords)
+        
+        sess = create_session()
+        k1 = Keyword(name='k1')
+        i1 = Item(description='i1', keywords=[k1])
+        sess.add(i1)
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                AllOf(
+                    CompiledSQL(
+                    "INSERT INTO keywords (name) VALUES (:name)",
+                    {'name':'k1'}
+                    ),
+                    CompiledSQL(
+                    "INSERT INTO items (description) VALUES (:description)",
+                    {'description':'i1'}
+                    ),
+                ),
+                CompiledSQL(
+                    "INSERT INTO item_keywords (item_id, keyword_id) "
+                    "VALUES (:item_id, :keyword_id)",
+                    lambda ctx:{'item_id':i1.id, 'keyword_id':k1.id}
+                )
+        )
+        
+        # test that keywords collection isn't loaded
+        sess.expire(i1, ['keywords'])
+        i1.description = 'i2'
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                CompiledSQL("UPDATE items SET description=:description "
+                            "WHERE items.id = :items_id", 
+                            lambda ctx:{'description':'i2', 'items_id':i1.id})
+        )
+        
     def test_m2o_flush_size(self):
         mapper(User, users)
         mapper(Address, addresses, properties={
@@ -619,12 +660,22 @@ class SingleCycleM2MTest(_base.MappedTest,
                     (n3.id, n5.id), (n3.id, n4.id)
                 ])
         )
-
+        
         sess.delete(n1)
         
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
+                # this is n1.parents firing off, as it should, since
+                # passive_deletes is False for n1.parents
+                CompiledSQL(
+                    "SELECT nodes.id AS nodes_id, nodes.data AS nodes_data, "
+                    "nodes.favorite_node_id AS nodes_favorite_node_id FROM "
+                    "nodes, node_to_nodes WHERE :param_1 = "
+                    "node_to_nodes.right_node_id AND nodes.id = "
+                    "node_to_nodes.left_node_id" ,
+                    lambda ctx:{u'param_1': n1.id},
+                ),    
                 CompiledSQL(
                     "DELETE FROM node_to_nodes WHERE "
                     "node_to_nodes.left_node_id = :left_node_id AND "

@@ -871,6 +871,9 @@ class ManyToManyDP(DependencyProcessor):
         
     def presort_deletes(self, uowcommit, states):
         if not self.passive_deletes:
+            # if no passive deletes, load history on 
+            # the collection, so that prop_has_changes()
+            # returns True
             for state in states:
                 history = uowcommit.get_attribute_history(
                                         state, 
@@ -878,16 +881,22 @@ class ManyToManyDP(DependencyProcessor):
                                         passive=self.passive_deletes)
         
     def presort_saves(self, uowcommit, states):
-        for state in states:
-            history = uowcommit.get_attribute_history(
-                                    state, 
-                                    self.key, 
-                                    False)
+        if not self.passive_updates:
+            # if no passive updates, load history on 
+            # each collection where parent has changed PK,
+            # so that prop_has_changes() returns True
+            for state in states:
+                if self._pks_changed(uowcommit, state):
+                    history = uowcommit.get_attribute_history(
+                                        state, 
+                                        self.key, 
+                                        False)
 
-        
         if not self.cascade.delete_orphan:
             return
-            
+        
+        # check for child items removed from the collection
+        # if delete_orphan check is turned on.
         for state in states:
             history = uowcommit.get_attribute_history(
                                         state, 
@@ -911,6 +920,8 @@ class ManyToManyDP(DependencyProcessor):
         processed = self._get_reversed_processed_set(uowcommit)
         tmp = set()
         for state in states:
+            # this history should be cached already, as 
+            # we loaded it in preprocess_deletes
             history = uowcommit.get_attribute_history(
                                     state, 
                                     self.key, 
@@ -947,7 +958,10 @@ class ManyToManyDP(DependencyProcessor):
         tmp = set()
 
         for state in states:
-            history = uowcommit.get_attribute_history(state, self.key)
+            need_cascade_pks = not self.passive_updates and \
+                                self._pks_changed(uowcommit, state) 
+            history = uowcommit.get_attribute_history(state, self.key,
+                                                passive=not need_cascade_pks)
             if history:
                 for child in history.added:
                     if child is None or \
@@ -976,28 +990,22 @@ class ManyToManyDP(DependencyProcessor):
                 tmp.update((c, state) 
                             for c in history.added + history.deleted)
                 
-            if not self.passive_updates and \
-                    self._pks_changed(uowcommit, state):
-                if not history:
-                    history = uowcommit.get_attribute_history(
-                                        state, 
-                                        self.key, 
-                                        passive=False)
-                
-                for child in history.unchanged:
-                    associationrow = {}
-                    sync.update(state, 
-                                self.parent, 
-                                associationrow, 
-                                "old_", 
-                                self.prop.synchronize_pairs)
-                    sync.update(child, 
-                                self.mapper, 
-                                associationrow, 
-                                "old_", 
-                                self.prop.secondary_synchronize_pairs)
+                if need_cascade_pks:
+                    
+                    for child in history.unchanged:
+                        associationrow = {}
+                        sync.update(state, 
+                                    self.parent, 
+                                    associationrow, 
+                                    "old_", 
+                                    self.prop.synchronize_pairs)
+                        sync.update(child, 
+                                    self.mapper, 
+                                    associationrow, 
+                                    "old_", 
+                                    self.prop.secondary_synchronize_pairs)
 
-                    secondary_update.append(associationrow)
+                        secondary_update.append(associationrow)
                     
         if processed is not None:
             processed.update(tmp)
