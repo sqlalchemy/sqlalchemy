@@ -1589,16 +1589,19 @@ class Query(object):
                     'name':'User',
                     'type':User,
                     'aliased':False,
+                    'expr':User,
                 },
                 {
                     'name':'id',
                     'type':Integer(),
-                    'aliased':False
+                    'aliased':False,
+                    'expr':User.id,
                 },
                 {
                     'name':'user2',
                     'type':User,
-                    'aliased':True
+                    'aliased':True,
+                    'expr':user_alias
                 }
             ]
             
@@ -1608,6 +1611,7 @@ class Query(object):
                 'name':ent._label_name,
                 'type':ent.type,
                 'aliased':getattr(ent, 'is_aliased_class', False),
+                'expr':ent.expr
             }
             for ent in self._entities
         ]
@@ -2404,8 +2408,8 @@ class _MapperEntity(_QueryEntity):
         query._entities.append(self)
 
         self.entities = [entity]
-        self.entity_zero = entity
-
+        self.entity_zero = self.expr = entity
+        
     def setup_entity(self, entity, mapper, adapter, 
                         from_obj, is_aliased_class, with_polymorphic):
         self.mapper = mapper
@@ -2553,6 +2557,8 @@ class _ColumnEntity(_QueryEntity):
     """Column/expression based entity."""
 
     def __init__(self, query, column):
+        self.expr = column
+        
         if isinstance(column, basestring):
             column = sql.literal_column(column)
             self._label_name = column.name

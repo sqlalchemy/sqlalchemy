@@ -80,38 +80,44 @@ class RowTupleTest(QueryTest):
         user_alias = aliased(User)
         address_alias = aliased(Address, name='aalias')
         fn = func.count(User.id)
-        
+        name_label = User.name.label('uname')
         for q, asserted in [
             (
                 sess.query(User),
-                [{'name':'User', 'type':User, 'aliased':False}]
+                [{'name':'User', 'type':User, 'aliased':False, 'expr':User}]
             ),
             (
                 sess.query(User.id, User),
                 [
-                    {'name':'id', 'type':users.c.id.type, 'aliased':False},
-                    {'name':'User', 'type':User, 'aliased':False}
+                    {'name':'id', 'type':users.c.id.type, 'aliased':False,
+                        'expr':User.id},
+                    {'name':'User', 'type':User, 'aliased':False, 'expr':User}
                 ]
             ),
             (
                 sess.query(User.id, user_alias),
                 [
-                    {'name':'id', 'type':users.c.id.type, 'aliased':False},
-                    {'name':None, 'type':User, 'aliased':True}
+                    {'name':'id', 'type':users.c.id.type, 'aliased':False,
+                        'expr':User.id},
+                    {'name':None, 'type':User, 'aliased':True,
+                        'expr':user_alias}
                 ]
             ),
             (
                 sess.query(address_alias),
                 [
-                    {'name':'aalias', 'type':Address, 'aliased':True}
+                    {'name':'aalias', 'type':Address, 'aliased':True,
+                        'expr':address_alias}
                 ]
             ),
             (
-                sess.query(User.name.label('uname'), fn),
+                sess.query(name_label, fn),
                 [
                     {'name':'uname', 'type':users.c.name.type,
-                                            'aliased':False},
-                    {'name':None, 'type':fn.type, 'aliased':False},
+                                        'aliased':False,'expr':name_label},
+                    {'name':None, 'type':fn.type, 'aliased':False,
+                        'expr':fn
+                    },
                 ]
             )
         ]:
