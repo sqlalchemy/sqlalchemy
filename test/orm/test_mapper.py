@@ -1076,7 +1076,7 @@ class MapperTest(_fixtures.FixtureTest):
         assert_raises(sa.orm.exc.UnmappedClassError, sa.orm.compile_mappers)
 
     @testing.resolve_artifact_names
-    def test_unmapped_subclass_error(self):
+    def test_unmapped_subclass_error_postmap(self):
         class Base(object):
             pass
         class Sub(Base):
@@ -1084,9 +1084,44 @@ class MapperTest(_fixtures.FixtureTest):
         
         mapper(Base, users)
         sa.orm.compile_mappers()
+
+        # we can create new instances, set attributes.
+        s = Sub()
+        s.name = 'foo'
+        eq_(s.name, 'foo')
+        eq_(
+            attributes.get_history(s, 'name'),
+            (['foo'], (), ())
+        )
+
+        # using it with an ORM operation, raises
         assert_raises(sa.orm.exc.UnmappedClassError,
                         create_session().add, Sub())
+
+    @testing.resolve_artifact_names
+    def test_unmapped_subclass_error_premap(self):
+        class Base(object):
+            pass
+            
+        mapper(Base, users)
         
+        class Sub(Base):
+            pass
+
+        sa.orm.compile_mappers()
+        
+        # we can create new instances, set attributes.
+        s = Sub()
+        s.name = 'foo'
+        eq_(s.name, 'foo')
+        eq_(
+            attributes.get_history(s, 'name'),
+            (['foo'], (), ())
+        )
+        
+        # using it with an ORM operation, raises
+        assert_raises(sa.orm.exc.UnmappedClassError,
+                        create_session().add, Sub())
         
     @testing.resolve_artifact_names
     def test_oldstyle_mixin(self):

@@ -1118,6 +1118,15 @@ class ClassManager(dict):
         """
         if hasattr(instance, self.STATE_ATTR):
             return False
+        elif self.class_ is not instance.__class__ and \
+                self.is_mapped:
+            # this will create a new ClassManager for the
+            # subclass, without a mapper.  This is likely a
+            # user error situation but allow the object
+            # to be constructed, so that it is usable
+            # in a non-ORM context at least.
+            return self._subclass_manager(instance.__class__).\
+                        _new_state_if_none(instance)
         else:
             state = self._create_instance_state(instance)
             setattr(instance, self.STATE_ATTR, state)
