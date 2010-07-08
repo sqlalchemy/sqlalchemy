@@ -13,7 +13,13 @@ CHANGES
     key has changed, or if passive_deletes is False 
     and a delete of the parent has occurred.
     [ticket:1845]
-  
+
+  - Improved the check for an "unmapped class", 
+    including the case where the superclass is mapped
+    but the subclass is not.  Any attempts to access
+    cls._sa_class_manager.mapper now raise 
+    UnmappedClassError().  [ticket:1142]
+    
 0.6.2
 =====
 - orm

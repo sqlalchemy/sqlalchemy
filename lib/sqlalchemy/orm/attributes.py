@@ -918,7 +918,6 @@ class ClassManager(dict):
         self.class_ = class_
         self.factory = None  # where we came from, for inheritance bookkeeping
         self.info = {}
-        self.mapper = None
         self.new_init = None
         self.mutable_attributes = set()
         self.local_attrs = {}
@@ -933,6 +932,14 @@ class ClassManager(dict):
         self.manage()
         self._instrument_init()
     
+    @property
+    def is_mapped(self):
+        return 'mapper' in self.__dict__
+        
+    @util.memoized_property
+    def mapper(self):
+        raise exc.UnmappedClassError(self.class_)
+        
     def _configure_create_arguments(self, 
                             _source=None, 
                             deferred_scalar_loader=None):

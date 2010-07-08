@@ -361,7 +361,7 @@ class Mapper(object):
         manager = attributes.manager_of_class(self.class_)
         
         if self.non_primary:
-            if not manager or manager.mapper is None:
+            if not manager or not manager.is_mapped:
                 raise sa_exc.InvalidRequestError(
                     "Class %s has no primary mapper configured.  Configure "
                     "a primary mapper first before setting up a non primary "
@@ -372,7 +372,7 @@ class Mapper(object):
 
         if manager is not None:
             assert manager.class_ is self.class_
-            if manager.mapper:
+            if manager.is_mapped:
                 raise sa_exc.ArgumentError(
                     "Class '%s' already has a primary mapper defined. "
                     "Use non_primary=True to "
@@ -429,7 +429,9 @@ class Mapper(object):
         if hasattr(self, '_compile_failed'):
             del self._compile_failed
             
-        if not self.non_primary and self.class_manager.mapper is self:
+        if not self.non_primary and \
+            self.class_manager.is_mapped and \
+            self.class_manager.mapper is self:
             attributes.unregister_class(self.class_)
 
     def _configure_pks(self):

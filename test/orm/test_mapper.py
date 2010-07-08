@@ -437,26 +437,39 @@ class MapperTest(_fixtures.FixtureTest):
     def test_illegal_non_primary(self):
         mapper(User, users)
         mapper(Address, addresses)
-        try:
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Attempting to assign a new relationship 'addresses' "
+            "to a non-primary mapper on class 'User'",
             mapper(User, users, non_primary=True, properties={
                 'addresses':relationship(Address)
-            }).compile()
-            assert False
-        except sa.exc.ArgumentError, e:
-            assert "Attempting to assign a new relationship 'addresses' to a non-primary mapper on class 'User'" in str(e)
+            }).compile
+        )
 
     @testing.resolve_artifact_names
     def test_illegal_non_primary_2(self):
-        try:
-            mapper(User, users, non_primary=True)
-            assert False
-        except sa.exc.InvalidRequestError, e:
-            assert "Configure a primary mapper first" in str(e)
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Configure a primary mapper first",
+            mapper, User, users, non_primary=True)
+
+    @testing.resolve_artifact_names
+    def test_illegal_non_primary_3(self):
+        class Base(object):
+            pass
+        class Sub(Base):
+            pass
+        mapper(Base, users)
+        assert_raises_message(sa.exc.InvalidRequestError, 
+                "Configure a primary mapper first",
+                mapper, Sub, addresses, non_primary=True
+            )
 
     @testing.resolve_artifact_names
     def test_prop_filters(self):
         t = Table('person', MetaData(),
-                  Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                  Column('id', Integer, primary_key=True,
+                                        test_needs_autoincrement=True),
                   Column('type', String(128)),
                   Column('name', String(128)),
                   Column('employee_number', Integer),
@@ -1062,6 +1075,19 @@ class MapperTest(_fixtures.FixtureTest):
 
         assert_raises(sa.orm.exc.UnmappedClassError, sa.orm.compile_mappers)
 
+    @testing.resolve_artifact_names
+    def test_unmapped_subclass_error(self):
+        class Base(object):
+            pass
+        class Sub(Base):
+            pass
+        
+        mapper(Base, users)
+        sa.orm.compile_mappers()
+        assert_raises(sa.orm.exc.UnmappedClassError,
+                        create_session().add, Sub())
+        
+        
     @testing.resolve_artifact_names
     def test_oldstyle_mixin(self):
         class OldStyle:

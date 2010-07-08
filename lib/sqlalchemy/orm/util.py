@@ -570,9 +570,9 @@ def object_mapper(instance):
     """
     try:
         state = attributes.instance_state(instance)
-        if not state.manager.mapper:
-            raise exc.UnmappedInstanceError(instance)
         return state.manager.mapper
+    except exc.UnmappedClassError:
+        raise exc.UnmappedInstanceError(instance)
     except exc.NO_STATE:
         raise exc.UnmappedInstanceError(instance)
 
@@ -582,13 +582,10 @@ def class_mapper(class_, compile=True):
     Raises UnmappedClassError if no mapping is configured.
 
     """
+    
     try:
         class_manager = attributes.manager_of_class(class_)
         mapper = class_manager.mapper
-
-        # HACK until [ticket:1142] is complete
-        if mapper is None:
-            raise AttributeError
 
     except exc.NO_STATE:
         raise exc.UnmappedClassError(class_)
