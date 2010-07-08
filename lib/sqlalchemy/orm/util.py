@@ -1,5 +1,6 @@
 # mapper/util.py
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer
+# mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -7,8 +8,9 @@
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import sql, util
 from sqlalchemy.sql import expression, util as sql_util, operators
-from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE, PropComparator, \
-                                        MapperProperty, AttributeExtension
+from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE,\
+                                PropComparator, MapperProperty,\
+                                AttributeExtension
 from sqlalchemy.orm import attributes, exc
 
 mapperlib = None
@@ -95,7 +97,8 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     for key in table_map.keys():
         table = table_map[key]
 
-        # mysql doesnt like selecting from a select; make it an alias of the select
+        # mysql doesnt like selecting from a select; 
+        # make it an alias of the select
         if isinstance(table, sql.Select):
             table = table.alias()
             table_map[key] = table
@@ -116,10 +119,10 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     result = []
     for type, table in table_map.iteritems():
         if typecolname is not None:
-            result.append(sql.select([col(name, table) for name in colnames] +
-                             [sql.literal_column(
-                                sql_util._quote_ddl_expr(type)).label(typecolname)
-                              ],
+            result.append(
+                    sql.select([col(name, table) for name in colnames] +
+                    [sql.literal_column(sql_util._quote_ddl_expr(type)).
+                            label(typecolname)],
                              from_obj=[table]))
         else:
             result.append(sql.select([col(name, table) for name in colnames],
@@ -261,13 +264,16 @@ class ORMAdapter(sql_util.ColumnAdapter):
     and the AliasedClass if any is referenced.
 
     """
-    def __init__(self, entity, equivalents=None, chain_to=None, adapt_required=False):
+    def __init__(self, entity, equivalents=None, 
+                            chain_to=None, adapt_required=False):
         self.mapper, selectable, is_aliased_class = _entity_info(entity)
         if is_aliased_class:
             self.aliased_class = entity
         else:
             self.aliased_class = None
-        sql_util.ColumnAdapter.__init__(self, selectable, equivalents, chain_to, adapt_required=adapt_required)
+        sql_util.ColumnAdapter.__init__(self, selectable, 
+                                        equivalents, chain_to,
+                                        adapt_required=adapt_required)
 
     def replace(self, elem):
         entity = elem._annotations.get('parentmapper', None)
@@ -298,7 +304,8 @@ class AliasedClass(object):
         self.__target = self.__mapper.class_
         if alias is None:
             alias = self.__mapper._with_polymorphic_selectable.alias()
-        self.__adapter = sql_util.ClauseAdapter(alias, equivalents=self.__mapper._equivalent_columns)
+        self.__adapter = sql_util.ClauseAdapter(alias,
+                                equivalents=self.__mapper._equivalent_columns)
         self.__alias = alias
         # used to assign a name to the RowTuple object
         # returned by Query.
@@ -306,20 +313,29 @@ class AliasedClass(object):
         self.__name__ = 'AliasedClass_' + str(self.__target)
 
     def __getstate__(self):
-        return {'mapper':self.__mapper, 'alias':self.__alias, 'name':self._sa_label_name}
+        return {
+            'mapper':self.__mapper, 
+            'alias':self.__alias, 
+            'name':self._sa_label_name
+        }
 
     def __setstate__(self, state):
         self.__mapper = state['mapper']
         self.__target = self.__mapper.class_
         alias = state['alias']
-        self.__adapter = sql_util.ClauseAdapter(alias, equivalents=self.__mapper._equivalent_columns)
+        self.__adapter = sql_util.ClauseAdapter(alias,
+                                equivalents=self.__mapper._equivalent_columns)
         self.__alias = alias
         name = state['name']
         self._sa_label_name = name
         self.__name__ = 'AliasedClass_' + str(self.__target)
 
     def __adapt_element(self, elem):
-        return self.__adapter.traverse(elem)._annotate({'parententity': self, 'parentmapper':self.__mapper})
+        return self.__adapter.traverse(elem).\
+                    _annotate({
+                        'parententity': self, 
+                        'parentmapper':self.__mapper}
+                    )
 
     def __adapt_prop(self, prop):
         existing = getattr(self.__target, prop.key)
@@ -361,7 +377,8 @@ class AliasedClass(object):
             id(self), self.__target.__name__)
 
 def _orm_annotate(element, exclude=None):
-    """Deep copy the given ClauseElement, annotating each element with the "_orm_adapt" flag.
+    """Deep copy the given ClauseElement, annotating each element with the
+    "_orm_adapt" flag.
 
     Elements within the exclude collection will be cloned but not annotated.
 
@@ -375,7 +392,8 @@ class _ORMJoin(expression.Join):
 
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None, isouter=False, join_to_left=True):
+    def __init__(self, left, right, onclause=None, 
+                            isouter=False, join_to_left=True):
         adapt_from = None
 
         if hasattr(left, '_orm_mappers'):
@@ -408,7 +426,8 @@ class _ORMJoin(expression.Join):
                 prop = None
 
             if prop:
-                pj, sj, source, dest, secondary, target_adapter = prop._create_joins(
+                pj, sj, source, dest, \
+                secondary, target_adapter = prop._create_joins(
                                 source_selectable=adapt_from,
                                 dest_selectable=adapt_to,
                                 source_polymorphic=True,
@@ -451,10 +470,10 @@ def outerjoin(left, right, onclause=None, join_to_left=True):
     """Produce a left outer join between left and right clauses.
 
     In addition to the interface provided by
-    :func:`~sqlalchemy.sql.expression.outerjoin()`, left and right may be mapped
-    classes or AliasedClass instances. The onclause may be a
-    string name of a relationship(), or a class-bound descriptor
-    representing a relationship.
+    :func:`~sqlalchemy.sql.expression.outerjoin()`, left and right may be
+    mapped classes or AliasedClass instances. The onclause may be a string
+    name of a relationship(), or a class-bound descriptor representing a
+    relationship.
 
     """
     return _ORMJoin(left, right, onclause, True, join_to_left)
@@ -462,16 +481,15 @@ def outerjoin(left, right, onclause=None, join_to_left=True):
 def with_parent(instance, prop):
     """Return criterion which selects instances with a given parent.
 
-    instance
-      a parent instance, which should be persistent or detached.
+    :param instance: a parent instance, which should be persistent 
+      or detached.
 
-    property
-      a class-attached descriptor, MapperProperty or string property name
+    :param property: a class-attached descriptor, MapperProperty or 
+      string property name
       attached to the parent instance.
 
-    \**kwargs
-      all extra keyword arguments are propagated to the constructor of
-      Query.
+    :param \**kwargs: all extra keyword arguments are propagated 
+      to the constructor of Query.
 
     """
     if isinstance(prop, basestring):
@@ -529,21 +547,30 @@ def _entity_descriptor(entity, key):
             desc = getattr(entity, key)
             return desc, desc.property
         except AttributeError:
-            raise sa_exc.InvalidRequestError("Entity '%s' has no property '%s'" % (entity, key))
+            raise sa_exc.InvalidRequestError(
+                        "Entity '%s' has no property '%s'" % 
+                        (entity, key)
+                    )
             
     elif isinstance(entity, type):
         try:
             desc = attributes.manager_of_class(entity)[key]
             return desc, desc.property
         except KeyError:
-            raise sa_exc.InvalidRequestError("Entity '%s' has no property '%s'" % (entity, key))
+            raise sa_exc.InvalidRequestError(
+                        "Entity '%s' has no property '%s'" % 
+                        (entity, key)
+                    )
             
     else:
         try:
             desc = entity.class_manager[key]
             return desc, desc.property
         except KeyError:
-            raise sa_exc.InvalidRequestError("Entity '%s' has no property '%s'" % (entity, key))
+            raise sa_exc.InvalidRequestError(
+                        "Entity '%s' has no property '%s'" % 
+                        (entity, key)
+                    )
 
 def _orm_columns(entity):
     mapper, selectable, is_aliased_class = _entity_info(entity)
@@ -563,7 +590,8 @@ def _state_mapper(state):
     return state.manager.mapper
 
 def object_mapper(instance):
-    """Given an object, return the primary Mapper associated with the object instance.
+    """Given an object, return the primary Mapper associated with the object
+    instance.
 
     Raises UnmappedInstanceError if no mapping is configured.
 

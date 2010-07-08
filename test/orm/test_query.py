@@ -13,7 +13,8 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing, AssertsCompiledSQL, Column, engines
 
 from test.orm import _fixtures
-from test.orm._fixtures import keywords, addresses, Base, Keyword, FixtureTest, \
+from test.orm._fixtures import keywords, addresses, Base, \
+            Keyword, FixtureTest, \
            Dingaling, item_keywords, dingalings, User, items,\
            orders, Address, users, nodes, \
             order_items, Item, Order, Node, \
@@ -66,10 +67,60 @@ class RowTupleTest(QueryTest):
             'uname':users.c.name
         })
         
-        row  = create_session().query(User.id, User.uname).filter(User.id==7).first()
+        row  = create_session().\
+                    query(User.id, User.uname).\
+                    filter(User.id==7).first()
         assert row.id == 7
         assert row.uname == 'jack'
 
+    def test_column_metadata(self):
+        mapper(User, users)
+        mapper(Address, addresses)
+        sess = create_session()
+        user_alias = aliased(User)
+        address_alias = aliased(Address, name='aalias')
+        fn = func.count(User.id)
+        
+        for q, asserted in [
+            (
+                sess.query(User),
+                [{'name':'User', 'type':User, 'aliased':False}]
+            ),
+            (
+                sess.query(User.id, User),
+                [
+                    {'name':'id', 'type':users.c.id.type, 'aliased':False},
+                    {'name':'User', 'type':User, 'aliased':False}
+                ]
+            ),
+            (
+                sess.query(User.id, user_alias),
+                [
+                    {'name':'id', 'type':users.c.id.type, 'aliased':False},
+                    {'name':None, 'type':User, 'aliased':True}
+                ]
+            ),
+            (
+                sess.query(address_alias),
+                [
+                    {'name':'aalias', 'type':Address, 'aliased':True}
+                ]
+            ),
+            (
+                sess.query(User.name.label('uname'), fn),
+                [
+                    {'name':'uname', 'type':users.c.name.type,
+                                            'aliased':False},
+                    {'name':None, 'type':fn.type, 'aliased':False},
+                ]
+            )
+        ]:
+            eq_(
+                q.column_descriptions,
+                asserted
+            )
+        
+        
 class GetTest(QueryTest):
     def test_get(self):
         s = create_session()

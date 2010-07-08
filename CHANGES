@@ -20,6 +20,12 @@ CHANGES
     cls._sa_class_manager.mapper now raise 
     UnmappedClassError().  [ticket:1142]
     
+  - Added "column_descriptions" accessor to Query,
+    returns a list of dictionaries containing
+    naming/typing information about the entities
+    the Query will return.  Can be helpful for 
+    building GUIs on top of ORM queries.
+    
 0.6.2
 =====
 - orm

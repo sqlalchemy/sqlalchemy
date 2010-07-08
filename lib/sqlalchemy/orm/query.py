@@ -112,10 +112,12 @@ class Query(object):
         for ent in entities:
             for entity in ent.entities:
                 if entity not in d:
-                    mapper, selectable, is_aliased_class = _entity_info(entity)
+                    mapper, selectable, is_aliased_class = \
+                                            _entity_info(entity)
                     if not is_aliased_class and mapper.with_polymorphic:
                         with_polymorphic = mapper._with_polymorphic_mappers
-                        if mapper.mapped_table not in self._polymorphic_adapters:
+                        if mapper.mapped_table not in \
+                                            self._polymorphic_adapters:
                             self.__mapper_loads_polymorphically_with(mapper, 
                                 sql_util.ColumnAdapter(
                                             selectable, 
@@ -1115,9 +1117,9 @@ class Query(object):
                 isinstance(keys[1], expression.ClauseElement) and \
                 not isinstance(keys[1], expression.FromClause):
             raise sa_exc.ArgumentError(
-                        "You appear to be passing a clause expression as the second "
-                        "argument to query.join().   Did you mean to use the form "
-                        "query.join((target, onclause))?  Note the tuple.")
+                "You appear to be passing a clause expression as the second "
+                "argument to query.join().   Did you mean to use the form "
+                "query.join((target, onclause))?  Note the tuple.")
             
         for arg1 in util.to_list(keys):
             if isinstance(arg1, tuple):
@@ -1567,7 +1569,49 @@ class Query(object):
                         querycontext.statement, params=self._params,
                         mapper=self._mapper_zero_or_none())
         return self.instances(result, querycontext)
-
+    
+    @property
+    def column_descriptions(self):
+        """Return metadata about the columns which would be 
+        returned by this :class:`Query`.
+        
+        Format is a list of dictionaries::
+            
+            user_alias = aliased(User, name='user2')
+            q = sess.query(User, User.id, user_alias)
+            
+            # this expression:
+            q.columns
+            
+            # would return:
+            [
+                {
+                    'name':'User',
+                    'type':User,
+                    'aliased':False,
+                },
+                {
+                    'name':'id',
+                    'type':Integer(),
+                    'aliased':False
+                },
+                {
+                    'name':'user2',
+                    'type':User,
+                    'aliased':True
+                }
+            ]
+            
+        """
+        return [
+            {
+                'name':ent._label_name,
+                'type':ent.type,
+                'aliased':getattr(ent, 'is_aliased_class', False),
+            }
+            for ent in self._entities
+        ]
+        
     def instances(self, cursor, __context=None):
         """Given a ResultProxy cursor as returned by connection.execute(),
         return an ORM result as an iterator.
@@ -2090,7 +2134,8 @@ class Query(object):
                 value_evaluators = {}
                 for key,value in values.iteritems():
                     key = expression._column_as_key(key)
-                    value_evaluators[key] = evaluator_compiler.process(expression._literal_as_binds(value))
+                    value_evaluators[key] = evaluator_compiler.process(
+                                        expression._literal_as_binds(value))
             except evaluator.UnevaluatableError:
                 raise sa_exc.InvalidRequestError(
                         "Could not evaluate current criteria in Python. "
@@ -2372,10 +2417,12 @@ class _MapperEntity(_QueryEntity):
         self.is_aliased_class = is_aliased_class
         if is_aliased_class:
             self.path_entity = self.entity = self.entity_zero = entity
+            self._label_name = self.entity._sa_label_name
         else:
             self.path_entity = mapper
             self.entity = self.entity_zero = mapper
-
+            self._label_name = self.mapper.class_.__name__
+            
     def set_with_polymorphic(self, query, cls_or_mappers, 
                                 selectable, discriminator):
         if cls_or_mappers is None:
@@ -2392,6 +2439,10 @@ class _MapperEntity(_QueryEntity):
         if not self.is_aliased_class:
             self.selectable = from_obj
             self.adapter = query._get_polymorphic_adapter(self, from_obj)
+
+    @property
+    def type(self):
+        return self.mapper.class_
 
     def corresponds_to(self, entity):
         if _is_aliased_class(entity) or self.is_aliased_class:
@@ -2456,13 +2507,8 @@ class _MapperEntity(_QueryEntity):
                                 polymorphic_discriminator=
                                     self._polymorphic_discriminator)
 
-        if self.is_aliased_class:
-            entname = self.entity._sa_label_name
-        else:
-            entname = self.mapper.class_.__name__
-        
-        return _instance, entname
-
+        return _instance, self._label_name
+    
     def setup_context(self, query, context):
         adapter = self._get_entity_clauses(query, context)
 
@@ -2509,12 +2555,12 @@ class _ColumnEntity(_QueryEntity):
     def __init__(self, query, column):
         if isinstance(column, basestring):
             column = sql.literal_column(column)
-            self._result_label = column.name
+            self._label_name = column.name
         elif isinstance(column, attributes.QueryableAttribute):
-            self._result_label = column.key
+            self._label_name = column.key
             column = column.__clause_element__()
         else:
-            self._result_label = getattr(column, 'key', None)
+            self._label_name = getattr(column, 'key', None)
 
         if not isinstance(column, expression.ColumnElement) and \
                             hasattr(column, '_select_iterable'):
@@ -2565,6 +2611,10 @@ class _ColumnEntity(_QueryEntity):
         else:
             self.entity_zero = None
     
+    @property
+    def type(self):
+        return self.column.type
+        
     def adapt_to_selectable(self, query, sel):
         _ColumnEntity(query, sel.corresponding_column(self.column))
         
@@ -2595,7 +2645,7 @@ class _ColumnEntity(_QueryEntity):
         def proc(row, result):
             return row[column]
 
-        return (proc, self._result_label)
+        return proc, self._label_name
 
     def setup_context(self, query, context):
         column = self._resolve_expr_against_query_aliases(
