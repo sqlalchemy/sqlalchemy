@@ -15,7 +15,7 @@ class InstallListeners(InstrumentationManager):
 class AttributeListener(AttributeExtension):
     """Generic event listener.  
     
-    Propigates attribute change events to a 
+    Propagates attribute change events to a 
     "receive_change_event()" method on the target
     instance.
     
