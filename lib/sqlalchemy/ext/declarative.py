@@ -21,11 +21,11 @@ As a simple example::
         id = Column(Integer, primary_key=True)
         name =  Column(String(50))
 
-Above, the :func:`declarative_base` callable returns a new base class from which
-all mapped classes should inherit.  When the class definition is completed, a
-new :class:`~sqlalchemy.schema.Table` and
-:class:`~sqlalchemy.orm.mapper` will have been generated, accessible
-via the ``__table__`` and ``__mapper__`` attributes on the ``SomeClass`` class.
+Above, the :func:`declarative_base` callable returns a new base class from
+which all mapped classes should inherit. When the class definition is
+completed, a new :class:`~sqlalchemy.schema.Table` and
+:class:`~sqlalchemy.orm.mapper` will have been generated, accessible via the
+``__table__`` and ``__mapper__`` attributes on the ``SomeClass`` class.
 
 Defining Attributes
 ===================
@@ -327,7 +327,8 @@ only the ``engineers.id`` column, give it a different attribute name::
     class Engineer(Person):
         __tablename__ = 'engineers'
         __mapper_args__ = {'polymorphic_identity': 'engineer'}
-        engineer_id = Column('id', Integer, ForeignKey('people.id'), primary_key=True)
+        engineer_id = Column('id', Integer, ForeignKey('people.id'),
+                                                    primary_key=True)
         primary_language = Column(String(50))
 
 Single Table Inheritance
@@ -580,10 +581,12 @@ to get it's name::
 Mixing in deferred(), column_property(), etc.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Like :func:`~sqlalchemy.orm.relationship`, all :class:`~sqlalchemy.orm.interfaces.MapperProperty`
-subclasses such as :func:`~sqlalchemy.orm.deferred`, 
-:func:`~sqlalchemy.orm.column_property`, etc. ultimately involve references
-to columns, and therefore have the :func:`~sqlalchemy.util.classproperty` requirement so that no reliance on copying is needed::
+Like :func:`~sqlalchemy.orm.relationship`, all
+:class:`~sqlalchemy.orm.interfaces.MapperProperty` subclasses such as
+:func:`~sqlalchemy.orm.deferred`, :func:`~sqlalchemy.orm.column_property`,
+etc. ultimately involve references to columns, and therefore have the
+:func:`~sqlalchemy.util.classproperty` requirement so that no reliance on
+copying is needed::
 
     class SomethingMixin(object):
 
@@ -657,9 +660,8 @@ inheritance::
         __mapper_args__ = {'polymorphic_on': discriminator}
 
     class Engineer(Person):
-        __tablename__ = None
-        __mapper_args__ = {'polymorphic_identity': 'engineer'}
         primary_language = Column(String(50))
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
 
 If you want to use a similar pattern with a mix of single and joined
 table inheritance, you would need a slightly different mixin and use
@@ -672,8 +674,8 @@ classes::
     class Tablename:
         @classproperty
         def __tablename__(cls):
-            if (decl.has_inherited_table(cls) and
-                TableNameMixin not in cls.__bases__):
+            if (has_inherited_table(cls) and
+                Tablename not in cls.__bases__):
                 return None
             return cls.__name__.lower()
 
@@ -682,17 +684,16 @@ classes::
         discriminator = Column('type', String(50))
         __mapper_args__ = {'polymorphic_on': discriminator}
 
+    # This is single table inheritance
     class Engineer(Person):
-        # This is single table inheritance
-        __tablename__ = None
-        __mapper_args__ = {'polymorphic_identity': 'engineer'}
         primary_language = Column(String(50))
-
-    class Manager(Person,Tablename):
-        # This is joinded table inheritance
-        __tablename__ = None
         __mapper_args__ = {'polymorphic_identity': 'engineer'}
+
+    # This is joined table inheritance
+    class Manager(Person,Tablename):
+        id = Column(Integer, ForeignKey('person.id'), primary_key=True)
         preferred_recreation = Column(String(50))
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
 
 Combining Table/Mapper Arguments from Multiple Mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -753,7 +754,8 @@ Mapped instances then make usage of
 """
 
 from sqlalchemy.schema import Table, Column, MetaData
-from sqlalchemy.orm import synonym as _orm_synonym, mapper, comparable_property, class_mapper
+from sqlalchemy.orm import synonym as _orm_synonym, mapper,\
+                                comparable_property, class_mapper
 from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty
 from sqlalchemy.orm.util import _is_mapped_class
@@ -761,7 +763,8 @@ from sqlalchemy import util, exceptions
 from sqlalchemy.sql import util as sql_util
 
 
-__all__ = 'declarative_base', 'synonym_for', 'comparable_using', 'instrument_declarative'
+__all__ = 'declarative_base', 'synonym_for', \
+            'comparable_using', 'instrument_declarative'
 
 def instrument_declarative(cls, registry, metadata):
     """Given a class, configure the class declaratively,
@@ -778,8 +781,8 @@ def instrument_declarative(cls, registry, metadata):
     _as_declarative(cls, cls.__name__, cls.__dict__)
 
 def has_inherited_table(cls):
-    """Given a class, return True if any of the classes it inherits from has a mapped
-    table, otherwise return False.
+    """Given a class, return True if any of the classes it inherits from has a
+    mapped table, otherwise return False.
     """
     for class_ in cls.__mro__:
         if getattr(class_,'__table__',None) is not None:
@@ -907,9 +910,10 @@ def _as_declarative(cls, classname, dict_):
                 table_kw = table_args[-1]
                 if len(table_args) < 2 or not isinstance(table_kw, dict):
                     raise exceptions.ArgumentError(
-                                "Tuple form of __table_args__ is "
-                                "(arg1, arg2, arg3, ..., {'kw1':val1, 'kw2':val2, ...})"
-                            )
+                        "Tuple form of __table_args__ is "
+                        "(arg1, arg2, arg3, ..., {'kw1':val1, "
+                        "'kw2':val2, ...})"
+                    )
             else:
                 args, table_kw = (), {}
 
@@ -918,20 +922,23 @@ def _as_declarative(cls, classname, dict_):
                 table_kw['autoload'] = True
 
             cls.__table__ = table = Table(tablename, cls.metadata,
-                                          *(tuple(cols) + tuple(args)), **table_kw)
+                                          *(tuple(cols) + tuple(args)),
+                                           **table_kw)
     else:
         table = cls.__table__
         if cols:
             for c in cols:
                 if not table.c.contains_column(c):
                     raise exceptions.ArgumentError(
-                        "Can't add additional column %r when specifying __table__" % key
-                        )
+                        "Can't add additional column %r when "
+                        "specifying __table__" % key
+                    )
     
     if 'inherits' not in mapper_args:
         for c in cls.__bases__:
             if _is_mapped_class(c):
-                mapper_args['inherits'] = cls._decl_class_registry.get(c.__name__, None)
+                mapper_args['inherits'] = cls._decl_class_registry.get(
+                                                            c.__name__, None)
                 break
 
     if hasattr(cls, '__mapper_cls__'):
@@ -942,11 +949,13 @@ def _as_declarative(cls, classname, dict_):
     if table is None and 'inherits' not in mapper_args:
         raise exceptions.InvalidRequestError(
             "Class %r does not have a __table__ or __tablename__ "
-            "specified and does not inherit from an existing table-mapped class." % cls
+            "specified and does not inherit from an existing "
+            "table-mapped class." % cls
             )
 
     elif 'inherits' in mapper_args and not mapper_args.get('concrete', False):
-        inherited_mapper = class_mapper(mapper_args['inherits'], compile=False)
+        inherited_mapper = class_mapper(mapper_args['inherits'],
+                                            compile=False)
         inherited_table = inherited_mapper.local_table
         if 'inherit_condition' not in mapper_args and table is not None:
             # figure out the inherit condition with relaxed rules
@@ -962,27 +971,31 @@ def _as_declarative(cls, classname, dict_):
             # ensure no table args
             if table_args:
                 raise exceptions.ArgumentError(
-                    "Can't place __table_args__ on an inherited class with no table."
+                    "Can't place __table_args__ on an inherited class "
+                    "with no table."
                     )
         
             # add any columns declared here to the inherited table.
             for c in cols:
                 if c.primary_key:
                     raise exceptions.ArgumentError(
-                        "Can't place primary key columns on an inherited class with no table."
+                        "Can't place primary key columns on an inherited "
+                        "class with no table."
                         )
                 if c.name in inherited_table.c:
                     raise exceptions.ArgumentError(
-                                "Column '%s' on class %s conflicts with existing column '%s'" % 
-                                (c, cls, inherited_table.c[c.name])
-                            )
+                        "Column '%s' on class %s conflicts with "
+                        "existing column '%s'" % 
+                        (c, cls, inherited_table.c[c.name])
+                    )
                 inherited_table.append_column(c)
     
         # single or joined inheritance
         # exclude any cols on the inherited table which are not mapped on the
         # parent class, to avoid
         # mapping columns specific to sibling/nephew classes
-        inherited_mapper = class_mapper(mapper_args['inherits'], compile=False)
+        inherited_mapper = class_mapper(mapper_args['inherits'],
+                                            compile=False)
         inherited_table = inherited_mapper.local_table
         
         if 'exclude_properties' not in mapper_args:
@@ -991,7 +1004,10 @@ def _as_declarative(cls, classname, dict_):
                      if c not in inherited_mapper._columntoproperty])
             exclude_properties.difference_update([c.key for c in cols])
     
-    cls.__mapper__ = mapper_cls(cls, table, properties=our_stuff, **mapper_args)
+    cls.__mapper__ = mapper_cls(cls, 
+                                table, 
+                                properties=our_stuff, 
+                                **mapper_args)
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
@@ -1014,7 +1030,10 @@ class DeclarativeMeta(type):
                         cls.__table__.append_column(col)
                 cls.__mapper__.add_property(key, value)
             elif isinstance(value, MapperProperty):
-                cls.__mapper__.add_property(key, _deferred_relationship(cls, value))
+                cls.__mapper__.add_property(
+                                        key, 
+                                        _deferred_relationship(cls, value)
+                                )
             else:
                 type.__setattr__(cls, key, value)
         else:
@@ -1031,13 +1050,13 @@ class _GetColumns(object):
             prop = mapper.get_property(key, raiseerr=False)
             if prop is None:
                 raise exceptions.InvalidRequestError(
-                                        "Class %r does not have a mapped column named %r"
-                                        % (self.cls, key))
+                            "Class %r does not have a mapped column named %r"
+                            % (self.cls, key))
             elif not isinstance(prop, ColumnProperty):
                 raise exceptions.InvalidRequestError(
-                                        "Property %r is not an instance of"
-                                        " ColumnProperty (i.e. does not correspond"
-                                        " directly to a Column)." % key)
+                            "Property %r is not an instance of"
+                            " ColumnProperty (i.e. does not correspond"
+                            " directly to a Column)." % key)
         return getattr(self.cls, key)
 
 
@@ -1064,10 +1083,12 @@ def _deferred_relationship(cls, prop):
                     return x
             except NameError, n:
                 raise exceptions.InvalidRequestError(
-                    "When compiling mapper %s, expression %r failed to locate a name (%r). "
-                    "If this is a class name, consider adding this relationship() to the %r "
-                    "class after both dependent classes have been defined." % (
-                    prop.parent, arg, n.args[0], cls))
+                    "When compiling mapper %s, expression %r failed to "
+                    "locate a name (%r). If this is a class name, consider "
+                    "adding this relationship() to the %r class after "
+                    "both dependent classes have been defined." % 
+                    (prop.parent, arg, n.args[0], cls)
+                )
         return return_cls
 
     if isinstance(prop, RelationshipProperty):
@@ -1090,9 +1111,9 @@ def _deferred_relationship(cls, prop):
 def synonym_for(name, map_column=False):
     """Decorator, make a Python @property a query synonym for a column.
 
-    A decorator version of :func:`~sqlalchemy.orm.synonym`.  The function being
-    decorated is the 'descriptor', otherwise passes its arguments through
-    to synonym()::
+    A decorator version of :func:`~sqlalchemy.orm.synonym`. The function being
+    decorated is the 'descriptor', otherwise passes its arguments through to
+    synonym()::
 
       @synonym_for('col')
       @property
@@ -1164,7 +1185,6 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
       :class:`~sqlalchemy.engine.base.Connectable`, will be assigned
       the ``bind`` attribute on the :class:`~sqlalchemy.MetaData` 
       instance. 
-      
 
     :param metadata:
       An optional :class:`~sqlalchemy.MetaData` instance.  All
@@ -1175,12 +1195,12 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
       `metadata` attribute of the generated declarative base class.
 
     :param mapper:
-      An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`.  Will be
-      used to map subclasses to their Tables.
+      An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`. Will
+      be used to map subclasses to their Tables.
 
     :param cls:
-      Defaults to :class:`object`.  A type to use as the base for the generated
-      declarative base class.  May be a class or tuple of classes.
+      Defaults to :class:`object`. A type to use as the base for the generated
+      declarative base class. May be a class or tuple of classes.
 
     :param name:
       Defaults to ``Base``.  The display name for the generated
