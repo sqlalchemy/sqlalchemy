@@ -152,7 +152,9 @@ li.toctree-l1 ul li li
     margin:0px 0px 0px 20px;
 }
 
-
+th.field-name {
+    text-align:right;
+}
 div.note, div.warning  {
     background-color:#EEFFEF;
 }

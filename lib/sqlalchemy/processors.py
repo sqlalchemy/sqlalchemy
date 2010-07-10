@@ -90,7 +90,8 @@ except ImportError:
         else:
             return value and True or False
 
-    DATETIME_RE = re.compile("(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")
+    DATETIME_RE = re.compile(
+                        "(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?")
     TIME_RE = re.compile("(\d+):(\d+):(\d+)(?:\.(\d+))?")
     DATE_RE = re.compile("(\d+)-(\d+)-(\d+)")
 

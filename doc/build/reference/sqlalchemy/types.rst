@@ -114,6 +114,9 @@ The SQL standard types always create database column types of the same
 name when ``CREATE TABLE`` is issued.  Some types may not be supported
 on all databases.
 
+.. autoclass:: BIGINT
+  :show-inheritance:
+
 .. autoclass:: BINARY
   :show-inheritance:
 
