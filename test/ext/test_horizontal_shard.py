@@ -40,12 +40,16 @@ class ShardTest(TestBase):
                 Column('city', String(50), nullable=False)
             )
 
-        weather_reports = Table("weather_reports", meta,
+        weather_reports = Table(
+            'weather_reports',
+            meta,
             Column('id', Integer, primary_key=True),
-            Column('location_id', Integer, ForeignKey('weather_locations.id')),
+            Column('location_id', Integer,
+                   ForeignKey('weather_locations.id')),
             Column('temperature', Float),
-            Column('report_time', DateTime, default=datetime.datetime.now),
-        )
+            Column('report_time', DateTime,
+                   default=datetime.datetime.now),
+            )
 
         for db in (db1, db2, db3, db4):
             meta.create_all(db)
@@ -65,13 +69,12 @@ class ShardTest(TestBase):
     @classmethod
     def setup_session(cls):
         global create_session
-
         shard_lookup = {
-            'North America':'north_america',
-            'Asia':'asia',
-            'Europe':'europe',
-            'South America':'south_america'
-        }
+            'North America': 'north_america',
+            'Asia': 'asia',
+            'Europe': 'europe',
+            'South America': 'south_america',
+            }
 
         def shard_chooser(mapper, instance, clause=None):
             if isinstance(instance, WeatherLocation):
@@ -85,29 +88,35 @@ class ShardTest(TestBase):
         def query_chooser(query):
             ids = []
 
+
             class FindContinent(sql.ClauseVisitor):
+
                 def visit_binary(self, binary):
-                    if binary.left.shares_lineage(weather_locations.c.continent):
+                    if binary.left.shares_lineage(
+                            weather_locations.c.continent):
                         if binary.operator == operators.eq:
                             ids.append(shard_lookup[binary.right.value])
                         elif binary.operator == operators.in_op:
                             for bind in binary.right.clauses:
                                 ids.append(shard_lookup[bind.value])
 
+
             FindContinent().traverse(query._criterion)
             if len(ids) == 0:
-                return ['north_america', 'asia', 'europe', 'south_america']
+                return ['north_america', 'asia', 'europe',
+                        'south_america']
             else:
                 return ids
 
-        create_session = sessionmaker(class_=ShardedSession, autoflush=True, autocommit=False)
-
+        create_session = sessionmaker(class_=ShardedSession,
+                autoflush=True, autocommit=False)
         create_session.configure(shards={
-            'north_america':db1,
-            'asia':db2,
-            'europe':db3,
-            'south_america':db4
-        }, shard_chooser=shard_chooser, id_chooser=id_chooser, query_chooser=query_chooser)
+            'north_america': db1,
+            'asia': db2,
+            'europe': db3,
+            'south_america': db4,
+            }, shard_chooser=shard_chooser, id_chooser=id_chooser,
+                query_chooser=query_chooser)
 
 
     @classmethod
@@ -138,31 +147,41 @@ class ShardTest(TestBase):
         dublin = WeatherLocation('Europe', 'Dublin')
         brasilia = WeatherLocation('South America', 'Brasila')
         quito = WeatherLocation('South America', 'Quito')
-
         tokyo.reports.append(Report(80.0))
         newyork.reports.append(Report(75))
         quito.reports.append(Report(85))
-
         sess = create_session()
-        for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
+        for c in [
+            tokyo,
+            newyork,
+            toronto,
+            london,
+            dublin,
+            brasilia,
+            quito,
+            ]:
             sess.add(c)
         sess.commit()
-        tokyo.city   # reload 'city' attribute on tokyo
+        tokyo.city  # reload 'city' attribute on tokyo
         sess.expunge_all()
-
-        eq_(db2.execute(weather_locations.select()).fetchall(), [(1, 'Asia', 'Tokyo')])
-        eq_(db1.execute(weather_locations.select()).fetchall(), [(2, 'North America', 'New York'), (3, 'North America', 'Toronto')])
-        eq_(sess.execute(weather_locations.select(), shard_id='asia').fetchall(), [(1, 'Asia', 'Tokyo')])
-        
+        eq_(db2.execute(weather_locations.select()).fetchall(), [(1,
+            'Asia', 'Tokyo')])
+        eq_(db1.execute(weather_locations.select()).fetchall(), [(2,
+            'North America', 'New York'), (3, 'North America', 'Toronto'
+            )])
+        eq_(sess.execute(weather_locations.select(), shard_id='asia'
+            ).fetchall(), [(1, 'Asia', 'Tokyo')])
         t = sess.query(WeatherLocation).get(tokyo.id)
         eq_(t.city, tokyo.city)
         eq_(t.reports[0].temperature, 80.0)
-
-        north_american_cities = sess.query(WeatherLocation).filter(WeatherLocation.continent == 'North America')
-        eq_(set([c.city for c in north_american_cities]), set(['New York', 'Toronto']))
-
-        asia_and_europe = sess.query(WeatherLocation).filter(WeatherLocation.continent.in_(['Europe', 'Asia']))
-        eq_(set([c.city for c in asia_and_europe]), set(['Tokyo', 'London', 'Dublin']))
-
-
+        north_american_cities = \
+            sess.query(WeatherLocation).filter(WeatherLocation.continent
+                == 'North America')
+        eq_(set([c.city for c in north_american_cities]),
+            set(['New York', 'Toronto']))
+        asia_and_europe = \
+            sess.query(WeatherLocation).filter(
+                WeatherLocation.continent.in_(['Europe', 'Asia']))
+        eq_(set([c.city for c in asia_and_europe]), set(['Tokyo',
+            'London', 'Dublin']))
 

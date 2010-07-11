@@ -4,6 +4,8 @@ from sqlalchemy import util, sql, exc
 from sqlalchemy.test import TestBase
 from sqlalchemy.test.testing import eq_, is_, ne_
 from sqlalchemy.test.util import gc_collect, picklers
+from sqlalchemy.util import classproperty
+
 
 class OrderedDictTest(TestBase):
     def test_odict(self):
@@ -53,7 +55,8 @@ class OrderedDictTest(TestBase):
         eq_(o.values(), [1, 2, 3, 4, 5, 6])
 
     def test_odict_constructor(self):
-        o = util.OrderedDict([('name', 'jbe'), ('fullname', 'jonathan'), ('password', '')])
+        o = util.OrderedDict([('name', 'jbe'), ('fullname', 'jonathan'
+                             ), ('password', '')])
         eq_(o.keys(), ['name', 'fullname', 'password'])
 
     def test_odict_copy(self):
@@ -196,19 +199,23 @@ class ImmutableSubclass(str):
     pass
 
 class FlattenIteratorTest(TestBase):
+
     def test_flatten(self):
-        assert list(util.flatten_iterator([[1,2,3], [4,5,6], 7, 8])) == [1,2,3,4,5,6,7,8]
+        assert list(util.flatten_iterator([[1, 2, 3], [4, 5, 6], 7,
+                    8])) == [1, 2, 3, 4, 5, 6, 7, 8]
 
     def test_str_with_iter(self):
-        """ensure that a str object with an __iter__ method (like in PyPy) is not interpreted
-        as an iterable.
+        """ensure that a str object with an __iter__ method (like in
+        PyPy) is not interpreted as an iterable.
         
         """
         class IterString(str):
             def __iter__(self):
-                return iter(self + "")
+                return iter(self + '')
 
-        assert list(util.flatten_iterator([IterString("asdf"), [IterString("x"), IterString("y")]])) == ["asdf", "x", "y"]
+        assert list(util.flatten_iterator([IterString('asdf'),
+                    [IterString('x'), IterString('y')]])) == ['asdf',
+                'x', 'y']
                 
 class HashOverride(object):
     def __init__(self, value=None):
@@ -230,6 +237,7 @@ class EqOverride(object):
             return self.value != other.value
         else:
             return True
+            
 class HashEqOverride(object):
     def __init__(self, value=None):
         self.value = value
@@ -381,7 +389,8 @@ class OrderedIdentitySetTest(TestBase):
         elem = object
         eq_ = self.assert_eq
         
-        a, b, c, d, e, f, g = elem(), elem(), elem(), elem(), elem(), elem(), elem()
+        a, b, c, d, e, f, g = \
+                elem(), elem(), elem(), elem(), elem(), elem(), elem()
         
         s1 = util.OrderedIdentitySet([a, b, c])
         s2 = util.OrderedIdentitySet([d, e, f])
@@ -977,13 +986,11 @@ class AsInterfaceTest(TestBase):
 
     def test_dict(self):
         obj = {}
-
         assert_raises(TypeError, util.as_interface, obj,
-                          cls=self.Something)
+                      cls=self.Something)
+        assert_raises(TypeError, util.as_interface, obj, methods='foo')
         assert_raises(TypeError, util.as_interface, obj,
-                          methods=('foo'))
-        assert_raises(TypeError, util.as_interface, obj,
-                          cls=self.Something, required=('foo'))
+                      cls=self.Something, required='foo')
 
         def assertAdapted(obj, *methods):
             assert isinstance(obj, type)
@@ -994,34 +1001,29 @@ class AsInterfaceTest(TestBase):
             assert not found
 
         fn = lambda self: 123
-
         obj = {'foo': fn, 'bar': fn}
-
         res = util.as_interface(obj, cls=self.Something)
         assertAdapted(res, 'foo', 'bar')
-
-        res = util.as_interface(obj, cls=self.Something, required=self.Something)
+        res = util.as_interface(obj, cls=self.Something,
+                                required=self.Something)
         assertAdapted(res, 'foo', 'bar')
-
-        res = util.as_interface(obj, cls=self.Something, required=('foo',))
+        res = util.as_interface(obj, cls=self.Something, required=('foo'
+                                , ))
         assertAdapted(res, 'foo', 'bar')
-
         res = util.as_interface(obj, methods=('foo', 'bar'))
         assertAdapted(res, 'foo', 'bar')
-
         res = util.as_interface(obj, methods=('foo', 'bar', 'baz'))
         assertAdapted(res, 'foo', 'bar')
-
-        res = util.as_interface(obj, methods=('foo', 'bar'), required=('foo',))
+        res = util.as_interface(obj, methods=('foo', 'bar'),
+                                required=('foo', ))
         assertAdapted(res, 'foo', 'bar')
-
-        assert_raises(TypeError, util.as_interface, obj, methods=('foo',))
-
-        assert_raises(TypeError, util.as_interface, obj,
-                          methods=('foo', 'bar', 'baz'), required=('baz',))
-
+        assert_raises(TypeError, util.as_interface, obj, methods=('foo'
+                      , ))
+        assert_raises(TypeError, util.as_interface, obj, methods=('foo'
+                      , 'bar', 'baz'), required=('baz', ))
         obj = {'foo': 123}
-        assert_raises(TypeError, util.as_interface, obj, cls=self.Something)
+        assert_raises(TypeError, util.as_interface, obj,
+                      cls=self.Something)
 
 
 class TestClassHierarchy(TestBase):
@@ -1064,9 +1066,6 @@ class TestClassHierarchy(TestBase):
 class TestClassProperty(TestBase):
 
     def test_simple(self):
-
-        from sqlalchemy.util import classproperty
-
         class A(object):
             something = {'foo':1}
 

@@ -610,8 +610,9 @@ class CustomObjectTest(_CollectionOperations):
         p = self.roundtrip(p)
         self.assert_(len(list(p.children)) == 1)
 
-        # We didn't provide an alternate _AssociationList implementation for
-        # our ObjectCollection, so indexing will fail.
+        # We didn't provide an alternate _AssociationList implementation
+        # for our ObjectCollection, so indexing will fail.
+
         try:
             v = p.children[1]
             self.fail()
@@ -635,10 +636,22 @@ class ProxyFactoryTest(ListTest):
                                Column('name', String(128)))
         
         class CustomProxy(_AssociationList):
-            def __init__(self, lazy_collection, creator, value_attr, parent):
+            def __init__(
+                self,
+                lazy_collection,
+                creator,
+                value_attr,
+                parent,
+                ):
                 getter, setter = parent._default_getset(lazy_collection)
-                _AssociationList.__init__(self, lazy_collection, creator, getter, setter, parent)
-                
+                _AssociationList.__init__(
+                    self,
+                    lazy_collection,
+                    creator,
+                    getter,
+                    setter,
+                    parent,
+                    )
         
         class Parent(object):
             children = association_proxy('_children', 'name', 
@@ -897,102 +910,94 @@ class LazyLoadTest(TestBase):
 
 
 class ReconstitutionTest(TestBase):
+
     def setup(self):
         metadata = MetaData(testing.db)
-        parents = Table('parents', metadata,
-                        Column('id', Integer, primary_key=True,
-                               test_needs_autoincrement=True),
-                        Column('name', String(30)))
-        children = Table('children', metadata,
-                         Column('id', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-                         Column('parent_id', Integer, ForeignKey('parents.id')),
-                         Column('name', String(30)))
+        parents = Table('parents', metadata, Column('id', Integer,
+                        primary_key=True,
+                        test_needs_autoincrement=True), Column('name',
+                        String(30)))
+        children = Table('children', metadata, Column('id', Integer,
+                         primary_key=True,
+                         test_needs_autoincrement=True),
+                         Column('parent_id', Integer,
+                         ForeignKey('parents.id')), Column('name',
+                         String(30)))
         metadata.create_all()
         parents.insert().execute(name='p1')
-
-
         self.metadata = metadata
         self.parents = parents
         self.children = children
-        
+
     def teardown(self):
         self.metadata.drop_all()
         clear_mappers()
 
     def test_weak_identity_map(self):
-        mapper(Parent, self.parents, properties=dict(children=relationship(Child)))
+        mapper(Parent, self.parents,
+               properties=dict(children=relationship(Child)))
         mapper(Child, self.children)
-
         session = create_session(weak_identity_map=True)
 
         def add_child(parent_name, child_name):
-            parent = (session.query(Parent).
-                      filter_by(name=parent_name)).one()
+            parent = \
+                session.query(Parent).filter_by(name=parent_name).one()
             parent.kids.append(child_name)
-
 
         add_child('p1', 'c1')
         gc_collect()
         add_child('p1', 'c2')
-
         session.flush()
         p = session.query(Parent).filter_by(name='p1').one()
         assert set(p.kids) == set(['c1', 'c2']), p.kids
 
     def test_copy(self):
-        mapper(Parent, self.parents, properties=dict(children=relationship(Child)))
+        mapper(Parent, self.parents,
+               properties=dict(children=relationship(Child)))
         mapper(Child, self.children)
-
         p = Parent('p1')
         p.kids.extend(['c1', 'c2'])
         p_copy = copy.copy(p)
         del p
         gc_collect()
-
         assert set(p_copy.kids) == set(['c1', 'c2']), p.kids
 
     def test_pickle_list(self):
-        mapper(Parent, self.parents, properties=dict(children=relationship(Child)))
+        mapper(Parent, self.parents,
+               properties=dict(children=relationship(Child)))
         mapper(Child, self.children)
-
         p = Parent('p1')
         p.kids.extend(['c1', 'c2'])
-
         r1 = pickle.loads(pickle.dumps(p))
         assert r1.kids == ['c1', 'c2']
-
         r2 = pickle.loads(pickle.dumps(p.kids))
         assert r2 == ['c1', 'c2']
 
     def test_pickle_set(self):
-        mapper(Parent, self.parents, properties=dict(children=relationship(Child, collection_class=set)))
+        mapper(Parent, self.parents,
+               properties=dict(children=relationship(Child,
+               collection_class=set)))
         mapper(Child, self.children)
-
         p = Parent('p1')
         p.kids.update(['c1', 'c2'])
-
         r1 = pickle.loads(pickle.dumps(p))
         assert r1.kids == set(['c1', 'c2'])
-
         r2 = pickle.loads(pickle.dumps(p.kids))
         assert r2 == set(['c1', 'c2'])
 
     def test_pickle_dict(self):
-        mapper(Parent, self.parents, properties=dict(
-                    children=relationship(KVChild, collection_class=collections.mapped_collection(PickleKeyFunc('name')))
-                ))
+        mapper(Parent, self.parents,
+               properties=dict(children=relationship(KVChild,
+               collection_class=
+                    collections.mapped_collection(PickleKeyFunc('name')))))
         mapper(KVChild, self.children)
-
         p = Parent('p1')
-        p.kids.update({'c1':'v1', 'c2':'v2'})
-        assert p.kids == {'c1':'c1', 'c2':'c2'}
-        
+        p.kids.update({'c1': 'v1', 'c2': 'v2'})
+        assert p.kids == {'c1': 'c1', 'c2': 'c2'}
         r1 = pickle.loads(pickle.dumps(p))
-        assert r1.kids == {'c1':'c1', 'c2':'c2'}
-
+        assert r1.kids == {'c1': 'c1', 'c2': 'c2'}
         r2 = pickle.loads(pickle.dumps(p.kids))
-        assert r2 == {'c1':'c1', 'c2':'c2'}
+        assert r2 == {'c1': 'c1', 'c2': 'c2'}
 
 class PickleKeyFunc(object):
     def __init__(self, name):
@@ -1002,40 +1007,37 @@ class PickleKeyFunc(object):
         return getattr(obj, self.name)
 
 class ComparatorTest(_base.MappedTest):
+
     run_inserts = 'once'
     run_deletes = None
     run_setup_mappers = 'once'
+    run_setup_classes = 'once'
     
     @classmethod
     def define_tables(cls, metadata):
-
-        Table(
-            'userkeywords', metadata,
-            Column('keyword_id', Integer, ForeignKey('keywords.id'),
-                   primary_key=True),
-            Column('user_id', Integer, ForeignKey('users.id')))
-
-        Table(
-            'users', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('name', String(64)))
-
-        Table(
-            'keywords', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('keyword', String(64)))
+        Table('userkeywords', metadata, Column('keyword_id', Integer,
+              ForeignKey('keywords.id'), primary_key=True),
+              Column('user_id', Integer, ForeignKey('users.id')))
+        Table('users', metadata, Column('id', Integer,
+              primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(64)))
+        Table('keywords', metadata, Column('id', Integer,
+              primary_key=True, test_needs_autoincrement=True),
+              Column('keyword', String(64)))
 
     @classmethod
     def setup_classes(cls):
         class User(_base.ComparableEntity):
             def __init__(self, name):
                 self.name = name
+
             keywords = association_proxy('user_keywords', 'keyword',
-                                         creator=lambda k: UserKeyword(keyword=k))
+                    creator=lambda k: UserKeyword(keyword=k))
 
         class Keyword(_base.ComparableEntity):
             def __init__(self, keyword):
                 self.keyword = keyword
+
             user = association_proxy('user_keyword', 'user')
 
         class UserKeyword(_base.ComparableEntity):
@@ -1046,32 +1048,35 @@ class ComparatorTest(_base.MappedTest):
     @classmethod
     @testing.resolve_artifact_names
     def setup_mappers(cls):
-        
         mapper(User, users)
-        mapper(Keyword, keywords, properties={
-            'user_keyword': relationship(UserKeyword, uselist=False)
-        })
-        mapper(UserKeyword, userkeywords, properties={
-            'user': relationship(User, backref='user_keywords'),
-            'keyword': relationship(Keyword),
-        })
+        mapper(Keyword, keywords, properties={'user_keyword'
+               : relationship(UserKeyword, uselist=False)})
+        mapper(UserKeyword, userkeywords, properties={'user'
+               : relationship(User, backref='user_keywords'), 'keyword'
+               : relationship(Keyword)})
 
     @classmethod
     @testing.resolve_artifact_names
     def insert_data(cls):
         session = sessionmaker()()
-        words = ('quick', 'brown', 'fox', 'jumped', 'over', 'the', 'lazy')
+        words = (
+            'quick',
+            'brown',
+            'fox',
+            'jumped',
+            'over',
+            'the',
+            'lazy',
+            )
         for ii in range(4):
             user = User('user%d' % ii)
             session.add(user)
-            for jj in words[ii:ii+3]:
+            for jj in words[ii:ii + 3]:
                 user.keywords.append(Keyword(jj))
-
         orphan = Keyword('orphan')
         orphan.user_keyword = UserKeyword(keyword=orphan, user=None)
         session.add(orphan)
         session.commit()
-
         cls.u = user
         cls.kw = user.keywords[0]
         cls.session = session
@@ -1081,88 +1086,94 @@ class ComparatorTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_filter_any_kwarg(self):
-        self._equivalent(
-            self.session.query(User).\
-                filter(User.keywords.any(keyword='jumped')),
-            self.session.query(User).\
-                filter(User.user_keywords.any(
-                    UserKeyword.keyword.has(keyword='jumped'))))
+        self._equivalent(self.session.query(User).
+                    filter(User.keywords.any(keyword='jumped'
+                         )),
+                         self.session.query(User).filter(
+                                User.user_keywords.any(
+                            UserKeyword.keyword.has(keyword='jumped'
+                         ))))
 
     @testing.resolve_artifact_names
     def test_filter_has_kwarg(self):
-        self._equivalent(
-            self.session.query(Keyword).\
-                filter(Keyword.user.has(name='user2')),
-            self.session.query(Keyword).\
-                filter(Keyword.user_keyword.has(
-                    UserKeyword.user.has(name='user2'))))
+        self._equivalent(self.session.query(Keyword).
+                    filter(Keyword.user.has(name='user2'
+                         )),
+                         self.session.query(Keyword).
+                            filter(Keyword.user_keyword.has(
+                            UserKeyword.user.has(name='user2'
+                         ))))
 
     @testing.resolve_artifact_names
     def test_filter_any_criterion(self):
-        self._equivalent(
-            self.session.query(User).\
-                filter(User.keywords.any(Keyword.keyword == 'jumped')),
-            self.session.query(User).\
-                filter(User.user_keywords.any(
-                    UserKeyword.keyword.has(Keyword.keyword == 'jumped'))))
+        self._equivalent(self.session.query(User).
+                    filter(User.keywords.any(Keyword.keyword
+                         == 'jumped')),
+                         self.session.query(User).
+                            filter(User.user_keywords.any(
+                            UserKeyword.keyword.has(Keyword.keyword
+                         == 'jumped'))))
 
     @testing.resolve_artifact_names
     def test_filter_has_criterion(self):
-        self._equivalent(
-            self.session.query(Keyword).\
-                filter(Keyword.user.has(User.name == 'user2')),
-            self.session.query(Keyword).\
-                filter(Keyword.user_keyword.has(
-                    UserKeyword.user.has(User.name == 'user2'))))
-    
+        self._equivalent(self.session.query(Keyword).
+                filter(Keyword.user.has(User.name
+                         == 'user2')),
+                         self.session.query(Keyword).
+                            filter(Keyword.user_keyword.has(
+                                UserKeyword.user.has(User.name
+                         == 'user2'))))
+
     @testing.resolve_artifact_names
     def test_filter_contains(self):
-        self._equivalent(
-            self.session.query(User).\
-                filter(User.keywords.contains(self.kw)),
-            self.session.query(User).\
-                filter(User.user_keywords.any(keyword=self.kw)))
-    
+        self._equivalent(self.session.query(User).
+        filter(User.keywords.contains(self.kw)),
+                         self.session.query(User).
+                         filter(User.user_keywords.any(keyword=self.kw)))
+
     @testing.resolve_artifact_names
     def test_filter_eq(self):
-        self._equivalent(
-            self.session.query(Keyword).\
-                filter(Keyword.user == self.u),
-            self.session.query(Keyword).\
-                filter(Keyword.user_keyword.has(user=self.u)))
-    
+        self._equivalent(self.session.query(Keyword).filter(Keyword.user
+                         == self.u),
+                         self.session.query(Keyword).
+                         filter(Keyword.user_keyword.has(user=self.u)))
+
     @testing.resolve_artifact_names
     def test_filter_ne(self):
-        self._equivalent(
-            self.session.query(Keyword).\
-                filter(Keyword.user != self.u),
-            self.session.query(Keyword).\
-                filter(not_(Keyword.user_keyword.has(user=self.u))))
+        self._equivalent(self.session.query(Keyword).filter(Keyword.user
+                         != self.u),
+                         self.session.query(Keyword).
+                         filter(not_(Keyword.user_keyword.has(user=self.u))))
 
     @testing.resolve_artifact_names
     def test_filter_eq_null(self):
-        self._equivalent(
-            self.session.query(Keyword).\
-                filter(Keyword.user == None),
-            self.session.query(Keyword).\
-                filter(Keyword.user_keyword.has(UserKeyword.user == None)))
+        self._equivalent(self.session.query(Keyword).filter(Keyword.user
+                         == None),
+                         self.session.query(Keyword).
+                            filter(Keyword.user_keyword.has(UserKeyword.user
+                         == None)))
 
     @testing.resolve_artifact_names
     def test_filter_scalar_contains_fails(self):
-        assert_raises(exceptions.InvalidRequestError, lambda: Keyword.user.contains(self.u))
-    
+        assert_raises(exceptions.InvalidRequestError, lambda : \
+                      Keyword.user.contains(self.u))
+
     @testing.resolve_artifact_names
     def test_filter_scalar_any_fails(self):
-        assert_raises(exceptions.InvalidRequestError, lambda: Keyword.user.any(name='user2'))
+        assert_raises(exceptions.InvalidRequestError, lambda : \
+                      Keyword.user.any(name='user2'))
 
     @testing.resolve_artifact_names
     def test_filter_collection_has_fails(self):
-        assert_raises(exceptions.InvalidRequestError, lambda: User.keywords.has(keyword='quick'))
+        assert_raises(exceptions.InvalidRequestError, lambda : \
+                      User.keywords.has(keyword='quick'))
 
     @testing.resolve_artifact_names
     def test_filter_collection_eq_fails(self):
-        assert_raises(exceptions.InvalidRequestError, lambda: User.keywords == self.kw)
+        assert_raises(exceptions.InvalidRequestError, lambda : \
+                      User.keywords == self.kw)
 
     @testing.resolve_artifact_names
     def test_filter_collection_ne_fails(self):
-        assert_raises(exceptions.InvalidRequestError, lambda: User.keywords != self.kw)
+        assert_raises(exceptions.InvalidRequestError, lambda : \
+                      User.keywords != self.kw)
