@@ -63,7 +63,8 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         columns = [
             # column type, args, kwargs, expected ddl
-            # e.g. Column(Integer(10, unsigned=True)) == 'INTEGER(10) UNSIGNED'
+            # e.g. Column(Integer(10, unsigned=True)) == 
+            # 'INTEGER(10) UNSIGNED'
             (mysql.MSNumeric, [], {},
              'NUMERIC'),
             (mysql.MSNumeric, [None], {},
@@ -187,7 +188,8 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         numeric_table = Table(*table_args)
-        gen = testing.db.dialect.ddl_compiler(testing.db.dialect, numeric_table)
+        gen = testing.db.dialect.ddl_compiler(
+                testing.db.dialect, numeric_table)
 
         for col in numeric_table.c:
             index = int(col.name[1:])
@@ -242,9 +244,11 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
              'NATIONAL CHAR(1)'),
             (mysql.MSChar, [1], {'national':True, 'charset':'utf8'},
              'NATIONAL CHAR(1)'),
-            (mysql.MSChar, [1], {'national':True, 'charset':'utf8', 'binary':True},
+            (mysql.MSChar, [1], {'national':True, 'charset':'utf8',
+                                'binary':True},
              'NATIONAL CHAR(1) BINARY'),
-            (mysql.MSChar, [1], {'national':True, 'binary':True, 'unicode':True},
+            (mysql.MSChar, [1], {'national':True, 'binary':True,
+                                'unicode':True},
              'NATIONAL CHAR(1) BINARY'),
             (mysql.MSChar, [1], {'national':True, 'collation':'utf8_bin'},
              'NATIONAL CHAR(1) COLLATE utf8_bin'),
@@ -273,7 +277,8 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         charset_table = Table(*table_args)
-        gen = testing.db.dialect.ddl_compiler(testing.db.dialect, charset_table)
+        gen = testing.db.dialect.ddl_compiler(testing.db.dialect,
+                charset_table)
 
         for col in charset_table.c:
             index = int(col.name[1:])
@@ -356,25 +361,26 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         """Test BOOL/TINYINT(1) compatability and reflection."""
 
         meta = MetaData(testing.db)
-        bool_table = Table('mysql_bool', meta,
-                           Column('b1', BOOLEAN),
-                           Column('b2', Boolean),
-                           Column('b3', mysql.MSTinyInteger(1)),
-                           Column('b4', mysql.MSTinyInteger(1, unsigned=True)),
-                           Column('b5', mysql.MSTinyInteger))
-
+        bool_table = Table(
+            'mysql_bool',
+            meta,
+            Column('b1', BOOLEAN),
+            Column('b2', Boolean),
+            Column('b3', mysql.MSTinyInteger(1)),
+            Column('b4', mysql.MSTinyInteger(1, unsigned=True)),
+            Column('b5', mysql.MSTinyInteger),
+            )
         eq_(colspec(bool_table.c.b1), 'b1 BOOL')
         eq_(colspec(bool_table.c.b2), 'b2 BOOL')
         eq_(colspec(bool_table.c.b3), 'b3 TINYINT(1)')
         eq_(colspec(bool_table.c.b4), 'b4 TINYINT(1) UNSIGNED')
         eq_(colspec(bool_table.c.b5), 'b5 TINYINT')
-
         for col in bool_table.c:
             self.assert_(repr(col))
         try:
             meta.create_all()
-
             table = bool_table
+
             def roundtrip(store, expected=None):
                 expected = expected or store
                 table.insert(store).execute()
@@ -385,39 +391,43 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                         if isinstance(val, bool):
                             self.assert_(val is row[i])
                 except:
-                    print "Storing %s" % store
-                    print "Expected %s" % expected
-                    print "Found %s" % list(row)
+                    print 'Storing %s' % store
+                    print 'Expected %s' % expected
+                    print 'Found %s' % list(row)
                     raise
                 table.delete().execute().close()
-
 
             roundtrip([None, None, None, None, None])
             roundtrip([True, True, 1, 1, 1])
             roundtrip([False, False, 0, 0, 0])
-            roundtrip([True, True, True, True, True], [True, True, 1, 1, 1])
+            roundtrip([True, True, True, True, True], [True, True, 1,
+                      1, 1])
             roundtrip([False, False, 0, 0, 0], [False, False, 0, 0, 0])
-
             meta2 = MetaData(testing.db)
             table = Table('mysql_bool', meta2, autoload=True)
             eq_(colspec(table.c.b3), 'b3 TINYINT(1)')
             eq_(colspec(table.c.b4), 'b4 TINYINT(1) UNSIGNED')
-
             meta2 = MetaData(testing.db)
-            table = Table('mysql_bool', meta2, 
-                            Column('b1', BOOLEAN),
-                            Column('b2', Boolean),
-                            Column('b3', BOOLEAN), 
-                            Column('b4', BOOLEAN), 
-                            autoload=True)
+            table = Table(
+                'mysql_bool',
+                meta2,
+                Column('b1', BOOLEAN),
+                Column('b2', Boolean),
+                Column('b3', BOOLEAN),
+                Column('b4', BOOLEAN),
+                autoload=True,
+                )
             eq_(colspec(table.c.b3), 'b3 BOOL')
             eq_(colspec(table.c.b4), 'b4 BOOL')
-
             roundtrip([None, None, None, None, None])
-            roundtrip([True, True, 1, 1, 1], [True, True, True, True, 1])
-            roundtrip([False, False, 0, 0, 0], [False, False, False, False, 0])
-            roundtrip([True, True, True, True, True], [True, True, True, True, 1])
-            roundtrip([False, False, 0, 0, 0], [False, False, False, False, 0])
+            roundtrip([True, True, 1, 1, 1], [True, True, True, True,
+                      1])
+            roundtrip([False, False, 0, 0, 0], [False, False, False,
+                      False, 0])
+            roundtrip([True, True, True, True, True], [True, True,
+                      True, True, 1])
+            roundtrip([False, False, 0, 0, 0], [False, False, False,
+                      False, 0])
         finally:
             meta.drop_all()
 
@@ -527,23 +537,21 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         """Exercise the SET type."""
 
         meta = MetaData(testing.db)
-        set_table = Table('mysql_set', meta,
-                          Column('s1', mysql.MSSet("'dq'", "'sq'")),
-                          Column('s2', mysql.MSSet("'a'")),
-                          Column('s3', mysql.MSSet("'5'", "'7'", "'9'")))
-
+        set_table = Table('mysql_set', meta, Column('s1',
+                          mysql.MSSet("'dq'", "'sq'")), Column('s2',
+                          mysql.MSSet("'a'")), Column('s3',
+                          mysql.MSSet("'5'", "'7'", "'9'")))
         eq_(colspec(set_table.c.s1), "s1 SET('dq','sq')")
         eq_(colspec(set_table.c.s2), "s2 SET('a')")
         eq_(colspec(set_table.c.s3), "s3 SET('5','7','9')")
-
         for col in set_table.c:
             self.assert_(repr(col))
         try:
             set_table.create()
             reflected = Table('mysql_set', MetaData(testing.db),
                               autoload=True)
-
             for table in set_table, reflected:
+
                 def roundtrip(store, expected=None):
                     expected = expected or store
                     table.insert(store).execute()
@@ -551,30 +559,27 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                     try:
                         self.assert_(list(row) == expected)
                     except:
-                        print "Storing %s" % store
-                        print "Expected %s" % expected
-                        print "Found %s" % list(row)
+                        print 'Storing %s' % store
+                        print 'Expected %s' % expected
+                        print 'Found %s' % list(row)
                         raise
                     table.delete().execute()
 
-                roundtrip([None, None, None],[None] * 3)
+                roundtrip([None, None, None], [None] * 3)
                 roundtrip(['', '', ''], [set([''])] * 3)
-
                 roundtrip([set(['dq']), set(['a']), set(['5'])])
-                roundtrip(['dq', 'a', '5'],
-                          [set(['dq']), set(['a']), set(['5'])])
-                roundtrip([1, 1, 1],
-                          [set(['dq']), set(['a']), set(['5'])])
-                roundtrip([set(['dq', 'sq']), None, set(['9', '5', '7'])])
-
-            set_table.insert().execute({'s3':set(['5'])},
-                                       {'s3':set(['5', '7'])},
-                                       {'s3':set(['5', '7', '9'])},
-                                       {'s3':set(['7', '9'])})
-            rows = select(
-                [set_table.c.s3],
-                set_table.c.s3.in_([set(['5']), set(['5', '7']), set(['7', '5'])])
-                ).execute().fetchall()
+                roundtrip(['dq', 'a', '5'], [set(['dq']), set(['a']),
+                          set(['5'])])
+                roundtrip([1, 1, 1], [set(['dq']), set(['a']), set(['5'
+                          ])])
+                roundtrip([set(['dq', 'sq']), None, set(['9', '5', '7'
+                          ])])
+            set_table.insert().execute({'s3': set(['5'])}, {'s3'
+                    : set(['5', '7'])}, {'s3': set(['5', '7', '9'])},
+                    {'s3': set(['7', '9'])})
+            rows = select([set_table.c.s3], set_table.c.s3.in_([set(['5'
+                          ]), set(['5', '7']), set(['7', '5'
+                          ])])).execute().fetchall()
             found = set([frozenset(row[0]) for row in rows])
             eq_(found, set([frozenset(['5']), frozenset(['5', '7'])]))
         finally:
@@ -618,7 +623,8 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         enum_table.drop(checkfirst=True)
         enum_table.create()
 
-        assert_raises(exc.SQLError, enum_table.insert().execute, e1=None, e2=None, e3=None, e4=None)
+        assert_raises(exc.SQLError, enum_table.insert().execute, 
+                        e1=None, e2=None, e3=None, e4=None)
         
         assert_raises(exc.InvalidRequestError, enum_table.insert().execute,
                                         e1='c', e2='c', e2generic='c', e3='c',
@@ -674,37 +680,37 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             t1.insert().execute(value=u'réveillé', value2=u'réveillé')
             t1.insert().execute(value=u'S’il', value2=u'S’il')
             eq_(t1.select().order_by(t1.c.id).execute().fetchall(), 
-                [(1, u'drôle', u'drôle'), (2, u'réveillé', u'réveillé'), (3, u'S’il', u'S’il')]
+                [(1, u'drôle', u'drôle'), (2, u'réveillé', u'réveillé'), 
+                            (3, u'S’il', u'S’il')]
             )
-            
+
             # test reflection of the enum labels
+
             m2 = MetaData(testing.db)
             t2 = Table('table', m2, autoload=True)
-            # TODO: what's wrong with the last element ?  is there 
+
+            # TODO: what's wrong with the last element ?  is there
             # latin-1 stuff forcing its way in ?
-            assert t2.c.value.type.enums[0:2] == (u'réveillé', u'drôle') #, u'S’il') # eh ?
-            assert t2.c.value2.type.enums[0:2] == (u'réveillé', u'drôle') #, u'S’il') # eh ? 
-            
+
+            assert t2.c.value.type.enums[0:2] == \
+                    (u'réveillé', u'drôle') #, u'S’il') # eh ?
+            assert t2.c.value2.type.enums[0:2] == \
+                    (u'réveillé', u'drôle') #, u'S’il') # eh ? 
         finally:
             metadata.drop_all()
         
     def test_enum_compile(self):
-        e1 = Enum('x', 'y', 'z', name="somename")
+        e1 = Enum('x', 'y', 'z', name='somename')
         t1 = Table('sometable', MetaData(), Column('somecolumn', e1))
-        self.assert_compile(
-            schema.CreateTable(t1),
-            "CREATE TABLE sometable (somecolumn ENUM('x','y','z'))"
-        )
-        t1 = Table('sometable', MetaData(), 
-                    Column('somecolumn', Enum('x', 'y', 'z', native_enum=False))
-                )
-        self.assert_compile(
-            schema.CreateTable(t1),
-            "CREATE TABLE sometable ("
-            "somecolumn VARCHAR(1), "
-            "CHECK (somecolumn IN ('x', 'y', 'z'))"
-            ")"
-        )
+        self.assert_compile(schema.CreateTable(t1),
+                            "CREATE TABLE sometable (somecolumn "
+                            "ENUM('x','y','z'))")
+        t1 = Table('sometable', MetaData(), Column('somecolumn',
+                   Enum('x', 'y', 'z', native_enum=False)))
+        self.assert_compile(schema.CreateTable(t1),
+                            "CREATE TABLE sometable (somecolumn "
+                            "VARCHAR(1), CHECK (somecolumn IN ('x', "
+                            "'y', 'z')))")
         
     @testing.exclude('mysql', '<', (4,), "3.23 can't handle an ENUM of ''")
     @testing.uses_deprecated('Manually quoting ENUM value literals')
@@ -739,51 +745,52 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             enum_table.drop()
 
-
-
 class ReflectionTest(TestBase, AssertsExecutionResults):
 
     __only_on__ = 'mysql'
 
     def test_default_reflection(self):
         """Test reflection of column defaults."""
+
         from sqlalchemy.dialects.mysql import VARCHAR
-        
-        def_table = Table('mysql_def', MetaData(testing.db),
-            Column('c1', VARCHAR(10, collation='utf8_unicode_ci'), DefaultClause(''), nullable=False),
+        def_table = Table(
+            'mysql_def',
+            MetaData(testing.db),
+            Column('c1', VARCHAR(10, collation='utf8_unicode_ci'),
+                   DefaultClause(''), nullable=False),
             Column('c2', String(10), DefaultClause('0')),
             Column('c3', String(10), DefaultClause('abc')),
-            Column('c4', TIMESTAMP, DefaultClause('2009-04-05 12:00:00')),
+            Column('c4', TIMESTAMP, DefaultClause('2009-04-05 12:00:00'
+                   )),
             Column('c5', TIMESTAMP),
-        )
-
+            )
         def_table.create()
         try:
             reflected = Table('mysql_def', MetaData(testing.db),
-                          autoload=True)
+                              autoload=True)
         finally:
             def_table.drop()
- 
         assert def_table.c.c1.server_default.arg == ''
         assert def_table.c.c2.server_default.arg == '0'
         assert def_table.c.c3.server_default.arg == 'abc'
-        assert def_table.c.c4.server_default.arg == '2009-04-05 12:00:00'
-
+        assert def_table.c.c4.server_default.arg \
+            == '2009-04-05 12:00:00'
         assert str(reflected.c.c1.server_default.arg) == "''"
         assert str(reflected.c.c2.server_default.arg) == "'0'"
         assert str(reflected.c.c3.server_default.arg) == "'abc'"
-        assert str(reflected.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
-            
+        assert str(reflected.c.c4.server_default.arg) \
+            == "'2009-04-05 12:00:00'"
         reflected.create()
         try:
-            reflected2 = Table('mysql_def', MetaData(testing.db), autoload=True)
+            reflected2 = Table('mysql_def', MetaData(testing.db),
+                               autoload=True)
         finally:
             reflected.drop()
-
         assert str(reflected2.c.c1.server_default.arg) == "''"
         assert str(reflected2.c.c2.server_default.arg) == "'0'"
         assert str(reflected2.c.c3.server_default.arg) == "'abc'"
-        assert str(reflected2.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
+        assert str(reflected2.c.c4.server_default.arg) \
+            == "'2009-04-05 12:00:00'"
 
     def test_reflection_with_table_options(self):
         comment = r"""Comment types type speedily ' " \ '' Fun!"""
@@ -911,8 +918,10 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
 
                 for table in tables:
                     for i, reflected in enumerate(table.c):
-                        assert isinstance(reflected.type, type(expected[i])), \
-                                "element %d: %r not instance of %r" % (i, reflected.type, type(expected[i]))
+                        assert isinstance(reflected.type,
+                                type(expected[i])), \
+                            'element %d: %r not instance of %r' % (i,
+                                reflected.type, type(expected[i]))
             finally:
                 db.execute('DROP VIEW mysql_types_v')
         finally:
@@ -1101,7 +1110,8 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             # 'SIGNED INTEGER' is a bigint, so this is ok.
             (m.MSBigInteger, "CAST(t.col AS SIGNED INTEGER)"),
             (m.MSBigInteger(unsigned=False), "CAST(t.col AS SIGNED INTEGER)"),
-            (m.MSBigInteger(unsigned=True), "CAST(t.col AS UNSIGNED INTEGER)"),
+            (m.MSBigInteger(unsigned=True), 
+                            "CAST(t.col AS UNSIGNED INTEGER)"),
             (m.MSBit, "t.col"),
 
             # this is kind of sucky.  thank you default arguments!
@@ -1204,36 +1214,26 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             "SELECT EXTRACT(millisecond FROM t.col1) AS anon_1 FROM t")
 
     def test_innodb_autoincrement(self):
-        t1 = Table('sometable', MetaData(),
-                Column('assigned_id', Integer(), primary_key=True, autoincrement=False),
-                Column('id', Integer(), primary_key=True, autoincrement=True),
-                mysql_engine='InnoDB'
-        )
+        t1 = Table('sometable', MetaData(), Column('assigned_id',
+                   Integer(), primary_key=True, autoincrement=False),
+                   Column('id', Integer(), primary_key=True,
+                   autoincrement=True), mysql_engine='InnoDB')
+        self.assert_compile(schema.CreateTable(t1),
+                            'CREATE TABLE sometable (assigned_id '
+                            'INTEGER NOT NULL, id INTEGER NOT NULL '
+                            'AUTO_INCREMENT, PRIMARY KEY (assigned_id, '
+                            'id), KEY `idx_autoinc_id`(`id`))ENGINE=Inn'
+                            'oDB')
 
-        self.assert_compile(
-            schema.CreateTable(t1),
-            "CREATE TABLE sometable ("
-            "assigned_id INTEGER NOT NULL, "
-            "id INTEGER NOT NULL AUTO_INCREMENT, "
-            "PRIMARY KEY (assigned_id, id), "
-            "KEY `idx_autoinc_id`(`id`)"
-            ")ENGINE=InnoDB"
-        )
-
-        t1 = Table('sometable', MetaData(),
-                Column('assigned_id', Integer(), primary_key=True, autoincrement=True),
-                Column('id', Integer(), primary_key=True, autoincrement=False),
-                mysql_engine='InnoDB'
-        )
-
-        self.assert_compile(
-            schema.CreateTable(t1),
-            "CREATE TABLE sometable ("
-            "assigned_id INTEGER NOT NULL AUTO_INCREMENT, "
-            "id INTEGER NOT NULL, "
-            "PRIMARY KEY (assigned_id, id)"
-            ")ENGINE=InnoDB"
-        )
+        t1 = Table('sometable', MetaData(), Column('assigned_id',
+                   Integer(), primary_key=True, autoincrement=True),
+                   Column('id', Integer(), primary_key=True,
+                   autoincrement=False), mysql_engine='InnoDB')
+        self.assert_compile(schema.CreateTable(t1),
+                            'CREATE TABLE sometable (assigned_id '
+                            'INTEGER NOT NULL AUTO_INCREMENT, id '
+                            'INTEGER NOT NULL, PRIMARY KEY '
+                            '(assigned_id, id))ENGINE=InnoDB')
 
 class SQLModeDetectionTest(TestBase):
     __only_on__ = 'mysql'

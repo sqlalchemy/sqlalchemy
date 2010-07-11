@@ -32,17 +32,15 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
         """)
 
     def test_out_params(self):
-        result = testing.db.execute(text("begin foo(:x_in, :x_out, :y_out, :z_out); end;", 
-                        bindparams=[
-                                bindparam('x_in', Float), 
-                                outparam('x_out', Integer), 
-                                outparam('y_out', Float), 
-                                outparam('z_out', String)]), 
-                                x_in=5)
-        eq_(
-            result.out_parameters,
-            {'x_out':10, 'y_out':75, 'z_out':None}
-        )
+        result = \
+            testing.db.execute(text('begin foo(:x_in, :x_out, :y_out, '
+                               ':z_out); end;',
+                               bindparams=[bindparam('x_in', Float),
+                               outparam('x_out', Integer),
+                               outparam('y_out', Float),
+                               outparam('z_out', String)]), x_in=5)
+        eq_(result.out_parameters, {'x_out': 10, 'y_out': 75, 'z_out'
+            : None})
         assert isinstance(result.out_parameters['x_out'], int)
 
     @classmethod
@@ -51,20 +49,20 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
+
     __dialect__ = oracle.OracleDialect()
 
     def test_owner(self):
-        meta  = MetaData()
-        parent = Table('parent', meta, Column('id', Integer, primary_key=True), 
-           Column('name', String(50)),
-           schema='ed')
-        child = Table('child', meta, Column('id', Integer, primary_key=True),
-           Column('parent_id', Integer, ForeignKey('ed.parent.id')),
-           schema = 'ed')
-
-        self.assert_compile(
-                    parent.join(child), 
-                    "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id")
+        meta = MetaData()
+        parent = Table('parent', meta, Column('id', Integer,
+                       primary_key=True), Column('name', String(50)),
+                       schema='ed')
+        child = Table('child', meta, Column('id', Integer,
+                      primary_key=True), Column('parent_id', Integer,
+                      ForeignKey('ed.parent.id')), schema='ed')
+        self.assert_compile(parent.join(child),
+                            'ed.parent JOIN ed.child ON ed.parent.id = '
+                            'ed.child.parent_id')
 
     def test_subquery(self):
         t = table('sometable', column('col1'), column('col2'))
@@ -77,60 +75,62 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
     def test_limit(self):
         t = table('sometable', column('col1'), column('col2'))
-
         s = select([t])
         c = s.compile(dialect=oracle.OracleDialect())
         assert t.c.col1 in set(c.result_map['col1'][1])
-        
         s = select([t]).limit(10).offset(20)
+        self.assert_compile(s,
+                            'SELECT col1, col2 FROM (SELECT col1, '
+                            'col2, ROWNUM AS ora_rn FROM (SELECT '
+                            'sometable.col1 AS col1, sometable.col2 AS '
+                            'col2 FROM sometable) WHERE ROWNUM <= '
+                            ':ROWNUM_1) WHERE ora_rn > :ora_rn_1')
 
-        self.assert_compile(s, 
-            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
-            "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
-            "FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1"
-        )
-
-        # assert that despite the subquery, the columns from the table,
-        # not the select, get put into the "result_map"
         c = s.compile(dialect=oracle.OracleDialect())
         assert t.c.col1 in set(c.result_map['col1'][1])
-        
         s = select([s.c.col1, s.c.col2])
+        self.assert_compile(s,
+                            'SELECT col1, col2 FROM (SELECT col1, col2 '
+                            'FROM (SELECT col1, col2, ROWNUM AS ora_rn '
+                            'FROM (SELECT sometable.col1 AS col1, '
+                            'sometable.col2 AS col2 FROM sometable) '
+                            'WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > '
+                            ':ora_rn_1)')
 
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM "
-                        "(SELECT col1, col2, ROWNUM AS ora_rn FROM (SELECT "
-                        "sometable.col1 AS col1, sometable.col2 AS col2 FROM "
-                        "sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
-
-        # testing this twice to ensure oracle doesn't modify the original statement
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2 FROM "
-                        "(SELECT col1, col2, ROWNUM AS ora_rn FROM (SELECT "
-                        "sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable) "
-                        "WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1)")
+        self.assert_compile(s,
+                            'SELECT col1, col2 FROM (SELECT col1, col2 '
+                            'FROM (SELECT col1, col2, ROWNUM AS ora_rn '
+                            'FROM (SELECT sometable.col1 AS col1, '
+                            'sometable.col2 AS col2 FROM sometable) '
+                            'WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > '
+                            ':ora_rn_1)')
 
         s = select([t]).limit(10).offset(20).order_by(t.c.col2)
-
-        self.assert_compile(s, "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM "
-            "AS ora_rn FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 FROM sometable "
-            "ORDER BY sometable.col2) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1")
-
+        self.assert_compile(s,
+                            'SELECT col1, col2 FROM (SELECT col1, '
+                            'col2, ROWNUM AS ora_rn FROM (SELECT '
+                            'sometable.col1 AS col1, sometable.col2 AS '
+                            'col2 FROM sometable ORDER BY '
+                            'sometable.col2) WHERE ROWNUM <= '
+                            ':ROWNUM_1) WHERE ora_rn > :ora_rn_1')
         s = select([t], for_update=True).limit(10).order_by(t.c.col2)
-        self.assert_compile(
-            s,
-            "SELECT col1, col2 FROM (SELECT sometable.col1 "
-            "AS col1, sometable.col2 AS col2 FROM sometable "
-            "ORDER BY sometable.col2) WHERE ROWNUM <= :ROWNUM_1 FOR UPDATE"
-        )
+        self.assert_compile(s,
+                            'SELECT col1, col2 FROM (SELECT '
+                            'sometable.col1 AS col1, sometable.col2 AS '
+                            'col2 FROM sometable ORDER BY '
+                            'sometable.col2) WHERE ROWNUM <= :ROWNUM_1 '
+                            'FOR UPDATE')
         
-        s = select([t], for_update=True).limit(10).offset(20).order_by(t.c.col2)
-        self.assert_compile(
-            s,
-            "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM "
-            "AS ora_rn FROM (SELECT sometable.col1 AS col1, "
-            "sometable.col2 AS col2 FROM sometable ORDER BY "
-            "sometable.col2) WHERE ROWNUM <= :ROWNUM_1) WHERE "
-            "ora_rn > :ora_rn_1 FOR UPDATE"
-        )
+        s = select([t],
+                   for_update=True).limit(10).offset(20).order_by(t.c.col2)
+        self.assert_compile(s,
+                            'SELECT col1, col2 FROM (SELECT col1, '
+                            'col2, ROWNUM AS ora_rn FROM (SELECT '
+                            'sometable.col1 AS col1, sometable.col2 AS '
+                            'col2 FROM sometable ORDER BY '
+                            'sometable.col2) WHERE ROWNUM <= '
+                            ':ROWNUM_1) WHERE ora_rn > :ora_rn_1 FOR '
+                            'UPDATE')
         
     
     def test_long_labels(self):
@@ -158,35 +158,37 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         )
         
         anon = a_table.alias()
-        self.assert_compile(
-            select([other_table, anon]).select_from(
-                other_table.outerjoin(anon)
-            ).apply_labels(),
-            "SELECT other_thirty_characters_table_.id AS other_thirty_characters__1, "
-            "other_thirty_characters_table_.thirty_characters_table_id AS "
-            "other_thirty_characters__2, "
-            "thirty_characters_table__1.id AS thirty_characters_table__3 FROM "
-            "other_thirty_characters_table_ "
-            "LEFT OUTER JOIN thirty_characters_table_xxxxxx AS thirty_characters_table__1 "
-            "ON thirty_characters_table__1.id = "
-            "other_thirty_characters_table_.thirty_characters_table_id",
-            dialect=dialect
-        )
-        self.assert_compile(
-        
-            select([other_table, anon]).select_from(
-                other_table.outerjoin(anon)
-            ).apply_labels(),
-            "SELECT other_thirty_characters_table_.id AS other_thirty_characters__1, "
-            "other_thirty_characters_table_.thirty_characters_table_id AS "
-            "other_thirty_characters__2, "
-            "thirty_characters_table__1.id AS thirty_characters_table__3 FROM "
-            "other_thirty_characters_table_ "
-            "LEFT OUTER JOIN thirty_characters_table_xxxxxx thirty_characters_table__1 ON "
-            "thirty_characters_table__1.id = "
-            "other_thirty_characters_table_.thirty_characters_table_id",
-            dialect=ora_dialect
-        )
+        self.assert_compile(select([other_table,
+                            anon]).
+                            select_from(
+                                other_table.outerjoin(anon)).apply_labels(),
+                            'SELECT other_thirty_characters_table_.id '
+                            'AS other_thirty_characters__1, '
+                            'other_thirty_characters_table_.thirty_char'
+                            'acters_table_id AS other_thirty_characters'
+                            '__2, thirty_characters_table__1.id AS '
+                            'thirty_characters_table__3 FROM '
+                            'other_thirty_characters_table_ LEFT OUTER '
+                            'JOIN thirty_characters_table_xxxxxx AS '
+                            'thirty_characters_table__1 ON '
+                            'thirty_characters_table__1.id = '
+                            'other_thirty_characters_table_.thirty_char'
+                            'acters_table_id', dialect=dialect)
+        self.assert_compile(select([other_table,
+                            anon]).select_from(
+                                other_table.outerjoin(anon)).apply_labels(),
+                            'SELECT other_thirty_characters_table_.id '
+                            'AS other_thirty_characters__1, '
+                            'other_thirty_characters_table_.thirty_char'
+                            'acters_table_id AS other_thirty_characters'
+                            '__2, thirty_characters_table__1.id AS '
+                            'thirty_characters_table__3 FROM '
+                            'other_thirty_characters_table_ LEFT OUTER '
+                            'JOIN thirty_characters_table_xxxxxx '
+                            'thirty_characters_table__1 ON '
+                            'thirty_characters_table__1.id = '
+                            'other_thirty_characters_table_.thirty_char'
+                            'acters_table_id', dialect=ora_dialect)
         
     def test_outer_join(self):
         table1 = table('mytable',
@@ -207,155 +209,156 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             column('otherstuff', String),
         )
 
-        query = select(
-                [table1, table2],
-                or_(
-                    table1.c.name == 'fred',
-                    table1.c.myid == 10,
-                    table2.c.othername != 'jack',
-                    "EXISTS (select yay from foo where boo = lar)"
-                ),
-                from_obj = [ outerjoin(table1, table2, table1.c.myid == table2.c.otherid) ]
-                )
+        query = select([table1, table2], or_(table1.c.name == 'fred',
+                       table1.c.myid == 10, table2.c.othername != 'jack'
+                       , 'EXISTS (select yay from foo where boo = lar)'
+                       ), from_obj=[outerjoin(table1, table2,
+                       table1.c.myid == table2.c.otherid)])
         self.assert_compile(query,
-            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, "
-                "myothertable.othername FROM mytable, myothertable WHERE "
-                "(mytable.name = :name_1 OR mytable.myid = :myid_1 OR "
-                "myothertable.othername != :othername_1 OR EXISTS (select yay "
-                "from foo where boo = lar)) "
-                "AND mytable.myid = myothertable.otherid(+)",
-            dialect=oracle.OracleDialect(use_ansi = False))
+                            'SELECT mytable.myid, mytable.name, '
+                            'mytable.description, myothertable.otherid,'
+                            ' myothertable.othername FROM mytable, '
+                            'myothertable WHERE (mytable.name = '
+                            ':name_1 OR mytable.myid = :myid_1 OR '
+                            'myothertable.othername != :othername_1 OR '
+                            'EXISTS (select yay from foo where boo = '
+                            'lar)) AND mytable.myid = '
+                            'myothertable.otherid(+)',
+                            dialect=oracle.OracleDialect(use_ansi=False))
+        query = table1.outerjoin(table2, table1.c.myid
+                                 == table2.c.otherid).outerjoin(table3,
+                table3.c.userid == table2.c.otherid)
+        self.assert_compile(query.select(),
+                            'SELECT mytable.myid, mytable.name, '
+                            'mytable.description, myothertable.otherid,'
+                            ' myothertable.othername, '
+                            'thirdtable.userid, thirdtable.otherstuff '
+                            'FROM mytable LEFT OUTER JOIN myothertable '
+                            'ON mytable.myid = myothertable.otherid '
+                            'LEFT OUTER JOIN thirdtable ON '
+                            'thirdtable.userid = myothertable.otherid')
 
-        query = table1.outerjoin(table2, table1.c.myid==table2.c.otherid).\
-                            outerjoin(table3, table3.c.userid==table2.c.otherid)
-        self.assert_compile(query.select(), 
-                    "SELECT mytable.myid, mytable.name, mytable.description, "
-                    "myothertable.otherid, myothertable.othername, thirdtable.userid,"
-                    " thirdtable.otherstuff "
-                    "FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid ="
-                    " myothertable.otherid LEFT OUTER "
-                    "JOIN thirdtable ON thirdtable.userid = myothertable.otherid")
-
-        self.assert_compile(query.select(), 
-                    "SELECT mytable.myid, mytable.name, mytable.description, "
-                    "myothertable.otherid, myothertable.othername, thirdtable.userid,"
-                    " thirdtable.otherstuff FROM "
-                    "mytable, myothertable, thirdtable WHERE thirdtable.userid(+) ="
-                    " myothertable.otherid AND "
-                    "mytable.myid = myothertable.otherid(+)",
-                     dialect=oracle.dialect(use_ansi=False))
-
-        query = table1.join(table2, table1.c.myid==table2.c.otherid).\
-                    join(table3, table3.c.userid==table2.c.otherid)
-        self.assert_compile(query.select(), 
-            "SELECT mytable.myid, mytable.name, mytable.description, "
-            "myothertable.otherid, myothertable.othername, thirdtable.userid, "
-            "thirdtable.otherstuff FROM "
-            "mytable, myothertable, thirdtable WHERE thirdtable.userid = "
-            "myothertable.otherid AND "
-            "mytable.myid = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))
-
-        query = table1.join(table2, table1.c.myid==table2.c.otherid).\
-                    outerjoin(table3, table3.c.userid==table2.c.otherid)
-
-        self.assert_compile(query.select().order_by(table1.c.name).limit(10).offset(5), 
-        
-            "SELECT myid, name, description, otherid, othername, userid, "
-            "otherstuff FROM (SELECT myid, name, description, "
-            "otherid, othername, userid, otherstuff, "
-            "ROWNUM AS ora_rn FROM (SELECT "
-            "mytable.myid AS myid, mytable.name AS name, "
-            "mytable.description AS description, "
-            "myothertable.otherid AS otherid, myothertable.othername "
-            "AS othername, "
-            "thirdtable.userid AS userid, thirdtable.otherstuff AS "
-            "otherstuff FROM mytable, "
-            "myothertable, thirdtable WHERE thirdtable.userid(+) = "
-            "myothertable.otherid AND "
-            "mytable.myid = myothertable.otherid ORDER BY "
-            "mytable.name) WHERE "
-            "ROWNUM <= :ROWNUM_1) WHERE ora_rn > :ora_rn_1", 
-            dialect=oracle.dialect(use_ansi=False))
-
-        subq = select([table1]).\
-                    select_from(
-                            table1.outerjoin(table2, table1.c.myid==table2.c.otherid)
-                        ).alias()
-        q = select([table3]).select_from(
-                            table3.outerjoin(subq, table3.c.userid==subq.c.myid)
-                            )
-
-        self.assert_compile(q, "SELECT thirdtable.userid, thirdtable.otherstuff "
-                        "FROM thirdtable LEFT OUTER JOIN (SELECT mytable.myid AS "
-                        "myid, mytable.name"
-                        " AS name, mytable.description AS description "
-                        "FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = "           
-                        "myothertable.otherid) anon_1 ON thirdtable.userid = anon_1.myid",
-                        dialect=oracle.dialect(use_ansi=True))
-    
-        self.assert_compile(q, "SELECT thirdtable.userid, thirdtable.otherstuff "
-                        "FROM thirdtable, (SELECT mytable.myid AS myid, mytable.name AS name, "
-                        "mytable.description AS description FROM mytable, myothertable "
-                        "WHERE mytable.myid = myothertable.otherid(+)) anon_1 "
-                        "WHERE thirdtable.userid = anon_1.myid(+)", 
-                        dialect=oracle.dialect(use_ansi=False))
-    
-        q = select([table1.c.name]).where(table1.c.name=='foo')
-        self.assert_compile(q, 
-                "SELECT mytable.name FROM mytable WHERE mytable.name = :name_1", 
-                dialect=oracle.dialect(use_ansi=False))
-
-        subq = select([table3.c.otherstuff]).\
-                    where(table3.c.otherstuff==table1.c.name).\
-                    label('bar')
+        self.assert_compile(query.select(),
+                            'SELECT mytable.myid, mytable.name, '
+                            'mytable.description, myothertable.otherid,'
+                            ' myothertable.othername, '
+                            'thirdtable.userid, thirdtable.otherstuff '
+                            'FROM mytable, myothertable, thirdtable '
+                            'WHERE thirdtable.userid(+) = '
+                            'myothertable.otherid AND mytable.myid = '
+                            'myothertable.otherid(+)',
+                            dialect=oracle.dialect(use_ansi=False))
+        query = table1.join(table2, table1.c.myid
+                            == table2.c.otherid).join(table3,
+                table3.c.userid == table2.c.otherid)
+        self.assert_compile(query.select(),
+                            'SELECT mytable.myid, mytable.name, '
+                            'mytable.description, myothertable.otherid,'
+                            ' myothertable.othername, '
+                            'thirdtable.userid, thirdtable.otherstuff '
+                            'FROM mytable, myothertable, thirdtable '
+                            'WHERE thirdtable.userid = '
+                            'myothertable.otherid AND mytable.myid = '
+                            'myothertable.otherid',
+                            dialect=oracle.dialect(use_ansi=False))
+        query = table1.join(table2, table1.c.myid
+                            == table2.c.otherid).outerjoin(table3,
+                table3.c.userid == table2.c.otherid)
+        self.assert_compile(query.select().order_by(table1.c.name).
+                        limit(10).offset(5),
+                            'SELECT myid, name, description, otherid, '
+                            'othername, userid, otherstuff FROM '
+                            '(SELECT myid, name, description, otherid, '
+                            'othername, userid, otherstuff, ROWNUM AS '
+                            'ora_rn FROM (SELECT mytable.myid AS myid, '
+                            'mytable.name AS name, mytable.description '
+                            'AS description, myothertable.otherid AS '
+                            'otherid, myothertable.othername AS '
+                            'othername, thirdtable.userid AS userid, '
+                            'thirdtable.otherstuff AS otherstuff FROM '
+                            'mytable, myothertable, thirdtable WHERE '
+                            'thirdtable.userid(+) = '
+                            'myothertable.otherid AND mytable.myid = '
+                            'myothertable.otherid ORDER BY '
+                            'mytable.name) WHERE ROWNUM <= :ROWNUM_1) '
+                            'WHERE ora_rn > :ora_rn_1',
+                            dialect=oracle.dialect(use_ansi=False))
+                            
+        subq = select([table1]).select_from(table1.outerjoin(table2,
+                table1.c.myid == table2.c.otherid)).alias()
+        q = select([table3]).select_from(table3.outerjoin(subq,
+                table3.c.userid == subq.c.myid))
+                
+        self.assert_compile(q,
+                            'SELECT thirdtable.userid, '
+                            'thirdtable.otherstuff FROM thirdtable '
+                            'LEFT OUTER JOIN (SELECT mytable.myid AS '
+                            'myid, mytable.name AS name, '
+                            'mytable.description AS description FROM '
+                            'mytable LEFT OUTER JOIN myothertable ON '
+                            'mytable.myid = myothertable.otherid) '
+                            'anon_1 ON thirdtable.userid = anon_1.myid'
+                            , dialect=oracle.dialect(use_ansi=True))
+                            
+        self.assert_compile(q,
+                            'SELECT thirdtable.userid, '
+                            'thirdtable.otherstuff FROM thirdtable, '
+                            '(SELECT mytable.myid AS myid, '
+                            'mytable.name AS name, mytable.description '
+                            'AS description FROM mytable, myothertable '
+                            'WHERE mytable.myid = myothertable.otherid('
+                            '+)) anon_1 WHERE thirdtable.userid = '
+                            'anon_1.myid(+)',
+                            dialect=oracle.dialect(use_ansi=False))
+                            
+        q = select([table1.c.name]).where(table1.c.name == 'foo')
+        self.assert_compile(q,
+                            'SELECT mytable.name FROM mytable WHERE '
+                            'mytable.name = :name_1',
+                            dialect=oracle.dialect(use_ansi=False))
+        subq = select([table3.c.otherstuff]).where(table3.c.otherstuff
+                == table1.c.name).label('bar')
         q = select([table1.c.name, subq])
-        self.assert_compile(q, 
-                "SELECT mytable.name, "
-                "(SELECT thirdtable.otherstuff FROM thirdtable "
-                "WHERE thirdtable.otherstuff = mytable.name) AS bar FROM mytable", 
-                dialect=oracle.dialect(use_ansi=False))
+        self.assert_compile(q,
+                            'SELECT mytable.name, (SELECT '
+                            'thirdtable.otherstuff FROM thirdtable '
+                            'WHERE thirdtable.otherstuff = '
+                            'mytable.name) AS bar FROM mytable',
+                            dialect=oracle.dialect(use_ansi=False))
 
         
     def test_alias_outer_join(self):
-        address_types = table('address_types',
-                    column('id'),
-                    column('name'),
-                    )
-        addresses = table('addresses',
-                column('id'),
-                column('user_id'),
-                column('address_type_id'),
-                column('email_address')
-            )
+        address_types = table('address_types', column('id'),
+                              column('name'))
+        addresses = table('addresses', column('id'), column('user_id'),
+                          column('address_type_id'),
+                          column('email_address'))
         at_alias = address_types.alias()
-
-        s = select([at_alias, addresses]).\
-            select_from(
-                        addresses.outerjoin(at_alias, 
-                                    addresses.c.address_type_id==at_alias.c.id)
-                        ).\
-            where(addresses.c.user_id==7).\
-            order_by(addresses.c.id, address_types.c.id)
-        self.assert_compile(s, 
-                "SELECT address_types_1.id, address_types_1.name, addresses.id, "
-                "addresses.user_id, "
-                "addresses.address_type_id, addresses.email_address FROM addresses "
-                "LEFT OUTER JOIN address_types address_types_1 "
-                "ON addresses.address_type_id = address_types_1.id WHERE "
-                "addresses.user_id = :user_id_1 ORDER BY addresses.id, "
-                "address_types.id")
+        s = select([at_alias,
+                   addresses]).select_from(addresses.outerjoin(at_alias,
+                addresses.c.address_type_id
+                == at_alias.c.id)).where(addresses.c.user_id
+                == 7).order_by(addresses.c.id, address_types.c.id)
+        self.assert_compile(s,
+                            'SELECT address_types_1.id, '
+                            'address_types_1.name, addresses.id, '
+                            'addresses.user_id, addresses.address_type_'
+                            'id, addresses.email_address FROM '
+                            'addresses LEFT OUTER JOIN address_types '
+                            'address_types_1 ON addresses.address_type_'
+                            'id = address_types_1.id WHERE '
+                            'addresses.user_id = :user_id_1 ORDER BY '
+                            'addresses.id, address_types.id')
 
     def test_compound(self):
-        t1 = table('t1', column('c1'), column('c2'), column('c3'), )
-        t2 = table('t2', column('c1'), column('c2'), column('c3'), )
-        self.assert_compile(
-            union(t1.select(), t2.select()),
-            "SELECT t1.c1, t1.c2, t1.c3 FROM t1 UNION SELECT t2.c1, t2.c2, t2.c3 FROM t2"
-        )
-        self.assert_compile(
-            except_(t1.select(), t2.select()),
-            "SELECT t1.c1, t1.c2, t1.c3 FROM t1 MINUS SELECT t2.c1, t2.c2, t2.c3 FROM t2"
-        )
+        t1 = table('t1', column('c1'), column('c2'), column('c3'))
+        t2 = table('t2', column('c1'), column('c2'), column('c3'))
+        self.assert_compile(union(t1.select(), t2.select()),
+                            'SELECT t1.c1, t1.c2, t1.c3 FROM t1 UNION '
+                            'SELECT t2.c1, t2.c2, t2.c3 FROM t2')
+        self.assert_compile(except_(t1.select(), t2.select()),
+                            'SELECT t1.c1, t1.c2, t1.c3 FROM t1 MINUS '
+                            'SELECT t2.c1, t2.c2, t2.c3 FROM t2')
 
 class CompatFlagsTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
@@ -500,89 +503,92 @@ drop synonym test_schema.ptable;
                 execute().fetchall()
 
     def test_reflect_local_to_remote(self):
-        testing.db.execute("CREATE TABLE localtable "
-                            "(id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES"
-                            " test_schema.parent(id))")
+        testing.db.execute('CREATE TABLE localtable (id INTEGER '
+                           'PRIMARY KEY, parent_id INTEGER REFERENCES '
+                           'test_schema.parent(id))')
         try:
             meta = MetaData(testing.db)
             lcl = Table('localtable', meta, autoload=True)
             parent = meta.tables['test_schema.parent']
-            self.assert_compile(parent.join(lcl), 
-                    "test_schema.parent JOIN localtable ON "
-                    "test_schema.parent.id = localtable.parent_id")
-            select([parent, lcl]).\
-                    select_from(parent.join(lcl)).\
-                    execute().fetchall()
+            self.assert_compile(parent.join(lcl),
+                                'test_schema.parent JOIN localtable ON '
+                                'test_schema.parent.id = '
+                                'localtable.parent_id')
+            select([parent,
+                   lcl]).select_from(parent.join(lcl)).execute().fetchall()
         finally:
-            testing.db.execute("DROP TABLE localtable")
+            testing.db.execute('DROP TABLE localtable')
 
     def test_reflect_alt_owner_implicit(self):
         meta = MetaData(testing.db)
-        parent = Table('parent', meta, autoload=True, schema='test_schema')
-        child = Table('child', meta, autoload=True, schema='test_schema')
+        parent = Table('parent', meta, autoload=True,
+                       schema='test_schema')
+        child = Table('child', meta, autoload=True, schema='test_schema'
+                      )
+        self.assert_compile(parent.join(child),
+                            'test_schema.parent JOIN test_schema.child '
+                            'ON test_schema.parent.id = '
+                            'test_schema.child.parent_id')
+        select([parent,
+               child]).select_from(parent.join(child)).execute().fetchall()
 
-        self.assert_compile(parent.join(child), 
-                    "test_schema.parent JOIN test_schema.child ON "
-                    "test_schema.parent.id = test_schema.child.parent_id")
-        select([parent, child]).select_from(parent.join(child)).execute().fetchall()
-      
     def test_reflect_alt_owner_synonyms(self):
-        testing.db.execute("CREATE TABLE localtable "
-                            "(id INTEGER PRIMARY KEY, parent_id INTEGER REFERENCES"
-                            " test_schema.ptable(id))")
+        testing.db.execute('CREATE TABLE localtable (id INTEGER '
+                           'PRIMARY KEY, parent_id INTEGER REFERENCES '
+                           'test_schema.ptable(id))')
         try:
             meta = MetaData(testing.db)
-            lcl = Table('localtable', meta, autoload=True, oracle_resolve_synonyms=True)
+            lcl = Table('localtable', meta, autoload=True,
+                        oracle_resolve_synonyms=True)
             parent = meta.tables['test_schema.ptable']
-            self.assert_compile(parent.join(lcl), 
-                    "test_schema.ptable JOIN localtable ON "
-                    "test_schema.ptable.id = localtable.parent_id")
-            select([parent, lcl]).select_from(parent.join(lcl)).execute().fetchall()
+            self.assert_compile(parent.join(lcl),
+                                'test_schema.ptable JOIN localtable ON '
+                                'test_schema.ptable.id = '
+                                'localtable.parent_id')
+            select([parent,
+                   lcl]).select_from(parent.join(lcl)).execute().fetchall()
         finally:
-            testing.db.execute("DROP TABLE localtable")
- 
+            testing.db.execute('DROP TABLE localtable')
+
     def test_reflect_remote_synonyms(self):
         meta = MetaData(testing.db)
-        parent = Table('ptable', meta, autoload=True, 
-                            schema='test_schema', 
-                            oracle_resolve_synonyms=True)
-        child = Table('ctable', meta, autoload=True, 
-                            schema='test_schema', 
-                            oracle_resolve_synonyms=True)
-        self.assert_compile(parent.join(child), 
-                    "test_schema.ptable JOIN test_schema.ctable ON "
-                    "test_schema.ptable.id = test_schema.ctable.parent_id")
-        select([parent, child]).select_from(parent.join(child)).execute().fetchall()
+        parent = Table('ptable', meta, autoload=True,
+                       schema='test_schema',
+                       oracle_resolve_synonyms=True)
+        child = Table('ctable', meta, autoload=True,
+                      schema='test_schema',
+                      oracle_resolve_synonyms=True)
+        self.assert_compile(parent.join(child),
+                            'test_schema.ptable JOIN '
+                            'test_schema.ctable ON test_schema.ptable.i'
+                            'd = test_schema.ctable.parent_id')
+        select([parent,
+               child]).select_from(parent.join(child)).execute().fetchall()
 
 class ConstraintTest(TestBase):
+
     __only_on__ = 'oracle'
-    
+
     def setup(self):
         global metadata
         metadata = MetaData(testing.db)
-        
-        foo = Table('foo', metadata,
-                Column('id', Integer, primary_key=True),
-        )
+        foo = Table('foo', metadata, Column('id', Integer,
+                    primary_key=True))
         foo.create(checkfirst=True)
-    
+
     def teardown(self):
         metadata.drop_all()
 
     def test_oracle_has_no_on_update_cascade(self):
-        bar = Table('bar', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('foo_id', Integer, ForeignKey('foo.id', onupdate="CASCADE"))
-        )
+        bar = Table('bar', metadata, Column('id', Integer,
+                    primary_key=True), Column('foo_id', Integer,
+                    ForeignKey('foo.id', onupdate='CASCADE')))
         assert_raises(exc.SAWarning, bar.create)
-
-        bat = Table('bat', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('foo_id', Integer),
-                ForeignKeyConstraint(['foo_id'], ['foo.id'], onupdate="CASCADE")
-        )
+        bat = Table('bat', metadata, Column('id', Integer,
+                    primary_key=True), Column('foo_id', Integer),
+                    ForeignKeyConstraint(['foo_id'], ['foo.id'],
+                    onupdate='CASCADE'))
         assert_raises(exc.SAWarning, bat.create)
-        
         
 class TypesTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
@@ -673,39 +679,34 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             t1.drop()
     
-    @testing.fails_on('+zxjdbc', 
-                    'Not yet known how to pass values of the INTERVAL type')
+    @testing.fails_on('+zxjdbc',
+                      'Not yet known how to pass values of the '
+                      'INTERVAL type')
     def test_interval(self):
-
-        for type_, expected in [
-            (oracle.INTERVAL(), "INTERVAL DAY TO SECOND"),
-            (
-                oracle.INTERVAL(day_precision=3), 
-                "INTERVAL DAY(3) TO SECOND"
-            ),
-            (
-                oracle.INTERVAL(second_precision=5), 
-                "INTERVAL DAY TO SECOND(5)"
-            ),
-            (
-                oracle.INTERVAL(day_precision=2, second_precision=5), 
-                "INTERVAL DAY(2) TO SECOND(5)"
-            ),
-        ]:
+        for type_, expected in [(oracle.INTERVAL(),
+                                'INTERVAL DAY TO SECOND'),
+                                (oracle.INTERVAL(day_precision=3),
+                                'INTERVAL DAY(3) TO SECOND'),
+                                (oracle.INTERVAL(second_precision=5),
+                                'INTERVAL DAY TO SECOND(5)'),
+                                (oracle.INTERVAL(day_precision=2,
+                                second_precision=5),
+                                'INTERVAL DAY(2) TO SECOND(5)')]:
             self.assert_compile(type_, expected)
-        
         metadata = MetaData(testing.db)
-        interval_table = Table("intervaltable", metadata,
-            Column("id", Integer, primary_key=True, test_needs_autoincrement=True),
-            Column("day_interval", oracle.INTERVAL(day_precision=3)),
-            )
+        interval_table = Table('intervaltable', metadata, Column('id',
+                               Integer, primary_key=True,
+                               test_needs_autoincrement=True),
+                               Column('day_interval',
+                               oracle.INTERVAL(day_precision=3)))
         metadata.create_all()
         try:
-            interval_table.insert().execute(
-                day_interval=datetime.timedelta(days=35, seconds=5743),
-            )
+            interval_table.insert().\
+                execute(day_interval=datetime.timedelta(days=35,
+                    seconds=5743))
             row = interval_table.select().execute().first()
-            eq_(row['day_interval'], datetime.timedelta(days=35, seconds=5743))
+            eq_(row['day_interval'], datetime.timedelta(days=35,
+                seconds=5743))
         finally:
             metadata.drop_all()
         
@@ -753,7 +754,8 @@ class TypesTest(TestBase, AssertsCompiledSQL):
                     (15.76, float),
                 )):
                     eq_(row[i], val)
-                    assert isinstance(row[i], type_), "%r is not %r" % (row[i], type_)
+                    assert isinstance(row[i], type_), '%r is not %r' \
+                        % (row[i], type_)
 
         finally:
             t1.drop()
@@ -794,7 +796,8 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         stmt = """
         SELECT 
             (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
-            (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) FROM DUAL) AS ndata,
+            (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) FROM DUAL)
+             AS ndata,
             (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) AS fdata
         FROM dual
         """
@@ -821,8 +824,10 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         FROM (
             SELECT 
                 (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
-                (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) FROM DUAL) AS ndata,
-                (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) AS fdata
+                (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) 
+                FROM DUAL) AS ndata,
+                (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) 
+                AS fdata
             FROM dual
         )
         WHERE ROWNUM >= 0) anon_1
@@ -963,7 +968,8 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             
             
 class DontReflectIOTTest(TestBase):
-    """test that index overflow tables aren't included in table_names."""
+    """test that index overflow tables aren't included in
+    table_names."""
 
     __only_on__ = 'oracle' 
 
@@ -1041,33 +1047,34 @@ class UnsupportedIndexReflectTest(TestBase):
         metadata.drop_all()
         
     def test_reflect_functional_index(self):
-        testing.db.execute("CREATE INDEX DATA_IDX ON TEST_INDEX_REFLECT (UPPER(DATA))")
+        testing.db.execute('CREATE INDEX DATA_IDX ON '
+                           'TEST_INDEX_REFLECT (UPPER(DATA))')
         m2 = MetaData(testing.db)
         t2 = Table('test_index_reflect', m2, autoload=True)
         
         
 class SequenceTest(TestBase, AssertsCompiledSQL):
+
     def test_basic(self):
-        seq = Sequence("my_seq_no_schema")
+        seq = Sequence('my_seq_no_schema')
         dialect = oracle.OracleDialect()
-        assert dialect.identifier_preparer.format_sequence(seq) == "my_seq_no_schema"
-
-        seq = Sequence("my_seq", schema="some_schema")
-        assert dialect.identifier_preparer.format_sequence(seq) == "some_schema.my_seq"
-
-        seq = Sequence("My_Seq", schema="Some_Schema")
-        assert dialect.identifier_preparer.format_sequence(seq) == '"Some_Schema"."My_Seq"'
+        assert dialect.identifier_preparer.format_sequence(seq) \
+            == 'my_seq_no_schema'
+        seq = Sequence('my_seq', schema='some_schema')
+        assert dialect.identifier_preparer.format_sequence(seq) \
+            == 'some_schema.my_seq'
+        seq = Sequence('My_Seq', schema='Some_Schema')
+        assert dialect.identifier_preparer.format_sequence(seq) \
+            == '"Some_Schema"."My_Seq"'
     
     
 class ExecuteTest(TestBase):
+
     __only_on__ = 'oracle'
-    
-    
+
     def test_basic(self):
-        eq_(
-            testing.db.execute("/*+ this is a comment */ SELECT 1 FROM DUAL").fetchall(),
-            [(1,)]
-        )
+        eq_(testing.db.execute('/*+ this is a comment */ SELECT 1 FROM '
+            'DUAL').fetchall(), [(1, )])
     
     def test_sequences_are_integers(self):
         seq = Sequence('foo_seq')

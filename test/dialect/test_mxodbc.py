@@ -35,35 +35,38 @@ class MockCursor(object):
     def close(self):
         pass
 
-
 class MxODBCTest(TestBase):
+
     def test_native_odbc_execute(self):
         t1 = Table('t1', MetaData(), Column('c1', Integer))
-
         dbapi = MockDBAPI()
-        engine = engines.testing_engine(
-                                'mssql+mxodbc://localhost', 
-                                options={'module':dbapi, 
-                                        '_initialize':False}
-                            )
+        engine = engines.testing_engine('mssql+mxodbc://localhost',
+                options={'module': dbapi, '_initialize': False})
         conn = engine.connect()
-        
+
         # crud: uses execute
+
         conn.execute(t1.insert().values(c1='foo'))
-        conn.execute(t1.delete().where(t1.c.c1=='foo'))
-        conn.execute(t1.update().where(t1.c.c1=='foo').values(c1='bar'))
-        
+        conn.execute(t1.delete().where(t1.c.c1 == 'foo'))
+        conn.execute(t1.update().where(t1.c.c1 == 'foo').values(c1='bar'
+                     ))
+
         # select: uses executedirect
+
         conn.execute(t1.select())
-        
+
         # manual flagging
-        conn.execution_options(native_odbc_execute=True).execute(t1.select())
-        conn.execution_options(native_odbc_execute=False).execute(t1.insert().values(c1='foo'))
-        
-        eq_(
-            dbapi.log,
-            ['execute', 'execute', 'execute', 
-                'executedirect', 'execute', 'executedirect']
-        )
-        
-        
+
+        conn.execution_options(native_odbc_execute=True).\
+                execute(t1.select())
+        conn.execution_options(native_odbc_execute=False).\
+                execute(t1.insert().values(c1='foo'
+                ))
+        eq_(dbapi.log, [
+            'execute',
+            'execute',
+            'execute',
+            'executedirect',
+            'execute',
+            'executedirect',
+            ])

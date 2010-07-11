@@ -10,7 +10,8 @@ from sqlalchemy.test import *
 
 
 # TODO
-# - add "Database" test, a quick check for join behavior on different max versions
+# - add "Database" test, a quick check for join behavior on different 
+# max versions
 # - full max-specific reflection suite
 # - datetime tests
 # - the orm/query 'test_has' destabilizes the server- cover here
