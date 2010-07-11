@@ -1,32 +1,28 @@
 # properties.py
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer
+# mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """MapperProperty implementations.
 
-This is a private module which defines the behavior of invidual ORM-mapped
-attributes.
+This is a private module which defines the behavior of invidual ORM-
+mapped attributes.
 
 """
 
 from sqlalchemy import sql, util, log
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy.sql.util import (
-    ClauseAdapter, criterion_as_pairs, join_condition
-    )
+from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
+    join_condition
 from sqlalchemy.sql import operators, expression
-from sqlalchemy.orm import (
-    attributes, dependency, mapper, object_mapper, strategies,
-    )
-from sqlalchemy.orm.util import (
-    CascadeOptions, _class_to_mapper, _orm_annotate, _orm_deannotate
-    )
-from sqlalchemy.orm.interfaces import (
-    MANYTOMANY, MANYTOONE, MapperProperty, ONETOMANY, PropComparator,
-    StrategizedProperty,
-    )
+from sqlalchemy.orm import attributes, dependency, mapper, \
+    object_mapper, strategies
+from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, \
+    _orm_annotate, _orm_deannotate
+from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, \
+    MapperProperty, ONETOMANY, PropComparator, StrategizedProperty
 NoneType = type(None)
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
@@ -339,7 +335,8 @@ class SynonymProperty(MapperProperty):
             doc=self.doc
             )
 
-    def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
+    def merge(self, session, source_state, source_dict, dest_state,
+                dest_dict, load, _recursive):
         pass
         
 log.class_logger(SynonymProperty)
@@ -374,7 +371,8 @@ class ComparableProperty(MapperProperty):
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
 
-    def merge(self, session, source_state, source_dict, dest_state, dest_dict, load, _recursive):
+    def merge(self, session, source_state, source_dict, 
+                dest_state, dest_dict, load, _recursive):
         pass
 
 
@@ -483,11 +481,15 @@ class RelationshipProperty(StrategizedProperty):
                 self._of_type = _class_to_mapper(of_type)
 
         def adapted(self, adapter):
-            """Return a copy of this PropComparator which will use the given adaption function
-            on the local side of generated expressions.
-
+            """Return a copy of this PropComparator which will use the
+            given adaption function on the local side of generated
+            expressions.
+            
             """
-            return self.__class__(self.property, self.mapper, getattr(self, '_of_type', None), adapter)
+
+            return self.__class__(self.property, self.mapper,
+                                  getattr(self, '_of_type', None),
+                                  adapter)
         
         @property
         def parententity(self):
@@ -513,8 +515,9 @@ class RelationshipProperty(StrategizedProperty):
                                         cls, adapter=self.adapter)
 
         def in_(self, other):
-            raise NotImplementedError("in_() not yet supported for relationships.  For a "
-                    "simple many-to-one, use in_() against the set of foreign key values.")
+            raise NotImplementedError('in_() not yet supported for '
+                    'relationships.  For a simple many-to-one, use '
+                    'in_() against the set of foreign key values.')
             
         __hash__ = None
         
@@ -523,21 +526,15 @@ class RelationshipProperty(StrategizedProperty):
                 if self.property.direction in [ONETOMANY, MANYTOMANY]:
                     return ~self._criterion_exists()
                 else:
-                    return _orm_annotate(
-                                self.property._optimized_compare(
-                                            None, 
-                                            adapt_source=self.adapter)
-                                    )
+                    return _orm_annotate(self.property._optimized_compare(
+                            None, adapt_source=self.adapter))
             elif self.property.uselist:
-                raise sa_exc.InvalidRequestError(
-                            "Can't compare a collection to an object or "
-                            "collection; use contains() to test for membership.")
+                raise sa_exc.InvalidRequestError("Can't compare a colle"
+                        "ction to an object or collection; use "
+                        "contains() to test for membership.")
             else:
-                return _orm_annotate(
-                                self.property._optimized_compare(
-                                            other, 
-                                            adapt_source=self.adapter)
-                                    )
+                return _orm_annotate(self.property._optimized_compare(other,
+                        adapt_source=self.adapter))
 
         def _criterion_exists(self, criterion=None, **kwargs):
             if getattr(self, '_of_type', None):
@@ -561,10 +558,9 @@ class RelationshipProperty(StrategizedProperty):
                 source_selectable = None
             
             pj, sj, source, dest, secondary, target_adapter = \
-                self.property._create_joins(
-                                            dest_polymorphic=True, 
-                                            dest_selectable=to_selectable,
-                                            source_selectable=source_selectable)
+                self.property._create_joins(dest_polymorphic=True,
+                        dest_selectable=to_selectable,
+                        source_selectable=source_selectable)
 
             for k in kwargs:
                 crit = self.property.mapper.class_manager[k] == kwargs[k]
@@ -618,10 +614,12 @@ class RelationshipProperty(StrategizedProperty):
                 raise sa_exc.InvalidRequestError(
                             "'contains' not implemented for scalar "
                             "attributes.  Use ==")
-            clause = self.property._optimized_compare(other, adapt_source=self.adapter)
+            clause = self.property._optimized_compare(other,
+                    adapt_source=self.adapter)
 
             if self.property.secondaryjoin is not None:
-                clause.negation_clause = self.__negated_contains_or_equals(other)
+                clause.negation_clause = \
+                    self.__negated_contains_or_equals(other)
 
             return clause
 
@@ -631,7 +629,9 @@ class RelationshipProperty(StrategizedProperty):
                 
                 def state_bindparam(state, col):
                     o = state.obj() # strong ref
-                    return lambda: self.property.mapper._get_committed_attr_by_column(o, col)
+                    return lambda : \
+                        self.property.mapper._get_committed_attr_by_column(o,
+                            col)
                 
                 def adapt(col):
                     if self.adapter:
@@ -658,13 +658,14 @@ class RelationshipProperty(StrategizedProperty):
         def __ne__(self, other):
             if isinstance(other, (NoneType, expression._Null)):
                 if self.property.direction == MANYTOONE:
-                    return sql.or_(*[x!=None for x in self.property._foreign_keys])
+                    return sql.or_(*[x != None for x in
+                                   self.property._foreign_keys])
                 else:
                     return self._criterion_exists()
             elif self.property.uselist:
-                raise sa_exc.InvalidRequestError(
-                                "Can't compare a collection to an object or "
-                                "collection; use contains() to test for membership.")
+                raise sa_exc.InvalidRequestError("Can't compare a collection"
+                        " to an object or collection; use "
+                        "contains() to test for membership.")
             else:
                 return self.__negated_contains_or_equals(other)
 
@@ -693,10 +694,10 @@ class RelationshipProperty(StrategizedProperty):
                                     adapt_source=None, alias_secondary=True):
         if value is not None:
             value = attributes.instance_state(value)
-        return self._get_strategy(strategies.LazyLoader).\
-                lazy_clause(value, 
-                            reverse_direction=not value_is_parent, 
-                            alias_secondary=alias_secondary, adapt_source=adapt_source)
+        return self._get_strategy(strategies.LazyLoader).lazy_clause(value,
+                reverse_direction=not value_is_parent,
+                alias_secondary=alias_secondary,
+                adapt_source=adapt_source)
 
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
@@ -740,30 +741,34 @@ class RelationshipProperty(StrategizedProperty):
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True
-                obj = session._merge(current_state, current_dict, load=load, _recursive=_recursive)
+                obj = session._merge(current_state, current_dict,
+                        load=load, _recursive=_recursive)
                 if obj is not None:
                     dest_list.append(obj)
                     
             if not load:
-                coll = attributes.init_state_collection(dest_state, dest_dict, self.key)
+                coll = attributes.init_state_collection(dest_state,
+                        dest_dict, self.key)
                 for c in dest_list:
                     coll.append_without_event(c)
             else:
-                dest_state.get_impl(self.key)._set_iterable(dest_state, dest_dict, dest_list)
+                dest_state.get_impl(self.key)._set_iterable(dest_state,
+                        dest_dict, dest_list)
         else:
             current = source_dict[self.key]
             if current is not None:
                 current_state = attributes.instance_state(current)
                 current_dict = attributes.instance_dict(current)
                 _recursive[(current_state, self)] = True
-                obj = session._merge(current_state, current_dict, load=load, _recursive=_recursive)
+                obj = session._merge(current_state, current_dict,
+                        load=load, _recursive=_recursive)
             else:
                 obj = None
-
             if not load:
                 dest_dict[self.key] = obj
             else:
-                dest_state.get_impl(self.key).set(dest_state, dest_dict, obj, None)
+                dest_state.get_impl(self.key).set(dest_state,
+                        dest_dict, obj, None)
 
     def cascade_iterator(self, type_, state, visited_instances, halt_on=None):
         if not type_ in self.cascade:
@@ -776,11 +781,13 @@ class RelationshipProperty(StrategizedProperty):
             passive = attributes.PASSIVE_OFF
 
         if type_ == 'save-update':
-            instances = attributes.get_state_history(state, self.key, passive=passive).sum()
+            instances = attributes.get_state_history(state, self.key,
+                    passive=passive).sum()
         else:
-            instances = state.value_as_iterable(self.key, passive=passive)
-        
-        skip_pending = type_ == 'refresh-expire' and 'delete-orphan' not in self.cascade
+            instances = state.value_as_iterable(self.key,
+                    passive=passive)
+        skip_pending = type_ == 'refresh-expire' and 'delete-orphan' \
+            not in self.cascade
         
         if instances:
             for c in instances:
@@ -815,12 +822,16 @@ class RelationshipProperty(StrategizedProperty):
         other._reverse_property.add(self)
         
         if not other._get_target().common_parent(self.parent):
-            raise sa_exc.ArgumentError("reverse_property %r on relationship %s references "
-                    "relationship %s, which does not reference mapper %s" % (key, self, other, self.parent))
-        
-        if self.direction in (ONETOMANY, MANYTOONE) and self.direction == other.direction:
-            raise sa_exc.ArgumentError("%s and back-reference %s are both of the same direction %r."
-                "  Did you mean to set remote_side on the many-to-one side ?" % (other, self, self.direction))
+            raise sa_exc.ArgumentError('reverse_property %r on '
+                    'relationship %s references relationship %s, which '
+                    'does not reference mapper %s' % (key, self, other,
+                    self.parent))
+        if self.direction in (ONETOMANY, MANYTOONE) and self.direction \
+            == other.direction:
+            raise sa_exc.ArgumentError('%s and back-reference %s are '
+                    'both of the same direction %r.  Did you mean to '
+                    'set remote_side on the many-to-one side ?'
+                    % (other, self, self.direction))
         
     def do_init(self):
         self._get_target()
@@ -837,68 +848,101 @@ class RelationshipProperty(StrategizedProperty):
     def _get_target(self):
         if not hasattr(self, 'mapper'):
             if isinstance(self.argument, type):
-                self.mapper = mapper.class_mapper(self.argument, compile=False)
+                self.mapper = mapper.class_mapper(self.argument,
+                        compile=False)
             elif isinstance(self.argument, mapper.Mapper):
                 self.mapper = self.argument
             elif util.callable(self.argument):
-                # accept a callable to suit various deferred-configurational schemes
-                self.mapper = mapper.class_mapper(self.argument(), compile=False)
+
+                # accept a callable to suit various deferred-
+                # configurational schemes
+
+                self.mapper = mapper.class_mapper(self.argument(),
+                        compile=False)
             else:
-                raise sa_exc.ArgumentError("relationship '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
+                raise sa_exc.ArgumentError("relationship '%s' expects "
+                        "a class or a mapper argument (received: %s)"
+                        % (self.key, type(self.argument)))
             assert isinstance(self.mapper, mapper.Mapper), self.mapper
         return self.mapper
         
     def _process_dependent_arguments(self):
 
-        # accept callables for other attributes which may require deferred initialization
-        for attr in ('order_by', 'primaryjoin', 'secondaryjoin', 'secondary', '_foreign_keys', 'remote_side'):
+        # accept callables for other attributes which may require
+        # deferred initialization
+
+        for attr in (
+            'order_by',
+            'primaryjoin',
+            'secondaryjoin',
+            'secondary',
+            '_foreign_keys',
+            'remote_side',
+            ):
             if util.callable(getattr(self, attr)):
                 setattr(self, attr, getattr(self, attr)())
 
         # in the case that InstrumentedAttributes were used to construct
-        # primaryjoin or secondaryjoin, remove the "_orm_adapt" annotation so these
-        # interact with Query in the same way as the original Table-bound Column objects
-        for attr in ('primaryjoin', 'secondaryjoin'):
+        # primaryjoin or secondaryjoin, remove the "_orm_adapt"
+        # annotation so these interact with Query in the same way as the
+        # original Table-bound Column objects
+
+        for attr in 'primaryjoin', 'secondaryjoin':
             val = getattr(self, attr)
             if val is not None:
                 util.assert_arg_type(val, sql.ColumnElement, attr)
                 setattr(self, attr, _orm_deannotate(val))
-        
         if self.order_by is not False and self.order_by is not None:
-            self.order_by = [expression._literal_as_column(x) for x in util.to_list(self.order_by)]
-        
-        self._foreign_keys = util.column_set(expression._literal_as_column(x) for x in util.to_column_set(self._foreign_keys))
-        self.remote_side = util.column_set(expression._literal_as_column(x) for x in util.to_column_set(self.remote_side))
-
+            self.order_by = [expression._literal_as_column(x) for x in
+                             util.to_list(self.order_by)]
+        self._foreign_keys = \
+            util.column_set(expression._literal_as_column(x) for x in
+                            util.to_column_set(self._foreign_keys))
+        self.remote_side = \
+            util.column_set(expression._literal_as_column(x) for x in
+                            util.to_column_set(self.remote_side))
         if not self.parent.concrete:
             for inheriting in self.parent.iterate_to_root():
-                if inheriting is not self.parent and inheriting._get_property(self.key, raiseerr=False):
-                    util.warn(
-                        ("Warning: relationship '%s' on mapper '%s' supercedes "
-                         "the same relationship on inherited mapper '%s'; this "
-                         "can cause dependency issues during flush") %
-                        (self.key, self.parent, inheriting))
+                if inheriting is not self.parent \
+                    and inheriting._get_property(self.key,
+                        raiseerr=False):
+                    util.warn("Warning: relationship '%s' on mapper "
+                              "'%s' supercedes the same relationship "
+                              "on inherited mapper '%s'; this can "
+                              "cause dependency issues during flush"
+                              % (self.key, self.parent, inheriting))
 
         # TODO: remove 'self.table'
-        self.target = self.table = self.mapper.mapped_table
 
+        self.target = self.table = self.mapper.mapped_table
         if self.cascade.delete_orphan:
             if self.parent.class_ is self.mapper.class_:
-                raise sa_exc.ArgumentError("In relationship '%s', can't establish 'delete-orphan' cascade "
-                            "rule on a self-referential relationship.  "
-                            "You probably want cascade='all', which includes delete cascading but not orphan detection." %(str(self)))
-            self.mapper.primary_mapper().delete_orphans.append((self.key, self.parent.class_))
+                raise sa_exc.ArgumentError("In relationship '%s', "
+                        "can't establish 'delete-orphan' cascade rule "
+                        "on a self-referential relationship.  You "
+                        "probably want cascade='all', which includes "
+                        "delete cascading but not orphan detection."
+                        % str(self))
+            self.mapper.primary_mapper().delete_orphans.append((self.key,
+                    self.parent.class_))
 
     def _determine_joins(self):
         if self.secondaryjoin is not None and self.secondary is None:
-            raise sa_exc.ArgumentError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
-        # if join conditions were not specified, figure them out based on foreign keys
+            raise sa_exc.ArgumentError("Property '" + self.key
+                    + "' specified with secondary join condition but "
+                    "no secondary argument")
+
+        # if join conditions were not specified, figure them out based
+        # on foreign keys
 
         def _search_for_join(mapper, table):
-            # find a join between the given mapper's mapped table and the given table.
-            # will try the mapper's local table first for more specificity, then if not
-            # found will try the more general mapped table, which in the case of inheritance
-            # is a join.
+
+            # find a join between the given mapper's mapped table and
+            # the given table. will try the mapper's local table first
+            # for more specificity, then if not found will try the more
+            # general mapped table, which in the case of inheritance is
+            # a join.
+
             try:
                 return join_condition(mapper.local_table, table)
             except sa_exc.ArgumentError, e:
@@ -907,17 +951,22 @@ class RelationshipProperty(StrategizedProperty):
         try:
             if self.secondary is not None:
                 if self.secondaryjoin is None:
-                    self.secondaryjoin = _search_for_join(self.mapper, self.secondary)
+                    self.secondaryjoin = _search_for_join(self.mapper,
+                            self.secondary)
                 if self.primaryjoin is None:
-                    self.primaryjoin = _search_for_join(self.parent, self.secondary)
+                    self.primaryjoin = _search_for_join(self.parent,
+                            self.secondary)
             else:
                 if self.primaryjoin is None:
-                    self.primaryjoin = _search_for_join(self.parent, self.target)
+                    self.primaryjoin = _search_for_join(self.parent,
+                            self.target)
         except sa_exc.ArgumentError, e:
-            raise sa_exc.ArgumentError("Could not determine join condition between "
-                        "parent/child tables on relationship %s.  "
-                        "Specify a 'primaryjoin' expression.  If this is a "
-                        "many-to-many relationship, 'secondaryjoin' is needed as well." % (self))
+            raise sa_exc.ArgumentError("Could not determine join "
+                    "condition between parent/child tables on "
+                    "relationship %s.  Specify a 'primaryjoin' "
+                    "expression.  If this is a many-to-many "
+                    "relationship, 'secondaryjoin' is needed as well."
+                    % self)
 
     def _col_is_part_of_mappings(self, column):
         if self.secondary is None:
@@ -929,140 +978,137 @@ class RelationshipProperty(StrategizedProperty):
                 self.secondary.c.contains_column(column) is not None
 
     def _determine_synchronize_pairs(self):
-
         if self.local_remote_pairs:
             if not self._foreign_keys:
-                raise sa_exc.ArgumentError("foreign_keys argument is required with _local_remote_pairs argument")
-
+                raise sa_exc.ArgumentError('foreign_keys argument is '
+                        'required with _local_remote_pairs argument')
             self.synchronize_pairs = []
-
             for l, r in self.local_remote_pairs:
                 if r in self._foreign_keys:
                     self.synchronize_pairs.append((l, r))
                 elif l in self._foreign_keys:
                     self.synchronize_pairs.append((r, l))
         else:
-            eq_pairs = criterion_as_pairs(
-                            self.primaryjoin, 
-                            consider_as_foreign_keys=self._foreign_keys, 
-                            any_operator=self.viewonly
-                        )
-            eq_pairs = [
-                            (l, r) for l, r in eq_pairs if 
-                            (self._col_is_part_of_mappings(l) and 
-                                self._col_is_part_of_mappings(r)) 
-                                or self.viewonly and r in self._foreign_keys
-                        ]
-
+            eq_pairs = criterion_as_pairs(self.primaryjoin,
+                    consider_as_foreign_keys=self._foreign_keys,
+                    any_operator=self.viewonly)
+            eq_pairs = [(l, r) for (l, r) in eq_pairs
+                        if self._col_is_part_of_mappings(l)
+                        and self._col_is_part_of_mappings(r)
+                        or self.viewonly and r in self._foreign_keys]
             if not eq_pairs:
-                if not self.viewonly and criterion_as_pairs(
-                                                self.primaryjoin,
-                                                consider_as_foreign_keys=self._foreign_keys,
-                                                any_operator=True):
-                    raise sa_exc.ArgumentError("Could not locate any equated, locally "
-                        "mapped column pairs for primaryjoin condition '%s' on relationship %s. "
-                        "For more relaxed rules on join conditions, the relationship may be "
-                        "marked as viewonly=True." % (self.primaryjoin, self)
-                    )
+                if not self.viewonly \
+                    and criterion_as_pairs(self.primaryjoin,
+                        consider_as_foreign_keys=self._foreign_keys,
+                        any_operator=True):
+                    raise sa_exc.ArgumentError("Could not locate any "
+                            "equated, locally mapped column pairs for "
+                            "primaryjoin condition '%s' on "
+                            "relationship %s. For more relaxed rules "
+                            "on join conditions, the relationship may "
+                            "be marked as viewonly=True."
+                            % (self.primaryjoin, self))
                 else:
                     if self._foreign_keys:
-                        raise sa_exc.ArgumentError("Could not determine relationship direction for "
-                            "primaryjoin condition '%s', on relationship %s. "
-                            "Do the columns in 'foreign_keys' represent only the 'foreign' columns "
-                            "in this join condition ?" % (self.primaryjoin, self))
+                        raise sa_exc.ArgumentError("Could not determine"
+                                " relationship direction for "
+                                "primaryjoin condition '%s', on "
+                                "relationship %s. Do the columns in "
+                                "'foreign_keys' represent only the "
+                                "'foreign' columns in this join "
+                                "condition ?" % (self.primaryjoin,
+                                self))
                     else:
-                        raise sa_exc.ArgumentError("Could not determine relationship direction for "
-                            "primaryjoin condition '%s', on relationship %s. "
-                            "Specify the 'foreign_keys' argument to indicate which columns "
-                            "on the relationship are foreign." % (self.primaryjoin, self))
-
+                        raise sa_exc.ArgumentError("Could not determine"
+                                " relationship direction for "
+                                "primaryjoin condition '%s', on "
+                                "relationship %s. Specify the "
+                                "'foreign_keys' argument to indicate "
+                                "which columns on the relationship are "
+                                "foreign." % (self.primaryjoin, self))
             self.synchronize_pairs = eq_pairs
-
         if self.secondaryjoin is not None:
-            sq_pairs = criterion_as_pairs(
-                            self.secondaryjoin, 
-                            consider_as_foreign_keys=self._foreign_keys, 
-                            any_operator=self.viewonly)
-                            
-            sq_pairs = [
-                            (l, r) 
-                            for l, r in sq_pairs 
-                            if (self._col_is_part_of_mappings(l) and
-                            self._col_is_part_of_mappings(r)) or 
-                            r in self._foreign_keys
-                        ]
-
+            sq_pairs = criterion_as_pairs(self.secondaryjoin,
+                    consider_as_foreign_keys=self._foreign_keys,
+                    any_operator=self.viewonly)
+            sq_pairs = [(l, r) for (l, r) in sq_pairs
+                        if self._col_is_part_of_mappings(l)
+                        and self._col_is_part_of_mappings(r) or r
+                        in self._foreign_keys]
             if not sq_pairs:
-                if not self.viewonly and criterion_as_pairs(
-                            self.secondaryjoin, 
-                            consider_as_foreign_keys=self._foreign_keys, 
-                            any_operator=True):
-                    raise sa_exc.ArgumentError("Could not locate any equated, locally mapped "
-                        "column pairs for secondaryjoin condition '%s' on relationship %s. "
-                        "For more relaxed rules on join conditions, the "
-                        "relationship may be marked as viewonly=True." % (self.secondaryjoin, self)
-                    )
+                if not self.viewonly \
+                    and criterion_as_pairs(self.secondaryjoin,
+                        consider_as_foreign_keys=self._foreign_keys,
+                        any_operator=True):
+                    raise sa_exc.ArgumentError("Could not locate any "
+                            "equated, locally mapped column pairs for "
+                            "secondaryjoin condition '%s' on "
+                            "relationship %s. For more relaxed rules "
+                            "on join conditions, the relationship may "
+                            "be marked as viewonly=True."
+                            % (self.secondaryjoin, self))
                 else:
-                    raise sa_exc.ArgumentError("Could not determine relationship direction "
-                    "for secondaryjoin condition '%s', on relationship %s. "
-                    "Specify the foreign_keys argument to indicate which "
-                    "columns on the relationship are foreign." % (self.secondaryjoin, self))
-
+                    raise sa_exc.ArgumentError("Could not determine "
+                            "relationship direction for secondaryjoin "
+                            "condition '%s', on relationship %s. "
+                            "Specify the foreign_keys argument to "
+                            "indicate which columns on the "
+                            "relationship are foreign."
+                            % (self.secondaryjoin, self))
             self.secondary_synchronize_pairs = sq_pairs
         else:
             self.secondary_synchronize_pairs = None
-
-        self._foreign_keys = util.column_set(r for l, r in self.synchronize_pairs)
+        self._foreign_keys = util.column_set(r for (l, r) in
+                self.synchronize_pairs)
         if self.secondary_synchronize_pairs:
-            self._foreign_keys.update(r for l, r in self.secondary_synchronize_pairs)
+            self._foreign_keys.update(r for (l, r) in
+                    self.secondary_synchronize_pairs)
 
     def _determine_direction(self):
         if self.secondaryjoin is not None:
             self.direction = MANYTOMANY
-            
         elif self._refers_to_parent_table():
-            # self referential defaults to ONETOMANY unless the "remote" side is present
-            # and does not reference any foreign key columns
+
+            # self referential defaults to ONETOMANY unless the "remote"
+            # side is present and does not reference any foreign key
+            # columns
 
             if self.local_remote_pairs:
-                remote = [r for l, r in self.local_remote_pairs]
+                remote = [r for (l, r) in self.local_remote_pairs]
             elif self.remote_side:
                 remote = self.remote_side
             else:
                 remote = None
-
-            if not remote or self._foreign_keys.\
-                                    difference(l for l, r in self.synchronize_pairs).\
-                                    intersection(remote):
+            if not remote or self._foreign_keys.difference(l for (l,
+                    r) in self.synchronize_pairs).intersection(remote):
                 self.direction = ONETOMANY
             else:
                 self.direction = MANYTOONE
-
         else:
-            foreign_keys = [f for c, f in self.synchronize_pairs]
-
+            foreign_keys = [f for (c, f) in self.synchronize_pairs]
             parentcols = util.column_set(self.parent.mapped_table.c)
             targetcols = util.column_set(self.mapper.mapped_table.c)
 
             # fk collection which suggests ONETOMANY.
+
             onetomany_fk = targetcols.intersection(foreign_keys)
 
             # fk collection which suggests MANYTOONE.
-            manytoone_fk = parentcols.intersection(foreign_keys)
-            
-            if not onetomany_fk and not manytoone_fk:
-                raise sa_exc.ArgumentError(
-                    "Can't determine relationship direction for relationship '%s' "
-                    "- foreign key columns are present in neither the "
-                    "parent nor the child's mapped tables" % self )
 
-            elif onetomany_fk and manytoone_fk: 
-                # fks on both sides.  do the same
-                # test only based on the local side.
-                referents = [c for c, f in self.synchronize_pairs]
+            manytoone_fk = parentcols.intersection(foreign_keys)
+            if not onetomany_fk and not manytoone_fk:
+                raise sa_exc.ArgumentError("Can't determine relationshi"
+                        "p direction for relationship '%s' - foreign "
+                        "key columns are present in neither the parent "
+                        "nor the child's mapped tables" % self)
+            elif onetomany_fk and manytoone_fk:
+
+                # fks on both sides.  do the same test only based on the
+                # local side.
+
+                referents = [c for (c, f) in self.synchronize_pairs]
                 onetomany_local = parentcols.intersection(referents)
                 manytoone_local = targetcols.intersection(referents)
-
                 if onetomany_local and not manytoone_local:
                     self.direction = ONETOMANY
                 elif manytoone_local and not onetomany_local:
@@ -1071,106 +1117,109 @@ class RelationshipProperty(StrategizedProperty):
                 self.direction = ONETOMANY
             elif manytoone_fk:
                 self.direction = MANYTOONE
-                
             if not self.direction:
-                raise sa_exc.ArgumentError(
-                    "Can't determine relationship direction for relationship '%s' "
-                    "- foreign key columns are present in both the parent and "
-                    "the child's mapped tables.  Specify 'foreign_keys' "
-                    "argument." % self)
-        
-        if self.cascade.delete_orphan and not self.single_parent and \
-            (self.direction is MANYTOMANY or self.direction is MANYTOONE):
-            util.warn("On %s, delete-orphan cascade is not supported on a "
-                    "many-to-many or many-to-one relationship when single_parent is not set.  "
-                    " Set single_parent=True on the relationship()." % self)
+                raise sa_exc.ArgumentError("Can't determine relationshi"
+                        "p direction for relationship '%s' - foreign "
+                        "key columns are present in both the parent "
+                        "and the child's mapped tables.  Specify "
+                        "'foreign_keys' argument." % self)
+        if self.cascade.delete_orphan and not self.single_parent \
+            and (self.direction is MANYTOMANY or self.direction
+                 is MANYTOONE):
+            util.warn('On %s, delete-orphan cascade is not supported '
+                      'on a many-to-many or many-to-one relationship '
+                      'when single_parent is not set.   Set '
+                      'single_parent=True on the relationship().'
+                      % self)
         
     def _determine_local_remote_pairs(self):
         if not self.local_remote_pairs:
             if self.remote_side:
                 if self.direction is MANYTOONE:
-                    self.local_remote_pairs = [
-                        (r, l) for l, r in
-                        criterion_as_pairs(self.primaryjoin, consider_as_referenced_keys=self.remote_side, any_operator=True)
-                    ]
+                    self.local_remote_pairs = [(r, l) for (l, r) in
+                            criterion_as_pairs(self.primaryjoin,
+                            consider_as_referenced_keys=self.remote_side,
+                            any_operator=True)]
                 else:
-                    self.local_remote_pairs = criterion_as_pairs(self.primaryjoin, consider_as_foreign_keys=self.remote_side, any_operator=True)
-
+                    self.local_remote_pairs = \
+                        criterion_as_pairs(self.primaryjoin,
+                            consider_as_foreign_keys=self.remote_side,
+                            any_operator=True)
                 if not self.local_remote_pairs:
-                    raise sa_exc.ArgumentError("Relationship %s could not determine any local/remote column pairs from remote side argument %r" % (self, self.remote_side))
-
+                    raise sa_exc.ArgumentError('Relationship %s could '
+                            'not determine any local/remote column '
+                            'pairs from remote side argument %r'
+                            % (self, self.remote_side))
             else:
                 if self.viewonly:
                     eq_pairs = self.synchronize_pairs
                     if self.secondaryjoin is not None:
                         eq_pairs += self.secondary_synchronize_pairs
                 else:
-                    eq_pairs = criterion_as_pairs(
-                                self.primaryjoin, 
-                                consider_as_foreign_keys=self._foreign_keys, 
-                                any_operator=True)
+                    eq_pairs = criterion_as_pairs(self.primaryjoin,
+                            consider_as_foreign_keys=self._foreign_keys,
+                            any_operator=True)
                     if self.secondaryjoin is not None:
-                        eq_pairs += criterion_as_pairs(
-                                self.secondaryjoin, 
-                                consider_as_foreign_keys=self._foreign_keys, 
+                        eq_pairs += \
+                            criterion_as_pairs(self.secondaryjoin,
+                                consider_as_foreign_keys=self._foreign_keys,
                                 any_operator=True)
-                                
-                    eq_pairs = [
-                                (l, r) for l, r in eq_pairs 
-                                if self._col_is_part_of_mappings(l) and
-                                self._col_is_part_of_mappings(r)
-                            ]
-
+                    eq_pairs = [(l, r) for (l, r) in eq_pairs
+                                if self._col_is_part_of_mappings(l)
+                                and self._col_is_part_of_mappings(r)]
                 if self.direction is MANYTOONE:
-                    self.local_remote_pairs = [(r, l) for l, r in eq_pairs]
+                    self.local_remote_pairs = [(r, l) for (l, r) in
+                            eq_pairs]
                 else:
                     self.local_remote_pairs = eq_pairs
         elif self.remote_side:
-            raise sa_exc.ArgumentError("remote_side argument is redundant "
-                            "against more detailed _local_remote_side argument.")
-        
+            raise sa_exc.ArgumentError('remote_side argument is '
+                    'redundant against more detailed '
+                    '_local_remote_side argument.')
         for l, r in self.local_remote_pairs:
-
-            if self.direction is ONETOMANY and not self._col_is_part_of_mappings(l):
-                raise sa_exc.ArgumentError("Local column '%s' is not part of mapping %s.  "
-                        "Specify remote_side argument to indicate which column "
-                        "lazy join condition should compare against." % (l, self.parent))
-
-            elif self.direction is MANYTOONE and not self._col_is_part_of_mappings(r):
-                raise sa_exc.ArgumentError("Remote column '%s' is not part of mapping %s. "
-                        "Specify remote_side argument to indicate which column lazy "
-                        "join condition should bind." % (r, self.mapper))
-
-        self.local_side, self.remote_side = [
-                                            util.ordered_column_set(x) for x in
-                                            zip(*list(self.local_remote_pairs))]
+            if self.direction is ONETOMANY \
+                and not self._col_is_part_of_mappings(l):
+                raise sa_exc.ArgumentError("Local column '%s' is not "
+                        "part of mapping %s.  Specify remote_side "
+                        "argument to indicate which column lazy join "
+                        "condition should compare against." % (l,
+                        self.parent))
+            elif self.direction is MANYTOONE \
+                and not self._col_is_part_of_mappings(r):
+                raise sa_exc.ArgumentError("Remote column '%s' is not "
+                        "part of mapping %s. Specify remote_side "
+                        "argument to indicate which column lazy join "
+                        "condition should bind." % (r, self.mapper))
+        self.local_side, self.remote_side = [util.ordered_column_set(x)
+                for x in zip(*list(self.local_remote_pairs))]
 
     def _assert_is_primary(self):
-        if not self.is_primary() and \
-            not mapper.class_mapper(self.parent.class_, compile=False).\
-                _get_property(self.key, raiseerr=False):
-
-            raise sa_exc.ArgumentError("Attempting to assign a new relationship '%s' to "
-                "a non-primary mapper on class '%s'.  New relationships can only be "
-                "added to the primary mapper, i.e. the very first "
-                "mapper created for class '%s' " % 
-                (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
+        if not self.is_primary() \
+            and not mapper.class_mapper(self.parent.class_,
+                compile=False)._get_property(self.key, raiseerr=False):
+            raise sa_exc.ArgumentError("Attempting to assign a new "
+                    "relationship '%s' to a non-primary mapper on "
+                    "class '%s'.  New relationships can only be added "
+                    "to the primary mapper, i.e. the very first mapper "
+                    "created for class '%s' " % (self.key,
+                    self.parent.class_.__name__,
+                    self.parent.class_.__name__))
             
     def _generate_backref(self):
         if not self.is_primary():
             return
-
         if self.backref is not None and not self.back_populates:
             if isinstance(self.backref, basestring):
                 backref_key, kwargs = self.backref, {}
             else:
                 backref_key, kwargs = self.backref
-            
             mapper = self.mapper.primary_mapper()
-            if mapper._get_property(backref_key, raiseerr=False) is not None:
-                raise sa_exc.ArgumentError("Error creating backref '%s' on relationship '%s': "
-                    "property of that name exists on mapper '%s'" % (backref_key, self, mapper))
-            
+            if mapper._get_property(backref_key, raiseerr=False) \
+                is not None:
+                raise sa_exc.ArgumentError("Error creating backref "
+                        "'%s' on relationship '%s': property of that "
+                        "name exists on mapper '%s'" % (backref_key,
+                        self, mapper))
             if self.secondary is not None:
                 pj = kwargs.pop('primaryjoin', self.secondaryjoin)
                 sj = kwargs.pop('secondaryjoin', self.primaryjoin)
@@ -1180,56 +1229,59 @@ class RelationshipProperty(StrategizedProperty):
                 if sj:
                     raise sa_exc.InvalidRequestError(
                         "Can't assign 'secondaryjoin' on a backref against "
-                        "a non-secondary relationship.")
-
-            foreign_keys = kwargs.pop('foreign_keys', self._foreign_keys)
-
+                        "a non-secondary relationship."
+                            )
+            foreign_keys = kwargs.pop('foreign_keys',
+                    self._foreign_keys)
             parent = self.parent.primary_mapper()
             kwargs.setdefault('viewonly', self.viewonly)
             kwargs.setdefault('post_update', self.post_update)
             kwargs.setdefault('passive_updates', self.passive_updates)
-            
             self.back_populates = backref_key
             relationship = RelationshipProperty(
-                                        parent, 
-                                        self.secondary, 
-                                        pj, 
-                                        sj, 
-                                        foreign_keys=foreign_keys,
-                                        back_populates=self.key,
-                                       **kwargs)
-
+                parent,
+                self.secondary,
+                pj,
+                sj,
+                foreign_keys=foreign_keys,
+                back_populates=self.key,
+                **kwargs
+                )
             mapper._configure_property(backref_key, relationship)
-
-
         if self.back_populates:
-            self.extension = list(util.to_list(self.extension, default=[]))
-            self.extension.append(attributes.GenericBackrefExtension(self.back_populates))
+            self.extension = list(util.to_list(self.extension,
+                                  default=[]))
+            self.extension.append(
+                    attributes.GenericBackrefExtension(self.back_populates))
             self._add_reverse_property(self.back_populates)
         
-        
     def _post_init(self):
-        self.logger.info("%s setup primary join %s", self, self.primaryjoin)
-        self.logger.info("%s setup secondary join %s", self, self.secondaryjoin)
-        self.logger.info("%s synchronize pairs [%s]", self, 
-                    ",".join("(%s => %s)" % (l, r) for l, r in self.synchronize_pairs))
-        self.logger.info("%s secondary synchronize pairs [%s]", self, 
-            ",".join(("(%s => %s)" % (l, r) for l, r in self.secondary_synchronize_pairs or [])))
-        self.logger.info("%s local/remote pairs [%s]", self, 
-                    ",".join("(%s / %s)" % (l, r) for l, r in self.local_remote_pairs))
-        self.logger.info("%s relationship direction %s", self, self.direction)
-        
+        self.logger.info('%s setup primary join %s', self,
+                         self.primaryjoin)
+        self.logger.info('%s setup secondary join %s', self,
+                         self.secondaryjoin)
+        self.logger.info('%s synchronize pairs [%s]', self,
+                         ','.join('(%s => %s)' % (l, r) for (l, r) in
+                         self.synchronize_pairs))
+        self.logger.info('%s secondary synchronize pairs [%s]', self,
+                         ','.join('(%s => %s)' % (l, r) for (l, r) in
+                         self.secondary_synchronize_pairs or []))
+        self.logger.info('%s local/remote pairs [%s]', self,
+                         ','.join('(%s / %s)' % (l, r) for (l, r) in
+                         self.local_remote_pairs))
+        self.logger.info('%s relationship direction %s', self,
+                         self.direction)
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
-
         if not self.viewonly:
             self._dependency_processor = \
-                        dependency.DependencyProcessor.from_relationship(self)
+                dependency.DependencyProcessor.from_relationship(self)
     
     @util.memoized_property
     def _use_get(self):
-        """memoize the 'use_get' attribute of this RelationshipLoader's lazyloader."""
-        
+        """memoize the 'use_get' attribute of this RelationshipLoader's
+        lazyloader."""
+
         strategy = self._get_strategy(strategies.LazyLoader)
         return strategy.use_get
         
@@ -1270,7 +1322,8 @@ class RelationshipProperty(StrategizedProperty):
 
         aliased = aliased or (source_selectable is not None)
 
-        primaryjoin, secondaryjoin, secondary = self.primaryjoin, self.secondaryjoin, self.secondary
+        primaryjoin, secondaryjoin, secondary = self.primaryjoin, \
+            self.secondaryjoin, self.secondary
         
         # adjust the join condition for single table inheritance,
         # in the case that the join is to a subclass
@@ -1286,48 +1339,57 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 primaryjoin = primaryjoin & single_crit
             
-
         if aliased:
             if secondary is not None:
                 secondary = secondary.alias()
                 primary_aliasizer = ClauseAdapter(secondary)
                 if dest_selectable is not None:
                     secondary_aliasizer = \
-                                    ClauseAdapter(dest_selectable,
-                                        equivalents=self.mapper._equivalent_columns).\
-                                    chain(primary_aliasizer)
+                        ClauseAdapter(dest_selectable,
+                            equivalents=self.mapper._equivalent_columns).\
+                            chain(primary_aliasizer)
                 else:
                     secondary_aliasizer = primary_aliasizer
-
                 if source_selectable is not None:
-                    primary_aliasizer = ClauseAdapter(secondary).chain(ClauseAdapter(source_selectable, equivalents=self.parent._equivalent_columns))
-
-                secondaryjoin = secondary_aliasizer.traverse(secondaryjoin)
+                    primary_aliasizer = \
+                        ClauseAdapter(secondary).\
+                            chain(ClauseAdapter(source_selectable,
+                            equivalents=self.parent._equivalent_columns))
+                secondaryjoin = \
+                    secondary_aliasizer.traverse(secondaryjoin)
             else:
                 if dest_selectable is not None:
-                    primary_aliasizer = ClauseAdapter(dest_selectable, exclude=self.local_side, equivalents=self.mapper._equivalent_columns)
+                    primary_aliasizer = ClauseAdapter(dest_selectable,
+                            exclude=self.local_side,
+                            equivalents=self.mapper._equivalent_columns)
                     if source_selectable is not None:
-                        primary_aliasizer.chain(ClauseAdapter(source_selectable, exclude=self.remote_side, equivalents=self.parent._equivalent_columns))
+                        primary_aliasizer.chain(
+                            ClauseAdapter(source_selectable,
+                                exclude=self.remote_side,
+                                equivalents=self.parent._equivalent_columns))
                 elif source_selectable is not None:
-                    primary_aliasizer = ClauseAdapter(source_selectable, exclude=self.remote_side, equivalents=self.parent._equivalent_columns)
-
+                    primary_aliasizer = \
+                        ClauseAdapter(source_selectable,
+                            exclude=self.remote_side,
+                            equivalents=self.parent._equivalent_columns)
                 secondary_aliasizer = None
-
             primaryjoin = primary_aliasizer.traverse(primaryjoin)
             target_adapter = secondary_aliasizer or primary_aliasizer
             target_adapter.include = target_adapter.exclude = None
         else:
             target_adapter = None
-
         if source_selectable is None:
             source_selectable = self.parent.local_table
-            
         if dest_selectable is None:
             dest_selectable = self.mapper.local_table
-            
-        return (primaryjoin, secondaryjoin, 
-                source_selectable, 
-                dest_selectable, secondary, target_adapter)
+        return (
+            primaryjoin,
+            secondaryjoin,
+            source_selectable,
+            dest_selectable,
+            secondary,
+            target_adapter,
+            )
 
 
 PropertyLoader = RelationProperty = RelationshipProperty
