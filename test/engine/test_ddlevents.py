@@ -1,5 +1,6 @@
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
-from sqlalchemy.schema import DDL, CheckConstraint, AddConstraint, DropConstraint
+from sqlalchemy.schema import DDL, CheckConstraint, AddConstraint, \
+    DropConstraint
 from sqlalchemy import create_engine
 from sqlalchemy import MetaData, Integer, String
 from sqlalchemy.test.schema import Table
@@ -158,13 +159,12 @@ class DDLEventTest(TestBase):
 
     def test_metadata_table_isolation(self):
         metadata, table, bind = self.metadata, self.table, self.bind
-
         table_canary = self.Canary(table, bind)
-        table.ddl_listeners['before-create'].append(table_canary.before_create)
-
+        table.ddl_listeners['before-create'
+                            ].append(table_canary.before_create)
         metadata_canary = self.Canary(metadata, bind)
-        metadata.ddl_listeners['before-create'].append(metadata_canary.before_create)
-
+        metadata.ddl_listeners['before-create'
+                               ].append(metadata_canary.before_create)
         self.table.create(self.bind)
         assert metadata_canary.state == None
 
@@ -235,27 +235,28 @@ class DDLExecutionTest(TestBase):
         metadata, users, engine = self.metadata, self.users, self.engine
         nonpg_mock = engines.mock_engine(dialect_name='sqlite')
         pg_mock = engines.mock_engine(dialect_name='postgresql')
-        
-        constraint = CheckConstraint('a < b',name="my_test_constraint", table=users)
+        constraint = CheckConstraint('a < b', name='my_test_constraint'
+                , table=users)
 
-        # by placing the constraint in an Add/Drop construct,
-        # the 'inline_ddl' flag is set to False
-        AddConstraint(constraint, on='postgresql').execute_at("after-create", users)
-        DropConstraint(constraint, on='postgresql').execute_at("before-drop", users)
-        
+        # by placing the constraint in an Add/Drop construct, the
+        # 'inline_ddl' flag is set to False
+
+        AddConstraint(constraint, on='postgresql'
+                      ).execute_at('after-create', users)
+        DropConstraint(constraint, on='postgresql'
+                       ).execute_at('before-drop', users)
         metadata.create_all(bind=nonpg_mock)
-        strings = " ".join(str(x) for x in nonpg_mock.mock)
-        assert "my_test_constraint" not in strings  
+        strings = ' '.join(str(x) for x in nonpg_mock.mock)
+        assert 'my_test_constraint' not in strings
         metadata.drop_all(bind=nonpg_mock)
-        strings = " ".join(str(x) for x in nonpg_mock.mock)
-        assert "my_test_constraint" not in strings
-
+        strings = ' '.join(str(x) for x in nonpg_mock.mock)
+        assert 'my_test_constraint' not in strings
         metadata.create_all(bind=pg_mock)
-        strings = " ".join(str(x) for x in pg_mock.mock)
-        assert "my_test_constraint" in strings
+        strings = ' '.join(str(x) for x in pg_mock.mock)
+        assert 'my_test_constraint' in strings
         metadata.drop_all(bind=pg_mock)
-        strings = " ".join(str(x) for x in pg_mock.mock)
-        assert "my_test_constraint" in strings
+        strings = ' '.join(str(x) for x in pg_mock.mock)
+        assert 'my_test_constraint' in strings
         
     def test_metadata(self):
         metadata, engine = self.metadata, self.engine
@@ -327,24 +328,32 @@ class DDLTest(TestBase, AssertsCompiledSQL):
         sane_alone = Table('t', m, Column('id', Integer))
         sane_schema = Table('t', m, Column('id', Integer), schema='s')
         insane_alone = Table('t t', m, Column('id', Integer))
-        insane_schema = Table('t t', m, Column('id', Integer), schema='s s')
-
+        insane_schema = Table('t t', m, Column('id', Integer),
+                              schema='s s')
         ddl = DDL('%(schema)s-%(table)s-%(fullname)s')
-
         dialect = self.mock_engine().dialect
-        self.assert_compile(ddl.against(sane_alone), '-t-t', dialect=dialect)
-        self.assert_compile(ddl.against(sane_schema), 's-t-s.t', dialect=dialect)
-        self.assert_compile(ddl.against(insane_alone), '-"t t"-"t t"', dialect=dialect)
-        self.assert_compile(ddl.against(insane_schema), '"s s"-"t t"-"s s"."t t"', dialect=dialect)
+        self.assert_compile(ddl.against(sane_alone), '-t-t',
+                            dialect=dialect)
+        self.assert_compile(ddl.against(sane_schema), 's-t-s.t',
+                            dialect=dialect)
+        self.assert_compile(ddl.against(insane_alone), '-"t t"-"t t"',
+                            dialect=dialect)
+        self.assert_compile(ddl.against(insane_schema),
+                            '"s s"-"t t"-"s s"."t t"', dialect=dialect)
 
         # overrides are used piece-meal and verbatim.
-        ddl = DDL('%(schema)s-%(table)s-%(fullname)s-%(bonus)s',
-                  context={'schema':'S S', 'table': 'T T', 'bonus': 'b'})
 
-        self.assert_compile(ddl.against(sane_alone), 'S S-T T-t-b', dialect=dialect)
-        self.assert_compile(ddl.against(sane_schema), 'S S-T T-s.t-b', dialect=dialect)
-        self.assert_compile(ddl.against(insane_alone), 'S S-T T-"t t"-b', dialect=dialect)
-        self.assert_compile(ddl.against(insane_schema), 'S S-T T-"s s"."t t"-b', dialect=dialect)
+        ddl = DDL('%(schema)s-%(table)s-%(fullname)s-%(bonus)s',
+                  context={'schema': 'S S', 'table': 'T T', 'bonus': 'b'
+                  })
+        self.assert_compile(ddl.against(sane_alone), 'S S-T T-t-b',
+                            dialect=dialect)
+        self.assert_compile(ddl.against(sane_schema), 'S S-T T-s.t-b',
+                            dialect=dialect)
+        self.assert_compile(ddl.against(insane_alone), 'S S-T T-"t t"-b'
+                            , dialect=dialect)
+        self.assert_compile(ddl.against(insane_schema),
+                            'S S-T T-"s s"."t t"-b', dialect=dialect)
 
     def test_filter(self):
         cx = self.mock_engine()

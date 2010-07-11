@@ -4,7 +4,8 @@ across the board.
 
 """
 
-from sqlalchemy.orm.interfaces import AttributeExtension, InstrumentationManager
+from sqlalchemy.orm.interfaces import AttributeExtension, \
+    InstrumentationManager
 
 class InstallListeners(InstrumentationManager):
     def post_configure_attribute(self, class_, key, inst):

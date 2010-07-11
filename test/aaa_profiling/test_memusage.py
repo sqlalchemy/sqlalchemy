@@ -1,13 +1,13 @@
 from sqlalchemy.test.testing import eq_
-from sqlalchemy.orm import mapper, relationship, create_session,\
-                            clear_mappers, sessionmaker, class_mapper
+from sqlalchemy.orm import mapper, relationship, create_session, \
+    clear_mappers, sessionmaker, class_mapper
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.util import jython
 import operator
 from sqlalchemy.test import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
-                            PickleType, create_engine, Unicode
+    PickleType, create_engine, Unicode
 from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
@@ -253,28 +253,29 @@ class MemUsageTest(EnsureZeroed):
         finally:
             metadata.drop_all()
     
-    @testing.fails_if(lambda:
-                        testing.db.dialect.name == 'sqlite' and 
-                        testing.db.dialect.dbapi.version_info >= (2,5),
-                        "Newer pysqlites generate warnings here too and have similar issues."
-                    )
+    @testing.fails_if(lambda : testing.db.dialect.name == 'sqlite' \
+                      and testing.db.dialect.dbapi.version_info >= (2,
+                      5),
+                      'Newer pysqlites generate warnings here too and '
+                      'have similar issues.')
     def test_unicode_warnings(self):
         metadata = MetaData(testing.db)
-        table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-            Column('col2', Unicode(30)))
-        
+        table1 = Table('mytable', metadata, Column('col1', Integer,
+                       primary_key=True,
+                       test_needs_autoincrement=True), Column('col2',
+                       Unicode(30)))
         metadata.create_all()
-        
         i = [1]
+
         @testing.emits_warning()
         @profile_memory
         def go():
-            # execute with a non-unicode object.
-            # a warning is emitted, this warning shouldn't
-            # clog up memory.
-            testing.db.execute(table1.select().where(table1.c.col2=='foo%d' % i[0]))
+
+            # execute with a non-unicode object. a warning is emitted,
+            # this warning shouldn't clog up memory.
+
+            testing.db.execute(table1.select().where(table1.c.col2
+                               == 'foo%d' % i[0]))
             i[0] += 1
         try:
             go()
@@ -466,41 +467,35 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
         assert_no_mappers()
 
-    # fails on newer versions of pysqlite due to unusual memory 
-    # behvior in pysqlite itself.
-    # background at: http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
-    @testing.fails_if(lambda: 
-                        testing.db.dialect.name == 'sqlite' and 
-                        testing.db.dialect.dbapi.version > '2.5')
+    # fails on newer versions of pysqlite due to unusual memory behvior
+    # in pysqlite itself. background at:
+    # http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
+
+    @testing.fails_if(lambda : testing.db.dialect.name == 'sqlite' \
+                      and testing.db.dialect.dbapi.version > '2.5')
     def test_join_cache(self):
         metadata = MetaData(testing.db)
+        table1 = Table('table1', metadata, Column('id', Integer,
+                       primary_key=True,
+                       test_needs_autoincrement=True), Column('data',
+                       String(30)))
+        table2 = Table('table2', metadata, Column('id', Integer,
+                       primary_key=True,
+                       test_needs_autoincrement=True), Column('data',
+                       String(30)), Column('t1id', Integer,
+                       ForeignKey('table1.id')))
 
-        table1 = Table("table1", metadata,
-            Column('id', Integer, primary_key=True,
-                                    test_needs_autoincrement=True),
-            Column('data', String(30))
-            )
-
-        table2 = Table("table2", metadata,
-            Column('id', Integer, primary_key=True,
-                                    test_needs_autoincrement=True),
-            Column('data', String(30)),
-            Column('t1id', Integer, ForeignKey('table1.id'))
-            )
-        
         class Foo(object):
             pass
-            
+
         class Bar(object):
             pass
-            
-        mapper(Foo, table1, properties={
-            'bars':relationship(mapper(Bar, table2))
-        })
-        metadata.create_all()
 
+        mapper(Foo, table1, properties={'bars'
+               : relationship(mapper(Bar, table2))})
+        metadata.create_all()
         session = sessionmaker()
-        
+
         @profile_memory
         def go():
             s = table2.select()
