@@ -25,6 +25,16 @@ CHANGES
     naming/typing information about the entities
     the Query will return.  Can be helpful for 
     building GUIs on top of ORM queries.
+
+- mysql
+
+  - The _extract_error_code() method now works 
+    correctly with the "mysqldb" dialect.  Previously,
+    the reconnect logic would fail for OperationalError
+    conditions, however since MySQLdb has its
+    own reconnect feature, there was no symptom 
+    here unless one watched the logs.  
+    [ticket:1848]
     
 0.6.2
 =====

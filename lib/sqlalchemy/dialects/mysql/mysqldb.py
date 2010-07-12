@@ -157,8 +157,10 @@ class MySQLDialect_mysqldb(MySQLDialect):
 
     def _extract_error_code(self, exception):
         try:
-            return exception.orig.args[0]
+            return exception.args[0]
         except AttributeError:
+            # this AttributeError is likely unnecessary,
+            # but would need to confirm against MySQLdb code
             return None
 
     def _detect_charset(self, connection):

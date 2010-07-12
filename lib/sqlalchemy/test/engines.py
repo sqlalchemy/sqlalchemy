@@ -105,6 +105,11 @@ class ReconnectFixture(object):
         return conn
 
     def shutdown(self):
+        # TODO: this doesn't cover all cases
+        # as nicely as we'd like, namely MySQLdb.
+        # would need to implement R. Brewer's
+        # proxy server idea to get better
+        # coverage.
         for c in list(self.connections):
             c.close()
         self.connections = []
