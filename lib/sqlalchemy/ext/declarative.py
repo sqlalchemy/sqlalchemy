@@ -1162,11 +1162,12 @@ def _declarative_constructor(self, **kwargs):
     attributes of the instance's class are allowed. These could be,
     for example, any mapped columns or relationships.
     """
+    cls_ = type(self)
     for k in kwargs:
-        if not hasattr(type(self), k):
+        if not hasattr(cls_, k):
             raise TypeError(
                 "%r is an invalid keyword argument for %s" %
-                (k, type(self).__name__))
+                (k, cls_.__name__))
         setattr(self, k, kwargs[k])
 _declarative_constructor.__name__ = '__init__'
 
