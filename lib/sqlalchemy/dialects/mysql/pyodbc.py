@@ -66,7 +66,7 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
         return 'latin1'
     
     def _extract_error_code(self, exception):
-        m = re.compile(r"\((\d+)\)").search(str(exception.orig.args))
+        m = re.compile(r"\((\d+)\)").search(str(exception.args))
         c = m.group(1)
         if c:
             return int(c)

@@ -1708,8 +1708,11 @@ class MySQLDialect(default.DefaultDialect):
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):
-            return self._extract_error_code(e) in (2006, 2013, 2014, 2045, 2055)
-        elif isinstance(e, self.dbapi.InterfaceError):  # if underlying connection is closed, this is the error you get
+            return self._extract_error_code(e) in \
+                        (2006, 2013, 2014, 2045, 2055)
+        elif isinstance(e, self.dbapi.InterfaceError):  
+            # if underlying connection is closed, 
+            # this is the error you get
             return "(0, '')" in str(e)
         else:
             return False
@@ -1760,7 +1763,7 @@ class MySQLDialect(default.DefaultDialect):
                 rs.close()
                 return have
             except exc.SQLError, e:
-                if self._extract_error_code(e) == 1146:
+                if self._extract_error_code(e.orig) == 1146:
                     return False
                 raise
         finally:
@@ -2048,7 +2051,7 @@ class MySQLDialect(default.DefaultDialect):
         try:
             rp = connection.execute(st)
         except exc.SQLError, e:
-            if self._extract_error_code(e) == 1146:
+            if self._extract_error_code(e.orig) == 1146:
                 raise exc.NoSuchTableError(full_name)
             else:
                 raise
@@ -2072,7 +2075,7 @@ class MySQLDialect(default.DefaultDialect):
             try:
                 rp = connection.execute(st)
             except exc.SQLError, e:
-                if self._extract_error_code(e) == 1146:
+                if self._extract_error_code(e.orig) == 1146:
                     raise exc.NoSuchTableError(full_name)
                 else:
                     raise

@@ -29,12 +29,14 @@ CHANGES
 - mysql
 
   - The _extract_error_code() method now works 
-    correctly with the "mysqldb" dialect.  Previously,
+    correctly with each MySQL dialect (
+    MySQL-python, OurSQL, MySQL-Connector-Python,
+    PyODBC).  Previously,
     the reconnect logic would fail for OperationalError
-    conditions, however since MySQLdb has its
-    own reconnect feature, there was no symptom 
-    here unless one watched the logs.  
-    [ticket:1848]
+    conditions, however since MySQLdb and OurSQL
+    have their own reconnect feature, there was no 
+    symptom for these drivers here unless one 
+    watched the logs.  [ticket:1848]
     
 0.6.2
 =====

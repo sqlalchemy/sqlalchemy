@@ -110,10 +110,7 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         return connection.connection.get_characterset_info()
 
     def _extract_error_code(self, exception):
-        try:
-            return exception.orig.errno
-        except AttributeError:
-            return None
+        return exception.errno
 
     def is_disconnect(self, e):
         errnos = (2006, 2013, 2014, 2045, 2055, 2048)
