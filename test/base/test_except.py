@@ -4,10 +4,10 @@
 from sqlalchemy import exc as sa_exceptions
 from sqlalchemy.test import TestBase
 
-# Py3K StandardError = BaseException Py2K
-
+# Py3K 
+#StandardError = BaseException 
+# Py2K
 from exceptions import StandardError, KeyboardInterrupt, SystemExit
-
 # end Py2K
 
 
