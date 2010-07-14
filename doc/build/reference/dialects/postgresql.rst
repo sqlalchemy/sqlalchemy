@@ -57,6 +57,11 @@ psycopg2 Notes
 .. automodule:: sqlalchemy.dialects.postgresql.psycopg2
 
 
+py-postgresql Notes
+--------------------
+
+.. automodule:: sqlalchemy.dialects.postgresql.pypostgresql
+
 pg8000 Notes
 --------------
 

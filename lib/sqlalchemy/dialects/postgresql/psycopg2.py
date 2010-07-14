@@ -17,7 +17,7 @@ By default, the Psycopg2 driver uses the ``psycopg2.extensions.UNICODE`` extensi
 Connecting
 ----------
 
-URLs are of the form `postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]`.
+URLs are of the form ``postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]``.
 
 psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.create_engine()` are:
 

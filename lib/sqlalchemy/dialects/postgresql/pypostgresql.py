@@ -3,7 +3,7 @@
 Connecting
 ----------
 
-URLs are of the form `postgresql+pypostgresql://user@password@host:port/dbname[?key=value&key=value...]`.
+URLs are of the form ``postgresql+pypostgresql://user@password@host:port/dbname[?key=value&key=value...]``.
 
 
 """

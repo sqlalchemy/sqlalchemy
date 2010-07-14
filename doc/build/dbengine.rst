@@ -103,7 +103,7 @@ cx_oracle_                 ``oracle+cx_oracle``\*       yes          development
 pg8000_                    ``postgresql+pg8000``        yes          yes           no           yes                yes
 `PostgreSQL JDBC Driver`_  ``postgresql+zxjdbc``        no           no            yes          yes                yes
 psycopg2_                  ``postgresql+psycopg2``\*    yes          development   no           yes                yes
-pypostgresql_              ``postgresql+pypostgresql``  no           partial       no           yes                yes
+pypostgresql_              ``postgresql+pypostgresql``  no           yes           no           yes                yes
 **SQLite**
 pysqlite_                  ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
 sqlite3_                   ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
@@ -154,6 +154,7 @@ Dialect names include the identifying name of the SQLAlchemy dialect which inclu
     pg_db = create_engine('postgresql://scott:tiger@localhost/mydatabase')
     pg_db = create_engine('postgresql+psycopg2://scott:tiger@localhost/mydatabase')
     pg_db = create_engine('postgresql+pg8000://scott:tiger@localhost/mydatabase')
+    pg_db = create_engine('postgresql+pypostgresql://scott:tiger@localhost/mydatabase')
 
     # postgresql on Jython
     pg_db = create_engine('postgresql+zxjdbc://scott:tiger@localhost/mydatabase')

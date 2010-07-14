@@ -278,7 +278,7 @@ class MapperExtension(object):
         guarantee that an UPDATE statement will be issued (although you can
         affect the outcome here).
         
-         To detect if the column-based attributes on the object have net
+        To detect if the column-based attributes on the object have net
         changes, and will therefore generate an UPDATE statement, use
         ``object_session(instance).is_modified(instance,
         include_collections=False)``.

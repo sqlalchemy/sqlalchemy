@@ -4,7 +4,7 @@ Connecting
 ----------
 
 URLs are of the form
-`postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]`.
+``postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]``.
 
 Unicode
 -------
