@@ -83,17 +83,37 @@ class _OracleNumeric(sqltypes.Numeric):
         return None
 
     def result_processor(self, dialect, coltype):
-        # we apply a connection output handler that 
-        # returns Decimal for positive precision + scale NUMBER 
-        # types
+        # we apply a cx_oracle type handler to all connections
+        # that converts floating point strings to Decimal().
+        # However, in some subquery situations, Oracle doesn't 
+        # give us enough information to determine int or Decimal.
+        # It could even be int/Decimal differently on each row,
+        # regardless of the scale given for the originating type.
+        # So we still need an old school isinstance() handler
+        # here for decimals.
         
         if dialect.supports_native_decimal:
-            if self.asdecimal and self.scale is None:
-                processors.to_decimal_processor_factory(Decimal)
-            elif not self.asdecimal and self.precision is None and self.scale is None:
-                return processors.to_float
+            if self.asdecimal:
+                if self.scale is None:
+                    fstring = "%.10f"
+                else:
+                    fstring = "%%.%df" % self.scale
+                def to_decimal(value):
+                    if value is None:
+                        return None
+                    elif isinstance(value, Decimal):
+                        return value
+                    else:
+                        return Decimal(fstring % value)
+                return to_decimal
             else:
-                return None
+                if self.precision is None and self.scale is None:
+                    return processors.to_float
+                elif not getattr(self, '_is_oracle_number', False) \
+                    and self.scale is not None:
+                    return processors.to_float
+                else:
+                    return None
         else:
             # cx_oracle 4 behavior, will assume 
             # floats
@@ -463,21 +483,34 @@ class OracleDialect_cx_oracle(OracleDialect):
         if self.cx_oracle_ver < (5,):
             # no output type handlers before version 5
             return
-            
+        
+        def maybe_decimal(value):
+            if "." in value:
+                return Decimal(value)
+            else:
+                return int(value)
+                
         cx_Oracle = self.dbapi
         def output_type_handler(cursor, name, defaultType, size, precision, scale):
-            # convert all NUMBER with precision + positive scale to Decimal,
-            # or zero precision and 0 or neg scale, indicates "don't know",
-            # this effectively allows "native decimal" mode.
-            if defaultType == cx_Oracle.NUMBER \
-                and (
-                    (precision and scale > 0) or \
-                    (not precision and scale <= 0)
-                ):
+            # convert all NUMBER with precision + positive scale to Decimal
+            # this almost allows "native decimal" mode.
+            if defaultType == cx_Oracle.NUMBER and precision and scale > 0:
                 return cursor.var(
                             cx_Oracle.STRING, 
                             255, 
                             outconverter=Decimal, 
+                            arraysize=cursor.arraysize)
+            # if NUMBER with zero precision and 0 or neg scale, this appears
+            # to indicate "ambiguous".  Use a slower converter that will 
+            # make a decision based on each value received - the type 
+            # may change from row to row (!).   This kills
+            # off "native decimal" mode, handlers still needed.
+            elif defaultType == cx_Oracle.NUMBER \
+                    and not precision and scale <= 0:
+                return cursor.var(
+                            cx_Oracle.STRING, 
+                            255, 
+                            outconverter=maybe_decimal, 
                             arraysize=cursor.arraysize)
             # allow all strings to come back natively as Unicode
             elif defaultType in (cx_Oracle.STRING, cx_Oracle.FIXED_CHAR):

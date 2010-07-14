@@ -161,6 +161,12 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
                 
         super(NUMBER, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal)
     
+    def adapt(self, impltype):
+        ret = super(NUMBER, self).adapt(impltype)
+        # leave a hint for the DBAPI handler
+        ret._is_oracle_number = True
+        return ret
+        
     @property
     def _type_affinity(self):
         if bool(self.scale and self.scale > 0):

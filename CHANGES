@@ -37,6 +37,24 @@ CHANGES
     have their own reconnect feature, there was no 
     symptom for these drivers here unless one 
     watched the logs.  [ticket:1848]
+
+- oracle
+  - More tweaks to cx_oracle Decimal handling. 
+    "Ambiguous" numerics with no decimal place
+    are coerced to int at the connection handler 
+    level.  The advantage here is that ints
+    come back as ints without SQLA type 
+    objects being involved and without needless
+    conversion to Decimal first.
+    
+    Unfortunately, some exotic subquery cases 
+    can even see different types between 
+    individual result rows, so the Numeric 
+    handler, when instructed to return Decimal,
+    can't take full advantage of "native decimal"
+    mode and must run isinstance() on every value
+    to check if its Decimal already. Reopen of
+    [ticket:1840]
     
 0.6.2
 =====

@@ -773,77 +773,126 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         foo = Table('foo', metadata,
             Column('idata', Integer),
             Column('ndata', Numeric(20, 2)),
+            Column('ndata2', Numeric(20, 2)),
+            Column('nidata', Numeric(5, 0)),
             Column('fdata', Float()),
         )
         foo.create()
         
         foo.insert().execute(
-            {'idata':5, 'ndata':Decimal("45.6"), 'fdata':45.68392}
+            {'idata':5, 'ndata':Decimal("45.6"), 'ndata2':Decimal("45.0"), 
+                    'nidata':Decimal('53'), 'fdata':45.68392},
         )
 
         stmt = """
         SELECT 
             idata,
             ndata,
+            ndata2,
+            nidata,
             fdata
         FROM foo
         """
-        eq_(
-            testing.db.execute(stmt).fetchall(), 
-            [(5, Decimal('45.6'), 45.683920000000001)]
-        )
         
+        
+        row = testing.db.execute(stmt).fetchall()[0]
+        eq_([type(x) for x in row], [int, Decimal, Decimal, int, float])
+        eq_(
+            row, 
+            (5, Decimal('45.6'), Decimal('45'), 53, 45.683920000000001)
+        )
+
+        # with a nested subquery, 
+        # both Numeric values that don't have decimal places, regardless
+        # of their originating type, come back as ints with no useful
+        # typing information beyond "numeric".  So native handler
+        # must convert to int.
+        # this means our Decimal converters need to run no matter what.
+        # totally sucks.
+
         stmt = """
         SELECT 
             (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
             (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) FROM DUAL)
              AS ndata,
+             (SELECT CAST((SELECT ndata2 FROM foo) AS NUMERIC(20, 2)) FROM DUAL)
+              AS ndata2,
+             (SELECT CAST((SELECT nidata FROM foo) AS NUMERIC(5, 0)) FROM DUAL)
+              AS nidata,
             (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) AS fdata
         FROM dual
         """
+        row = testing.db.execute(stmt).fetchall()[0]
+        eq_([type(x) for x in row], [int, Decimal, int, int, Decimal])
         eq_(
-            testing.db.execute(stmt).fetchall(), 
-            [(Decimal('5'), Decimal('45.6'), Decimal('45.68392'))]
+            row, 
+            (5, Decimal('45.6'), 45, 53, Decimal('45.68392'))
         )
-        eq_(
-            testing.db.execute(text(stmt, 
+        
+        row = testing.db.execute(text(stmt, 
                                 typemap={
                                         'idata':Integer(), 
                                         'ndata':Numeric(20, 2), 
+                                        'ndata2':Numeric(20, 2), 
+                                        'nidata':Numeric(5, 0),
                                         'fdata':Float()
-                                })).fetchall(),
-            [(5, Decimal('45.6'), 45.683920000000001)]
+                                })).fetchall()[0]
+        eq_([type(x) for x in row], [int, Decimal, Decimal, Decimal, float])
+        eq_(row, 
+            (5, Decimal('45.6'), Decimal('45'), Decimal('53'), 45.683920000000001)
         )
         
         stmt = """
         SELECT 
                 anon_1.idata AS anon_1_idata,
                 anon_1.ndata AS anon_1_ndata,
+                anon_1.ndata2 AS anon_1_ndata2,
+                anon_1.nidata AS anon_1_nidata,
                 anon_1.fdata AS anon_1_fdata
-        FROM (SELECT idata, ndata, fdata
+        FROM (SELECT idata, ndata, ndata2, nidata, fdata
         FROM (
             SELECT 
                 (SELECT (SELECT idata FROM foo) FROM DUAL) AS idata,
                 (SELECT CAST((SELECT ndata FROM foo) AS NUMERIC(20, 2)) 
                 FROM DUAL) AS ndata,
+                (SELECT CAST((SELECT ndata2 FROM foo) AS NUMERIC(20, 2)) 
+                FROM DUAL) AS ndata2,
+                (SELECT CAST((SELECT nidata FROM foo) AS NUMERIC(5, 0)) 
+                FROM DUAL) AS nidata,
                 (SELECT CAST((SELECT fdata FROM foo) AS FLOAT) FROM DUAL) 
                 AS fdata
             FROM dual
         )
         WHERE ROWNUM >= 0) anon_1
         """
-        eq_(
-            testing.db.execute(stmt).fetchall(), 
-            [(Decimal('5'), Decimal('45.6'), Decimal('45.68392'))]
-        )
-        eq_(
-            testing.db.execute(text(stmt, 
+        row =testing.db.execute(stmt).fetchall()[0]
+        eq_([type(x) for x in row], [int, Decimal, int, int, Decimal])
+        eq_(row, (5, Decimal('45.6'), 45, 53, Decimal('45.68392')))
+
+        row = testing.db.execute(text(stmt, 
                                 typemap={
                                         'anon_1_idata':Integer(), 
                                         'anon_1_ndata':Numeric(20, 2), 
+                                        'anon_1_ndata2':Numeric(20, 2), 
+                                        'anon_1_nidata':Numeric(5, 0), 
                                         'anon_1_fdata':Float()
-                                })).fetchall(),
-            [(5, Decimal('45.6'), 45.683920000000001)]
+                                })).fetchall()[0]
+        eq_([type(x) for x in row], [int, Decimal, Decimal, Decimal, float])
+        eq_(row, 
+            (5, Decimal('45.6'), Decimal('45'), Decimal('53'), 45.683920000000001)
+        )
+
+        row = testing.db.execute(text(stmt, 
+                                typemap={
+                                        'anon_1_idata':Integer(), 
+                                        'anon_1_ndata':Numeric(20, 2, asdecimal=False), 
+                                        'anon_1_ndata2':Numeric(20, 2, asdecimal=False), 
+                                        'anon_1_nidata':Numeric(5, 0, asdecimal=False), 
+                                        'anon_1_fdata':Float(asdecimal=True)
+                                })).fetchall()[0]
+        eq_([type(x) for x in row], [int, float, float, float, Decimal])
+        eq_(row, 
+            (5, 45.6, 45, 53, Decimal('45.68392'))
         )
 
         
