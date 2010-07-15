@@ -14,6 +14,19 @@ CHANGES
     and a delete of the parent has occurred.
     [ticket:1845]
 
+  - Column-entities (i.e. query(Foo.id)) copy their 
+    state more fully when queries are derived from 
+    themselves + a selectable (i.e. from_self(), 
+    union(), etc.), so that join() and such have the 
+    correct state to work from.  [ticket:1853]
+    
+  - Fixed bug where Query.join() would fail if
+    querying a non-ORM column then joining without
+    an on clause when a FROM clause is already
+    present, now raises a checked exception the 
+    same way it does when the clause is not
+    present.  [ticket:1853]
+
   - Improved the check for an "unmapped class", 
     including the case where the superclass is mapped
     but the subclass is not.  Any attempts to access

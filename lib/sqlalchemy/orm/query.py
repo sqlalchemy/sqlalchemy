@@ -1301,7 +1301,7 @@ class Query(object):
         
         join_to_left = not is_aliased_class and not left_is_aliased
 
-        if self._from_obj:
+        if self._from_obj and left_selectable is not None:
             replace_clause_index, clause = sql_util.find_join_source(
                                                     self._from_obj, 
                                                     left_selectable)
@@ -2622,7 +2622,9 @@ class _ColumnEntity(_QueryEntity):
         return self.column.type
         
     def adapt_to_selectable(self, query, sel):
-        _ColumnEntity(query, sel.corresponding_column(self.column))
+        c = _ColumnEntity(query, sel.corresponding_column(self.column))
+        c.entity_zero = self.entity_zero
+        c.entities = self.entities
         
     def setup_entity(self, entity, mapper, adapter, from_obj,
                                 is_aliased_class, with_polymorphic):
