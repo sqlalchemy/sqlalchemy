@@ -1667,7 +1667,14 @@ class Engine(Connectable, log.Identified):
         return expression._FunctionGenerator(bind=self)
 
     def text(self, text, *args, **kwargs):
-        """Return a sql.text() object for performing literal queries."""
+        """Return a :func:`~sqlalchemy.sql.expression.text` construct, 
+        bound to this engine.
+        
+        This is equivalent to::
+        
+            text("SELECT * FROM table", bind=engine)
+            
+        """
 
         return expression.text(text, bind=self, *args, **kwargs)
 
@@ -1711,6 +1718,8 @@ class Engine(Connectable, log.Identified):
             conn.close()
 
     def execute(self, statement, *multiparams, **params):
+        """Executes and returns a ResultProxy."""
+
         connection = self.contextual_connect(close_with_result=True)
         return connection.execute(statement, *multiparams, **params)
 

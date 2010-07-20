@@ -703,28 +703,52 @@ class Session(object):
     def execute(self, clause, params=None, mapper=None, **kw):
         """Execute a clause within the current transaction.
 
-        Returns a ``ResultProxy`` of execution results.  `autocommit` Sessions
-        will create a transaction on the fly.
+        Returns a :class:`~sqlalchemy.engine.base.ResultProxy` representing
+        results of the statement execution, in the same manner as that of an
+        :class:`~sqlalchemy.engine.base.Engine` or
+        :class:`~sqlalchemy.engine.base.Connection`.
 
-        Connection ambiguity in multi-bind or unbound Sessions will be
-        resolved by inspecting the clause for binds.  The 'mapper' and
-        'instance' keyword arguments may be used if this is insufficient, See
-        ``get_bind()`` for more information.
+        :meth:`Session.execute` accepts any executable clause construct, such
+        as :func:`~sqlalchemy.sql.expression.select`,
+        :func:`~sqlalchemy.sql.expression.insert`,
+        :func:`~sqlalchemy.sql.expression.update`,
+        :func:`~sqlalchemy.sql.expression.delete`, and
+        :func:`~sqlalchemy.sql.expression.text`, and additionally accepts
+        plain strings that represent SQL statements. If a plain string is
+        passed, it is first converted to a
+        :func:`~sqlalchemy.sql.expression.text` construct, which here means
+        that bind parameters should be specified using the format ``:param``.
 
-        clause
+        The statement is executed within the current transactional context of
+        this :class:`Session`. If this :class:`Session` is set for
+        "autocommit", and no transaction is in progress, an ad-hoc transaction
+        will be created for the life of the result (i.e., a connection is
+        checked out from the connection pool, which is returned when the
+        result object is closed).
+        
+        If the :class:`Session` is not bound to an
+        :class:`~sqlalchemy.engine.base.Engine` or
+        :class:`~sqlalchemy.engine.base.Connection`, the given clause will be
+        inspected for binds (i.e., looking for "bound metadata"). If the
+        session is bound to multiple connectables, the ``mapper`` keyword
+        argument is typically passed in to specify which bind should be used
+        (since the :class:`Session` keys multiple bind sources to a series of
+        :func:`mapper` objects). See :meth:`get_bind` for further details on
+        bind resolution.
+        
+        :param clause:
             A ClauseElement (i.e. select(), text(), etc.) or
             string SQL statement to be executed
 
-        params
+        :param params:
             Optional, a dictionary of bind parameters.
 
-        mapper
+        :param mapper:
           Optional, a ``mapper`` or mapped class
 
-        \**kw
+        :param \**kw:
           Additional keyword arguments are sent to :meth:`get_bind()`
           which locates a connectable to use for the execution.
-          Subclasses of :class:`Session` may override this.
           
         """
         clause = expression._literal_as_text(clause)

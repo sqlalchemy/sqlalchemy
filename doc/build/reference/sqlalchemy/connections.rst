@@ -18,9 +18,11 @@ Connectables
 
 .. autoclass:: Engine
    :members:
+   :undoc-members:
 
 .. autoclass:: Connection
    :members:
+   :undoc-members:
 
 .. autoclass:: Connectable
    :members:

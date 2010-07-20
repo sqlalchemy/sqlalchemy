@@ -781,40 +781,97 @@ def outparam(key, type_=None):
                 key, None, type_=type_, unique=False, isoutparam=True)
 
 def text(text, bind=None, *args, **kwargs):
-    """Create literal text to be inserted into a query.
+    """Create a SQL construct that is represented by a literal string.
+    
+    E.g.::
+    
+        t = text("SELECT * FROM users")
+        result = connection.execute(t)
+        
+    The advantages :func:`text` provides over a plain string are
+    backend-neutral support for bind parameters, per-statement
+    execution options, as well as 
+    bind parameter and result-column typing behavior, allowing 
+    SQLAlchemy type constructs to play a role when executing
+    a statement that is specified literally.
+    
+    Bind parameters are specified by name, using the format ``:name``.
+    E.g.::
+    
+        t = text("SELECT * FROM users WHERE id=:user_id")
+        result = connection.execute(t, user_id=12)
+        
+    To invoke SQLAlchemy typing logic for bind parameters, the 
+    ``bindparams`` list allows specification of :func:`bindparam`
+    constructs which specify the type for a given name::
+    
+        t = text("SELECT id FROM users WHERE updated_at>:updated",
+                    bindparams=[bindparam('updated', DateTime())]
+                )
+                
+    Typing during result row processing is also an important concern.   
+    Result column types
+    are specified using the ``typemap`` dictionary, where the keys
+    match the names of columns.  These names are taken from what
+    the DBAPI returns as ``cursor.description``::
+    
+        t = text("SELECT id, name FROM users",
+                typemap={
+                    'id':Integer,
+                    'name':Unicode
+                }
+        )
+    
+    The :func:`text` construct is used internally for most cases when
+    a literal string is specified for part of a larger query, such as
+    within :func:`select()`, :func:`update()`,
+    :func:`insert()` or :func:`delete()`.   In those cases, the same
+    bind parameter syntax is applied::
+    
+        s = select([users.c.id, users.c.name]).where("id=:user_id")
+        result = connection.execute(s, user_id=12)
+    
+    Using :func:`text` explicitly usually implies the construction
+    of a full, standalone statement.   As such, SQLAlchemy refers
+    to it as an :class:`Executable` object, and it supports
+    the :meth:`Executable.execution_options` method.  For example,
+    a :func:`text` construct that should be subject to "autocommit"
+    can be set explicitly so using the ``autocommit`` option::
+    
+        t = text("EXEC my_procedural_thing()").\\
+                execution_options(autocommit=True)
+                
+    Note that SQLAlchemy's usual "autocommit" behavior applies to
+    :func:`text` constructs - that is, statements which begin
+    with a phrase such as ``INSERT``, ``UPDATE``, ``DELETE``, 
+    or a variety of other phrases specific to certain backends, will 
+    be eligible for autocommit if no transaction is in progress.
 
-    When constructing a query from a :func:`select()`, :func:`update()`,
-    :func:`insert()` or :func:`delete()`, using plain strings for argument
-    values will usually result in text objects being created
-    automatically.  Use this function when creating textual clauses
-    outside of other :class:`ClauseElement` objects, or optionally wherever
-    plain text is to be used.
-
-    text
+    :param text:
       the text of the SQL statement to be created.  use ``:<param>``
       to specify bind parameters; they will be compiled to their
       engine-specific format.
 
-    bind
-      an optional connection or engine to be used for this text query.
-
-    autocommit=True
+    :param autocommit:
       Deprecated.  Use .execution_options(autocommit=<True|False>)
       to set the autocommit option.
 
-    bindparams
+    :param bind:
+      an optional connection or engine to be used for this text query.
+
+    :param bindparams:
       a list of :func:`bindparam()` instances which can be used to define
       the types and/or initial values for the bind parameters within
       the textual statement; the keynames of the bindparams must match
       those within the text of the statement.  The types will be used
       for pre-processing on bind values.
 
-    typemap
+    :param typemap:
       a dictionary mapping the names of columns represented in the
-      ``SELECT`` clause of the textual statement to type objects,
+      columns clause of a ``SELECT`` statement  to type objects,
       which will be used to perform post-processing on columns within
-      the result set (for textual statements that produce result
-      sets).
+      the result set.   This argument applies to any expression 
+      that returns result sets.
 
     """
     return _TextClause(text, bind=bind, *args, **kwargs)
