@@ -224,6 +224,8 @@ except ImportError:
     _md5 = md5.new
 
 def md5_hex(x):
+    # Py3K
+    #x = x.encode('utf-8')
     m = _md5()
     m.update(x)
     return m.hexdigest()
