@@ -30,7 +30,8 @@ class CachingQuery(Query):
     a Beaker cache before accessing the database:
     
     * A "region", which is a cache region argument passed to a 
-      Beaker CacheManager
+      Beaker CacheManager, specifies a particular cache configuration
+      (including backend implementation, expiration times, etc.)
     * A "namespace", which is a qualifying name that identifies a
       group of keys within the cache.  A query that filters on a name 
       might use the name "by_name", a query that filters on a date range 
@@ -60,6 +61,7 @@ class CachingQuery(Query):
     def __iter__(self):
         """override __iter__ to pull results from Beaker
            if particular attributes have been configured.
+           
         """
         if hasattr(self, '_cache_parameters'):
             return self.get_value(createfunc=lambda: list(Query.__iter__(self)))
@@ -67,7 +69,7 @@ class CachingQuery(Query):
             return Query.__iter__(self)
 
     def invalidate(self):
-        """Invalidate the cache represented in this Query."""
+        """Invalidate the value represented by this Query."""
 
         cache, cache_key = _get_cache_parameters(self)
         cache.remove(cache_key)
@@ -75,7 +77,8 @@ class CachingQuery(Query):
     def get_value(self, merge=True, createfunc=None):
         """Return the value from the cache for this query.
 
-        Returns None if no value present.
+        Raise KeyError if no value present and no
+        createfunc specified.
 
         """
         cache, cache_key = _get_cache_parameters(self)
