@@ -1358,7 +1358,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         index = drop.element
         
         return "\nDROP INDEX %s ON %s" % \
-                    (self.preparer.quote(self._validate_identifier(index.name, False), index.quote),
+                    (self.preparer.quote(self._index_identifier(index.name), index.quote),
                      self.preparer.format_table(index.table))
 
     def visit_drop_constraint(self, drop):

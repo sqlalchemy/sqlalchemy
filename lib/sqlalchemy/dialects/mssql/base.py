@@ -967,7 +967,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return "\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(drop.element.table.name),
             self.preparer.quote(
-                        self._validate_identifier(drop.element.name, False),
+                        self._index_identifier(drop.element.name),
                         drop.element.quote)
             )
 

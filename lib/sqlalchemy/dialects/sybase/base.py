@@ -356,7 +356,7 @@ class SybaseDDLCompiler(compiler.DDLCompiler):
         return "\nDROP INDEX %s.%s" % (
             self.preparer.quote_identifier(index.table.name),
             self.preparer.quote(
-                    self._validate_identifier(index.name, False), index.quote)
+                    self._index_identifier(index.name), index.quote)
             )
 
 class SybaseIdentifierPreparer(compiler.IdentifierPreparer):

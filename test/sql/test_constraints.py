@@ -183,18 +183,31 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_too_long_idx_name(self):
         dialect = testing.db.dialect.__class__()
-        dialect.max_identifier_length = 20
+        dialect.max_identifier_length = 22
 
-        t1 = Table("sometable", MetaData(), Column("foo", Integer))
-        self.assert_compile(
-            schema.CreateIndex(Index("this_name_is_too_long_for_what_were_doing", t1.c.foo)),
-            "CREATE INDEX this_name_is_t_1 ON sometable (foo)",
-            dialect=dialect
-        )
+        for tname, cname, exp in [
+            ('sometable', 'this_name_is_too_long', 'ix_sometable_t_09aa'),
+            ('sometable', 'this_name_alsois_long', 'ix_sometable_t_3cf1'),
+        ]:
         
-        self.assert_compile(
-            schema.CreateIndex(Index("this_other_name_is_too_long_for_what_were_doing", t1.c.foo)),
-            "CREATE INDEX this_other_nam_1 ON sometable (foo)",
+            t1 = Table(tname, MetaData(), 
+                        Column(cname, Integer, index=True),
+                    )
+            ix1 = list(t1.indexes)[0]
+        
+            self.assert_compile(
+                schema.CreateIndex(ix1),
+                "CREATE INDEX %s "
+                "ON %s (%s)" % (exp, tname, cname),
+                dialect=dialect
+            )
+        
+        t1 = Table('t', MetaData(), Column('c', Integer))
+        assert_raises(
+            exc.IdentifierError,
+            schema.CreateIndex(Index(
+                        "this_other_name_is_too_long_for_what_were_doing", 
+                        t1.c.c)).compile,
             dialect=dialect
         )
 

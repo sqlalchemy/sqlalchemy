@@ -1179,7 +1179,18 @@ class DDLCompiler(engine.Compiled):
         
     def visit_drop_table(self, drop):
         return "\nDROP TABLE " + self.preparer.format_table(drop.element)
-        
+
+    def _index_identifier(self, ident):
+        if isinstance(ident, sql._generated_label):
+            if len(ident) > self.dialect.max_identifier_length:
+                return ident[0:self.dialect.max_identifier_length - 8] + \
+                                "_" + util.md5_hex(ident)[-4:]
+            else:
+                return ident
+        else:
+            self.dialect.validate_identifier(ident)
+            return ident
+
     def visit_create_index(self, create):
         index = create.element
         preparer = self.preparer
@@ -1187,7 +1198,8 @@ class DDLCompiler(engine.Compiled):
         if index.unique:
             text += "UNIQUE "   
         text += "INDEX %s ON %s (%s)" \
-                    % (preparer.quote(self._validate_identifier(index.name, True), index.quote),
+                    % (preparer.quote(self._index_identifier(index.name), 
+                        index.quote),
                        preparer.format_table(index.table),
                        ', '.join(preparer.quote(c.name, c.quote)
                                  for c in index.columns))
@@ -1196,7 +1208,7 @@ class DDLCompiler(engine.Compiled):
     def visit_drop_index(self, drop):
         index = drop.element
         return "\nDROP INDEX " + \
-                    self.preparer.quote(self._validate_identifier(index.name, False), index.quote)
+                    self.preparer.quote(self._index_identifier(index.name), index.quote)
 
     def visit_add_constraint(self, create):
         preparer = self.preparer
@@ -1237,18 +1249,6 @@ class DDLCompiler(engine.Compiled):
 
     def post_create_table(self, table):
         return ''
-
-    def _validate_identifier(self, ident, truncate):
-        if truncate:
-            if len(ident) > self.dialect.max_identifier_length:
-                counter = getattr(self, 'counter', 0)
-                self.counter = counter + 1
-                return ident[0:self.dialect.max_identifier_length - 6] + "_" + hex(self.counter)[2:]
-            else:
-                return ident
-        else:
-            self.dialect.validate_identifier(ident)
-            return ident
 
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):

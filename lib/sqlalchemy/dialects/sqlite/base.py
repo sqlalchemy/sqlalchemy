@@ -280,7 +280,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         text += "INDEX %s ON %s (%s)" \
                     % (preparer.format_index(index,
-                       name=self._validate_identifier(index.name, True)),
+                       name=self._index_identifier(index.name)),
                        preparer.format_table(index.table, use_schema=False),
                        ', '.join(preparer.quote(c.name, c.quote)
                                  for c in index.columns))

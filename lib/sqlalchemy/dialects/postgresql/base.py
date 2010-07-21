@@ -480,7 +480,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         text += "INDEX %s ON %s (%s)" \
                 % (preparer.quote(
-                    self._validate_identifier(index.name, True), index.quote),
+                    self._index_identifier(index.name), index.quote),
                    preparer.format_table(index.table),
                    ', '.join([preparer.format_column(c) 
                                 for c in index.columns]))

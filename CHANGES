@@ -3,6 +3,20 @@
 =======
 CHANGES
 =======
+0.6.4
+=====
+- sql
+  - Changed the scheme used to generate truncated
+    "auto" index names when using the "index=True"
+    flag on Column.   The truncation only takes
+    place with the auto-generated name, not one
+    that is user-defined (an error would be 
+    raised instead), and the truncation scheme 
+    itself is now based on a fragment of an md5
+    hash of the identifier name, so that multiple
+    indexes on columns with similar names still
+    have unique names.  [ticket:1855]
+
 0.6.3
 =====
 - orm
@@ -38,7 +52,7 @@ CHANGES
     naming/typing information about the entities
     the Query will return.  Can be helpful for 
     building GUIs on top of ORM queries.
-
+    
 - mysql
 
   - The _extract_error_code() method now works 

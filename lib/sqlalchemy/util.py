@@ -216,6 +216,18 @@ except:
             return func(*(args + fargs), **newkeywords)
         return newfunc
 
+try:
+    import hashlib
+    _md5 = hashlib.md5
+except ImportError:
+    import md5
+    _md5 = md5.new
+
+def md5_hex(x):
+    m = _md5()
+    m.update(x)
+    return m.hexdigest()
+
 
 def accepts_a_list_as_starargs(list_deprecation=None):
     def decorate(fn):

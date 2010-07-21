@@ -436,7 +436,7 @@ class AccessDDLCompiler(compiler.DDLCompiler):
         index = drop.element
         self.append("\nDROP INDEX [%s].[%s]" % \
                         (index.table.name,
-                        self._validate_identifier(index.name, False)))
+                        self._index_identifier(index.name)))
 
 class AccessIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = compiler.RESERVED_WORDS.copy()

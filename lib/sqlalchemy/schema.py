@@ -825,7 +825,7 @@ class Column(SchemaItem, expression.ColumnClause):
                     "The 'index' keyword argument on Column is boolean only. "
                     "To create indexes with a specific name, create an "
                     "explicit Index object external to the Table.")
-            Index('ix_%s' % self._label, self, unique=self.unique)
+            Index(expression._generated_label('ix_%s' % self._label), self, unique=self.unique)
         elif self.unique:
             if isinstance(self.unique, basestring):
                 raise exc.ArgumentError(
