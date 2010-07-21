@@ -17,6 +17,14 @@ CHANGES
     indexes on columns with similar names still
     have unique names.  [ticket:1855]
 
+- examples
+  - The beaker_caching example has been reorgnized
+    such that the Session, cache manager, 
+    declarative_base are part of environment, and
+    custom cache code is portable and now within
+    "caching_query.py".  This allows the example to 
+    be easier to "drop in" to existing projects.
+    
 0.6.3
 =====
 - orm

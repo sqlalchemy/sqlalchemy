@@ -48,12 +48,13 @@ The demo scripts themselves, in order of complexity, are run as follows::
 
 Listing of files:
 
-    environment.py - Establish data / cache file paths, and configurations, 
+    environment.py - Establish the Session, the Beaker cache
+    manager, data / cache file paths, and configurations, 
     bootstrap fixture data if necessary.
 
-    meta.py - Represent persistence structures which allow the usage of
-    Beaker caching with SQLAlchemy.  Introduces a query option called
-    FromCache.
+    caching_query.py - Represent functions and classes 
+    which allow the usage of Beaker caching with SQLAlchemy.  
+    Introduces a query option called FromCache.
 
     model.py - The datamodel, which represents Person that has multiple
     Address objects, each with PostalCode, City, Country

@@ -6,9 +6,9 @@ and collection caching.
 
 """
 
-import environment
+from environment import Session
 from model import Person, Address, cache_address_bits
-from meta import Session, FromCache, RelationshipCache
+from caching_query import FromCache, RelationshipCache
 from sqlalchemy.orm import joinedload
 
 def load_name_range(start, end, invalidate=False):

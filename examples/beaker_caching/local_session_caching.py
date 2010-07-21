@@ -53,22 +53,22 @@ class ScopedSessionNamespace(container.MemoryNamespaceManager):
 
 
 if __name__ == '__main__':
-    import environment
-    import meta
+    from environment import Session, cache_manager
+    from caching_query import FromCache
     
     # create a Beaker container type called "ext:local_session".
     # it will reference the ScopedSession in meta.
-    ScopedSessionNamespace.create_session_container("ext:local_session", meta.Session)
+    ScopedSessionNamespace.create_session_container("ext:local_session", Session)
     
     # set up a region based on this new container type.
-    meta.cache_manager.regions['local_session'] ={'type':'ext:local_session'}
+    cache_manager.regions['local_session'] ={'type':'ext:local_session'}
     
     from model import Person
     
     # query to load Person by name, with criterion
     # of "person 10"
-    q = meta.Session.query(Person).\
-                    options(meta.FromCache("local_session", "by_name")).\
+    q = Session.query(Person).\
+                    options(FromCache("local_session", "by_name")).\
                     filter(Person.name=="person 10")
                     
     # load from DB
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
     # clear out the Session.  The "_beaker_cache" dictionary
     # disappears with it.
-    meta.Session.remove()
+    Session.remove()
     
     # query calls from DB again
     person10 = q.one()
@@ -91,6 +91,6 @@ if __name__ == '__main__':
     # that would change the results of a cached query, such as 
     # inserts, deletes, or modification to attributes that are 
     # part of query criterion, still require careful invalidation.
-    from meta import _get_cache_parameters
+    from caching_query import _get_cache_parameters
     cache, key = _get_cache_parameters(q)
     assert person10 is cache.get(key)[0]

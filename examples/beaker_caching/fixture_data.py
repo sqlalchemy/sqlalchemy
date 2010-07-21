@@ -5,7 +5,7 @@ Canadian cities.   Then, 100 Person records are installed, each with a
 randomly selected postal code.
 
 """
-from meta import Session, Base
+from environment import Session, Base
 from model import City, Country, PostalCode, Person, Address
 import random
 

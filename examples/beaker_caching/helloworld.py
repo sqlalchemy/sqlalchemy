@@ -4,9 +4,9 @@ Illustrate how to load some data, and cache the results.
 
 """
 
-import environment
+from environment import Session
 from model import Person
-from meta import Session, FromCache
+from caching_query import FromCache
 
 # load Person objects.  cache the result under the namespace "all_people".
 print "loading people...."

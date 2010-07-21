@@ -10,7 +10,8 @@ City --(has a)--> Country
 """
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from meta import Base, FromCache, Session, RelationshipCache
+from caching_query import FromCache, RelationshipCache
+from environment import Base, bootstrap
 
 class Country(Base):
     __tablename__ = 'country'
@@ -102,3 +103,4 @@ cache_address_bits = RelationshipCache("default", "byid", PostalCode.city).\
                     RelationshipCache("default", "byid", Address.postal_code)
                 )
 
+bootstrap()
