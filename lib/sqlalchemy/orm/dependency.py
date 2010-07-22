@@ -468,7 +468,8 @@ class OneToManyDP(DependencyProcessor):
                             self._synchronize(
                                             state, 
                                             child, 
-                                            None, True, uowcommit)
+                                            None, True, 
+                                            uowcommit, False)
                             if self.post_update and child:
                                 self._post_update(child, uowcommit, [state])
                                 
@@ -479,7 +480,8 @@ class OneToManyDP(DependencyProcessor):
                                 self._synchronize(
                                             state, 
                                             child, 
-                                            None, True, uowcommit)
+                                            None, True, 
+                                            uowcommit, False)
                                 if self.post_update and child:
                                     self._post_update(child, 
                                                         uowcommit, 
@@ -497,22 +499,25 @@ class OneToManyDP(DependencyProcessor):
                                                       passive=True)
             if history:
                 for child in history.added:
-                    self._synchronize(state, child, None, False, uowcommit)
+                    self._synchronize(state, child, None, 
+                                        False, uowcommit, False)
                     if child is not None and self.post_update:
                         self._post_update(child, uowcommit, [state])
 
                 for child in history.deleted:
                     if not self.cascade.delete_orphan and \
                         not self.hasparent(child):
-                        self._synchronize(state, child, None, True, uowcommit)
+                        self._synchronize(state, child, None, True, 
+                                                    uowcommit, False)
 
                 if self._pks_changed(uowcommit, state):
                     for child in history.unchanged:
                         self._synchronize(state, child, None, 
-                                                    False, uowcommit)
+                                                False, uowcommit, True)
         
-    def _synchronize(self, state, child, associationrow, 
-                                                clearkeys, uowcommit):
+    def _synchronize(self, state, child, 
+                            associationrow, clearkeys, uowcommit,
+                            pks_changed):
         source = state
         dest = child
         if dest is None or \
@@ -524,7 +529,7 @@ class OneToManyDP(DependencyProcessor):
         else:
             sync.populate(source, self.parent, dest, self.mapper, 
                                     self.prop.synchronize_pairs, uowcommit,
-                                    self.passive_updates)
+                                    self.passive_updates and pks_changed)
 
     def _pks_changed(self, uowcommit, state):
         return sync.source_modified(
@@ -713,8 +718,7 @@ class ManyToOneDP(DependencyProcessor):
                             self.parent, 
                             self.prop.synchronize_pairs, 
                             uowcommit,
-                            self.passive_updates
-                            )
+                            False) 
 
 class DetectKeySwitch(DependencyProcessor):
     """For many-to-one relationships with no one-to-many backref, 

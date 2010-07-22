@@ -5,6 +5,23 @@ CHANGES
 =======
 0.6.4
 =====
+- orm
+  - Moving an o2m object from one collection to
+    another, or vice versa changing the referenced
+    object by an m2o, where the foreign key is also a
+    member of the primary key, will now be more
+    carefully checked during flush if the change in
+    value of the foreign key on the "many" side is the
+    result of a change in the primary key of the "one"
+    side, or if the "one" is just a different object.
+    In one case, a cascade-capable DB would have
+    cascaded the value already and we need to look at
+    the "new" PK value to do an UPDATE, in the other we
+    need to continue looking at the "old". We now look
+    at the "old", assuming passive_updates=True,
+    unless we know it was a PK switch that
+    triggered the change. [ticket:1856]
+    
 - sql
   - Changed the scheme used to generate truncated
     "auto" index names when using the "index=True"

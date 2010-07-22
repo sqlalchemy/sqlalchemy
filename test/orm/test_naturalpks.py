@@ -702,14 +702,14 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     def test_onetomany_nonpassive(self):
         self._test_onetomany(False)
         
-    def test_move_passive(self):
-        self._test_move(True)
+    def test_o2m_change_passive(self):
+        self._test_o2m_change(True)
         
-    def test_move_nonpassive(self):
-        self._test_move(False)
+    def test_o2m_change_nonpassive(self):
+        self._test_o2m_change(False)
 
     @testing.resolve_artifact_names
-    def _test_move(self, passive_updates):
+    def _test_o2m_change(self, passive_updates):
         """Change the PK of a related entity to another.
         
         "on update cascade" is not involved here, so the mapper has 
@@ -731,7 +731,85 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         
         a1.username = 'jack'
         sess.flush()
+
+    def test_o2m_move_passive(self):
+        self._test_o2m_move(True)
+
+    def test_o2m_move_nonpassive(self):
+        self._test_o2m_move(False)
+
+    @testing.resolve_artifact_names
+    def _test_o2m_move(self, passive_updates):
+        """Move the related entity to a different collection,
+        changing its PK.
+
+        """
+        mapper(User, users, properties={
+            'addresses':relationship(Address,
+                            passive_updates=passive_updates)})
+        mapper(Address, addresses)
+
+        sess = create_session()
+        a1 = Address(username='ed', email='ed@host1')
+        u1 = User(username='ed', addresses=[a1])
+        u2 = User(username='jack')
+
+        sess.add_all([a1, u1, u2])
+        sess.flush()
+
+        u1.addresses.remove(a1)
+        u2.addresses.append(a1)
+        sess.flush()
+
+    def test_change_m2o_passive(self):
+        self._test_change_m2o(True)
+    
+    @testing.fails_on_everything_except('sqlite', 'oracle', '+zxjdbc')
+    def test_change_m2o_nonpassive(self):
+        self._test_change_m2o(False)
+    
+    @testing.resolve_artifact_names
+    def _test_change_m2o(self, passive_updates):
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user':relationship(User, passive_updates=passive_updates)
+        })
+
+        sess = create_session()
+        u1 = User(username='jack')
+        a1 = Address(user=u1, email='foo@bar')
+        sess.add_all([u1, a1])
+        sess.flush()
         
+        u1.username='edmodified'
+        sess.flush()
+        eq_(a1.username, 'edmodified')
+
+    def test_move_m2o_passive(self):
+        self._test_move_m2o(True)
+
+    def test_move_m2o_nonpassive(self):
+        self._test_move_m2o(False)
+
+    @testing.resolve_artifact_names
+    def _test_move_m2o(self, passive_updates):
+        # tests [ticket:1856]
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'user':relationship(User, passive_updates=passive_updates)
+        })
+
+        sess = create_session()
+        u1 = User(username='jack')
+        u2 = User(username='ed')
+        a1 = Address(user=u1, email='foo@bar')
+        sess.add_all([u1, u2, a1])
+        sess.flush()
+        
+        a1.user = u2
+        sess.flush()
+        
+    
     @testing.resolve_artifact_names
     def test_rowswitch_doesntfire(self):
         mapper(User, users)

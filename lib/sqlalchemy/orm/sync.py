@@ -11,7 +11,7 @@ between instances based on join conditions.
 from sqlalchemy.orm import exc, util as mapperutil
 
 def populate(source, source_mapper, dest, dest_mapper, 
-                        synchronize_pairs, uowcommit, passive_updates):
+                        synchronize_pairs, uowcommit, flag_cascaded_pks):
     for l, r in synchronize_pairs:
         try:
             value = source_mapper._get_state_attr_by_column(source, source.dict, l)
@@ -29,7 +29,7 @@ def populate(source, source_mapper, dest, dest_mapper,
         # reasons, since we only need this info for a primary key
         # destination.
         if l.primary_key and r.primary_key and \
-                    r.references(l) and passive_updates:
+                    r.references(l) and flag_cascaded_pks:
             uowcommit.attributes[("pk_cascaded", dest, r)] = True
 
 def clear(dest, dest_mapper, synchronize_pairs):
