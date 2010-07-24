@@ -19,9 +19,9 @@ SQLAlchemy connection pool.
 
 import weakref, time, threading
 
-from sqlalchemy import exc, log
+from sqlalchemy import exc, log, event, interfaces, util
 from sqlalchemy import queue as sqla_queue
-from sqlalchemy.util import threading, pickle, as_interface, memoized_property
+from sqlalchemy.util import threading, pickle, memoized_property
 
 proxies = {}
 
@@ -64,7 +64,9 @@ class Pool(log.Identified):
                     creator, recycle=-1, echo=None, 
                     use_threadlocal=False,
                     logging_name=None,
-                    reset_on_return=True, listeners=None):
+                    reset_on_return=True, 
+                    listeners=None,
+                    _dispatch=None):
         """
         Construct a Pool.
 
@@ -102,11 +104,12 @@ class Pool(log.Identified):
           ROLLBACK to release locks and transaction resources.
           Disable at your own peril.  Defaults to True.
 
-        :param listeners: A list of
+        :param listeners: Deprecated.  A list of
           :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
           dictionaries of callables that receive events when DB-API
           connections are created, checked out and checked in to the
-          pool.
+          pool.  This has been superceded by 
+          :func:`~sqlalchemy.event.listen`.
 
         """
         if logging_name:
@@ -121,16 +124,41 @@ class Pool(log.Identified):
         self._use_threadlocal = use_threadlocal
         self._reset_on_return = reset_on_return
         self.echo = echo
-        self.listeners = []
-        self._on_connect = []
-        self._on_first_connect = []
-        self._on_checkout = []
-        self._on_checkin = []
-
+        if _dispatch:
+            self._dispatch = _dispatch
         if listeners:
             for l in listeners:
                 self.add_listener(l)
 
+    if False:
+        # this might be a nice way to define events and have them 
+        # documented at the same time.
+        class events(event.Dispatch):
+            def on_connect(self, dbapi_con, con_record):
+                """Called once for each new DB-API connection or Pool's ``creator()``.
+
+                dbapi_con
+                  A newly connected raw DB-API connection (not a SQLAlchemy
+                  ``Connection`` wrapper).
+
+                con_record
+                  The ``_ConnectionRecord`` that persistently manages the connection
+
+                """
+        
+    _dispatch = event.dispatcher()
+    
+    @util.deprecated("Use event.listen()")
+    def add_listener(self, listener):
+        """Add a ``PoolListener``-like object to this pool.
+        
+        ``listener`` may be an object that implements some or all of
+        PoolListener, or a dictionary of callables containing implementations
+        of some or all of the named methods in PoolListener.
+
+        """
+        interfaces.PoolListener._adapt_listener(self, listener)
+    
     def unique_connection(self):
         return _ConnectionFairy(self).checkout()
 
@@ -185,40 +213,18 @@ class Pool(log.Identified):
     def status(self):
         raise NotImplementedError()
 
-    def add_listener(self, listener):
-        """Add a ``PoolListener``-like object to this pool.
-
-        ``listener`` may be an object that implements some or all of
-        PoolListener, or a dictionary of callables containing implementations
-        of some or all of the named methods in PoolListener.
-
-        """
-
-        listener = as_interface(listener,
-            methods=('connect', 'first_connect', 'checkout', 'checkin'))
-
-        self.listeners.append(listener)
-        if hasattr(listener, 'connect'):
-            self._on_connect.append(listener)
-        if hasattr(listener, 'first_connect'):
-            self._on_first_connect.append(listener)
-        if hasattr(listener, 'checkout'):
-            self._on_checkout.append(listener)
-        if hasattr(listener, 'checkin'):
-            self._on_checkin.append(listener)
 
 class _ConnectionRecord(object):
     def __init__(self, pool):
         self.__pool = pool
         self.connection = self.__connect()
         self.info = {}
-        ls = pool.__dict__.pop('_on_first_connect', None)
-        if ls is not None:
-            for l in ls:
-                l.first_connect(self.connection, self)
-        if pool._on_connect:
-            for l in pool._on_connect:
-                l.connect(self.connection, self)
+
+        if pool._dispatch.on_first_connect:
+            pool._dispatch('on_first_connect', dbapi_con=self.connection, con_record=self)
+            del pool._dispatch.on_first_connect
+        if pool._dispatch.on_connect:
+            pool._dispatch('on_connect', dbapi_con=self.connection, con_record=self)
 
     def close(self):
         if self.connection is not None:
@@ -246,9 +252,8 @@ class _ConnectionRecord(object):
         if self.connection is None:
             self.connection = self.__connect()
             self.info.clear()
-            if self.__pool._on_connect:
-                for l in self.__pool._on_connect:
-                    l.connect(self.connection, self)
+            if self.__pool._dispatch.on_connect:
+                self.__pool._dispatch('on_connect', dbapi_con=self.connection, con_record=self)
         elif self.__pool._recycle > -1 and \
                 time.time() - self.starttime > self.__pool._recycle:
             self.__pool.logger.info(
@@ -257,9 +262,8 @@ class _ConnectionRecord(object):
             self.__close()
             self.connection = self.__connect()
             self.info.clear()
-            if self.__pool._on_connect:
-                for l in self.__pool._on_connect:
-                    l.connect(self.connection, self)
+            if self.__pool._dispatch.on_connect:
+                self.__pool._dispatch('on_connect', dbapi_con=self.connection, con_record=self)
         return self.connection
 
     def __close(self):
@@ -308,9 +312,8 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
     if connection_record is not None:
         connection_record.fairy = None
         pool.logger.debug("Connection %r being returned to pool", connection)
-        if pool._on_checkin:
-            for l in pool._on_checkin:
-                l.checkin(connection, connection_record)
+        if pool._dispatch.on_checkin:
+            pool._dispatch('on_checkin', dbapi_con=connection, con_record=connection_record)
         pool.return_conn(connection_record)
 
 _refs = set()
@@ -394,15 +397,16 @@ class _ConnectionFairy(object):
             raise exc.InvalidRequestError("This connection is closed")
         self.__counter += 1
 
-        if not self._pool._on_checkout or self.__counter != 1:
+        if not self._pool._dispatch.on_checkout or self.__counter != 1:
             return self
 
         # Pool listeners can trigger a reconnection on checkout
         attempts = 2
         while attempts > 0:
             try:
-                for l in self._pool._on_checkout:
-                    l.checkout(self.connection, self._connection_record, self)
+                self._pool._dispatch('on_checkout', dbapi_con=self.connection, 
+                                            con_record=self._connection_record,
+                                            con_proxy=self)
                 return self
             except exc.DisconnectionError, e:
                 self._pool.logger.info(
@@ -515,7 +519,7 @@ class SingletonThreadPool(Pool):
             echo=self.echo, 
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal, 
-            listeners=self.listeners)
+            _dispatch=self._dispatch)
 
     def dispose(self):
         """Dispose of this pool."""
@@ -648,7 +652,7 @@ class QueuePool(Pool):
                           recycle=self._recycle, echo=self.echo, 
                           logging_name=self._orig_logging_name,
                           use_threadlocal=self._use_threadlocal,
-                          listeners=self.listeners)
+                          _dispatch=self._dispatch)
 
     def do_return_conn(self, conn):
         try:
@@ -759,7 +763,7 @@ class NullPool(Pool):
             echo=self.echo, 
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal, 
-            listeners=self.listeners)
+            _dispatch=self._dispatch)
 
     def dispose(self):
         pass
@@ -799,7 +803,7 @@ class StaticPool(Pool):
                               reset_on_return=self._reset_on_return,
                               echo=self.echo,
                               logging_name=self._orig_logging_name,
-                              listeners=self.listeners)
+                              _dispatch=self._dispatch)
 
     def create_connection(self):
         return self._conn
@@ -850,7 +854,7 @@ class AssertionPool(Pool):
         self.logger.info("Pool recreating")
         return AssertionPool(self._creator, echo=self.echo, 
                             logging_name=self._orig_logging_name,
-                            listeners=self.listeners)
+                            _dispatch=self._dispatch)
         
     def do_get(self):
         if self._checked_out:

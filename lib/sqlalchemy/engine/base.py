@@ -22,7 +22,7 @@ __all__ = [
 
 import inspect, StringIO, sys, operator
 from itertools import izip
-from sqlalchemy import exc, schema, util, types, log
+from sqlalchemy import exc, schema, util, types, log, interfaces, event
 from sqlalchemy.sql import expression
 
 class Dialect(object):
@@ -1546,6 +1546,19 @@ class TwoPhaseTransaction(Transaction):
     def _do_commit(self):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
+class _EngineDispatch(event.Dispatch):
+    def append(self, fn, identifier, target):
+        if isinstance(target.Connection, Connection):
+            target.Connection = _proxy_connection_cls(target.Connection, self)
+        event.Dispatch.append(self, fn, identifier)
+
+    def exec_(self, identifier, orig, kw):
+        for fn in getattr(self, identifier):
+            r = fn(**kw)
+            if r:
+                return r
+        else:
+            return orig()
 
 class Engine(Connectable, log.Identified):
     """
@@ -1559,7 +1572,9 @@ class Engine(Connectable, log.Identified):
     """
 
     _execution_options = util.frozendict()
-
+    Connection = Connection
+    _dispatch = event.dispatcher(_EngineDispatch)
+    
     def __init__(self, pool, dialect, url, 
                         logging_name=None, echo=None, proxy=None,
                         execution_options=None
@@ -1573,9 +1588,7 @@ class Engine(Connectable, log.Identified):
         self.engine = self
         self.logger = log.instance_logger(self, echoflag=echo)
         if proxy:
-            self.Connection = _proxy_connection_cls(Connection, proxy)
-        else:
-            self.Connection = Connection
+            interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
             self.update_execution_options(**execution_options)
     
@@ -1795,25 +1808,54 @@ class Engine(Connectable, log.Identified):
 
         return self.pool.unique_connection()
 
-
-def _proxy_connection_cls(cls, proxy):
+def _proxy_connection_cls(cls, dispatch):
     class ProxyConnection(cls):
         def execute(self, object, *multiparams, **params):
-            return proxy.execute(self, super(ProxyConnection, self).execute, 
-                                            object, *multiparams, **params)
-
+            if not dispatch.on_execute:
+                return super(ProxyConnection, self).execute(object, *multiparams, **params)
+            else:
+                orig = super(ProxyConnection, self).execute
+                return dispatch.exec_('on_execute', orig, 
+                                        conn=self, 
+                                        execute=orig, 
+                                        clauseelement=object, 
+                                        multiparams=multiparams, 
+                                        params=params
+                )
+            
         def _execute_clauseelement(self, elem, multiparams=None, params=None):
-            return proxy.execute(self, super(ProxyConnection, self).execute, 
-                                            elem, 
-                                            *(multiparams or []),
-                                            **(params or {}))
+            if not dispatch.on_execute:
+                return super(ProxyConnection, self).\
+                        _execute_clauseelement(elem, 
+                                    multiparams=multiparams, 
+                                    params=params)
+            else:
+                orig = super(ProxyConnection, self).execute
+                return dispatch.exec_('on_execute', orig, 
+                                    conn=self, 
+                                    execute=orig, 
+                                    clauseelement=elem, 
+                                    multiparams=multiparams or [], 
+                                    params=params or {}
+                )
+
 
         def _cursor_execute(self, cursor, statement, 
                                     parameters, context=None):
-            return proxy.cursor_execute(
-                            super(ProxyConnection, self)._cursor_execute, 
-                            cursor, statement, parameters, context, False)
-
+            orig = super(ProxyConnection, self)._cursor_execute
+            if not dispatch.on_cursor_execute:
+                return orig(cursor, statement, parameters, context=context)
+            else:
+                return dispatch.exec_('on_cursor_execute', orig, 
+                                    conn=self, 
+                                    execute=super(ProxyConnection, self).execute, 
+                                    cursor=cursor,
+                                    statement=statement,
+                                    parameters=parameters,
+                                    executemany=False,
+                                    context=context)
+        
+        # these are all TODO
         def _cursor_executemany(self, cursor, statement, 
                                     parameters, context=None):
             return proxy.cursor_execute(

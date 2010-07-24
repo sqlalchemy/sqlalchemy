@@ -6,10 +6,14 @@
 
 """Interfaces and abstract types."""
 
+from sqlalchemy.util import as_interface, adapt_kw_to_positional
 
 class PoolListener(object):
-    """Hooks into the lifecycle of connections in a ``Pool``.
+    """Hooks into the lifecycle of connections in a :class:`Pool`.
 
+    .. note:: :class:`PoolListener` is deprecated.   Please
+       refer to :func:`event.listen`.
+    
     Usage::
     
         class MyListener(PoolListener):
@@ -58,7 +62,32 @@ class PoolListener(object):
     providing implementations for the hooks you'll be using.
     
     """
+    
+    @classmethod
+    def _adapt_listener(cls, self, listener):
+        """Adapt a :class:`PoolListener` to individual 
+        :class:`event.Dispatch` events.
+        
+        """
+        listener = as_interface(listener,
+            methods=('connect', 'first_connect', 'checkout', 'checkin'))
 
+        if hasattr(listener, 'connect'):
+            self._dispatch.append('on_connect', 
+                                adapt_kw_to_positional(listener.connect, 
+                                                    'dbapi_con', 'con_record'), 
+                                self)
+        if hasattr(listener, 'first_connect'):
+            self._dispatch.append('on_first_connect', 
+                                adapt_kw_to_positional(listener.first_connect, 
+                                                    'dbapi_con', 'con_record'),
+                                self)
+        if hasattr(listener, 'checkout'):
+            self._dispatch.append('on_checkout', listener.checkout, self)
+        if hasattr(listener, 'checkin'):
+            self._dispatch.append('on_checkin', listener.checkin, self)
+            
+        
     def connect(self, dbapi_con, con_record):
         """Called once for each new DB-API connection or Pool's ``creator()``.
 
@@ -119,6 +148,9 @@ class PoolListener(object):
 
 class ConnectionProxy(object):
     """Allows interception of statement execution by Connections.
+
+    .. note:: :class:`ConnectionProxy` is deprecated.   Please
+       refer to :func:`event.listen`.
     
     Either or both of the ``execute()`` and ``cursor_execute()``
     may be implemented to intercept compiled statement and
@@ -143,6 +175,11 @@ class ConnectionProxy(object):
         e = create_engine('someurl://', proxy=MyProxy())
     
     """
+    
+    @classmethod
+    def _adapt_listener(cls, self, listener):
+        pass
+        
     def execute(self, conn, execute, clauseelement, *multiparams, **params):
         """Intercept high level execute() events."""
         

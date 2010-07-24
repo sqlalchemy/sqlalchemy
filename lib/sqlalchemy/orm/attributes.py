@@ -461,6 +461,7 @@ class ScalarAttributeImpl(AttributeImpl):
         dict_[self.key] = value
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
+#        value = self._dispatch.chain('set', 'value', state, value, previous, initiator or self)
         for ext in self.extensions:
             value = ext.set(state, value, previous, initiator or self)
         return value

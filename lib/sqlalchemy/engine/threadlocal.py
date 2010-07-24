@@ -31,17 +31,18 @@ class TLConnection(base.Connection):
 class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions."""
 
+    TLConnection = TLConnection
+    # TODO
+    #_dispatch = event.dispatcher(_TLEngineDispatch)
 
     def __init__(self, *args, **kwargs):
         super(TLEngine, self).__init__(*args, **kwargs)
         self._connections = util.threading.local()
-        proxy = kwargs.get('proxy')
-        if proxy:
-            self.TLConnection = base._proxy_connection_cls(
-                                        TLConnection, proxy)
-        else:
-            self.TLConnection = TLConnection
-
+        
+        # dont have to deal with proxy here, the
+        # superclass constructor + class level 
+        # _dispatch handles it
+        
     def contextual_connect(self, **kw):
         if not hasattr(self._connections, 'conn'):
             connection = None

@@ -636,6 +636,11 @@ def assert_arg_type(arg, argtype, name):
                             "Argument '%s' is expected to be of type '%s', got '%s'" % 
                             (name, argtype, type(arg)))
 
+def adapt_kw_to_positional(fn, *args):
+    def call(**kw):
+        return fn(*[kw[a] for a in args])
+    return call
+    
 _creation_order = 1
 def set_creation_order(instance):
     """Assign a '_creation_order' sequence to the given instance.
