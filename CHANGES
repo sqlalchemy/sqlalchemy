@@ -22,6 +22,16 @@ CHANGES
     unless we know it was a PK switch that
     triggered the change. [ticket:1856]
     
+  - The value of version_id_col can be changed 
+    manually, and this will result in an UPDATE
+    of the row.  Versioned UPDATEs and DELETEs
+    now use the "committed" value of the 
+    version_id_col in the WHERE clause and
+    not the pending changed value. The 
+    version generator is also bypassed if 
+    manual changes are present on the attribute.
+    [ticket:1857]
+    
 - sql
   - Changed the scheme used to generate truncated
     "auto" index names when using the "index=True"

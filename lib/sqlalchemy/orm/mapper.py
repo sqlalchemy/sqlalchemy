@@ -1690,24 +1690,35 @@ class Mapper(object):
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
                             params[col._label] = \
-                                mapper._get_state_attr_by_column(
+                                mapper._get_committed_state_attr_by_column(
                                             row_switch or state, 
                                             row_switch and row_switch.dict 
                                                         or state_dict,
                                             col)
-                            params[col.key] = \
+
+                            prop = mapper._columntoproperty[col]
+                            history = attributes.get_state_history(
+                                state, prop.key, passive=True
+                            )
+                            if history.added:
+                                params[col.key] = history.added[0]
+                                hasdata = True
+                            else:
+                                params[col.key] = \
                                             mapper.version_id_generator(
                                                 params[col._label])
 
-                            # HACK: check for history, in case the 
-                            # history is only
-                            # in a different table than the one 
-                            # where the version_id_col is.
-                            for prop in mapper._columntoproperty.itervalues():
-                                history = attributes.get_state_history(
-                                                state, prop.key, passive=True)
-                                if history.added:
-                                    hasdata = True
+                                # HACK: check for history, in case the 
+                                # history is only
+                                # in a different table than the one 
+                                # where the version_id_col is.
+                                for prop in mapper._columntoproperty.\
+                                                        itervalues():
+                                    history = attributes.get_state_history(
+                                                    state, prop.key, 
+                                                    passive=True)
+                                    if history.added:
+                                        hasdata = True
                         elif mapper.polymorphic_on is not None and \
                             mapper.polymorphic_on.shares_lineage(col) and \
                                 col not in pks:
@@ -1985,7 +1996,7 @@ class Mapper(object):
                 if mapper.version_id_col is not None and \
                             table.c.contains_column(mapper.version_id_col):
                     params[mapper.version_id_col.key] = \
-                                mapper._get_state_attr_by_column(
+                                mapper._get_committed_state_attr_by_column(
                                         state, state_dict,
                                         mapper.version_id_col)
 

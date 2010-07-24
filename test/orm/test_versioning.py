@@ -108,6 +108,40 @@ class VersioningTest(_base.MappedTest):
             s1.commit()
 
     @testing.emits_warning(r'.*does not support updated rowcount')
+    @testing.resolve_artifact_names
+    def test_bump_version(self):
+        """test that version number can be bumped.
+        
+        Ensures that the UPDATE or DELETE is against the 
+        last committed version of version_id_col, not the modified 
+        state.
+        
+        """
+        mapper(Foo, version_table, 
+                version_id_col=version_table.c.version_id)
+
+        s1 = sessionmaker()()
+        f1 = Foo(value='f1')
+        s1.add(f1)
+        s1.commit()
+        eq_(f1.version_id, 1)
+        f1.version_id = 2
+        s1.commit()
+        eq_(f1.version_id, 2)
+        
+        # skip an id, test that history
+        # is honored
+        f1.version_id = 4
+        f1.value = "something new"
+        s1.commit()
+        eq_(f1.version_id, 4)
+        
+        f1.version_id = 5
+        s1.delete(f1)
+        s1.commit()
+        eq_(s1.query(Foo).count(), 0)
+        
+    @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_versioncheck(self):
@@ -236,7 +270,7 @@ class RowSwitchTest(_base.MappedTest):
         assert P.c.property.strategy.use_get
         
         session = sessionmaker()()
-        session.add(P(id=1, data='P version 1'))
+        session.add(P(id='P1', data='P version 1'))
         session.commit()
         session.close()
 
@@ -298,7 +332,7 @@ class AlternateGeneratorTest(_base.MappedTest):
         assert P.c.property.strategy.use_get
 
         session = sessionmaker()()
-        session.add(P(id=1, data='P version 1'))
+        session.add(P(id='P1', data='P version 1'))
         session.commit()
         session.close()
 
@@ -314,8 +348,11 @@ class AlternateGeneratorTest(_base.MappedTest):
     def test_child_row_switch_two(self):
         Session = sessionmaker()
         
+        # TODO: not sure this test is 
+        # testing exactly what its looking for
+        
         sess1 = Session()
-        sess1.add(P(id=1, data='P version 1'))
+        sess1.add(P(id='P1', data='P version 1'))
         sess1.commit()
         sess1.close()
         
@@ -327,6 +364,7 @@ class AlternateGeneratorTest(_base.MappedTest):
         sess1.delete(p1)
         sess1.commit()
         
+        # this can be removed and it still passes
         sess1.add(P(id='P1', data='P version 2'))
         sess1.commit()
         

@@ -2630,14 +2630,18 @@ class MapperExtensionTest(_fixtures.FixtureTest):
              'after_delete'])
 
     @testing.resolve_artifact_names
-    def test_after_with_no_changes(self):
-        """after_update is called even if no columns were updated."""
+    def test_before_after_only_collection(self):
+        """before_update is called on parent for collection modifications,
+        after_update is called even if no columns were updated.
+        
+        """
 
-        Ext, methods = self.extension()
+        Ext1, methods1 = self.extension()
+        Ext2, methods2 = self.extension()
 
-        mapper(Item, items, extension=Ext() , properties={
+        mapper(Item, items, extension=Ext1() , properties={
             'keywords': relationship(Keyword, secondary=item_keywords)})
-        mapper(Keyword, keywords, extension=Ext())
+        mapper(Keyword, keywords, extension=Ext2())
 
         sess = create_session()
         i1 = Item(description="i1")
@@ -2645,15 +2649,19 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.add(i1)
         sess.add(k1)
         sess.flush()
-        eq_(methods,
-            ['instrument_class', 'instrument_class', 'init_instance',
-             'init_instance', 'before_insert', 'after_insert',
-             'before_insert', 'after_insert'])
+        eq_(methods1,
+            ['instrument_class', 'init_instance', 
+            'before_insert', 'after_insert'])
+        eq_(methods2,
+            ['instrument_class', 'init_instance', 
+            'before_insert', 'after_insert'])
 
-        del methods[:]
+        del methods1[:]
+        del methods2[:]
         i1.keywords.append(k1)
         sess.flush()
-        eq_(methods, ['before_update', 'after_update'])
+        eq_(methods1, ['before_update', 'after_update'])
+        eq_(methods2, [])
 
 
     @testing.resolve_artifact_names
