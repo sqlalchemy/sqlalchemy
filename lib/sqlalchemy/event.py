@@ -33,13 +33,27 @@ class Events(object):
 
 class _ExecEvent(object):
     def exec_and_clear(self, *args, **kw):
-        """Execute the given event once, then clear all listeners."""
+        """Execute this event once, then clear all listeners."""
         
         self(*args, **kw)
         self[:] = []
+    
+    def exec_until_return(self, *args, **kw):
+        """Execute listeners for this event until
+        one returns a non-None value.
+        
+        Returns the value, or None.
+        """
+        
+        if self:
+            for fn in self:
+                r = fn(*args, **kw)
+                if r is not None:
+                    return r
+        return None
         
     def __call__(self, *args, **kw):
-        """Execute the given event."""
+        """Execute this event."""
         
         if self:
             for fn in self:
