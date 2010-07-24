@@ -10,6 +10,7 @@ sqlalchemy
     schema
     inspector
     types
+    event
     interfaces
     util
 

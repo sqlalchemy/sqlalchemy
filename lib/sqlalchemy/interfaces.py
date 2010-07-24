@@ -6,13 +6,15 @@
 
 """Interfaces and abstract types."""
 
-from sqlalchemy.util import as_interface, adapt_kw_to_positional
+from sqlalchemy.util import as_interface
+from sqlalchemy import event
 
 class PoolListener(object):
     """Hooks into the lifecycle of connections in a :class:`Pool`.
 
     .. note:: :class:`PoolListener` is deprecated.   Please
-       refer to :func:`event.listen`.
+       refer to :func:`event.listen` as well as 
+       :attr:`Pool.events`.
     
     Usage::
     
@@ -65,27 +67,21 @@ class PoolListener(object):
     
     @classmethod
     def _adapt_listener(cls, self, listener):
-        """Adapt a :class:`PoolListener` to individual 
+        """Adapt a :class:`PoolListener` to individual
         :class:`event.Dispatch` events.
         
         """
-        listener = as_interface(listener,
-            methods=('connect', 'first_connect', 'checkout', 'checkin'))
 
+        listener = as_interface(listener, methods=('connect',
+                                'first_connect', 'checkout', 'checkin'))
         if hasattr(listener, 'connect'):
-            self._dispatch.append('on_connect', 
-                                adapt_kw_to_positional(listener.connect, 
-                                                    'dbapi_con', 'con_record'), 
-                                self)
+            event.listen(listener.connect, 'on_connect', self)
         if hasattr(listener, 'first_connect'):
-            self._dispatch.append('on_first_connect', 
-                                adapt_kw_to_positional(listener.first_connect, 
-                                                    'dbapi_con', 'con_record'),
-                                self)
+            event.listen(listener.first_connect, 'on_first_connect', self)
         if hasattr(listener, 'checkout'):
-            self._dispatch.append('on_checkout', listener.checkout, self)
+            event.listen(listener.checkout, 'on_checkout', self)
         if hasattr(listener, 'checkin'):
-            self._dispatch.append('on_checkin', listener.checkin, self)
+            event.listen(listener.checkin, 'on_checkin', self)
             
         
     def connect(self, dbapi_con, con_record):

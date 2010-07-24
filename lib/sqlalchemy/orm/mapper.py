@@ -20,7 +20,7 @@ import operator
 from itertools import chain, groupby
 deque = __import__('collections').deque
 
-from sqlalchemy import sql, util, log, exc as sa_exc
+from sqlalchemy import sql, util, log, exc as sa_exc, event
 from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
 from sqlalchemy.orm import attributes, sync, exc as orm_exc, unitofwork
 from sqlalchemy.orm.interfaces import (
@@ -402,15 +402,14 @@ class Mapper(object):
         if manager.info.get(_INSTRUMENTOR, False):
             return
 
-        event_registry = manager.events
-        event_registry.add_listener('on_init', _event_on_init)
-        event_registry.add_listener('on_init_failure', _event_on_init_failure)
-        event_registry.add_listener('on_resurrect', _event_on_resurrect)
+        event.listen(_event_on_init, 'on_init', manager)
+        event.listen(_event_on_init_failure, 'on_init_failure', manager)
+        event.listen(_event_on_resurrect, 'on_resurrect', manager)
         
         for key, method in util.iterate_attributes(self.class_):
             if isinstance(method, types.FunctionType):
                 if hasattr(method, '__sa_reconstructor__'):
-                    event_registry.add_listener('on_load', method)
+                    event.listen(method, 'on_load', manager)
                 elif hasattr(method, '__sa_validators__'):
                     for name in method.__sa_validators__:
                         self._validators[name] = method
@@ -418,7 +417,7 @@ class Mapper(object):
         if 'reconstruct_instance' in self.extension:
             def reconstruct(instance):
                 self.extension.reconstruct_instance(self, instance)
-            event_registry.add_listener('on_load', reconstruct)
+            event.listen(reconstruct, 'on_load', manager)
 
         manager.info[_INSTRUMENTOR] = self
 
@@ -2369,7 +2368,7 @@ def _event_on_init(state, instance, args, kwargs):
     if 'init_instance' in instrumenting_mapper.extension:
         instrumenting_mapper.extension.init_instance(
             instrumenting_mapper, instrumenting_mapper.class_,
-            state.manager.events.original_init,
+            state.manager.original_init,
             instance, args, kwargs)
 
 def _event_on_init_failure(state, instance, args, kwargs):
@@ -2380,7 +2379,7 @@ def _event_on_init_failure(state, instance, args, kwargs):
         util.warn_exception(
             instrumenting_mapper.extension.init_failed,
             instrumenting_mapper, instrumenting_mapper.class_,
-            state.manager.events.original_init, instance, args, kwargs)
+            state.manager.original_init, instance, args, kwargs)
 
 def _event_on_resurrect(state, instance):
     # re-populate the primary key elements

@@ -1,7 +1,7 @@
 
 from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
-from sqlalchemy import MetaData, Integer, ForeignKey, util
+from sqlalchemy import MetaData, Integer, ForeignKey, util, event
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, attributes, class_mapper, clear_mappers
@@ -47,7 +47,7 @@ class InitTest(_base.ORMTest):
         manager = attributes.manager_of_class(cls)
         def on_init(state, instance, args, kwargs):
             canary.append((cls, 'on_init', type(instance)))
-        manager.events.add_listener('on_init', on_init)
+        event.listen(on_init, 'on_init', manager)
 
     def test_ai(self):
         inits = []
@@ -553,7 +553,7 @@ class OnLoadTest(_base.ORMTest):
         try:
             attributes.register_class(A)
             manager = attributes.manager_of_class(A)
-            manager.events.add_listener('on_load', canary)
+            event.listen(canary, 'on_load', manager)
 
             a = A()
             p_a = pickle.dumps(a)
@@ -572,10 +572,10 @@ class ExtendedEventsTest(_base.ORMTest):
 
     @modifies_instrumentation_finders
     def test_subclassed(self):
-        class MyEvents(attributes.Events):
+        class MyEvents(attributes.ClassManager.events):
             pass
         class MyClassManager(attributes.ClassManager):
-            event_registry_factory = MyEvents
+            events = event.dispatcher(MyEvents)
 
         attributes.instrumentation_finders.insert(0, lambda cls: MyClassManager)
 

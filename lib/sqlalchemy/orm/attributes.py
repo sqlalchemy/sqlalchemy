@@ -19,7 +19,7 @@ from operator import attrgetter, itemgetter
 import types
 import weakref
 
-from sqlalchemy import util
+from sqlalchemy import util, event
 from sqlalchemy.orm import interfaces, collections, exc
 import sqlalchemy.exceptions as sa_exc
 
@@ -461,7 +461,8 @@ class ScalarAttributeImpl(AttributeImpl):
         dict_[self.key] = value
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
-#        value = self._dispatch.chain('set', 'value', state, value, previous, initiator or self)
+        #for fn in self.events.set:
+        #    value = fn(state, value, previous, initiator or self)
         for ext in self.extensions:
             value = ext.set(state, value, previous, initiator or self)
         return value
@@ -900,41 +901,15 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
                                             passive=PASSIVE_NO_FETCH)
 
 
-class Events(object):
-    def __init__(self):
-        self.original_init = object.__init__
-        # Initialize to tuples instead of lists to minimize the memory 
-        # footprint
-        self.on_init = ()
-        self.on_init_failure = ()
-        self.on_load = ()
-        self.on_resurrect = ()
-
-    def run(self, event, *args):
-        for fn in getattr(self, event):
-            fn(*args)
-
-    def add_listener(self, event, listener):
-        # not thread safe... problem?  mb: nope
-        bucket = getattr(self, event)
-        if bucket == ():
-            setattr(self, event, [listener])
-        else:
-            bucket.append(listener)
-
-    def remove_listener(self, event, listener):
-        bucket = getattr(self, event)
-        bucket.remove(listener)
-
-
 class ClassManager(dict):
     """tracks state information at the class level."""
 
     MANAGER_ATTR = '_sa_class_manager'
     STATE_ATTR = '_sa_instance_state'
 
-    event_registry_factory = Events
     deferred_scalar_loader = None
+    
+    original_init = object.__init__
     
     def __init__(self, class_):
         self.class_ = class_
@@ -950,9 +925,23 @@ class ClassManager(dict):
             cls_state = manager_of_class(base)
             if cls_state:
                 self.update(cls_state)
-        self.events = self.event_registry_factory()
         self.manage()
         self._instrument_init()
+    
+    class events(event.Events):
+        def on_init(self, state, instance, args, kwargs):
+            """"""
+            
+        def on_init_failure(self, state, instance, args, kwargs):
+            """"""
+        
+        def on_load(self, instance):
+            """"""
+        
+        def on_resurrect(self, state, instance):
+            """"""
+            
+    events = event.dispatcher(events)
     
     @property
     def is_mapped(self):
@@ -1005,7 +994,7 @@ class ClassManager(dict):
         # our own wrapper, but it would
         # be nice to wrap the original __init__ and not our existing wrapper
         # of such, since this adds method overhead.
-        self.events.original_init = self.class_.__init__
+        self.original_init = self.class_.__init__
         self.new_init = _generate_init(self.class_, self)
         self.install_member('__init__', self.new_init)
         

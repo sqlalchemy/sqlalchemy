@@ -125,29 +125,84 @@ class Pool(log.Identified):
         self._reset_on_return = reset_on_return
         self.echo = echo
         if _dispatch:
-            self._dispatch = _dispatch
+            self.events = _dispatch
         if listeners:
             for l in listeners:
                 self.add_listener(l)
 
-    if False:
-        # this might be a nice way to define events and have them 
-        # documented at the same time.
-        class events(event.Dispatch):
-            def on_connect(self, dbapi_con, con_record):
-                """Called once for each new DB-API connection or Pool's ``creator()``.
-
-                dbapi_con
-                  A newly connected raw DB-API connection (not a SQLAlchemy
-                  ``Connection`` wrapper).
-
-                con_record
-                  The ``_ConnectionRecord`` that persistently manages the connection
-
-                """
+    class events(event.Events):
+        """Available events for :class:`Pool`.
         
-    _dispatch = event.dispatcher()
-    
+        The methods here define the name of an event as well
+        as the names of members that are passed to listener
+        functions.  Note all members are passed by name.
+        
+        e.g.::
+        
+            from sqlalchemy import events
+            events.listen(fn, 'on_checkout', Pool)
+
+        """
+        
+        def on_connect(self, dbapi_connection, connection_record):
+            """Called once for each new DB-API connection or Pool's ``creator()``.
+
+            :param dbapi_con:
+              A newly connected raw DB-API connection (not a SQLAlchemy
+              ``Connection`` wrapper).
+
+            :param con_record:
+              The ``_ConnectionRecord`` that persistently manages the connection
+
+            """
+
+        def on_first_connect(self, dbapi_connection, connection_record):
+            """Called exactly once for the first DB-API connection.
+
+            :param dbapi_con:
+              A newly connected raw DB-API connection (not a SQLAlchemy
+              ``Connection`` wrapper).
+
+            :param con_record:
+              The ``_ConnectionRecord`` that persistently manages the connection
+
+            """
+
+        def on_checkout(self, dbapi_connection, connection_record, connection_proxy):
+            """Called when a connection is retrieved from the Pool.
+
+            :param dbapi_con:
+              A raw DB-API connection
+
+            :param con_record:
+              The ``_ConnectionRecord`` that persistently manages the connection
+
+            :param con_proxy:
+              The ``_ConnectionFairy`` which manages the connection for the span of
+              the current checkout.
+
+            If you raise an ``exc.DisconnectionError``, the current
+            connection will be disposed and a fresh connection retrieved.
+            Processing of all checkout listeners will abort and restart
+            using the new connection.
+            """
+
+        def on_checkin(self, dbapi_connection, connection_record):
+            """Called when a connection returns to the pool.
+
+            Note that the connection may be closed, and may be None if the
+            connection has been invalidated.  ``checkin`` will not be called
+            for detached connections.  (They do not return to the pool.)
+
+            :param dbapi_con:
+              A raw DB-API connection
+
+            :param con_record:
+              The ``_ConnectionRecord`` that persistently manages the connection
+
+            """
+    events = event.dispatcher(events)
+        
     @util.deprecated("Use event.listen()")
     def add_listener(self, listener):
         """Add a ``PoolListener``-like object to this pool.
@@ -220,11 +275,8 @@ class _ConnectionRecord(object):
         self.connection = self.__connect()
         self.info = {}
 
-        if pool._dispatch.on_first_connect:
-            pool._dispatch('on_first_connect', dbapi_con=self.connection, con_record=self)
-            del pool._dispatch.on_first_connect
-        if pool._dispatch.on_connect:
-            pool._dispatch('on_connect', dbapi_con=self.connection, con_record=self)
+        pool.events.on_first_connect.exec_and_clear(self.connection, self)
+        pool.events.on_connect(self.connection, self)
 
     def close(self):
         if self.connection is not None:
@@ -252,8 +304,8 @@ class _ConnectionRecord(object):
         if self.connection is None:
             self.connection = self.__connect()
             self.info.clear()
-            if self.__pool._dispatch.on_connect:
-                self.__pool._dispatch('on_connect', dbapi_con=self.connection, con_record=self)
+            if self.__pool.events.on_connect:
+                self.__pool.events.on_connect(self.connection, con_record)
         elif self.__pool._recycle > -1 and \
                 time.time() - self.starttime > self.__pool._recycle:
             self.__pool.logger.info(
@@ -262,8 +314,8 @@ class _ConnectionRecord(object):
             self.__close()
             self.connection = self.__connect()
             self.info.clear()
-            if self.__pool._dispatch.on_connect:
-                self.__pool._dispatch('on_connect', dbapi_con=self.connection, con_record=self)
+            if self.__pool.events.on_connect:
+                self.__pool.events.on_connect(self.connection, con_record)
         return self.connection
 
     def __close(self):
@@ -312,8 +364,8 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
     if connection_record is not None:
         connection_record.fairy = None
         pool.logger.debug("Connection %r being returned to pool", connection)
-        if pool._dispatch.on_checkin:
-            pool._dispatch('on_checkin', dbapi_con=connection, con_record=connection_record)
+        if pool.events.on_checkin:
+            pool.events.on_checkin(connection, connection_record)
         pool.return_conn(connection_record)
 
 _refs = set()
@@ -397,16 +449,16 @@ class _ConnectionFairy(object):
             raise exc.InvalidRequestError("This connection is closed")
         self.__counter += 1
 
-        if not self._pool._dispatch.on_checkout or self.__counter != 1:
+        if not self._pool.events.on_checkout or self.__counter != 1:
             return self
 
         # Pool listeners can trigger a reconnection on checkout
         attempts = 2
         while attempts > 0:
             try:
-                self._pool._dispatch('on_checkout', dbapi_con=self.connection, 
-                                            con_record=self._connection_record,
-                                            con_proxy=self)
+                self._pool.events.on_checkout(self.connection, 
+                                            self._connection_record,
+                                            self)
                 return self
             except exc.DisconnectionError, e:
                 self._pool.logger.info(
@@ -519,7 +571,7 @@ class SingletonThreadPool(Pool):
             echo=self.echo, 
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal, 
-            _dispatch=self._dispatch)
+            _dispatch=self.events)
 
     def dispose(self):
         """Dispose of this pool."""
@@ -652,7 +704,7 @@ class QueuePool(Pool):
                           recycle=self._recycle, echo=self.echo, 
                           logging_name=self._orig_logging_name,
                           use_threadlocal=self._use_threadlocal,
-                          _dispatch=self._dispatch)
+                          _dispatch=self.events)
 
     def do_return_conn(self, conn):
         try:
@@ -763,7 +815,7 @@ class NullPool(Pool):
             echo=self.echo, 
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal, 
-            _dispatch=self._dispatch)
+            _dispatch=self.events)
 
     def dispose(self):
         pass
@@ -803,7 +855,7 @@ class StaticPool(Pool):
                               reset_on_return=self._reset_on_return,
                               echo=self.echo,
                               logging_name=self._orig_logging_name,
-                              _dispatch=self._dispatch)
+                              _dispatch=self.events)
 
     def create_connection(self):
         return self._conn
@@ -854,7 +906,7 @@ class AssertionPool(Pool):
         self.logger.info("Pool recreating")
         return AssertionPool(self._creator, echo=self.echo, 
                             logging_name=self._orig_logging_name,
-                            _dispatch=self._dispatch)
+                            _dispatch=self.events)
         
     def do_get(self):
         if self._checked_out:

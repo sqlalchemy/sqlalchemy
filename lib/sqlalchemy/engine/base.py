@@ -1546,7 +1546,7 @@ class TwoPhaseTransaction(Transaction):
     def _do_commit(self):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
-class _EngineDispatch(event.Dispatch):
+class _EngineDispatch(event.Events):
     def append(self, fn, identifier, target):
         if isinstance(target.Connection, Connection):
             target.Connection = _proxy_connection_cls(target.Connection, self)
@@ -1574,6 +1574,7 @@ class Engine(Connectable, log.Identified):
     _execution_options = util.frozendict()
     Connection = Connection
     _dispatch = event.dispatcher(_EngineDispatch)
+    
     
     def __init__(self, pool, dialect, url, 
                         logging_name=None, echo=None, proxy=None,

@@ -89,6 +89,7 @@ Builtin Pool Implementations
    :show-inheritance:
    :undoc-members:
    :inherited-members:
+   :exclude-members: append, chain, __init__
 
 .. autoclass:: sqlalchemy.pool.QueuePool
    :members:
