@@ -18,7 +18,7 @@ well as other user-subclassable extension objects.
 from itertools import chain
 
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy import log, util
+from sqlalchemy import log, util, event
 from sqlalchemy.sql import expression
 
 class_mapper = None
@@ -877,6 +877,10 @@ class PropertyOption(MapperOption):
 class AttributeExtension(object):
     """An event handler for individual attribute change events.
     
+    .. note:: :class:`AttributeExtension` is deprecated.   Please
+       refer to :func:`event.listen` as well as 
+       :attr:`AttributeImpl.events`.
+    
     AttributeExtension is assembled within the descriptors associated
     with a mapped class.
     
@@ -886,6 +890,13 @@ class AttributeExtension(object):
     """indicates that the set() method would like to receive the 'old' value,
     even if it means firing lazy callables.
     """
+
+    @classmethod
+    def _adapt_listener(cls, self, listener):
+        event.listen(listener.append, 'on_append', self, active_history=listener.active_history)
+        event.listen(listener.remove, 'on_remove', self, active_history=listener.active_history)
+        event.listen(listener.set, 'on_set', self, active_history=listener.active_history)
+        
     
     def append(self, state, value, initiator):
         """Receive a collection append event.

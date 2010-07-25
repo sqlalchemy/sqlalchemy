@@ -10,10 +10,10 @@ Event specifications:
 
 from sqlalchemy import util
 
-def listen(fn, identifier, target, *args):
+def listen(fn, identifier, target, *args, **kw):
     """Listen for events, passing to fn."""
     
-    target.events.listen(fn, identifier, target, *args)
+    target.events.listen(fn, identifier, target, *args, **kw)
 
 NO_RESULT = util.symbol('no_result')
 
