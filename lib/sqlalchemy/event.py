@@ -13,7 +13,7 @@ from sqlalchemy import util
 def listen(fn, identifier, target, *args):
     """Listen for events, passing to fn."""
     
-    getattr(target.events, identifier).append(fn, target)
+    target.events.listen(target, fn, identifier)
 
 NO_RESULT = util.symbol('no_result')
 
@@ -30,6 +30,10 @@ class Events(object):
     def __init__(self, parent_cls):
         self.parent_cls = parent_cls
     
+    @classmethod
+    def listen(cls, target, fn, identifier):
+        getattr(target.events, identifier).append(fn, target)
+        
 
 class _ExecEvent(object):
     def exec_and_clear(self, *args, **kw):

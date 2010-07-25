@@ -174,7 +174,25 @@ class ConnectionProxy(object):
     
     @classmethod
     def _adapt_listener(cls, self, listener):
-        pass
+        event.listen(listener.execute, 'on_execute', self)
+        def _adapt_cursor_execute(conn, execute, cursor, statement, 
+                                    parameters, context, executemany):
+            def _re_execute(cursor, statement, parameters, context):
+                return execute(cursor, statement, parameters, context, executemany)
+            return listener.cursor_execute(_re_execute, cursor, statement, 
+                                        parameters, context, executemany)
+        event.listen(_adapt_cursor_execute, 'on_cursor_execute', self)
+        event.listen(listener.begin, 'on_begin', self)
+        event.listen(listener.rollback, 'on_rollback', self)
+        event.listen(listener.commit, 'on_commit', self)
+        event.listen(listener.savepoint, 'on_savepoint', self)
+        event.listen(listener.rollback_savepoint, 'on_rollback_savepoint', self)
+        event.listen(listener.release_savepoint, 'on_release_savepoint', self)
+        event.listen(listener.begin_twophase, 'on_begin_twophase', self)
+        event.listen(listener.prepare_twophase, 'on_prepare_twophase', self)
+        event.listen(listener.rollback_twophase, 'on_rollback_twophase', self)
+        event.listen(listener.commit_twophase, 'on_commit_twophase', self)
+        
         
     def execute(self, conn, execute, clauseelement, *multiparams, **params):
         """Intercept high level execute() events."""
