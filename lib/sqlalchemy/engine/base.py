@@ -1573,18 +1573,19 @@ class Engine(Connectable, log.Identified):
         self.engine = self
         self.logger = log.instance_logger(self, echoflag=echo)
         if proxy:
+#            util.warn_deprecated("The 'proxy' argument to create_engine() is deprecated.  Use event.listen().")
             interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
             self.update_execution_options(**execution_options)
 
     class events(event.Events):
         @classmethod
-        def listen(cls, target, fn, identifier):
+        def listen(cls, fn, identifier, target):
             if issubclass(target.Connection, Connection):
                 target.Connection = _proxy_connection_cls(
                                             Connection, 
                                             target.events)
-            event.Events.listen(target, fn, identifier)
+            event.Events.listen(fn, identifier, target)
             
         def on_execute(self, conn, execute, clauseelement, *multiparams, **params):
             """Intercept high level execute() events."""

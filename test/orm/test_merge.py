@@ -24,7 +24,7 @@ class MergeTest(_fixtures.FixtureTest):
             canary.called = 0
 
         manager = sa.orm.attributes.manager_of_class(cls)
-        manager.events.add_listener('on_load', canary)
+        manager.events.listen(canary, 'on_load', manager)
 
         return canary
 

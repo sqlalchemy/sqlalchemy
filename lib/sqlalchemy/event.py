@@ -13,7 +13,7 @@ from sqlalchemy import util
 def listen(fn, identifier, target, *args):
     """Listen for events, passing to fn."""
     
-    target.events.listen(target, fn, identifier)
+    target.events.listen(fn, identifier, target, *args)
 
 NO_RESULT = util.symbol('no_result')
 
@@ -31,16 +31,31 @@ class Events(object):
         self.parent_cls = parent_cls
     
     @classmethod
-    def listen(cls, target, fn, identifier):
+    def listen(cls, fn, identifier, target):
         getattr(target.events, identifier).append(fn, target)
+    
+    @property
+    def events(self):
+        """Iterate the Listeners objects."""
         
+        return (getattr(self, k) for k in dir(self) if k.startswith("on_"))
+        
+    def update(self, other):
+        """Populate from the listeners in another :class:`Events` object."""
+
+        for ls in other.events:
+            getattr(self, ls.name).extend(ls)
 
 class _ExecEvent(object):
-    def exec_and_clear(self, *args, **kw):
-        """Execute this event once, then clear all listeners."""
+    _exec_once = False
+    
+    def exec_once(self, *args, **kw):
+        """Execute this event, but only if it has not been
+        executed already for this collection."""
         
-        self(*args, **kw)
-        self[:] = []
+        if not self._exec_once:
+            self(*args, **kw)
+            self._exec_once = True
     
     def exec_until_return(self, *args, **kw):
         """Execute listeners for this event until
@@ -74,12 +89,13 @@ class EventDescriptor(object):
         self._clslevel = []
     
     def append(self, obj, target):
+        assert isinstance(target, type), "Class-level Event targets must be classes."
         self._clslevel.append((obj, target))
     
     def __get__(self, obj, cls):
         if obj is None:
             return self
-        obj.__dict__[self.__name__] = result = Listeners()
+        obj.__dict__[self.__name__] = result = Listeners(self.__name__)
         result.extend([
             fn for fn, target in 
             self._clslevel
@@ -91,6 +107,9 @@ class Listeners(_ExecEvent, list):
     """Represent a collection of listeners linked
     to an instance of :class:`Events`."""
     
+    def __init__(self, name):
+        self.name = name
+        
     def append(self, obj, target):
         list.append(self, obj)
 

@@ -125,8 +125,11 @@ class Pool(log.Identified):
         self._reset_on_return = reset_on_return
         self.echo = echo
         if _dispatch:
-            self.events = _dispatch
+            self.events.update(_dispatch)
         if listeners:
+            util.warn_deprecated(
+                        "The 'listeners' argument to Pool (and "
+                        "create_engine()) is deprecated.  Use event.listen().")
             for l in listeners:
                 self.add_listener(l)
 
@@ -203,7 +206,7 @@ class Pool(log.Identified):
             """
     events = event.dispatcher(events)
         
-    @util.deprecated("Use event.listen()")
+    @util.deprecated("Pool.add_listener() is deprecated.  Use event.listen()")
     def add_listener(self, listener):
         """Add a ``PoolListener``-like object to this pool.
         
@@ -275,7 +278,7 @@ class _ConnectionRecord(object):
         self.connection = self.__connect()
         self.info = {}
 
-        pool.events.on_first_connect.exec_and_clear(self.connection, self)
+        pool.events.on_first_connect.exec_once(self.connection, self)
         pool.events.on_connect(self.connection, self)
 
     def close(self):
@@ -305,7 +308,7 @@ class _ConnectionRecord(object):
             self.connection = self.__connect()
             self.info.clear()
             if self.__pool.events.on_connect:
-                self.__pool.events.on_connect(self.connection, con_record)
+                self.__pool.events.on_connect(self.connection, self)
         elif self.__pool._recycle > -1 and \
                 time.time() - self.starttime > self.__pool._recycle:
             self.__pool.logger.info(
@@ -315,7 +318,7 @@ class _ConnectionRecord(object):
             self.connection = self.__connect()
             self.info.clear()
             if self.__pool.events.on_connect:
-                self.__pool.events.on_connect(self.connection, con_record)
+                self.__pool.events.on_connect(self.connection, self)
         return self.connection
 
     def __close(self):

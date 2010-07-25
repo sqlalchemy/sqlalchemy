@@ -255,7 +255,7 @@ def _process_assertion_statement(query, context):
 
     return query
 
-class SQLAssert(ConnectionProxy):
+class SQLAssert(object):
     rules = None
     
     def add_rules(self, rules):
@@ -282,8 +282,8 @@ class SQLAssert(ConnectionProxy):
             
         return result
         
-    def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
-        result = execute(cursor, statement, parameters, context)
+    def cursor_execute(self, conn, execute, cursor, statement, parameters, context, executemany):
+        result = execute(cursor, statement, parameters, context, executemany)
         
         if self.rules:
             rule = self.rules[0]

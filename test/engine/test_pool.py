@@ -1,5 +1,5 @@
 import threading, time
-from sqlalchemy import pool, interfaces, create_engine, select
+from sqlalchemy import pool, interfaces, create_engine, select, event
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing
 from sqlalchemy.test.util import gc_collect, lazy_gc
@@ -186,7 +186,8 @@ class PoolTest(PoolTestBase):
         self.assert_(c.connection is not c2.connection)
         self.assert_(not c2.info)
         self.assert_('foo2' in c.info)
-
+    
+    @testing.uses_deprecated(r".*Use event.listen")
     def test_listeners(self):
         dbapi = MockDBAPI()
 
@@ -260,11 +261,10 @@ class PoolTest(PoolTestBase):
 
         def assert_listeners(p, total, conn, fconn, cout, cin):
             for instance in (p, p.recreate()):
-                self.assert_(len(instance.listeners) == total)
-                self.assert_(len(instance._on_connect) == conn)
-                self.assert_(len(instance._on_first_connect) == fconn)
-                self.assert_(len(instance._on_checkout) == cout)
-                self.assert_(len(instance._on_checkin) == cin)
+                self.assert_(len(instance.events.on_connect) == conn)
+                self.assert_(len(instance.events.on_first_connect) == fconn)
+                self.assert_(len(instance.events.on_checkout) == cout)
+                self.assert_(len(instance.events.on_checkin) == cin)
 
         p = _pool()
         assert_listeners(p, 0, 0, 0, 0, 0)
@@ -368,6 +368,7 @@ class PoolTest(PoolTestBase):
         c.close()
         snoop.assert_total(1, 1, 2, 2)
     
+    @testing.uses_deprecated(r".*Use event.listen")
     def test_listeners_callables(self):
         dbapi = MockDBAPI()
 
@@ -391,10 +392,9 @@ class PoolTest(PoolTestBase):
 
             def assert_listeners(p, total, conn, cout, cin):
                 for instance in (p, p.recreate()):
-                    self.assert_(len(instance.listeners) == total)
-                    self.assert_(len(instance._on_connect) == conn)
-                    self.assert_(len(instance._on_checkout) == cout)
-                    self.assert_(len(instance._on_checkin) == cin)
+                    self.assert_(len(instance.events.on_connect) == conn)
+                    self.assert_(len(instance.events.on_checkout) == cout)
+                    self.assert_(len(instance.events.on_checkin) == cin)
 
             p = _pool()
             assert_listeners(p, 0, 0, 0, 0)
@@ -431,9 +431,8 @@ class PoolTest(PoolTestBase):
         called = []
         def listener(*args):
             called.append(True)
-        listener.connect = listener
         engine = create_engine(testing.db.url)
-        engine.pool.add_listener(listener)
+        event.listen(listener, 'on_connect', engine.pool)
         engine.execute(select([1])).close()
         assert called, "Listener not called on connect"
 

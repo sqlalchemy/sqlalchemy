@@ -5,7 +5,7 @@ with :func:`~sqlalchemy.engine.create_engine`.  This module is semi-private and 
 invoked automatically when the threadlocal engine strategy is used.
 """
 
-from sqlalchemy import util
+from sqlalchemy import util, event
 from sqlalchemy.engine import base
 import weakref
 
@@ -32,17 +32,21 @@ class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions."""
 
     TLConnection = TLConnection
-    # TODO
-    #_dispatch = event.dispatcher(_TLEngineDispatch)
 
     def __init__(self, *args, **kwargs):
         super(TLEngine, self).__init__(*args, **kwargs)
         self._connections = util.threading.local()
-        
-        # dont have to deal with proxy here, the
-        # superclass constructor + class level 
-        # _dispatch handles it
-        
+
+    class events(base.Engine.events):
+        @classmethod
+        def listen(cls, fn, identifier, target):
+            if issubclass(target.TLConnection, TLConnection):
+                target.TLConnection = base._proxy_connection_cls(
+                                            TLConnection, 
+                                            target.events)
+            base.Engine.events.listen(fn, identifier, target)
+    events = event.dispatcher(events)
+    
     def contextual_connect(self, **kw):
         if not hasattr(self._connections, 'conn'):
             connection = None
