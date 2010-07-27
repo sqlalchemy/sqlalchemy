@@ -104,6 +104,9 @@ class QueryableAttribute(interfaces.PropComparator):
         self.comparator = comparator
         self.parententity = parententity
 
+    # TODO: this can potentially be moved to AttributeImpl,
+    # have Sphinx document the "events" class directly, implement an 
+    # accept_with() that checks for QueryableAttribute
     class events(event.Events):
         """Events for ORM attributes.
 

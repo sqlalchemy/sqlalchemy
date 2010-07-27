@@ -1847,7 +1847,11 @@ def _proxy_connection_cls(cls, dispatch):
             return orig
         def go(*arg, **kw):
             nested = _exec_recursive(conn, fns[1:], orig)
-            ret = fns[0](conn, nested, *arg, **kw)
+            try:
+                ret = fns[0](conn, nested, *arg, **kw)
+            except IndexError:
+                import pdb
+                pdb.set_trace()
             # TODO: need to get consistent way to check 
             # for "they called the fn, they didn't", or otherwise
             # make some decision here how this is to work
