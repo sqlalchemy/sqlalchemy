@@ -760,7 +760,10 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         u1.addresses.remove(a1)
         u2.addresses.append(a1)
         sess.flush()
-
+    
+    @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE '
+                                'but requires referential integrity')
+    @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     def test_change_m2o_passive(self):
         self._test_change_m2o(True)
     
@@ -783,6 +786,9 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         
         u1.username='edmodified'
         sess.flush()
+        eq_(a1.username, 'edmodified')
+        
+        sess.expire_all()
         eq_(a1.username, 'edmodified')
 
     def test_move_m2o_passive(self):
