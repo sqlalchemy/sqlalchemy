@@ -1057,14 +1057,14 @@ class MSDialect(default.DefaultDialect):
         user_name = connection.scalar("SELECT user_name() as user_name;")
         if user_name is not None:
             # now, get the default schema
-            query = """
+            query = sql.text("""
             SELECT default_schema_name FROM
             sys.database_principals
-            WHERE name = ?
+            WHERE name = :name
             AND type = 'S'
-            """
+            """)
             try:
-                default_schema_name = connection.scalar(query, [user_name])
+                default_schema_name = connection.scalar(query, name=user_name)
                 if default_schema_name is not None:
                     return unicode(default_schema_name)
             except:

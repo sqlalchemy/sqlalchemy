@@ -44,6 +44,10 @@ CHANGES
     indexes on columns with similar names still
     have unique names.  [ticket:1855]
 
+- mssql
+  - Fixed "default schema" query to work with
+    pymssql backend.
+
 - examples
   - The beaker_caching example has been reorgnized
     such that the Session, cache manager, 
