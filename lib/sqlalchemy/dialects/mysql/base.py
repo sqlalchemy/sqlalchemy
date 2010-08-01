@@ -42,23 +42,6 @@ Connecting
 
 See the API documentation on individual drivers for details on connecting.
     
-Data Types
-----------
-
-All of MySQL's standard types are supported.   These can also be specified within 
-table metadata, for the purpose of issuing CREATE TABLE statements
-which include MySQL-specific extensions.   The types are available
-from the module, as in::
-
-    from sqlalchemy.dialects import mysql
-
-    Table('mytable', metadata,
-          Column('id', Integer, primary_key=True),
-          Column('ittybittyblob', mysql.TINYBLOB),
-          Column('biggy', mysql.BIGINT(unsigned=True)))
-
-See the API documentation on specific column types for further details.
-
 Connection Timeouts
 -------------------
 
@@ -817,7 +800,7 @@ class NCHAR(_StringType, sqltypes.NCHAR):
     __visit_name__ = 'NCHAR'
 
     def __init__(self, length=None, **kwargs):
-        """Construct an NCHAR.  Arguments are:
+        """Construct an NCHAR.
 
         :param length: Maximum data length, in characters.
 
@@ -861,8 +844,6 @@ class ENUM(sqltypes.Enum, _StringType):
         Example:
 
           Column('myenum', MSEnum("foo", "bar", "baz"))
-
-        Arguments are:
 
         :param enums: The range of valid values for this ENUM.  Values will be
           quoted when generating the schema according to the quoting flag (see
@@ -974,8 +955,6 @@ class SET(_StringType):
         Example::
 
           Column('myset', MSSet("'foo'", "'bar'", "'baz'"))
-
-        Arguments are:
 
         :param values: The range of valid values for this SET.  Values will be
           used exactly as they appear when generating schemas.  Strings must

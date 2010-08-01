@@ -13,11 +13,13 @@ Auto Increment Behavior
 ``IDENTITY`` columns are supported by using SQLAlchemy
 ``schema.Sequence()`` objects. In other words::
 
-    Table('test', mss_engine,
+    from sqlalchemy import Table, Integer, Sequence, Column
+    
+    Table('test', metadata,
            Column('id', Integer,
                   Sequence('blah',100,10), primary_key=True),
            Column('name', String(20))
-         ).create()
+         ).create(some_engine)
 
 would yield::
 
@@ -47,9 +49,11 @@ collation parameter accepts a Windows Collation Name or a SQL
 Collation Name. Supported types are MSChar, MSNChar, MSString,
 MSNVarchar, MSText, and MSNText. For example::
 
-    Column('login', String(32, collation='Latin1_General_CI_AS'))
+    from sqlalchemy.dialects.mssql import VARCHAR
+    Column('login', VARCHAR(32, collation='Latin1_General_CI_AS'))
 
-will yield::
+When such a column is associated with a :class:`Table`, the
+CREATE TABLE statement for this column will yield::
 
     login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL
 
