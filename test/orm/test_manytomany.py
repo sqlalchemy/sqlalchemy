@@ -16,35 +16,47 @@ class M2MTest(_base.MappedTest):
         Table('place', metadata,
             Column('place_id', Integer, sa.Sequence('pid_seq', optional=True),
                    primary_key=True),
-            Column('name', String(30), nullable=False))
+            Column('name', String(30), nullable=False),
+            test_needs_acid=True,
+            )
 
         Table('transition', metadata,
             Column('transition_id', Integer,
                    sa.Sequence('tid_seq', optional=True), primary_key=True),
-            Column('name', String(30), nullable=False))
+            Column('name', String(30), nullable=False),
+            test_needs_acid=True,
+            )
 
         Table('place_thingy', metadata,
             Column('thingy_id', Integer, sa.Sequence('thid_seq', optional=True),
                    primary_key=True),
             Column('place_id', Integer, ForeignKey('place.place_id'),
                    nullable=False),
-            Column('name', String(30), nullable=False))
+            Column('name', String(30), nullable=False),
+            test_needs_acid=True,
+            )
 
         # association table #1
         Table('place_input', metadata,
             Column('place_id', Integer, ForeignKey('place.place_id')),
             Column('transition_id', Integer,
-                   ForeignKey('transition.transition_id')))
+                   ForeignKey('transition.transition_id')),
+                   test_needs_acid=True,
+                   )
 
         # association table #2
         Table('place_output', metadata,
             Column('place_id', Integer, ForeignKey('place.place_id')),
             Column('transition_id', Integer,
-                   ForeignKey('transition.transition_id')))
+                   ForeignKey('transition.transition_id')),
+                   test_needs_acid=True,
+                   )
 
         Table('place_place', metadata,
               Column('pl1_id', Integer, ForeignKey('place.place_id')),
-              Column('pl2_id', Integer, ForeignKey('place.place_id')))
+              Column('pl2_id', Integer, ForeignKey('place.place_id')),
+              test_needs_acid=True,
+              )
 
     @classmethod
     def setup_classes(cls):
