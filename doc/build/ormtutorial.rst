@@ -1144,15 +1144,16 @@ Uh oh, they're still there !  Analyzing the flush SQL, we can see that the ``use
 Configuring delete/delete-orphan Cascade
 ----------------------------------------
 
-We will configure **cascade** options on the ``User.addresses`` relationship to change the behavior.  While SQLAlchemy allows you to add new attributes and relationships to mappings at any point in time, in this case the existing relationship needs to be removed, so we need to tear down the mappings completely and start again.  This is not a typical operation and is here just for illustrative purposes.
+We will configure **cascade** options on the ``User.addresses`` relationship to change the behavior.  While SQLAlchemy allows you to add new attributes and relationships to mappings at any point in time, in this case the existing relationship needs to be removed, so we need to tear down the mappings completely and start again.  
 
-Removing all ORM state is as follows:
+.. note:: Tearing down mappers with :func:`clear_mappers` is not a typical operation, and normal applications do not need to use this function.  It is here so that the tutorial code can be executed as a whole.
 
 .. sourcecode:: python+sql
 
     >>> session.close()  # roll back and close the transaction
     >>> from sqlalchemy.orm import clear_mappers
-    >>> clear_mappers() # clear mappers
+    >>> clear_mappers() # remove all class mappings
+    
 
 Below, we use ``mapper()`` to reconfigure an ORM mapping for ``User`` and ``Address``, on our existing but currently un-mapped classes.  The ``User.addresses`` relationship now has ``delete, delete-orphan`` cascade on it, which indicates that DELETE operations will cascade to attached ``Address`` objects as well as ``Address`` objects which are removed from their parent:
 
