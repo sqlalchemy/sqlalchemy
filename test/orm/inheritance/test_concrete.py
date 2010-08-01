@@ -597,8 +597,8 @@ class PropertyInheritanceTest(_base.MappedTest):
         sess.add_all([dest1, dest2, c1, a1, b1])
         sess.commit()
         
-        sess = sessionmaker()()
-        merged_c1 = sess.merge(c1)
+        sess2 = sessionmaker()()
+        merged_c1 = sess2.merge(c1)
         eq_(merged_c1.some_dest.name, 'd2')
         eq_(merged_c1.some_dest_id, c1.some_dest_id)
 
