@@ -31,6 +31,13 @@ CHANGES
     version generator is also bypassed if 
     manual changes are present on the attribute.
     [ticket:1857]
+
+  - Repaired the usage of merge() when used with 
+    concrete inheriting mappers.  Such mappers frequently
+    have so-called "concrete" attributes, which are
+    subclass attributes that "disable" propagation from
+    the parent - these needed to allow a merge()
+    operation to pass through without effect.
     
 - sql
   - Changed the scheme used to generate truncated

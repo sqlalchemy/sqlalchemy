@@ -532,7 +532,8 @@ class MapperProperty(object):
 
         return not self.parent.non_primary
 
-    def merge(self, session, source, dest, load, _recursive):
+    def merge(self, session, source_state, source_dict, dest_state,
+                dest_dict, load, _recursive):
         """Merge the attribute represented by this ``MapperProperty``
         from source to destination object"""
 
