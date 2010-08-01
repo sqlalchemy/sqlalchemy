@@ -782,7 +782,7 @@ def mapper(class_, local_table=None, *args, **params):
             a running *version id* of mapped entities in the database.  this is
             used during save operations to ensure that no other thread or process
             has updated the instance during the lifetime of the entity, else a
-            ``ConcurrentModificationError`` exception is thrown.
+            :class:`StaleDataError` exception is thrown.
 
         :param version_id_generator: A callable which defines the algorithm used to generate new version 
             ids.  Defaults to an integer generator.  Can be replaced with one that

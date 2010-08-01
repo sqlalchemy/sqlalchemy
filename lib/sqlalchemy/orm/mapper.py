@@ -1818,10 +1818,10 @@ class Mapper(object):
 
                 if connection.dialect.supports_sane_rowcount:
                     if rows != len(update):
-                        raise orm_exc.ConcurrentModificationError(
-                                "Updated rowcount %d does not match number "
-                                "of objects updated %d" %
-                                (rows, len(update)))
+                        raise orm_exc.StaleDataError(
+                                "UPDATE statement on table '%s' expected to update %d row(s); "
+                                "%d were matched." %
+                                (table.description, len(update), rows))
 
                 elif needs_version_id:
                     util.warn("Dialect %s does not support updated rowcount "
@@ -2050,10 +2050,10 @@ class Mapper(object):
                         rows = c.rowcount
 
                 if rows != -1 and rows != len(del_objects):
-                    raise orm_exc.ConcurrentModificationError(
-                        "Deleted rowcount %d does not match "
-                        "number of objects deleted %d" % 
-                        (c.rowcount, len(del_objects))
+                    raise orm_exc.StaleDataError(
+                        "DELETE statement on table '%s' expected to delete %d row(s); "
+                        "%d were matched." % 
+                        (table.description, len(del_objects), c.rowcount)
                     )
 
         for state, state_dict, mapper, has_identity, connection in tups:
@@ -2180,8 +2180,9 @@ class Mapper(object):
                                 self.version_id_col) != \
                                         row[version_id_col]:
                                         
-                    raise orm_exc.ConcurrentModificationError(
-                            "Instance '%s' version of %s does not match %s" 
+                    raise orm_exc.StaleDataError(
+                            "Instance '%s' has version id '%s' which "
+                            "does not match database-loaded version id '%s'." 
                             % (state_str(state), 
                                 self._get_state_attr_by_column(
                                             state, dict_,

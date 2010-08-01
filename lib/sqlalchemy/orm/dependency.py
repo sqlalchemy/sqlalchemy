@@ -1032,14 +1032,12 @@ class ManyToManyDP(DependencyProcessor):
             
             if result.supports_sane_multi_rowcount() and \
                         result.rowcount != len(secondary_delete):
-                raise exc.ConcurrentModificationError(
-                        "Deleted rowcount %d does not match number of "
-                        "secondary table rows deleted from table '%s': %d" % 
-                        (
-                            result.rowcount, 
-                            self.secondary.description, 
-                            len(secondary_delete))
-                        )
+                raise exc.StaleDataError(
+                        "DELETE statement on table '%s' expected to delete %d row(s); "
+                        "Only %d were matched." % 
+                        (self.secondary.description, len(secondary_delete),
+                        result.rowcount)
+                    )
 
         if secondary_update:
             associationrow = secondary_update[0]
@@ -1051,14 +1049,12 @@ class ManyToManyDP(DependencyProcessor):
             result = connection.execute(statement, secondary_update)
             if result.supports_sane_multi_rowcount() and \
                         result.rowcount != len(secondary_update):
-                raise exc.ConcurrentModificationError(
-                        "Updated rowcount %d does not match number of "
-                        "secondary table rows updated from table '%s': %d" % 
-                        (
-                            result.rowcount, 
-                            self.secondary.description, 
-                            len(secondary_update))
-                        )
+                raise exc.StaleDataError(
+                        "UPDATE statement on table '%s' expected to update %d row(s); "
+                        "Only %d were matched." % 
+                        (self.secondary.description, len(secondary_update),
+                        result.rowcount)
+                    )
 
         if secondary_insert:
             statement = self.secondary.insert()

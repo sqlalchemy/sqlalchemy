@@ -605,14 +605,14 @@ class VersioningTest(_base.MappedTest):
 
         sess.flush()
 
-        assert_raises(orm_exc.ConcurrentModificationError,
+        assert_raises(orm_exc.StaleDataError,
                         sess2.query(Base).with_lockmode('read').get, 
                         s1.id)
 
         if not testing.db.dialect.supports_sane_rowcount:
             sess2.flush()
         else:
-            assert_raises(orm_exc.ConcurrentModificationError, sess2.flush)
+            assert_raises(orm_exc.StaleDataError, sess2.flush)
 
         sess2.refresh(s2)
         if testing.db.dialect.supports_sane_rowcount:
@@ -652,12 +652,14 @@ class VersioningTest(_base.MappedTest):
         s2.subdata = 'some new subdata'
         sess.flush()
 
-        try:
-            s1.subdata = 'some new subdata'
+        s1.subdata = 'some new subdata'
+        if testing.db.dialect.supports_sane_rowcount:
+            assert_raises(
+                orm_exc.StaleDataError,
+                sess.flush
+            )
+        else:
             sess.flush()
-            assert not testing.db.dialect.supports_sane_rowcount
-        except orm_exc.ConcurrentModificationError, e:
-            assert True
 
 class DistinctPKTest(_base.MappedTest):
     """test the construction of mapper.primary_key when an inheriting relationship

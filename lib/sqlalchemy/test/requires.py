@@ -247,6 +247,12 @@ def sane_rowcount(fn):
         skip_if(lambda: not testing.db.dialect.supports_sane_rowcount)
     )
 
+def sane_multi_rowcount(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not testing.db.dialect.supports_sane_multi_rowcount)
+    )
+
 def reflects_pk_names(fn):
     """Target driver reflects the name of primary key constraints."""
     return _chain_decorators_on(
