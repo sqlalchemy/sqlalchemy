@@ -2619,17 +2619,18 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_table_in_model_and_different_named_column_in_mixin(self):
 
         class ColumnMixin:
-
             tada = Column(Integer)
-
+            
+            
         def go():
 
             class Model(Base, ColumnMixin):
 
-                __table__ = Table('foo', Base.metadata, Column('data',
-                                  Integer), Column('id', Integer,
-                                  primary_key=True))
-
+                __table__ = Table('foo', Base.metadata, 
+                                Column('data',Integer), 
+                                Column('id', Integer,primary_key=True))
+                foo = relationship("Dest")
+                
         assert_raises_message(sa.exc.ArgumentError,
                               "Can't add additional column 'tada' when "
                               "specifying __table__", go)

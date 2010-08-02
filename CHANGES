@@ -83,7 +83,10 @@ CHANGES
     isn't a mixin - evaluation is at the same time as if
     @classproperty weren't used. But here we at least allow
     it to function as expected.
-    
+
+  - Fixed bug where "Can't add additional column" message
+    would display the wrong name.
+        
 - mssql
   - Fixed "default schema" query to work with
     pymssql backend.

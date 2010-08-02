@@ -928,6 +928,7 @@ def _as_declarative(cls, classname, dict_):
     
     cls._decl_class_registry[classname] = cls
     our_stuff = util.OrderedDict()
+
     for k in dict_:
         value = dict_[k]
         if isinstance(value, util.classproperty):
@@ -998,7 +999,7 @@ def _as_declarative(cls, classname, dict_):
                 if not table.c.contains_column(c):
                     raise exceptions.ArgumentError(
                         "Can't add additional column %r when "
-                        "specifying __table__" % key
+                        "specifying __table__" % c.key
                     )
     
     if 'inherits' not in mapper_args:
