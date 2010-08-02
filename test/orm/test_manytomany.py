@@ -1,10 +1,12 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message, eq_
+from sqlalchemy.test.testing import assert_raises, \
+    assert_raises_message, eq_
 import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relationship, create_session
+from sqlalchemy.orm import mapper, relationship, create_session, \
+    exc as orm_exc, sessionmaker
 from test.orm import _base
 
 
@@ -14,35 +16,47 @@ class M2MTest(_base.MappedTest):
         Table('place', metadata,
             Column('place_id', Integer, sa.Sequence('pid_seq', optional=True),
                    primary_key=True),
-            Column('name', String(30), nullable=False))
+            Column('name', String(30), nullable=False),
+            test_needs_acid=True,
+            )
 
         Table('transition', metadata,
             Column('transition_id', Integer,
                    sa.Sequence('tid_seq', optional=True), primary_key=True),
-            Column('name', String(30), nullable=False))
+            Column('name', String(30), nullable=False),
+            test_needs_acid=True,
+            )
 
         Table('place_thingy', metadata,
             Column('thingy_id', Integer, sa.Sequence('thid_seq', optional=True),
                    primary_key=True),
             Column('place_id', Integer, ForeignKey('place.place_id'),
                    nullable=False),
-            Column('name', String(30), nullable=False))
+            Column('name', String(30), nullable=False),
+            test_needs_acid=True,
+            )
 
         # association table #1
         Table('place_input', metadata,
             Column('place_id', Integer, ForeignKey('place.place_id')),
             Column('transition_id', Integer,
-                   ForeignKey('transition.transition_id')))
+                   ForeignKey('transition.transition_id')),
+                   test_needs_acid=True,
+                   )
 
         # association table #2
         Table('place_output', metadata,
             Column('place_id', Integer, ForeignKey('place.place_id')),
             Column('transition_id', Integer,
-                   ForeignKey('transition.transition_id')))
+                   ForeignKey('transition.transition_id')),
+                   test_needs_acid=True,
+                   )
 
         Table('place_place', metadata,
               Column('pl1_id', Integer, ForeignKey('place.place_id')),
-              Column('pl2_id', Integer, ForeignKey('place.place_id')))
+              Column('pl2_id', Integer, ForeignKey('place.place_id')),
+              test_needs_acid=True,
+              )
 
     @classmethod
     def setup_classes(cls):
@@ -219,7 +233,47 @@ class M2MTest(_base.MappedTest):
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
 
+    @testing.requires.sane_multi_rowcount
+    @testing.resolve_artifact_names
+    def test_stale_conditions(self):
+        mapper(Place, place, properties={
+            'transitions':relationship(Transition, secondary=place_input, 
+                                            passive_updates=False)
+        })
+        mapper(Transition, transition)
+        
+        p1 = Place('place1')
+        t1 = Transition('t1')
+        p1.transitions.append(t1)
+        sess = sessionmaker()()
+        sess.add_all([p1, t1])
+        sess.commit()
 
+        p1.place_id
+        p1.transitions
+        
+        sess.execute("delete from place_input", mapper=Place)
+        p1.place_id = 7
+        
+        assert_raises_message(
+            orm_exc.StaleDataError,
+            r"UPDATE statement on table 'place_input' expected to "
+            r"update 1 row\(s\); Only 0 were matched.",
+            sess.commit
+        )
+        sess.rollback()
+        
+        p1.place_id
+        p1.transitions
+        sess.execute("delete from place_input", mapper=Place)
+        p1.transitions.remove(t1)
+        assert_raises_message(
+            orm_exc.StaleDataError,
+            r"DELETE statement on table 'place_input' expected to "
+            r"delete 1 row\(s\); Only 0 were matched.",
+            sess.commit
+        )
+        
 class M2MTest2(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

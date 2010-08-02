@@ -3,11 +3,21 @@ Oracle
 
 .. automodule:: sqlalchemy.dialects.oracle.base
 
-Oracle Column Types
+Oracle Data Types
 -------------------
 
-In addition to those types at :ref:`types`, datatypes specific to the
-Oracle dialect include those listed here.
+As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
+valid with Oracle are importable from the top level dialect, whether
+they originate from :mod:`sqlalchemy.types` or from the local dialect::
+
+    from sqlalchemy.dialects.oracle import \
+                BFILE, BLOB, CHAR, CLOB, DATE, DATETIME, \
+                DOUBLE_PRECISION, FLOAT, INTERVAL, LONG, NCLOB, \
+                NUMBER, NVARCHAR, NVARCHAR2, RAW, TIMESTAMP, VARCHAR, \
+                VARCHAR2
+
+Types which are specific to Oracle, or have Oracle-specific 
+construction arguments, are as follows:
 
 .. autoclass:: BFILE
   :members: __init__

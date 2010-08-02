@@ -238,6 +238,22 @@ class CompositeProperty(ColumnProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 class ConcreteInheritedProperty(MapperProperty):
+    """A 'do nothing' :class:`MapperProperty` that disables 
+    an attribute on a concrete subclass that is only present
+    on the inherited mapper, not the concrete classes' mapper.
+    
+    Cases where this occurs include:
+    
+    * When the superclass mapper is mapped against a 
+      "polymorphic union", which includes all attributes from 
+      all subclasses.
+    * When a relationship() is configured on an inherited mapper,
+      but not on the subclass mapper.  Concrete mappers require
+      that relationship() is configured explicitly on each 
+      subclass. 
+    
+    """
+    
     extension = None
 
     def setup(self, context, entity, path, adapter, **kwargs):
@@ -246,6 +262,10 @@ class ConcreteInheritedProperty(MapperProperty):
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
 
+    def merge(self, session, source_state, source_dict, dest_state,
+                dest_dict, load, _recursive):
+        pass
+        
     def instrument_class(self, mapper):
         def warn():
             raise AttributeError("Concrete %s does not implement "

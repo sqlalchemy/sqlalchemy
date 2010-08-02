@@ -6,6 +6,15 @@ CHANGES
 0.6.4
 =====
 - orm
+  - The name ConcurrentModificationError has been
+    changed to StaleDataError, and descriptive 
+    error messages have been revised to reflect
+    exactly what the issue is.   Both names will
+    remain available for the forseeable future
+    for schemes that may be specifying 
+    ConcurrentModificationError in an "except:"
+    clause.
+    
   - Moving an o2m object from one collection to
     another, or vice versa changing the referenced
     object by an m2o, where the foreign key is also a
@@ -31,6 +40,13 @@ CHANGES
     version generator is also bypassed if 
     manual changes are present on the attribute.
     [ticket:1857]
+
+  - Repaired the usage of merge() when used with 
+    concrete inheriting mappers.  Such mappers frequently
+    have so-called "concrete" attributes, which are
+    subclass attributes that "disable" propagation from
+    the parent - these needed to allow a merge()
+    operation to pass through without effect.
     
 - sql
   - Changed the scheme used to generate truncated
@@ -43,6 +59,17 @@ CHANGES
     hash of the identifier name, so that multiple
     indexes on columns with similar names still
     have unique names.  [ticket:1855]
+
+  - The generated index name also is based on 
+    a "max index name length" attribute which is
+    separate from the "max identifier length" - 
+    this to appease MySQL who has a max length
+    of 64 for index names, separate from their
+    overall max length of 255.  [ticket:1412]
+    
+- mssql
+  - Fixed "default schema" query to work with
+    pymssql backend.
 
 - examples
   - The beaker_caching example has been reorgnized

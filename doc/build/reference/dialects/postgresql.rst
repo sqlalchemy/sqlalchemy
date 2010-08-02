@@ -3,8 +3,21 @@ PostgreSQL
 
 .. automodule:: sqlalchemy.dialects.postgresql.base
 
-PostgresSQL Column Types
+PostgreSQL Data Types
 ------------------------
+
+As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
+valid with Postgresql are importable from the top level dialect, whether
+they originate from :mod:`sqlalchemy.types` or from the local dialect::
+
+    from sqlalchemy.dialects.postgresql import \
+        ARRAY, BIGINT, BIT, BOOLEAN, BYTEA, CHAR, CIDR, DATE, \
+        DOUBLE_PRECISION, ENUM, FLOAT, INET, INTEGER, INTERVAL, \
+        MACADDR, NUMERIC, REAL, SMALLINT, TEXT, TIME, TIMESTAMP, \
+        UUID, VARCHAR
+
+Types which are specific to PostgreSQL, or have PostgreSQL-specific 
+construction arguments, are as follows:
 
 .. autoclass:: ARRAY
     :members: __init__

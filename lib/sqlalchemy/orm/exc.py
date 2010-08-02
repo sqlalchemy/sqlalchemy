@@ -12,8 +12,25 @@ import sqlalchemy as sa
 NO_STATE = (AttributeError, KeyError)
 """Exception types that may be raised by instrumentation implementations."""
 
-class ConcurrentModificationError(sa.exc.SQLAlchemyError):
-    """Rows have been modified outside of the unit of work."""
+class StaleDataError(sa.exc.SQLAlchemyError):
+    """An operation encountered database state that is unaccounted for.
+    
+    Two conditions cause this to happen:
+    
+    * A flush may have attempted to update or delete rows
+      and an unexpected number of rows were matched during 
+      the UPDATE or DELETE statement.   Note that when 
+      version_id_col is used, rows in UPDATE or DELETE statements
+      are also matched against the current known version
+      identifier.
+      
+    * A mapped object with version_id_col was refreshed, 
+      and the version number coming back from the database does
+      not match that of the object itself.
+      
+    """
+    
+ConcurrentModificationError = StaleDataError
 
 
 class FlushError(sa.exc.SQLAlchemyError):
@@ -24,7 +41,8 @@ class UnmappedError(sa.exc.InvalidRequestError):
     """TODO"""
 
 class DetachedInstanceError(sa.exc.SQLAlchemyError):
-    """An attempt to access unloaded attributes on a mapped instance that is detached."""
+    """An attempt to access unloaded attributes on a 
+    mapped instance that is detached."""
     
 class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""

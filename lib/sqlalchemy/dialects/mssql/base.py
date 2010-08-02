@@ -13,11 +13,13 @@ Auto Increment Behavior
 ``IDENTITY`` columns are supported by using SQLAlchemy
 ``schema.Sequence()`` objects. In other words::
 
-    Table('test', mss_engine,
+    from sqlalchemy import Table, Integer, Sequence, Column
+    
+    Table('test', metadata,
            Column('id', Integer,
                   Sequence('blah',100,10), primary_key=True),
            Column('name', String(20))
-         ).create()
+         ).create(some_engine)
 
 would yield::
 
@@ -47,9 +49,11 @@ collation parameter accepts a Windows Collation Name or a SQL
 Collation Name. Supported types are MSChar, MSNChar, MSString,
 MSNVarchar, MSText, and MSNText. For example::
 
-    Column('login', String(32, collation='Latin1_General_CI_AS'))
+    from sqlalchemy.dialects.mssql import VARCHAR
+    Column('login', VARCHAR(32, collation='Latin1_General_CI_AS'))
 
-will yield::
+When such a column is associated with a :class:`Table`, the
+CREATE TABLE statement for this column will yield::
 
     login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL
 
@@ -1057,14 +1061,14 @@ class MSDialect(default.DefaultDialect):
         user_name = connection.scalar("SELECT user_name() as user_name;")
         if user_name is not None:
             # now, get the default schema
-            query = """
+            query = sql.text("""
             SELECT default_schema_name FROM
             sys.database_principals
-            WHERE name = ?
+            WHERE name = :name
             AND type = 'S'
-            """
+            """)
             try:
-                default_schema_name = connection.scalar(query, [user_name])
+                default_schema_name = connection.scalar(query, name=user_name)
                 if default_schema_name is not None:
                     return unicode(default_schema_name)
             except:

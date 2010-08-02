@@ -8,7 +8,7 @@ Querying
 The Query Object
 ----------------
 
-:class:`~sqlalchemy.orm.query.Query` is produced in terms of a given :class:`~sqlalchemy.orm.session.Session`, using the :func:`~sqlalchemy.orm.query.Query.query` function::
+:class:`~.Query` is produced in terms of a given :class:`~.Session`, using the :func:`~.Query.query` function::
 
     q = session.query(SomeMappedClass)
 
@@ -21,7 +21,9 @@ Following is the full interface for the :class:`Query` object.
 ORM-Specific Query Constructs
 -----------------------------
 
-.. autoclass:: aliased
+.. class:: aliased
+
+The public name of the :class:`.AliasedClass` class.
 
 .. autoclass:: sqlalchemy.orm.util.AliasedClass
 
@@ -57,4 +59,6 @@ Options which are passed to ``query.options()``, to affect the behavior of loadi
 .. autofunction:: subqueryload_all
 
 .. autofunction:: undefer
+
+.. autofunction:: undefer_group
 
