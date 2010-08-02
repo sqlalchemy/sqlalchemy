@@ -180,6 +180,8 @@ a many-to-many relationship, since the ORM may issue duplicate INSERT and
 DELETE statements. 
 
 
+.. _declarative_synonyms:
+
 Defining Synonyms
 =================
 

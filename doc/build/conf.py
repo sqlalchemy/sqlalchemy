@@ -36,6 +36,8 @@ extensions = ['sphinx.ext.autodoc',
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']
 
+nitpicky = True
+
 # The suffix of source filenames.
 source_suffix = '.rst'
 

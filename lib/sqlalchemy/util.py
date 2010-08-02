@@ -1668,7 +1668,7 @@ def pending_deprecation(version, message=None,
     """
 
     if add_deprecation_to_docstring:
-        header = message is not None and message or 'Deprecated.'
+        header = ".. deprecated:: %s (pending) %s" % (version, (message or ''))
     else:
         header = None
 

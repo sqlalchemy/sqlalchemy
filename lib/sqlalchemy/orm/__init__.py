@@ -519,27 +519,27 @@ def column_property(*args, **kwargs):
     Columns that aren't present in the mapper's selectable won't be persisted
     by the mapper and are effectively "read-only" attributes.
 
-      \*cols
+    :param \*cols:
           list of Column objects to be mapped.
 
-      comparator_factory
-        a class which extends ``sqlalchemy.orm.properties.ColumnProperty.Comparator``
+    :param comparator_factory:
+        a class which extends :class:`sqlalchemy.orm.properties.ColumnProperty.Comparator`
         which provides custom SQL clause generation for comparison operations.
 
-      group
-          a group name for this property when marked as deferred.
+    :param group:
+        a group name for this property when marked as deferred.
 
-      deferred
+    :param deferred:
           when True, the column property is "deferred", meaning that
           it does not load immediately, and is instead loaded when the
           attribute is first accessed on an instance.  See also
           :func:`~sqlalchemy.orm.deferred`.
       
-      doc
+    :param doc:
           optional string that will be applied as the doc on the
           class-bound descriptor.
           
-      extension
+    :param extension:
         an :class:`~sqlalchemy.orm.interfaces.AttributeExtension` instance,
         or list of extensions, which will be prepended to the list of
         attribute listeners for the resulting descriptor placed on the class.
@@ -553,70 +553,33 @@ def column_property(*args, **kwargs):
 
 def composite(class_, *cols, **kwargs):
     """Return a composite column-based property for use with a Mapper.
-
-    This is very much like a column-based property except the given class is
-    used to represent "composite" values composed of one or more columns.
-
-    The class must implement a constructor with positional arguments matching
-    the order of columns supplied here, as well as a __composite_values__()
-    method which returns values in the same order.
-
-    A simple example is representing separate two columns in a table as a
-    single, first-class "Point" object::
-
-      class Point(object):
-          def __init__(self, x, y):
-              self.x = x
-              self.y = y
-          def __composite_values__(self):
-              return self.x, self.y
-          def __eq__(self, other):
-              return other is not None and self.x == other.x and self.y == other.y
-
-      # and then in the mapping:
-      ... composite(Point, mytable.c.x, mytable.c.y) ...
-
-    The composite object may have its attributes populated based on the names
-    of the mapped columns.  To override the way internal state is set,
-    additionally implement ``__set_composite_values__``::
-
-        class Point(object):
-            def __init__(self, x, y):
-                self.some_x = x
-                self.some_y = y
-            def __composite_values__(self):
-                return self.some_x, self.some_y
-            def __set_composite_values__(self, x, y):
-                self.some_x = x
-                self.some_y = y
-            def __eq__(self, other):
-                return other is not None and self.some_x == other.x and self.some_y == other.y
-
-    Arguments are:
-
-    class\_
+    
+    See the mapping documention section :ref:`mapper_composite` for a full
+    usage example.
+    
+    :param class\_:
       The "composite type" class.
 
-    \*cols
+    :param \*cols:
       List of Column objects to be mapped.
 
-    group
+    :param group:
       A group name for this property when marked as deferred.
 
-    deferred
+    :param deferred:
       When True, the column property is "deferred", meaning that it does not
       load immediately, and is instead loaded when the attribute is first
       accessed on an instance.  See also :func:`~sqlalchemy.orm.deferred`.
 
-    comparator_factory
-      a class which extends :class:`~sqlalchemy.orm.properties.CompositeProperty.Comparator`
+    :param comparator_factory:
+      a class which extends :class:`sqlalchemy.orm.properties.CompositeProperty.Comparator`
       which provides custom SQL clause generation for comparison operations.
 
-    doc
+    :param doc:
       optional string that will be applied as the doc on the
       class-bound descriptor.
 
-    extension
+    :param extension:
       an :class:`~sqlalchemy.orm.interfaces.AttributeExtension` instance,
       or list of extensions, which will be prepended to the list of
       attribute listeners for the resulting descriptor placed on the class.
@@ -869,25 +832,34 @@ def comparable_property(comparator_factory, descriptor=None):
     (__eq__) to the supplied comparator but proxies everything else through to
     the original descriptor::
 
+      from sqlalchemy.orm import mapper, comparable_property
+      from sqlalchemy.orm.interfaces import PropComparator
+      from sqlalchemy.sql import func
+      
       class MyClass(object):
           @property
           def myprop(self):
               return 'foo'
 
-      class MyComparator(sqlalchemy.orm.interfaces.PropComparator):
+      class MyComparator(PropComparator):
           def __eq__(self, other):
-              ....
+              return func.lower(other) == foo
 
-      mapper(MyClass, mytable, properties=dict(
-               'myprop': comparable_property(MyComparator)))
+      mapper(MyClass, mytable, properties={
+               'myprop': comparable_property(MyComparator)})
 
     Used with the ``properties`` dictionary sent to  :func:`~sqlalchemy.orm.mapper`.
-
-    comparator_factory
+    
+    Note that :func:`comparable_property` is usually not needed for basic
+    needs.   The recipe at :mod:`.derived_attributes` offers a simpler pure-Python
+    method of achieving a similar result using class-bound attributes with 
+    SQLAlchemy expression constructs.
+    
+    :param comparator_factory:
       A PropComparator subclass or factory that defines operator behavior
       for this property.
 
-    descriptor
+    :param descriptor:
       Optional when used in a ``properties={}`` declaration.  The Python
       descriptor or property to layer comparison behavior on top of.
 

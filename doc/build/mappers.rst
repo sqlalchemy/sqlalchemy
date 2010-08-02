@@ -3,49 +3,146 @@
 ====================
 Mapper Configuration
 ====================
-This section references most major configurational patterns involving the :func:`~sqlalchemy.orm.mapper` and :func:`~sqlalchemy.orm.relationship` functions.  It assumes you've worked through :ref:`ormtutorial_toplevel` and know how to construct and use rudimentary mappers and relationships.
+This section references most major configurational patterns involving the
+:func:`~.orm.mapper` and :func:`.relationship` functions. It assumes you've
+worked through :ref:`ormtutorial_toplevel` and know how to construct and use
+rudimentary mappers and relationships.
 
 Mapper Configuration
 ====================
 
+This section describes a variety of configurational patterns that are usable
+with mappers.   Most of these examples apply equally well
+to the usage of distinct :func:`~.orm.mapper` and :class:`.Table` objects 
+as well as when using the :mod:`sqlalchemy.ext.declarative` extension.
+
+Any example in this section which takes a form such as::
+
+    mapper(User, users_table, primary_key=[users_table.c.id])
+    
+Would translate into declarative as::
+
+    class User(Base):
+        __table__ = users_table
+        __mapper_args__ = {
+            'primary_key':users_table.c.id
+        }
+
+Or if using ``__tablename__``, :class:`.Column` objects are declared inline
+with the class definition. These are usable as is within ``__mapper_args__``::
+
+    class User(Base):
+        __tablename__ = 'users'
+        
+        id = Column(Integer)
+        
+        __mapper_args__ = {
+            'primary_key':id
+        }
+
+For a full reference of all options available on mappers, please see the API
+description of :func:`~.orm.mapper`.
+
 Customizing Column Properties
 ------------------------------
 
-The default behavior of a ``mapper`` is to assemble all the columns in the mapped :class:`~sqlalchemy.schema.Table` into mapped object attributes.  This behavior can be modified in several ways, as well as enhanced by SQL expressions.
+The default behavior of :func:`~.orm.mapper` is to assemble all the columns in
+the mapped :class:`.Table` into mapped object attributes. This behavior can be
+modified in several ways, as well as enhanced by SQL expressions.
 
-To load only a part of the columns referenced by a table as attributes, use the ``include_properties`` and ``exclude_properties`` arguments::
+Mapping a Subset of Table Columns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To reference a subset of columns referenced by a table as mapped attributes,
+use the ``include_properties`` or ``exclude_properties`` arguments. For
+example::
 
     mapper(User, users_table, include_properties=['user_id', 'user_name'])
+    
+Will map the ``User`` class to the ``users_table`` table, only including
+the "user_id" and "user_name" columns - the rest are not refererenced.
+Similarly::
 
-    mapper(Address, addresses_table, exclude_properties=['street', 'city', 'state', 'zip'])
+    mapper(Address, addresses_table, 
+                exclude_properties=['street', 'city', 'state', 'zip'])
 
-To change the name of the attribute mapped to a particular column, place the :class:`~sqlalchemy.schema.Column` object in the ``properties`` dictionary with the desired key::
+will map the ``Address`` class to the ``addresses_table`` table, including
+all columns present except "street", "city", "state", and "zip".
+
+When this mapping is used, the columns that are not included will not be
+referenced in any SELECT statements emitted by :class:`.Query`, nor will there
+be any mapped attribute on the mapped class which represents the column;
+setting a value on the mapped class to a name which matches an un-mapped
+column will have no effect.
+
+It should be noted however that "default", "on_update", "server_default" and
+"server_onupdate" attributes configured on the :class:`.Column` *will* continue to function normally.   The columns are ignored only at the mapper
+level, but not at the SQL expression level.  The ORM uses the SQL expression
+system to emit SQL to the database.
+
+Attribute Names for Mapped Columns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To change the name of the attribute mapped to a particular column, place the
+:class:`~sqlalchemy.schema.Column` object in the ``properties`` dictionary
+with the desired key::
 
     mapper(User, users_table, properties={
        'id': users_table.c.user_id,
        'name': users_table.c.user_name,
     })
 
-To change the names of all attributes using a prefix, use the ``column_prefix`` option.  This is useful for classes which wish to add their own ``property`` accessors::
+When using :mod:`~sqlalchemy.ext.declarative`, the above configuration is more
+succinct - place the full column name in the :class:`.Column` definition,
+using the desired attribute name in the class definition::
+
+    from sqlalchemy.ext.declarative import declarative_base
+    Base = declarative_base()
+    
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column('user_id', Integer, primary_key=True)
+        name = Column('user_name', String(50))
+
+To change the names of all attributes using a prefix, use the
+``column_prefix`` option.  This is useful for some schemes that would like
+to declare alternate attributes::
 
     mapper(User, users_table, column_prefix='_')
 
-The above will place attribute names such as ``_user_id``, ``_user_name``, ``_password`` etc. on the mapped ``User`` class.
+The above will place attribute names such as ``_user_id``, ``_user_name``,
+``_password`` etc. on the mapped ``User`` class.
 
-To place multiple columns which are known to be "synonymous" based on foreign key relationship or join condition into the same mapped attribute, put  them together using a list, as below where we map to a :class:`~sqlalchemy.sql.expression.Join`::
 
+Mapping Multiple Columns to a Single Attribute
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To place multiple columns which are known to be "synonymous" based on foreign
+key relationship or join condition into the same mapped attribute, put them
+together using a list, as below where we map to a :func:`~.expression.join`::
+
+    from sqlalchemy.sql import join
+    
     # join users and addresses
-    usersaddresses = sql.join(users_table, addresses_table, \
+    usersaddresses = join(users_table, addresses_table, \
         users_table.c.user_id == addresses_table.c.user_id)
 
+    # user_id columns are equated under the 'user_id' attribute
     mapper(User, usersaddresses, properties={
         'id':[users_table.c.user_id, addresses_table.c.user_id],
     })
 
+For further examples on this particular use case, see :ref:`maptojoin`.
+
 Deferred Column Loading
 ------------------------
 
-This feature allows particular columns of a table to not be loaded by default, instead being loaded later on when first referenced.  It is essentially "column-level lazy loading".   This feature is useful when one wants to avoid loading a large text or binary field into memory when it's not needed.  Individual columns can be lazy loaded by themselves or placed into groups that lazy-load together::
+This feature allows particular columns of a table to not be loaded by default,
+instead being loaded later on when first referenced. It is essentially
+"column-level lazy loading". This feature is useful when one wants to avoid
+loading a large text or binary field into memory when it's not needed.
+Individual columns can be lazy loaded by themselves or placed into groups that
+lazy-load together::
 
     book_excerpts = Table('books', db,
         Column('book_id', Integer, primary_key=True),
@@ -91,16 +188,18 @@ Deferred columns can be placed into groups so that they load together::
       'photo3': deferred(book_excerpts.c.photo3, group='photos')
     })
 
-You can defer or undefer columns at the :class:`~sqlalchemy.orm.query.Query` level using the ``defer`` and ``undefer`` options::
+You can defer or undefer columns at the :class:`~sqlalchemy.orm.query.Query` level using the :func:`.defer` and :func:`.undefer` query options::
 
     query = session.query(Book)
     query.options(defer('summary')).all()
     query.options(undefer('excerpt')).all()
 
-And an entire "deferred group", i.e. which uses the ``group`` keyword argument to :func:`~sqlalchemy.orm.deferred()`, can be undeferred using :func:`~sqlalchemy.orm.undefer_group()`, sending in the group name::
+And an entire "deferred group", i.e. which uses the ``group`` keyword argument to :func:`~sqlalchemy.orm.deferred()`, can be undeferred using :func:`.undefer_group()`, sending in the group name::
 
     query = session.query(Book)
     query.options(undefer_group('photos')).all()
+
+.. _mapper_sql_expressions:
 
 SQL Expressions as Mapped Attributes
 -------------------------------------
@@ -129,15 +228,15 @@ Correlated subqueries may be used as well:
 Changing Attribute Behavior
 ----------------------------
 
-
 Simple Validators
 ~~~~~~~~~~~~~~~~~~
 
-
-A quick way to add a "validation" routine to an attribute is to use the :func:`~sqlalchemy.orm.validates` decorator.  This is a shortcut for using the :class:`sqlalchemy.orm.util.Validator` attribute extension with individual column or relationship based attributes.   An attribute validator can raise an exception, halting the process of mutating the attribute's value, or can change the given value into something different.   Validators, like all attribute extensions, are only called by normal userland code; they are not issued when the ORM is populating the object.
+A quick way to add a "validation" routine to an attribute is to use the :func:`~sqlalchemy.orm.validates` decorator.  An attribute validator can raise an exception, halting the process of mutating the attribute's value, or can change the given value into something different.   Validators, like all attribute extensions, are only called by normal userland code; they are not issued when the ORM is populating the object.
 
 .. sourcecode:: python+sql
-
+    
+    from sqlalchemy.orm import validates
+    
     addresses_table = Table('addresses', metadata,
         Column('id', Integer, primary_key=True),
         Column('email', String)
@@ -202,51 +301,77 @@ The ``email`` attribute is now usable in the same way as any other mapped attrib
 
 If the mapped class does not provide a property, the :func:`~sqlalchemy.orm.synonym` construct will create a default getter/setter object automatically.
 
+To use synonyms with :mod:`~sqlalchemy.ext.declarative`, see the section 
+:ref:`declarative_synonyms`.
+
 .. _custom_comparators:
 
 Custom Comparators
 ~~~~~~~~~~~~~~~~~~~
 
-The expressions returned by comparison operations, such as ``User.name=='ed'``, can be customized.  SQLAlchemy attributes generate these expressions using :class:`~sqlalchemy.orm.interfaces.PropComparator` objects, which provide common Python expression overrides including ``__eq__()``, ``__ne__()``, ``__lt__()``, and so on.  Any mapped attribute can be passed a user-defined class via the ``comparator_factory`` keyword argument, which subclasses the appropriate :class:`~sqlalchemy.orm.interfaces.PropComparator` in use, which can provide any or all of these methods:
+The expressions returned by comparison operations, such as
+``User.name=='ed'``, can be customized, by implementing an object that
+explicitly defines each comparison method needed. This is a relatively rare
+use case. For most needs, the approach in :ref:`mapper_sql_expressions` will
+often suffice, or alternatively a scheme like that of the 
+:mod:`.derived_attributes` example.  Those approaches should be tried first
+before resorting to custom comparison objects.
 
-.. sourcecode:: python+sql
+Each of :func:`.column_property`, :func:`~.composite`, :func:`.relationship`, and :func:`.comparable_property` accept an argument called ``comparator_factory``.  A subclass of :class:`.PropComparator` can be 
+provided for this argument, which can then reimplement basic Python comparison
+methods such as ``__eq__()``, ``__ne__()``, ``__lt__()``, and so on.  See
+each of those functions for subclassing guidelines, as it's usually best to
+subclass the :class:`.PropComparator` subclass used by that type of
+property, so that all methods remain implemented.   For example, to 
+allow a column-mapped attribute to do case-insensitive
+comparison::
 
     from sqlalchemy.orm.properties import ColumnProperty
+    from sqlalchemy.sql import func
+    
     class MyComparator(ColumnProperty.Comparator):
         def __eq__(self, other):
             return func.lower(self.__clause_element__()) == func.lower(other)
 
     mapper(EmailAddress, addresses_table, properties={
-        'email':column_property(addresses_table.c.email, comparator_factory=MyComparator)
+        'email':column_property(addresses_table.c.email,
+                                comparator_factory=MyComparator)
     })
 
-Above, comparisons on the ``email`` column are wrapped in the SQL lower() function to produce case-insensitive matching:
-
-.. sourcecode:: python+sql
+Above, comparisons on the ``email`` column are wrapped in the SQL lower() function to produce case-insensitive matching::
 
     >>> str(EmailAddress.email == 'SomeAddress@foo.com')
     lower(addresses.email) = lower(:lower_1)
 
-The ``__clause_element__()`` method is provided by the base ``Comparator`` class in use, and represents the SQL element which best matches what this attribute represents.  For a column-based attribute, it's the mapped column.  For a composite attribute, it's a :class:`~sqlalchemy.sql.expression.ClauseList` consisting of each column represented.  For a relationship, it's the table mapped by the local mapper (not the remote mapper).  ``__clause_element__()`` should be honored by the custom comparator class in most cases since the resulting element will be applied any translations which are in effect, such as the correctly aliased member when using an ``aliased()`` construct or certain :func:`~sqlalchemy.orm.query.Query.with_polymorphic` scenarios.
+In contrast, a similar effect is more easily accomplished, although
+with less control of it's behavior, using a column-mapped expression::
+    
+    from sqlachemy.orm import column_property
+    from sqlalchemy.sql import func
+    
+    mapper(EmailAddress, addresses_table, properties={
+        'email':column_property(func.lower(addresses_table.c.email))
+    })
 
-There are four kinds of ``Comparator`` classes which may be subclassed, as according to the type of mapper property configured:
+In the above case, the "email" attribute will be rendered as ``lower(email)`` 
+in all queries, including in the columns clause of the SELECT statement.  
+This means the value of "email" will be loaded as lower case, not just in
+comparisons.  It's up to the user to decide if the finer-grained control
+but more upfront work of a custom :class:`.PropComparator` is necessary.
 
-  * :func:`~sqlalchemy.orm.column_property` attribute - ``sqlalchemy.orm.properties.ColumnProperty.Comparator``
-  * :func:`~sqlalchemy.orm.composite` attribute - ``sqlalchemy.orm.properties.CompositeProperty.Comparator``
-  * :func:`~sqlalchemy.orm.relationship` attribute - ``sqlalchemy.orm.properties.RelationshipProperty.Comparator``
-  * :func:`~sqlalchemy.orm.comparable_property` attribute - ``sqlalchemy.orm.interfaces.PropComparator``
-
-When using :func:`~sqlalchemy.orm.comparable_property`, which is a mapper property that isn't tied to any column or mapped table, the ``__clause_element__()`` method of :class:`~sqlalchemy.orm.interfaces.PropComparator` should also be implemented.
-
-The ``comparator_factory`` argument is accepted by all ``MapperProperty``-producing functions:  :func:`~sqlalchemy.orm.column_property`, :func:`~sqlalchemy.orm.composite`, :func:`~sqlalchemy.orm.comparable_property`, :func:`~sqlalchemy.orm.synonym`, :func:`~sqlalchemy.orm.relationship`, :func:`~sqlalchemy.orm.backref`, :func:`~sqlalchemy.orm.deferred`, and :func:`~sqlalchemy.orm.dynamic_loader`.
+.. _mapper_composite:
 
 Composite Column Types
 -----------------------
 
-Sets of columns can be associated with a single datatype.  The ORM treats the group of columns like a single column which accepts and returns objects using the custom datatype you provide.  In this example, we'll create a table ``vertices`` which stores a pair of x/y coordinates, and a custom datatype ``Point`` which is a composite type of an x and y column:
+Sets of columns can be associated with a single user-defined datatype.  The ORM provides a single attribute which represents the group of columns 
+using the class you provide.
 
-.. sourcecode:: python+sql
+A simple example represents pairs of columns as a "Point" object.  
+Starting with a table that represents two points as x1/y1 and x2/y2::
 
+    from sqlalchemy import Table, Column
+    
     vertices = Table('vertices', metadata,
         Column('id', Integer, primary_key=True),
         Column('x1', Integer),
@@ -255,25 +380,39 @@ Sets of columns can be associated with a single datatype.  The ORM treats the gr
         Column('y2', Integer),
         )
 
-The requirements for the custom datatype class are that it have a constructor which accepts positional arguments corresponding to its column format, and also provides a method ``__composite_values__()`` which returns the state of the object as a list or tuple, in order of its column-based attributes.  It also should supply adequate ``__eq__()`` and ``__ne__()`` methods which test the equality of two instances, and may optionally provide a ``__set_composite_values__`` method which is used to set internal state in some cases (typically when default values have been generated during a flush)::
+We create a new class, ``Point``, that will represent each x/y as a 
+pair::
 
     class Point(object):
         def __init__(self, x, y):
             self.x = x
             self.y = y
         def __composite_values__(self):
-            return [self.x, self.y]
+            return self.x, self.y
         def __set_composite_values__(self, x, y):
             self.x = x
             self.y = y
         def __eq__(self, other):
-            return other.x == self.x and other.y == self.y
+            return other is not None and \
+                    other.x == self.x and \
+                    other.y == self.y
         def __ne__(self, other):
             return not self.__eq__(other)
 
-If ``__set_composite_values__()`` is not provided, the names of the mapped columns are taken as the names of attributes on the object, and ``setattr()`` is used to set data.
+The requirements for the custom datatype class are that it have a
+constructor which accepts positional arguments corresponding to its column
+format, and also provides a method ``__composite_values__()`` which
+returns the state of the object as a list or tuple, in order of its
+column-based attributes. It also should supply adequate ``__eq__()`` and
+``__ne__()`` methods which test the equality of two instances.
 
-Setting up the mapping uses the :func:`~sqlalchemy.orm.composite()` function::
+The ``__set_composite_values__()`` method is optional. If it's not
+provided, the names of the mapped columns are taken as the names of
+attributes on the object, and ``setattr()`` is used to set data.
+
+The :func:`.composite` function is then used in the mapping::
+
+    from sqlalchemy.orm import mapper, composite
 
     class Vertex(object):
         pass
@@ -283,30 +422,37 @@ Setting up the mapping uses the :func:`~sqlalchemy.orm.composite()` function::
         'end': composite(Point, vertices.c.x2, vertices.c.y2)
     })
 
-We can now use the ``Vertex`` instances as well as querying as though the ``start`` and ``end`` attributes are regular scalar attributes::
+We can now use the ``Vertex`` instances as well as querying as though the
+``start`` and ``end`` attributes are regular scalar attributes::
 
     session = Session()
     v = Vertex(Point(3, 4), Point(5, 6))
-    session.save(v)
+    session.add(v)
 
     v2 = session.query(Vertex).filter(Vertex.start == Point(3, 4))
 
-The "equals" comparison operation by default produces an AND of all corresponding columns equated to one another.  This can be changed using the ``comparator_factory``, described in :ref:`custom_comparators`::
+The "equals" comparison operation by default produces an AND of all
+corresponding columns equated to one another. This can be changed using
+the ``comparator_factory``, described in :ref:`custom_comparators`.
+Below we illustrate the "greater than" operator, implementing 
+the same expression that the base "greater than" does::
 
     from sqlalchemy.orm.properties import CompositeProperty
     from sqlalchemy import sql
 
     class PointComparator(CompositeProperty.Comparator):
         def __gt__(self, other):
-            """define the 'greater than' operation"""
+            """redefine the 'greater than' operation"""
 
             return sql.and_(*[a>b for a, b in
                               zip(self.__clause_element__().clauses,
                                   other.__composite_values__())])
 
     maper(Vertex, vertices, properties={
-        'start': composite(Point, vertices.c.x1, vertices.c.y1, comparator_factory=PointComparator),
-        'end': composite(Point, vertices.c.x2, vertices.c.y2, comparator_factory=PointComparator)
+        'start': composite(Point, vertices.c.x1, vertices.c.y1,
+                                    comparator_factory=PointComparator),
+        'end': composite(Point, vertices.c.x2, vertices.c.y2,
+                                    comparator_factory=PointComparator)
     })
 
 Controlling Ordering
@@ -744,6 +890,8 @@ The big limitation with concrete table inheritance is that :func:`~sqlalchemy.or
     })
 
 
+.. _maptojoin:
+
 Mapping a Class against Multiple Tables
 ----------------------------------------
 
@@ -751,7 +899,8 @@ Mappers can be constructed against arbitrary relational units (called ``Selectab
 
 .. sourcecode:: python+sql
 
-    # a class
+    from sqlalchemy.sql import join
+    
     class AddressUser(object):
         pass
 
@@ -767,6 +916,8 @@ Mappers can be constructed against arbitrary relational units (called ``Selectab
 A second example:
 
 .. sourcecode:: python+sql
+
+    from sqlalchemy.sql import join
 
     # many-to-many join on an association table
     j = join(users_table, userkeywords,
@@ -789,10 +940,11 @@ In both examples above, "composite" columns were added as properties to the mapp
 Mapping a Class against Arbitrary Selects
 ------------------------------------------
 
-
 Similar to mapping against a join, a plain select() object can be used with a mapper as well.  Below, an example select which contains two aggregate functions and a group_by is mapped to a class:
 
 .. sourcecode:: python+sql
+
+    from sqlalchemy.sql import select
 
     s = select([customers,
                 func.count(orders).label('order_count'),
