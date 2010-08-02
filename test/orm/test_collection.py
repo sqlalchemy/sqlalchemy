@@ -7,12 +7,12 @@ from sqlalchemy.orm.collections import collection
 
 import sqlalchemy as sa
 from sqlalchemy.test import testing
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, text
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import util, exc as sa_exc
 from sqlalchemy.orm import create_session, mapper, relationship, attributes
 from test.orm import _base
-from sqlalchemy.test.testing import eq_, assert_raises
+from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 
 class Canary(sa.orm.interfaces.AttributeExtension):
     def __init__(self):
@@ -1561,6 +1561,25 @@ class DictHelpersTest(_base.MappedTest):
             
         eq_(Bar.foos.property.collection_class().keyfunc(Foo(id=3)), 3)
         eq_(Bar.foos2.property.collection_class().keyfunc(Foo(id=3, bar_id=12)), (3, 12))
+
+    @testing.resolve_artifact_names
+    def test_column_mapped_assertions(self):
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Column-based expression object expected; got: 'a'",
+            collections.column_mapped_collection, "a",
+        )
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Column-based expression object expected; got",
+            collections.column_mapped_collection, text("a"),
+        )
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Column-based expression object expected; got",
+            collections.column_mapped_collection, text("a"),
+        )
+        
         
     @testing.resolve_artifact_names
     def test_column_mapped_collection(self):

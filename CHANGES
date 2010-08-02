@@ -47,6 +47,13 @@ CHANGES
     subclass attributes that "disable" propagation from
     the parent - these needed to allow a merge()
     operation to pass through without effect.
+
+  - Specifying a non-column based argument
+    for column_mapped_collection, including string,
+    text() etc., will raise an error message that
+    specifically asks for a column element, no longer
+    misleads with incorrect information about
+    text() or literal().  [ticket:1863]
     
 - sql
   - Changed the scheme used to generate truncated

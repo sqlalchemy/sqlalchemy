@@ -1035,6 +1035,14 @@ def _no_literals(element):
     else:
         return element
 
+def _only_column_elements(element):
+    if hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+    if not isinstance(element, ColumnElement):
+        raise exc.ArgumentError("Column-based expression object expected; "
+                                "got: %r" % element)
+    return element
+    
 def _corresponding_column_or_error(fromclause, column, require_embedded=False):
     c = fromclause.corresponding_column(column,
             require_embedded=require_embedded)
