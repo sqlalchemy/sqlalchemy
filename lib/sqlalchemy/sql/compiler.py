@@ -1182,8 +1182,10 @@ class DDLCompiler(engine.Compiled):
 
     def _index_identifier(self, ident):
         if isinstance(ident, sql._generated_label):
-            if len(ident) > self.dialect.max_identifier_length:
-                return ident[0:self.dialect.max_identifier_length - 8] + \
+            max = self.dialect.max_index_name_length or \
+                        self.dialect.max_identifier_length
+            if len(ident) > max:
+                return ident[0:max - 8] + \
                                 "_" + util.md5_hex(ident)[-4:]
             else:
                 return ident

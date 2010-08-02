@@ -183,24 +183,30 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_too_long_idx_name(self):
         dialect = testing.db.dialect.__class__()
-        dialect.max_identifier_length = 22
 
-        for tname, cname, exp in [
-            ('sometable', 'this_name_is_too_long', 'ix_sometable_t_09aa'),
-            ('sometable', 'this_name_alsois_long', 'ix_sometable_t_3cf1'),
-        ]:
+        for max_ident, max_index in [(22, None), (256, 22)]:
+            dialect.max_identifier_length = max_ident
+            dialect.max_index_name_length = max_index
+
+            for tname, cname, exp in [
+                ('sometable', 'this_name_is_too_long', 'ix_sometable_t_09aa'),
+                ('sometable', 'this_name_alsois_long', 'ix_sometable_t_3cf1'),
+            ]:
         
-            t1 = Table(tname, MetaData(), 
-                        Column(cname, Integer, index=True),
-                    )
-            ix1 = list(t1.indexes)[0]
+                t1 = Table(tname, MetaData(), 
+                            Column(cname, Integer, index=True),
+                        )
+                ix1 = list(t1.indexes)[0]
         
-            self.assert_compile(
-                schema.CreateIndex(ix1),
-                "CREATE INDEX %s "
-                "ON %s (%s)" % (exp, tname, cname),
-                dialect=dialect
-            )
+                self.assert_compile(
+                    schema.CreateIndex(ix1),
+                    "CREATE INDEX %s "
+                    "ON %s (%s)" % (exp, tname, cname),
+                    dialect=dialect
+                )
+        
+        dialect.max_identifier_length = 22
+        dialect.max_index_name_length = None
         
         t1 = Table('t', MetaData(), Column('c', Integer))
         assert_raises(

@@ -59,7 +59,18 @@ class DefaultDialect(base.Dialect):
     # end Py2K
 
     name = 'default'
+    
+    # length at which to truncate
+    # any identifier.
     max_identifier_length = 9999
+    
+    # length at which to truncate
+    # the name of an index.
+    # Usually None to indicate
+    # 'use max_identifier_length'.
+    # thanks to MySQL, sigh
+    max_index_name_length = None
+    
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
     dbapi_type_map = {}

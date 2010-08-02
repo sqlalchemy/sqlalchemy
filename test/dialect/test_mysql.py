@@ -1212,7 +1212,24 @@ class SQLTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([extract('milliseconds', t.c.col1)]),
             "SELECT EXTRACT(millisecond FROM t.col1) AS anon_1 FROM t")
-
+    
+    def test_too_long_index(self):
+        exp = 'ix_zyrenian_zyme_zyzzogeton_zyzzogeton_zyrenian_zyme_zyz_5cd2'
+        tname = 'zyrenian_zyme_zyzzogeton_zyzzogeton'
+        cname = 'zyrenian_zyme_zyzzogeton_zo'
+        
+        t1 = Table(tname, MetaData(), 
+                    Column(cname, Integer, index=True),
+                )
+        ix1 = list(t1.indexes)[0]
+        
+        self.assert_compile(
+            schema.CreateIndex(ix1),
+            "CREATE INDEX %s "
+            "ON %s (%s)" % (exp, tname, cname),
+            dialect=mysql.dialect()
+        )
+        
     def test_innodb_autoincrement(self):
         t1 = Table('sometable', MetaData(), Column('assigned_id',
                    Integer(), primary_key=True, autoincrement=False),

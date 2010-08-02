@@ -60,6 +60,13 @@ CHANGES
     indexes on columns with similar names still
     have unique names.  [ticket:1855]
 
+  - The generated index name also is based on 
+    a "max index name length" attribute which is
+    separate from the "max identifier length" - 
+    this to appease MySQL who has a max length
+    of 64 for index names, separate from their
+    overall max length of 255.  [ticket:1412]
+    
 - mssql
   - Fixed "default schema" query to work with
     pymssql backend.
