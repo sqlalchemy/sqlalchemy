@@ -233,6 +233,61 @@ Similarly, :func:`comparable_using` is a front end for the
         def uc_name(self):
             return self.name.upper()
 
+.. _declarative_sql_expressions:
+
+Defining SQL Expressions
+========================
+
+The usage of :func:`.column_property` with Declarative is
+pretty much the same as that described in
+:ref:`mapper_sql_expressions`. Local columns within the same
+class declaration can be referenced directly::
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        firstname = Column(String)
+        lastname = Column(String)
+        fullname = column_property(
+            firstname + " " + lastname
+        )
+
+Correlated subqueries reference the :class:`Column` objects they
+need either from the local class definition or from remote 
+classes::
+
+    from sqlalchemy.sql import func
+    
+    class Address(Base):
+        __tablename__ = 'address'
+
+        id = Column('id', Integer, primary_key=True)
+        user_id = Column(Integer, ForeignKey('user.id'))
+        
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+        
+        address_count = column_property(
+            select([func.count(Address.id)]).\\
+                where(Address.user_id==id)
+        )
+
+In the case that the ``address_count`` attribute above doesn't have access to
+``Address`` when ``User`` is defined, the ``address_count`` attribute should
+be added to ``User`` when both ``User`` and ``Address`` are available (i.e.
+there is no string based "late compilation" feature like there is with
+:func:`.relationship` at this time). Note we reference the ``id`` column
+attribute of ``User`` with its class when we are no longer in the declaration
+of the ``User`` class::
+
+    User.address_count = column_property(
+        select([func.count(Address.id)]).\\
+            where(Address.user_id==User.id)
+    ) 
+
 Table Configuration
 ===================
 
@@ -429,6 +484,11 @@ share some functionality, often a set of columns, across many
 classes. The normal Python idiom would be to put this common code into
 a base class and have all the other classes subclass this class.
 
+.. note::  Mixins are an entirely optional feature when using declarative,
+  and are not required for any configuration.  Users who don't need
+  to define sets of attributes common among many classes can 
+  skip this section.
+
 When using :mod:`~sqlalchemy.ext.declarative`, this need is met by
 using a "mixin class". A mixin class is one that isn't mapped to a
 table and doesn't subclass the declarative :class:`Base`. For example::
@@ -531,12 +591,12 @@ Mixing in Relationships
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Relationships created by :func:`~sqlalchemy.orm.relationship` are provided
-exclusively using the :func:`~sqlalchemy.util.classproperty` approach,
-eliminating any ambiguity which could arise when copying a relationship
-and its possibly column-bound contents.  Below is an example which 
-combines a foreign key column and a relationship so that two classes
-``Foo`` and ``Bar`` can both be configured to reference a common
-target class via many-to-one::
+with declarative mixin classes exclusively using the
+:func:`~sqlalchemy.util.classproperty` approach, eliminating any ambiguity
+which could arise when copying a relationship and its possibly column-bound
+contents. Below is an example which combines a foreign key column and a
+relationship so that two classes ``Foo`` and ``Bar`` can both be configured to
+reference a common target class via many-to-one::
 
     class RefTargetMixin(object):
         @classproperty
@@ -586,9 +646,9 @@ Mixing in deferred(), column_property(), etc.
 Like :func:`~sqlalchemy.orm.relationship`, all
 :class:`~sqlalchemy.orm.interfaces.MapperProperty` subclasses such as
 :func:`~sqlalchemy.orm.deferred`, :func:`~sqlalchemy.orm.column_property`,
-etc. ultimately involve references to columns, and therefore have the
-:func:`~sqlalchemy.util.classproperty` requirement so that no reliance on
-copying is needed::
+etc. ultimately involve references to columns, and therefore, when 
+used with declarative mixins, have the :func:`~sqlalchemy.util.classproperty` 
+requirement so that no reliance on copying is needed::
 
     class SomethingMixin(object):
 
@@ -607,7 +667,8 @@ Controlling table inheritance with mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``__tablename__`` attribute in conjunction with the hierarchy of
-the classes involved controls what type of table inheritance, if any,
+classes involved in a declarative mixin scenario controls what type of 
+table inheritance, if any,
 is configured by the declarative extension.
 
 If the ``__tablename__`` is computed by a mixin, you may need to
@@ -700,12 +761,13 @@ classes::
 Combining Table/Mapper Arguments from Multiple Mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the case of ``__table_args__`` or ``__mapper_args__``, you may want
-to combine some parameters from several mixins with those you wish to
-define on the class iteself.  The 
-:func:`~sqlalchemy.util.classproperty` decorator can be used here
-to create user-defined collation routines that pull from multiple
-collections::
+In the case of ``__table_args__`` or ``__mapper_args__``
+specified with declarative mixins, you may want to combine
+some parameters from several mixins with those you wish to
+define on the class iteself. The
+:func:`~sqlalchemy.util.classproperty` decorator can be used
+here to create user-defined collation routines that pull
+from multiple collections::
 
     from sqlalchemy.util import classproperty
 
@@ -868,6 +930,9 @@ def _as_declarative(cls, classname, dict_):
     our_stuff = util.OrderedDict()
     for k in dict_:
         value = dict_[k]
+        if isinstance(value, util.classproperty):
+            value = getattr(cls, k)
+            
         if (isinstance(value, tuple) and len(value) == 1 and
             isinstance(value[0], (Column, MapperProperty))):
             util.warn("Ignoring declarative-like tuple value of attribute "

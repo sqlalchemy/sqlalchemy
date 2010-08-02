@@ -1813,7 +1813,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         else:
             name = str(self)
             co = ColumnClause(self.anon_label, selectable, type_=getattr(self, 'type', None))
-
+        
         co.proxies = [self]
         selectable.columns[name] = co
         return co

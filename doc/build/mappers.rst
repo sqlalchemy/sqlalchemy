@@ -204,11 +204,16 @@ And an entire "deferred group", i.e. which uses the ``group`` keyword argument t
 SQL Expressions as Mapped Attributes
 -------------------------------------
 
-To add a SQL clause composed of local or external columns as a read-only, mapped column attribute, use the :func:`~sqlalchemy.orm.column_property()` function.  Any scalar-returning :class:`~sqlalchemy.sql.expression.ClauseElement` may be used, as long as it has a ``name`` attribute; usually, you'll want to call ``label()`` to give it a specific name::
+To add a SQL clause composed of local or external columns as
+a read-only, mapped column attribute, use the
+:func:`~sqlalchemy.orm.column_property()` function. Any
+scalar-returning
+:class:`~sqlalchemy.sql.expression.ClauseElement` may be
+used.  Unlike older versions of SQLAlchemy, there is no :func:`~.sql.expression.label` requirement::
 
     mapper(User, users_table, properties={
         'fullname': column_property(
-            (users_table.c.firstname + " " + users_table.c.lastname).label('fullname')
+            users_table.c.firstname + " " + users_table.c.lastname
         )
     })
 
@@ -221,9 +226,11 @@ Correlated subqueries may be used as well:
                 select(
                     [func.count(addresses_table.c.address_id)],
                     addresses_table.c.user_id==users_table.c.user_id
-                ).label('address_count')
+                )
             )
     })
+
+The declarative form of the above is described in :ref:`declarative_sql_expressions`.
 
 Changing Attribute Behavior
 ----------------------------

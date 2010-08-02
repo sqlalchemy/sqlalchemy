@@ -690,6 +690,40 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(sess.query(User).all(), [User(name='u1', address_count=2,
             addresses=[Address(email='one'), Address(email='two')])])
 
+    def test_useless_classproperty(self):
+        class Address(Base, ComparableEntity):
+
+            __tablename__ = 'addresses'
+            id = Column('id', Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            email = Column('email', String(50))
+            user_id = Column('user_id', Integer, ForeignKey('users.id'))
+
+        class User(Base, ComparableEntity):
+
+            __tablename__ = 'users'
+            id = Column('id', Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            name = Column('name', String(50))
+            addresses = relationship('Address', backref='user')
+            
+            @classproperty
+            def address_count(cls):
+                # this doesn't really gain us anything.  but if
+                # one is used, lets have it function as expected...
+                return sa.orm.column_property(sa.select([sa.func.count(Address.id)]).
+                        where(Address.user_id == cls.id))
+            
+        Base.metadata.create_all()
+        u1 = User(name='u1', addresses=[Address(email='one'),
+                  Address(email='two')])
+        sess = create_session()
+        sess.add(u1)
+        sess.flush()
+        sess.expunge_all()
+        eq_(sess.query(User).all(), [User(name='u1', address_count=2,
+            addresses=[Address(email='one'), Address(email='two')])])
+        
     def test_column(self):
 
         class User(Base, ComparableEntity):

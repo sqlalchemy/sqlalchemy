@@ -66,6 +66,16 @@ CHANGES
     this to appease MySQL who has a max length
     of 64 for index names, separate from their
     overall max length of 255.  [ticket:1412]
+
+- declarative
+  - if @classproperty is used with a regular class-bound
+    mapper property attribute, it will be called to get the
+    actual attribute value during initialization. Currently,
+    there's no advantage to using @classproperty on a column
+    or relationship attribute of a declarative class that
+    isn't a mixin - evaluation is at the same time as if
+    @classproperty weren't used. But here we at least allow
+    it to function as expected.
     
 - mssql
   - Fixed "default schema" query to work with
