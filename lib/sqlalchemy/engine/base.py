@@ -908,7 +908,7 @@ class Connection(Connectable):
                 self.__connection = self.engine.raw_connection()
                 self.__invalid = False
                 return self.__connection
-            raise exc.InvalidRequestError("This Connection is closed")
+            raise exc.ResourceClosedError("This Connection is closed")
 
     @property
     def info(self):
@@ -956,7 +956,7 @@ class Connection(Connectable):
         """
 
         if self.closed:
-            raise exc.InvalidRequestError("This Connection is closed")
+            raise exc.ResourceClosedError("This Connection is closed")
 
         if self.__connection.is_valid:
             self.__connection.invalidate(exception)
@@ -2279,7 +2279,9 @@ class ResultProxy(object):
             if _autoclose_connection and \
                 self.connection.should_close_with_result:
                 self.connection.close()
-
+            # allow consistent errors
+            self.cursor = None
+            
     def __iter__(self):
         while True:
             row = self.fetchone()
@@ -2361,14 +2363,32 @@ class ResultProxy(object):
         return self.dialect.supports_sane_multi_rowcount
 
     def _fetchone_impl(self):
-        return self.cursor.fetchone()
+        try:
+            return self.cursor.fetchone()
+        except AttributeError:
+            self._non_result()
 
     def _fetchmany_impl(self, size=None):
-        return self.cursor.fetchmany(size)
+        try:
+            return self.cursor.fetchmany(size)
+        except AttributeError:
+            self._non_result()
 
     def _fetchall_impl(self):
-        return self.cursor.fetchall()
-
+        try:
+            return self.cursor.fetchall()
+        except AttributeError:
+            self._non_result()
+    
+    def _non_result(self):
+        if self._metadata is None:
+            raise exc.ResourceClosedError(
+            "This result object does not return rows. "
+            "It has been closed automatically.",
+            )
+        else:
+            raise exc.ResourceClosedError("This result object is closed.")
+        
     def process_rows(self, rows):
         process_row = self._process_row
         metadata = self._metadata
@@ -2425,7 +2445,6 @@ class ResultProxy(object):
         Else the cursor is automatically closed and None is returned.
         
         """
-
         try:
             row = self._fetchone_impl()
             if row is not None:
@@ -2445,6 +2464,9 @@ class ResultProxy(object):
         Returns None if no row is present.
         
         """
+        if self._metadata is None:
+            self._non_result()
+
         try:
             row = self._fetchone_impl()
         except Exception, e:

@@ -235,7 +235,7 @@ class SessionTransaction(object):
 
     def _assert_is_open(self, error_msg="The transaction is closed"):
         if self.session is None:
-            raise sa_exc.InvalidRequestError(error_msg)
+            raise sa_exc.ResourceClosedError(error_msg)
 
     @property
     def _is_transaction_boundary(self):
@@ -427,7 +427,8 @@ class SessionTransaction(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        self._assert_is_open("Cannot end transaction context. The transaction was closed from within the context")
+        self._assert_is_open("Cannot end transaction context. The transaction "
+                                    "was closed from within the context")
         if self.session.transaction is None:
             return
         if type is None:

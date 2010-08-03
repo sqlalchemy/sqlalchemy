@@ -60,6 +60,10 @@ class InvalidRequestError(SQLAlchemyError):
 
     """
 
+class ResourceClosedError(InvalidRequestError):
+    """An operation was requested from a connection, cursor, or other
+    object that's in a closed state."""
+    
 class NoSuchColumnError(KeyError, InvalidRequestError):
     """A nonexistent column is requested from a ``RowProxy``."""
 
