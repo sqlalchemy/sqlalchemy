@@ -369,20 +369,25 @@ such as those which already take advantage of the data-driven nature of
 Mapper Configuration
 ====================
 
-Configuration of mappers is done with the
-:func:`~sqlalchemy.orm.mapper` function and all the possible mapper
-configuration parameters can be found in the documentation for that
-function.
+Declarative makes use of the :func:`~.orm.mapper` function internally
+when it creates the mapping to the declared table.   The options
+for :func:`~.orm.mapper` are passed directly through via the ``__mapper_args__``
+class attribute.  As always, arguments which reference locally
+mapped columns can reference them directly from within the 
+class declaration::
 
-:func:`~sqlalchemy.orm.mapper` is still used by declaratively mapped
-classes and keyword parameters to the function can be passed by
-placing them in the ``__mapper_args__`` class variable::
-
+    from datetime import datetime
+    
     class Widget(Base):
         __tablename__ = 'widgets'
-        id = Column(Integer, primary_key=True)
         
-        __mapper_args__ = {'extension': MyWidgetExtension()}
+        id = Column(Integer, primary_key=True)
+        timestamp = Column(DateTime, nullable=False)
+        
+        __mapper_args__ = {
+                        'version_id_col': timestamp,
+                        'version_id_generator': lambda v:datetime.now()
+                    }
 
 Inheritance Configuration
 =========================
@@ -519,11 +524,6 @@ A common need when using :mod:`~sqlalchemy.ext.declarative` is to
 share some functionality, often a set of columns, across many
 classes. The normal Python idiom would be to put this common code into
 a base class and have all the other classes subclass this class.
-
-.. note::  Mixins are an entirely optional feature when using declarative,
-  and are not required for any configuration.  Users who don't need
-  to define sets of attributes common among many classes can 
-  skip this section.
 
 When using :mod:`~sqlalchemy.ext.declarative`, this need is met by
 using a "mixin class". A mixin class is one that isn't mapped to a
