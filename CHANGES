@@ -95,6 +95,10 @@ CHANGES
     be used a little more freely for ad-hoc column
     expressions than before.   literal_column()
     is still the better choice, however.
+
+  - Added full description of parent table/column, 
+    target table/column in error message raised when
+    ForeignKey can't resolve target.
     
 - declarative
   - if @classproperty is used with a regular class-bound

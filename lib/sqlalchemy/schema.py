@@ -1140,8 +1140,9 @@ class ForeignKey(SchemaItem):
 
             if _get_table_key(tname, schema) not in parenttable.metadata:
                 raise exc.NoReferencedTableError(
-                    "Could not find table '%s' with which to generate a "
-                    "foreign key" % tname)
+                    "Foreign key assocated with column '%s' could not find "
+                    "table '%s' with which to generate a "
+                    "foreign key to target column '%s'" % (self.parent, tname, colname))
             table = Table(tname, parenttable.metadata,
                           mustexist=True, schema=schema)
                           
