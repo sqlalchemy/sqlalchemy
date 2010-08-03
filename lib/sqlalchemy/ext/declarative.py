@@ -318,6 +318,9 @@ arguments to be specified as well (usually constraints)::
 Note that the keyword parameters dictionary is required in the tuple
 form even if empty.
 
+Using a Hybrid Approach with __table__
+=======================================
+
 As an alternative to ``__tablename__``, a direct
 :class:`~sqlalchemy.schema.Table` construct may be used.  The
 :class:`~sqlalchemy.schema.Column` objects, which in this case require
@@ -329,6 +332,118 @@ to a table::
             Column('id', Integer, primary_key=True),
             Column('name', String(50))
         )
+
+``__table__`` provides a more focused point of control for establishing
+table metadata, while still getting most of the benefits of using declarative.
+An application that uses reflection might want to load table metadata elsewhere
+and simply pass it to declarative classes::
+    
+    from sqlalchemy.ext.declarative import declarative_base
+    
+    Base = declarative_base()
+    Base.metadata.reflect(some_engine)
+    
+    class User(Base):
+        __table__ = metadata['user']
+    
+    class Address(Base):
+        __table__ = metadata['address']
+
+Example - Formalized Naming Conventions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The data-driven configuration style of :class:`.Table` makes
+it an easy place to drive application conventions including
+standard columns, constraint names, and column names, for a
+large application that can afford to be more constrained and
+formalized in its configuration. For example, an application
+that provides its own ``make_table()`` function, which
+establishes a table with certain columns, naming conventions
+for constraints, as well as column-creating functions that
+also supply naming conventions, are more easily integrated
+into the ``__table__`` approach than pure declarative::
+
+    '''Illustrate a hybrid declarative/Table approach to schema
+    and model specification.'''
+    
+    from sqlalchemy import Table, Column, ForeignKey, \\
+                DateTime, Integer, func, ForeignKeyConstraint
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    # define some functions for generating
+    # tables and columns with generated naming conventions
+    # for constraints, column names, standard columns
+    def make_table(name, *args, **kw):
+        args += (
+            Column('created', DateTime, default=func.now()),
+        )
+    
+        table = Table(name, Base.metadata, *args, **kw)
+        table.primary_key.name = "pk_%s" % name
+        for const in table.constraints:
+            if isinstance(const, ForeignKeyConstraint):
+                fk = list(const.elements)[0]
+                reftable, refcol = fk.target_fullname.split(".")
+                const.name = "fk_%s_%s_%s" % (
+                        table.name, fk.parent.name, reftable
+                        )
+    
+        return table
+
+    def id_column():
+        return Column('id', Integer, primary_key=True)
+
+    def reference_column(tablename):
+        return Column('%s_id' % tablename, 
+                        Integer, 
+                        ForeignKey('%s.id' % tablename), 
+                        nullable=False)
+
+    # elsewhere, in main model code:
+
+    from mymodel import make_table, id_column, ref_column, Base
+    from sqlalchemy import Column, String
+
+    class Order(Base):
+        __table__ = make_table('order',
+            id_column(),
+            reference_column('item'),
+        )
+
+    class Item(Base):
+        __table__ = make_table('item',
+            id_column(),
+            Column("description", String(200))
+        )
+
+Issuing a :meth:`.MetaData.create` for the above applies our naming 
+and behavioral conventions::
+
+    CREATE TABLE item (
+    	id INTEGER NOT NULL, 
+    	description VARCHAR(200), 
+    	created DATETIME DEFAULT CURRENT_TIMESTAMP, 
+    	CONSTRAINT pk_item PRIMARY KEY (id)
+    )
+
+    CREATE TABLE "order" (
+    	id INTEGER NOT NULL, 
+    	item_id INTEGER NOT NULL, 
+    	created DATETIME DEFAULT CURRENT_TIMESTAMP, 
+    	CONSTRAINT pk_order PRIMARY KEY (id), 
+    	CONSTRAINT fk_order_item_id_item FOREIGN KEY(item_id) REFERENCES item (id)
+    )
+
+The above approach costs more upfront in terms of setting up
+conventions, and is not as "out of the box" as pure
+declarative, not to mention more constrained in its results.
+A similar effect can also be achieved using custom
+metaclasses which subclass :class:`.DeclarativeMeta`, and
+establishing the conventions in the ``__init__`` method of
+the metaclass. The downside there is that metaclasses are
+more tedious to work with.
 
 Mapper Configuration
 ====================
