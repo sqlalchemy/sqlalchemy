@@ -67,35 +67,31 @@ share the same underlying :class:`~sqlalchemy.schema.MetaData` object,
 so that string-configured :class:`~sqlalchemy.schema.ForeignKey`
 references can be resolved without issue.
 
-Association of Metadata and Engine
-==================================
+Accessing the MetaData
+=======================
 
 The :func:`declarative_base` base class contains a
-:class:`~sqlalchemy.schema.MetaData` object where newly 
-defined :class:`~sqlalchemy.schema.Table` objects are collected.  This
-is accessed via the :class:`~sqlalchemy.schema.MetaData` class level
-accessor, so to create tables we can say:: 
+:class:`.MetaData` object where newly defined
+:class:`.Table` objects are collected. This object is
+intended to be accessed directly for
+:class:`.MetaData`-specific operations. Such as, to issue
+CREATE statements for all tables::
 
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
 
-The :class:`~sqlalchemy.engine.base.Engine` created above may also be
-directly associated with the declarative base class using the ``bind``
-keyword argument, where it will be associated with the underlying
-:class:`~sqlalchemy.schema.MetaData` object and allow SQL operations 
-involving that metadata and its tables to make use of that engine
-automatically::
-
-    Base = declarative_base(bind=create_engine('sqlite://'))
-
-Alternatively, by way of the normal
-:class:`~sqlalchemy.schema.MetaData` behavior, the ``bind`` attribute
-of the class level accessor can be assigned at any time as follows::
+The usual techniques of associating :class:`.MetaData:` with :class:`.Engine`
+apply, such as assigning to the ``bind`` attribute::
 
     Base.metadata.bind = create_engine('sqlite://')
 
-The :func:`declarative_base` can also receive a pre-created
-:class:`~sqlalchemy.schema.MetaData` object, which allows a
+To associate the engine with the :func:`declarative_base` at time
+of construction, the ``bind`` argument is accepted::
+
+    Base = declarative_base(bind=create_engine('sqlite://'))
+
+:func:`declarative_base` can also receive a pre-existing
+:class:`.MetaData` object, which allows a
 declarative setup to be associated with an already 
 existing traditional collection of :class:`~sqlalchemy.schema.Table`
 objects:: 
@@ -164,12 +160,13 @@ class after the fact::
 Configuring Many-to-Many Relationships
 ======================================
 
-There's nothing special about many-to-many with declarative.  The
-``secondary`` argument to :func:`~sqlalchemy.orm.relationship` still
-requires a :class:`~sqlalchemy.schema.Table` object, not a declarative
-class. The :class:`~sqlalchemy.schema.Table` should share the same
-:class:`~sqlalchemy.schema.MetaData` object used by the declarative
-base:: 
+Many-to-many relationships are also declared in the same way
+with declarative as with traditional mappings. The
+``secondary`` argument to
+:func:`.relationship` is as usual passed a 
+:class:`.Table` object, which is typically declared in the 
+traditional way.  The :class:`.Table` usually shares
+the :class:`.MetaData` object used by the declarative base::
 
     keywords = Table(
         'keywords', Base.metadata,
@@ -182,10 +179,11 @@ base::
         id = Column(Integer, primary_key=True)
         keywords = relationship("Keyword", secondary=keywords)
 
-You should generally **not** map a class and also specify its table in
-a many-to-many relationship, since the ORM may issue duplicate INSERT and
-DELETE statements. 
-
+As with traditional mapping, its generally not a good idea to use 
+a :class:`.Table` as the "secondary" argument which is also mapped to
+a class, unless the :class:`.relationship` is declared with ``viewonly=True``.
+Otherwise, the unit-of-work system may attempt duplicate INSERT and
+DELETE statements against the underlying table.
 
 .. _declarative_synonyms:
 
@@ -194,18 +192,25 @@ Defining Synonyms
 
 Synonyms are introduced in :ref:`synonyms`. To define a getter/setter
 which proxies to an underlying attribute, use
-:func:`~sqlalchemy.orm.synonym` with the ``descriptor`` argument::
+:func:`~.synonym` with the ``descriptor`` argument.  Here we present
+using Python 2.6 style properties::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
 
+        id = Column(Integer, primary_key=True)
+
         _attr = Column('attr', String)
 
-        def _get_attr(self):
-            return self._some_attr
-        def _set_attr(self, attr):
-            self._some_attr = attr
-        attr = synonym('_attr', descriptor=property(_get_attr, _set_attr))
+        @property
+        def attr(self):
+            return self._attr
+        
+        @attr.setter
+        def attr(self, attr):
+            self._attr = attr
+            
+        attr = synonym('_attr', descriptor=attr)
 
 The above synonym is then usable as an instance attribute as well as a
 class-level expression construct::
@@ -219,16 +224,17 @@ conjunction with ``@property``::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
-        
+    
+        id = Column(Integer, primary_key=True)
         _attr = Column('attr', String)
 
         @synonym_for('_attr')
         @property
         def attr(self):
-            return self._some_attr
+            return self._attr
 
 Similarly, :func:`comparable_using` is a front end for the
-:func:`~sqlalchemy.orm.comparable_property` ORM function::
+:func:`~.comparable_property` ORM function::
 
     class MyClass(Base):
         __tablename__ = 'sometable'

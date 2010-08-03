@@ -272,32 +272,39 @@ Validators also receive collection events, when items are added to a collection:
 Using Descriptors
 ~~~~~~~~~~~~~~~~~~
 
-A more comprehensive way to produce modified behavior for an attribute is to use descriptors.   These are commonly used in Python using the ``property()`` function.   The standard SQLAlchemy technique for descriptors is to create a plain descriptor, and to have it read/write from a mapped attribute with a different name.  To have the descriptor named the same as a column, map the column under a different name, i.e.:
-
-.. sourcecode:: python+sql
+A more comprehensive way to produce modified behavior for an attribute is to use descriptors.   These are commonly used in Python using the ``property()`` function.   The standard SQLAlchemy technique for descriptors is to create a plain descriptor, and to have it read/write from a mapped attribute with a different name.  Below we illustrate
+this using Python 2.6-style properties::
 
     class EmailAddress(object):
-       def _set_email(self, email):
-          self._email = email
-       def _get_email(self):
-          return self._email
-       email = property(_get_email, _set_email)
+        
+        @property
+        def email(self):
+            return self._email
+            
+        @email.setter
+        def email(self, email):
+            self._email = email
 
-    mapper(MyAddress, addresses_table, properties={
+    mapper(EmailAddress, addresses_table, properties={
         '_email': addresses_table.c.email
     })
 
-However, the approach above is not complete.  While our ``EmailAddress`` object will shuttle the value through the ``email`` descriptor and into the ``_email`` mapped attribute, the class level ``EmailAddress.email`` attribute does not have the usual expression semantics usable with :class:`~sqlalchemy.orm.query.Query`.  To provide these, we instead use the :func:`~sqlalchemy.orm.synonym` function as follows:
-
-.. sourcecode:: python+sql
+The approach above will work, but there's more we can add.
+While our ``EmailAddress`` object will shuttle the value
+through the ``email`` descriptor and into the ``_email``
+mapped attribute, the class level ``EmailAddress.email``
+attribute does not have the usual expression semantics
+usable with :class:`.Query`. To provide
+these, we instead use the :func:`.synonym`
+function as follows::
 
     mapper(EmailAddress, addresses_table, properties={
         'email': synonym('_email', map_column=True)
     })
 
-The ``email`` attribute is now usable in the same way as any other mapped attribute, including filter expressions, get/set operations, etc.:
-
-.. sourcecode:: python+sql
+The ``email`` attribute is now usable in the same way as any
+other mapped attribute, including filter expressions,
+get/set operations, etc.::
 
     address = session.query(EmailAddress).filter(EmailAddress.email == 'some address').one()
 
@@ -306,7 +313,7 @@ The ``email`` attribute is now usable in the same way as any other mapped attrib
 
     q = session.query(EmailAddress).filter_by(email='some other address')
 
-If the mapped class does not provide a property, the :func:`~sqlalchemy.orm.synonym` construct will create a default getter/setter object automatically.
+If the mapped class does not provide a property, the :func:`.synonym` construct will create a default getter/setter object automatically.
 
 To use synonyms with :mod:`~sqlalchemy.ext.declarative`, see the section 
 :ref:`declarative_synonyms`.
@@ -1241,13 +1248,25 @@ Working with the association pattern in its direct form requires that child obje
         print assoc.data
         print assoc.child
 
-To enhance the association object pattern such that direct access to the ``Association`` object is optional, SQLAlchemy provides the :ref:`associationproxy`.
+To enhance the association object pattern such that direct
+access to the ``Association`` object is optional, SQLAlchemy
+provides the :ref:`associationproxy` extension. This
+extension allows the configuration of attributes which will
+access two "hops" with a single access, one "hop" to the
+associated object, and a second to a target attribute.
 
-**Important Note**:  it is strongly advised that the ``secondary`` table argument not be combined with the Association Object pattern, unless the :func:`~sqlalchemy.orm.relationship` which contains the ``secondary`` argument is marked ``viewonly=True``.  Otherwise, SQLAlchemy may persist conflicting data to the underlying association table since it is represented by two conflicting mappings.  The Association Proxy pattern should be favored in the case where access to the underlying association data is only sometimes needed.
+.. note:: When using the association object pattern, it is
+  advisable that the association-mapped table not be used
+  as the ``secondary`` argument on a :func:`.relationship`
+  elsewhere, unless that :func:`.relationship` contains
+  the option ``viewonly=True``.   SQLAlchemy otherwise 
+  may attempt to emit redundant INSERT and DELETE 
+  statements on the same table, if similar state is detected
+  on the related attribute as well as the associated
+  object.
 
 Adjacency List Relationships
 -----------------------------
-
 
 The **adjacency list** pattern is a common relational pattern whereby a table contains a foreign key reference to itself.  This is the most common and simple way to represent hierarchical data in flat tables.  The other way is the "nested sets" model, sometimes called "modified preorder".  Despite what many online articles say about modified preorder, the adjacency list model is probably the most appropriate pattern for the large majority of hierarchical storage needs, for reasons of concurrency, reduced complexity, and that modified preorder has little advantage over an application which can fully load subtrees into the application space.
 
