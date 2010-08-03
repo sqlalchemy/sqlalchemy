@@ -428,8 +428,8 @@ def case(whens, value=None, else_=None):
     The expressions used for THEN and ELSE,
     when specified as strings, will be interpreted
     as bound values. To specify textual SQL expressions
-    for these, use the literal_column(<string>) or 
-    text(<string>) construct. 
+    for these, use the :func:`literal_column`
+    construct. 
 
     The expressions used for the WHEN criterion
     may only be literal strings when "value" is
@@ -2436,7 +2436,7 @@ class _TextClause(Executable, ClauseElement):
         if self.typemap is not None and len(self.typemap) == 1:
             return list(self.typemap)[0]
         else:
-            return None
+            return sqltypes.NULLTYPE
 
     def self_group(self, against=None):
         if against is operators.in_op:

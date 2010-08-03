@@ -88,7 +88,14 @@ CHANGES
     ResourceClosedError for all "this
     connection/transaction/result is closed" types of
     errors.
-        
+
+  - the text() construct, if placed in a column
+    oriented situation, will at least return NULLTYPE
+    for its type instead of None, allowing it to 
+    be used a little more freely for ad-hoc column
+    expressions than before.   literal_column()
+    is still the better choice, however.
+    
 - declarative
   - if @classproperty is used with a regular class-bound
     mapper property attribute, it will be called to get the
