@@ -2,13 +2,14 @@
 Synopsis
 ========
 
-SQLAlchemy object-relational configuration involves the use of
-:class:`~sqlalchemy.schema.Table`, :func:`~sqlalchemy.orm.mapper`, and
-class objects to define the three areas of configuration.
-:mod:`~sqlalchemy.ext.declarative` allows all three types of
-configuration to be expressed declaratively on an individual
-mapped class.  Regular SQLAlchemy schema elements and ORM constructs
-are used in most cases.
+SQLAlchemy object-relational configuration involves the
+combination of :class:`.Table`, :func:`.mapper`, and class
+objects to define a mapped class.
+:mod:`~sqlalchemy.ext.declarative` allows all three to be
+expressed at once within the class declaration. As much as
+possible, regular SQLAlchemy schema and ORM constructs are
+used directly, so that configuration between "classical" ORM
+usage and declarative remain highly similar.
 
 As a simple example::
 
@@ -23,37 +24,43 @@ As a simple example::
 
 Above, the :func:`declarative_base` callable returns a new base class from
 which all mapped classes should inherit. When the class definition is
-completed, a new :class:`~sqlalchemy.schema.Table` and
-:class:`~sqlalchemy.orm.mapper` will have been generated, accessible via the
-``__table__`` and ``__mapper__`` attributes on the ``SomeClass`` class.
+completed, a new :class:`.Table` and
+:func:`.mapper` will have been generated.
+
+The resulting table and mapper are accessible via
+``__table__`` and ``__mapper__`` attributes on the
+``SomeClass`` class::
+
+    # access the mapped Table
+    SomeClass.__table__
+    
+    # access the Mapper
+    SomeClass.__mapper__
 
 Defining Attributes
 ===================
 
-In the above example, the :class:`~sqlalchemy.schema.Column` objects are
+In the previous example, the :class:`.Column` objects are
 automatically named with the name of the attribute to which they are
 assigned.
 
-They can also be explicitly named, and that name does not have to be
-the same as name assigned on the class.
-The column will be assigned to the :class:`~sqlalchemy.schema.Table` using the
-given name, and mapped to the class using the attribute name::
+To name columns explicitly with a name distinct from their mapped attribute,
+just give the column a name.  Below, column "some_table_id" is mapped to the 
+"id" attribute of `SomeClass`, but in SQL will be represented as "some_table_id"::
 
     class SomeClass(Base):
         __tablename__ = 'some_table'
         id = Column("some_table_id", Integer, primary_key=True)
-        name = Column("name", String(50))
     
 Attributes may be added to the class after its construction, and they will be
-added to the underlying :class:`~sqlalchemy.schema.Table` and
-:func:`~sqlalchemy.orm.mapper()` definitions as appropriate::
+added to the underlying :class:`.Table` and
+:func:`.mapper()` definitions as appropriate::
 
     SomeClass.data = Column('data', Unicode)
     SomeClass.related = relationship(RelatedInfo)
 
-Classes which are mapped explicitly using
-:func:`~sqlalchemy.orm.mapper()` can interact freely with declarative
-classes.
+Classes which are constructed using declarative can interact freely
+with classes that are mapped explicitly with :func:`mapper`.   
 
 It is recommended, though not required, that all tables 
 share the same underlying :class:`~sqlalchemy.schema.MetaData` object,
@@ -349,101 +356,9 @@ and simply pass it to declarative classes::
     class Address(Base):
         __table__ = metadata['address']
 
-Example - Formalized Naming Conventions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The data-driven configuration style of :class:`.Table` makes
-it an easy place to drive application conventions including
-standard columns, constraint names, and column names, for a
-large application that can afford to be more constrained and
-formalized in its configuration. For example, an application
-that provides its own ``make_table()`` function, which
-establishes a table with certain columns, naming conventions
-for constraints, as well as column-creating functions that
-also supply naming conventions, are more easily integrated
-into the ``__table__`` approach than pure declarative::
-
-    '''Illustrate a hybrid declarative/Table approach to schema
-    and model specification.'''
-    
-    from sqlalchemy import Table, Column, ForeignKey, \\
-                DateTime, Integer, func, ForeignKeyConstraint
-    from sqlalchemy.ext.declarative import declarative_base
-
-    Base = declarative_base()
-
-    # define some functions for generating
-    # tables and columns with generated naming conventions
-    # for constraints, column names, standard columns
-    def make_table(name, *args, **kw):
-        args += (
-            Column('created', DateTime, default=func.now()),
-        )
-    
-        table = Table(name, Base.metadata, *args, **kw)
-        table.primary_key.name = "pk_%s" % name
-        for const in table.constraints:
-            if isinstance(const, ForeignKeyConstraint):
-                fk = list(const.elements)[0]
-                reftable, refcol = fk.target_fullname.split(".")
-                const.name = "fk_%s_%s_%s" % (
-                        table.name, fk.parent.name, reftable
-                        )
-    
-        return table
-
-    def id_column():
-        return Column('id', Integer, primary_key=True)
-
-    def reference_column(tablename):
-        return Column('%s_id' % tablename, 
-                        Integer, 
-                        ForeignKey('%s.id' % tablename), 
-                        nullable=False)
-
-    # elsewhere, in main model code:
-
-    from mymodel import make_table, id_column, ref_column, Base
-    from sqlalchemy import Column, String
-
-    class Order(Base):
-        __table__ = make_table('order',
-            id_column(),
-            reference_column('item'),
-        )
-
-    class Item(Base):
-        __table__ = make_table('item',
-            id_column(),
-            Column("description", String(200))
-        )
-
-Issuing a :meth:`.MetaData.create` for the above applies our naming 
-and behavioral conventions::
-
-    CREATE TABLE item (
-    	id INTEGER NOT NULL, 
-    	description VARCHAR(200), 
-    	created DATETIME DEFAULT CURRENT_TIMESTAMP, 
-    	CONSTRAINT pk_item PRIMARY KEY (id)
-    )
-
-    CREATE TABLE "order" (
-    	id INTEGER NOT NULL, 
-    	item_id INTEGER NOT NULL, 
-    	created DATETIME DEFAULT CURRENT_TIMESTAMP, 
-    	CONSTRAINT pk_order PRIMARY KEY (id), 
-    	CONSTRAINT fk_order_item_id_item FOREIGN KEY(item_id) REFERENCES item (id)
-    )
-
-The above approach costs more upfront in terms of setting up
-conventions, and is not as "out of the box" as pure
-declarative, not to mention more constrained in its results.
-A similar effect can also be achieved using custom
-metaclasses which subclass :class:`.DeclarativeMeta`, and
-establishing the conventions in the ``__init__`` method of
-the metaclass. The downside there is that metaclasses are
-more tedious to work with.
+Some configuration schemes may find it more appropriate to use ``__table__``, 
+such as those which already take advantage of the data-driven nature of 
+:class:`.Table` to customize and/or automate schema definition.
 
 Mapper Configuration
 ====================
