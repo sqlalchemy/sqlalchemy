@@ -43,10 +43,12 @@ log.class_logger(DynaLoader)
 class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True
     accepts_scalar_loader = False
-
+    supports_population = False
+    
     def __init__(self, class_, key, typecallable,
                      target_mapper, order_by, query_class=None, **kwargs):
-        super(DynamicAttributeImpl, self).__init__(class_, key, typecallable, **kwargs)
+        super(DynamicAttributeImpl, self).\
+                    __init__(class_, key, typecallable, **kwargs)
         self.target_mapper = target_mapper
         self.order_by = order_by
         if not query_class:
@@ -58,15 +60,18 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
     def get(self, state, dict_, passive=False):
         if passive:
-            return self._get_collection_history(state, passive=True).added_items
+            return self._get_collection_history(state,
+                    passive=True).added_items
         else:
             return self.query_class(self, state)
 
     def get_collection(self, state, dict_, user_data=None, passive=True):
         if passive:
-            return self._get_collection_history(state, passive=passive).added_items
+            return self._get_collection_history(state,
+                    passive=passive).added_items
         else:
-            history = self._get_collection_history(state, passive=passive)
+            history = self._get_collection_history(state,
+                    passive=passive)
             return history.added_items + history.unchanged_items
 
     def fire_append_event(self, state, dict_, value, initiator):
@@ -105,30 +110,36 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         dict_[self.key] = True
         return state.committed_state[self.key]
 
-    def set(self, state, dict_, value, initiator, passive=attributes.PASSIVE_OFF):
+    def set(self, state, dict_, value, initiator,
+                        passive=attributes.PASSIVE_OFF):
         if initiator is self:
             return
 
         self._set_iterable(state, dict_, value)
 
     def _set_iterable(self, state, dict_, iterable, adapter=None):
-
         collection_history = self._modified_event(state, dict_)
         new_values = list(iterable)
-
         if state.has_identity:
             old_collection = list(self.get(state, dict_))
         else:
             old_collection = []
-
-        collections.bulk_replace(new_values, DynCollectionAdapter(self, state, old_collection), DynCollectionAdapter(self, state, new_values))
+        collections.bulk_replace(new_values, DynCollectionAdapter(self,
+                                 state, old_collection),
+                                 DynCollectionAdapter(self, state,
+                                 new_values))
 
     def delete(self, *args, **kwargs):
         raise NotImplementedError()
 
+    def set_committed_value(self, state, dict_, value):
+        raise NotImplementedError("Dynamic attributes don't support "
+                                  "collection population.")
+    
     def get_history(self, state, dict_, passive=False):
         c = self._get_collection_history(state, passive)
-        return attributes.History(c.added_items, c.unchanged_items, c.deleted_items)
+        return attributes.History(c.added_items, c.unchanged_items,
+                                  c.deleted_items)
 
     def _get_collection_history(self, state, passive=False):
         if self.key in state.committed_state:
@@ -193,7 +204,8 @@ class AppenderMixin(object):
 
     def __session(self):
         sess = object_session(self.instance)
-        if sess is not None and self.autoflush and sess.autoflush and self.instance in sess:
+        if sess is not None and self.autoflush and sess.autoflush \
+            and self.instance in sess:
             sess.flush()
         if not has_identity(self.instance):
             return None
@@ -283,7 +295,8 @@ class CollectionHistory(object):
             deleted = util.IdentitySet(apply_to.deleted_items)
             added = apply_to.added_items
             coll = AppenderQuery(attr, state).autoflush(False)
-            self.unchanged_items = [o for o in util.IdentitySet(coll) if o not in deleted]
+            self.unchanged_items = [o for o in util.IdentitySet(coll)
+                                    if o not in deleted]
             self.added_items = apply_to.added_items
             self.deleted_items = apply_to.deleted_items
         else:

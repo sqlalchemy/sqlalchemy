@@ -54,6 +54,13 @@ CHANGES
     specifically asks for a column element, no longer
     misleads with incorrect information about
     text() or literal().  [ticket:1863]
+
+  - Dynamic attributes don't support collection 
+    population - added an assertion for when
+    set_committed_value() is called, as well as
+    when joinedload() or subqueryload() options
+    are applied to a dynamic attribute, instead
+    of failure / silent failure.  [ticket:1864]
     
 - sql
   - Changed the scheme used to generate truncated

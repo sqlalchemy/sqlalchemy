@@ -806,6 +806,12 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 ]
         
     def create_row_processor(self, context, path, mapper, row, adapter):
+        if not self.parent.class_manager[self.key].impl.supports_population:
+            raise sa_exc.InvalidRequestError(
+                        "'%s' does not support object "
+                        "population - eager loading cannot be applied." % 
+                        self)
+        
         path = path + (self.key,)
 
         path = interfaces._reduce_path(path)
@@ -876,6 +882,7 @@ class EagerLoader(AbstractRelationshipLoader):
                                 **kwargs):
         """Add a left outer join to the statement thats being constructed."""
 
+        
         if not context.query._enable_eagerloads:
             return
             
@@ -1069,7 +1076,14 @@ class EagerLoader(AbstractRelationshipLoader):
             return False
 
     def create_row_processor(self, context, path, mapper, row, adapter):
+        if not self.parent.class_manager[self.key].impl.supports_population:
+            raise sa_exc.InvalidRequestError(
+                        "'%s' does not support object "
+                        "population - eager loading cannot be applied." % 
+                        self)
+
         path = path + (self.key,)
+
             
         eager_adapter = self._create_eager_adapter(
                                                 context, 

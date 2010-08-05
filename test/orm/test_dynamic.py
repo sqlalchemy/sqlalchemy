@@ -6,7 +6,7 @@ from sqlalchemy import Integer, String, ForeignKey, desc, select, func
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes
 from sqlalchemy.orm.dynamic import AppenderMixin
-from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
+from sqlalchemy.test.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
 
@@ -122,6 +122,18 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 q.filter(User.id==7).all())
         self.assert_sql_count(testing.db, go, 2)
 
+    @testing.resolve_artifact_names
+    def test_no_populate(self):
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        u1 = User()
+        assert_raises_message(
+            NotImplementedError,
+            "Dynamic attributes don't support collection population.",
+            attributes.set_committed_value, u1, 'addresses', []
+        )
+        
     @testing.resolve_artifact_names
     def test_m2m(self):
         mapper(Order, orders, properties={

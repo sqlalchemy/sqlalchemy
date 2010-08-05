@@ -427,6 +427,7 @@ class ScalarAttributeImpl(AttributeImpl):
 
     accepts_scalar_loader = True
     uses_objects = False
+    supports_population = True
 
     def delete(self, state, dict_):
 
@@ -481,6 +482,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
     """
 
     uses_objects = False
+    supports_population = True
 
     def __init__(self, class_, key, callable_,
                     class_manager, copy_function=None,
@@ -547,6 +549,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
     accepts_scalar_loader = False
     uses_objects = True
+    supports_population = True
 
     def __init__(self, class_, key, callable_, 
                     trackparent=False, extension=None, copy_function=None,
@@ -637,6 +640,7 @@ class CollectionAttributeImpl(AttributeImpl):
     """
     accepts_scalar_loader = False
     uses_objects = True
+    supports_population = True
 
     def __init__(self, class_, key, callable_, 
                     typecallable=None, trackparent=False, extension=None,

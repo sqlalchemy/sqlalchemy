@@ -1,13 +1,17 @@
-"""basic tests of eager loaded attributes"""
+"""tests of joined-eager loaded attributes"""
 
 from sqlalchemy.test.testing import eq_, is_, is_not_
 import sqlalchemy as sa
 from sqlalchemy.test import testing
-from sqlalchemy.orm import joinedload, deferred, undefer, joinedload_all, backref
-from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, func
+from sqlalchemy.orm import joinedload, deferred, undefer, \
+    joinedload_all, backref
+from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, \
+    func
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, create_session, lazyload, aliased
-from sqlalchemy.test.testing import eq_, assert_raises
+from sqlalchemy.orm import mapper, relationship, create_session, \
+    lazyload, aliased
+from sqlalchemy.test.testing import eq_, assert_raises, \
+    assert_raises_message
 from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
 from sqlalchemy.util import OrderedDict as odict
@@ -283,7 +287,20 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )
             self.assert_sql_count(testing.db, go, count)
 
-
+    @testing.resolve_artifact_names
+    def test_disable_dynamic(self):
+        """test no joined option on a dynamic."""
+        
+        mapper(User, users, properties={
+            'addresses':relationship(Address, lazy="dynamic")
+        })
+        mapper(Address, addresses)
+        sess = create_session()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "User.addresses' does not support object population - eager loading cannot be applied.",
+            sess.query(User).options(joinedload(User.addresses)).first,
+        )
 
     @testing.resolve_artifact_names
     def test_many_to_many(self):
