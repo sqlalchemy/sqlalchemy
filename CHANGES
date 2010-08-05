@@ -99,6 +99,11 @@ CHANGES
   - Added full description of parent table/column, 
     target table/column in error message raised when
     ForeignKey can't resolve target.
+
+  - Fixed bug whereby replacing composite foreign key
+    columns in a reflected table would cause an attempt
+    to remove the reflected constraint from the table
+    a second time, raising a KeyError.  [ticket:1865]
     
 - declarative
   - if @classproperty is used with a regular class-bound

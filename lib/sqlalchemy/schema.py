@@ -806,7 +806,11 @@ class Column(SchemaItem, expression.ColumnClause):
             for fk in col.foreign_keys:
                 col.foreign_keys.remove(fk)
                 table.foreign_keys.remove(fk)
-                table.constraints.remove(fk.constraint)
+                if fk.constraint in table.constraints:
+                    # this might have been removed
+                    # already, if it's a composite constraint
+                    # and more than one col being replaced
+                    table.constraints.remove(fk.constraint)
             
         table._columns.replace(self)
 
