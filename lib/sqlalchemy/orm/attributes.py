@@ -176,23 +176,30 @@ def proxied_attribute_factory(descriptor):
     behavior and getattr() to the given descriptor.
     """
 
-    class Proxy(InstrumentedAttribute):
+    class Proxy(QueryableAttribute):
         """A combination of InsturmentedAttribute and a regular descriptor."""
 
-        def __init__(self, key, descriptor, comparator, parententity):
+        def __init__(self, key, descriptor, comparator, adapter=None):
             self.key = key
             # maintain ProxiedAttribute.user_prop compatability.
             self.descriptor = self.user_prop = descriptor
             self._comparator = comparator
-            self._parententity = parententity
             self.impl = _ProxyImpl(key)
-
+            self.adapter = adapter
+            
         @util.memoized_property
         def comparator(self):
             if util.callable(self._comparator):
                 self._comparator = self._comparator()
+            if self.adapter:
+                self._comparator = self._comparator.adapted(self.adapter)
             return self._comparator
-
+        
+        def adapted(self, adapter):
+            return self.__class__(self.key, self.descriptor,
+                                       self._comparator,
+                                       adapter)
+        
         def __get__(self, instance, owner):
             """Delegate __get__ to the original descriptor."""
             if instance is None:
@@ -216,7 +223,7 @@ def proxied_attribute_factory(descriptor):
                 return getattr(descriptor, attribute)
             except AttributeError:
                 try:
-                    return getattr(self._comparator, attribute)
+                    return getattr(self.comparator, attribute)
                 except AttributeError:
                     raise AttributeError(
                     'Neither %r object nor %r object has an attribute %r' % (
@@ -1462,6 +1469,7 @@ def register_descriptor(class_, key, proxy_property=None, comparator=None,
     manager = manager_of_class(class_)
 
     if proxy_property:
+        raise NotImplementedError()
         proxy_type = proxied_attribute_factory(proxy_property)
         descriptor = proxy_type(key, proxy_property, comparator, parententity)
     else:

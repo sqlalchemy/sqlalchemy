@@ -359,15 +359,17 @@ class AliasedClass(object):
         
         if isinstance(attr, attributes.QueryableAttribute):
             return self.__adapt_prop(attr.property)
-            
-        if hasattr(attr, 'func_code'):
+        elif hasattr(attr, 'func_code'):
             is_method = getattr(self.__target, key, None)
             if is_method and is_method.im_self is not None:
                 return util.types.MethodType(attr.im_func, self, self)
             else:
                 return None
         elif hasattr(attr, '__get__'):
-            return attr.__get__(None, self)
+            ret = attr.__get__(None, self)
+            if isinstance(ret, PropComparator):
+                return ret.adapted(self.__adapt_element)
+            return ret
         else:
             return attr
 
@@ -536,40 +538,22 @@ def _entity_info(entity, compile=True):
     return mapper, mapper._with_polymorphic_selectable, False
 
 def _entity_descriptor(entity, key):
-    """Return attribute/property information given an entity and string name.
-
-    Returns a 2-tuple representing InstrumentedAttribute/MapperProperty.
+    """Return a class attribute given an entity and string name.
+    
+    May return :class:`.InstrumentedAttribute` or user-defined
+    attribute.
 
     """
-    if isinstance(entity, AliasedClass):
-        try:
-            desc = getattr(entity, key)
-            return desc, desc.property
-        except AttributeError:
-            raise sa_exc.InvalidRequestError(
-                        "Entity '%s' has no property '%s'" % 
-                        (entity, key)
-                    )
-            
-    elif isinstance(entity, type):
-        try:
-            desc = attributes.manager_of_class(entity)[key]
-            return desc, desc.property
-        except KeyError:
-            raise sa_exc.InvalidRequestError(
-                        "Entity '%s' has no property '%s'" % 
-                        (entity, key)
-                    )
-            
-    else:
-        try:
-            desc = entity.class_manager[key]
-            return desc, desc.property
-        except KeyError:
-            raise sa_exc.InvalidRequestError(
-                        "Entity '%s' has no property '%s'" % 
-                        (entity, key)
-                    )
+    if not isinstance(entity, (AliasedClass, type)):
+        entity = entity.class_
+        
+    try:
+        return getattr(entity, key)
+    except AttributeError:
+        raise sa_exc.InvalidRequestError(
+                    "Entity '%s' has no property '%s'" % 
+                    (entity, key)
+                )
 
 def _orm_columns(entity):
     mapper, selectable, is_aliased_class = _entity_info(entity)

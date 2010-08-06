@@ -237,24 +237,69 @@ class CompositeProperty(ColumnProperty):
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
 
-class ConcreteInheritedProperty(MapperProperty):
-    """A 'do nothing' :class:`MapperProperty` that disables 
-    an attribute on a concrete subclass that is only present
-    on the inherited mapper, not the concrete classes' mapper.
+
+class DescriptorProperty(MapperProperty):
+    """:class:`MapperProperty` which proxies access to a 
+        user-defined descriptor."""
+
+    def set_parent(self, parent, init):
+        if self.descriptor is None:
+            desc = getattr(parent.class_, self.key, None)
+            if parent._is_userland_descriptor(desc):
+                self.descriptor = desc
+        self.parent = parent
     
-    Cases where this occurs include:
-    
-    * When the superclass mapper is mapped against a 
-      "polymorphic union", which includes all attributes from 
-      all subclasses.
-    * When a relationship() is configured on an inherited mapper,
-      but not on the subclass mapper.  Concrete mappers require
-      that relationship() is configured explicitly on each 
-      subclass. 
-    
-    """
-    
-    extension = None
+    def instrument_class(self, mapper):
+        class_ = self.parent.class_
+        
+        from sqlalchemy.ext import hybrid
+
+        # hackety hack hack
+        class _ProxyImpl(object):
+            accepts_scalar_loader = False
+            expire_missing = True
+
+            def __init__(self, key):
+                self.key = key
+
+        if self.descriptor is None:
+            def fset(obj, value):
+                setattr(obj, self.name, value)
+            def fdel(obj):
+                delattr(obj, self.name)
+            def fget(obj):
+                return getattr(obj, self.name)
+            fget.__doc__ = self.doc
+
+            descriptor = hybrid.property_(
+                fget=fget,
+                fset=fset,
+                fdel=fdel,
+            )
+        elif isinstance(self.descriptor, property):
+            descriptor = hybrid.property_(
+                fget=self.descriptor.fget,
+                fset=self.descriptor.fset,
+                fdel=self.descriptor.fdel,
+            )
+        else:
+            descriptor = hybrid.property_(
+                fget=self.descriptor.__get__,
+                fset=self.descriptor.__set__,
+                fdel=self.descriptor.__delete__,
+            )
+
+        proxy_attr = attributes.\
+                        proxied_attribute_factory(self.descriptor 
+                                                    or descriptor)\
+                    (self.key, self.descriptor or descriptor,
+                        lambda: self._comparator_factory(mapper))
+        def get_comparator(owner):
+            return proxy_attr
+        descriptor.expr = get_comparator
+        
+        descriptor.impl = _ProxyImpl(self.key)
+        mapper.class_manager.instrument_attribute(self.key, descriptor)
 
     def setup(self, context, entity, path, adapter, **kwargs):
         pass
@@ -262,11 +307,40 @@ class ConcreteInheritedProperty(MapperProperty):
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
 
-    def merge(self, session, source_state, source_dict, dest_state,
-                dest_dict, load, _recursive):
+    def merge(self, session, source_state, source_dict, 
+                dest_state, dest_dict, load, _recursive):
         pass
+    
+class ConcreteInheritedProperty(DescriptorProperty):
+    """A 'do nothing' :class:`MapperProperty` that disables 
+    an attribute on a concrete subclass that is only present
+    on the inherited mapper, not the concrete classes' mapper.
+
+    Cases where this occurs include:
+
+    * When the superclass mapper is mapped against a 
+      "polymorphic union", which includes all attributes from 
+      all subclasses.
+    * When a relationship() is configured on an inherited mapper,
+      but not on the subclass mapper.  Concrete mappers require
+      that relationship() is configured explicitly on each 
+      subclass. 
+
+    """
+
+    extension = None
+    
+    def _comparator_factory(self, mapper):
+        comparator_callable = None
         
-    def instrument_class(self, mapper):
+        for m in self.parent.iterate_to_root():
+            p = m._props[self.key]
+            if not isinstance(p, ConcreteInheritedProperty):
+                comparator_callable = p.comparator_factory
+                break
+        return comparator_callable
+    
+    def __init__(self):
         def warn():
             raise AttributeError("Concrete %s does not implement "
                 "attribute %r at the instance level.  Add this "
@@ -279,27 +353,13 @@ class ConcreteInheritedProperty(MapperProperty):
             def __delete__(s, obj):
                 warn()
             def __get__(s, obj, owner):
+                if obj is None:
+                    return self.descriptor
                 warn()
-
-        comparator_callable = None
-        # TODO: put this process into a deferred callable?
-        for m in self.parent.iterate_to_root():
-            p = m._props[self.key]
-            if not isinstance(p, ConcreteInheritedProperty):
-                comparator_callable = p.comparator_factory
-                break
-
-        attributes.register_descriptor(
-            mapper.class_, 
-            self.key, 
-            comparator=comparator_callable(self, mapper), 
-            parententity=mapper,
-            property_=self,
-            proxy_property=NoninheritedConcreteProp()
-            )
-
-
-class SynonymProperty(MapperProperty):
+        self.descriptor = NoninheritedConcreteProp()
+        
+        
+class SynonymProperty(DescriptorProperty):
 
     extension = None
 
@@ -313,12 +373,16 @@ class SynonymProperty(MapperProperty):
         self.doc = doc or (descriptor and descriptor.__doc__) or None
         util.set_creation_order(self)
 
-    def setup(self, context, entity, path, adapter, **kwargs):
-        pass
+    def _comparator_factory(self, mapper):
+        class_ = self.parent.class_
+        prop = getattr(class_, self.name).property
 
-    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return (None, None)
-    
+        if self.comparator_factory:
+            comp = self.comparator_factory(prop, mapper)
+        else:
+            comp = prop.comparator_factory(prop, mapper)
+        return comp
+
     def set_parent(self, parent, init):
         if self.descriptor is None:
             desc = getattr(parent.class_, self.key, None)
@@ -349,50 +413,8 @@ class SynonymProperty(MapperProperty):
             p._mapped_by_synonym = self.key
     
         self.parent = parent
-    
-    def instrument_class(self, mapper):
-        class_ = self.parent.class_
-
-        if self.descriptor is None:
-            class SynonymProp(object):
-                def __set__(s, obj, value):
-                    setattr(obj, self.name, value)
-                def __delete__(s, obj):
-                    delattr(obj, self.name)
-                def __get__(s, obj, owner):
-                    if obj is None:
-                        return s
-                    return getattr(obj, self.name)
-
-            self.descriptor = SynonymProp()
-
-        def comparator_callable(prop, mapper):
-            def comparator():
-                prop = getattr(self.parent.class_,
-                                        self.name).property
-                if self.comparator_factory:
-                    return self.comparator_factory(prop, mapper)
-                else:
-                    return prop.comparator_factory(prop, mapper)
-            return comparator
-
-        attributes.register_descriptor(
-            mapper.class_, 
-            self.key, 
-            comparator=comparator_callable(self, mapper), 
-            parententity=mapper,
-            property_=self,
-            proxy_property=self.descriptor,
-            doc=self.doc
-            )
-
-    def merge(self, session, source_state, source_dict, dest_state,
-                dest_dict, load, _recursive):
-        pass
         
-log.class_logger(SynonymProperty)
-
-class ComparableProperty(MapperProperty):
+class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 
     extension = None
@@ -410,28 +432,10 @@ class ComparableProperty(MapperProperty):
                 self.descriptor = desc
         self.parent = parent
 
-    def instrument_class(self, mapper):
-        """Set up a proxy to the unmanaged descriptor."""
+    def _comparator_factory(self, mapper):
+        return self.comparator_factory(self, mapper)
 
-        attributes.register_descriptor(
-            mapper.class_, 
-            self.key, 
-            comparator=self.comparator_factory(self, mapper), 
-            parententity=mapper,
-            property_=self,
-            proxy_property=self.descriptor,
-            doc=self.doc,
-            )
 
-    def setup(self, context, entity, path, adapter, **kwargs):
-        pass
-
-    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return (None, None)
-
-    def merge(self, session, source_state, source_dict, 
-                dest_state, dest_dict, load, _recursive):
-        pass
 
 
 class RelationshipProperty(StrategizedProperty):

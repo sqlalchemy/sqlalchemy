@@ -62,11 +62,12 @@ or as the class itself::
     ### TODO ADD EXAMPLES HERE AND STUFF THIS ISN'T FINISHED ###
     
 """
+from sqlalchemy import util
 
 class method(object):
     def __init__(self, func, expr=None):
         self.func = func
-        self.expr = expr or fund
+        self.expr = expr or func
         
     def __get__(self, instance, owner):
         if instance is None:
@@ -78,16 +79,17 @@ class method(object):
         self.expr = expr
         return self
 
-class property(object):
+class property_(object):
     def __init__(self, fget, fset=None, fdel=None, expr=None):
         self.fget = fget
         self.fset = fset
         self.fdel = fdel
         self.expr = expr or fget
-        
+        util.update_wrapper(self, fget)
+
     def __get__(self, instance, owner):
         if instance is None:
-            return self.expr(owner)
+            return util.update_wrapper(self.expr(owner), self)
         else:
             return self.fget(instance)
             
@@ -109,3 +111,4 @@ class property(object):
         self.expr = expr
         return self
     
+

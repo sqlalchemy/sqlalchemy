@@ -295,28 +295,39 @@ through the ``email`` descriptor and into the ``_email``
 mapped attribute, the class level ``EmailAddress.email``
 attribute does not have the usual expression semantics
 usable with :class:`.Query`. To provide
-these, we instead use the :func:`.synonym`
-function as follows::
+these, we instead use the :func:`.hybrid.property`
+decorator as follows::
 
-    mapper(EmailAddress, addresses_table, properties={
-        'email': synonym('_email', map_column=True)
-    })
+    from sqlalchemy.ext import hybrid
+
+    class EmailAddress(object):
+        
+        @hybrid.property
+        def email(self):
+            return self._email
+            
+        @email.setter
+        def email(self, email):
+            self._email = email
+    
+        @email.expression
+        def email(cls):
+            return cls._email
 
 The ``email`` attribute is now usable in the same way as any
 other mapped attribute, including filter expressions,
 get/set operations, etc.::
 
-    address = session.query(EmailAddress).filter(EmailAddress.email == 'some address').one()
+    address = session.query(EmailAddress).\\
+                filter(EmailAddress.email == 'some address').\\
+                one()
 
     address.email = 'some other address'
-    session.flush()
+    session.commit()
 
-    q = session.query(EmailAddress).filter_by(email='some other address')
+    q = session.query(EmailAddress).\
+                filter_by(email='some other address')
 
-If the mapped class does not provide a property, the :func:`.synonym` construct will create a default getter/setter object automatically.
-
-To use synonyms with :mod:`~sqlalchemy.ext.declarative`, see the section 
-:ref:`declarative_synonyms`.
 
 .. _custom_comparators:
 

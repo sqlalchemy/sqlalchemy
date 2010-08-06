@@ -899,9 +899,10 @@ class MapperTest(_fixtures.FixtureTest):
                 args = (UCComparator, User.uc_name)
             else:
                 args = (UCComparator,)
-
             mapper(User, users, properties=dict(
                     uc_name = sa.orm.comparable_property(*args)))
+#            import pdb
+#            pdb.set_trace()
             return User
 
         for User in (map_(True), map_(False)):
@@ -1169,7 +1170,7 @@ class DocumentTest(testing.TestBase):
                                     backref=backref('foo',doc='foo relationship')
                                 ),
             'foober':column_property(t1.c.col3, doc='alternate data col'),
-            'hoho':synonym(t1.c.col4, doc="syn of col4")
+            'hoho':synonym("col4", doc="syn of col4")
         })
         mapper(Bar, t2)
         compile_mappers()
@@ -1554,7 +1555,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                     User.name == 'ed', 
                     "foobar(users.name) = foobar(:foobar_1)",
                     dialect=default.DefaultDialect())
-
+        
         self.assert_compile(
                     aliased(User).name == 'ed', 
                     "foobar(users_1.name) = foobar(:foobar_1)",

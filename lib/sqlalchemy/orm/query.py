@@ -864,7 +864,7 @@ class Query(object):
         """apply the given filtering criterion to the query and return 
         the newly resulting ``Query``."""
 
-        clauses = [_entity_descriptor(self._joinpoint_zero(), key)[0] == value
+        clauses = [_entity_descriptor(self._joinpoint_zero(), key) == value
             for key, value in kwargs.iteritems()]
 
         return self.filter(sql.and_(*clauses))
@@ -1158,7 +1158,7 @@ class Query(object):
             if isinstance(onclause, basestring):
                 left_entity = self._joinpoint_zero()
 
-                descriptor, prop = _entity_descriptor(left_entity, onclause)
+                descriptor = _entity_descriptor(left_entity, onclause)
                 onclause = descriptor
             
             # check for q.join(Class.propname, from_joinpoint=True)
@@ -1171,7 +1171,7 @@ class Query(object):
                                     _entity_info(self._joinpoint_zero())
                 if left_mapper is left_entity:
                     left_entity = self._joinpoint_zero()
-                    descriptor, prop = _entity_descriptor(left_entity,
+                    descriptor = _entity_descriptor(left_entity,
                                                             onclause.key)
                     onclause = descriptor
 
@@ -2579,7 +2579,10 @@ class _ColumnEntity(_QueryEntity):
         if isinstance(column, basestring):
             column = sql.literal_column(column)
             self._label_name = column.name
-        elif isinstance(column, attributes.QueryableAttribute):
+        elif isinstance(column, (
+                                    attributes.QueryableAttribute,
+                                    interfaces.PropComparator
+                                )):
             self._label_name = column.key
             column = column.__clause_element__()
         else:
