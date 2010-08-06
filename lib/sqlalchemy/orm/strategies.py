@@ -1215,7 +1215,7 @@ class LoadEagerFromAliasOption(PropertyOption):
             if isinstance(self.alias, basestring):
                 mapper = mappers[-1]
                 (root_mapper, propname) = paths[-1][-2:]
-                prop = mapper.get_property(propname, resolve_synonyms=True)
+                prop = mapper.get_property(propname)
                 self.alias = prop.target.alias(self.alias)
             query._attributes[
                         ("user_defined_eager_row_processor", 
@@ -1224,7 +1224,7 @@ class LoadEagerFromAliasOption(PropertyOption):
         else:
             (root_mapper, propname) = paths[-1][-2:]
             mapper = mappers[-1]
-            prop = mapper.get_property(propname, resolve_synonyms=True)
+            prop = mapper.get_property(propname)
             adapter = query._polymorphic_adapters.get(prop.mapper, None)
             query._attributes[
                         ("user_defined_eager_row_processor", 

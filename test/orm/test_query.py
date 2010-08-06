@@ -3448,53 +3448,92 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             'orders':relationship(Order, backref='user'), # o2m, m2o
         })
         mapper(Order, orders, properties={
-            'items':relationship(Item, secondary=order_items, order_by=items.c.id),  #m2m
+            'items':relationship(Item, secondary=order_items,
+                                        order_by=items.c.id),  #m2m
         })
         mapper(Item, items, properties={
-            'keywords':relationship(Keyword, secondary=item_keywords, order_by=keywords.c.id) #m2m
+            'keywords':relationship(Keyword, secondary=item_keywords,
+                                        order_by=keywords.c.id) #m2m
         })
         mapper(Keyword, keywords)
 
-        sel = users.select(users.c.id.in_([7, 8]))
         sess = create_session()
-    
-        eq_(sess.query(User).select_from(sel).join('orders', 'items', 'keywords').filter(Keyword.name.in_(['red', 'big', 'round'])).all(), [
+        sel = users.select(users.c.id.in_([7, 8]))
+
+        eq_(sess.query(User).select_from(sel).\
+                join('orders', 'items', 'keywords').\
+                filter(Keyword.name.in_(['red', 'big', 'round'])).\
+                all(), 
+        [
             User(name=u'jack',id=7)
         ])
 
-        eq_(sess.query(User).select_from(sel).join('orders', 'items', 'keywords', aliased=True).filter(Keyword.name.in_(['red', 'big', 'round'])).all(), [
+        eq_(sess.query(User).select_from(sel).\
+                    join('orders', 'items', 'keywords', aliased=True).\
+                    filter(Keyword.name.in_(['red', 'big', 'round'])).\
+                    all(), 
+        [
             User(name=u'jack',id=7)
         ])
 
         def go():
             eq_(
                 sess.query(User).select_from(sel).
-                            options(joinedload_all('orders.items.keywords')).
-                            join('orders', 'items', 'keywords', aliased=True).
-                            filter(Keyword.name.in_(['red', 'big', 'round'])).all(), 
+                        options(joinedload_all('orders.items.keywords')).
+                        join('orders', 'items', 'keywords', aliased=True).
+                        filter(Keyword.name.in_(['red', 'big', 'round'])).\
+                        all(), 
                 [
                 User(name=u'jack',orders=[
                     Order(description=u'order 1',items=[
-                        Item(description=u'item 1',keywords=[Keyword(name=u'red'), Keyword(name=u'big'), Keyword(name=u'round')]),
-                        Item(description=u'item 2',keywords=[Keyword(name=u'red',id=2), Keyword(name=u'small',id=5), Keyword(name=u'square')]),
-                        Item(description=u'item 3',keywords=[Keyword(name=u'green',id=3), Keyword(name=u'big',id=4), Keyword(name=u'round',id=6)])
+                        Item(description=u'item 1',
+                            keywords=[
+                                Keyword(name=u'red'), 
+                                Keyword(name=u'big'),
+                                Keyword(name=u'round')
+                            ]),
+                        Item(description=u'item 2',
+                            keywords=[
+                                Keyword(name=u'red',id=2),
+                                Keyword(name=u'small',id=5),
+                                Keyword(name=u'square')
+                            ]),
+                        Item(description=u'item 3',
+                                keywords=[
+                                    Keyword(name=u'green',id=3),
+                                    Keyword(name=u'big',id=4),
+                                    Keyword(name=u'round',id=6)])
                     ]),
                     Order(description=u'order 3',items=[
-                        Item(description=u'item 3',keywords=[Keyword(name=u'green',id=3), Keyword(name=u'big',id=4), Keyword(name=u'round',id=6)]),
+                        Item(description=u'item 3',
+                                keywords=[
+                                    Keyword(name=u'green',id=3),
+                                    Keyword(name=u'big',id=4),
+                                    Keyword(name=u'round',id=6)
+                                ]),
                         Item(description=u'item 4',keywords=[],id=4),
                         Item(description=u'item 5',keywords=[],id=5)
                         ]),
-                    Order(description=u'order 5',items=[Item(description=u'item 5',keywords=[])])])
+                    Order(description=u'order 5',
+                        items=[
+                            Item(description=u'item 5',keywords=[])])
+                        ])
                 ])
         self.assert_sql_count(testing.db, go, 1)
-
+        
         sess.expunge_all()
         sel2 = orders.select(orders.c.id.in_([1,2,3]))
-        eq_(sess.query(Order).select_from(sel2).join('items', 'keywords').filter(Keyword.name == 'red').order_by(Order.id).all(), [
+        eq_(sess.query(Order).select_from(sel2).\
+                    join('items', 'keywords').\
+                    filter(Keyword.name == 'red').\
+                    order_by(Order.id).all(), [
             Order(description=u'order 1',id=1),
             Order(description=u'order 2',id=2),
         ])
-        eq_(sess.query(Order).select_from(sel2).join('items', 'keywords', aliased=True).filter(Keyword.name == 'red').order_by(Order.id).all(), [
+        eq_(sess.query(Order).select_from(sel2).\
+                    join('items', 'keywords', aliased=True).\
+                    filter(Keyword.name == 'red').\
+                    order_by(Order.id).all(), [
             Order(description=u'order 1',id=1),
             Order(description=u'order 2',id=2),
         ])

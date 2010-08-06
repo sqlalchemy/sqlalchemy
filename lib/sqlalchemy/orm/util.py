@@ -347,10 +347,6 @@ class AliasedClass(object):
         return queryattr
 
     def __getattr__(self, key):
-        prop = self.__mapper._get_property(key, raiseerr=False)
-        if prop:
-            return self.__adapt_prop(prop)
-
         for base in self.__target.__mro__:
             try:
                 attr = object.__getattribute__(base, key)
@@ -360,7 +356,10 @@ class AliasedClass(object):
                 break
         else:
             raise AttributeError(key)
-
+        
+        if isinstance(attr, attributes.QueryableAttribute):
+            return self.__adapt_prop(attr.property)
+            
         if hasattr(attr, 'func_code'):
             is_method = getattr(self.__target, key, None)
             if is_method and is_method.im_self is not None:
@@ -494,7 +493,7 @@ def with_parent(instance, prop):
     """
     if isinstance(prop, basestring):
         mapper = object_mapper(instance)
-        prop = mapper.get_property(prop, resolve_synonyms=True)
+        prop = mapper.get_property(prop)
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 

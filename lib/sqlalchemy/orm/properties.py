@@ -284,7 +284,7 @@ class ConcreteInheritedProperty(MapperProperty):
         comparator_callable = None
         # TODO: put this process into a deferred callable?
         for m in self.parent.iterate_to_root():
-            p = m._get_property(self.key)
+            p = m._props[self.key]
             if not isinstance(p, ConcreteInheritedProperty):
                 comparator_callable = p.comparator_factory
                 break
@@ -337,8 +337,8 @@ class SynonymProperty(MapperProperty):
 
         def comparator_callable(prop, mapper):
             def comparator():
-                prop = self.parent._get_property(
-                                        self.key, resolve_synonyms=True)
+                prop = getattr(self.parent.class_,
+                                        self.name).property
                 if self.comparator_factory:
                     return self.comparator_factory(prop, mapper)
                 else:
@@ -837,7 +837,7 @@ class RelationshipProperty(StrategizedProperty):
                     yield (c, instance_mapper, instance_state)
 
     def _add_reverse_property(self, key):
-        other = self.mapper._get_property(key)
+        other = self.mapper.get_property(key, _compile_mappers=False)
         self._reverse_property.add(other)
         other._reverse_property.add(self)
         
@@ -924,8 +924,7 @@ class RelationshipProperty(StrategizedProperty):
         if not self.parent.concrete:
             for inheriting in self.parent.iterate_to_root():
                 if inheriting is not self.parent \
-                    and inheriting._get_property(self.key,
-                        raiseerr=False):
+                    and inheriting.has_property(self.key):
                     util.warn("Warning: relationship '%s' on mapper "
                               "'%s' supercedes the same relationship "
                               "on inherited mapper '%s'; this can "
@@ -1216,7 +1215,7 @@ class RelationshipProperty(StrategizedProperty):
     def _assert_is_primary(self):
         if not self.is_primary() \
             and not mapper.class_mapper(self.parent.class_,
-                compile=False)._get_property(self.key, raiseerr=False):
+                compile=False).has_property(self.key):
             raise sa_exc.ArgumentError("Attempting to assign a new "
                     "relationship '%s' to a non-primary mapper on "
                     "class '%s'.  New relationships can only be added "
@@ -1234,8 +1233,7 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 backref_key, kwargs = self.backref
             mapper = self.mapper.primary_mapper()
-            if mapper._get_property(backref_key, raiseerr=False) \
-                is not None:
+            if mapper.has_property(backref_key):
                 raise sa_exc.ArgumentError("Error creating backref "
                         "'%s' on relationship '%s': property of that "
                         "name exists on mapper '%s'" % (backref_key,

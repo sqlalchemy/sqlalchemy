@@ -905,26 +905,22 @@ class Mapper(object):
     def has_property(self, key):
         return key in self._props
 
-    def get_property(self, key, resolve_synonyms=False, raiseerr=True):
-        """return a MapperProperty associated with the given key."""
+    def get_property(self, key, _compile_mappers=True):
+        """return a MapperProperty associated with the given key.
+        
+        Calls getattr() against the mapped class itself, so that class-level 
+        proxies will be resolved to the underlying property, if any.
+        
+        """
 
-        if not self.compiled:
+        if _compile_mappers and not self.compiled:
             self.compile()
-        return self._get_property(key, 
-                            resolve_synonyms=resolve_synonyms,
-                            raiseerr=raiseerr)
-
-    def _get_property(self, key, resolve_synonyms=False, raiseerr=True):
-        prop = self._props.get(key, None)
-        if resolve_synonyms:
-            while isinstance(prop, SynonymProperty):
-                prop = self._props.get(prop.name, None)
-        if prop is None and raiseerr:
+        try:
+            return getattr(self.class_, key).property
+        except AttributeError:
             raise sa_exc.InvalidRequestError(
-                    "Mapper '%s' has no property '%s'" % 
-                    (self, key))
-        return prop
-    
+                    "Mapper '%s' has no property '%s'" % (self, key))
+            
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""

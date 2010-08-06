@@ -179,8 +179,7 @@ class _ScopedExt(MapperExtension):
         def __init__(self, **kwargs):
             for key, value in kwargs.iteritems():
                 if ext.validate:
-                    if not mapper.get_property(key, resolve_synonyms=False,
-                                               raiseerr=False):
+                    if not mapper.has_property(key):
                         raise sa_exc.ArgumentError(
                             "Invalid __init__ argument: '%s'" % key)
                 setattr(self, key, value)

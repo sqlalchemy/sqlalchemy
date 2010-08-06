@@ -1543,10 +1543,22 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class MyFactory(ColumnProperty.Comparator):
             __hash__ = None
             def __eq__(self, other):
-                return func.foobar(self.__clause_element__()) == func.foobar(other)
-        mapper(User, users, properties={'name':synonym('_name', map_column=True, comparator_factory=MyFactory)})
-        self.assert_compile(User.name == 'ed', "foobar(users.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
-        self.assert_compile(aliased(User).name == 'ed', "foobar(users_1.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+                return func.foobar(self.__clause_element__()) ==\
+                            func.foobar(other)
+
+        mapper(User, users, properties={
+                    'name':synonym('_name', map_column=True,
+                                    comparator_factory=MyFactory)
+                    })
+        self.assert_compile(
+                    User.name == 'ed', 
+                    "foobar(users.name) = foobar(:foobar_1)",
+                    dialect=default.DefaultDialect())
+
+        self.assert_compile(
+                    aliased(User).name == 'ed', 
+                    "foobar(users_1.name) = foobar(:foobar_1)",
+                    dialect=default.DefaultDialect())
 
     @testing.resolve_artifact_names
     def test_relationship(self):

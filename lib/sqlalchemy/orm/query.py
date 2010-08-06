@@ -662,7 +662,7 @@ class Query(object):
                             instance.__class__.__name__)
                         )
         else:
-            prop = mapper.get_property(property, resolve_synonyms=True)
+            prop = mapper.get_property(property)
         return self.filter(prop.compare(
                                 operators.eq, 
                                 instance, value_is_parent=True))
