@@ -318,7 +318,38 @@ class SynonymProperty(MapperProperty):
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         return (None, None)
-
+    
+    def set_parent(self, parent, init):
+        if self.descriptor is None:
+            desc = getattr(parent.class_, self.key, None)
+            if parent._is_userland_descriptor(desc):
+                self.descriptor = desc
+        if self.map_column:
+            if self.key not in parent.mapped_table.c:
+                raise sa_exc.ArgumentError(
+                    "Can't compile synonym '%s': no column on table "
+                    "'%s' named '%s'" 
+                     % (self.name, parent.mapped_table.description, self.key))
+            elif parent.mapped_table.c[self.key] in \
+                    parent._columntoproperty and \
+                    parent._columntoproperty[
+                                            parent.mapped_table.c[self.key]
+                                        ].key == self.name:
+                raise sa_exc.ArgumentError(
+                    "Can't call map_column=True for synonym %r=%r, "
+                    "a ColumnProperty already exists keyed to the name "
+                    "%r for column %r" % 
+                    (self.key, self.name, self.name, self.key)
+                )
+            p = ColumnProperty(parent.mapped_table.c[self.key])
+            parent._configure_property(
+                                    self.name, p, 
+                                    init=init, 
+                                    setparent=True)
+            p._mapped_by_synonym = self.key
+    
+        self.parent = parent
+    
     def instrument_class(self, mapper):
         class_ = self.parent.class_
 
@@ -371,6 +402,13 @@ class ComparableProperty(MapperProperty):
         self.comparator_factory = comparator_factory
         self.doc = doc or (descriptor and descriptor.__doc__) or None
         util.set_creation_order(self)
+
+    def set_parent(self, parent, init):
+        if self.descriptor is None:
+            desc = getattr(parent.class_, self.key, None)
+            if parent._is_userland_descriptor(desc):
+                self.descriptor = desc
+        self.parent = parent
 
     def instrument_class(self, mapper):
         """Set up a proxy to the unmanaged descriptor."""
@@ -1414,7 +1452,5 @@ PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)
 
 mapper.ColumnProperty = ColumnProperty
-mapper.SynonymProperty = SynonymProperty
-mapper.ComparableProperty = ComparableProperty
 mapper.RelationshipProperty = RelationshipProperty
 mapper.ConcreteInheritedProperty = ConcreteInheritedProperty
