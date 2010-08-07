@@ -290,14 +290,15 @@ class DescriptorProperty(MapperProperty):
             )
 
         proxy_attr = attributes.\
-                        proxied_attribute_factory(self.descriptor 
-                                                    or descriptor)\
-                    (self.key, self.descriptor or descriptor,
-                        lambda: self._comparator_factory(mapper))
+                    create_proxied_attribute(self.descriptor or descriptor)\
+                    (
+                        self.key, 
+                        self.descriptor or descriptor,
+                        lambda: self._comparator_factory(mapper)
+                    )
         def get_comparator(owner):
             return proxy_attr
         descriptor.expr = get_comparator
-        
         descriptor.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, descriptor)
 
@@ -328,8 +329,6 @@ class ConcreteInheritedProperty(DescriptorProperty):
 
     """
 
-    extension = None
-    
     def _comparator_factory(self, mapper):
         comparator_callable = None
         
@@ -360,8 +359,6 @@ class ConcreteInheritedProperty(DescriptorProperty):
         
         
 class SynonymProperty(DescriptorProperty):
-
-    extension = None
 
     def __init__(self, name, map_column=None, 
                             descriptor=None, comparator_factory=None,
@@ -434,8 +431,6 @@ class ComparableProperty(DescriptorProperty):
 
     def _comparator_factory(self, mapper):
         return self.comparator_factory(self, mapper)
-
-
 
 
 class RelationshipProperty(StrategizedProperty):

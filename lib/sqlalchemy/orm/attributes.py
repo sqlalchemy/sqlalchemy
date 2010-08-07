@@ -162,17 +162,10 @@ class InstrumentedAttribute(QueryableAttribute):
         return self.impl.get(instance_state(instance),
                                 instance_dict(instance))
 
-class _ProxyImpl(object):
-    accepts_scalar_loader = False
-    expire_missing = True
-    
-    def __init__(self, key):
-        self.key = key
+def create_proxied_attribute(descriptor):
+    """Create an QueryableAttribute / user descriptor hybrid.
 
-def proxied_attribute_factory(descriptor):
-    """Create an InstrumentedAttribute / user descriptor hybrid.
-
-    Returns a new InstrumentedAttribute type that delegates descriptor
+    Returns a new QueryableAttribute type that delegates descriptor
     behavior and getattr() to the given descriptor.
     """
 
@@ -181,10 +174,8 @@ def proxied_attribute_factory(descriptor):
 
         def __init__(self, key, descriptor, comparator, adapter=None):
             self.key = key
-            # maintain ProxiedAttribute.user_prop compatability.
-            self.descriptor = self.user_prop = descriptor
+            self.descriptor = descriptor
             self._comparator = comparator
-            self.impl = _ProxyImpl(key)
             self.adapter = adapter
             
         @util.memoized_property
@@ -199,22 +190,10 @@ def proxied_attribute_factory(descriptor):
             return self.__class__(self.key, self.descriptor,
                                        self._comparator,
                                        adapter)
+
+        def __str__(self):
+            return self.key
         
-        def __get__(self, instance, owner):
-            """Delegate __get__ to the original descriptor."""
-            if instance is None:
-                descriptor.__get__(instance, owner)
-                return self
-            return descriptor.__get__(instance, owner)
-
-        def __set__(self, instance, value):
-            """Delegate __set__ to the original descriptor."""
-            return descriptor.__set__(instance, value)
-
-        def __delete__(self, instance):
-            """Delegate __delete__ to the original descriptor."""
-            return descriptor.__delete__(instance)
-
         def __getattr__(self, attribute):
             """Delegate __getattr__ to the original descriptor and/or
             comparator."""
@@ -223,7 +202,7 @@ def proxied_attribute_factory(descriptor):
                 return getattr(descriptor, attribute)
             except AttributeError:
                 try:
-                    return getattr(self.comparator, attribute)
+                    return getattr(self._comparator, attribute)
                 except AttributeError:
                     raise AttributeError(
                     'Neither %r object nor %r object has an attribute %r' % (
@@ -1424,15 +1403,12 @@ def unregister_class(class_):
     instrumentation_registry.unregister(class_)
 
 def register_attribute(class_, key, **kw):
-    proxy_property = kw.pop('proxy_property', None)
-    
     comparator = kw.pop('comparator', None)
     parententity = kw.pop('parententity', None)
     doc = kw.pop('doc', None)
-    register_descriptor(class_, key, proxy_property, 
+    register_descriptor(class_, key, 
                             comparator, parententity, doc=doc)
-    if not proxy_property:
-        register_attribute_impl(class_, key, **kw)
+    register_attribute_impl(class_, key, **kw)
     
 def register_attribute_impl(class_, key,         
         uselist=False, callable_=None, 
@@ -1464,16 +1440,11 @@ def register_attribute_impl(class_, key,
     
     manager.post_configure_attribute(key)
     
-def register_descriptor(class_, key, proxy_property=None, comparator=None, 
+def register_descriptor(class_, key, comparator=None, 
                                 parententity=None, property_=None, doc=None):
     manager = manager_of_class(class_)
 
-    if proxy_property:
-        raise NotImplementedError()
-        proxy_type = proxied_attribute_factory(proxy_property)
-        descriptor = proxy_type(key, proxy_property, comparator, parententity)
-    else:
-        descriptor = InstrumentedAttribute(key, comparator=comparator,
+    descriptor = InstrumentedAttribute(key, comparator=comparator,
                                             parententity=parententity)
     
     descriptor.__doc__ = doc

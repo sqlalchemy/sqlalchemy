@@ -901,8 +901,6 @@ class MapperTest(_fixtures.FixtureTest):
                 args = (UCComparator,)
             mapper(User, users, properties=dict(
                     uc_name = sa.orm.comparable_property(*args)))
-#            import pdb
-#            pdb.set_trace()
             return User
 
         for User in (map_(True), map_(False)):
