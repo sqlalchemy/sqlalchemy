@@ -112,7 +112,7 @@ class property_(object):
         self.expr = expr
         return self
     
-    def compare_with(self, comparator):
+    def comparator(self, comparator):
         proxy_attr = attributes.\
                         create_proxied_attribute(self)
         def expr(owner):
@@ -122,23 +122,18 @@ class property_(object):
 
 
 class Comparator(interfaces.PropComparator):
-    def __init__(self, expression, adapter=None):
-        self._expression = expression
-        self.adapter = adapter
+    def __init__(self, expression):
+        self.expression = expression
       
-    @property
-    def expression(self):
-        return self.__clause_element__()
-        
     def __clause_element__(self):
-        if self.adapter:
-            return self.adapter(self._expression)
-        else:
-            return self._expression
+        expr = self.expression
+        while hasattr(expr, '__clause_element__'):
+            expr = expr.__clause_element__()
+        return expr
             
-
     def adapted(self, adapter):
-        return self.__class__(self._expression, adapter)
+        # interesting....
+        return self
         
         
         

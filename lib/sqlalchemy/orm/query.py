@@ -866,8 +866,6 @@ class Query(object):
 
         clauses = [_entity_descriptor(self._joinpoint_zero(), key) == value
             for key, value in kwargs.iteritems()]
-        import pdb
-        pdb.set_trace()
         return self.filter(sql.and_(*clauses))
 
     @_generative(_no_statement_condition, _no_limit_offset)
