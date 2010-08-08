@@ -242,16 +242,7 @@ class DescriptorProperty(MapperProperty):
     """:class:`MapperProperty` which proxies access to a 
         user-defined descriptor."""
 
-    def set_parent(self, parent, init):
-        if self.descriptor is None:
-            desc = getattr(parent.class_, self.key, None)
-            if parent._is_userland_descriptor(desc):
-                self.descriptor = desc
-        self.parent = parent
-    
     def instrument_class(self, mapper):
-        class_ = self.parent.class_
-        
         from sqlalchemy.ext import hybrid
 
         # hackety hack hack
@@ -261,6 +252,11 @@ class DescriptorProperty(MapperProperty):
 
             def __init__(self, key):
                 self.key = key
+
+        if self.descriptor is None:
+            desc = getattr(mapper.class_, self.key, None)
+            if mapper._is_userland_descriptor(desc):
+                self.descriptor = desc
 
         if self.descriptor is None:
             def fset(obj, value):
@@ -371,8 +367,7 @@ class SynonymProperty(DescriptorProperty):
         util.set_creation_order(self)
 
     def _comparator_factory(self, mapper):
-        class_ = self.parent.class_
-        prop = getattr(class_, self.name).property
+        prop = getattr(mapper.class_, self.name).property
 
         if self.comparator_factory:
             comp = self.comparator_factory(prop, mapper)
@@ -381,10 +376,6 @@ class SynonymProperty(DescriptorProperty):
         return comp
 
     def set_parent(self, parent, init):
-        if self.descriptor is None:
-            desc = getattr(parent.class_, self.key, None)
-            if parent._is_userland_descriptor(desc):
-                self.descriptor = desc
         if self.map_column:
             if self.key not in parent.mapped_table.c:
                 raise sa_exc.ArgumentError(
@@ -414,20 +405,11 @@ class SynonymProperty(DescriptorProperty):
 class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 
-    extension = None
-    
     def __init__(self, comparator_factory, descriptor=None, doc=None):
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
         self.doc = doc or (descriptor and descriptor.__doc__) or None
         util.set_creation_order(self)
-
-    def set_parent(self, parent, init):
-        if self.descriptor is None:
-            desc = getattr(parent.class_, self.key, None)
-            if parent._is_userland_descriptor(desc):
-                self.descriptor = desc
-        self.parent = parent
 
     def _comparator_factory(self, mapper):
         return self.comparator_factory(self, mapper)

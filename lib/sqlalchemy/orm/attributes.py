@@ -202,12 +202,12 @@ def create_proxied_attribute(descriptor):
                 return getattr(descriptor, attribute)
             except AttributeError:
                 try:
-                    return getattr(self._comparator, attribute)
+                    return getattr(self.comparator, attribute)
                 except AttributeError:
                     raise AttributeError(
                     'Neither %r object nor %r object has an attribute %r' % (
                     type(descriptor).__name__, 
-                    type(self._comparator).__name__, 
+                    type(self.comparator).__name__, 
                     attribute)
                     )
 
