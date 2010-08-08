@@ -159,7 +159,8 @@ div.note, div.warning  {
     background-color:#EEFFEF;
 }
 
-div.admonition {
+
+div.admonition, div.topic {
     border:1px solid #CCCCCC;
     margin:5px 5px 5px 5px;
     padding:5px 5px 5px 35px;
