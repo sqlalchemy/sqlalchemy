@@ -868,6 +868,7 @@ class TLTransactionTest(TestBase):
         assert r2.connection.closed
         assert tlengine.closed
 
+    @testing.crashes('oracle+cx_oracle', 'intermittent failures on the buildbot')
     def test_dispose(self):
         eng = create_engine(testing.db.url, strategy='threadlocal')
         result = eng.execute(select([1]))
