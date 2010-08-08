@@ -1132,6 +1132,22 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
                     (User(id=10, name=u'chuck'), u'y')
                 ]
             )
+            
+        c1, c2 = column('c1'), column('c2')
+        q1 = s.query(User, c1.label('foo'), c1.label('bar'))
+        q2 = s.query(User, c1.label('foo'), c2.label('bar'))
+        q3 = q1.union(q2)
+        self.assert_compile(
+            q3,
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.users_name AS anon_1_users_name, "
+            "anon_1.foo AS anon_1_foo, anon_1.bar AS anon_1_bar "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name, "
+            "c1 AS foo, c1 AS bar FROM users UNION SELECT users.id AS "
+            "users_id, users.name AS users_name, c1 AS foo, c2 AS bar "
+            "FROM users) AS anon_1",
+            use_default_dialect=True
+        )
         
     @testing.fails_on('mysql', "mysql doesn't support intersect")
     def test_intersect(self):
