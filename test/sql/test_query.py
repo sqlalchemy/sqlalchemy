@@ -16,15 +16,19 @@ class QueryTest(TestBase):
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key=True, test_needs_autoincrement=True),
             Column('user_name', VARCHAR(20)),
+            test_needs_acid=True
         )
         addresses = Table('query_addresses', metadata,
             Column('address_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('user_id', Integer, ForeignKey('query_users.user_id')),
-            Column('address', String(30)))
+            Column('address', String(30)),
+            test_needs_acid=True
+            )
             
         users2 = Table('u2', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
+            test_needs_acid=True
         )
         metadata.create_all()
 
@@ -615,6 +619,39 @@ class QueryTest(TestBase):
         eq_(r[users.c.user_name], 'jack')
         eq_(r.user_name, 'jack')
 
+    def test_graceful_fetch_on_non_rows(self):
+        """test that calling fetchone() etc. on a result that doesn't
+        return rows fails gracefully.
+        
+        """
+
+        # these proxies don't work with no cursor.description present.
+        # so they don't apply to this test at the moment.
+        # base.FullyBufferedResultProxy,
+        # base.BufferedRowResultProxy,
+        # base.BufferedColumnResultProxy
+
+        conn = testing.db.connect()
+        for meth in ('fetchone', 'fetchall', 'first', 'scalar', 'fetchmany'):
+            trans = conn.begin()
+            result = conn.execute(users.insert(), user_id=1)
+            assert_raises_message(
+                exc.ResourceClosedError,
+                "This result object does not return rows. "
+                "It has been closed automatically.",
+                getattr(result, meth),
+            )
+            trans.rollback()
+            
+    def test_fetchone_til_end(self):
+        result = testing.db.execute("select * from query_users")
+        eq_(result.fetchone(), None)
+        assert_raises_message(
+            exc.ResourceClosedError,
+            "This result object is closed.",
+            result.fetchone
+        )
+        
     def test_result_case_sensitivity(self):
         """test name normalization for result sets."""
         

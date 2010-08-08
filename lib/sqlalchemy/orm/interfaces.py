@@ -474,7 +474,7 @@ class MapperProperty(object):
 
         return iter(())
 
-    def set_parent(self, parent):
+    def set_parent(self, parent, init):
         self.parent = parent
 
     def instrument_class(self, mapper):

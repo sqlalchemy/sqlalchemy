@@ -806,7 +806,11 @@ class Column(SchemaItem, expression.ColumnClause):
             for fk in col.foreign_keys:
                 col.foreign_keys.remove(fk)
                 table.foreign_keys.remove(fk)
-                table.constraints.remove(fk.constraint)
+                if fk.constraint in table.constraints:
+                    # this might have been removed
+                    # already, if it's a composite constraint
+                    # and more than one col being replaced
+                    table.constraints.remove(fk.constraint)
             
         table._columns.replace(self)
 
@@ -1019,7 +1023,20 @@ class ForeignKey(SchemaItem):
         return "ForeignKey(%r)" % self._get_colspec()
 
     def copy(self, schema=None):
-        """Produce a copy of this ForeignKey object."""
+        """Produce a copy of this :class:`ForeignKey` object.
+        
+        The new :class:`ForeignKey` will not be bound
+        to any :class:`Column`.
+        
+        This method is usually used by the internal
+        copy procedures of :class:`Column`, :class:`Table`,
+        and :class:`MetaData`.
+        
+        :param schema: The returned :class:`ForeignKey` will
+          reference the original table and column name, qualified
+          by the given string schema name.
+          
+        """
         
         return ForeignKey(
                 self._get_colspec(schema=schema),
@@ -1033,6 +1050,12 @@ class ForeignKey(SchemaItem):
                 )
 
     def _get_colspec(self, schema=None):
+        """Return a string based 'column specification' for this :class:`ForeignKey`.
+        
+        This is usually the equivalent of the string-based "tablename.colname"
+        argument first passed to the object's constructor.
+        
+        """
         if schema:
             return schema + "." + self.column.table.name + \
                                     "." + self.column.key
@@ -1048,15 +1071,16 @@ class ForeignKey(SchemaItem):
     target_fullname = property(_get_colspec)
 
     def references(self, table):
-        """Return True if the given table is referenced by this ForeignKey."""
+        """Return True if the given :class:`Table` is referenced by this :class:`ForeignKey`."""
         
         return table.corresponding_column(self.column) is not None
 
     def get_referent(self, table):
-        """Return the column in the given table referenced by this ForeignKey.
+        """Return the :class:`.Column` in the given :class:`.Table` 
+        referenced by this :class:`ForeignKey`.
 
-        Returns None if this ``ForeignKey`` does not reference the given
-        table.
+        Returns None if this :class:`ForeignKey` does not reference the given
+        :class:`Table`.
 
         """
 
@@ -1064,6 +1088,18 @@ class ForeignKey(SchemaItem):
 
     @util.memoized_property
     def column(self):
+        """Return the target :class:`.Column` referenced by this :class:`.ForeignKey`.
+        
+        If this :class:`ForeignKey` was created using a
+        string-based target column specification, this
+        attribute will on first access initiate a resolution
+        process to locate the referenced remote
+        :class:`.Column`.  The resolution process traverses
+        to the parent :class:`.Column`, :class:`.Table`, and
+        :class:`.MetaData` to proceed - if any of these aren't 
+        yet present, an error is raised.
+        
+        """
         # ForeignKey inits its remote column as late as possible, so tables
         # can be defined without dependencies
         if isinstance(self._colspec, basestring):
@@ -1108,8 +1144,9 @@ class ForeignKey(SchemaItem):
 
             if _get_table_key(tname, schema) not in parenttable.metadata:
                 raise exc.NoReferencedTableError(
-                    "Could not find table '%s' with which to generate a "
-                    "foreign key" % tname)
+                    "Foreign key assocated with column '%s' could not find "
+                    "table '%s' with which to generate a "
+                    "foreign key to target column '%s'" % (self.parent, tname, colname))
             table = Table(tname, parenttable.metadata,
                           mustexist=True, schema=schema)
                           

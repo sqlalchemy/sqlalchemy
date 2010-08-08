@@ -2,13 +2,14 @@
 Synopsis
 ========
 
-SQLAlchemy object-relational configuration involves the use of
-:class:`~sqlalchemy.schema.Table`, :func:`~sqlalchemy.orm.mapper`, and
-class objects to define the three areas of configuration.
-:mod:`~sqlalchemy.ext.declarative` allows all three types of
-configuration to be expressed declaratively on an individual
-mapped class.  Regular SQLAlchemy schema elements and ORM constructs
-are used in most cases.
+SQLAlchemy object-relational configuration involves the
+combination of :class:`.Table`, :func:`.mapper`, and class
+objects to define a mapped class.
+:mod:`~sqlalchemy.ext.declarative` allows all three to be
+expressed at once within the class declaration. As much as
+possible, regular SQLAlchemy schema and ORM constructs are
+used directly, so that configuration between "classical" ORM
+usage and declarative remain highly similar.
 
 As a simple example::
 
@@ -23,72 +24,74 @@ As a simple example::
 
 Above, the :func:`declarative_base` callable returns a new base class from
 which all mapped classes should inherit. When the class definition is
-completed, a new :class:`~sqlalchemy.schema.Table` and
-:class:`~sqlalchemy.orm.mapper` will have been generated, accessible via the
-``__table__`` and ``__mapper__`` attributes on the ``SomeClass`` class.
+completed, a new :class:`.Table` and
+:func:`.mapper` will have been generated.
+
+The resulting table and mapper are accessible via
+``__table__`` and ``__mapper__`` attributes on the
+``SomeClass`` class::
+
+    # access the mapped Table
+    SomeClass.__table__
+    
+    # access the Mapper
+    SomeClass.__mapper__
 
 Defining Attributes
 ===================
 
-In the above example, the :class:`~sqlalchemy.schema.Column` objects are
+In the previous example, the :class:`.Column` objects are
 automatically named with the name of the attribute to which they are
 assigned.
 
-They can also be explicitly named, and that name does not have to be
-the same as name assigned on the class.
-The column will be assigned to the :class:`~sqlalchemy.schema.Table` using the
-given name, and mapped to the class using the attribute name::
+To name columns explicitly with a name distinct from their mapped attribute,
+just give the column a name.  Below, column "some_table_id" is mapped to the 
+"id" attribute of `SomeClass`, but in SQL will be represented as "some_table_id"::
 
     class SomeClass(Base):
         __tablename__ = 'some_table'
         id = Column("some_table_id", Integer, primary_key=True)
-        name = Column("name", String(50))
     
 Attributes may be added to the class after its construction, and they will be
-added to the underlying :class:`~sqlalchemy.schema.Table` and
-:func:`~sqlalchemy.orm.mapper()` definitions as appropriate::
+added to the underlying :class:`.Table` and
+:func:`.mapper()` definitions as appropriate::
 
     SomeClass.data = Column('data', Unicode)
     SomeClass.related = relationship(RelatedInfo)
 
-Classes which are mapped explicitly using
-:func:`~sqlalchemy.orm.mapper()` can interact freely with declarative
-classes.
+Classes which are constructed using declarative can interact freely
+with classes that are mapped explicitly with :func:`mapper`.   
 
 It is recommended, though not required, that all tables 
 share the same underlying :class:`~sqlalchemy.schema.MetaData` object,
 so that string-configured :class:`~sqlalchemy.schema.ForeignKey`
 references can be resolved without issue.
 
-Association of Metadata and Engine
-==================================
+Accessing the MetaData
+=======================
 
 The :func:`declarative_base` base class contains a
-:class:`~sqlalchemy.schema.MetaData` object where newly 
-defined :class:`~sqlalchemy.schema.Table` objects are collected.  This
-is accessed via the :class:`~sqlalchemy.schema.MetaData` class level
-accessor, so to create tables we can say:: 
+:class:`.MetaData` object where newly defined
+:class:`.Table` objects are collected. This object is
+intended to be accessed directly for
+:class:`.MetaData`-specific operations. Such as, to issue
+CREATE statements for all tables::
 
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
 
-The :class:`~sqlalchemy.engine.base.Engine` created above may also be
-directly associated with the declarative base class using the ``bind``
-keyword argument, where it will be associated with the underlying
-:class:`~sqlalchemy.schema.MetaData` object and allow SQL operations 
-involving that metadata and its tables to make use of that engine
-automatically::
-
-    Base = declarative_base(bind=create_engine('sqlite://'))
-
-Alternatively, by way of the normal
-:class:`~sqlalchemy.schema.MetaData` behavior, the ``bind`` attribute
-of the class level accessor can be assigned at any time as follows::
+The usual techniques of associating :class:`.MetaData:` with :class:`.Engine`
+apply, such as assigning to the ``bind`` attribute::
 
     Base.metadata.bind = create_engine('sqlite://')
 
-The :func:`declarative_base` can also receive a pre-created
-:class:`~sqlalchemy.schema.MetaData` object, which allows a
+To associate the engine with the :func:`declarative_base` at time
+of construction, the ``bind`` argument is accepted::
+
+    Base = declarative_base(bind=create_engine('sqlite://'))
+
+:func:`declarative_base` can also receive a pre-existing
+:class:`.MetaData` object, which allows a
 declarative setup to be associated with an already 
 existing traditional collection of :class:`~sqlalchemy.schema.Table`
 objects:: 
@@ -157,12 +160,13 @@ class after the fact::
 Configuring Many-to-Many Relationships
 ======================================
 
-There's nothing special about many-to-many with declarative.  The
-``secondary`` argument to :func:`~sqlalchemy.orm.relationship` still
-requires a :class:`~sqlalchemy.schema.Table` object, not a declarative
-class. The :class:`~sqlalchemy.schema.Table` should share the same
-:class:`~sqlalchemy.schema.MetaData` object used by the declarative
-base:: 
+Many-to-many relationships are also declared in the same way
+with declarative as with traditional mappings. The
+``secondary`` argument to
+:func:`.relationship` is as usual passed a 
+:class:`.Table` object, which is typically declared in the 
+traditional way.  The :class:`.Table` usually shares
+the :class:`.MetaData` object used by the declarative base::
 
     keywords = Table(
         'keywords', Base.metadata,
@@ -175,10 +179,11 @@ base::
         id = Column(Integer, primary_key=True)
         keywords = relationship("Keyword", secondary=keywords)
 
-You should generally **not** map a class and also specify its table in
-a many-to-many relationship, since the ORM may issue duplicate INSERT and
-DELETE statements. 
-
+As with traditional mapping, its generally not a good idea to use 
+a :class:`.Table` as the "secondary" argument which is also mapped to
+a class, unless the :class:`.relationship` is declared with ``viewonly=True``.
+Otherwise, the unit-of-work system may attempt duplicate INSERT and
+DELETE statements against the underlying table.
 
 .. _declarative_synonyms:
 
@@ -187,18 +192,25 @@ Defining Synonyms
 
 Synonyms are introduced in :ref:`synonyms`. To define a getter/setter
 which proxies to an underlying attribute, use
-:func:`~sqlalchemy.orm.synonym` with the ``descriptor`` argument::
+:func:`~.synonym` with the ``descriptor`` argument.  Here we present
+using Python 2.6 style properties::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
 
+        id = Column(Integer, primary_key=True)
+
         _attr = Column('attr', String)
 
-        def _get_attr(self):
-            return self._some_attr
-        def _set_attr(self, attr):
-            self._some_attr = attr
-        attr = synonym('_attr', descriptor=property(_get_attr, _set_attr))
+        @property
+        def attr(self):
+            return self._attr
+        
+        @attr.setter
+        def attr(self, attr):
+            self._attr = attr
+            
+        attr = synonym('_attr', descriptor=attr)
 
 The above synonym is then usable as an instance attribute as well as a
 class-level expression construct::
@@ -212,16 +224,17 @@ conjunction with ``@property``::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
-        
+    
+        id = Column(Integer, primary_key=True)
         _attr = Column('attr', String)
 
         @synonym_for('_attr')
         @property
         def attr(self):
-            return self._some_attr
+            return self._attr
 
 Similarly, :func:`comparable_using` is a front end for the
-:func:`~sqlalchemy.orm.comparable_property` ORM function::
+:func:`~.comparable_property` ORM function::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
@@ -232,6 +245,61 @@ Similarly, :func:`comparable_using` is a front end for the
         @property
         def uc_name(self):
             return self.name.upper()
+
+.. _declarative_sql_expressions:
+
+Defining SQL Expressions
+========================
+
+The usage of :func:`.column_property` with Declarative is
+pretty much the same as that described in
+:ref:`mapper_sql_expressions`. Local columns within the same
+class declaration can be referenced directly::
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        firstname = Column(String)
+        lastname = Column(String)
+        fullname = column_property(
+            firstname + " " + lastname
+        )
+
+Correlated subqueries reference the :class:`Column` objects they
+need either from the local class definition or from remote 
+classes::
+
+    from sqlalchemy.sql import func
+    
+    class Address(Base):
+        __tablename__ = 'address'
+
+        id = Column('id', Integer, primary_key=True)
+        user_id = Column(Integer, ForeignKey('user.id'))
+        
+    class User(Base):
+        __tablename__ = 'user'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+        
+        address_count = column_property(
+            select([func.count(Address.id)]).\\
+                where(Address.user_id==id)
+        )
+
+In the case that the ``address_count`` attribute above doesn't have access to
+``Address`` when ``User`` is defined, the ``address_count`` attribute should
+be added to ``User`` when both ``User`` and ``Address`` are available (i.e.
+there is no string based "late compilation" feature like there is with
+:func:`.relationship` at this time). Note we reference the ``id`` column
+attribute of ``User`` with its class when we are no longer in the declaration
+of the ``User`` class::
+
+    User.address_count = column_property(
+        select([func.count(Address.id)]).\\
+            where(Address.user_id==User.id)
+    ) 
 
 Table Configuration
 ===================
@@ -263,6 +331,9 @@ arguments to be specified as well (usually constraints)::
 Note that the keyword parameters dictionary is required in the tuple
 form even if empty.
 
+Using a Hybrid Approach with __table__
+=======================================
+
 As an alternative to ``__tablename__``, a direct
 :class:`~sqlalchemy.schema.Table` construct may be used.  The
 :class:`~sqlalchemy.schema.Column` objects, which in this case require
@@ -275,23 +346,48 @@ to a table::
             Column('name', String(50))
         )
 
+``__table__`` provides a more focused point of control for establishing
+table metadata, while still getting most of the benefits of using declarative.
+An application that uses reflection might want to load table metadata elsewhere
+and simply pass it to declarative classes::
+    
+    from sqlalchemy.ext.declarative import declarative_base
+    
+    Base = declarative_base()
+    Base.metadata.reflect(some_engine)
+    
+    class User(Base):
+        __table__ = metadata['user']
+    
+    class Address(Base):
+        __table__ = metadata['address']
+
+Some configuration schemes may find it more appropriate to use ``__table__``, 
+such as those which already take advantage of the data-driven nature of 
+:class:`.Table` to customize and/or automate schema definition.
+
 Mapper Configuration
 ====================
 
-Configuration of mappers is done with the
-:func:`~sqlalchemy.orm.mapper` function and all the possible mapper
-configuration parameters can be found in the documentation for that
-function.
+Declarative makes use of the :func:`~.orm.mapper` function internally
+when it creates the mapping to the declared table.   The options
+for :func:`~.orm.mapper` are passed directly through via the ``__mapper_args__``
+class attribute.  As always, arguments which reference locally
+mapped columns can reference them directly from within the 
+class declaration::
 
-:func:`~sqlalchemy.orm.mapper` is still used by declaratively mapped
-classes and keyword parameters to the function can be passed by
-placing them in the ``__mapper_args__`` class variable::
-
+    from datetime import datetime
+    
     class Widget(Base):
         __tablename__ = 'widgets'
-        id = Column(Integer, primary_key=True)
         
-        __mapper_args__ = {'extension': MyWidgetExtension()}
+        id = Column(Integer, primary_key=True)
+        timestamp = Column(DateTime, nullable=False)
+        
+        __mapper_args__ = {
+                        'version_id_col': timestamp,
+                        'version_id_generator': lambda v:datetime.now()
+                    }
 
 Inheritance Configuration
 =========================
@@ -531,12 +627,12 @@ Mixing in Relationships
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Relationships created by :func:`~sqlalchemy.orm.relationship` are provided
-exclusively using the :func:`~sqlalchemy.util.classproperty` approach,
-eliminating any ambiguity which could arise when copying a relationship
-and its possibly column-bound contents.  Below is an example which 
-combines a foreign key column and a relationship so that two classes
-``Foo`` and ``Bar`` can both be configured to reference a common
-target class via many-to-one::
+with declarative mixin classes exclusively using the
+:func:`~sqlalchemy.util.classproperty` approach, eliminating any ambiguity
+which could arise when copying a relationship and its possibly column-bound
+contents. Below is an example which combines a foreign key column and a
+relationship so that two classes ``Foo`` and ``Bar`` can both be configured to
+reference a common target class via many-to-one::
 
     class RefTargetMixin(object):
         @classproperty
@@ -586,9 +682,9 @@ Mixing in deferred(), column_property(), etc.
 Like :func:`~sqlalchemy.orm.relationship`, all
 :class:`~sqlalchemy.orm.interfaces.MapperProperty` subclasses such as
 :func:`~sqlalchemy.orm.deferred`, :func:`~sqlalchemy.orm.column_property`,
-etc. ultimately involve references to columns, and therefore have the
-:func:`~sqlalchemy.util.classproperty` requirement so that no reliance on
-copying is needed::
+etc. ultimately involve references to columns, and therefore, when 
+used with declarative mixins, have the :func:`~sqlalchemy.util.classproperty` 
+requirement so that no reliance on copying is needed::
 
     class SomethingMixin(object):
 
@@ -607,7 +703,8 @@ Controlling table inheritance with mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``__tablename__`` attribute in conjunction with the hierarchy of
-the classes involved controls what type of table inheritance, if any,
+classes involved in a declarative mixin scenario controls what type of 
+table inheritance, if any,
 is configured by the declarative extension.
 
 If the ``__tablename__`` is computed by a mixin, you may need to
@@ -700,12 +797,13 @@ classes::
 Combining Table/Mapper Arguments from Multiple Mixins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the case of ``__table_args__`` or ``__mapper_args__``, you may want
-to combine some parameters from several mixins with those you wish to
-define on the class iteself.  The 
-:func:`~sqlalchemy.util.classproperty` decorator can be used here
-to create user-defined collation routines that pull from multiple
-collections::
+In the case of ``__table_args__`` or ``__mapper_args__``
+specified with declarative mixins, you may want to combine
+some parameters from several mixins with those you wish to
+define on the class iteself. The
+:func:`~sqlalchemy.util.classproperty` decorator can be used
+here to create user-defined collation routines that pull
+from multiple collections::
 
     from sqlalchemy.util import classproperty
 
@@ -866,8 +964,12 @@ def _as_declarative(cls, classname, dict_):
     
     cls._decl_class_registry[classname] = cls
     our_stuff = util.OrderedDict()
+
     for k in dict_:
         value = dict_[k]
+        if isinstance(value, util.classproperty):
+            value = getattr(cls, k)
+            
         if (isinstance(value, tuple) and len(value) == 1 and
             isinstance(value[0], (Column, MapperProperty))):
             util.warn("Ignoring declarative-like tuple value of attribute "
@@ -933,7 +1035,7 @@ def _as_declarative(cls, classname, dict_):
                 if not table.c.contains_column(c):
                     raise exceptions.ArgumentError(
                         "Can't add additional column %r when "
-                        "specifying __table__" % key
+                        "specifying __table__" % c.key
                     )
     
     if 'inherits' not in mapper_args:

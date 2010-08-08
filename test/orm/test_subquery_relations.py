@@ -3,10 +3,10 @@ from sqlalchemy.test import testing
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey, bindparam
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
-                mapper, relationship, clear_mappers,\
-                create_session, lazyload, aliased, joinedload,\
-                deferred, undefer
-from sqlalchemy.test.testing import eq_, assert_raises
+    mapper, relationship, clear_mappers, create_session, lazyload, \
+    aliased, joinedload, deferred, undefer
+from sqlalchemy.test.testing import eq_, assert_raises, \
+    assert_raises_message
 from sqlalchemy.test.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
 import sqlalchemy as sa
@@ -80,6 +80,23 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
         
+    @testing.resolve_artifact_names
+    def test_disable_dynamic(self):
+        """test no subquery option on a dynamic."""
+
+        mapper(User, users, properties={
+            'addresses':relationship(Address, lazy="dynamic")
+        })
+        mapper(Address, addresses)
+        sess = create_session()
+        
+        # previously this would not raise, but would emit
+        # the query needlessly and put the result nowhere.
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "User.addresses' does not support object population - eager loading cannot be applied.",
+            sess.query(User).options(subqueryload(User.addresses)).first,
+        )
         
     @testing.resolve_artifact_names
     def test_many_to_many(self):

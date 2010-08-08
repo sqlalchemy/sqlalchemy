@@ -600,5 +600,5 @@ def _pragma_cursor(cursor):
     """work around SQLite issue whereby cursor.description is blank when PRAGMA returns no rows."""
     
     if cursor.closed:
-        cursor._fetchone_impl = lambda: None
+        cursor.fetchone = lambda: None
     return cursor

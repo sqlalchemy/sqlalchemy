@@ -4,7 +4,50 @@
 SQL Expression Language Tutorial
 ================================
 
-This tutorial will cover SQLAlchemy SQL Expressions, which are Python constructs that represent SQL statements.  The tutorial is in doctest format, meaning each ``>>>`` line represents something you can type at a Python command prompt, and the following text represents the expected return value.  The tutorial has no prerequisites.
+Introduction
+=============
+
+The SQLAlchemy Expression Language presents a system of representing
+relational database structures and expressions using Python constructs. These
+constructs are modeled to resemble those of the underlying database as closely
+as possible, while providing a modicum of abstraction of the various
+implementation differences between database backends. While the constructs
+attempt to represent equivalent concepts between backends with consistent
+structures, they do not conceal useful concepts that are unique to particular
+subsets of backends. The Expression Language therefore presents a method of
+writing backend-neutral SQL expressions, but does not attempt to enforce that
+expressions are backend-neutral.
+
+The Expression Language is in contrast to the Object Relational Mapper, which
+is a distinct API that builds on top of the Expression Language. Whereas the
+ORM, introduced in :ref:`ormtutorial_toplevel`, presents a high level and
+abstracted pattern of usage, which itself is an example of applied usage of
+the Expression Language, the Expression Language presents a system of
+representing the primitive constructs of the relational database directly
+without opinion.
+
+While there is overlap among the usage patterns of the ORM and the Expression
+Language, the similarities are more superficial than they may at first appear.
+One approaches the structure and content of data from the perspective of a
+user-defined `domain model
+<http://en.wikipedia.org/wiki/Domain_model>`_ which is transparently
+persisted and refreshed from its underlying storage model. The other
+approaches it from the perspective of literal schema and SQL expression
+representations which are explicitly composed into messages consumed
+individually by the database.
+
+A successful application may be constructed using the Expression Language
+exclusively, though the application will need to define its own system of
+translating application concepts into individual database messages and from
+individual database result sets. Alternatively, an application constructed
+with the ORM may, in advanced scenarios, make occasional usage of the
+Expression Language directly in certain areas where specific database
+interactions are required.
+
+The following tutorial is in doctest format, meaning each ``>>>`` line
+represents something you can type at a Python command prompt, and the
+following text represents the expected return value. The tutorial has no
+prerequisites.
 
 Version Check
 =============

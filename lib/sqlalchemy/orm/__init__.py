@@ -1,5 +1,6 @@
 # sqlalchemy/orm/__init__.py
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer
+# mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -51,10 +52,10 @@ from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import AliasOption, Query
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.orm.session import Session as _Session
-from sqlalchemy.orm.session import object_session, sessionmaker, make_transient
+from sqlalchemy.orm.session import object_session, sessionmaker, \
+    make_transient
 from sqlalchemy.orm.scoping import ScopedSession
 from sqlalchemy import util as sa_util
-
 
 __all__ = (
     'EXT_CONTINUE',
@@ -174,10 +175,11 @@ def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
     
     .. note:: This function is known as :func:`relation` in all versions
-      of SQLAlchemy prior to version 0.6beta2, including the 0.5 and 0.4 series.
-      :func:`~sqlalchemy.orm.relationship()` is only available starting with 
-      SQLAlchemy 0.6beta2.  The :func:`relation` name will remain available for 
-      the foreseeable future in order to enable cross-compatibility.
+       of SQLAlchemy prior to version 0.6beta2, including the 0.5 and 0.4
+       series. :func:`~sqlalchemy.orm.relationship()` is only available
+       starting with SQLAlchemy 0.6beta2. The :func:`relation` name will
+       remain available for the foreseeable future in order to enable
+       cross-compatibility.
     
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`RelationshipProperty`.
@@ -223,7 +225,7 @@ def relationship(argument, secondary=None, **kwargs):
 
       Available cascades are:
 
-      * ``save-update`` - cascade the :meth:`~sqlalchemy.orm.session.Session.add` 
+      * ``save-update`` - cascade the :meth:`.Session.add` 
         operation.  This cascade applies both to future and
         past calls to :meth:`~sqlalchemy.orm.session.Session.add`, 
         meaning new items added to a collection or scalar relationship
@@ -234,10 +236,10 @@ def relationship(argument, secondary=None, **kwargs):
       * ``merge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.merge`
         operation
 
-      * ``expunge`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expunge`
+      * ``expunge`` - cascade the :meth:`.Session.expunge`
         operation
 
-      * ``delete`` - cascade the :meth:`~sqlalchemy.orm.session.Session.delete`
+      * ``delete`` - cascade the :meth:`.Session.delete`
         operation
 
       * ``delete-orphan`` - if an item of the child's type with no
@@ -245,7 +247,7 @@ def relationship(argument, secondary=None, **kwargs):
         option prevents a pending item of the child's class from being
         persisted without a parent present.
 
-      * ``refresh-expire`` - cascade the :meth:`~sqlalchemy.orm.session.Session.expire` 
+      * ``refresh-expire`` - cascade the :meth:`.Session.expire` 
         and :meth:`~sqlalchemy.orm.session.Session.refresh` operations
 
       * ``all`` - shorthand for "save-update,merge, refresh-expire,
@@ -501,7 +503,8 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None,
 
     return RelationshipProperty(
         argument, secondary=secondary, primaryjoin=primaryjoin,
-        secondaryjoin=secondaryjoin, foreign_keys=foreign_keys, backref=backref,
+        secondaryjoin=secondaryjoin, foreign_keys=foreign_keys,
+        backref=backref,
         post_update=post_update, cascade=cascade, remote_side=remote_side,
         enable_typechecks=enable_typechecks, passive_deletes=passive_deletes,
         order_by=order_by, comparator_factory=comparator_factory,doc=doc,
@@ -522,9 +525,9 @@ def column_property(*args, **kwargs):
     :param \*cols:
           list of Column objects to be mapped.
 
-    :param comparator_factory:
-        a class which extends :class:`sqlalchemy.orm.properties.ColumnProperty.Comparator`
-        which provides custom SQL clause generation for comparison operations.
+    :param comparator_factory: a class which extends
+       :class:`.ColumnProperty.Comparator` which provides custom SQL clause
+       generation for comparison operations.
 
     :param group:
         a group name for this property when marked as deferred.
@@ -571,9 +574,9 @@ def composite(class_, *cols, **kwargs):
       load immediately, and is instead loaded when the attribute is first
       accessed on an instance.  See also :func:`~sqlalchemy.orm.deferred`.
 
-    :param comparator_factory:
-      a class which extends :class:`sqlalchemy.orm.properties.CompositeProperty.Comparator`
-      which provides custom SQL clause generation for comparison operations.
+    :param comparator_factory:  a class which extends
+      :class:`.CompositeProperty.Comparator` which provides custom SQL clause
+      generation for comparison operations.
 
     :param doc:
       optional string that will be applied as the doc on the
@@ -616,140 +619,150 @@ def mapper(class_, local_table=None, *args, **params):
 
         :param class\_: The class to be mapped.
 
-        :param local_table: The table to which the class is mapped, or None if this mapper
-            inherits from another mapper using concrete table inheritance.
+        :param local_table: The table to which the class is mapped, or None if
+           this mapper inherits from another mapper using concrete table
+           inheritance.
 
-        :param always_refresh: If True, all query operations for this mapped class will overwrite all
-            data within object instances that already exist within the session,
-            erasing any in-memory changes with whatever information was loaded
-            from the database.  Usage of this flag is highly discouraged; as an
-            alternative, see the method `populate_existing()` on
-            :class:`~sqlalchemy.orm.query.Query`.
+        :param always_refresh: If True, all query operations for this mapped
+           class will overwrite all data within object instances that already
+           exist within the session, erasing any in-memory changes with
+           whatever information was loaded from the database. Usage of this
+           flag is highly discouraged; as an alternative, see the method
+           `populate_existing()` on :class:`~sqlalchemy.orm.query.Query`.
 
-        :param allow_null_pks: This flag is deprecated - this is stated as allow_partial_pks
-            which defaults to True.
+        :param allow_null_pks: This flag is deprecated - this is stated as
+           allow_partial_pks which defaults to True.
 
-        :param allow_partial_pks: Defaults to True.  Indicates that a composite primary key with
-            some NULL values should be considered as possibly existing
-            within the database.   This affects whether a mapper will assign
-            an incoming row to an existing identity, as well as if 
-            session.merge() will check the database first for a particular
-            primary key value.  A "partial primary key" can occur if one 
-            has mapped to an OUTER JOIN, for example.
+        :param allow_partial_pks: Defaults to True.  Indicates that a
+           composite primary key with some NULL values should be considered as
+           possibly existing within the database. This affects whether a
+           mapper will assign an incoming row to an existing identity, as well
+           as if session.merge() will check the database first for a
+           particular primary key value. A "partial primary key" can occur if
+           one has mapped to an OUTER JOIN, for example.
 
-        :param batch: Indicates that save operations of multiple entities can be batched
-            together for efficiency.  setting to False indicates that an instance
-            will be fully saved before saving the next instance, which includes
-            inserting/updating all table rows corresponding to the entity as well
-            as calling all :class:`MapperExtension` methods corresponding to the save
-            operation.
+        :param batch: Indicates that save operations of multiple entities 
+           can be batched together for efficiency. setting to False indicates
+           that an instance will be fully saved before saving the next
+           instance, which includes inserting/updating all table rows
+           corresponding to the entity as well as calling all
+           :class:`MapperExtension` methods corresponding to the save
+           operation.
 
-        :param column_prefix: A string which will be prepended to the `key` name of all Columns when
-            creating column-based properties from the given Table.  Does not
-            affect explicitly specified column-based properties
+        :param column_prefix: A string which will be prepended to the `key`
+           name of all Columns when creating column-based properties from the
+           given Table. Does not affect explicitly specified column-based
+           properties
 
-        :param concrete: If True, indicates this mapper should use concrete table inheritance
-            with its parent mapper.
+        :param concrete: If True, indicates this mapper should use concrete
+           table inheritance with its parent mapper.
 
-        :param exclude_properties: A list of properties not to map.  Columns present in the mapped table
-            and present in this list will not be automatically converted into
-            properties.  Note that neither this option nor include_properties will
-            allow an end-run around Python inheritance.  If mapped class ``B``
-            inherits from mapped class ``A``, no combination of includes or
-            excludes will allow ``B`` to have fewer properties than its
-            superclass, ``A``.
+        :param exclude_properties: A list of properties not to map.  Columns
+           present in the mapped table and present in this list will not be
+           automatically converted into properties. Note that neither this
+           option nor include_properties will allow an end-run around Python
+           inheritance. If mapped class ``B`` inherits from mapped class
+           ``A``, no combination of includes or excludes will allow ``B`` to
+           have fewer properties than its superclass, ``A``.
 
+        :param extension: A :class:`.MapperExtension` instance or
+           list of :class:`~sqlalchemy.orm.interfaces.MapperExtension`
+           instances which will be applied to all operations by this
+           :class:`~sqlalchemy.orm.mapper.Mapper`.
 
-        :param extension: A :class:`~sqlalchemy.orm.interfaces.MapperExtension` instance or list of
-            :class:`~sqlalchemy.orm.interfaces.MapperExtension` instances which will be applied to all
-            operations by this :class:`~sqlalchemy.orm.mapper.Mapper`.
-
-        :param include_properties: An inclusive list of properties to map.  Columns present in the mapped
-            table but not present in this list will not be automatically converted
-            into properties.
+        :param include_properties: An inclusive list of properties to map. 
+           Columns present in the mapped table but not present in this list
+           will not be automatically converted into properties.
 
         :param inherits: Another :class:`~sqlalchemy.orm.Mapper` for which 
             this :class:`~sqlalchemy.orm.Mapper` will have an inheritance
             relationship with.
 
+        :param inherit_condition: For joined table inheritance, a SQL
+           expression (constructed
+           :class:`~sqlalchemy.expression.sql.ClauseElement`) which will
+           define how the two tables are joined; defaults to a natural join
+           between the two tables.
 
-        :param inherit_condition: For joined table inheritance, a SQL expression (constructed
-            :class:`~sqlalchemy.expression.sql.ClauseElement`) which will define how the two tables are joined;
-            defaults to a natural join between the two tables.
+        :param inherit_foreign_keys: When inherit_condition is used and the
+           condition contains no ForeignKey columns, specify the "foreign"
+           columns of the join condition in this list. else leave as None.
 
-        :param inherit_foreign_keys: When inherit_condition is used and the condition contains no
-            ForeignKey columns, specify the "foreign" columns of the join
-            condition in this list.  else leave as None.
+        :param non_primary: Construct a :class:`Mapper` that will define only
+           the selection of instances, not their persistence. Any number of
+           non_primary mappers may be created for a particular class.
 
-        :param non_primary: Construct a :class:`Mapper` that will define only the selection of
-            instances, not their persistence.  Any number of non_primary mappers
-            may be created for a particular class.
+        :param order_by: A single :class:`Column` or list of :class:`Column`
+           objects for which selection operations should use as the default
+           ordering for entities. Defaults to the OID/ROWID of the table if
+           any, or the first primary key column of the table.
 
-        :param order_by: A single :class:`Column` or list of :class:`Column` objects for which
-            selection operations should use as the default ordering for entities.
-            Defaults to the OID/ROWID of the table if any, or the first primary
-            key column of the table.
-
-        :param passive_updates: Indicates UPDATE behavior of foreign keys when a primary key changes 
-            on a joined-table inheritance or other joined table mapping.
-
+        :param passive_updates: Indicates UPDATE behavior of foreign keys 
+           when a primary key changes on a joined-table inheritance or other
+           joined table mapping.
+           
             When True, it is assumed that ON UPDATE CASCADE is configured on
-            the foreign key in the database, and that the database will
-            handle propagation of an UPDATE from a source column to
-            dependent rows.  Note that with databases which enforce
-            referential integrity (i.e. PostgreSQL, MySQL with InnoDB tables),
-            ON UPDATE CASCADE is required for this operation.  The
-            relationship() will update the value of the attribute on related
-            items which are locally present in the session during a flush.
-
+           the foreign key in the database, and that the database will handle
+           propagation of an UPDATE from a source column to dependent rows.
+           Note that with databases which enforce referential integrity (i.e.
+           PostgreSQL, MySQL with InnoDB tables), ON UPDATE CASCADE is
+           required for this operation. The relationship() will update the
+           value of the attribute on related items which are locally present
+           in the session during a flush.
+           
             When False, it is assumed that the database does not enforce
-            referential integrity and will not be issuing its own CASCADE
-            operation for an update.  The relationship() will issue the
-            appropriate UPDATE statements to the database in response to the
-            change of a referenced key, and items locally present in the
-            session during a flush will also be refreshed.
-
+           referential integrity and will not be issuing its own CASCADE
+           operation for an update. The relationship() will issue the
+           appropriate UPDATE statements to the database in response to the
+           change of a referenced key, and items locally present in the
+           session during a flush will also be refreshed.
+           
             This flag should probably be set to False if primary key changes
-            are expected and the database in use doesn't support CASCADE
-            (i.e. SQLite, MySQL MyISAM tables).
-
+           are expected and the database in use doesn't support CASCADE (i.e.
+           SQLite, MySQL MyISAM tables).
+           
             Also see the passive_updates flag on :func:`relationship()`.
-
+           
             A future SQLAlchemy release will provide a "detect" feature for
-            this flag.
+           this flag.
 
-        :param polymorphic_on: Used with mappers in an inheritance relationship, a ``Column`` which
-            will identify the class/mapper combination to be used with a
-            particular row.  Requires the ``polymorphic_identity`` value to be set
-            for all mappers in the inheritance hierarchy.  The column specified by
-            ``polymorphic_on`` is usually a column that resides directly within
-            the base mapper's mapped table; alternatively, it may be a column that
-            is only present within the <selectable> portion of the
-            ``with_polymorphic`` argument.
+        :param polymorphic_on: Used with mappers in an inheritance
+           relationship, a ``Column`` which will identify the class/mapper
+           combination to be used with a particular row. Requires the
+           ``polymorphic_identity`` value to be set for all mappers in the
+           inheritance hierarchy. The column specified by ``polymorphic_on``
+           is usually a column that resides directly within the base mapper's
+           mapped table; alternatively, it may be a column that is only
+           present within the <selectable> portion of the ``with_polymorphic``
+           argument.
 
-        :param polymorphic_identity: A value which will be stored in the Column denoted by polymorphic_on,
-            corresponding to the *class identity* of this mapper.
+        :param polymorphic_identity: A value which will be stored in the
+           Column denoted by polymorphic_on, corresponding to the *class
+           identity* of this mapper.
 
-        :param properties: A dictionary mapping the string names of object attributes to
-            ``MapperProperty`` instances, which define the persistence behavior of
-            that attribute.  Note that the columns in the mapped table are
-            automatically converted into ``ColumnProperty`` instances based on the
-            `key` property of each ``Column`` (although they can be overridden
-            using this dictionary).
+        :param properties: A dictionary mapping the string names of object
+           attributes to ``MapperProperty`` instances, which define the
+           persistence behavior of that attribute. Note that the columns in
+           the mapped table are automatically converted into
+           ``ColumnProperty`` instances based on the `key` property of each
+           ``Column`` (although they can be overridden using this dictionary).
 
-        :param primary_key: A list of ``Column`` objects which define the *primary key* to be used
-            against this mapper's selectable unit.  This is normally simply the
-            primary key of the `local_table`, but can be overridden here.
+        :param primary_key: A list of ``Column`` objects which define the
+           *primary key* to be used against this mapper's selectable unit.
+           This is normally simply the primary key of the `local_table`, but
+           can be overridden here.
 
-        :param version_id_col: A ``Column`` which must have an integer type that will be used to keep
-            a running *version id* of mapped entities in the database.  this is
-            used during save operations to ensure that no other thread or process
-            has updated the instance during the lifetime of the entity, else a
-            :class:`StaleDataError` exception is thrown.
+        :param version_id_col: A ``Column`` which must have an integer type
+           that will be used to keep a running *version id* of mapped entities
+           in the database. this is used during save operations to ensure that
+           no other thread or process has updated the instance during the
+           lifetime of the entity, else a :class:`StaleDataError` exception is
+           thrown.
 
-        :param version_id_generator: A callable which defines the algorithm used to generate new version 
-            ids.  Defaults to an integer generator.  Can be replaced with one that
-            generates timestamps, uuids, etc.  e.g.::
+        :param version_id_generator: A callable which defines the algorithm
+            used to generate new version ids. Defaults to an integer
+            generator. Can be replaced with one that generates timestamps,
+            uuids, etc. e.g.::
 
                 import uuid
 
@@ -761,29 +774,31 @@ def mapper(class_, local_table=None, *args, **params):
             The callable receives the current version identifier as its 
             single argument.
 
-        :param with_polymorphic: A tuple in the form ``(<classes>, <selectable>)`` indicating the
-            default style of "polymorphic" loading, that is, which tables are
-            queried at once. <classes> is any single or list of mappers and/or
-            classes indicating the inherited classes that should be loaded at
-            once. The special value ``'*'`` may be used to indicate all descending
-            classes should be loaded immediately. The second tuple argument
-            <selectable> indicates a selectable that will be used to query for
-            multiple classes. Normally, it is left as None, in which case this
-            mapper will form an outer join from the base mapper's table to that of
-            all desired sub-mappers.  When specified, it provides the selectable
-            to be used for polymorphic loading. When with_polymorphic includes
-            mappers which load from a "concrete" inheriting table, the
-            <selectable> argument is required, since it usually requires more
-            complex UNION queries.
+        :param with_polymorphic: A tuple in the form ``(<classes>,
+            <selectable>)`` indicating the default style of "polymorphic"
+            loading, that is, which tables are queried at once. <classes> is
+            any single or list of mappers and/or classes indicating the
+            inherited classes that should be loaded at once. The special value
+            ``'*'`` may be used to indicate all descending classes should be
+            loaded immediately. The second tuple argument <selectable>
+            indicates a selectable that will be used to query for multiple
+            classes. Normally, it is left as None, in which case this mapper
+            will form an outer join from the base mapper's table to that of
+            all desired sub-mappers. When specified, it provides the
+            selectable to be used for polymorphic loading. When
+            with_polymorphic includes mappers which load from a "concrete"
+            inheriting table, the <selectable> argument is required, since it
+            usually requires more complex UNION queries.
 
-          
     """
     return Mapper(class_, local_table, *args, **params)
 
-def synonym(name, map_column=False, descriptor=None, comparator_factory=None, doc=None):
+def synonym(name, map_column=False, descriptor=None, 
+                        comparator_factory=None, doc=None):
     """Set up `name` as a synonym to another mapped property.
 
-    Used with the ``properties`` dictionary sent to  :func:`~sqlalchemy.orm.mapper`.
+    Used with the ``properties`` dictionary sent to
+    :func:`~sqlalchemy.orm.mapper`.
 
     Any existing attributes on the class which map the key name sent
     to the ``properties`` dictionary will be used by the synonym to provide
@@ -848,12 +863,13 @@ def comparable_property(comparator_factory, descriptor=None):
       mapper(MyClass, mytable, properties={
                'myprop': comparable_property(MyComparator)})
 
-    Used with the ``properties`` dictionary sent to  :func:`~sqlalchemy.orm.mapper`.
+    Used with the ``properties`` dictionary sent to
+    :func:`~sqlalchemy.orm.mapper`.
     
     Note that :func:`comparable_property` is usually not needed for basic
-    needs.   The recipe at :mod:`.derived_attributes` offers a simpler pure-Python
-    method of achieving a similar result using class-bound attributes with 
-    SQLAlchemy expression constructs.
+    needs. The recipe at :mod:`.derived_attributes` offers a simpler
+    pure-Python method of achieving a similar result using class-bound
+    attributes with SQLAlchemy expression constructs.
     
     :param comparator_factory:
       A PropComparator subclass or factory that defines operator behavior
@@ -913,9 +929,9 @@ def joinedload(*keys, **kw):
     name into an joined eager load.
 
     .. note:: This function is known as :func:`eagerload` in all versions
-      of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4 series.
-      :func:`eagerload` will remain available for 
-      the foreseeable future in order to enable cross-compatibility.
+          of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
+          series. :func:`eagerload` will remain available for the foreseeable
+          future in order to enable cross-compatibility.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -937,10 +953,11 @@ def joinedload(*keys, **kw):
     
         query(Order).options(joinedload(Order.user, innerjoin=True))
         
-    Note that the join created by :func:`joinedload` is aliased such that
-    no other aspects of the query will affect what it loads.  To use joined eager
-    loading with a join that is constructed manually using :meth:`~sqlalchemy.orm.query.Query.join`
-    or :func:`~sqlalchemy.orm.join`, see :func:`contains_eager`.
+    Note that the join created by :func:`joinedload` is aliased such that no
+    other aspects of the query will affect what it loads. To use joined eager
+    loading with a join that is constructed manually using
+    :meth:`~sqlalchemy.orm.query.Query.join` or :func:`~sqlalchemy.orm.join`,
+    see :func:`contains_eager`.
     
     See also:  :func:`subqueryload`, :func:`lazyload`
     
@@ -960,9 +977,9 @@ def joinedload_all(*keys, **kw):
     given dot-separated path into an joined eager load.
 
     .. note:: This function is known as :func:`eagerload_all` in all versions
-      of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4 series.
-      :func:`eagerload_all` will remain available for 
-      the foreseeable future in order to enable cross-compatibility.
+        of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
+        series. :func:`eagerload_all` will remain available for the
+        foreseeable future in order to enable cross-compatibility.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -977,8 +994,9 @@ def joinedload_all(*keys, **kw):
     
         query.options(joinedload_all(User.orders, Order.items, Item.keywords))
 
-    The keyword arguments accept a flag `innerjoin=True|False` which will 
-    override the value of the `innerjoin` flag specified on the relationship().
+    The keyword arguments accept a flag `innerjoin=True|False` which will
+    override the value of the `innerjoin` flag specified on the
+    relationship().
 
     See also:  :func:`subqueryload_all`, :func:`lazyload`
 
@@ -1043,7 +1061,8 @@ def subqueryload_all(*keys):
 
     Individual descriptors are accepted as arguments as well::
     
-        query.options(subqueryload_all(User.orders, Order.items, Item.keywords))
+        query.options(subqueryload_all(User.orders, Order.items,
+        Item.keywords))
 
     See also:  :func:`joinedload_all`, :func:`lazyload`
 
@@ -1102,10 +1121,10 @@ def contains_eager(*keys, **kwargs):
     ``User`` entity, and the returned ``Order`` objects would have the
     ``Order.user`` attribute pre-populated.
 
-    :func:`contains_eager` also accepts an `alias` argument, which
-    is the string name of an alias, an :func:`~sqlalchemy.sql.expression.alias`
-    construct, or an :func:`~sqlalchemy.orm.aliased` construct.  Use this
-    when the eagerly-loaded rows are to come from an aliased table::
+    :func:`contains_eager` also accepts an `alias` argument, which is the
+    string name of an alias, an :func:`~sqlalchemy.sql.expression.alias`
+    construct, or an :func:`~sqlalchemy.orm.aliased` construct. Use this when
+    the eagerly-loaded rows are to come from an aliased table::
     
         user_alias = aliased(User)
         sess.query(Order).\\
@@ -1118,12 +1137,11 @@ def contains_eager(*keys, **kwargs):
     """
     alias = kwargs.pop('alias', None)
     if kwargs:
-        raise exceptions.ArgumentError("Invalid kwargs for contains_eager: %r" % kwargs.keys())
-
-    return (
-            strategies.EagerLazyOption(keys, lazy='joined', propagate_to_loaders=False), 
-            strategies.LoadEagerFromAliasOption(keys, alias=alias)
-        )
+        raise exceptions.ArgumentError('Invalid kwargs for contains_eag'
+                'er: %r' % kwargs.keys())
+    return strategies.EagerLazyOption(keys, lazy='joined',
+            propagate_to_loaders=False), \
+        strategies.LoadEagerFromAliasOption(keys, alias=alias)
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def defer(*keys):

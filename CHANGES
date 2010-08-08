@@ -47,6 +47,27 @@ CHANGES
     subclass attributes that "disable" propagation from
     the parent - these needed to allow a merge()
     operation to pass through without effect.
+
+  - Specifying a non-column based argument
+    for column_mapped_collection, including string,
+    text() etc., will raise an error message that
+    specifically asks for a column element, no longer
+    misleads with incorrect information about
+    text() or literal().  [ticket:1863]
+
+  - Dynamic attributes don't support collection 
+    population - added an assertion for when
+    set_committed_value() is called, as well as
+    when joinedload() or subqueryload() options
+    are applied to a dynamic attribute, instead
+    of failure / silent failure.  [ticket:1864]
+
+  - Fixed bug whereby generating a Query derived
+    from one which had the same column repeated
+    with different label names, typically 
+    in some UNION situations, would fail to 
+    propagate the inner columns completely to
+    the outer query.  [ticket:1852]
     
 - sql
   - Changed the scheme used to generate truncated
@@ -66,7 +87,61 @@ CHANGES
     this to appease MySQL who has a max length
     of 64 for index names, separate from their
     overall max length of 255.  [ticket:1412]
+
+  - Calling fetchone() or similar on a result that
+    has already been exhausted, has been closed,
+    or is not a result-returning result now 
+    raises ResourceClosedError, a subclass of
+    InvalidRequestError, in all cases, regardless
+    of backend.  Previously, some DBAPIs would
+    raise ProgrammingError (i.e. pysqlite), others
+    would return None leading to downstream breakages
+    (i.e. MySQL-python).
+
+  - Connection, ResultProxy, as well as Session use
+    ResourceClosedError for all "this
+    connection/transaction/result is closed" types of
+    errors.
+
+  - the text() construct, if placed in a column
+    oriented situation, will at least return NULLTYPE
+    for its type instead of None, allowing it to 
+    be used a little more freely for ad-hoc column
+    expressions than before.   literal_column()
+    is still the better choice, however.
+
+  - Added full description of parent table/column, 
+    target table/column in error message raised when
+    ForeignKey can't resolve target.
+
+  - Fixed bug whereby replacing composite foreign key
+    columns in a reflected table would cause an attempt
+    to remove the reflected constraint from the table
+    a second time, raising a KeyError.  [ticket:1865]
+
+  - the _Label construct, i.e. the one that is produced
+    whenever you say somecol.label(), now counts itself
+    in its "proxy_set" unioned with that of it's
+    contained column's proxy set, instead of 
+    directly returning that of the contained column.
+    This allows column correspondence
+    operations which depend on the identity of the 
+    _Labels themselves to return the correct result
+    - fixes ORM bug [ticket:1852].
     
+- declarative
+  - if @classproperty is used with a regular class-bound
+    mapper property attribute, it will be called to get the
+    actual attribute value during initialization. Currently,
+    there's no advantage to using @classproperty on a column
+    or relationship attribute of a declarative class that
+    isn't a mixin - evaluation is at the same time as if
+    @classproperty weren't used. But here we at least allow
+    it to function as expected.
+
+  - Fixed bug where "Can't add additional column" message
+    would display the wrong name.
+        
 - mssql
   - Fixed "default schema" query to work with
     pymssql backend.

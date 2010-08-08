@@ -326,7 +326,44 @@ class ReflectionTest(TestBase, ComparesTables):
             assert len(a4.constraints) == 2
         finally:
             meta.drop_all()
+    
+    @testing.provide_metadata
+    def test_override_composite_fk(self):
+        """Test double-remove of composite foreign key, when replaced."""
 
+        a = Table('a',
+            metadata,
+            Column('x', sa.Integer, primary_key=True),
+            Column('y', sa.Integer, primary_key=True),
+        )
+
+        b = Table('b',
+            metadata,
+            Column('x', sa.Integer, primary_key=True),
+            Column('y', sa.Integer, primary_key=True),
+            sa.ForeignKeyConstraint(['x', 'y'], ['a.x', 'a.y'])
+        )
+
+        metadata.create_all()
+
+        meta2 = MetaData()
+
+        c1 = Column('x', sa.Integer, primary_key=True)
+        c2 = Column('y', sa.Integer, primary_key=True)
+        f1 = sa.ForeignKeyConstraint(['x', 'y'], ['a.x', 'a.y'])
+        b1 = Table('b',
+            meta2, c1, c2, f1,
+            autoload=True,
+            autoload_with=testing.db
+        )
+        
+        assert b1.c.x is c1
+        assert b1.c.y is c2
+        assert f1 in b1.constraints
+        assert len(b1.constraints) == 2
+        
+        
+        
     def test_override_keys(self):
         """test that columns can be overridden with a 'key', 
         and that ForeignKey targeting during reflection still works."""
@@ -510,8 +547,9 @@ class ReflectionTest(TestBase, ComparesTables):
             )
             
         assert_raises_message(sa.exc.InvalidRequestError,
-                              "Could not find table 'pkgs' with which "
-                              "to generate a foreign key",
+                            "Foreign key assocated with column 'slots.pkg_id' "
+                            "could not find table 'pkgs' with which to generate "
+                            "a foreign key to target column 'pkg_id'",
                               metadata.create_all)
 
     def test_composite_pks(self):

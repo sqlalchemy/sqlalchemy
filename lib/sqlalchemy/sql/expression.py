@@ -428,8 +428,8 @@ def case(whens, value=None, else_=None):
     The expressions used for THEN and ELSE,
     when specified as strings, will be interpreted
     as bound values. To specify textual SQL expressions
-    for these, use the literal_column(<string>) or 
-    text(<string>) construct. 
+    for these, use the :func:`literal_column`
+    construct. 
 
     The expressions used for the WHEN criterion
     may only be literal strings when "value" is
@@ -1035,6 +1035,14 @@ def _no_literals(element):
     else:
         return element
 
+def _only_column_elements(element):
+    if hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+    if not isinstance(element, ColumnElement):
+        raise exc.ArgumentError("Column-based expression object expected; "
+                                "got: %r" % element)
+    return element
+    
 def _corresponding_column_or_error(fromclause, column, require_embedded=False):
     c = fromclause.corresponding_column(column,
             require_embedded=require_embedded)
@@ -1813,7 +1821,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         else:
             name = str(self)
             co = ColumnClause(self.anon_label, selectable, type_=getattr(self, 'type', None))
-
+        
         co.proxies = [self]
         selectable.columns[name] = co
         return co
@@ -2428,7 +2436,7 @@ class _TextClause(Executable, ClauseElement):
         if self.typemap is not None and len(self.typemap) == 1:
             return list(self.typemap)[0]
         else:
-            return None
+            return sqltypes.NULLTYPE
 
     def self_group(self, against=None):
         if against is operators.in_op:
@@ -3179,7 +3187,8 @@ class _Label(ColumnElement):
         self._element = element
         self._type = type_
         self.quote = element.quote
-
+        self.proxies = [element]
+        
     @util.memoized_property
     def type(self):
         return sqltypes.to_instance(
@@ -3190,17 +3199,13 @@ class _Label(ColumnElement):
     def element(self):
         return self._element.self_group(against=operators.as_)
 
-    def _proxy_attr(name):
-        get = attrgetter(name)
-        def attr(self):
-            return get(self.element)
-        return property(attr)
+    @property
+    def primary_key(self):
+        return self.element.primary_key
 
-    proxies = _proxy_attr('proxies')
-    base_columns = _proxy_attr('base_columns')
-    proxy_set = _proxy_attr('proxy_set')
-    primary_key = _proxy_attr('primary_key')
-    foreign_keys = _proxy_attr('foreign_keys')
+    @property
+    def foreign_keys(self):
+        return self.element.foreign_keys
 
     def get_children(self, **kwargs):
         return self.element,
@@ -3217,6 +3222,7 @@ class _Label(ColumnElement):
             e = self.element._make_proxy(selectable, name=self.name)
         else:
             e = column(self.name)._make_proxy(selectable=selectable)
+            
         e.proxies.append(self)
         return e
 
