@@ -44,7 +44,7 @@ class HistoryTest(_fixtures.FixtureTest):
         a.user = u
         session.add(u)
 
-        self.assert_(u.addresses == [a])
+        eq_(u.addresses, [a])
         session.commit()
         session.expunge_all()
 

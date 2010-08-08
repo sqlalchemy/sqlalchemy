@@ -18,9 +18,8 @@ def listen(fn, identifier, target, *args, **kw):
     # what to do
     
     for evt_cls in _registrars[identifier]:
-        evt = evt_cls.accept_with(target)
-        if evt:
-            evt.listen(fn, identifier, target, *args, **kw)
+        for tgt in evt_cls.accept_with(target):
+            tgt.events.listen(fn, identifier, tgt, *args, **kw)
             break
     
 class _DispatchMeta(type):
@@ -48,9 +47,9 @@ class Events(object):
                     isinstance(target.events, type) and \
                     issubclass(target.events, cls)
                 ):
-            return target.events
+            return [target]
         else:
-            return None
+            return []
         
     @classmethod
     def listen(cls, fn, identifier, target):

@@ -347,8 +347,9 @@ class AttributeImpl(object):
         else:
             self.is_equal = compare_function
         
+        attr = getattr(class_, key)
         for ext in util.to_list(extension or []):
-            ext._adapt_listener(self, ext)
+            ext._adapt_listener(attr, ext)
             
         if active_history:
             events.active_history = True
