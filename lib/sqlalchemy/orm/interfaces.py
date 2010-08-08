@@ -482,7 +482,7 @@ class MapperProperty(object):
 
     _compile_started = False
     _compile_finished = False
-
+    
     def init(self):
         """Called after all mappers are created to assemble
         relationships between mappers and perform other post-mapper-creation
@@ -647,7 +647,7 @@ class StrategizedProperty(MapperProperty):
     ``StrategizedOption`` objects via the Query.options() method.
     
     """
-
+    
     def _get_context_strategy(self, context, path):
         cls = context.attributes.get(('loaderstrategy',
                 _reduce_path(path)), None)
@@ -683,9 +683,10 @@ class StrategizedProperty(MapperProperty):
         self.strategy = self.__init_strategy(self.strategy_class)
 
     def post_instrument_class(self, mapper):
-        if self.is_primary():
+        if self.is_primary() and \
+            not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
-
+        
 def build_path(entity, key, prev=None):
     if prev:
         return prev + (entity, key)
