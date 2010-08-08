@@ -546,7 +546,7 @@ def _entity_descriptor(entity, key):
     """
     if not isinstance(entity, (AliasedClass, type)):
         entity = entity.class_
-        
+
     try:
         return getattr(entity, key)
     except AttributeError:

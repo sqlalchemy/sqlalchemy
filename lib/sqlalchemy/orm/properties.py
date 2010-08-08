@@ -237,7 +237,6 @@ class CompositeProperty(ColumnProperty):
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
 
-
 class DescriptorProperty(MapperProperty):
     """:class:`MapperProperty` which proxies access to a 
         user-defined descriptor."""
@@ -307,7 +306,7 @@ class DescriptorProperty(MapperProperty):
     def merge(self, session, source_state, source_dict, 
                 dest_state, dest_dict, load, _recursive):
         pass
-    
+
 class ConcreteInheritedProperty(DescriptorProperty):
     """A 'do nothing' :class:`MapperProperty` that disables 
     an attribute on a concrete subclass that is only present
@@ -377,6 +376,7 @@ class SynonymProperty(DescriptorProperty):
 
     def set_parent(self, parent, init):
         if self.map_column:
+            # implement the 'map_column' option.
             if self.key not in parent.mapped_table.c:
                 raise sa_exc.ArgumentError(
                     "Can't compile synonym '%s': no column on table "

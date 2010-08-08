@@ -61,6 +61,13 @@ CHANGES
     when joinedload() or subqueryload() options
     are applied to a dynamic attribute, instead
     of failure / silent failure.  [ticket:1864]
+
+  - Fixed bug whereby generating a Query derived
+    from one which had the same column repeated
+    with different label names, typically 
+    in some UNION situations, would fail to 
+    propagate the inner columns completely to
+    the outer query.  [ticket:1852]
     
 - sql
   - Changed the scheme used to generate truncated
@@ -111,6 +118,16 @@ CHANGES
     columns in a reflected table would cause an attempt
     to remove the reflected constraint from the table
     a second time, raising a KeyError.  [ticket:1865]
+
+  - the _Label construct, i.e. the one that is produced
+    whenever you say somecol.label(), now counts itself
+    in its "proxy_set" unioned with that of it's
+    contained column's proxy set, instead of 
+    directly returning that of the contained column.
+    This allows column correspondence
+    operations which depend on the identity of the 
+    _Labels themselves to return the correct result
+    - fixes ORM bug [ticket:1852].
     
 - declarative
   - if @classproperty is used with a regular class-bound

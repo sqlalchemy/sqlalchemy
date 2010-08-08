@@ -28,19 +28,39 @@ table2 = Table('table2', metadata,
 
 class SelectableTest(TestBase, AssertsExecutionResults):
 
-    def test_distance_on_labels(self):
-
+    def test_indirect_correspondence_on_labels(self):
+        # this test depends upon 'distance' to
+        # get the right result
+        
         # same column three times
 
         s = select([table1.c.col1.label('c2'), table1.c.col1,
                    table1.c.col1.label('c1')])
 
-        # didnt do this yet...col.label().make_proxy() has same
-        # "distance" as col.make_proxy() so far assert
-        # s.corresponding_column(table1.c.col1) is s.c.col1
+        # this tests the same thing as 
+        # test_direct_correspondence_on_labels below - 
+        # that the presence of label() affects the 'distance'
+        assert s.corresponding_column(table1.c.col1) is s.c.col1
 
         assert s.corresponding_column(s.c.col1) is s.c.col1
         assert s.corresponding_column(s.c.c1) is s.c.c1
+
+    def test_direct_correspondence_on_labels(self):
+        # this test depends on labels being part
+        # of the proxy set to get the right result
+        
+        l1, l2 = table1.c.col1.label('foo'), table1.c.col1.label('bar')
+        sel = select([l1, l2])
+
+        sel2 = sel.alias()
+        assert sel2.corresponding_column(l1) is sel2.c.foo
+        assert sel2.corresponding_column(l2) is sel2.c.bar
+
+        sel2 = select([table1.c.col1.label('foo'), table1.c.col2.label('bar')])
+
+        sel3 = sel.union(sel2).alias()
+        assert sel3.corresponding_column(l1) is sel3.c.foo
+        assert sel3.corresponding_column(l2) is sel3.c.bar
 
     def test_distance_on_aliases(self):
         a1 = table1.alias('a1')

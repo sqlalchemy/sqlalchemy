@@ -1075,7 +1075,7 @@ class Mapper(object):
 
     def _is_userland_descriptor(self, obj):
         return not isinstance(obj, 
-                    (MapperProperty, attributes.InstrumentedAttribute)) and \
+                    (MapperProperty, attributes.QueryableAttribute)) and \
                     hasattr(obj, '__get__') and not \
                      isinstance(obj.__get__(None, obj),
                                     attributes.QueryableAttribute)

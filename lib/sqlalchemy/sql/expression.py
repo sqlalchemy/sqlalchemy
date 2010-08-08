@@ -3187,7 +3187,8 @@ class _Label(ColumnElement):
         self._element = element
         self._type = type_
         self.quote = element.quote
-
+        self.proxies = [element]
+        
     @util.memoized_property
     def type(self):
         return sqltypes.to_instance(
@@ -3198,17 +3199,13 @@ class _Label(ColumnElement):
     def element(self):
         return self._element.self_group(against=operators.as_)
 
-    def _proxy_attr(name):
-        get = attrgetter(name)
-        def attr(self):
-            return get(self.element)
-        return property(attr)
+    @property
+    def primary_key(self):
+        return self.element.primary_key
 
-    proxies = _proxy_attr('proxies')
-    base_columns = _proxy_attr('base_columns')
-    proxy_set = _proxy_attr('proxy_set')
-    primary_key = _proxy_attr('primary_key')
-    foreign_keys = _proxy_attr('foreign_keys')
+    @property
+    def foreign_keys(self):
+        return self.element.foreign_keys
 
     def get_children(self, **kwargs):
         return self.element,
@@ -3225,6 +3222,7 @@ class _Label(ColumnElement):
             e = self.element._make_proxy(selectable, name=self.name)
         else:
             e = column(self.name)._make_proxy(selectable=selectable)
+            
         e.proxies.append(self)
         return e
 
