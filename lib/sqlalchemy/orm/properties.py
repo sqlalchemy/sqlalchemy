@@ -237,7 +237,22 @@ class CompositeProperty(ColumnProperty):
     def __str__(self):
         return str(self.parent.class_.__name__) + "." + self.key
 
-class ConcreteInheritedProperty(MapperProperty):
+class DescriptorProperty(MapperProperty):
+    """:class:`MapperProperty` which proxies access to a 
+        plain descriptor."""
+
+    def setup(self, context, entity, path, adapter, **kwargs):
+        pass
+
+    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
+        return (None, None)
+
+    def merge(self, session, source_state, source_dict, 
+                dest_state, dest_dict, load, _recursive):
+        pass
+
+
+class ConcreteInheritedProperty(DescriptorProperty):
     """A 'do nothing' :class:`MapperProperty` that disables 
     an attribute on a concrete subclass that is only present
     on the inherited mapper, not the concrete classes' mapper.
@@ -254,18 +269,6 @@ class ConcreteInheritedProperty(MapperProperty):
     
     """
     
-    extension = None
-
-    def setup(self, context, entity, path, adapter, **kwargs):
-        pass
-
-    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return (None, None)
-
-    def merge(self, session, source_state, source_dict, dest_state,
-                dest_dict, load, _recursive):
-        pass
-        
     def instrument_class(self, mapper):
         def warn():
             raise AttributeError("Concrete %s does not implement "
@@ -284,7 +287,7 @@ class ConcreteInheritedProperty(MapperProperty):
         comparator_callable = None
         # TODO: put this process into a deferred callable?
         for m in self.parent.iterate_to_root():
-            p = m._get_property(self.key)
+            p = m.get_property(self.key, _compile_mappers=False)
             if not isinstance(p, ConcreteInheritedProperty):
                 comparator_callable = p.comparator_factory
                 break
@@ -299,9 +302,7 @@ class ConcreteInheritedProperty(MapperProperty):
             )
 
 
-class SynonymProperty(MapperProperty):
-
-    extension = None
+class SynonymProperty(DescriptorProperty):
 
     def __init__(self, name, map_column=None, 
                             descriptor=None, comparator_factory=None,
@@ -313,14 +314,40 @@ class SynonymProperty(MapperProperty):
         self.doc = doc or (descriptor and descriptor.__doc__) or None
         util.set_creation_order(self)
 
-    def setup(self, context, entity, path, adapter, **kwargs):
-        pass
+    def set_parent(self, parent, init):
+        if self.map_column:
+            # implement the 'map_column' option.
+            if self.key not in parent.mapped_table.c:
+                raise sa_exc.ArgumentError(
+                    "Can't compile synonym '%s': no column on table "
+                    "'%s' named '%s'" 
+                     % (self.name, parent.mapped_table.description, self.key))
+            elif parent.mapped_table.c[self.key] in \
+                    parent._columntoproperty and \
+                    parent._columntoproperty[
+                                            parent.mapped_table.c[self.key]
+                                        ].key == self.name:
+                raise sa_exc.ArgumentError(
+                    "Can't call map_column=True for synonym %r=%r, "
+                    "a ColumnProperty already exists keyed to the name "
+                    "%r for column %r" % 
+                    (self.key, self.name, self.name, self.key)
+                )
+            p = ColumnProperty(parent.mapped_table.c[self.key])
+            parent._configure_property(
+                                    self.name, p, 
+                                    init=init, 
+                                    setparent=True)
+            p._mapped_by_synonym = self.key
 
-    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return (None, None)
+        self.parent = parent
 
     def instrument_class(self, mapper):
-        class_ = self.parent.class_
+
+        if self.descriptor is None:
+            desc = getattr(mapper.class_, self.key, None)
+            if mapper._is_userland_descriptor(desc):
+                self.descriptor = desc
 
         if self.descriptor is None:
             class SynonymProp(object):
@@ -337,8 +364,9 @@ class SynonymProperty(MapperProperty):
 
         def comparator_callable(prop, mapper):
             def comparator():
-                prop = self.parent._get_property(
-                                        self.key, resolve_synonyms=True)
+                prop = mapper.get_property(
+                                        self.name, resolve_synonyms=True, 
+                                        _compile_mappers=False)
                 if self.comparator_factory:
                     return self.comparator_factory(prop, mapper)
                 else:
@@ -355,17 +383,10 @@ class SynonymProperty(MapperProperty):
             doc=self.doc
             )
 
-    def merge(self, session, source_state, source_dict, dest_state,
-                dest_dict, load, _recursive):
-        pass
         
-log.class_logger(SynonymProperty)
-
-class ComparableProperty(MapperProperty):
+class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 
-    extension = None
-    
     def __init__(self, comparator_factory, descriptor=None, doc=None):
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
@@ -374,6 +395,11 @@ class ComparableProperty(MapperProperty):
 
     def instrument_class(self, mapper):
         """Set up a proxy to the unmanaged descriptor."""
+        
+        if self.descriptor is None:
+            desc = getattr(mapper.class_, self.key, None)
+            if mapper._is_userland_descriptor(desc):
+                self.descriptor = desc
 
         attributes.register_descriptor(
             mapper.class_, 
@@ -384,16 +410,6 @@ class ComparableProperty(MapperProperty):
             proxy_property=self.descriptor,
             doc=self.doc,
             )
-
-    def setup(self, context, entity, path, adapter, **kwargs):
-        pass
-
-    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return (None, None)
-
-    def merge(self, session, source_state, source_dict, 
-                dest_state, dest_dict, load, _recursive):
-        pass
 
 
 class RelationshipProperty(StrategizedProperty):
@@ -837,7 +853,7 @@ class RelationshipProperty(StrategizedProperty):
                     yield (c, instance_mapper, instance_state)
 
     def _add_reverse_property(self, key):
-        other = self.mapper._get_property(key)
+        other = self.mapper.get_property(key, _compile_mappers=False)
         self._reverse_property.add(other)
         other._reverse_property.add(self)
         
@@ -924,8 +940,7 @@ class RelationshipProperty(StrategizedProperty):
         if not self.parent.concrete:
             for inheriting in self.parent.iterate_to_root():
                 if inheriting is not self.parent \
-                    and inheriting._get_property(self.key,
-                        raiseerr=False):
+                    and inheriting.has_property(self.key):
                     util.warn("Warning: relationship '%s' on mapper "
                               "'%s' supercedes the same relationship "
                               "on inherited mapper '%s'; this can "
@@ -1216,7 +1231,7 @@ class RelationshipProperty(StrategizedProperty):
     def _assert_is_primary(self):
         if not self.is_primary() \
             and not mapper.class_mapper(self.parent.class_,
-                compile=False)._get_property(self.key, raiseerr=False):
+                compile=False).has_property(self.key):
             raise sa_exc.ArgumentError("Attempting to assign a new "
                     "relationship '%s' to a non-primary mapper on "
                     "class '%s'.  New relationships can only be added "
@@ -1234,8 +1249,7 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 backref_key, kwargs = self.backref
             mapper = self.mapper.primary_mapper()
-            if mapper._get_property(backref_key, raiseerr=False) \
-                is not None:
+            if mapper.has_property(backref_key):
                 raise sa_exc.ArgumentError("Error creating backref "
                         "'%s' on relationship '%s': property of that "
                         "name exists on mapper '%s'" % (backref_key,
@@ -1416,7 +1430,5 @@ PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)
 
 mapper.ColumnProperty = ColumnProperty
-mapper.SynonymProperty = SynonymProperty
-mapper.ComparableProperty = ComparableProperty
 mapper.RelationshipProperty = RelationshipProperty
 mapper.ConcreteInheritedProperty = ConcreteInheritedProperty

@@ -57,8 +57,6 @@ _COMPILE_MUTEX = util.threading.RLock()
 
 # initialize these lazily
 ColumnProperty = None
-SynonymProperty = None
-ComparableProperty = None
 RelationshipProperty = None
 ConcreteInheritedProperty = None
 _expire_state = None
@@ -709,35 +707,11 @@ class Mapper(object):
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
 
-        elif isinstance(prop, (ComparableProperty, SynonymProperty)) and \
-                            setparent:
-            if prop.descriptor is None:
-                desc = getattr(self.class_, key, None)
-                if self._is_userland_descriptor(desc):
-                    prop.descriptor = desc
-            if getattr(prop, 'map_column', False):
-                if key not in self.mapped_table.c:
-                    raise sa_exc.ArgumentError(
-                        "Can't compile synonym '%s': no column on table "
-                        "'%s' named '%s'" 
-                         % (prop.name, self.mapped_table.description, key))
-                elif self.mapped_table.c[key] in self._columntoproperty and \
-                        self._columntoproperty[
-                                                self.mapped_table.c[key]
-                                            ].key == prop.name:
-                    raise sa_exc.ArgumentError(
-                        "Can't call map_column=True for synonym %r=%r, "
-                        "a ColumnProperty already exists keyed to the name "
-                        "%r for column %r" % 
-                        (key, prop.name, prop.name, key)
-                    )
-                p = ColumnProperty(self.mapped_table.c[key])
-                self._configure_property(
-                                        prop.name, p, 
-                                        init=init, 
-                                        setparent=setparent)
-                p._mapped_by_synonym = key
-        
+        prop.key = key
+
+        if setparent:
+            prop.set_parent(self, init)
+
         if key in self._props and \
                 getattr(self._props[key], '_mapped_by_synonym', False):
             syn = self._props[key]._mapped_by_synonym
@@ -748,10 +722,6 @@ class Mapper(object):
                     )
             
         self._props[key] = prop
-        prop.key = key
-
-        if setparent:
-            prop.set_parent(self)
 
         if not self.non_primary:
             prop.instrument_class(self)
@@ -905,26 +875,36 @@ class Mapper(object):
     def has_property(self, key):
         return key in self._props
 
-    def get_property(self, key, resolve_synonyms=False, raiseerr=True):
-        """return a MapperProperty associated with the given key."""
+    def get_property(self, key, 
+                            resolve_synonyms=False, 
+                            raiseerr=True, _compile_mappers=True):
+                            
+        """return a :class:`.MapperProperty` associated with the given key.
+        
+        resolve_synonyms=False and raiseerr=False are deprecated.
+        
+        """
 
-        if not self.compiled:
+        if _compile_mappers and not self.compiled:
             self.compile()
-        return self._get_property(key, 
-                            resolve_synonyms=resolve_synonyms,
-                            raiseerr=raiseerr)
+        
+        if not resolve_synonyms:
+            prop = self._props.get(key, None)
+            if prop is None and raiseerr:
+                raise sa_exc.InvalidRequestError(
+                        "Mapper '%s' has no property '%s'" % 
+                        (self, key))
+            return prop
+        else:
+            try:
+                return getattr(self.class_, key).property
+            except AttributeError:
+                if raiseerr:
+                    raise sa_exc.InvalidRequestError(
+                        "Mapper '%s' has no property '%s'" % (self, key))
+                else:
+                    return None
 
-    def _get_property(self, key, resolve_synonyms=False, raiseerr=True):
-        prop = self._props.get(key, None)
-        if resolve_synonyms:
-            while isinstance(prop, SynonymProperty):
-                prop = self._props.get(prop.name, None)
-        if prop is None and raiseerr:
-            raise sa_exc.InvalidRequestError(
-                    "Mapper '%s' has no property '%s'" % 
-                    (self, key))
-        return prop
-    
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""
