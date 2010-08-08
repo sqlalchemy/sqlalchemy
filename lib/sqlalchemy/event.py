@@ -146,6 +146,9 @@ class Listeners(_ExecEvent):
         return bool(self.listeners or self.parent_listeners)
         
     def append(self, obj, target):
+        # this will be needed, but not 
+        # sure why we don't seem to need it yet
+ #       if obj not in self.listeners:
         self.listeners.append(obj)
 
 class dispatcher(object):

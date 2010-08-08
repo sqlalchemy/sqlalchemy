@@ -104,9 +104,6 @@ class QueryableAttribute(interfaces.PropComparator):
         self.comparator = comparator
         self.parententity = parententity
 
-    # TODO: this can potentially be moved to AttributeImpl,
-    # have Sphinx document the "events" class directly, implement an 
-    # accept_with() that checks for QueryableAttribute
     class events(event.Events):
         """Events for ORM attributes.
 
@@ -122,6 +119,12 @@ class QueryableAttribute(interfaces.PropComparator):
         """
         
         active_history = False
+        
+        # TODO: what to do about subclasses !!
+        # a shared approach will be needed.   listeners can be placed
+        # before subclasses are created.   new attrs on subclasses
+        # can pull them from the superclass attr.  listeners
+        # should be auto-propagated to existing subclasses.
         
         @classmethod
         def listen(cls, fn, identifier, target, active_history=False):
@@ -347,7 +350,10 @@ class AttributeImpl(object):
         else:
             self.is_equal = compare_function
         
-        attr = getattr(class_, key)
+        # TODO: pass in the manager here
+        # instead of doing a lookup
+        attr = manager_of_class(class_)[key]
+        
         for ext in util.to_list(extension or []):
             ext._adapt_listener(attr, ext)
             
@@ -356,7 +362,6 @@ class AttributeImpl(object):
             
         self.expire_missing = expire_missing
 
-    
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to 
         the given state.
@@ -1011,6 +1016,14 @@ class ClassManager(dict):
     def mapper(self):
         raise exc.UnmappedClassError(self.class_)
         
+    def _attr_has_impl(self, key):
+        """Return True if the given attribute is fully initialized.
+        
+        i.e. has an impl.
+        """
+        
+        return key in self and self[key].impl is not None
+        
     def _configure_create_arguments(self, 
                             _source=None, 
                             deferred_scalar_loader=None):
@@ -1504,6 +1517,7 @@ def register_attribute_impl(class_, key,
     manager[key].impl = impl
     
     manager.post_configure_attribute(key)
+
     
 def register_descriptor(class_, key, proxy_property=None, comparator=None, 
                                 parententity=None, property_=None, doc=None):

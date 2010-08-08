@@ -907,7 +907,10 @@ class OrderedSet(set):
 
     def __iter__(self):
         return iter(self._list)
-
+    
+    def __add__(self, other):
+        return self.union(other)
+        
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self._list)
 
