@@ -320,10 +320,11 @@ class EngineEventsTest(TestBase):
                             == params or testparams == posn):
                         break
 
-        for engine in \
-            engines.testing_engine(options=dict(implicit_returning=False)), \
+        for engine in [
+#            engines.testing_engine(options=dict(implicit_returning=False)), 
             engines.testing_engine(options=dict(implicit_returning=False,
-                                   strategy='threadlocal')):
+                                   strategy='threadlocal'))
+            ]:
             event.listen(execute, 'on_execute', engine)
             event.listen(cursor_execute, 'on_cursor_execute', engine)
             

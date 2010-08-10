@@ -201,7 +201,7 @@ class Pool(log.Identified):
         self._reset_on_return = reset_on_return
         self.echo = echo
         if _dispatch:
-            self.events.update(_dispatch)
+            self.dispatch.update(_dispatch)
         if listeners:
             util.warn_deprecated(
                         "The 'listeners' argument to Pool (and "
@@ -209,9 +209,9 @@ class Pool(log.Identified):
             for l in listeners:
                 self.add_listener(l)
 
-    events = event.dispatcher(PoolEvents)
+    dispatch = event.dispatcher(PoolEvents)
         
-    @util.deprecated(":meth:`.Pool.add_listener` is deprecated.  Use :func:`.event.listen`")
+    @util.deprecated("Pool.add_listener is deprecated.  Use event.listen()")
     def add_listener(self, listener):
         """Add a :class:`.PoolListener`-like object to this pool.
         
@@ -283,8 +283,8 @@ class _ConnectionRecord(object):
         self.connection = self.__connect()
         self.info = {}
 
-        pool.events.on_first_connect.exec_once(self.connection, self)
-        pool.events.on_connect(self.connection, self)
+        pool.dispatch.on_first_connect.exec_once(self.connection, self)
+        pool.dispatch.on_connect(self.connection, self)
 
     def close(self):
         if self.connection is not None:
@@ -312,8 +312,8 @@ class _ConnectionRecord(object):
         if self.connection is None:
             self.connection = self.__connect()
             self.info.clear()
-            if self.__pool.events.on_connect:
-                self.__pool.events.on_connect(self.connection, self)
+            if self.__pool.dispatch.on_connect:
+                self.__pool.dispatch.on_connect(self.connection, self)
         elif self.__pool._recycle > -1 and \
                 time.time() - self.starttime > self.__pool._recycle:
             self.__pool.logger.info(
@@ -322,8 +322,8 @@ class _ConnectionRecord(object):
             self.__close()
             self.connection = self.__connect()
             self.info.clear()
-            if self.__pool.events.on_connect:
-                self.__pool.events.on_connect(self.connection, self)
+            if self.__pool.dispatch.on_connect:
+                self.__pool.dispatch.on_connect(self.connection, self)
         return self.connection
 
     def __close(self):
@@ -372,8 +372,8 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
     if connection_record is not None:
         connection_record.fairy = None
         pool.logger.debug("Connection %r being returned to pool", connection)
-        if pool.events.on_checkin:
-            pool.events.on_checkin(connection, connection_record)
+        if pool.dispatch.on_checkin:
+            pool.dispatch.on_checkin(connection, connection_record)
         pool.return_conn(connection_record)
 
 _refs = set()
@@ -457,14 +457,14 @@ class _ConnectionFairy(object):
             raise exc.InvalidRequestError("This connection is closed")
         self.__counter += 1
 
-        if not self._pool.events.on_checkout or self.__counter != 1:
+        if not self._pool.dispatch.on_checkout or self.__counter != 1:
             return self
 
         # Pool listeners can trigger a reconnection on checkout
         attempts = 2
         while attempts > 0:
             try:
-                self._pool.events.on_checkout(self.connection, 
+                self._pool.dispatch.on_checkout(self.connection, 
                                             self._connection_record,
                                             self)
                 return self
@@ -579,7 +579,7 @@ class SingletonThreadPool(Pool):
             echo=self.echo, 
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal, 
-            _dispatch=self.events)
+            _dispatch=self.dispatch)
 
     def dispose(self):
         """Dispose of this pool."""
@@ -712,7 +712,7 @@ class QueuePool(Pool):
                           recycle=self._recycle, echo=self.echo, 
                           logging_name=self._orig_logging_name,
                           use_threadlocal=self._use_threadlocal,
-                          _dispatch=self.events)
+                          _dispatch=self.dispatch)
 
     def do_return_conn(self, conn):
         try:
@@ -823,7 +823,7 @@ class NullPool(Pool):
             echo=self.echo, 
             logging_name=self._orig_logging_name,
             use_threadlocal=self._use_threadlocal, 
-            _dispatch=self.events)
+            _dispatch=self.dispatch)
 
     def dispose(self):
         pass
@@ -863,7 +863,7 @@ class StaticPool(Pool):
                               reset_on_return=self._reset_on_return,
                               echo=self.echo,
                               logging_name=self._orig_logging_name,
-                              _dispatch=self.events)
+                              _dispatch=self.dispatch)
 
     def create_connection(self):
         return self._conn
@@ -914,7 +914,7 @@ class AssertionPool(Pool):
         self.logger.info("Pool recreating")
         return AssertionPool(self._creator, echo=self.echo, 
                             logging_name=self._orig_logging_name,
-                            _dispatch=self.events)
+                            _dispatch=self.dispatch)
         
     def do_get(self):
         if self._checked_out:

@@ -16,53 +16,61 @@ def listen(fn, identifier, target, *args, **kw):
     
     for evt_cls in _registrars[identifier]:
         for tgt in evt_cls.accept_with(target):
-            tgt.events.listen(fn, identifier, tgt, *args, **kw)
+            
+            tgt.dispatch.events.listen(fn, identifier, tgt, *args, **kw)
             break
     
 class _DispatchMeta(type):
     def __init__(cls, classname, bases, dict_):
+        
+        dispatch_base = getattr(cls, 'dispatch', Dispatch)
+        cls.dispatch = dispatch_cls = type("%sDispatch" % classname, (dispatch_base, ), {})
+        dispatch_cls.events = cls
         for k in dict_:
             if k.startswith('on_'):
-                setattr(cls, k, EventDescriptor(dict_[k]))
+                setattr(dispatch_cls, k, EventDescriptor(dict_[k]))
                 _registrars[k].append(cls)
         return type.__init__(cls, classname, bases, dict_)
 
 _registrars = util.defaultdict(list)
 
-class Events(object):
-    __metaclass__ = _DispatchMeta
-    
+class Dispatch(object):
+
     def __init__(self, parent_cls):
         self.parent_cls = parent_cls
     
-    @classmethod
-    def accept_with(cls, target):
-        # Mapper, ClassManager, Session override this to
-        # also accept classes, scoped_sessions, sessionmakers, etc.
-        if hasattr(target, 'events') and (
-                    isinstance(target.events, cls) or \
-                    isinstance(target.events, type) and \
-                    issubclass(target.events, cls)
-                ):
-            return [target]
-        else:
-            return []
-        
-    @classmethod
-    def listen(cls, fn, identifier, target):
-        getattr(target.events, identifier).append(fn, target)
-    
     @property
-    def events(self):
-        """Iterate the Listeners objects."""
-        
+    def descriptors(self):
         return (getattr(self, k) for k in dir(self) if k.startswith("on_"))
         
     def update(self, other):
         """Populate from the listeners in another :class:`Events` object."""
 
-        for ls in other.events:
+        for ls in other.descriptors:
             getattr(self, ls.name).listeners.extend(ls.listeners)
+
+
+class Events(object):
+    __metaclass__ = _DispatchMeta
+    
+    @classmethod
+    def accept_with(cls, target):
+        # Mapper, ClassManager, Session override this to
+        # also accept classes, scoped_sessions, sessionmakers, etc.
+        if hasattr(target, 'dispatch') and (
+                    isinstance(target.dispatch, cls.dispatch) or \
+                    isinstance(target.dispatch, type) and \
+                    issubclass(target.dispatch, cls.dispatch)
+                ):
+            return [target]
+        else:
+            return []
+
+    @classmethod
+    def listen(cls, fn, identifier, target):
+        getattr(target.dispatch, identifier).append(fn, target)
+        
+
 
 class _ExecEvent(object):
     _exec_once = False
@@ -149,10 +157,10 @@ class Listeners(_ExecEvent):
 
 class dispatcher(object):
     def __init__(self, events):
-        self.dispatch_cls = events
+        self.dispatch_cls = events.dispatch
         
     def __get__(self, obj, cls):
         if obj is None:
             return self.dispatch_cls
-        obj.__dict__['events'] = disp = self.dispatch_cls(cls)
+        obj.__dict__['dispatch'] = disp = self.dispatch_cls(cls)
         return disp

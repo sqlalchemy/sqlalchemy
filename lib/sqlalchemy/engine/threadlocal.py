@@ -27,7 +27,15 @@ class TLConnection(base.Connection):
         self.__opencount = 0
         base.Connection.close(self)
 
-        
+class TLEvents(base.EngineEvents):
+    @classmethod
+    def listen(cls, fn, identifier, target):
+        if issubclass(target.TLConnection, TLConnection):
+            target.TLConnection = base._proxy_connection_cls(
+                                        TLConnection, 
+                                        target.dispatch)
+        base.EngineEvents.listen(fn, identifier, target)
+
 class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions."""
 
@@ -37,15 +45,7 @@ class TLEngine(base.Engine):
         super(TLEngine, self).__init__(*args, **kwargs)
         self._connections = util.threading.local()
 
-    class events(base.Engine.events):
-        @classmethod
-        def listen(cls, fn, identifier, target):
-            if issubclass(target.TLConnection, TLConnection):
-                target.TLConnection = base._proxy_connection_cls(
-                                            TLConnection, 
-                                            target.events)
-            base.Engine.events.listen(fn, identifier, target)
-    events = event.dispatcher(events)
+    dispatch = event.dispatcher(TLEvents)
     
     def contextual_connect(self, **kw):
         if not hasattr(self._connections, 'conn'):

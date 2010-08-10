@@ -1554,7 +1554,7 @@ class EngineEvents(event.Events):
         if issubclass(target.Connection, Connection):
             target.Connection = _proxy_connection_cls(
                                         Connection, 
-                                        target.events)
+                                        target.dispatch)
         event.Events.listen(fn, identifier, target)
 
     def on_execute(self, conn, execute, clauseelement, *multiparams, **params):
@@ -1627,7 +1627,7 @@ class Engine(Connectable, log.Identified):
             self.update_execution_options(**execution_options)
 
             
-    events = event.dispatcher(EngineEvents)
+    dispatch = event.dispatcher(EngineEvents)
     
     def update_execution_options(self, **opt):
         """update the execution_options dictionary of this :class:`Engine`.
@@ -1851,11 +1851,7 @@ def _proxy_connection_cls(cls, dispatch):
             return orig
         def go(*arg, **kw):
             nested = _exec_recursive(conn, fns[1:], orig)
-            try:
-                ret = fns[0](conn, nested, *arg, **kw)
-            except IndexError:
-                import pdb
-                pdb.set_trace()
+            ret = fns[0](conn, nested, *arg, **kw)
             # TODO: need to get consistent way to check 
             # for "they called the fn, they didn't", or otherwise
             # make some decision here how this is to work
