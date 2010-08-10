@@ -1546,6 +1546,54 @@ class TwoPhaseTransaction(Transaction):
     def _do_commit(self):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
+class EngineEvents(event.Events):
+    """Available events for :class:`.Engine`."""
+    
+    @classmethod
+    def listen(cls, fn, identifier, target):
+        if issubclass(target.Connection, Connection):
+            target.Connection = _proxy_connection_cls(
+                                        Connection, 
+                                        target.events)
+        event.Events.listen(fn, identifier, target)
+
+    def on_execute(self, conn, execute, clauseelement, *multiparams, **params):
+        """Intercept high level execute() events."""
+
+    def on_cursor_execute(self, conn, execute, cursor, statement, 
+                        parameters, context, executemany):
+        """Intercept low-level cursor execute() events."""
+
+    def on_begin(self, conn, begin):
+        """Intercept begin() events."""
+
+    def on_rollback(self, conn, rollback):
+        """Intercept rollback() events."""
+
+    def on_commit(self, conn, commit):
+        """Intercept commit() events."""
+
+    def on_savepoint(self, conn, savepoint, name=None):
+        """Intercept savepoint() events."""
+
+    def on_rollback_savepoint(self, conn, rollback_savepoint, name, context):
+        """Intercept rollback_savepoint() events."""
+
+    def on_release_savepoint(self, conn, release_savepoint, name, context):
+        """Intercept release_savepoint() events."""
+
+    def on_begin_twophase(self, conn, begin_twophase, xid):
+        """Intercept begin_twophase() events."""
+
+    def on_prepare_twophase(self, conn, prepare_twophase, xid):
+        """Intercept prepare_twophase() events."""
+
+    def on_rollback_twophase(self, conn, rollback_twophase, xid, is_prepared):
+        """Intercept rollback_twophase() events."""
+
+    def on_commit_twophase(self, conn, commit_twophase, xid, is_prepared):
+        """Intercept commit_twophase() events."""
+
 class Engine(Connectable, log.Identified):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and 
@@ -1578,52 +1626,8 @@ class Engine(Connectable, log.Identified):
         if execution_options:
             self.update_execution_options(**execution_options)
 
-    class events(event.Events):
-        @classmethod
-        def listen(cls, fn, identifier, target):
-            if issubclass(target.Connection, Connection):
-                target.Connection = _proxy_connection_cls(
-                                            Connection, 
-                                            target.events)
-            event.Events.listen(fn, identifier, target)
             
-        def on_execute(self, conn, execute, clauseelement, *multiparams, **params):
-            """Intercept high level execute() events."""
-
-        def on_cursor_execute(self, conn, execute, cursor, statement, 
-                            parameters, context, executemany):
-            """Intercept low-level cursor execute() events."""
-
-        def on_begin(self, conn, begin):
-            """Intercept begin() events."""
-
-        def on_rollback(self, conn, rollback):
-            """Intercept rollback() events."""
-
-        def on_commit(self, conn, commit):
-            """Intercept commit() events."""
-
-        def on_savepoint(self, conn, savepoint, name=None):
-            """Intercept savepoint() events."""
-
-        def on_rollback_savepoint(self, conn, rollback_savepoint, name, context):
-            """Intercept rollback_savepoint() events."""
-
-        def on_release_savepoint(self, conn, release_savepoint, name, context):
-            """Intercept release_savepoint() events."""
-
-        def on_begin_twophase(self, conn, begin_twophase, xid):
-            """Intercept begin_twophase() events."""
-
-        def on_prepare_twophase(self, conn, prepare_twophase, xid):
-            """Intercept prepare_twophase() events."""
-
-        def on_rollback_twophase(self, conn, rollback_twophase, xid, is_prepared):
-            """Intercept rollback_twophase() events."""
-
-        def on_commit_twophase(self, conn, commit_twophase, xid, is_prepared):
-            """Intercept commit_twophase() events."""
-    events = event.dispatcher(events)
+    events = event.dispatcher(EngineEvents)
     
     def update_execution_options(self, **opt):
         """update the execution_options dictionary of this :class:`Engine`.

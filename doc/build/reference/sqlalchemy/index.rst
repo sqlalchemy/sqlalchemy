@@ -1,6 +1,8 @@
 sqlalchemy
 ==========
 
+.. module:: sqlalchemy
+
 .. toctree::
     :glob:
 

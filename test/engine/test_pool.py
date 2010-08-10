@@ -403,13 +403,13 @@ class PoolTest(PoolTestBase):
             assert_listeners(p, 1, 1, 1, 1)
 
             p.add_listener(i_connect)
-            assert_listeners(p, 2, 2, 1, 1)
+            assert_listeners(p, 2, 1, 1, 1)
 
             p.add_listener(i_checkout)
-            assert_listeners(p, 3, 2, 2, 1)
+            assert_listeners(p, 3, 1, 1, 1)
 
             p.add_listener(i_checkin)
-            assert_listeners(p, 4, 2, 2, 2)
+            assert_listeners(p, 4, 1, 1, 1)
             del p
 
             p = _pool(listeners=[i_all])
@@ -424,7 +424,7 @@ class PoolTest(PoolTestBase):
             assert counts == [1, 2, 1]
             p.add_listener(i_checkin)
             c.close()
-            assert counts == [1, 2, 3]
+            assert counts == [1, 2, 2]
 
     def test_listener_after_oninit(self):
         """Test that listeners are called after OnInit is removed"""

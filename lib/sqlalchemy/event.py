@@ -1,10 +1,7 @@
 """
-The event system handles all events throughout the sqlalchemy
-and sqlalchemy.orm packages.   
+The event system handles all events throughout the :mod:`sqlalchemy`
+and :mod:`sqlalchemy.orm` packages.
 
-Event specifications:
-
-:attr:`sqlalchemy.pool.Pool.events`
 
 """
 
@@ -110,7 +107,8 @@ class EventDescriptor(object):
         self._clslevel = util.defaultdict(list)
     
     def append(self, obj, target):
-        assert isinstance(target, type), "Class-level Event targets must be classes."
+        assert isinstance(target, type), \
+                "Class-level Event targets must be classes."
         for cls in [target] + target.__subclasses__():
             self._clslevel[cls].append(obj)
     

@@ -1,5 +1,5 @@
-Interfaces
-----------
+Interfaces (Deprecated)
+------------------------
 
 SQLAlchemy's interface system is now deprecated, and has been
 superceded by a more flexible and consistent event dispatch

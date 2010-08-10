@@ -57,6 +57,82 @@ def clear_managers():
         manager.close()
     proxies.clear()
 
+class PoolEvents(event.Events):
+    """Available events for :class:`.Pool`.
+    
+    The methods here define the name of an event as well
+    as the names of members that are passed to listener
+    functions.  Note all members are passed by name.
+    
+    e.g.::
+    
+        from sqlalchemy import events
+        
+        def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
+            "handle an on checkout event"
+            
+        events.listen(my_on_checkout, 'on_checkout', Pool)
+
+    """
+    
+    def on_connect(self, dbapi_connection, connection_record):
+        """Called once for each new DB-API connection or Pool's ``creator()``.
+
+        :param dbapi_con:
+          A newly connected raw DB-API connection (not a SQLAlchemy
+          ``Connection`` wrapper).
+
+        :param con_record:
+          The ``_ConnectionRecord`` that persistently manages the connection
+
+        """
+
+    def on_first_connect(self, dbapi_connection, connection_record):
+        """Called exactly once for the first DB-API connection.
+
+        :param dbapi_con:
+          A newly connected raw DB-API connection (not a SQLAlchemy
+          ``Connection`` wrapper).
+
+        :param con_record:
+          The ``_ConnectionRecord`` that persistently manages the connection
+
+        """
+
+    def on_checkout(self, dbapi_connection, connection_record, connection_proxy):
+        """Called when a connection is retrieved from the Pool.
+
+        :param dbapi_con:
+          A raw DB-API connection
+
+        :param con_record:
+          The ``_ConnectionRecord`` that persistently manages the connection
+
+        :param con_proxy:
+          The ``_ConnectionFairy`` which manages the connection for the span of
+          the current checkout.
+
+        If you raise an ``exc.DisconnectionError``, the current
+        connection will be disposed and a fresh connection retrieved.
+        Processing of all checkout listeners will abort and restart
+        using the new connection.
+        """
+
+    def on_checkin(self, dbapi_connection, connection_record):
+        """Called when a connection returns to the pool.
+
+        Note that the connection may be closed, and may be None if the
+        connection has been invalidated.  ``checkin`` will not be called
+        for detached connections.  (They do not return to the pool.)
+
+        :param dbapi_con:
+          A raw DB-API connection
+
+        :param con_record:
+          The ``_ConnectionRecord`` that persistently manages the connection
+
+        """
+
 class Pool(log.Identified):
     """Abstract base class for connection pools."""
 
@@ -133,82 +209,11 @@ class Pool(log.Identified):
             for l in listeners:
                 self.add_listener(l)
 
-    class events(event.Events):
-        """Available events for :class:`Pool`.
+    events = event.dispatcher(PoolEvents)
         
-        The methods here define the name of an event as well
-        as the names of members that are passed to listener
-        functions.  Note all members are passed by name.
-        
-        e.g.::
-        
-            from sqlalchemy import events
-            events.listen(fn, 'on_checkout', Pool)
-
-        """
-        
-        def on_connect(self, dbapi_connection, connection_record):
-            """Called once for each new DB-API connection or Pool's ``creator()``.
-
-            :param dbapi_con:
-              A newly connected raw DB-API connection (not a SQLAlchemy
-              ``Connection`` wrapper).
-
-            :param con_record:
-              The ``_ConnectionRecord`` that persistently manages the connection
-
-            """
-
-        def on_first_connect(self, dbapi_connection, connection_record):
-            """Called exactly once for the first DB-API connection.
-
-            :param dbapi_con:
-              A newly connected raw DB-API connection (not a SQLAlchemy
-              ``Connection`` wrapper).
-
-            :param con_record:
-              The ``_ConnectionRecord`` that persistently manages the connection
-
-            """
-
-        def on_checkout(self, dbapi_connection, connection_record, connection_proxy):
-            """Called when a connection is retrieved from the Pool.
-
-            :param dbapi_con:
-              A raw DB-API connection
-
-            :param con_record:
-              The ``_ConnectionRecord`` that persistently manages the connection
-
-            :param con_proxy:
-              The ``_ConnectionFairy`` which manages the connection for the span of
-              the current checkout.
-
-            If you raise an ``exc.DisconnectionError``, the current
-            connection will be disposed and a fresh connection retrieved.
-            Processing of all checkout listeners will abort and restart
-            using the new connection.
-            """
-
-        def on_checkin(self, dbapi_connection, connection_record):
-            """Called when a connection returns to the pool.
-
-            Note that the connection may be closed, and may be None if the
-            connection has been invalidated.  ``checkin`` will not be called
-            for detached connections.  (They do not return to the pool.)
-
-            :param dbapi_con:
-              A raw DB-API connection
-
-            :param con_record:
-              The ``_ConnectionRecord`` that persistently manages the connection
-
-            """
-    events = event.dispatcher(events)
-        
-    @util.deprecated("Pool.add_listener() is deprecated.  Use event.listen()")
+    @util.deprecated(":meth:`.Pool.add_listener` is deprecated.  Use :func:`.event.listen`")
     def add_listener(self, listener):
-        """Add a ``PoolListener``-like object to this pool.
+        """Add a :class:`.PoolListener`-like object to this pool.
         
         ``listener`` may be an object that implements some or all of
         PoolListener, or a dictionary of callables containing implementations

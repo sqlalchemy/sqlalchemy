@@ -3,7 +3,9 @@
 Querying
 ========
 
-.. module:: sqlalchemy.orm
+.. module:: sqlalchemy.orm.query
+
+.. currentmodule:: sqlalchemy.orm
 
 The Query Object
 ----------------

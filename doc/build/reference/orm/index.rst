@@ -3,6 +3,8 @@
 sqlalchemy.orm
 ==============
 
+.. module:: sqlalchemy.orm
+
 .. toctree::
     :glob:
 
