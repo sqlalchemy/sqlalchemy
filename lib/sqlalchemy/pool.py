@@ -62,7 +62,7 @@ class PoolEvents(event.Events):
     
     The methods here define the name of an event as well
     as the names of members that are passed to listener
-    functions.  Note all members are passed by name.
+    functions.
     
     e.g.::
     
