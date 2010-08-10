@@ -1405,9 +1405,16 @@ class DefaultClause(FetchedValue):
                         (self.arg, self.for_update)
 
 class PassiveDefault(DefaultClause):
+    """A DDL-specified DEFAULT column value.
+    
+    .. deprecated:: 0.6 :class:`.PassiveDefault` is deprecated. 
+        Use :class:`.DefaultClause`.
+    """
+    @util.deprecated("0.6", 
+                ":class:`.PassiveDefault` is deprecated.  "
+                "Use :class:`.DefaultClause`.",
+                False)
     def __init__(self, *arg, **kw):
-        util.warn_deprecated("PassiveDefault is deprecated. "
-                                "Use DefaultClause.")
         DefaultClause.__init__(self, *arg, **kw)
 
 class Constraint(SchemaItem):

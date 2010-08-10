@@ -3469,8 +3469,9 @@ class _SelectBaseMixin(Executable):
         return self.as_scalar().label(name)
 
     @_generative
-    @util.deprecated(message="autocommit() is deprecated. "
-                        "Use .execution_options(autocommit=True)")
+    @util.deprecated("0.6", message=":func:`.autocommit` is deprecated. "
+                        "Use :func:`.Executable.execution_options` "
+                        "with the 'autocommit' flag.")
     def autocommit(self):
         """return a new selectable with the 'autocommit' flag set to True."""
         
