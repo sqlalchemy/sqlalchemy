@@ -261,10 +261,10 @@ class PoolTest(PoolTestBase):
 
         def assert_listeners(p, total, conn, fconn, cout, cin):
             for instance in (p, p.recreate()):
-                self.assert_(len(instance.events.on_connect) == conn)
-                self.assert_(len(instance.events.on_first_connect) == fconn)
-                self.assert_(len(instance.events.on_checkout) == cout)
-                self.assert_(len(instance.events.on_checkin) == cin)
+                self.assert_(len(instance.dispatch.on_connect) == conn)
+                self.assert_(len(instance.dispatch.on_first_connect) == fconn)
+                self.assert_(len(instance.dispatch.on_checkout) == cout)
+                self.assert_(len(instance.dispatch.on_checkin) == cin)
 
         p = _pool()
         assert_listeners(p, 0, 0, 0, 0, 0)
@@ -392,9 +392,9 @@ class PoolTest(PoolTestBase):
 
             def assert_listeners(p, total, conn, cout, cin):
                 for instance in (p, p.recreate()):
-                    self.assert_(len(instance.events.on_connect) == conn)
-                    self.assert_(len(instance.events.on_checkout) == cout)
-                    self.assert_(len(instance.events.on_checkin) == cin)
+                    self.assert_(len(instance.dispatch.on_connect) == conn)
+                    self.assert_(len(instance.dispatch.on_checkout) == cout)
+                    self.assert_(len(instance.dispatch.on_checkin) == cin)
 
             p = _pool()
             assert_listeners(p, 0, 0, 0, 0)

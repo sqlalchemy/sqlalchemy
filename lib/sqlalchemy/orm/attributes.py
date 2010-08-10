@@ -129,7 +129,7 @@ class QueryableAttribute(interfaces.PropComparator):
         @classmethod
         def listen(cls, fn, identifier, target, active_history=False):
             if active_history:
-                target.events.active_history = True
+                target.active_history = True
             event.Events.listen(fn, identifier, target)
             
         def on_append(self, state, value, initiator):
@@ -154,8 +154,8 @@ class QueryableAttribute(interfaces.PropComparator):
             set.
 
             """
-
-    events = event.dispatcher(events)
+    dispatch = event.dispatcher(events)
+    
 
     def get_history(self, instance, **kwargs):
         return self.impl.get_history(instance_state(instance),
@@ -289,7 +289,7 @@ class AttributeImpl(object):
     """internal implementation for instrumented attributes."""
 
     def __init__(self, class_, key,
-                    callable_, events, trackparent=False, extension=None,
+                    callable_, dispatch, trackparent=False, extension=None,
                     compare_function=None, active_history=False, 
                     parent_token=None, expire_missing=True,
                     **kwargs):
@@ -307,9 +307,6 @@ class AttributeImpl(object):
           collection attribute when it's first accessed, if not present
           already.
 
-        events
-          The :class:`Events` object used to track events.
-          
         trackparent
           if True, attempt to track if an instance has a parent attached
           to it via this attribute.
@@ -342,7 +339,8 @@ class AttributeImpl(object):
         self.class_ = class_
         self.key = key
         self.callable_ = callable_
-        self.events = events
+        self.active_history = False
+        self.dispatch = dispatch
         self.trackparent = trackparent
         self.parent_token = parent_token or self
         if compare_function is None:
@@ -358,7 +356,7 @@ class AttributeImpl(object):
             ext._adapt_listener(attr, ext)
             
         if active_history:
-            events.active_history = True
+            self.active_history = True
             
         self.expire_missing = expire_missing
 
@@ -495,12 +493,12 @@ class ScalarAttributeImpl(AttributeImpl):
     def delete(self, state, dict_):
 
         # TODO: catch key errors, convert to attributeerror?
-        if self.events.active_history:
+        if self.active_history:
             old = self.get(state, dict_)
         else:
             old = dict_.get(self.key, NO_VALUE)
 
-        if self.events.on_remove:
+        if self.dispatch.on_remove:
             self.fire_remove_event(state, dict_, old, None)
         state.modified_event(dict_, self, False, old)
         del dict_[self.key]
@@ -513,24 +511,24 @@ class ScalarAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        if self.events.active_history:
+        if self.active_history:
             old = self.get(state, dict_)
         else:
             old = dict_.get(self.key, NO_VALUE)
 
-        if self.events.on_set:
+        if self.dispatch.on_set:
             value = self.fire_replace_event(state, dict_, 
                                                 value, old, initiator)
         state.modified_event(dict_, self, False, old)
         dict_[self.key] = value
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
-        for fn in self.events.on_set:
+        for fn in self.dispatch.on_set:
             value = fn(state, value, previous, initiator or self)
         return value
 
     def fire_remove_event(self, state, dict_, value, initiator):
-        for fn in self.events.on_remove:
+        for fn in self.dispatch.on_remove:
             fn(state, value, initiator or self)
 
     @property
@@ -547,13 +545,13 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
     uses_objects = False
     supports_population = True
 
-    def __init__(self, class_, key, callable_, events,
+    def __init__(self, class_, key, callable_, dispatch,
                     class_manager, copy_function=None,
                     compare_function=None, **kwargs):
         super(ScalarAttributeImpl, self).__init__(
                                             class_, 
                                             key, 
-                                            callable_, events,
+                                            callable_, dispatch,
                                             compare_function=compare_function, 
                                             **kwargs)
         class_manager.mutable_attributes.add(key)
@@ -592,7 +590,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         if initiator is self:
             return
 
-        if self.events.on_set:
+        if self.dispatch.on_set:
             old = self.get(state, dict_)
             value = self.fire_replace_event(state, dict_, 
                                             value, old, initiator)
@@ -614,13 +612,13 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     uses_objects = True
     supports_population = True
 
-    def __init__(self, class_, key, callable_, events,
+    def __init__(self, class_, key, callable_, dispatch,
                     trackparent=False, extension=None, copy_function=None,
                     compare_function=None, **kwargs):
         super(ScalarObjectAttributeImpl, self).__init__(
                                             class_, 
                                             key,
-                                            callable_, events, 
+                                            callable_, dispatch, 
                                             trackparent=trackparent, 
                                             extension=extension,
                                             compare_function=compare_function, 
@@ -654,7 +652,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if initiator is self:
             return
 
-        if self.events.active_history:
+        if self.active_history:
             old = self.get(state, dict_)
         else:
             old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)
@@ -666,7 +664,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), False)
         
-        for fn in self.events.on_remove:
+        for fn in self.dispatch.on_remove:
             fn(state, value, initiator or self)
 
         state.modified_event(dict_, self, False, value)
@@ -678,7 +676,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 previous is not PASSIVE_NO_RESULT):
                 self.sethasparent(instance_state(previous), False)
 
-        for fn in self.events.on_set:
+        for fn in self.dispatch.on_set:
             value = fn(state, value, previous, initiator or self)
 
         state.modified_event(dict_, self, False, previous)
@@ -705,13 +703,13 @@ class CollectionAttributeImpl(AttributeImpl):
     uses_objects = True
     supports_population = True
 
-    def __init__(self, class_, key, callable_, events,
+    def __init__(self, class_, key, callable_, dispatch,
                     typecallable=None, trackparent=False, extension=None,
                     copy_function=None, compare_function=None, **kwargs):
         super(CollectionAttributeImpl, self).__init__(
                                             class_, 
                                             key, 
-                                            callable_, events,
+                                            callable_, dispatch,
                                             trackparent=trackparent,
                                             extension=extension,
                                             compare_function=compare_function, 
@@ -733,7 +731,7 @@ class CollectionAttributeImpl(AttributeImpl):
             return History.from_attribute(self, state, current)
 
     def fire_append_event(self, state, dict_, value, initiator):
-        for fn in self.events.on_append:
+        for fn in self.dispatch.on_append:
             value = fn(state, value, initiator or self)
 
         state.modified_event(dict_, self, True, 
@@ -752,7 +750,7 @@ class CollectionAttributeImpl(AttributeImpl):
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), False)
 
-        for fn in self.events.on_remove:
+        for fn in self.dispatch.on_remove:
             fn(state, value, initiator or self)
 
         state.modified_event(dict_, self, True, 
@@ -1006,7 +1004,7 @@ class ClassManager(dict):
         def on_resurrect(self, state, instance):
             """"""
             
-    events = event.dispatcher(events)
+    dispatch = event.dispatcher(events)
     
     @property
     def is_mapped(self):
@@ -1132,7 +1130,7 @@ class ClassManager(dict):
         
         self._uninstrument_init()
 
-        self.mapper = self.events = None
+        self.mapper = self.dispatch = None
         self.info.clear()
         
         for key in list(self):
@@ -1499,20 +1497,20 @@ def register_attribute_impl(class_, key,
     else:
         typecallable = kw.pop('typecallable', None)
 
-    events = manager[key].events
+    dispatch = manager[key].dispatch
     
     if impl_class:
         impl = impl_class(class_, key, typecallable, **kw)
     elif uselist:
-        impl = CollectionAttributeImpl(class_, key, callable_, events,
+        impl = CollectionAttributeImpl(class_, key, callable_, dispatch,
                                        typecallable=typecallable, **kw)
     elif useobject:
-        impl = ScalarObjectAttributeImpl(class_, key, callable_, events,**kw)
+        impl = ScalarObjectAttributeImpl(class_, key, callable_, dispatch,**kw)
     elif mutable_scalars:
-        impl = MutableScalarAttributeImpl(class_, key, callable_, events,
+        impl = MutableScalarAttributeImpl(class_, key, callable_, dispatch,
                                           class_manager=manager, **kw)
     else:
-        impl = ScalarAttributeImpl(class_, key, callable_, events, **kw)
+        impl = ScalarAttributeImpl(class_, key, callable_, dispatch, **kw)
 
     manager[key].impl = impl
     

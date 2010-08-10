@@ -16,26 +16,17 @@ def listen(fn, identifier, target, *args, **kw):
     
     for evt_cls in _registrars[identifier]:
         for tgt in evt_cls.accept_with(target):
-            
-            tgt.dispatch.events.listen(fn, identifier, tgt, *args, **kw)
+            tgt.dispatch.listen(fn, identifier, tgt, *args, **kw)
             break
     
-class _DispatchMeta(type):
-    def __init__(cls, classname, bases, dict_):
-        
-        dispatch_base = getattr(cls, 'dispatch', Dispatch)
-        cls.dispatch = dispatch_cls = type("%sDispatch" % classname, (dispatch_base, ), {})
-        dispatch_cls.events = cls
-        for k in dict_:
-            if k.startswith('on_'):
-                setattr(dispatch_cls, k, EventDescriptor(dict_[k]))
-                _registrars[k].append(cls)
-        return type.__init__(cls, classname, bases, dict_)
-
 _registrars = util.defaultdict(list)
 
-class Dispatch(object):
-
+class _Dispatch(object):
+    """Mirror the event listening definitions of an Events class with 
+    listener collections.
+    
+    """
+    
     def __init__(self, parent_cls):
         self.parent_cls = parent_cls
     
@@ -49,9 +40,33 @@ class Dispatch(object):
         for ls in other.descriptors:
             getattr(self, ls.name).listeners.extend(ls.listeners)
 
+class _EventMeta(type):
+    """Intercept new Event subclasses and create 
+    associated _Dispatch classes."""
+    
+    def __init__(cls, classname, bases, dict_):
+        _create_dispatcher_class(cls, classname, bases, dict_)
+        return type.__init__(cls, classname, bases, dict_)
+        
+def _create_dispatcher_class(cls, classname, bases, dict_):
+    # there's all kinds of ways to do this,
+    # i.e. make a Dispatch class that shares the 'listen' method
+    # of the Event class, this is the straight monkeypatch.
+    dispatch_base = getattr(cls, 'dispatch', _Dispatch)
+    cls.dispatch = dispatch_cls = type("%sDispatch" % classname, 
+                                        (dispatch_base, ), {})
+    dispatch_cls.listen = cls.listen
+
+    for k in dict_:
+        if k.startswith('on_'):
+            setattr(dispatch_cls, k, _DispatchDescriptor(dict_[k]))
+            _registrars[k].append(cls)
 
 class Events(object):
-    __metaclass__ = _DispatchMeta
+    """Define event listening functions for a particular target type."""
+    
+    
+    __metaclass__ = _EventMeta
     
     @classmethod
     def accept_with(cls, target):
@@ -69,46 +84,12 @@ class Events(object):
     @classmethod
     def listen(cls, fn, identifier, target):
         getattr(target.dispatch, identifier).append(fn, target)
-        
 
 
-class _ExecEvent(object):
-    _exec_once = False
     
-    def exec_once(self, *args, **kw):
-        """Execute this event, but only if it has not been
-        executed already for this collection."""
-        
-        if not self._exec_once:
-            self(*args, **kw)
-            self._exec_once = True
+class _DispatchDescriptor(object):
+    """Class-level attributes on _Dispatch classes."""
     
-    def exec_until_return(self, *args, **kw):
-        """Execute listeners for this event until
-        one returns a non-None value.
-        
-        Returns the value, or None.
-        """
-        
-        if self:
-            for fn in self:
-                r = fn(*args, **kw)
-                if r is not None:
-                    return r
-        return None
-        
-    def __call__(self, *args, **kw):
-        """Execute this event."""
-        
-        if self:
-            for fn in self:
-                fn(*args, **kw)
-    
-class EventDescriptor(object):
-    """Represent an event type associated with a :class:`Events` class
-    as well as class-level listeners.
-    
-    """
     def __init__(self, fn):
         self.__name__ = fn.__name__
         self.__doc__ = fn.__doc__
@@ -117,23 +98,58 @@ class EventDescriptor(object):
     def append(self, obj, target):
         assert isinstance(target, type), \
                 "Class-level Event targets must be classes."
+                
         for cls in [target] + target.__subclasses__():
             self._clslevel[cls].append(obj)
     
     def __get__(self, obj, cls):
         if obj is None:
             return self
-        obj.__dict__[self.__name__] = result = Listeners(self, obj.parent_cls)
+        obj.__dict__[self.__name__] = result = \
+                            _ListenerCollection(self, obj.parent_cls)
         return result
 
-class Listeners(_ExecEvent):
+class _ListenerCollection(object):
     """Represent a collection of listeners linked
-    to an instance of :class:`Events`."""
+    to an instance of _Dispatch.
+    
+    """
+
+    _exec_once = False
     
     def __init__(self, parent, target_cls):
         self.parent_listeners = parent._clslevel[target_cls]
         self.name = parent.__name__
         self.listeners = []
+
+    def exec_once(self, *args, **kw):
+        """Execute this event, but only if it has not been
+        executed already for this collection."""
+
+        if not self._exec_once:
+            self(*args, **kw)
+            self._exec_once = True
+
+    def exec_until_return(self, *args, **kw):
+        """Execute listeners for this event until
+        one returns a non-None value.
+
+        Returns the value, or None.
+        """
+
+        if self:
+            for fn in self:
+                r = fn(*args, **kw)
+                if r is not None:
+                    return r
+        return None
+
+    def __call__(self, *args, **kw):
+        """Execute this event."""
+
+        if self:
+            for fn in self:
+                fn(*args, **kw)
     
     # I'm not entirely thrilled about the overhead here,
     # but this allows class-level listeners to be added
@@ -156,8 +172,15 @@ class Listeners(_ExecEvent):
             self.listeners.append(obj)
 
 class dispatcher(object):
+    """Descriptor used by target classes to 
+    deliver the _Dispatch class at the class level
+    and produce new _Dispatch instances for target
+    instances.
+    
+    """
     def __init__(self, events):
         self.dispatch_cls = events.dispatch
+        
         
     def __get__(self, obj, cls):
         if obj is None:
