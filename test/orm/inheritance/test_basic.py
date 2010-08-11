@@ -98,7 +98,7 @@ class PolymorphicOnNotLocalTest(_base.MappedTest):
 
         assert_raises_message(
             sa_exc.SAWarning,
-            "Could not map polymoprhic_on column 'x' to the mapped table - "
+            "Could not map polymorphic_on column 'x' to the mapped table - "
             "polymorphic loads will not function properly",
             go
         )
@@ -122,7 +122,7 @@ class PolymorphicOnNotLocalTest(_base.MappedTest):
                                 polymorphic_identity=0)
         assert_raises_message(
             sa_exc.SAWarning,
-            "Could not map polymoprhic_on column 'x' to the mapped table - "
+            "Could not map polymorphic_on column 'x' to the mapped table - "
             "polymorphic loads will not function properly",
             go
         )
