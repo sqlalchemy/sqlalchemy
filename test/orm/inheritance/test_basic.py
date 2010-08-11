@@ -16,7 +16,8 @@ class O2MTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global foo, bar, blub
         foo = Table('foo', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True),
             Column('data', String(20)))
 
         bar = Table('bar', metadata,
@@ -60,14 +61,73 @@ class O2MTest(_base.MappedTest):
         b1.parent_foo = f
         b2.parent_foo = f
         sess.flush()
-        compare = ','.join([repr(b1), repr(b2), repr(b1.parent_foo), repr(b2.parent_foo)])
+        compare = ','.join([repr(b1), repr(b2), repr(b1.parent_foo),
+                           repr(b2.parent_foo)])
         sess.expunge_all()
         l = sess.query(Blub).all()
-        result = ','.join([repr(l[0]), repr(l[1]), repr(l[0].parent_foo), repr(l[1].parent_foo)])
+        result = ','.join([repr(l[0]), repr(l[1]),
+                          repr(l[0].parent_foo), repr(l[1].parent_foo)])
         print compare
         print result
         self.assert_(compare == result)
-        self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
+        self.assert_(l[0].parent_foo.data == 'foo #1'
+                     and l[1].parent_foo.data == 'foo #1')
+
+class PolymorphicOnNotLocalTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        t1 = Table('t1', metadata, 
+                Column('id', Integer, primary_key=True), 
+                Column('x', String(10)),
+                Column('q', String(10)))
+        t2 = Table('t2', metadata, 
+                Column('id', Integer, primary_key=True), 
+                Column('y', String(10)), 
+                Column('xid', ForeignKey('t1.x')))
+    
+    @testing.resolve_artifact_names
+    def test_bad_polymorphic_on(self):
+        class InterfaceBase(object):
+            pass
+
+        t1t2_join = select([t1.c.x], from_obj=[t1.join(t2)]).alias()
+        def go():
+            interface_m = mapper(InterfaceBase, t2,
+                                polymorphic_on=t1t2_join.c.x,
+                                polymorphic_identity=0)
+
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Could not map polymoprhic_on column 'x' to the mapped table - "
+            "polymorphic loads will not function properly",
+            go
+        )
+        clear_mappers()
+
+        # if its in the with_polymorphic, then its OK
+        interface_m = mapper(InterfaceBase, t2,
+                                polymorphic_on=t1t2_join.c.x,
+                                with_polymorphic=('*', t1t2_join),
+                                polymorphic_identity=0)
+        compile_mappers()
+
+        clear_mappers()
+
+        # if with_polymorphic, but its not present, not OK
+        def go():
+            t1t2_join_2 = select([t1.c.q], from_obj=[t1.join(t2)]).alias()
+            interface_m = mapper(InterfaceBase, t2,
+                                polymorphic_on=t1t2_join.c.x,
+                                with_polymorphic=('*', t1t2_join_2),
+                                polymorphic_identity=0)
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Could not map polymoprhic_on column 'x' to the mapped table - "
+            "polymorphic loads will not function properly",
+            go
+        )
+        
+        
 
 class FalseDiscriminatorTest(_base.MappedTest):
     @classmethod

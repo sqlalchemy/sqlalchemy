@@ -15,6 +15,13 @@ CHANGES
     ConcurrentModificationError in an "except:"
     clause.
     
+  - a warning is emitted in mapper() if the polymorphic_on
+    column is not present either in direct or derived
+    form in the mapped selectable or in the 
+    with_polymorphic selectable, instead of silently
+    ignoring it.  Look for this to become an
+    exception in 0.7.
+    
   - Moving an o2m object from one collection to
     another, or vice versa changing the referenced
     object by an m2o, where the foreign key is also a

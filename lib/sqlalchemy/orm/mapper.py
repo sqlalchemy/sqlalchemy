@@ -574,6 +574,13 @@ class Mapper(object):
             if col is None:
                 instrument = False
                 col = self.polymorphic_on
+                if self.with_polymorphic is None \
+                    or self.with_polymorphic[1].corresponding_column(col) \
+                    is None:
+                    util.warn("Could not map polymoprhic_on column "
+                              "'%s' to the mapped table - polymorphic "
+                              "loads will not function properly"
+                              % col.description)
             else:
                 instrument = True
             if self._should_exclude(col.key, col.key, local=False):
