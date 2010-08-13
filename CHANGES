@@ -77,6 +77,11 @@ CHANGES
     the outer query.  [ticket:1852]
     
 - sql
+  - Added basic math expression coercion for 
+    Numeric->Integer,
+    so that resulting type is Numeric regardless
+    of the direction of the expression.
+    
   - Changed the scheme used to generate truncated
     "auto" index names when using the "index=True"
     flag on Column.   The truncation only takes
