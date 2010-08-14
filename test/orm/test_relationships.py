@@ -1797,6 +1797,13 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
               Column('id', Integer, primary_key=True),
               Column('fid', Integer))
 
+        Table('foos_with_fks', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('fid', Integer, ForeignKey('foos_with_fks.id')))
+        Table('bars_with_fks', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('fid', Integer, ForeignKey('foos_with_fks.id')))
+
     @classmethod
     def setup_classes(cls):
         class Foo(_base.Entity):
@@ -1859,11 +1866,20 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
                             foreign_keys=[foos.c.id, bars.c.fid])})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError, 
-                "Do the columns in 'foreign_keys' represent only the "
-                "'foreign' columns in this join condition ?", 
-                sa.orm.compile_mappers)
+        assert_raises_message(sa.exc.ArgumentError,
+                              "Could not determine relationship "
+                              "direction for primaryjoin condition "
+                              "'foos.id = bars.fid', on relationship "
+                              "Foo.bars, using manual 'foreign_keys' "
+                              "setting.  Do the columns in "
+                              "'foreign_keys' represent all, and only, "
+                              "the 'foreign' columns in this join "
+                              r"condition\?  Does the mapped Table "
+                              "already have adequate ForeignKey and/or "
+                              "ForeignKeyConstraint objects "
+                              r"established \(in which case "
+                              r"'foreign_keys' is usually unnecessary\)\?"
+                              , sa.orm.compile_mappers)
 
     @testing.resolve_artifact_names
     def test_ambiguous_remoteside_o2m(self):
@@ -1931,11 +1947,19 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
                             viewonly=True)})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Could not determine relationship direction for primaryjoin condition",
-            sa.orm.compile_mappers)
+        assert_raises_message(sa.exc.ArgumentError,
+                              'Could not determine relationship '
+                              'direction for primaryjoin condition',
+                              sa.orm.compile_mappers)
 
+        sa.orm.clear_mappers()
+        mapper(Foo, foos_with_fks, properties={
+            'bars':relationship(Bar,
+                        primaryjoin=foos_with_fks.c.id>bars_with_fks.c.fid,
+                        viewonly=True)})
+        mapper(Bar, bars_with_fks)
+        sa.orm.compile_mappers()
+        
     @testing.resolve_artifact_names
     def test_no_equated_self_ref_viewonly(self):
         mapper(Foo, foos, properties={
@@ -1944,10 +1968,23 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
                             viewonly=True)})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Specify the 'foreign_keys' argument to indicate which columns "
-            "on the relationship are foreign.", sa.orm.compile_mappers)
+        assert_raises_message(sa.exc.ArgumentError,
+                              "Could not determine relationship "
+                              "direction for primaryjoin condition "
+                              "'foos.id > foos.fid', on relationship "
+                              "Foo.foos. Ensure that the referencing "
+                              "Column objects have a ForeignKey "
+                              "present, or are otherwise part of a "
+                              "ForeignKeyConstraint on their parent "
+                              "Table.", sa.orm.compile_mappers)
+        
+        sa.orm.clear_mappers()
+        mapper(Foo, foos_with_fks, properties={
+          'foos':relationship(Foo,
+                          primaryjoin=foos_with_fks.c.id>foos_with_fks.c.fid,
+                          viewonly=True)})
+        mapper(Bar, bars_with_fks)
+        sa.orm.compile_mappers()
 
     @testing.resolve_artifact_names
     def test_no_equated_self_ref_viewonly_fks(self):
@@ -1972,6 +2009,13 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             "Could not determine relationship direction for primaryjoin condition",
             sa.orm.compile_mappers)
 
+        sa.orm.clear_mappers()
+        mapper(Foo, foos_with_fks, properties={
+            'bars':relationship(Bar,
+                            primaryjoin=foos_with_fks.c.id==bars_with_fks.c.fid)})
+        mapper(Bar, bars_with_fks)
+        sa.orm.compile_mappers()
+
     @testing.resolve_artifact_names
     def test_equated_self_ref(self):
         mapper(Foo, foos, properties={
@@ -1982,6 +2026,7 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             sa.exc.ArgumentError,
             "Could not determine relationship direction for primaryjoin condition",
             sa.orm.compile_mappers)
+        
 
     @testing.resolve_artifact_names
     def test_equated_self_ref_wrong_fks(self):
@@ -2006,6 +2051,20 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
               Column('fid', Integer), Column('bid', Integer))
         Table('bars', metadata,
               Column('id', Integer, primary_key=True))
+
+        Table('foobars_with_fks', metadata,
+            Column('fid', Integer, ForeignKey('foos.id')), 
+            Column('bid', Integer, ForeignKey('bars.id'))
+        )
+
+        Table('foobars_with_many_columns', metadata,
+              Column('fid', Integer), 
+              Column('bid', Integer),
+              Column('fid1', Integer), 
+              Column('bid1', Integer),
+              Column('fid2', Integer), 
+              Column('bid2', Integer),
+              )
 
     @classmethod
     @testing.resolve_artifact_names
@@ -2041,6 +2100,80 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
             sa.orm.compile_mappers)
 
     @testing.resolve_artifact_names
+    def test_no_fks_warning_1(self):
+        mapper(Foo, foos, properties={
+            'bars': relationship(Bar, secondary=foobars, 
+                                primaryjoin=foos.c.id==foobars.c.fid,
+                                secondaryjoin=foobars.c.bid==bars.c.id)})
+        mapper(Bar, bars)
+        
+        assert_raises_message(sa.exc.SAWarning,
+                              "No ForeignKey objects were present in "
+                              "secondary table 'foobars'.  Assumed "
+                              "referenced foreign key columns "
+                              "'foobars.bid', 'foobars.fid' for join "
+                              "condition 'foos.id = foobars.fid' on "
+                              "relationship Foo.bars",
+                              sa.orm.compile_mappers)
+        
+        sa.orm.clear_mappers()
+        mapper(Foo, foos, properties={
+                        'bars': relationship(Bar, secondary=foobars_with_many_columns, 
+                              primaryjoin=foos.c.id==foobars_with_many_columns.c.fid,
+                              secondaryjoin=foobars_with_many_columns.c.bid==bars.c.id)})
+        mapper(Bar, bars)
+
+        assert_raises_message(sa.exc.SAWarning,
+                              "No ForeignKey objects were present in "
+                              "secondary table 'foobars_with_many_colum"
+                              "ns'.  Assumed referenced foreign key "
+                              "columns 'foobars_with_many_columns.bid',"
+                              " 'foobars_with_many_columns.bid1', "
+                              "'foobars_with_many_columns.bid2', "
+                              "'foobars_with_many_columns.fid', "
+                              "'foobars_with_many_columns.fid1', "
+                              "'foobars_with_many_columns.fid2' for "
+                              "join condition 'foos.id = "
+                              "foobars_with_many_columns.fid' on "
+                              "relationship Foo.bars",
+                              sa.orm.compile_mappers)
+
+    @testing.emits_warning(r'No ForeignKey objects.*')
+    @testing.resolve_artifact_names
+    def test_no_fks_warning_2(self):
+        mapper(Foo, foos, properties={
+            'bars': relationship(Bar, secondary=foobars, 
+                                primaryjoin=foos.c.id==foobars.c.fid,
+                                secondaryjoin=foobars.c.bid==bars.c.id)})
+        mapper(Bar, bars)
+        sa.orm.compile_mappers()
+        eq_(
+            Foo.bars.property.synchronize_pairs,
+            [(foos.c.id, foobars.c.fid)]
+        )
+        eq_(
+            Foo.bars.property.secondary_synchronize_pairs,
+            [(bars.c.id, foobars.c.bid)]
+        )
+
+        sa.orm.clear_mappers()
+        mapper(Foo, foos, properties={
+                        'bars': relationship(Bar, secondary=foobars_with_many_columns, 
+                              primaryjoin=foos.c.id==foobars_with_many_columns.c.fid,
+                              secondaryjoin=foobars_with_many_columns.c.bid==bars.c.id)})
+        mapper(Bar, bars)
+        sa.orm.compile_mappers()
+        eq_(
+            Foo.bars.property.synchronize_pairs,
+            [(foos.c.id, foobars_with_many_columns.c.fid)]
+        )
+        eq_(
+            Foo.bars.property.secondary_synchronize_pairs,
+            [(bars.c.id, foobars_with_many_columns.c.bid)]
+        )
+        
+        
+    @testing.resolve_artifact_names
     def test_bad_primaryjoin(self):
         mapper(Foo, foos, properties={
             'bars': relationship(Bar,
@@ -2053,7 +2186,29 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
             sa.exc.ArgumentError,
             "Could not determine relationship direction for primaryjoin condition",
             sa.orm.compile_mappers)
+    
+        sa.orm.clear_mappers()
+        mapper(Foo, foos, properties={
+            'bars': relationship(Bar,
+                             secondary=foobars_with_fks,
+                             primaryjoin=foos.c.id > foobars_with_fks.c.fid,
+                             secondaryjoin=foobars_with_fks.c.bid<=bars.c.id)})
+        mapper(Bar, bars)
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Could not locate any equated, locally mapped column pairs for primaryjoin condition ",
+            sa.orm.compile_mappers)
 
+        sa.orm.clear_mappers()
+        mapper(Foo, foos, properties={
+            'bars': relationship(Bar,
+                             secondary=foobars_with_fks,
+                             primaryjoin=foos.c.id > foobars_with_fks.c.fid,
+                             secondaryjoin=foobars_with_fks.c.bid<=bars.c.id,
+                             viewonly=True)})
+        mapper(Bar, bars)
+        sa.orm.compile_mappers()
+        
     @testing.resolve_artifact_names
     def test_bad_secondaryjoin(self):
         mapper(Foo, foos, properties={
@@ -2064,10 +2219,20 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
                             foreign_keys=[foobars.c.fid])})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Could not determine relationship direction for secondaryjoin "
-            "condition", sa.orm.compile_mappers)
+        assert_raises_message(sa.exc.ArgumentError,
+                              "Could not determine relationship "
+                              "direction for secondaryjoin condition "
+                              r"'foobars.bid \<\= bars.id', on "
+                              "relationship Foo.bars, using manual "
+                              "'foreign_keys' setting.  Do the columns "
+                              "in 'foreign_keys' represent all, and only, the "
+                              "'foreign' columns in this join "
+                              r"condition\?  Does the "
+                              "secondary Table already have adequate "
+                              "ForeignKey and/or ForeignKeyConstraint "
+                              r"objects established \(in which case "
+                              r"'foreign_keys' is usually unnecessary\)?"
+                              , sa.orm.compile_mappers)
 
     @testing.resolve_artifact_names
     def test_no_equated_secondaryjoin(self):

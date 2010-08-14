@@ -1197,7 +1197,7 @@ def _deferred_relationship(cls, prop):
 
     if isinstance(prop, RelationshipProperty):
         for attr in ('argument', 'order_by', 'primaryjoin', 'secondaryjoin',
-                     'secondary', '_foreign_keys', 'remote_side'):
+                     'secondary', '_user_defined_foreign_keys', 'remote_side'):
             v = getattr(prop, attr)
             if isinstance(v, basestring):
                 setattr(prop, attr, resolve_arg(v))

@@ -21,6 +21,31 @@ CHANGES
     with_polymorphic selectable, instead of silently
     ignoring it.  Look for this to become an
     exception in 0.7.
+
+  - Another pass through the series of error messages
+    emitted when relationship() is configured with
+    ambiguous arguments.   The "foreign_keys" 
+    setting is no longer mentioned, as it is almost
+    never needed and it is preferable users set up
+    correct ForeignKey metadata, which is now the
+    recommendation.  If 'foreign_keys'
+    is used and is incorrect, the message suggests
+    the attribute is probably unnecessary.  Docs
+    for the attribute are beefed up.  This 
+    because all confused relationship() users on the 
+    ML appear to be attempting to use foreign_keys
+    due to the message, which only confuses them
+    further since Table metadata is much clearer.
+
+  - If the "secondary" table has no ForeignKey metadata
+    and no foreign_keys is set, even though the
+    user is passing screwed up information, it is assumed
+    that primary/secondaryjoin expressions should
+    consider only and all cols in "secondary" to be 
+    foreign.  It's not possible with "secondary" for 
+    the foreign keys to be elsewhere in any case.
+    A warning is now emitted instead of an error, 
+    and the mapping succeeds. [ticket:1877]
     
   - Moving an o2m object from one collection to
     another, or vice versa changing the referenced
