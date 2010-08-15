@@ -781,7 +781,7 @@ We'll need to create the ``addresses`` table in the database, so we will issue a
 Working with Related Objects
 =============================
 
-Now when we create a ``User``, a blank ``addresses`` collection will be present.  Various collection types, such as sets and dictionaries, are possible here (see :ref:`advdatamapping_entitycollections` for details), but by default, the collection is a Python list.
+Now when we create a ``User``, a blank ``addresses`` collection will be present.  Various collection types, such as sets and dictionaries, are possible here (see :ref:`alternate_collection_implementations` for details), but by default, the collection is a Python list.
 
 .. sourcecode:: python+sql
 

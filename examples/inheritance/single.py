@@ -1,8 +1,8 @@
-from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import mapper, relationship, create_session
+from sqlalchemy import MetaData, Table, Column, Integer, String, \
+    ForeignKey, create_engine
+from sqlalchemy.orm import mapper, relationship, sessionmaker
 
-metadata = MetaData('sqlite://')
-metadata.bind.echo = 'debug'
+metadata = MetaData()
 
 # a table to store companies
 companies = Table('companies', metadata, 
@@ -20,7 +20,6 @@ employees_table = Table('employees', metadata,
     Column('manager_name', String(50))
 )
 
-metadata.create_all()
 
 class Person(object):
     def __init__(self, **kwargs):
@@ -30,10 +29,14 @@ class Person(object):
         return "Ordinary person %s" % self.name
 class Engineer(Person):
     def __repr__(self):
-        return "Engineer %s, status %s, engineer_name %s, primary_language %s" % (self.name, self.status, self.engineer_name, self.primary_language)
+        return "Engineer %s, status %s, engineer_name %s, "\
+                    "primary_language %s" % \
+                        (self.name, self.status, 
+                        self.engineer_name, self.primary_language)
 class Manager(Person):
     def __repr__(self):
-        return "Manager %s, status %s, manager_name %s" % (self.name, self.status, self.manager_name)
+        return "Manager %s, status %s, manager_name %s" % \
+                    (self.name, self.status, self.manager_name)
 class Company(object):
     def __init__(self, **kwargs):
         for key, value in kwargs.iteritems():
@@ -41,25 +44,38 @@ class Company(object):
     def __repr__(self):
         return "Company %s" % self.name
 
-person_mapper = mapper(Person, employees_table, polymorphic_on=employees_table.c.type, polymorphic_identity='person')
-manager_mapper = mapper(Manager, inherits=person_mapper, polymorphic_identity='manager')
-engineer_mapper = mapper(Engineer, inherits=person_mapper, polymorphic_identity='engineer')
+person_mapper = mapper(Person, employees_table,
+                       polymorphic_on=employees_table.c.type,
+                       polymorphic_identity='person')
+manager_mapper = mapper(Manager, inherits=person_mapper,
+                        polymorphic_identity='manager')
+engineer_mapper = mapper(Engineer, inherits=person_mapper,
+                         polymorphic_identity='engineer')
 
 mapper(Company, companies, properties={
     'employees': relationship(Person, lazy=True, backref='company')
 })
 
-session = create_session()
-c = Company(name='company1')
-c.employees.append(Manager(name='pointy haired boss', status='AAB', manager_name='manager1'))
-c.employees.append(Engineer(name='dilbert', status='BBA', engineer_name='engineer1', primary_language='java'))
-c.employees.append(Person(name='joesmith', status='HHH'))
-c.employees.append(Engineer(name='wally', status='CGG', engineer_name='engineer2', primary_language='python'))
-c.employees.append(Manager(name='jsmith', status='ABA', manager_name='manager2'))
-session.add(c)
-session.flush()
 
-session.expunge_all()
+engine = create_engine('sqlite:///', echo=True)
+
+metadata.create_all(engine)
+
+session = sessionmaker(engine)()
+
+c = Company(name='company1')
+c.employees.append(Manager(name='pointy haired boss', status='AAB',
+                   manager_name='manager1'))
+c.employees.append(Engineer(name='dilbert', status='BBA',
+                   engineer_name='engineer1', primary_language='java'))
+c.employees.append(Person(name='joesmith', status='HHH'))
+c.employees.append(Engineer(name='wally', status='CGG',
+                   engineer_name='engineer2', primary_language='python'
+                   ))
+c.employees.append(Manager(name='jsmith', status='ABA',
+                   manager_name='manager2'))
+session.add(c)
+session.commit()
 
 c = session.query(Company).get(1)
 for e in c.employees:
@@ -81,6 +97,4 @@ for e in c.employees:
     print e
 
 session.delete(c)
-session.flush()
-
-metadata.drop_all()
+session.commit()

@@ -1325,9 +1325,23 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                             isolation_level='SERIALIZABLE')
         eq_(eng.execute('show transaction isolation level').scalar(),
             'serializable')
+        
+        # check that it stays
+        conn = eng.connect()
+        eq_(conn.execute('show transaction isolation level').scalar(),
+            'serializable')
+        conn.close()
+
+        conn = eng.connect()
+        eq_(conn.execute('show transaction isolation level').scalar(),
+            'serializable')
+        conn.close()
+        
         eng = create_engine(testing.db.url, isolation_level='FOO')
         if testing.db.driver == 'zxjdbc':
             exception_cls = eng.dialect.dbapi.Error
+        elif testing.db.driver == 'psycopg2':
+            exception_cls = exc.InvalidRequestError
         else:
             exception_cls = eng.dialect.dbapi.ProgrammingError
         assert_raises(exception_cls, eng.execute,

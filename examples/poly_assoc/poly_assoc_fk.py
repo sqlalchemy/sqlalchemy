@@ -1,26 +1,26 @@
 """
 "polymorphic" associations, ala SQLAlchemy.
 
-See "poly_assoc.py" for an imitation of this functionality as implemented
-in ActiveRecord.
+See "poly_assoc.py" for an imitation of this functionality as implemented in
+ActiveRecord.
 
-Here, we build off the previous example, adding an association table
-that allows the relationship to be expressed as a many-to-one from the
-"model" object to its "association", so that each model table bears the foreign
-key constraint.  This allows the same functionality via traditional
-normalized form with full constraints.  It also isolates the target
-associated object from its method of being associated, allowing greater
-flexibility in its usage.
+Here, we build off the previous example, adding an association table that
+allows the relationship to be expressed as a many-to-one from the "model"
+object to its "association", so that each model table bears the foreign key
+constraint. This allows the same functionality via traditional normalized form
+with full constraints. It also isolates the target associated object from its
+method of being associated, allowing greater flexibility in its usage.
 
-As in the previous example, a little bit of property magic is used
-to smooth the edges.
+As in the previous example, a little bit of property magic is used to smooth
+the edges.
 
-For a more genericized version of this example, see
-poly_assoc_generic.py.
+For a more genericized version of this example, see poly_assoc_generic.py.
 """
 
-from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import mapper, relationship, create_session, class_mapper
+from sqlalchemy import MetaData, Table, Column, Integer, String, \
+    ForeignKey
+from sqlalchemy.orm import mapper, relationship, sessionmaker, \
+    class_mapper
 
 metadata = MetaData('sqlite://')
 
@@ -42,7 +42,11 @@ address_associations = Table("address_associations", metadata,
 )
 
 class Address(object):
-    member = property(lambda self: getattr(self.association, '_backref_%s' % self.association.type))
+
+    @property
+    def member(self):
+        return getattr(self.association, '_backref_%s'
+                       % self.association.type)
 
 class AddressAssoc(object):
     def __init__(self, name):
@@ -56,7 +60,10 @@ def addressable(cls, name, uselist=True):
     """
     mapper = class_mapper(cls)
     table = mapper.local_table
-    mapper.add_property('address_rel', relationship(AddressAssoc, backref='_backref_%s' % table.name))
+    mapper.add_property('address_rel', 
+                        relationship(AddressAssoc, 
+                                backref='_backref_%s' % table.name)
+                        )
 
     if uselist:
         # list based property decorator
@@ -88,7 +95,7 @@ users = Table("users", metadata,
     Column('id', Integer, primary_key=True),
     Column('name', String(50), nullable=False),
     # this column ties the users table into the address association
-    Column('assoc_id', None, ForeignKey('address_associations.assoc_id'))
+    Column('assoc_id', Integer, ForeignKey('address_associations.assoc_id'))
     )
 
 class User(object):
@@ -104,7 +111,7 @@ orders = Table("orders", metadata,
     Column('id', Integer, primary_key=True),
     Column('description', String(50), nullable=False),
     # this column ties the orders table into the address association
-    Column('assoc_id', None, ForeignKey('address_associations.assoc_id'))
+    Column('assoc_id', Integer, ForeignKey('address_associations.assoc_id'))
     )
 
 class Order(object):
@@ -136,17 +143,17 @@ a2.street = '345 orchard ave'
 o1.address = Address()
 o1.address.street = '444 park ave.'
 
-sess = create_session()
+sess = sessionmaker()()
 sess.add(u1)
 sess.add(o1)
-sess.flush()
 
-sess.expunge_all()
+sess.commit()
 
 # query objects, get their addresses
 
 bob = sess.query(User).filter_by(name='bob').one()
-assert [s.street for s in bob.addresses] == ['123 anywhere street', '345 orchard ave']
+assert [s.street for s in bob.addresses] == \
+            ['123 anywhere street', '345 orchard ave']
 
 order = sess.query(Order).filter_by(description='order 1').one()
 assert order.address.street == '444 park ave.'

@@ -58,13 +58,11 @@ class ScopedSession(object):
             self.registry().close()
         self.registry.clear()
 
-    @deprecated("Session.mapper is deprecated.  "
+    @deprecated("0.5", ":meth:`.ScopedSession.mapper` is deprecated.  "
         "Please see http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper "
         "for information on how to replicate its behavior.")
     def mapper(self, *args, **kwargs):
-        """return a mapper() function which associates this ScopedSession with the Mapper.
-
-        DEPRECATED.
+        """return a :func:`.mapper` function which associates this ScopedSession with the Mapper.
 
         """
 

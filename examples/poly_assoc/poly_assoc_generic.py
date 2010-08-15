@@ -1,13 +1,14 @@
 """
 "polymorphic" associations, ala SQLAlchemy.
 
-This example generalizes the function in poly_assoc_pk.py into a
-function "association" which creates a new polymorphic association
-"interface".
+This example generalizes the function in poly_assoc_pk.py into a function
+"association" which creates a new polymorphic association "interface".
 """
 
-from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import mapper, relationship, create_session, class_mapper
+from sqlalchemy import MetaData, Table, Column, Integer, String, \
+    ForeignKey
+from sqlalchemy.orm import mapper, relationship, sessionmaker, \
+    class_mapper
 
 metadata = MetaData('sqlite://')
 
@@ -31,7 +32,10 @@ def association(cls, table):
 
         mapper = class_mapper(cls)
         table = mapper.local_table
-        mapper.add_property(attr_name, relationship(GenericAssoc, backref='_backref_%s' % table.name))
+        mapper.add_property(attr_name, 
+                            relationship(GenericAssoc, 
+                                    backref='_backref_%s' % table.name)
+                            )
 
         if uselist:
             # list based property decorator
@@ -49,8 +53,13 @@ def association(cls, table):
                     setattr(self, attr_name, GenericAssoc(table.name))
                 getattr(self, attr_name).targets = [value]
             setattr(cls, name, property(get, set))
-
-    setattr(cls, 'member', property(lambda self: getattr(self.association, '_backref_%s' % self.association.type)))
+    
+    @property
+    def member(self):
+        return getattr(self.association, 
+                    '_backref_%s' % self.association.type)
+        
+    setattr(cls, 'member', member)
 
     mapper(GenericAssoc, association_table, properties={
         'targets':relationship(cls, backref='association'),
@@ -64,7 +73,7 @@ def association(cls, table):
 
 addresses = Table("addresses", metadata,
     Column('id', Integer, primary_key=True),
-    Column('assoc_id', None, ForeignKey('addresses_associations.assoc_id')),
+    Column('assoc_id', Integer, ForeignKey('addresses_associations.assoc_id')),
     Column('street', String(100)),
     Column('city', String(50)),
     Column('country', String(50))
@@ -85,7 +94,7 @@ mapper(Address, addresses)
 users = Table("users", metadata,
     Column('id', Integer, primary_key=True),
     Column('name', String(50), nullable=False),
-    Column('assoc_id', None, ForeignKey('addresses_associations.assoc_id'))
+    Column('assoc_id', Integer, ForeignKey('addresses_associations.assoc_id'))
     )
 
 class User(object):
@@ -102,7 +111,7 @@ addressable(User, 'addresses', uselist=True)
 orders = Table("orders", metadata,
     Column('id', Integer, primary_key=True),
     Column('description', String(50), nullable=False),
-    Column('assoc_id', None, ForeignKey('addresses_associations.assoc_id'))
+    Column('assoc_id', Integer, ForeignKey('addresses_associations.assoc_id'))
     )
 
 class Order(object):
@@ -132,17 +141,16 @@ a2.street = '345 orchard ave'
 o1.address = Address()
 o1.address.street = '444 park ave.'
 
-sess = create_session()
+sess = sessionmaker()()
 sess.add(u1)
 sess.add(o1)
-sess.flush()
-
-sess.expunge_all()
+sess.commit()
 
 # query objects, get their addresses
 
 bob = sess.query(User).filter_by(name='bob').one()
-assert [s.street for s in bob.addresses] == ['123 anywhere street', '345 orchard ave']
+assert [s.street for s in bob.addresses] == \
+            ['123 anywhere street', '345 orchard ave']
 
 order = sess.query(Order).filter_by(description='order 1').one()
 assert order.address.street == '444 park ave.'

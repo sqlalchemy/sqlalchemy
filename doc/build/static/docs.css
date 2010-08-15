@@ -155,12 +155,13 @@ li.toctree-l1 ul li li
 th.field-name {
     text-align:right;
 }
-div.note, div.warning  {
+
+div.note, div.warning, p.deprecated  {
     background-color:#EEFFEF;
 }
 
 
-div.admonition, div.topic {
+div.admonition, div.topic, p.deprecated {
     border:1px solid #CCCCCC;
     margin:5px 5px 5px 5px;
     padding:5px 5px 5px 35px;

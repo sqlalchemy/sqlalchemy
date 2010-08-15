@@ -285,6 +285,7 @@ class AttributeImpl(object):
         self.active_history = active_history
         self.expire_missing = expire_missing
         
+        
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to 
         the given state.
@@ -951,6 +952,14 @@ class ClassManager(dict):
     def mapper(self):
         raise exc.UnmappedClassError(self.class_)
         
+    def _attr_has_impl(self, key):
+        """Return True if the given attribute is fully initialized.
+        
+        i.e. has an impl.
+        """
+        
+        return key in self and self[key].impl is not None
+        
     def _configure_create_arguments(self, 
                             _source=None, 
                             deferred_scalar_loader=None):
@@ -1439,6 +1448,7 @@ def register_attribute_impl(class_, key,
     manager[key].impl = impl
     
     manager.post_configure_attribute(key)
+
     
 def register_descriptor(class_, key, comparator=None, 
                                 parententity=None, property_=None, doc=None):

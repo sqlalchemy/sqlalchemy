@@ -13,7 +13,7 @@ def col_references_table(col, table):
 def _history_mapper(local_mapper):
     cls = local_mapper.class_
 
-    # SLIGHT SQLA HACK #1 - set the "active_history" flag
+    # set the "active_history" flag
     # on on column-mapped attributes so that the old version
     # of the info is always loaded (currently sets it on all attributes)
     for prop in local_mapper.iterate_properties:
@@ -117,7 +117,7 @@ def create_version(obj, session, deleted = False):
                 
             obj_col = om.local_table.c[hist_col.key]
 
-            # SLIGHT SQLA HACK #3 - get the value of the
+            # get the value of the
             # attribute based on the MapperProperty related to the
             # mapped column.  this will allow usage of MapperProperties
             # that have a different keyname than that of the mapped column.

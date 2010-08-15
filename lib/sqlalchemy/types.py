@@ -1024,20 +1024,25 @@ class Numeric(_DateAffinity, TypeEngine):
             operators.mul:{
                 Interval:Interval,
                 Numeric:Numeric,
+                Integer:Numeric,
             },
             # Py2K
             operators.div:{
                 Numeric:Numeric,
+                Integer:Numeric,
             },
             # end Py2K
             operators.truediv:{
                 Numeric:Numeric,
+                Integer:Numeric,
             },
             operators.add:{
                 Numeric:Numeric,
+                Integer:Numeric,
             },
             operators.sub:{
                 Numeric:Numeric,
+                Integer:Numeric,
             }
         }
 

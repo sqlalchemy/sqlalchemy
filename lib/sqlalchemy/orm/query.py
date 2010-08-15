@@ -745,7 +745,9 @@ class Query(object):
         # given arg is a FROM clause
         self._setup_aliasizers(self._entities[l:])
 
-    @util.pending_deprecation("0.7", "add_column() is superceded by add_columns()", False)
+    @util.pending_deprecation("0.7", 
+                ":meth:`.add_column` is superceded by :meth:`.add_columns`", 
+                False)
     def add_column(self, column):
         """Add a column expression to the list of result columns to be returned.
         

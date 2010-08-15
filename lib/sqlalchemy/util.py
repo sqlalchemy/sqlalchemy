@@ -4,7 +4,14 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import inspect, itertools, operator, sys, warnings, weakref, gc
+import inspect
+import itertools
+import operator
+import sys
+import warnings
+import weakref
+import re
+
 # Py2K
 import __builtin__
 # end Py2K
@@ -1622,21 +1629,23 @@ def warn_deprecated(msg, stacklevel=3):
 def warn_pending_deprecation(msg, stacklevel=3):
     warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=stacklevel)
 
-def deprecated(message=None, add_deprecation_to_docstring=True):
+def deprecated(version, message=None, add_deprecation_to_docstring=True):
     """Decorates a function and issues a deprecation warning on use.
 
-    message
+    :param message:
       If provided, issue message in the warning.  A sensible default
       is used if not provided.
 
-    add_deprecation_to_docstring
+    :param add_deprecation_to_docstring:
       Default True.  If False, the wrapped function's __doc__ is left
       as-is.  If True, the 'message' is prepended to the docs if
       provided, or sensible default if message is omitted.
+
     """
 
     if add_deprecation_to_docstring:
-        header = message is not None and message or 'Deprecated.'
+        header = ".. deprecated:: %s %s" % \
+                    (version, (message or ''))
     else:
         header = None
 
@@ -1653,37 +1662,49 @@ def pending_deprecation(version, message=None,
                         add_deprecation_to_docstring=True):
     """Decorates a function and issues a pending deprecation warning on use.
 
-    version
+    :param version:
       An approximate future version at which point the pending deprecation
       will become deprecated.  Not used in messaging.
 
-    message
+    :param message:
       If provided, issue message in the warning.  A sensible default
       is used if not provided.
 
-    add_deprecation_to_docstring
+    :param add_deprecation_to_docstring:
       Default True.  If False, the wrapped function's __doc__ is left
       as-is.  If True, the 'message' is prepended to the docs if
       provided, or sensible default if message is omitted.
     """
 
     if add_deprecation_to_docstring:
-        header = ".. deprecated:: %s (pending) %s" % (version, (message or ''))
+        header = ".. deprecated:: %s (pending) %s" % \
+                        (version, (message or ''))
     else:
         header = None
 
     if message is None:
         message = "Call to deprecated function %(func)s"
-
+    
     def decorate(fn):
         return _decorate_with_warning(
             fn, exc.SAPendingDeprecationWarning,
             message % dict(func=fn.__name__), header)
     return decorate
 
+def _sanitize_rest(text):
+    def repl(m):
+        type_, name = m.group(1, 2)
+        if type_ in ("func", "meth"):
+            name += "()"
+        return name
+    return re.sub(r'\:(\w+)\:`~?\.?(.+?)`', repl, text)
+    
+    
 def _decorate_with_warning(func, wtype, message, docstring_header=None):
     """Wrap a function with a warnings.warn and augmented docstring."""
 
+    message = _sanitize_rest(message)
+    
     @decorator
     def warned(fn, *args, **kwargs):
         warnings.warn(wtype(message), stacklevel=3)

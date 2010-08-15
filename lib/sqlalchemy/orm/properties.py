@@ -449,7 +449,7 @@ class RelationshipProperty(StrategizedProperty):
         self.viewonly = viewonly
         self.lazy = lazy
         self.single_parent = single_parent
-        self._foreign_keys = foreign_keys
+        self._user_defined_foreign_keys = foreign_keys
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
         self.passive_updates = passive_updates
@@ -698,7 +698,7 @@ class RelationshipProperty(StrategizedProperty):
             if isinstance(other, (NoneType, expression._Null)):
                 if self.property.direction == MANYTOONE:
                     return sql.or_(*[x != None for x in
-                                   self.property._foreign_keys])
+                                   self.property._calculated_foreign_keys])
                 else:
                     return self._criterion_exists()
             elif self.property.uselist:
@@ -915,7 +915,7 @@ class RelationshipProperty(StrategizedProperty):
             'primaryjoin',
             'secondaryjoin',
             'secondary',
-            '_foreign_keys',
+            '_user_defined_foreign_keys',
             'remote_side',
             ):
             if util.callable(getattr(self, attr)):
@@ -934,9 +934,9 @@ class RelationshipProperty(StrategizedProperty):
         if self.order_by is not False and self.order_by is not None:
             self.order_by = [expression._literal_as_column(x) for x in
                              util.to_list(self.order_by)]
-        self._foreign_keys = \
+        self._user_defined_foreign_keys = \
             util.column_set(expression._literal_as_column(x) for x in
-                            util.to_column_set(self._foreign_keys))
+                            util.to_column_set(self._user_defined_foreign_keys))
         self.remote_side = \
             util.column_set(expression._literal_as_column(x) for x in
                             util.to_column_set(self.remote_side))
@@ -1002,8 +1002,8 @@ class RelationshipProperty(StrategizedProperty):
             raise sa_exc.ArgumentError("Could not determine join "
                     "condition between parent/child tables on "
                     "relationship %s.  Specify a 'primaryjoin' "
-                    "expression.  If this is a many-to-many "
-                    "relationship, 'secondaryjoin' is needed as well."
+                    "expression.  If 'secondary' is present, "
+                    "'secondaryjoin' is needed as well."
                     % self)
 
     def _col_is_part_of_mappings(self, column):
@@ -1015,91 +1015,121 @@ class RelationshipProperty(StrategizedProperty):
                 self.target.c.contains_column(column) or \
                 self.secondary.c.contains_column(column) is not None
 
+    def _sync_pairs_from_join(self, join_condition, primary):
+        """Given a join condition, figure out what columns are foreign
+        and are part of a binary "equated" condition to their referecned
+        columns, and convert into a list of tuples of (primary col->foreign col).
+        
+        Make several attempts to determine if cols are compared using 
+        "=" or other comparators (in which case suggest viewonly), 
+        columns are present but not part of the expected mappings, columns
+        don't have any :class:`ForeignKey` information on them, or 
+        the ``foreign_keys`` attribute is being used incorrectly.
+        
+        """
+        eq_pairs = criterion_as_pairs(join_condition,
+                consider_as_foreign_keys=self._user_defined_foreign_keys,
+                any_operator=self.viewonly)
+                
+        eq_pairs = [(l, r) for (l, r) in eq_pairs
+                    if self._col_is_part_of_mappings(l)
+                    and self._col_is_part_of_mappings(r)
+                    or self.viewonly and r in self._user_defined_foreign_keys]
+        
+        if not eq_pairs and \
+                self.secondary is not None and \
+                not self._user_defined_foreign_keys:
+            fks = set(self.secondary.c)
+            eq_pairs = criterion_as_pairs(join_condition,
+                    consider_as_foreign_keys=fks,
+                    any_operator=self.viewonly)
+
+            eq_pairs = [(l, r) for (l, r) in eq_pairs
+                        if self._col_is_part_of_mappings(l)
+                        and self._col_is_part_of_mappings(r)
+                        or self.viewonly and r in fks]
+            if eq_pairs:
+                util.warn("No ForeignKey objects were present "
+                            "in secondary table '%s'.  Assumed referenced "
+                            "foreign key columns %s for join condition '%s' "
+                            "on relationship %s" % (
+                                self.secondary.description,
+                                ", ".join(sorted(["'%s'" % col for col in fks])),
+                                join_condition,
+                                self
+                            ))
+                    
+        if not eq_pairs:
+            if not self.viewonly and criterion_as_pairs(join_condition,
+                    consider_as_foreign_keys=self._user_defined_foreign_keys,
+                    any_operator=True):
+                raise sa_exc.ArgumentError("Could not locate any "
+                        "equated, locally mapped column pairs for %s "
+                        "condition '%s' on relationship %s. For more "
+                        "relaxed rules on join conditions, the "
+                        "relationship may be marked as viewonly=True."
+                        % (
+                            primary and 'primaryjoin' or 'secondaryjoin', 
+                            join_condition, 
+                            self
+                        ))
+            else:
+                if self._user_defined_foreign_keys:
+                    raise sa_exc.ArgumentError("Could not determine "
+                            "relationship direction for %s condition "
+                            "'%s', on relationship %s, using manual "
+                            "'foreign_keys' setting.  Do the columns "
+                            "in 'foreign_keys' represent all, and "
+                            "only, the 'foreign' columns in this join "
+                            "condition?  Does the %s Table already "
+                            "have adequate ForeignKey and/or "
+                            "ForeignKeyConstraint objects established "
+                            "(in which case 'foreign_keys' is usually "
+                            "unnecessary)?" 
+                            % (
+                                primary and 'primaryjoin' or 'secondaryjoin',
+                                join_condition, 
+                                self,
+                                primary and 'mapped' or 'secondary'
+                            ))
+                else:
+                    raise sa_exc.ArgumentError("Could not determine "
+                            "relationship direction for %s condition "
+                            "'%s', on relationship %s. Ensure that the "
+                            "referencing Column objects have a "
+                            "ForeignKey present, or are otherwise part "
+                            "of a ForeignKeyConstraint on their parent "
+                            "Table." 
+                            % (
+                                primary and 'primaryjoin' or 'secondaryjoin', 
+                                join_condition, 
+                                self
+                            ))
+        return eq_pairs
+
     def _determine_synchronize_pairs(self):
         if self.local_remote_pairs:
-            if not self._foreign_keys:
+            if not self._user_defined_foreign_keys:
                 raise sa_exc.ArgumentError('foreign_keys argument is '
                         'required with _local_remote_pairs argument')
             self.synchronize_pairs = []
             for l, r in self.local_remote_pairs:
-                if r in self._foreign_keys:
+                if r in self._user_defined_foreign_keys:
                     self.synchronize_pairs.append((l, r))
-                elif l in self._foreign_keys:
+                elif l in self._user_defined_foreign_keys:
                     self.synchronize_pairs.append((r, l))
         else:
-            eq_pairs = criterion_as_pairs(self.primaryjoin,
-                    consider_as_foreign_keys=self._foreign_keys,
-                    any_operator=self.viewonly)
-            eq_pairs = [(l, r) for (l, r) in eq_pairs
-                        if self._col_is_part_of_mappings(l)
-                        and self._col_is_part_of_mappings(r)
-                        or self.viewonly and r in self._foreign_keys]
-            if not eq_pairs:
-                if not self.viewonly \
-                    and criterion_as_pairs(self.primaryjoin,
-                        consider_as_foreign_keys=self._foreign_keys,
-                        any_operator=True):
-                    raise sa_exc.ArgumentError("Could not locate any "
-                            "equated, locally mapped column pairs for "
-                            "primaryjoin condition '%s' on "
-                            "relationship %s. For more relaxed rules "
-                            "on join conditions, the relationship may "
-                            "be marked as viewonly=True."
-                            % (self.primaryjoin, self))
-                else:
-                    if self._foreign_keys:
-                        raise sa_exc.ArgumentError("Could not determine"
-                                " relationship direction for "
-                                "primaryjoin condition '%s', on "
-                                "relationship %s. Do the columns in "
-                                "'foreign_keys' represent only the "
-                                "'foreign' columns in this join "
-                                "condition ?" % (self.primaryjoin,
-                                self))
-                    else:
-                        raise sa_exc.ArgumentError("Could not determine"
-                                " relationship direction for "
-                                "primaryjoin condition '%s', on "
-                                "relationship %s. Specify the "
-                                "'foreign_keys' argument to indicate "
-                                "which columns on the relationship are "
-                                "foreign." % (self.primaryjoin, self))
+            eq_pairs = self._sync_pairs_from_join(self.primaryjoin, True)
             self.synchronize_pairs = eq_pairs
         if self.secondaryjoin is not None:
-            sq_pairs = criterion_as_pairs(self.secondaryjoin,
-                    consider_as_foreign_keys=self._foreign_keys,
-                    any_operator=self.viewonly)
-            sq_pairs = [(l, r) for (l, r) in sq_pairs
-                        if self._col_is_part_of_mappings(l)
-                        and self._col_is_part_of_mappings(r) or r
-                        in self._foreign_keys]
-            if not sq_pairs:
-                if not self.viewonly \
-                    and criterion_as_pairs(self.secondaryjoin,
-                        consider_as_foreign_keys=self._foreign_keys,
-                        any_operator=True):
-                    raise sa_exc.ArgumentError("Could not locate any "
-                            "equated, locally mapped column pairs for "
-                            "secondaryjoin condition '%s' on "
-                            "relationship %s. For more relaxed rules "
-                            "on join conditions, the relationship may "
-                            "be marked as viewonly=True."
-                            % (self.secondaryjoin, self))
-                else:
-                    raise sa_exc.ArgumentError("Could not determine "
-                            "relationship direction for secondaryjoin "
-                            "condition '%s', on relationship %s. "
-                            "Specify the foreign_keys argument to "
-                            "indicate which columns on the "
-                            "relationship are foreign."
-                            % (self.secondaryjoin, self))
+            sq_pairs = self._sync_pairs_from_join(self.secondaryjoin, False)
             self.secondary_synchronize_pairs = sq_pairs
         else:
             self.secondary_synchronize_pairs = None
-        self._foreign_keys = util.column_set(r for (l, r) in
+        self._calculated_foreign_keys = util.column_set(r for (l, r) in
                 self.synchronize_pairs)
         if self.secondary_synchronize_pairs:
-            self._foreign_keys.update(r for (l, r) in
+            self._calculated_foreign_keys.update(r for (l, r) in
                     self.secondary_synchronize_pairs)
 
     def _determine_direction(self):
@@ -1117,7 +1147,7 @@ class RelationshipProperty(StrategizedProperty):
                 remote = self.remote_side
             else:
                 remote = None
-            if not remote or self._foreign_keys.difference(l for (l,
+            if not remote or self._calculated_foreign_keys.difference(l for (l,
                     r) in self.synchronize_pairs).intersection(remote):
                 self.direction = ONETOMANY
             else:
@@ -1195,12 +1225,12 @@ class RelationshipProperty(StrategizedProperty):
                         eq_pairs += self.secondary_synchronize_pairs
                 else:
                     eq_pairs = criterion_as_pairs(self.primaryjoin,
-                            consider_as_foreign_keys=self._foreign_keys,
+                            consider_as_foreign_keys=self._calculated_foreign_keys,
                             any_operator=True)
                     if self.secondaryjoin is not None:
                         eq_pairs += \
                             criterion_as_pairs(self.secondaryjoin,
-                                consider_as_foreign_keys=self._foreign_keys,
+                                consider_as_foreign_keys=self._calculated_foreign_keys,
                                 any_operator=True)
                     eq_pairs = [(l, r) for (l, r) in eq_pairs
                                 if self._col_is_part_of_mappings(l)
@@ -1269,7 +1299,7 @@ class RelationshipProperty(StrategizedProperty):
                         "a non-secondary relationship."
                             )
             foreign_keys = kwargs.pop('foreign_keys',
-                    self._foreign_keys)
+                    self._user_defined_foreign_keys)
             parent = self.parent.primary_mapper()
             kwargs.setdefault('viewonly', self.viewonly)
             kwargs.setdefault('post_update', self.post_update)
