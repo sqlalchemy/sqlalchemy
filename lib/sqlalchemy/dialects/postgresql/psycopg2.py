@@ -12,29 +12,56 @@ Note that psycopg1 is **not** supported.
 Unicode
 -------
 
-By default, the Psycopg2 driver uses the ``psycopg2.extensions.UNICODE`` extension, such that the DBAPI receives and returns all strings as Python Unicode objects directly - SQLAlchemy passes these values through without change.   Note that this setting requires that the PG client encoding be set to one which can accomodate the kind of character data being passed - typically ``utf-8``.   If the Postgresql database is configured for ``SQL_ASCII`` encoding, which is often the default for PG installations, it may be necessary for non-ascii strings to be encoded into a specific encoding before being passed to the DBAPI. If changing the database's client encoding setting is not an option, specify ``use_native_unicode=False`` as a keyword argument to ``create_engine()``, and take note of the ``encoding`` setting as well, which also defaults to ``utf-8``.   Note that disabling "native unicode" mode has a slight performance penalty, as SQLAlchemy now must translate unicode strings to/from an encoding such as utf-8, a task that is handled more efficiently within the Psycopg2 driver natively.   
+By default, the Psycopg2 driver uses the ``psycopg2.extensions.UNICODE``
+extension, such that the DBAPI receives and returns all strings as Python
+Unicode objects directly - SQLAlchemy passes these values through without
+change. Note that this setting requires that the PG client encoding be set to
+one which can accomodate the kind of character data being passed - typically
+``utf-8``. If the Postgresql database is configured for ``SQL_ASCII``
+encoding, which is often the default for PG installations, it may be necessary
+for non-ascii strings to be encoded into a specific encoding before being
+passed to the DBAPI. If changing the database's client encoding setting is not
+an option, specify ``use_native_unicode=False`` as a keyword argument to
+``create_engine()``, and take note of the ``encoding`` setting as well, which
+also defaults to ``utf-8``. Note that disabling "native unicode" mode has a
+slight performance penalty, as SQLAlchemy now must translate unicode strings
+to/from an encoding such as utf-8, a task that is handled more efficiently
+within the Psycopg2 driver natively.
 
 Connecting
 ----------
 
-URLs are of the form ``postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]``.
+URLs are of the form
+``postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]``.
 
-psycopg2-specific keyword arguments which are accepted by :func:`~sqlalchemy.create_engine()` are:
+psycopg2-specific keyword arguments which are accepted by
+:func:`.create_engine()` are:
 
-* *server_side_cursors* - Enable the usage of "server side cursors" for SQL statements which support
-  this feature.  What this essentially means from a psycopg2 point of view is that the cursor is 
-  created using a name, e.g. `connection.cursor('some name')`, which has the effect that result rows
-  are not immediately pre-fetched and buffered after statement execution, but are instead left 
-  on the server and only retrieved as needed.    SQLAlchemy's :class:`~sqlalchemy.engine.base.ResultProxy`
-  uses special row-buffering behavior when this feature is enabled, such that groups of 100 rows 
-  at a time are fetched over the wire to reduce conversational overhead.
-* *use_native_unicode* - Enable the usage of Psycopg2 "native unicode" mode per connection.  True  
-  by default.
+* *server_side_cursors* - Enable the usage of "server side cursors" for SQL
+  statements which support this feature. What this essentially means from a
+  psycopg2 point of view is that the cursor is created using a name, e.g.
+  `connection.cursor('some name')`, which has the effect that result rows are
+  not immediately pre-fetched and buffered after statement execution, but are
+  instead left on the server and only retrieved as needed. SQLAlchemy's
+  :class:`~sqlalchemy.engine.base.ResultProxy` uses special row-buffering
+  behavior when this feature is enabled, such that groups of 100 rows at a
+  time are fetched over the wire to reduce conversational overhead.
+* *use_native_unicode* - Enable the usage of Psycopg2 "native unicode" mode
+  per connection. True by default.
 
 Transactions
 ------------
 
 The psycopg2 dialect fully supports SAVEPOINT and two-phase commit operations.
+
+Transaction Isolation Level
+---------------------------
+
+The ``isolation_level`` parameter of :func:`.create_engine` here makes use
+psycopg2's ``set_isolation_level()`` connection method, rather than
+issuing a ``SET SESSION CHARACTERISTICS`` command.   This because psycopg2
+resets the isolation level on each new transaction, and needs to know
+at the API level what level should be used.
 
 NOTICE logging
 ---------------
@@ -208,7 +235,25 @@ class PGDialect_psycopg2(PGDialect):
         return psycopg
     
     def on_connect(self):
-        base_on_connect = super(PGDialect_psycopg2, self).on_connect()
+        if self.isolation_level is not None:
+            extensions = __import__('psycopg2.extensions').extensions
+            isol = {
+            'READ_COMMITTED':extensions.ISOLATION_LEVEL_READ_COMMITTED, 
+            'READ_UNCOMMITTED':extensions.ISOLATION_LEVEL_READ_UNCOMMITTED, 
+            'REPEATABLE_READ':extensions.ISOLATION_LEVEL_REPEATABLE_READ,
+            'SERIALIZABLE':extensions.ISOLATION_LEVEL_SERIALIZABLE
+            
+            }
+            def base_on_connect(conn):
+                try:
+                    conn.set_isolation_level(isol[self.isolation_level])
+                except:
+                    raise exc.InvalidRequestError(
+                                "Invalid isolation level: '%s'" % 
+                                self.isolation_level)
+        else:
+            base_on_connect = None
+            
         if self.dbapi and self.use_native_unicode:
             extensions = __import__('psycopg2.extensions').extensions
             def connect(conn):

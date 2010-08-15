@@ -1,5 +1,5 @@
-Collection Mapping
-==================
+Advanced Collection Mapping
+===========================
 
 This is an in-depth discussion of collection mechanics.  For simple examples, see :ref:`alternate_collection_implementations`.
 

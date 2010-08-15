@@ -904,6 +904,30 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         expr = func.current_date() - column('foo', types.TIMESTAMP)
         eq_(expr.type._type_affinity, types.Interval)
     
+    def test_numerics_coercion(self):
+        from sqlalchemy.sql import column
+        import operator
+        
+        for op in (
+            operator.add,
+            operator.mul,
+            operator.truediv,
+            operator.sub
+        ):
+            for other in (Numeric(10, 2), Integer):
+                expr = op(
+                        column('bar', types.Numeric(10, 2)),
+                        column('foo', other)
+                       )
+                assert isinstance(expr.type, types.Numeric)
+                expr = op(
+                        column('foo', other),
+                        column('bar', types.Numeric(10, 2))
+                       )
+                assert isinstance(expr.type, types.Numeric)
+
+        
+        
     def test_expression_typing(self):
         expr = column('bar', Integer) - 3
         

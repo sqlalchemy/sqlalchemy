@@ -533,6 +533,7 @@ def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
         assert False, "Callable did not raise an exception"
     except except_cls, e:
         assert re.search(msg, str(e)), "%r !~ %s" % (msg, e)
+        print str(e)
 
 def fail(msg):
     assert False, msg

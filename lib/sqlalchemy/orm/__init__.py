@@ -274,15 +274,24 @@ def relationship(argument, secondary=None, **kwargs):
 
     :param foreign_keys:
       a list of columns which are to be used as "foreign key" columns.
-      this parameter should be used in conjunction with explicit
-      ``primaryjoin`` and ``secondaryjoin`` (if needed) arguments, and
-      the columns within the ``foreign_keys`` list should be present
-      within those join conditions. Normally, ``relationship()`` will
-      inspect the columns within the join conditions to determine
-      which columns are the "foreign key" columns, based on
-      information in the ``Table`` metadata. Use this argument when no
-      ForeignKey's are present in the join condition, or to override
-      the table-defined foreign keys.
+      Normally, :func:`relationship` uses the :class:`.ForeignKey`
+      and :class:`.ForeignKeyConstraint` objects present within the
+      mapped or secondary :class:`.Table` to determine the "foreign" side of 
+      the join condition.  This is used to construct SQL clauses in order
+      to load objects, as well as to "synchronize" values from 
+      primary key columns to referencing foreign key columns.
+      The ``foreign_keys`` parameter overrides the notion of what's
+      "foreign" in the table metadata, allowing the specification
+      of a list of :class:`.Column` objects that should be considered
+      part of the foreign key.
+      
+      There are only two use cases for ``foreign_keys`` - one, when it is not
+      convenient for :class:`.Table` metadata to contain its own foreign key
+      metadata (which should be almost never, unless reflecting a large amount of
+      tables from a MySQL MyISAM schema, or a schema that doesn't actually
+      have foreign keys on it). The other is for extremely
+      rare and exotic composite foreign key setups where some columns
+      should artificially not be considered as foreign.
 
     :param innerjoin=False:
       when ``True``, joined eager loads will use an inner join to join

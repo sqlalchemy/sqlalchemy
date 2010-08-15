@@ -2388,9 +2388,9 @@ class ResultProxy(object):
             
         return self.context._inserted_primary_key
 
-    @util.deprecated("Use inserted_primary_key")
+    @util.deprecated("0.6", "Use :attr:`.ResultProxy.inserted_primary_key`")
     def last_inserted_ids(self):
-        """deprecated.  use :attr:`~ResultProxy.inserted_primary_key`."""
+        """Return the primary key for the row just inserted."""
         
         return self.inserted_primary_key
         

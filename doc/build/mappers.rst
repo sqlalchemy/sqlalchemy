@@ -1490,7 +1490,6 @@ Theres no restriction on how many times you can relate from parent to child.  SQ
                     addresses_table.c.city=='New York')),
     })
 
-.. _alternate_collection_implementations:
 
 Rows that point to themselves / Mutually Dependent Rows
 -------------------------------------------------------
@@ -1528,7 +1527,7 @@ To enable the UPDATE after INSERT / UPDATE before DELETE behavior on :func:`~sql
 When a structure using the above mapping is flushed, the "widget" row will be INSERTed minus the "favorite_entry_id" value, then all the "entry" rows will be INSERTed referencing the parent "widget" row, and then an UPDATE statement will populate the "favorite_entry_id" column of the "widget" table (it's one row at a time for the time being).
 
 
-.. _advdatamapping_entitycollections:
+.. _alternate_collection_implementations:
 
 Alternate Collection Implementations
 -------------------------------------

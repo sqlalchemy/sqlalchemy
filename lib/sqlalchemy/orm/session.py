@@ -918,6 +918,13 @@ class Session(object):
         Eagerly-loaded relational attributes will eagerly load within the
         single refresh operation.
 
+        Note that a highly isolated transaction will return the same values as
+        were previously read in that same transaction, regardless of changes
+        in database state outside of that transaction - usage of
+        :meth:`~Session.refresh` usually only makes sense if non-ORM SQL
+        statement were emitted in the ongoing transaction, or if autocommit
+        mode is turned on.
+        
         :param attribute_names: optional.  An iterable collection of
           string attribute names indicating a subset of attributes to 
           be refreshed.
@@ -942,22 +949,55 @@ class Session(object):
                 mapperutil.instance_str(instance))
 
     def expire_all(self):
-        """Expires all persistent instances within this Session."""
+        """Expires all persistent instances within this Session.
+        
+        When any attributes on a persitent instance is next accessed, 
+        a query will be issued using the
+        :class:`.Session` object's current transactional context in order to
+        load all expired attributes for the given instance.   Note that
+        a highly isolated transaction will return the same values as were 
+        previously read in that same transaction, regardless of changes
+        in database state outside of that transaction.
 
+        To expire individual objects and individual attributes 
+        on those objects, use :meth:`Session.expire`.
+        
+        The :class:`Session` object's default behavior is to 
+        expire all state whenever the :meth:`Session.rollback`
+        or :meth:`Session.commit` methods are called, so that new
+        state can be loaded for the new transaction.   For this reason,
+        calling :meth:`Session.expire_all` should not be needed when 
+        autocommit is ``False``, assuming the transaction is isolated.
+
+        """
         for state in self.identity_map.all_states():
             _expire_state(state, state.dict, None, instance_dict=self.identity_map)
 
     def expire(self, instance, attribute_names=None):
         """Expire the attributes on an instance.
 
-        Marks the attributes of an instance as out of date.  When an expired
-        attribute is next accessed, query will be issued to the database and
-        the attributes will be refreshed with their current database value.
-        ``expire()`` is a lazy variant of ``refresh()``.
+        Marks the attributes of an instance as out of date. When an expired
+        attribute is next accessed, a query will be issued to the
+        :class:`.Session` object's current transactional context in order to
+        load all expired attributes for the given instance.   Note that
+        a highly isolated transaction will return the same values as were 
+        previously read in that same transaction, regardless of changes
+        in database state outside of that transaction.
+        
+        To expire all objects in the :class:`.Session` simultaneously,
+        use :meth:`Session.expire_all`.
+        
+        The :class:`Session` object's default behavior is to 
+        expire all state whenever the :meth:`Session.rollback`
+        or :meth:`Session.commit` methods are called, so that new
+        state can be loaded for the new transaction.   For this reason,
+        calling :meth:`Session.expire` only makes sense for the specific
+        case that a non-ORM SQL statement was emitted in the current
+        transaction.
 
-        The ``attribute_names`` argument is an iterable collection
-        of attribute names indicating a subset of attributes to be
-        expired.
+        :param instance: The instance to be refreshed.
+        :param attribute_names: optional list of string attribute names
+          indicating a subset of attributes to be expired.
 
         """
         try:

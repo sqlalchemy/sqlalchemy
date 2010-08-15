@@ -1,5 +1,6 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
-from sqlalchemy.orm import mapper, create_session, polymorphic_union
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, \
+    String
+from sqlalchemy.orm import mapper, sessionmaker, polymorphic_union
 
 metadata = MetaData()
 
@@ -30,14 +31,16 @@ class Manager(Employee):
         self.name = name
         self.manager_data = manager_data
     def __repr__(self):
-        return self.__class__.__name__ + " " + self.name + " " +  self.manager_data
+        return self.__class__.__name__ + " " + \
+                    self.name + " " +  self.manager_data
     
 class Engineer(Employee):
     def __init__(self, name, engineer_info):
         self.name = name
         self.engineer_info = engineer_info
     def __repr__(self):
-        return self.__class__.__name__ + " " + self.name + " " +  self.engineer_info
+        return self.__class__.__name__ + " " + \
+                    self.name + " " +  self.engineer_info
 
 
 pjoin = polymorphic_union({
@@ -46,11 +49,15 @@ pjoin = polymorphic_union({
 }, 'type', 'pjoin')
 
 employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
-engineer_mapper = mapper(Engineer, engineers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='engineer')
+manager_mapper = mapper(Manager, managers_table,
+                        inherits=employee_mapper, concrete=True,
+                        polymorphic_identity='manager')
+engineer_mapper = mapper(Engineer, engineers_table,
+                         inherits=employee_mapper, concrete=True,
+                         polymorphic_identity='engineer')
 
 
-session = create_session(bind=engine)
+session = sessionmaker(engine)()
 
 m1 = Manager("pointy haired boss", "manager1")
 e1 = Engineer("wally", "engineer1")
@@ -59,8 +66,7 @@ e2 = Engineer("dilbert", "engineer2")
 session.add(m1)
 session.add(e1)
 session.add(e2)
-session.flush()
+session.commit()
 
-employees = session.query(Employee)
-print [e for e in employees]
+print session.query(Employee).all()
 

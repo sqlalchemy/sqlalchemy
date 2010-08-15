@@ -39,16 +39,17 @@ apply; no RETURNING clause is emitted nor is the sequence pre-executed in this
 case.
 
 To force the usage of RETURNING by default off, specify the flag
-``implicit_returning=False`` to :func:`create_engine`.
+``implicit_returning=False`` to :func:`.create_engine`.
 
 Transaction Isolation Level
 ---------------------------
 
-:func:`create_engine` accepts an ``isolation_level`` parameter which results
+:func:`.create_engine` accepts an ``isolation_level`` parameter which results
 in the command ``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL
 <level>`` being invoked for every new connection. Valid values for this
 parameter are ``READ_COMMITTED``, ``READ_UNCOMMITTED``, ``REPEATABLE_READ``,
-and ``SERIALIZABLE``.
+and ``SERIALIZABLE``.  Note that the psycopg2 dialect does *not* use this
+technique and uses psycopg2-specific APIs (see that dialect for details).
 
 INSERT/UPDATE...RETURNING
 -------------------------
@@ -57,7 +58,7 @@ The dialect supports PG 8.2's ``INSERT..RETURNING``, ``UPDATE..RETURNING`` and
 ``DELETE..RETURNING`` syntaxes.   ``INSERT..RETURNING`` is used by default
 for single-row INSERT statements in order to fetch newly generated
 primary key identifiers.   To specify an explicit ``RETURNING`` clause,
-use the :meth:`_UpdateBase.returning` method on a per-statement basis::
+use the :meth:`._UpdateBase.returning` method on a per-statement basis::
 
     # INSERT..RETURNING
     result = table.insert().returning(table.c.col1, table.c.col2).\\
