@@ -83,7 +83,7 @@ class PolymorphicOnNotLocalTest(_base.MappedTest):
         t2 = Table('t2', metadata, 
                 Column('id', Integer, primary_key=True), 
                 Column('y', String(10)), 
-                Column('xid', ForeignKey('t1.x')))
+                Column('xid', ForeignKey('t1.id')))
     
     @testing.resolve_artifact_names
     def test_bad_polymorphic_on(self):
@@ -168,11 +168,13 @@ class PolymorphicSynonymTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1, t2
         t1 = Table('t1', metadata,
-                   Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                   Column('id', Integer, primary_key=True,
+                                    test_needs_autoincrement=True),
                    Column('type', String(10), nullable=False),
                    Column('info', String(255)))
         t2 = Table('t2', metadata,
-                   Column('id', Integer, ForeignKey('t1.id'), primary_key=True),
+                   Column('id', Integer, ForeignKey('t1.id'),
+                                            primary_key=True),
                    Column('data', String(10), nullable=False))
     
     def test_polymorphic_synonym(self):
@@ -185,9 +187,10 @@ class PolymorphicSynonymTest(_base.MappedTest):
             
         class T2(T1):pass
         
-        mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1', properties={
-            'info':synonym('_info', map_column=True)
-        })
+        mapper(T1, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1',
+            properties={
+                'info':synonym('_info', map_column=True)
+            })
         mapper(T2, t2, inherits=T1, polymorphic_identity='t2')
         sess = create_session()
         at1 = T1(info='at1')
