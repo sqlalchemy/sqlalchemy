@@ -100,6 +100,10 @@ CHANGES
     in some UNION situations, would fail to 
     propagate the inner columns completely to
     the outer query.  [ticket:1852]
+
+  - object_session() raises the proper 
+    UnmappedInstanceError when presented with an
+    unmapped instance.  [ticket:1881]
     
 - sql
   - Added basic math expression coercion for 

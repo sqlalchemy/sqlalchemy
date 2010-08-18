@@ -10,7 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, backref, joinedload
+from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
+    exc as orm_exc, object_session
 from sqlalchemy.test.testing import eq_
 from test.engine import _base as engine_base
 from test.orm import _base, _fixtures
@@ -67,6 +68,20 @@ class SessionTest(_fixtures.FixtureTest):
         finally:
             c.close()
 
+    @testing.resolve_artifact_names
+    def test_object_session_raises(self):
+        assert_raises(
+            orm_exc.UnmappedInstanceError,
+            object_session, 
+            object()
+        )
+
+        assert_raises(
+            orm_exc.UnmappedInstanceError,
+            object_session, 
+            User()
+        )
+        
     @testing.requires.sequences
     def test_sequence_execute(self):
         seq = Sequence("some_sequence")

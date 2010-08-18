@@ -1674,9 +1674,17 @@ def make_transient(instance):
     
     
 def object_session(instance):
-    """Return the ``Session`` to which instance belongs, or None."""
+    """Return the ``Session`` to which instance belongs.
+    
+    If the instance is not a mapped instance, an error is raised.
 
-    return _state_session(attributes.instance_state(instance))
+    """
+    
+    try:
+        return _state_session(attributes.instance_state(instance))
+    except exc.NO_STATE:
+        raise exc.UnmappedInstanceError(instance)
+        
 
 def _state_session(state):
     if state.session_id:
