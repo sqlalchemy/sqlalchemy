@@ -1564,21 +1564,18 @@ class DictHelpersTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_column_mapped_assertions(self):
-        assert_raises_message(
-            sa_exc.ArgumentError,
-            "Column-based expression object expected; got: 'a'",
-            collections.column_mapped_collection, "a",
-        )
-        assert_raises_message(
-            sa_exc.ArgumentError,
-            "Column-based expression object expected; got",
-            collections.column_mapped_collection, text("a"),
-        )
-        assert_raises_message(
-            sa_exc.ArgumentError,
-            "Column-based expression object expected; got",
-            collections.column_mapped_collection, text("a"),
-        )
+        assert_raises_message(sa_exc.ArgumentError,
+                              "Column-based expression object expected "
+                              "for argument 'mapping_spec'; got: 'a', "
+                              "type <type 'str'>",
+                              collections.column_mapped_collection, 'a')
+        assert_raises_message(sa_exc.ArgumentError,
+                              "Column-based expression object expected "
+                              "for argument 'mapping_spec'; got: 'a', "
+                              "type <class 'sqlalchemy.sql.expression._"
+                              "TextClause'>",
+                              collections.column_mapped_collection,
+                              text('a'))
         
         
     @testing.resolve_artifact_names

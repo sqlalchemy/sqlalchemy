@@ -970,6 +970,36 @@ class JoinConditionErrorTest(testing.TestBase):
         mapper(C2, t2)
         assert_raises(sa.exc.ArgumentError, compile_mappers)
     
+    def test_invalid_string_args(self):
+        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy import util
+        
+        for argname, arg in [
+            ('remote_side', ['c1.id']),
+            ('remote_side', ['id']),
+            ('foreign_keys', ['c1id']),
+            ('foreign_keys', ['C2.c1id']),
+            ('order_by', ['id']),
+        ]:
+            clear_mappers()
+            kw = {argname:arg}
+            Base = declarative_base()
+            class C1(Base):
+                __tablename__ = 'c1'
+                id = Column('id', Integer, primary_key=True)
+            
+            class C2(Base):
+                __tablename__ = 'c2'
+                id_ = Column('id', Integer, primary_key=True)
+                c1id = Column('c1id', Integer, ForeignKey('c1.id'))
+                c2 = relationship(C1, **kw)
+            
+            assert_raises_message(
+                sa.exc.ArgumentError, 
+                "Column-based expression object expected for argument '%s'; got: '%s', type %r" % (argname, arg[0], type(arg[0])),
+                compile_mappers)
+        
+    
     def test_fk_error_raised(self):
         m = MetaData()
         t1 = Table('t1', m, 

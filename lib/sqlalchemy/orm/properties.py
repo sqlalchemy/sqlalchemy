@@ -926,16 +926,17 @@ class RelationshipProperty(StrategizedProperty):
         for attr in 'primaryjoin', 'secondaryjoin':
             val = getattr(self, attr)
             if val is not None:
-                util.assert_arg_type(val, sql.ColumnElement, attr)
-                setattr(self, attr, _orm_deannotate(val))
+                setattr(self, attr, _orm_deannotate(
+                    expression._only_column_elements(val, attr))
+                )
         if self.order_by is not False and self.order_by is not None:
-            self.order_by = [expression._literal_as_column(x) for x in
+            self.order_by = [expression._only_column_elements(x, "order_by") for x in
                              util.to_list(self.order_by)]
         self._user_defined_foreign_keys = \
-            util.column_set(expression._literal_as_column(x) for x in
+            util.column_set(expression._only_column_elements(x, "foreign_keys") for x in
                             util.to_column_set(self._user_defined_foreign_keys))
         self.remote_side = \
-            util.column_set(expression._literal_as_column(x) for x in
+            util.column_set(expression._only_column_elements(x, "remote_side") for x in
                             util.to_column_set(self.remote_side))
         if not self.parent.concrete:
             for inheriting in self.parent.iterate_to_root():

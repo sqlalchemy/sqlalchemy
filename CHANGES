@@ -87,6 +87,12 @@ CHANGES
     misleads with incorrect information about
     text() or literal().  [ticket:1863]
 
+  - Similarly, for relationship(), foreign_keys,
+    remote_side, order_by - all column-based 
+    expressions are enforced - lists of strings
+    are explicitly disallowed since this is a
+    very common error
+    
   - Dynamic attributes don't support collection 
     population - added an assertion for when
     set_committed_value() is called, as well as
