@@ -31,6 +31,7 @@ def _history_mapper(local_mapper):
                 continue
                 
             col = column.copy()
+            col.unique = False
 
             if super_mapper and col_references_table(column, super_mapper.local_table):
                 super_fks.append((col.key, list(super_history_mapper.base_mapper.local_table.primary_key)[0]))
@@ -161,4 +162,3 @@ class VersionedListener(SessionExtension):
             create_version(obj, session)
         for obj in versioned_objects(session.deleted):
             create_version(obj, session, deleted = True)
-            

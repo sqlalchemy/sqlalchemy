@@ -207,6 +207,11 @@ CHANGES
     custom cache code is portable and now within
     "caching_query.py".  This allows the example to 
     be easier to "drop in" to existing projects.
+
+  - the history_meta versioning recipe sets "unique=False"
+    when copying columns, so that the versioning 
+    table handles multiple rows with repeating values.
+    [ticket:1887]
     
 0.6.3
 =====
