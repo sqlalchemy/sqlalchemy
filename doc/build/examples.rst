@@ -30,6 +30,8 @@ Location: /examples/custom_attributes/
 
 .. automodule:: custom_attributes
 
+.. _examples_caching:
+
 Beaker Caching
 --------------
 
