@@ -87,6 +87,12 @@ CHANGES
     misleads with incorrect information about
     text() or literal().  [ticket:1863]
 
+  - Similarly, for relationship(), foreign_keys,
+    remote_side, order_by - all column-based 
+    expressions are enforced - lists of strings
+    are explicitly disallowed since this is a
+    very common error
+    
   - Dynamic attributes don't support collection 
     population - added an assertion for when
     set_committed_value() is called, as well as
@@ -100,6 +106,10 @@ CHANGES
     in some UNION situations, would fail to 
     propagate the inner columns completely to
     the outer query.  [ticket:1852]
+
+  - object_session() raises the proper 
+    UnmappedInstanceError when presented with an
+    unmapped instance.  [ticket:1881]
     
 - sql
   - Added basic math expression coercion for 
@@ -197,6 +207,11 @@ CHANGES
     custom cache code is portable and now within
     "caching_query.py".  This allows the example to 
     be easier to "drop in" to existing projects.
+
+  - the history_meta versioning recipe sets "unique=False"
+    when copying columns, so that the versioning 
+    table handles multiple rows with repeating values.
+    [ticket:1887]
     
 0.6.3
 =====
