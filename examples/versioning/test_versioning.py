@@ -244,5 +244,28 @@ class TestVersioning(TestBase):
                 SubClassHistory(id=2, name=u's1', type=u'sub', version=1)
             ]
         )
+    
+    def test_unique(self):
+        class SomeClass(Base, ComparableEntity):
+            __tablename__ = 'sometable'
+            
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50), unique=True)
+            data = Column(String(50))
+            
+        self.create_tables()
+        sess = Session()
+        sc = SomeClass(name='sc1', data='sc1')
+        sess.add(sc)
+        sess.commit()
         
+        sc.data = 'sc1modified'
+        sess.commit()
+        
+        assert sc.version == 2
+        
+        sc.data = 'sc1modified2'
+        sess.commit()
+        
+        assert sc.version == 3
 
