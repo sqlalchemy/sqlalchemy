@@ -115,8 +115,7 @@ def scoped_session(session_factory, scopefunc=None):
     :class:`~sqlalchemy.orm.scoping.ScopedSession`.
 
     :param session_factory: a callable function that produces
-      :class:`Session` instances, such as :func:`sessionmaker` or
-      :func:`create_session`.
+      :class:`Session` instances, such as :func:`sessionmaker`.
 
     :param scopefunc: optional, TODO
 
@@ -141,7 +140,12 @@ def scoped_session(session_factory, scopefunc=None):
     return ScopedSession(session_factory, scopefunc=scopefunc)
 
 def create_session(bind=None, **kwargs):
-    """Create a new :class:`~sqlalchemy.orm.session.Session`.
+    """Create a new :class:`.Session` 
+    with no automation enabled by default.
+    
+    This function is used primarily for testing.   The usual
+    route to :class:`.Session` creation is via its constructor
+    or the :func:`.sessionmaker` function.
 
     :param bind: optional, a single Connectable to use for all
       database access in the created
