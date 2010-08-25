@@ -292,7 +292,7 @@ class DescriptorProperty(MapperProperty):
                         lambda: self._comparator_factory(mapper)
                     )
         def get_comparator(owner):
-            return proxy_attr
+            return util.update_wrapper(proxy_attr, descriptor)
         descriptor.expr = get_comparator
         descriptor.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, descriptor)

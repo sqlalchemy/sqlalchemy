@@ -90,7 +90,7 @@ class property_(object):
 
     def __get__(self, instance, owner):
         if instance is None:
-            return util.update_wrapper(self.expr(owner), self)
+            return self.expr(owner)
         else:
             return self.fget(instance)
             
@@ -135,6 +135,9 @@ class Comparator(interfaces.PropComparator):
         # interesting....
         return self
         
-        
-        
-        
+
+def hybrid_and(self):
+    if isinstance(self, type):
+        return expression.and_
+    else:
+        return operator.and_
