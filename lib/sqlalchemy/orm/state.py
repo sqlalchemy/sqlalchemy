@@ -22,6 +22,7 @@ class InstanceState(object):
     _strong_obj = None
     modified = False
     expired = False
+    deleted = False
     
     def __init__(self, obj, manager):
         self.class_ = obj.__class__

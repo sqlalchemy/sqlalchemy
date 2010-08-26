@@ -89,6 +89,10 @@ class ExpireTest(_fixtures.FixtureTest):
         assert s.query(User).get(10) is None
         assert u not in s # and expunges
 
+        # trick the "deleted" flag so we can re-add for the sake
+        # of this test
+        del attributes.instance_state(u).deleted
+        
         # add it back
         s.add(u)
         # nope, raises ObjectDeletedError

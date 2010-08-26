@@ -280,6 +280,52 @@ class SessionTest(_fixtures.FixtureTest):
         assert u1.id is None
         assert u1.name is None
 
+        # works twice
+        make_transient(u1)
+        
+        sess.close()
+        
+        u1.name = 'test2'
+        sess.add(u1)
+        sess.flush()
+        assert u1 in sess
+        sess.delete(u1)
+        sess.flush()
+        assert u1 not in sess
+        
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        make_transient(u1)
+        sess.add(u1)
+        sess.flush()
+        assert u1 in sess
+
+    @testing.resolve_artifact_names
+    def test_deleted_flag(self):
+        mapper(User, users)
+        
+        sess = sessionmaker()()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        
+        sess.delete(u1)
+        sess.flush()
+        assert u1 not in sess
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        sess.rollback()
+        assert u1 in sess
+        
+        sess.delete(u1)
+        sess.commit()
+        assert u1 not in sess
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        
+        make_transient(u1)
+        sess.add(u1)
+        sess.commit()
+        
+        eq_(sess.query(User).count(), 1)
         
     @testing.resolve_artifact_names
     def test_autoflush_expressions(self):

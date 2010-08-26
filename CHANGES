@@ -15,6 +15,17 @@ CHANGES
     ConcurrentModificationError in an "except:"
     clause.
     
+  - An object that's been deleted now gets a flag
+    'deleted', which prohibits the object from
+    being re-add()ed to the session, as previously
+    the object would live in the identity map
+    silently until its attributes were accessed.
+    The make_transient() function now resets this
+    flag along with the "key" flag.
+
+  - make_transient() can be safely called on an
+    already transient instance.
+    
   - a warning is emitted in mapper() if the polymorphic_on
     column is not present either in direct or derived
     form in the mapped selectable or in the 
