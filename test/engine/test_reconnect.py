@@ -1,13 +1,12 @@
-from sqlalchemy.test.testing import eq_
+from sqlalchemy.test.testing import eq_, assert_raises
 import time
 import weakref
 from sqlalchemy import select, MetaData, Integer, String, pool
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing, engines
 from sqlalchemy.test.util import gc_collect
-
+from sqlalchemy import exc
 
 class MockDisconnect(Exception):
     pass
@@ -257,7 +256,39 @@ class RealReconnectTest(TestBase):
         assert not conn.invalidated
 
         conn.close()
+    
+    def test_invalidate_twice(self):
+        conn = engine.connect()
+        conn.invalidate()
+        conn.invalidate()
+    
+    def test_explode_in_initializer(self):
+        engine = engines.testing_engine()
+        def broken_initialize(connection):
+            connection.execute("select fake_stuff from _fake_table")
+            
+        engine.dialect.initialize = broken_initialize
+        
+        # raises a DBAPIError, not an AttributeError
+        assert_raises(exc.DBAPIError, engine.connect)
 
+        # dispose connections so we get a new one on
+        # next go
+        engine.dispose()
+
+        p1 = engine.pool
+        
+        def is_disconnect(e):
+            return True
+            
+        engine.dialect.is_disconnect = is_disconnect
+
+        # invalidate() also doesn't screw up
+        assert_raises(exc.DBAPIError, engine.connect)
+        
+        # pool was recreated
+        assert engine.pool is not p1
+        
     def test_null_pool(self):
         engine = \
             engines.reconnecting_engine(options=dict(poolclass=pool.NullPool))
