@@ -364,7 +364,9 @@ and simply pass it to declarative classes::
 
 Some configuration schemes may find it more appropriate to use ``__table__``, 
 such as those which already take advantage of the data-driven nature of 
-:class:`.Table` to customize and/or automate schema definition.
+:class:`.Table` to customize and/or automate schema definition.   See
+the wiki example `NamingConventions <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/NamingConventions>`_
+for one such example.
 
 Mapper Configuration
 ====================
