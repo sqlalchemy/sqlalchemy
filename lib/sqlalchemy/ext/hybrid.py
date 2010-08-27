@@ -136,8 +136,3 @@ class Comparator(interfaces.PropComparator):
         return self
         
 
-def hybrid_and(self):
-    if isinstance(self, type):
-        return expression.and_
-    else:
-        return operator.and_
