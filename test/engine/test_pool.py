@@ -668,7 +668,7 @@ class QueuePoolTest(PoolTestBase):
         c1 = None
         c1 = p.connect()
         assert c1.connection.id != c_id
-
+        
     def test_recreate(self):
         dbapi = MockDBAPI()
         p = pool.QueuePool(creator=lambda : dbapi.connect('foo.db'),

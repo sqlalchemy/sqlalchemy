@@ -15,6 +15,17 @@ CHANGES
     ConcurrentModificationError in an "except:"
     clause.
     
+  - An object that's been deleted now gets a flag
+    'deleted', which prohibits the object from
+    being re-add()ed to the session, as previously
+    the object would live in the identity map
+    silently until its attributes were accessed.
+    The make_transient() function now resets this
+    flag along with the "key" flag.
+
+  - make_transient() can be safely called on an
+    already transient instance.
+    
   - a warning is emitted in mapper() if the polymorphic_on
     column is not present either in direct or derived
     form in the mapped selectable or in the 
@@ -135,21 +146,6 @@ CHANGES
     of 64 for index names, separate from their
     overall max length of 255.  [ticket:1412]
 
-  - Calling fetchone() or similar on a result that
-    has already been exhausted, has been closed,
-    or is not a result-returning result now 
-    raises ResourceClosedError, a subclass of
-    InvalidRequestError, in all cases, regardless
-    of backend.  Previously, some DBAPIs would
-    raise ProgrammingError (i.e. pysqlite), others
-    would return None leading to downstream breakages
-    (i.e. MySQL-python).
-
-  - Connection, ResultProxy, as well as Session use
-    ResourceClosedError for all "this
-    connection/transaction/result is closed" types of
-    errors.
-
   - the text() construct, if placed in a column
     oriented situation, will at least return NULLTYPE
     for its type instead of None, allowing it to 
@@ -175,7 +171,33 @@ CHANGES
     operations which depend on the identity of the 
     _Labels themselves to return the correct result
     - fixes ORM bug [ticket:1852].
-    
+
+- engine
+
+  - Calling fetchone() or similar on a result that
+    has already been exhausted, has been closed,
+    or is not a result-returning result now 
+    raises ResourceClosedError, a subclass of
+    InvalidRequestError, in all cases, regardless
+    of backend.  Previously, some DBAPIs would
+    raise ProgrammingError (i.e. pysqlite), others
+    would return None leading to downstream breakages
+    (i.e. MySQL-python).
+
+  - Fixed bug in Connection whereby if a "disconnect"
+    event occurred in the "initialize" phase of the
+    first connection pool connect, an AttributeError
+    would be raised when the Connection would attempt
+    to invalidate the DBAPI connection.  [ticket:1894]
+
+  - Connection, ResultProxy, as well as Session use
+    ResourceClosedError for all "this
+    connection/transaction/result is closed" types of
+    errors.
+
+  - Connection.invalidate() can be called more than
+    once and subsequent calls do nothing.
+
 - declarative
   - if @classproperty is used with a regular class-bound
     mapper property attribute, it will be called to get the
