@@ -13,7 +13,7 @@ class PoolListener(object):
     """Hooks into the lifecycle of connections in a :class:`Pool`.
 
     .. note:: :class:`PoolListener` is deprecated.   Please
-       refer to :func:`event.listen` as well as 
+       refer to :func:`event.listen_raw` as well as 
        :attr:`.Pool.events`.
     
     Usage::
@@ -75,13 +75,13 @@ class PoolListener(object):
         listener = as_interface(listener, methods=('connect',
                                 'first_connect', 'checkout', 'checkin'))
         if hasattr(listener, 'connect'):
-            event.listen(listener.connect, 'on_connect', self)
+            event.listen_raw(listener.connect, 'on_connect', self)
         if hasattr(listener, 'first_connect'):
-            event.listen(listener.first_connect, 'on_first_connect', self)
+            event.listen_raw(listener.first_connect, 'on_first_connect', self)
         if hasattr(listener, 'checkout'):
-            event.listen(listener.checkout, 'on_checkout', self)
+            event.listen_raw(listener.checkout, 'on_checkout', self)
         if hasattr(listener, 'checkin'):
-            event.listen(listener.checkin, 'on_checkin', self)
+            event.listen_raw(listener.checkin, 'on_checkin', self)
             
         
     def connect(self, dbapi_con, con_record):
@@ -146,7 +146,7 @@ class ConnectionProxy(object):
     """Allows interception of statement execution by Connections.
 
     .. note:: :class:`ConnectionProxy` is deprecated.   Please
-       refer to :func:`event.listen` as well as 
+       refer to :func:`event.listen_raw` as well as 
        :attr:`.Engine.events`.
     
     Either or both of the ``execute()`` and ``cursor_execute()``
@@ -175,28 +175,47 @@ class ConnectionProxy(object):
     
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen(listener.execute, 'on_execute', self)
+        # TODO: suppose if new style listeners used here.  then we say:
+        
+        # def _wrap_in_some_way(legacy_listener):
+        #   def go(clauseelement, *multiparams, **params):
+        #       # 'fake' execute function.  in reality just repopulates
+        #       # the event with the given args in case they were modified.
+        #       args.update({'clauseelement':clauseelement, 'multiparams':multiparams, 'params':params})
+        #       return args
+        #   def listen(evt, args):
+        #       return legacy_listener(args['conn'], go, args['clauseelement'], *args['multiparams'], **args['params'])
+        # 
+        # event.listen(_wrap_in_some_way(self.execute), 'on_execute', self)
+        # 
+        # that way all the complex crap is left in the legacy adapter, and the "re-execute" idea is
+        # scrapped, since it was fairly pointless.  The proxyconnection stuff in base.py can just 
+        # iterate through listeners.
+        #
+
+        event.listen_raw(listener.execute, 'on_execute', self)
         def _adapt_cursor_execute(conn, execute, cursor, statement, 
                                     parameters, context, executemany):
             def _re_execute(cursor, statement, parameters, context):
                 return execute(cursor, statement, parameters, context, executemany)
             return listener.cursor_execute(_re_execute, cursor, statement, 
                                         parameters, context, executemany)
-        event.listen(_adapt_cursor_execute, 'on_cursor_execute', self)
-        event.listen(listener.begin, 'on_begin', self)
-        event.listen(listener.rollback, 'on_rollback', self)
-        event.listen(listener.commit, 'on_commit', self)
-        event.listen(listener.savepoint, 'on_savepoint', self)
-        event.listen(listener.rollback_savepoint, 'on_rollback_savepoint', self)
-        event.listen(listener.release_savepoint, 'on_release_savepoint', self)
-        event.listen(listener.begin_twophase, 'on_begin_twophase', self)
-        event.listen(listener.prepare_twophase, 'on_prepare_twophase', self)
-        event.listen(listener.rollback_twophase, 'on_rollback_twophase', self)
-        event.listen(listener.commit_twophase, 'on_commit_twophase', self)
+        event.listen_raw(_adapt_cursor_execute, 'on_cursor_execute', self)
+        event.listen_raw(listener.begin, 'on_begin', self)
+        event.listen_raw(listener.rollback, 'on_rollback', self)
+        event.listen_raw(listener.commit, 'on_commit', self)
+        event.listen_raw(listener.savepoint, 'on_savepoint', self)
+        event.listen_raw(listener.rollback_savepoint, 'on_rollback_savepoint', self)
+        event.listen_raw(listener.release_savepoint, 'on_release_savepoint', self)
+        event.listen_raw(listener.begin_twophase, 'on_begin_twophase', self)
+        event.listen_raw(listener.prepare_twophase, 'on_prepare_twophase', self)
+        event.listen_raw(listener.rollback_twophase, 'on_rollback_twophase', self)
+        event.listen_raw(listener.commit_twophase, 'on_commit_twophase', self)
         
         
     def execute(self, conn, execute, clauseelement, *multiparams, **params):
         """Intercept high level execute() events."""
+        
         
         return execute(clauseelement, *multiparams, **params)
 

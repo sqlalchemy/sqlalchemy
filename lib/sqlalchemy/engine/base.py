@@ -1557,43 +1557,47 @@ class EngineEvents(event.Events):
                                         target.dispatch)
         event.Events.listen(fn, identifier, target)
 
+    @classmethod
+    def unwrap(cls, identifier, args):
+        return args
+
     def on_execute(self, conn, execute, clauseelement, *multiparams, **params):
         """Intercept high level execute() events."""
-
+        
     def on_cursor_execute(self, conn, execute, cursor, statement, 
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
 
     def on_begin(self, conn, begin):
         """Intercept begin() events."""
-
+        
     def on_rollback(self, conn, rollback):
         """Intercept rollback() events."""
-
+        
     def on_commit(self, conn, commit):
         """Intercept commit() events."""
-
+        
     def on_savepoint(self, conn, savepoint, name=None):
         """Intercept savepoint() events."""
-
+        
     def on_rollback_savepoint(self, conn, rollback_savepoint, name, context):
         """Intercept rollback_savepoint() events."""
-
+        
     def on_release_savepoint(self, conn, release_savepoint, name, context):
         """Intercept release_savepoint() events."""
-
+        
     def on_begin_twophase(self, conn, begin_twophase, xid):
         """Intercept begin_twophase() events."""
-
+        
     def on_prepare_twophase(self, conn, prepare_twophase, xid):
         """Intercept prepare_twophase() events."""
-
+        
     def on_rollback_twophase(self, conn, rollback_twophase, xid, is_prepared):
         """Intercept rollback_twophase() events."""
-
+        
     def on_commit_twophase(self, conn, commit_twophase, xid, is_prepared):
         """Intercept commit_twophase() events."""
-
+        
 class Engine(Connectable, log.Identified):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and 
@@ -1846,18 +1850,27 @@ class Engine(Connectable, log.Identified):
         return self.pool.unique_connection()
 
 def _proxy_connection_cls(cls, dispatch):
+    # TODO: this is insane.
+    # consider some different method of 
+    # event propagation / control, possibly
+    # requiring the (target, args) style of calling.
+    # arguments can simply be modified within the "args"
+    # dictionary.
+    
+    # perhaps:
+#    def execute(self, clauseelement, *multiparams, **params):
+#        for fn in dispatch.on_execute:
+#            ret = fn(clauseelement, multiparams, params)
+#            if ret:
+#               clauseelement, multiparams, params = \
+#                    ret['clauseelment'], ret['multiparams'], ret['params']
+    
     def _exec_recursive(conn, fns, orig):
         if not fns:
             return orig
         def go(*arg, **kw):
             nested = _exec_recursive(conn, fns[1:], orig)
             ret = fns[0](conn, nested, *arg, **kw)
-            # TODO: need to get consistent way to check 
-            # for "they called the fn, they didn't", or otherwise
-            # make some decision here how this is to work
-            #if ret is None:
-            #    return nested(*arg, **kw)
-            #else:
             return ret
         return go
 

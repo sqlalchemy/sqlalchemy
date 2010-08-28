@@ -131,6 +131,10 @@ class QueryableAttribute(interfaces.PropComparator):
             if active_history:
                 target.active_history = True
             event.Events.listen(fn, identifier, target)
+        
+        @classmethod
+        def unwrap(cls, identifier, event):
+            return event['value']
             
         def on_append(self, state, value, initiator):
             """Receive a collection append event.

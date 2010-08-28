@@ -6,9 +6,61 @@ and :mod:`sqlalchemy.orm` packages.
 """
 
 from sqlalchemy import util
+import inspect
 
 def listen(fn, identifier, target, *args, **kw):
-    """Listen for events, passing to fn."""
+    """Listen for events, passing to fn.
+    
+    Event listener functions are in a consistent format::
+        
+        def listen(event_name, args):
+            # ...
+            
+    Where ``event_name`` is the string name, the same 
+    as ``identifier``, and ``args`` is a dict containing
+    an entry for each argument.  The names match those 
+    of the event declaration.
+    
+    """
+
+    for evt_cls in _registrars[identifier]:
+        for tgt in evt_cls.accept_with(target):
+            fn = _create_wrapper(evt_cls, fn, identifier)
+            tgt.dispatch.listen(fn, identifier, tgt, *args, **kw)
+            break
+
+def _create_wrapper(evt_cls, fn, identifier):
+    argspec = inspect.getargspec(getattr(evt_cls, identifier))
+    arg, varargs, keywords, defaults = argspec
+    def go(*args, **kw):
+        # here we are coercing the *arg, **kw to a single 
+        # dictionary.
+        
+        # TODO: defaults
+        if keywords:
+            kw = {keywords:kw}
+        for n, v in zip(arg[1:], args):
+            kw[n] = v
+        if varargs:
+            kw[varargs] = arg[len(args)+1:]
+        
+        fn(identifier, kw)
+        
+        # then here, we ask the Events subclass to interpret
+        # the dictionary back to what it wants for a return.
+        
+        return evt_cls.unwrap(identifier, kw)
+        
+    return util.update_wrapper(go, fn)
+    
+def listen_raw(fn, identifier, target, *args, **kw):
+    """Listen for events, accepting an event function that's "raw".
+    Only the exact arguments are received in order.
+    
+    This is used by SQLA internals simply to reduce the overhead
+    of creating an event dictionary for each event call.
+    
+    """
 
     # rationale - the events on ClassManager, Session, and Mapper
     # will need to accept mapped classes directly as targets and know 
@@ -85,7 +137,9 @@ class Events(object):
     def listen(cls, fn, identifier, target):
         getattr(target.dispatch, identifier).append(fn, target)
 
-
+    @classmethod
+    def unwrap(cls, identifier, event):
+        return None
     
 class _DispatchDescriptor(object):
     """Class-level attributes on _Dispatch classes."""

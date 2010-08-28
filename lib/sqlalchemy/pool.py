@@ -211,7 +211,7 @@ class Pool(log.Identified):
 
     dispatch = event.dispatcher(PoolEvents)
         
-    @util.deprecated("Pool.add_listener is deprecated.  Use event.listen()")
+    @util.deprecated(2.7, "Pool.add_listener is deprecated.  Use event.listen()")
     def add_listener(self, listener):
         """Add a :class:`.PoolListener`-like object to this pool.
         
