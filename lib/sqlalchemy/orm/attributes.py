@@ -679,7 +679,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 previous is not None and
                 previous is not PASSIVE_NO_RESULT):
                 self.sethasparent(instance_state(previous), False)
-
+        
         for fn in self.dispatch.on_set:
             value = fn(state, value, previous, initiator or self)
 

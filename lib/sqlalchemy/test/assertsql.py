@@ -175,6 +175,10 @@ class CompiledSQL(SQLMatchRule):
 
         self._result = equivalent
         if not self._result:
+            print "Testing for compiled statement %r partial params %r, " \
+                    "received %r with params %r" % \
+                    (self.statement, all_params, _received_statement, all_received)
+                    
             self._errmsg = "Testing for compiled statement %r partial params %r, " \
                     "received %r with params %r" % \
                     (self.statement, all_params, _received_statement, all_received)
@@ -269,9 +273,10 @@ class SQLAssert(object):
     def clear_rules(self):
         del self.rules
         
-    def execute(self, conn, execute, clauseelement, *multiparams, **params):
-        result = execute(clauseelement, *multiparams, **params)
-
+    def execute(self, conn, clauseelement, *multiparams, **params):
+        # TODO: this doesn't work.   we need to execute before so that we know 
+        # what's happened with the parameters.
+        
         if self.rules is not None:
             if not self.rules:
                 assert False, "All rules have been exhausted, but further statements remain"
@@ -280,16 +285,12 @@ class SQLAssert(object):
             if rule.is_consumed():
                 self.rules.pop(0)
             
-        return result
         
-    def cursor_execute(self, conn, execute, cursor, statement, parameters, context, executemany):
-        result = execute(cursor, statement, parameters, context, executemany)
-        
+    def cursor_execute(self, conn, cursor, statement, parameters, context, executemany):
+        print "RECEIVE !", statement, parameters
         if self.rules:
             rule = self.rules[0]
             rule.process_cursor_execute(statement, parameters, context, executemany)
-
-        return result
 
 asserter = SQLAssert()
     

@@ -880,7 +880,7 @@ class AttributeExtension(object):
     """An event handler for individual attribute change events.
     
     .. note:: :class:`AttributeExtension` is deprecated.   Please
-       refer to :func:`event.listen_raw` as well as 
+       refer to :func:`event.listen` as well as 
        :attr:`AttributeImpl.events`.
     
     AttributeExtension is assembled within the descriptors associated
@@ -895,9 +895,9 @@ class AttributeExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen_raw(listener.append, 'on_append', self, active_history=listener.active_history)
-        event.listen_raw(listener.remove, 'on_remove', self, active_history=listener.active_history)
-        event.listen_raw(listener.set, 'on_set', self, active_history=listener.active_history)
+        event.listen(listener.append, 'on_append', self, active_history=listener.active_history)
+        event.listen(listener.remove, 'on_remove', self, active_history=listener.active_history)
+        event.listen(listener.set, 'on_set', self, active_history=listener.active_history)
         
     
     def append(self, state, value, initiator):

@@ -310,15 +310,13 @@ class EngineEventsTest(TestBase):
         stmts = []
         cursor_stmts = []
 
-        def execute(conn, execute, clauseelement, *multiparams,
+        def execute(conn, clauseelement, *multiparams,
                                                     **params ):
             stmts.append((str(clauseelement), params, multiparams))
-            return execute(clauseelement, *multiparams, **params)
 
-        def cursor_execute(conn, execute, cursor, statement, parameters, 
+        def cursor_execute(conn, cursor, statement, parameters, 
                                 context, executemany):
             cursor_stmts.append((str(statement), parameters, None))
-            return execute(cursor, statement, parameters, context, executemany)
 
 
         for engine in [
@@ -326,8 +324,8 @@ class EngineEventsTest(TestBase):
             engines.testing_engine(options=dict(implicit_returning=False,
                                    strategy='threadlocal'))
             ]:
-            event.listen_raw(execute, 'on_execute', engine)
-            event.listen_raw(cursor_execute, 'on_cursor_execute', engine)
+            event.listen(execute, 'on_execute', engine)
+            event.listen(cursor_execute, 'on_cursor_execute', engine)
             
             m = MetaData(engine)
             t1 = Table('t1', m, 
@@ -450,17 +448,15 @@ class EngineEventsTest(TestBase):
 
     def test_options_raw(self):
         track = []
-        def on_execute(conn, exec_, *args, **kw):
+        def on_execute(conn, *args, **kw):
             track.append('execute')
-            return exec_(*args, **kw)
             
-        def on_cursor_execute(conn, exec_, *args, **kw):
+        def on_cursor_execute(conn, *args, **kw):
             track.append('cursor_execute')
-            return exec_(*args, **kw)
             
         engine = engines.testing_engine()
-        event.listen_raw(on_execute, 'on_execute', engine)
-        event.listen_raw(on_cursor_execute, 'on_cursor_execute', engine)
+        event.listen(on_execute, 'on_execute', engine)
+        event.listen(on_cursor_execute, 'on_cursor_execute', engine)
         conn = engine.connect()
         c2 = conn.execution_options(foo='bar')
         eq_(c2._execution_options, {'foo':'bar'})
@@ -473,17 +469,16 @@ class EngineEventsTest(TestBase):
     def test_transactional_raw(self):
         track = []
         def tracker(name):
-            def go(conn, exec_, *args, **kw):
+            def go(conn, *args, **kw):
                 track.append(name)
-                return exec_(*args, **kw)
             return go
             
         engine = engines.testing_engine()
-        event.listen_raw(tracker('execute'), 'on_execute', engine)
-        event.listen_raw(tracker('cursor_execute'), 'on_cursor_execute', engine)
-        event.listen_raw(tracker('begin'), 'on_begin', engine)
-        event.listen_raw(tracker('commit'), 'on_commit', engine)
-        event.listen_raw(tracker('rollback'), 'on_rollback', engine)
+        event.listen(tracker('execute'), 'on_execute', engine)
+        event.listen(tracker('cursor_execute'), 'on_cursor_execute', engine)
+        event.listen(tracker('begin'), 'on_begin', engine)
+        event.listen(tracker('commit'), 'on_commit', engine)
+        event.listen(tracker('rollback'), 'on_rollback', engine)
         
         conn = engine.connect()
         trans = conn.begin()
@@ -513,7 +508,7 @@ class EngineEventsTest(TestBase):
                     'rollback_savepoint', 'release_savepoint',
                     'rollback', 'begin_twophase', 
                        'prepare_twophase', 'commit_twophase']:
-            event.listen_raw(tracker(name), 'on_%s' % name, engine)
+            event.listen(tracker(name), 'on_%s' % name, engine)
 
         conn = engine.connect()
 

@@ -1557,45 +1557,41 @@ class EngineEvents(event.Events):
                                         target.dispatch)
         event.Events.listen(fn, identifier, target)
 
-    @classmethod
-    def unwrap(cls, identifier, args):
-        return args
-
-    def on_execute(self, conn, execute, clauseelement, *multiparams, **params):
+    def on_execute(self, conn, clauseelement, *multiparams, **params):
         """Intercept high level execute() events."""
         
-    def on_cursor_execute(self, conn, execute, cursor, statement, 
+    def on_cursor_execute(self, conn, cursor, statement, 
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
 
-    def on_begin(self, conn, begin):
+    def on_begin(self, conn):
         """Intercept begin() events."""
         
-    def on_rollback(self, conn, rollback):
+    def on_rollback(self, conn):
         """Intercept rollback() events."""
         
-    def on_commit(self, conn, commit):
+    def on_commit(self, conn):
         """Intercept commit() events."""
         
-    def on_savepoint(self, conn, savepoint, name=None):
+    def on_savepoint(self, conn, name=None):
         """Intercept savepoint() events."""
         
-    def on_rollback_savepoint(self, conn, rollback_savepoint, name, context):
+    def on_rollback_savepoint(self, conn, name, context):
         """Intercept rollback_savepoint() events."""
         
-    def on_release_savepoint(self, conn, release_savepoint, name, context):
+    def on_release_savepoint(self, conn, name, context):
         """Intercept release_savepoint() events."""
         
-    def on_begin_twophase(self, conn, begin_twophase, xid):
+    def on_begin_twophase(self, conn, xid):
         """Intercept begin_twophase() events."""
         
-    def on_prepare_twophase(self, conn, prepare_twophase, xid):
+    def on_prepare_twophase(self, conn, xid):
         """Intercept prepare_twophase() events."""
         
-    def on_rollback_twophase(self, conn, rollback_twophase, xid, is_prepared):
+    def on_rollback_twophase(self, conn, xid, is_prepared):
         """Intercept rollback_twophase() events."""
         
-    def on_commit_twophase(self, conn, commit_twophase, xid, is_prepared):
+    def on_commit_twophase(self, conn, xid, is_prepared):
         """Intercept commit_twophase() events."""
         
 class Engine(Connectable, log.Identified):
@@ -1850,115 +1846,97 @@ class Engine(Connectable, log.Identified):
         return self.pool.unique_connection()
 
 def _proxy_connection_cls(cls, dispatch):
-    # TODO: this is insane.
-    # consider some different method of 
-    # event propagation / control, possibly
-    # requiring the (target, args) style of calling.
-    # arguments can simply be modified within the "args"
-    # dictionary.
-    
-    # perhaps:
-#    def execute(self, clauseelement, *multiparams, **params):
-#        for fn in dispatch.on_execute:
-#            ret = fn(clauseelement, multiparams, params)
-#            if ret:
-#               clauseelement, multiparams, params = \
-#                    ret['clauseelment'], ret['multiparams'], ret['params']
-    
-    def _exec_recursive(conn, fns, orig):
-        if not fns:
-            return orig
-        def go(*arg, **kw):
-            nested = _exec_recursive(conn, fns[1:], orig)
-            ret = fns[0](conn, nested, *arg, **kw)
-            return ret
-        return go
-
     class ProxyConnection(cls):
         def execute(self, clauseelement, *multiparams, **params):
-            g = _exec_recursive(self, dispatch.on_execute, 
-                                super(ProxyConnection, self).execute) 
-            return g(clauseelement, *multiparams, **params)
+            for fn in dispatch.on_execute:
+                result = fn(self, clauseelement, *multiparams, **params)
+                if result:
+                    clauseelement, multiparams, params = result
+            
+            return super(ProxyConnection, self).execute(clauseelement, *multiparams, **params)
             
         def _execute_clauseelement(self, clauseelement, multiparams=None, params=None):
             return self.execute(clauseelement, *(multiparams or []), **(params or {}))
 
-        # TODO : this is all wrong, cursor_execute() and 
-        # cursor_executemany() don't have a return value, need to find some 
-        # other way to check for executed on these
-        
         def _cursor_execute(self, cursor, statement, 
                                     parameters, context=None):
-            g = _exec_recursive(self, dispatch.on_cursor_execute,
-                    self._cursor_exec)
-            return g(cursor, statement, parameters, context, False)
-        
-        def _cursor_executemany(self, cursor, statement, parameters,
-                                                context=None, ):
-            g = _exec_recursive(self, dispatch.on_cursor_execute,
-                    self._cursor_exec)
-            return g(cursor, statement, parameters, context, True)
-        
-        def _cursor_exec(self, cursor, statement, parameters, context,
-                                        executemany):
-            if executemany:
-                return super(ProxyConnection,
-                             self)._cursor_executemany(cursor,
-                        statement, parameters, context)
-            else:
-                return super(ProxyConnection,
-                             self)._cursor_execute(cursor, statement,
-                        parameters, context)
+            for fn in dispatch.on_cursor_execute:
+                result = fn(self, cursor, statement, parameters, context, False)
+                if result:
+                    statement, parameters = result
+            
+            return super(ProxyConnection, self).\
+                        _cursor_execute(cursor, statement, parameters, context)
+
+        def _cursor_executemany(self, cursor, statement, 
+                                    parameters, context=None):
+            for fn in dispatch.on_cursor_execute:
+                result = fn(self, cursor, statement, parameters, context, True)
+                if result:
+                    statement, parameters = result
+
+            return super(ProxyConnection, self).\
+                        _cursor_executemany(cursor, statement, parameters, context)
                 
         def _begin_impl(self):
-            g = _exec_recursive(self, dispatch.on_begin,
-                    super(ProxyConnection, self)._begin_impl)
-            return g()
+            for fn in dispatch.on_begin:
+                fn(self)
+            return super(ProxyConnection, self).\
+                        _begin_impl()
             
         def _rollback_impl(self):
-            g = _exec_recursive(self, dispatch.on_rollback,
-                    super(ProxyConnection, self)._rollback_impl)
-            return g()
+            for fn in dispatch.on_rollback:
+                fn(self)
+            return super(ProxyConnection, self).\
+                        _rollback_impl()
 
         def _commit_impl(self):
-            g = _exec_recursive(self, dispatch.on_commit,
-                    super(ProxyConnection, self)._commit_impl)
-            return g()
+            for fn in dispatch.on_commit:
+                fn(self)
+            return super(ProxyConnection, self).\
+                        _commit_impl()
 
         def _savepoint_impl(self, name=None):
-            g = _exec_recursive(self, dispatch.on_savepoint,
-                    super(ProxyConnection, self)._savepoint_impl)
-            return g(name=name)
-
+            for fn in dispatch.on_savepoint:
+                fn(self, name)
+            return super(ProxyConnection, self).\
+                        _savepoint_impl(name=name)
+                
         def _rollback_to_savepoint_impl(self, name, context):
-            g = _exec_recursive(self, dispatch.on_rollback_savepoint,
-                super(ProxyConnection, self)._rollback_to_savepoint_impl)
-            return g(name, context)
+            for fn in dispatch.on_rollback_to_savepoint:
+                fn(self, name, context)
+            return super(ProxyConnection, self).\
+                        _rollback_to_savepoint_impl(name, context)
             
         def _release_savepoint_impl(self, name, context):
-            g = _exec_recursive(self, dispatch.on_release_savepoint, 
-                        super(ProxyConnection, self)._release_savepoint_impl)
-            return g(name, context)
+            for fn in dispatch.on_release_savepoint:
+                fn(self, name, context)
+            return super(ProxyConnection, self).\
+                        _release_savepoint_impl(name, context)
             
         def _begin_twophase_impl(self, xid):
-            g = _exec_recursive(self, dispatch.on_begin_twophase,
-                        super(ProxyConnection, self)._begin_twophase_impl)
-            return g(xid)
+            for fn in dispatch.on_begin_twophase:
+                fn(self, xid)
+            return super(ProxyConnection, self).\
+                        _begin_twophase_impl(xid)
 
         def _prepare_twophase_impl(self, xid):
-            g = _exec_recursive(self, dispatch.on_prepare_twophase,
-                        super(ProxyConnection, self)._prepare_twophase_impl)
-            return g(xid)
+            for fn in dispatch.on_prepare_twophase:
+                fn(self, xid)
+            return super(ProxyConnection, self).\
+                        _prepare_twophase_impl(xid)
 
         def _rollback_twophase_impl(self, xid, is_prepared):
-            g = _exec_recursive(self, dispatch.on_rollback_twophase,
-                        super(ProxyConnection, self)._rollback_twophase_impl)
-            return g(xid, is_prepared)
+            for fn in dispatch.on_rollback_twophase:
+                fn(self, xid)
+            return super(ProxyConnection, self).\
+                        _rollback_twophase_impl(xid)
 
         def _commit_twophase_impl(self, xid, is_prepared):
-            g = _exec_recursive(self, dispatch.on_commit_twophase,
-                        super(ProxyConnection, self)._commit_twophase_impl)
-            return g(xid, is_prepared)
+            for fn in dispatch.on_commit_twophase:
+                fn(self, xid)
+            return super(ProxyConnection, self).\
+                        _commit_twophase_impl(xid)
 
     return ProxyConnection
 
