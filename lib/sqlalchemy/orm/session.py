@@ -497,8 +497,8 @@ class Session(object):
       issue any SQL in order to load collections or attributes which are not
       yet loaded, or were marked as "expired".
 
-    The session methods which control instance state include ``add()``,
-    ``delete()``, ``merge()``, and ``expunge()``.
+    The session methods which control instance state include :meth:`.Session.add`,
+    :meth:`.Session.delete`, :meth:`.Session.merge`, and :meth:`.Session.expunge`.
 
     The Session object is generally **not** threadsafe.  A session which is
     set to ``autocommit`` and is only read from may be used by concurrent
