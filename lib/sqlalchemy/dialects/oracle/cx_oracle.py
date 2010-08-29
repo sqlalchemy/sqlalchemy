@@ -220,6 +220,10 @@ class _OracleInterval(oracle.INTERVAL):
 class _OracleRaw(oracle.RAW):
     pass
 
+class _OracleRowid(oracle.ROWID):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.ROWID
+        
 class OracleCompiler_cx_oracle(OracleCompiler):
     def bindparam_string(self, name):
         if self.preparer._bindparam_requires_quotes(name):
@@ -392,6 +396,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         oracle.RAW: _OracleRaw,
         sqltypes.Unicode: _OracleNVarChar,
         sqltypes.NVARCHAR : _OracleNVarChar,
+        oracle.ROWID: _OracleRowid,
     }
 
     

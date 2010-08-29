@@ -222,6 +222,16 @@ class INTERVAL(sqltypes.TypeEngine):
     @property
     def _type_affinity(self):
         return sqltypes.Interval
+
+class ROWID(sqltypes.TypeEngine):
+    """Oracle ROWID type.
+    
+    When used in a cast() or similar, generates ROWID.
+    
+    """
+    __visit_name__ = 'ROWID'
+    
+    
     
 class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
@@ -336,6 +346,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     def visit_RAW(self, type_):
         return "RAW(%(length)s)" % {'length' : type_.length}
 
+    def visit_ROWID(self, type_):
+        return "ROWID"
+        
 class OracleCompiler(compiler.SQLCompiler):
     """Oracle compiler modifies the lexical structure of Select
     statements to work under non-ANSI configured Oracle databases, if
