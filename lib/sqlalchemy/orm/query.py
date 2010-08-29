@@ -6,11 +6,11 @@
 
 """The Query class and support.
 
-Defines the :class:`~sqlalchemy.orm.query.Query` class, the central 
+Defines the :class:`.Query` class, the central 
 construct used by the ORM to construct database queries.
 
-The ``Query`` class should not be confused with the
-:class:`~sqlalchemy.sql.expression.Select` class, which defines database 
+The :class:`.Query` class should not be confused with the
+:class:`.Select` class, which defines database 
 SELECT operations at the SQL (non-ORM) level.  ``Query`` differs from 
 ``Select`` in that it returns ORM-mapped objects and interacts with an 
 ORM session, whereas the ``Select`` construct interacts directly with the 
@@ -596,6 +596,25 @@ class Query(object):
 
     @_generative()
     def correlate(self, *args):
+        """Return a :class:`.Query` construct which will correlate the given
+        FROM clauses to that of an enclosing :class:`.Query` or
+        :func:`~.expression.select`.
+        
+        The method here accepts mapped classes, :func:`.aliased` constructs,
+        and :func:`.mapper` constructs as arguments, which are resolved into
+        expression constructs, in addition to appropriate expression
+        constructs.
+        
+        The correlation arguments are ultimately passed to
+        :meth:`.Select.correlate` after coercion to expression constructs.
+        
+        The correlation arguments take effect in such cases
+        as when :meth:`.Query.from_self` is used, or when 
+        a subquery as returned by :meth:`.Query.subquery` is 
+        embedded in another :func:`~.expression.select` construct.
+        
+         """
+        
         self._correlate = self._correlate.union(
                                         _orm_selectable(s) 
                                         for s in args)
