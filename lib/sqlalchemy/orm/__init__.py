@@ -51,7 +51,7 @@ from sqlalchemy.orm.mapper import reconstructor, validates
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import AliasOption, Query
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.orm.session import Session as _Session
+from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.session import object_session, sessionmaker, \
     make_transient
 from sqlalchemy.orm.scoping import ScopedSession
@@ -66,6 +66,7 @@ __all__ = (
     'Validator',
     'PropComparator',
     'Query',
+    'Session',
     'aliased',
     'backref',
     'class_mapper',
@@ -173,7 +174,7 @@ def create_session(bind=None, **kwargs):
     kwargs.setdefault('autoflush', False)
     kwargs.setdefault('autocommit', True)
     kwargs.setdefault('expire_on_commit', False)
-    return _Session(bind=bind, **kwargs)
+    return Session(bind=bind, **kwargs)
 
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.

@@ -14,6 +14,13 @@ CHANGES
     for schemes that may be specifying 
     ConcurrentModificationError in an "except:"
     clause.
+
+  - The Session class is now present in sqlalchemy.orm.*.
+    We're moving away from the usage of create_session(),
+    which has non-standard defaults, for those situations
+    where a one-step Session constructor is desired. Most
+    users should stick with sessionmaker() for general use,
+    however.
     
   - An object that's been deleted now gets a flag
     'deleted', which prohibits the object from
