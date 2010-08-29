@@ -273,10 +273,7 @@ class SQLAssert(object):
     def clear_rules(self):
         del self.rules
         
-    def execute(self, conn, clauseelement, *multiparams, **params):
-        # TODO: this doesn't work.   we need to execute before so that we know 
-        # what's happened with the parameters.
-        
+    def execute(self, conn, clauseelement, multiparams, params, result):
         if self.rules is not None:
             if not self.rules:
                 assert False, "All rules have been exhausted, but further statements remain"
@@ -287,7 +284,6 @@ class SQLAssert(object):
             
         
     def cursor_execute(self, conn, cursor, statement, parameters, context, executemany):
-        print "RECEIVE !", statement, parameters
         if self.rules:
             rule = self.rules[0]
             rule.process_cursor_execute(statement, parameters, context, executemany)

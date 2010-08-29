@@ -1551,16 +1551,23 @@ class EngineEvents(event.Events):
     
     @classmethod
     def listen(cls, fn, identifier, target):
-        if issubclass(target.Connection, Connection):
-            target.Connection = _proxy_connection_cls(
+        if target.Connection is Connection:
+            target.Connection = _listener_connection_cls(
                                         Connection, 
                                         target.dispatch)
         event.Events.listen(fn, identifier, target)
 
-    def on_execute(self, conn, clauseelement, *multiparams, **params):
+    def on_before_execute(self, conn, clauseelement, multiparams, params):
+        """Intercept high level execute() events."""
+
+    def on_after_execute(self, conn, clauseelement, multiparams, params, result):
         """Intercept high level execute() events."""
         
-    def on_cursor_execute(self, conn, cursor, statement, 
+    def on_before_cursor_execute(self, conn, cursor, statement, 
+                        parameters, context, executemany):
+        """Intercept low-level cursor execute() events."""
+
+    def on_after_cursor_execute(self, conn, cursor, statement, 
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
 
@@ -1845,100 +1852,126 @@ class Engine(Connectable, log.Identified):
 
         return self.pool.unique_connection()
 
-def _proxy_connection_cls(cls, dispatch):
-    class ProxyConnection(cls):
+def _listener_connection_cls(cls, dispatch):
+    """Produce a wrapper for :class:`.Connection` which will apply event 
+    dispatch to each method.
+    
+    :class:`.Connection` does not provide event dispatch built in so that
+    method call overhead is avoided in the absense of any listeners.
+    
+    """
+    class EventListenerConnection(cls):
         def execute(self, clauseelement, *multiparams, **params):
-            for fn in dispatch.on_execute:
-                result = fn(self, clauseelement, *multiparams, **params)
-                if result:
-                    clauseelement, multiparams, params = result
+            if dispatch.on_before_execute:
+                for fn in dispatch.on_before_execute:
+                    result = fn(self, clauseelement, multiparams, params)
+                    if result:
+                        clauseelement, multiparams, params = result
             
-            return super(ProxyConnection, self).execute(clauseelement, *multiparams, **params)
+            ret = super(EventListenerConnection, self).execute(clauseelement, *multiparams, **params)
+
+            if dispatch.on_after_execute:
+                for fn in dispatch.on_after_execute:
+                    fn(self, clauseelement, multiparams, params, ret)
+            
+            return ret
             
         def _execute_clauseelement(self, clauseelement, multiparams=None, params=None):
             return self.execute(clauseelement, *(multiparams or []), **(params or {}))
 
         def _cursor_execute(self, cursor, statement, 
                                     parameters, context=None):
-            for fn in dispatch.on_cursor_execute:
-                result = fn(self, cursor, statement, parameters, context, False)
-                if result:
-                    statement, parameters = result
+            if dispatch.on_before_cursor_execute:
+                for fn in dispatch.on_before_cursor_execute:
+                    result = fn(self, cursor, statement, parameters, context, False)
+                    if result:
+                        statement, parameters = result
             
-            return super(ProxyConnection, self).\
+            ret = super(EventListenerConnection, self).\
                         _cursor_execute(cursor, statement, parameters, context)
 
+            if dispatch.on_after_cursor_execute:
+                for fn in dispatch.on_after_cursor_execute:
+                    fn(self, cursor, statement, parameters, context, False)
+            
+            return ret
+            
         def _cursor_executemany(self, cursor, statement, 
                                     parameters, context=None):
-            for fn in dispatch.on_cursor_execute:
+            for fn in dispatch.on_before_cursor_execute:
                 result = fn(self, cursor, statement, parameters, context, True)
                 if result:
                     statement, parameters = result
 
-            return super(ProxyConnection, self).\
+            ret = super(EventListenerConnection, self).\
                         _cursor_executemany(cursor, statement, parameters, context)
-                
+
+            for fn in dispatch.on_after_cursor_execute:
+                fn(self, cursor, statement, parameters, context, True)
+            
+            return ret
+            
         def _begin_impl(self):
             for fn in dispatch.on_begin:
                 fn(self)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _begin_impl()
             
         def _rollback_impl(self):
             for fn in dispatch.on_rollback:
                 fn(self)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _rollback_impl()
 
         def _commit_impl(self):
             for fn in dispatch.on_commit:
                 fn(self)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _commit_impl()
 
         def _savepoint_impl(self, name=None):
             for fn in dispatch.on_savepoint:
                 fn(self, name)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _savepoint_impl(name=name)
                 
         def _rollback_to_savepoint_impl(self, name, context):
             for fn in dispatch.on_rollback_to_savepoint:
                 fn(self, name, context)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _rollback_to_savepoint_impl(name, context)
             
         def _release_savepoint_impl(self, name, context):
             for fn in dispatch.on_release_savepoint:
                 fn(self, name, context)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _release_savepoint_impl(name, context)
             
         def _begin_twophase_impl(self, xid):
             for fn in dispatch.on_begin_twophase:
                 fn(self, xid)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _begin_twophase_impl(xid)
 
         def _prepare_twophase_impl(self, xid):
             for fn in dispatch.on_prepare_twophase:
                 fn(self, xid)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _prepare_twophase_impl(xid)
 
         def _rollback_twophase_impl(self, xid, is_prepared):
             for fn in dispatch.on_rollback_twophase:
                 fn(self, xid)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _rollback_twophase_impl(xid)
 
         def _commit_twophase_impl(self, xid, is_prepared):
             for fn in dispatch.on_commit_twophase:
                 fn(self, xid)
-            return super(ProxyConnection, self).\
+            return super(EventListenerConnection, self).\
                         _commit_twophase_impl(xid)
 
-    return ProxyConnection
+    return EventListenerConnection
 
 # This reconstructor is necessary so that pickles with the C extension or
 # without use the same Binary format.

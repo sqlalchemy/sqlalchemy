@@ -30,8 +30,8 @@ class TLConnection(base.Connection):
 class TLEvents(base.EngineEvents):
     @classmethod
     def listen(cls, fn, identifier, target):
-        if issubclass(target.TLConnection, TLConnection):
-            target.TLConnection = base._proxy_connection_cls(
+        if target.TLConnection is TLConnection:
+            target.TLConnection = base._listener_connection_cls(
                                         TLConnection, 
                                         target.dispatch)
         base.EngineEvents.listen(fn, identifier, target)

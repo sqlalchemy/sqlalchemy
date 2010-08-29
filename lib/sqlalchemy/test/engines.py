@@ -135,8 +135,8 @@ def testing_engine(url=None, options=None):
     options = options or config.db_opts
 
     engine = create_engine(url, **options)
-    event.listen(asserter.execute, 'on_execute', engine)
-    event.listen(asserter.cursor_execute, 'on_cursor_execute', engine)
+    event.listen(asserter.execute, 'on_after_execute', engine)
+    event.listen(asserter.cursor_execute, 'on_after_cursor_execute', engine)
     event.listen(testing_reaper.checkout, 'on_checkout', engine.pool)
     
     # may want to call this, results

@@ -143,26 +143,11 @@ class _ListenerCollection(object):
             self(*args, **kw)
             self._exec_once = True
     
-    def exec_until_return(self, *args, **kw):
-        """Execute listeners for this event until
-        one returns a non-None value.
-
-        Returns the value, or None.
-        """
-
-        if self:
-            for fn in self:
-                r = fn(*args, **kw)
-                if r is not None:
-                    return r
-        return None
-
     def __call__(self, *args, **kw):
         """Execute this event."""
 
-        if self:
-            for fn in self:
-                fn(*args, **kw)
+        for fn in self:
+            fn(*args, **kw)
     
     # I'm not entirely thrilled about the overhead here,
     # but this allows class-level listeners to be added
