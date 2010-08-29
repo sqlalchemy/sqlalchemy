@@ -706,9 +706,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if select._distinct or select._limit:
             s = select._distinct and "DISTINCT " or ""
             
+            # ODBC drivers and possibly others
+            # don't support bind params in the SELECT clause on SQL Server.
+            # so have to use literal here.
             if select._limit:
                 if not select._offset:
-                    s += "TOP %s " % (select._limit,)
+                    s += "TOP %d " % select._limit
             return s
         return compiler.SQLCompiler.get_select_precolumns(self, select)
 
@@ -738,10 +741,10 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
             limitselect = sql.select([c for c in select.c if
                                         c.key!='mssql_rn'])
-            limitselect.append_whereclause("mssql_rn>%d" % _offset)
+            limitselect.append_whereclause("mssql_rn>%s" % self.process(sql.literal(_offset)))
             if _limit is not None:
-                limitselect.append_whereclause("mssql_rn<=%d" % 
-                                            (_limit + _offset))
+                limitselect.append_whereclause("mssql_rn<=%s" % 
+                                            (self.process(sql.literal(_limit + _offset))))
             return self.process(limitselect, iswrapper=True, **kwargs)
         else:
             return compiler.SQLCompiler.visit_select(self, select, **kwargs)

@@ -1226,10 +1226,12 @@ class MySQLCompiler(compiler.SQLCompiler):
             # artificial limit if one wasn't provided
             if limit is None:
                 limit = 18446744073709551615
-            return ' \n LIMIT %s, %s' % (offset, limit)
+            return ' \n LIMIT %s, %s' % (
+                                self.process(sql.literal(offset)), 
+                                self.process(sql.literal(limit)))
         else:
             # No offset provided, so just use the limit
-            return ' \n LIMIT %s' % (limit,)
+            return ' \n LIMIT %s' % (self.process(sql.literal(limit)),)
 
     def visit_update(self, update_stmt):
         self.stack.append({'from': set([update_stmt.table])})

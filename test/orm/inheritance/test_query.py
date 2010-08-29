@@ -1191,11 +1191,12 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
         "anon_1.parent_cls AS anon_1_parent_cls, anon_2.parent_id AS anon_2_parent_id, "\
         "anon_2.child2_id AS anon_2_child2_id, anon_2.parent_cls AS anon_2_parent_cls FROM "\
         "(SELECT parent.id AS parent_id, child1.id AS child1_id, parent.cls AS parent_cls FROM parent "\
-        "JOIN child1 ON parent.id = child1.id  LIMIT 1) AS anon_1 LEFT OUTER JOIN secondary AS secondary_1 "\
+        "JOIN child1 ON parent.id = child1.id LIMIT :param_1) AS anon_1 LEFT OUTER JOIN secondary AS secondary_1 "\
         "ON anon_1.parent_id = secondary_1.right_id LEFT OUTER JOIN (SELECT parent.id AS parent_id, "\
         "parent.cls AS parent_cls, child2.id AS child2_id FROM parent JOIN child2 ON parent.id = child2.id) "\
-        "AS anon_2 ON anon_2.parent_id = secondary_1.left_id"
-        , dialect=default.DefaultDialect())
+        "AS anon_2 ON anon_2.parent_id = secondary_1.left_id",
+        {'param_1':1},
+        dialect=default.DefaultDialect())
 
         # another way to check
         assert q.limit(1).with_labels().subquery().count().scalar() == 1

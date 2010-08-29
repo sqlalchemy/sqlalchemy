@@ -222,13 +222,13 @@ class SQLiteCompiler(compiler.SQLCompiler):
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:
-            text +=  " \n LIMIT " + str(select._limit)
+            text +=  "\n LIMIT " + self.process(sql.literal(select._limit))
         if select._offset is not None:
             if select._limit is None:
-                text += " \n LIMIT -1"
-            text += " OFFSET " + str(select._offset)
+                text += "\n LIMIT " + self.process(sql.literal(-1))
+            text += " OFFSET " + self.process(sql.literal(select._offset))
         else:
-            text += " OFFSET 0"
+            text += " OFFSET " + self.process(sql.literal(0))
         return text
 
     def for_update_clause(self, select):

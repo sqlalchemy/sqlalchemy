@@ -374,11 +374,11 @@ class PGCompiler(compiler.SQLCompiler):
     def limit_clause(self, select):
         text = ""
         if select._limit is not None:
-            text +=  " \n LIMIT " + str(select._limit)
+            text +=  " \n LIMIT " + self.process(sql.literal(select._limit))
         if select._offset is not None:
             if select._limit is None:
                 text += " \n LIMIT ALL"
-            text += " OFFSET " + str(select._offset)
+            text += " OFFSET " + self.process(sql.literal(select._offset))
         return text
 
     def get_select_precolumns(self, select):

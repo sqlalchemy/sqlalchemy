@@ -1046,14 +1046,18 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([t]).limit(10).offset(20),
-            "SELECT t.col1, t.col2 FROM t  LIMIT 20, 10"
+            "SELECT t.col1, t.col2 FROM t  LIMIT %s, %s",
+            {'param_1':20, 'param_2':10}
             )
         self.assert_compile(
             select([t]).limit(10),
-            "SELECT t.col1, t.col2 FROM t  LIMIT 10")
+            "SELECT t.col1, t.col2 FROM t  LIMIT %s", 
+            {'param_1':10})
+            
         self.assert_compile(
             select([t]).offset(10),
-            "SELECT t.col1, t.col2 FROM t  LIMIT 10, 18446744073709551615"
+            "SELECT t.col1, t.col2 FROM t  LIMIT %s, %s",
+            {'param_1':10, 'param_2':18446744073709551615}
             )
     
     def test_varchar_raise(self):

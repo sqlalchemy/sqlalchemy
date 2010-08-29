@@ -271,6 +271,8 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 
     def get_select_precolumns(self, select):
         s = select._distinct and "DISTINCT " or ""
+        # TODO: don't think Sybase supports
+        # bind params for FIRST / TOP
         if select._limit:
             #if select._limit == 1:
                 #s += "FIRST "
