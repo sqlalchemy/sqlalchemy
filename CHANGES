@@ -226,6 +226,22 @@ CHANGES
   - Added ROWID type to the Oracle dialect, for those
     cases where an explicit CAST might be needed.
     [ticket:1879]
+
+  - Oracle reflection of indexes has been tuned so
+    that indexes which include some or all primary
+    key columns, but not the same set of columns
+    as that of the primary key, are reflected.
+    Indexes which contain the identical columns
+    as that of the primary key are skipped within
+    reflection, as the index in that case is assumed
+    to be the auto-generated primary key index.
+    Previously, any index with PK columns present
+    would be skipped.  Thanks to Kent Bower
+    for the patch.  [ticket:1867]
+
+  - Oracle now reflects the names of primary key
+    constraints - also thanks to Kent Bower.
+    [ticket:1868]
     
 - examples
   - The beaker_caching example has been reorgnized
