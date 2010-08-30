@@ -192,8 +192,14 @@ class Mapper(object):
         else:
             self.polymorphic_map = _polymorphic_map
 
-        self.include_properties = include_properties
-        self.exclude_properties = exclude_properties
+        if include_properties:
+            self.include_properties = util.to_set(include_properties)
+        else:
+            self.include_properties = None
+        if exclude_properties:
+            self.exclude_properties = util.to_set(exclude_properties)
+        else:
+            self.exclude_properties = None
 
         self.compiled = False
         
@@ -471,7 +477,7 @@ class Mapper(object):
             for col in self._columntoproperty
             if not hasattr(col, 'table') or 
             col.table not in self._cols_by_table)
-
+        
         # if explicit PK argument sent, add those columns to the 
         # primary key mappings
         if self.primary_key_argument:
@@ -479,13 +485,14 @@ class Mapper(object):
                 if k.table not in self._pks_by_table:
                     self._pks_by_table[k.table] = util.OrderedSet()
                 self._pks_by_table[k.table].add(k)
-
-        if self.mapped_table not in self._pks_by_table or \
-                len(self._pks_by_table[self.mapped_table]) == 0:
-            raise sa_exc.ArgumentError(
-                    "Mapper %s could not assemble any primary "
-                    "key columns for mapped table '%s'" % 
-                    (self, self.mapped_table.description))
+        
+        # otherwise, see that we got a full PK for the mapped table
+        elif self.mapped_table not in self._pks_by_table or \
+                    len(self._pks_by_table[self.mapped_table]) == 0:
+                raise sa_exc.ArgumentError(
+                        "Mapper %s could not assemble any primary "
+                        "key columns for mapped table '%s'" % 
+                        (self, self.mapped_table.description))
 
         if self.inherits and \
                 not self.concrete and \
@@ -537,7 +544,7 @@ class Mapper(object):
         if self.inherits:
             for key, prop in self.inherits._props.iteritems():
                 if key not in self._props and \
-                    not self._should_exclude(key, key, local=False):
+                    not self._should_exclude(key, key, local=False, column=None):
                     self._adapt_inherited_property(key, prop, False)
 
         # create properties for each column in the mapped table,
@@ -550,7 +557,8 @@ class Mapper(object):
 
             if self._should_exclude(
                             column.key, column_key,
-                             local=self.local_table.c.contains_column(column)
+                             local=self.local_table.c.contains_column(column),
+                             column=column
                             ):
                 continue
 
@@ -583,7 +591,7 @@ class Mapper(object):
                               % col.description)
             else:
                 instrument = True
-            if self._should_exclude(col.key, col.key, local=False):
+            if self._should_exclude(col.key, col.key, local=False, column=col):
                 raise sa_exc.InvalidRequestError(
                     "Cannot exclude or override the discriminator column %r" %
                     col.key)
@@ -625,8 +633,18 @@ class Mapper(object):
                     # existing ColumnProperty from an inheriting mapper.
                     # make a copy and append our column to it
                     prop = prop.copy()
+                else:
+                    util.warn(
+                            "Implicitly combining column %s with column "
+                            "%s under attribute '%s'.  This usage will be "
+                            "prohibited in 0.7.  Please configure one "
+                            "or more attributes for these same-named columns "
+                            "explicitly."
+                             % (prop.columns[-1], column, key))
+
                 prop.columns.append(column)
                 self._log("appending to existing ColumnProperty %s" % (key))
+                             
             elif prop is None or isinstance(prop, ConcreteInheritedProperty):
                 mapped_column = []
                 for c in columns:
@@ -1099,7 +1117,7 @@ class Mapper(object):
                     (MapperProperty, attributes.InstrumentedAttribute)) and \
                     hasattr(obj, '__get__')
 
-    def _should_exclude(self, name, assigned_name, local):
+    def _should_exclude(self, name, assigned_name, local, column):
         """determine whether a particular property should be implicitly
         present on the class.
 
@@ -1121,13 +1139,17 @@ class Mapper(object):
                             getattr(self.class_, assigned_name)):
                 return True
 
-        if (self.include_properties is not None and
-            name not in self.include_properties):
+        if self.include_properties is not None and \
+                name not in self.include_properties and \
+                (column is None or column not in self.include_properties):
             self._log("not including property %s" % (name))
             return True
 
-        if (self.exclude_properties is not None and
-            name in self.exclude_properties):
+        if self.exclude_properties is not None and \
+            (
+                name in self.exclude_properties or \
+                (column is not None and column in self.exclude_properties)
+            ):
             self._log("excluding property %s" % (name))
             return True
 

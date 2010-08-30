@@ -60,7 +60,17 @@ class ColumnProperty(StrategizedProperty):
                                             self.__class__.Comparator)
         self.descriptor = kwargs.pop('descriptor', None)
         self.extension = kwargs.pop('extension', None)
-        self.doc = kwargs.pop('doc', getattr(columns[0], 'doc', None))
+        
+        if 'doc' in kwargs:
+            self.doc = kwargs.pop('doc')
+        else:
+            for col in reversed(self.columns):
+                doc = getattr(col, 'doc', None)
+                if doc is not None:
+                    self.doc = doc
+                    break
+            else:
+                self.doc = None
         
         if kwargs:
             raise TypeError(

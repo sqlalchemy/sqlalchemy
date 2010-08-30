@@ -671,22 +671,27 @@ def mapper(class_, local_table=None, *args, **params):
         :param concrete: If True, indicates this mapper should use concrete
            table inheritance with its parent mapper.
 
-        :param exclude_properties: A list of properties not to map.  Columns
-           present in the mapped table and present in this list will not be
-           automatically converted into properties. Note that neither this
-           option nor include_properties will allow an end-run around Python
-           inheritance. If mapped class ``B`` inherits from mapped class
-           ``A``, no combination of includes or excludes will allow ``B`` to
-           have fewer properties than its superclass, ``A``.
+        :param exclude_properties: A list or set of string column names to 
+          be excluded from mapping. As of SQLAlchemy 0.6.4, this collection
+          may also include :class:`.Column` objects. Columns named or present
+          in this list will not be automatically mapped. Note that neither
+          this option nor include_properties will allow one to circumvent plan
+          Python inheritance - if mapped class ``B`` inherits from mapped
+          class ``A``, no combination of includes or excludes will allow ``B``
+          to have fewer properties than its superclass, ``A``.
 
         :param extension: A :class:`.MapperExtension` instance or
            list of :class:`~sqlalchemy.orm.interfaces.MapperExtension`
            instances which will be applied to all operations by this
            :class:`~sqlalchemy.orm.mapper.Mapper`.
 
-        :param include_properties: An inclusive list of properties to map. 
-           Columns present in the mapped table but not present in this list
-           will not be automatically converted into properties.
+        :param include_properties: An inclusive list or set of string column
+          names to map. As of SQLAlchemy 0.6.4, this collection may also
+          include :class:`.Column` objects in order to disambiguate between
+          same-named columns in a selectable (such as a
+          :func:`~.expression.join()`). If this list is not ``None``, columns
+          present in the mapped table but not named or present in this list
+          will not be automatically mapped. See also "exclude_properties".
 
         :param inherits: Another :class:`~sqlalchemy.orm.Mapper` for which 
             this :class:`~sqlalchemy.orm.Mapper` will have an inheritance

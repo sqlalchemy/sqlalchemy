@@ -118,17 +118,20 @@ class ColumnLoader(LoaderStrategy):
        )
         
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        key, col = self.key, self.columns[0]
-        if adapter:
-            col = adapter.columns[col]
-            
-        if col is not None and col in row:
-            def new_execute(state, dict_, row):
-                dict_[key] = row[col]
+        key = self.key
+        # look through list of columns represented here
+        # to see which, if any, is present in the row.
+        for col in self.columns:
+            if adapter:
+                col = adapter.columns[col]
+            if col is not None and col in row:
+                def new_execute(state, dict_, row):
+                    dict_[key] = row[col]
+                return new_execute, None
         else:
             def new_execute(state, dict_, row):
                 state.expire_attribute_pre_commit(dict_, key)
-        return new_execute, None
+            return new_execute, None
 
 log.class_logger(ColumnLoader)
 
