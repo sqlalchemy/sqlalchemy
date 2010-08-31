@@ -251,7 +251,8 @@ Similarly, :func:`comparable_using` is a front end for the
 Defining SQL Expressions
 ========================
 
-The usage of :func:`.column_property` with Declarative is
+The usage of :func:`.column_property` with Declarative to define
+load-time, mapped SQL expressions is
 pretty much the same as that described in
 :ref:`mapper_sql_expressions`. Local columns within the same
 class declaration can be referenced directly::

@@ -112,6 +112,14 @@ c = session.query(Company).get(1)
 for e in c.employees:
     print e
 
+# illustrate querying using direct table access:
+
+print session.query(Engineer.engineer_name).\
+            select_from(engineers).\
+            filter(Engineer.primary_language=='python').\
+            all()
+
+
 session.delete(c)
 session.commit()
 
