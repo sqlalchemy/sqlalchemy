@@ -2,7 +2,7 @@ from sqlalchemy.test.testing import assert_raises, assert_raises_message
 from sqlalchemy.schema import DDL, CheckConstraint, AddConstraint, \
     DropConstraint
 from sqlalchemy import create_engine
-from sqlalchemy import MetaData, Integer, String
+from sqlalchemy import MetaData, Integer, String, event, exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 import sqlalchemy as tsa
@@ -17,29 +17,29 @@ class DDLEventTest(TestBase):
             self.schema_item = schema_item
             self.bind = bind
 
-        def before_create(self, action, schema_item, bind, **kw):
+        def before_create(self, schema_item, bind, **kw):
             assert self.state is None
             assert schema_item is self.schema_item
             assert bind is self.bind
-            self.state = action
+            self.state = 'before-create'
 
-        def after_create(self, action, schema_item, bind, **kw):
+        def after_create(self, schema_item, bind, **kw):
             assert self.state in ('before-create', 'skipped')
             assert schema_item is self.schema_item
             assert bind is self.bind
-            self.state = action
+            self.state = 'after-create'
 
-        def before_drop(self, action, schema_item, bind, **kw):
+        def before_drop(self, schema_item, bind, **kw):
             assert self.state is None
             assert schema_item is self.schema_item
             assert bind is self.bind
-            self.state = action
+            self.state = 'before-drop'
 
-        def after_drop(self, action, schema_item, bind, **kw):
+        def after_drop(self, schema_item, bind, **kw):
             assert self.state in ('before-drop', 'skipped')
             assert schema_item is self.schema_item
             assert bind is self.bind
-            self.state = action
+            self.state = 'after-drop'
 
     def setup(self):
         self.bind = engines.mock_engine()
@@ -49,7 +49,7 @@ class DDLEventTest(TestBase):
     def test_table_create_before(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        table.ddl_listeners['before-create'].append(canary.before_create)
+        event.listen(canary.before_create, 'on_before_create', table)
 
         table.create(bind)
         assert canary.state == 'before-create'
@@ -59,7 +59,7 @@ class DDLEventTest(TestBase):
     def test_table_create_after(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        table.ddl_listeners['after-create'].append(canary.after_create)
+        event.listen(canary.after_create, 'on_after_create', table)
 
         canary.state = 'skipped'
         table.create(bind)
@@ -70,9 +70,9 @@ class DDLEventTest(TestBase):
     def test_table_create_both(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        table.ddl_listeners['before-create'].append(canary.before_create)
-        table.ddl_listeners['after-create'].append(canary.after_create)
-
+        event.listen(canary.before_create, 'on_before_create', table)
+        event.listen(canary.after_create, 'on_after_create', table)
+        
         table.create(bind)
         assert canary.state == 'after-create'
         table.drop(bind)
@@ -81,7 +81,7 @@ class DDLEventTest(TestBase):
     def test_table_drop_before(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        table.ddl_listeners['before-drop'].append(canary.before_drop)
+        event.listen(canary.before_drop, 'on_before_drop', table)
 
         table.create(bind)
         assert canary.state is None
@@ -91,7 +91,7 @@ class DDLEventTest(TestBase):
     def test_table_drop_after(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        table.ddl_listeners['after-drop'].append(canary.after_drop)
+        event.listen(canary.after_drop, 'on_after_drop', table)
 
         table.create(bind)
         assert canary.state is None
@@ -102,8 +102,9 @@ class DDLEventTest(TestBase):
     def test_table_drop_both(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        table.ddl_listeners['before-drop'].append(canary.before_drop)
-        table.ddl_listeners['after-drop'].append(canary.after_drop)
+
+        event.listen(canary.before_drop, 'on_before_drop', table)
+        event.listen(canary.after_drop, 'on_after_drop', table)
 
         table.create(bind)
         assert canary.state is None
@@ -113,10 +114,11 @@ class DDLEventTest(TestBase):
     def test_table_all(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        table.ddl_listeners['before-create'].append(canary.before_create)
-        table.ddl_listeners['after-create'].append(canary.after_create)
-        table.ddl_listeners['before-drop'].append(canary.before_drop)
-        table.ddl_listeners['after-drop'].append(canary.after_drop)
+
+        event.listen(canary.before_create, 'on_before_create', table)
+        event.listen(canary.after_create, 'on_after_create', table)
+        event.listen(canary.before_drop, 'on_before_drop', table)
+        event.listen(canary.after_drop, 'on_after_drop', table)
 
         assert canary.state is None
         table.create(bind)
@@ -128,7 +130,7 @@ class DDLEventTest(TestBase):
     def test_table_create_before(self):
         metadata, bind = self.metadata, self.bind
         canary = self.Canary(metadata, bind)
-        metadata.ddl_listeners['before-create'].append(canary.before_create)
+        event.listen(canary.before_create, 'on_before_create', metadata)
 
         metadata.create_all(bind)
         assert canary.state == 'before-create'
@@ -138,7 +140,7 @@ class DDLEventTest(TestBase):
     def test_metadata_create_after(self):
         metadata, bind = self.metadata, self.bind
         canary = self.Canary(metadata, bind)
-        metadata.ddl_listeners['after-create'].append(canary.after_create)
+        event.listen(canary.after_create, 'on_after_create', metadata)
 
         canary.state = 'skipped'
         metadata.create_all(bind)
@@ -149,8 +151,9 @@ class DDLEventTest(TestBase):
     def test_metadata_create_both(self):
         metadata, bind = self.metadata, self.bind
         canary = self.Canary(metadata, bind)
-        metadata.ddl_listeners['before-create'].append(canary.before_create)
-        metadata.ddl_listeners['after-create'].append(canary.after_create)
+            
+        event.listen(canary.before_create, 'on_before_create', metadata)
+        event.listen(canary.after_create, 'on_after_create', metadata)
 
         metadata.create_all(bind)
         assert canary.state == 'after-create'
@@ -160,11 +163,12 @@ class DDLEventTest(TestBase):
     def test_metadata_table_isolation(self):
         metadata, table, bind = self.metadata, self.table, self.bind
         table_canary = self.Canary(table, bind)
-        table.ddl_listeners['before-create'
-                            ].append(table_canary.before_create)
+
+        event.listen(table_canary.before_create, 'on_before_create', table)
+
         metadata_canary = self.Canary(metadata, bind)
-        metadata.ddl_listeners['before-create'
-                               ].append(metadata_canary.before_create)
+        event.listen(metadata_canary.before_create, 'on_before_create',
+                                                metadata)
         self.table.create(self.bind)
         assert metadata_canary.state == None
 
@@ -174,10 +178,12 @@ class DDLEventTest(TestBase):
         fn = lambda *a: None
 
         table.append_ddl_listener('before-create', fn)
-        assert_raises(LookupError, table.append_ddl_listener, 'blah', fn)
+        assert_raises(exc.InvalidRequestError, table.append_ddl_listener,
+                                        'blah', fn)
 
         metadata.append_ddl_listener('before-create', fn)
-        assert_raises(LookupError, metadata.append_ddl_listener, 'blah', fn)
+        assert_raises(exc.InvalidRequestError, metadata.append_ddl_listener,
+                                        'blah', fn)
 
 
 class DDLExecutionTest(TestBase):

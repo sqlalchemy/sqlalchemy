@@ -31,6 +31,7 @@ as components in SQL expressions.
 import re, inspect
 from sqlalchemy import exc, util, dialects
 from sqlalchemy.sql import expression, visitors
+from sqlalchemy import event
 
 URL = None
 
@@ -81,6 +82,20 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
+class DDLEvents(event.Events):
+    def on_before_create(self, target, connection, **kw):
+        pass
+
+    def on_after_create(self, target, connection, **kw):
+        pass
+
+    def on_before_drop(self, target, connection, **kw):
+        pass
+    
+    def on_after_drop(self, target, connection, **kw):
+        pass
+    
+    
 class Table(SchemaItem, expression.TableClause):
     """Represent a table in a database.
     
@@ -174,8 +189,7 @@ class Table(SchemaItem, expression.TableClause):
     
     __visit_name__ = 'table'
 
-    ddl_events = ('before-create', 'after-create', 
-                        'before-drop', 'after-drop')
+    dispatch = event.dispatcher(DDLEvents)
 
     def __new__(cls, *args, **kw):
         if not args:
@@ -227,7 +241,6 @@ class Table(SchemaItem, expression.TableClause):
         self._set_primary_key(PrimaryKeyConstraint())
         self._foreign_keys = util.OrderedSet()
         self._extra_dependencies = set()
-        self.ddl_listeners = util.defaultdict(list)
         self.kwargs = {}
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -371,37 +384,18 @@ class Table(SchemaItem, expression.TableClause):
 
         constraint._set_parent(self)
 
-    def append_ddl_listener(self, event, listener):
+    def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``Table``.
-
-        The ``listener`` callable will be triggered when this ``Table`` is
-        created or dropped, either directly before or after the DDL is issued
-        to the database.  The listener may modify the Table, but may not abort
-        the event itself.
         
-        :param event:
-          One of ``Table.ddl_events``; e.g. 'before-create', 'after-create',
-          'before-drop' or 'after-drop'.
-
-        :param listener:
-          A callable, invoked with three positional arguments:
-
-          :event:
-            The event currently being handled
-            
-          :target:
-            The ``Table`` object being created or dropped
-            
-          :bind:
-            The ``Connection`` bueing used for DDL execution.
-
-        Listeners are added to the Table's ``ddl_listeners`` attribute.
+        Deprecated.  See :class:`.DDLEvents`.
 
         """
-
-        if event not in self.ddl_events:
-            raise LookupError(event)
-        self.ddl_listeners[event].append(listener)
+        
+        def adapt_listener(target, connection, **kw):
+            listener(event_name, target, connection, **kw)
+            
+        event.listen(adapt_listener, 
+                        "on_" + event_name.replace('-', '_'), self)
 
     def _set_parent(self, metadata):
         metadata.tables[_get_table_key(self.name, self.schema)] = self
@@ -1835,8 +1829,7 @@ class MetaData(SchemaItem):
 
     __visit_name__ = 'metadata'
 
-    ddl_events = ('before-create', 'after-create', 
-                        'before-drop', 'after-drop')
+    dispatch = event.dispatcher(DDLEvents)
 
     def __init__(self, bind=None, reflect=False):
         """Create a new MetaData object.
@@ -1856,7 +1849,6 @@ class MetaData(SchemaItem):
         self.tables = {}
         self.bind = bind
         self.metadata = self
-        self.ddl_listeners = util.defaultdict(list)
         if reflect:
             if not bind:
                 raise exc.ArgumentError(
@@ -1993,44 +1985,17 @@ class MetaData(SchemaItem):
         for name in load:
             Table(name, self, **reflect_opts)
 
-    def append_ddl_listener(self, event, listener):
+    def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``MetaData``.
 
-        The ``listener`` callable will be triggered when this ``MetaData`` is
-        involved in DDL creates or drops, and will be invoked either before
-        all Table-related actions or after.
-
-        :param event:
-          One of ``MetaData.ddl_events``; 'before-create', 'after-create',
-          'before-drop' or 'after-drop'.
-
-        :param listener:
-          A callable, invoked with three positional arguments:
-
-          :event:
-            The event currently being handled
-            
-          :target:
-            The ``MetaData`` object being operated upon
-            
-          :bind:
-            The ``Connection`` bueing used for DDL execution.
-
-        Listeners are added to the MetaData's ``ddl_listeners`` attribute.
-
-        Note: MetaData listeners are invoked even when ``Tables`` are created
-        in isolation.  This may change in a future release. I.e.::
-
-          # triggers all MetaData and Table listeners:
-          metadata.create_all()
-
-          # triggers MetaData listeners too:
-          some.table.create()
+        Deprecated.  See :class:`.DDLEvents`.
 
         """
-        if event not in self.ddl_events:
-            raise LookupError(event)
-        self.ddl_listeners[event].append(listener)
+        def adapt_listener(target, connection, **kw):
+            listener(event, target, connection, **kw)
+            
+        event.listen(adapt_listener, 
+                        "on_" + event_name.replace('-', '_'), self)
 
     def create_all(self, bind=None, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.
@@ -2194,7 +2159,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
             bind.engine.logger.info(
                         "DDL execution skipped, criteria not met.")
 
-    def execute_at(self, event, target):
+    def execute_at(self, event_name, target):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
 
         Links this ``DDLElement`` to a ``Table`` or ``MetaData`` instance,
@@ -2203,9 +2168,10 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         context as the Table create/drop itself. The ``.bind`` property of
         this statement is ignored.
         
-        :param event:
-          One of the events defined in the schema item's ``.ddl_events``;
-          e.g. 'before-create', 'after-create', 'before-drop' or 'after-drop'
+        :param event_name:
+          Name of an event from :class:`.DDLEvents`. e.g.:
+          'on_before_create', 'on_after_create', 'on_before_drop', 
+          'on_after_drop'.
 
         :param target:
           The Table or MetaData instance for which this DDLElement will
@@ -2220,16 +2186,12 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         any DDL set to ``execute_at`` that Table's MetaData.  This may change
         in a future release.
         """
-
-        if not hasattr(target, 'ddl_listeners'):
-            raise exc.ArgumentError(
-                "%s does not support DDL events" % type(target).__name__)
-        if event not in target.ddl_events:
-            raise exc.ArgumentError(
-                "Unknown event, expected one of (%s), got '%r'" %
-                (', '.join(target.ddl_events), event))
-        target.ddl_listeners[event].append(self)
-        return self
+        
+        event_name = "on_" + event_name.replace('-', '_')
+        def call_event(target, connection, **kw):
+            self(event_name, target, connection, **kw)
+            
+        event.listen(call_event, event_name, target)
 
     @expression._generative
     def against(self, target):
@@ -2346,7 +2308,8 @@ class DDL(DDLElement):
               
             :event:
               The name of the event that has triggered this DDL, such as
-              'after-create' Will be None if the DDL is executed explicitly.
+              'on_after_create' Will be None if the DDL is executed
+              explicitly.
 
             :target:
               The ``Table`` or ``MetaData`` object which is the target of 

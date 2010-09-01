@@ -5,7 +5,7 @@ and :mod:`sqlalchemy.orm` packages.
 
 """
 
-from sqlalchemy import util
+from sqlalchemy import util, exc
 
 CANCEL = util.symbol('CANCEL')
 NO_RETVAL = util.symbol('NO_RETVAL')
@@ -26,7 +26,9 @@ def listen(fn, identifier, target, *args, **kw):
     for evt_cls in _registrars[identifier]:
         for tgt in evt_cls.accept_with(target):
             tgt.dispatch.listen(fn, identifier, tgt, *args, **kw)
-            break
+            return
+    raise exc.InvalidRequestError("No such event %s for target %s" %
+                                (identifier,target))
     
 _registrars = util.defaultdict(list)
 
@@ -178,7 +180,7 @@ class dispatcher(object):
     """
     def __init__(self, events):
         self.dispatch_cls = events.dispatch
-        
+        self.events = events
         
     def __get__(self, obj, cls):
         if obj is None:
