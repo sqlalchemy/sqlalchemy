@@ -155,7 +155,11 @@ CHANGES
   - object_session() raises the proper 
     UnmappedInstanceError when presented with an
     unmapped instance.  [ticket:1881]
-    
+
+  - Applied further memoizations to calculated Mapper properties,
+    with significant (~90%) runtime mapper.py call count reduction
+    in heavily polymorphic mapping configurations.
+
 - sql
   - Added basic math expression coercion for 
     Numeric->Integer,

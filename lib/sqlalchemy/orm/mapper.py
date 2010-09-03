@@ -43,6 +43,7 @@ _new_mappers = False
 _already_compiling = False
 _none_set = frozenset([None])
 
+_memoized_compiled_property = util.group_expirable_memoized_property()
 
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
@@ -216,6 +217,7 @@ class Mapper(object):
             global _new_mappers
             _new_mappers = True
             self._log("constructed")
+            self._expire_memoizations()
         finally:
             _COMPILE_MUTEX.release()
             
@@ -280,11 +282,6 @@ class Mapper(object):
                 self.version_id_col = self.inherits.version_id_col
                 self.version_id_generator = self.inherits.version_id_generator
 
-            for mapper in self.iterate_to_root():
-                util.reset_memoized(mapper, '_equivalent_columns')
-                util.reset_memoized(mapper, '_sorted_tables')
-                util.reset_memoized(mapper, '_compiled_cache')
-                
             if self.order_by is False and \
                         not self.concrete and \
                         self.inherits.order_by is not False:
@@ -533,7 +530,7 @@ class Mapper(object):
         # table columns mapped to lists of MapperProperty objects
         # using a list allows a single column to be defined as
         # populating multiple object attributes
-        self._columntoproperty = util.column_dict()
+        self._columntoproperty = _ColumnMapping(self)
 
         # load custom properties
         if self._init_properties:
@@ -809,6 +806,7 @@ class Mapper(object):
                 self._compile_failed = exc
                 raise
         finally:
+            self._expire_memoizations()
             _COMPILE_MUTEX.release()
 
     def _post_configure_properties(self):
@@ -853,7 +851,11 @@ class Mapper(object):
         """
         self._init_properties[key] = prop
         self._configure_property(key, prop, init=self.compiled)
+        self._expire_memoizations()
 
+    def _expire_memoizations(self):
+        for mapper in self.iterate_to_root():
+            _memoized_compiled_property.expire_instance(mapper)
 
     def _log(self, msg, *args):
         self.logger.info(
@@ -946,7 +948,7 @@ class Mapper(object):
 
         """
         if spec == '*':
-            mappers = list(self.polymorphic_iterator())
+            mappers = list(self.self_and_descendants)
         elif spec:
             mappers = [_class_to_mapper(m) for m in util.to_list(spec)]
             for m in mappers:
@@ -985,7 +987,7 @@ class Mapper(object):
 
         return from_obj
 
-    @property
+    @_memoized_compiled_property
     def _single_table_criterion(self):
         if self.single and \
             self.inherits and \
@@ -993,18 +995,17 @@ class Mapper(object):
             self.polymorphic_identity is not None:
             return self.polymorphic_on.in_(
                 m.polymorphic_identity
-                for m in self.polymorphic_iterator())
+                for m in self.self_and_descendants)
         else:
             return None
-        
-    
-    @util.memoized_property
+
+    @_memoized_compiled_property
     def _with_polymorphic_mappers(self):
         if not self.with_polymorphic:
             return [self]
         return self._mappers_from_spec(*self.with_polymorphic)
 
-    @util.memoized_property
+    @_memoized_compiled_property
     def _with_polymorphic_selectable(self):
         if not self.with_polymorphic:
             return self.mapped_table
@@ -1028,6 +1029,11 @@ class Mapper(object):
             return mappers, selectable
         else:
             return mappers, self._selectable_from_mappers(mappers)
+
+    @_memoized_compiled_property
+    def _polymorphic_properties(self):
+        return tuple(self._iterate_polymorphic_properties(
+            self._with_polymorphic_mappers))
 
     def _iterate_polymorphic_properties(self, mappers=None):
         """Return an iterator of MapperProperty objects which will render into
@@ -1060,7 +1066,7 @@ class Mapper(object):
                     "provided by the get_property() and iterate_properties "
                     "accessors.")
 
-    @util.memoized_property
+    @_memoized_compiled_property
     def _get_clause(self):
         """create a "get clause" based on the primary key.  this is used
         by query.get() and many-to-one lazyloads to load this item
@@ -1072,7 +1078,7 @@ class Mapper(object):
         return sql.and_(*[k==v for (k, v) in params]), \
                 util.column_dict(params)
 
-    @util.memoized_property
+    @_memoized_compiled_property
     def _equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on
         the determination of column pairs that are equated to
@@ -1104,7 +1110,7 @@ class Mapper(object):
                     result[binary.right].add(binary.left)
                 else:
                     result[binary.right] = util.column_set((binary.left,))
-        for mapper in self.base_mapper.polymorphic_iterator():
+        for mapper in self.base_mapper.self_and_descendants:
             if mapper.inherit_condition is not None:
                 visitors.traverse(
                                     mapper.inherit_condition, {},
@@ -1182,6 +1188,22 @@ class Mapper(object):
             yield m
             m = m.inherits
 
+    @_memoized_compiled_property
+    def self_and_descendants(self):
+        """The collection including this mapper and all descendant mappers.
+
+        This includes not just the immediately inheriting mappers but
+        all their inheriting mappers as well.
+
+        """
+        descendants = []
+        stack = deque([self])
+        while stack:
+            item = stack.popleft()
+            descendants.append(item)
+            stack.extend(item._inheriting_mappers)
+        return tuple(descendants)
+
     def polymorphic_iterator(self):
         """Iterate through the collection including this mapper and
         all descendant mappers.
@@ -1191,14 +1213,9 @@ class Mapper(object):
 
         To iterate through an entire hierarchy, use
         ``mapper.base_mapper.polymorphic_iterator()``.
-        
+
         """
-        stack = deque([self])
-        while stack:
-            item = stack.popleft()
-            yield item
-            stack.extend(item._inheriting_mappers)
-    
+        return iter(self.self_and_descendants)
 
     def primary_mapper(self):
         """Return the primary mapper corresponding to this mapper's class key
@@ -1262,33 +1279,15 @@ class Mapper(object):
 
     def _primary_key_from_state(self, state):
         dict_ = state.dict
-        return [
-                    self._get_state_attr_by_column(state, dict_, column) for
-                    column in self.primary_key]
-
-    def _get_col_to_prop(self, column):
-        try:
-            return self._columntoproperty[column]
-        except KeyError:
-            prop = self._props.get(column.key, None)
-            if prop:
-                raise orm_exc.UnmappedColumnError(
-                        "Column '%s.%s' is not available, due to "
-                        "conflicting  property '%s':%r" % 
-                        (column.table.name, column.name, 
-                        column.key, prop))
-            else:
-                raise orm_exc.UnmappedColumnError(
-                        "No column %s is configured on mapper %s..." %
-                        (column, self))
+        return [self._get_state_attr_by_column(state, dict_, column) for
+                column in self.primary_key]
 
     # TODO: improve names?
     def _get_state_attr_by_column(self, state, dict_, column):
-        return self._get_col_to_prop(column)._getattr(state, dict_, column)
+        return self._columntoproperty[column]._getattr(state, dict_, column)
 
     def _set_state_attr_by_column(self, state, dict_, column, value):
-        return self._get_col_to_prop(column).\
-                                        _setattr(state, dict_, value, column)
+        return self._columntoproperty[column]._setattr(state, dict_, value, column)
 
     def _get_committed_attr_by_column(self, obj, column):
         state = attributes.instance_state(obj)
@@ -1297,9 +1296,8 @@ class Mapper(object):
 
     def _get_committed_state_attr_by_column(self, state, dict_, column,
                                                     passive=False):
-        return self._get_col_to_prop(column).\
-                                        _getcommitted(state, dict_, 
-                                                    column, passive=passive)
+        return self._columntoproperty[column]._getcommitted(
+            state, dict_, column, passive=passive)
 
     def _optimized_get_statement(self, state, attribute_names):
         """assemble a WHERE clause which retrieves a given state by primary
@@ -1409,14 +1407,14 @@ class Mapper(object):
             except StopIteration:
                 visitables.pop()
 
-    @util.memoized_property
+    @_memoized_compiled_property
     def _compiled_cache(self):
         return util.LRUCache(self._compiled_cache_size)
 
-    @util.memoized_property
+    @_memoized_compiled_property
     def _sorted_tables(self):
         table_to_mapper = {}
-        for mapper in self.base_mapper.polymorphic_iterator():
+        for mapper in self.base_mapper.self_and_descendants:
             for t in mapper.tables:
                 table_to_mapper[t] = mapper
         
@@ -2433,7 +2431,8 @@ def _load_scalar_attributes(state, attribute_names):
             # this codepath is rare - only valid when inside a flush, and the
             # object is becoming persistent but hasn't yet been assigned an identity_key.
             # check here to ensure we have the attrs we need.
-            pk_attrs = [mapper._get_col_to_prop(col).key for col in mapper.primary_key]
+            pk_attrs = [mapper._columntoproperty[col].key
+                        for col in mapper.primary_key]
             if state.expired_attributes.intersection(pk_attrs):
                 raise sa_exc.InvalidRequestError("Instance %s cannot be refreshed - it's not "
                                                 " persistent and does not "
@@ -2460,3 +2459,21 @@ def _load_scalar_attributes(state, attribute_names):
         raise orm_exc.ObjectDeletedError(
                             "Instance '%s' has been deleted." % 
                             state_str(state))
+
+
+class _ColumnMapping(util.py25_dict):
+    """Error reporting helper for mapper._columntoproperty."""
+
+    def __init__(self, mapper):
+        self.mapper = mapper
+
+    def __missing__(self, column):
+        prop = self.mapper._props.get(column)
+        if prop:
+            raise orm_exc.UnmappedColumnError(
+                "Column '%s.%s' is not available, due to "
+                "conflicting property '%s':%r" % (
+                    column.table.name, column.name, column.key, prop))
+        raise orm_exc.UnmappedColumnError(
+            "No column %s is configured on mapper %s..." %
+            (column, self.mapper))

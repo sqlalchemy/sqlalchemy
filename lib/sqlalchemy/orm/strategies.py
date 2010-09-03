@@ -48,7 +48,7 @@ def _register_attribute(strategy, mapper, useobject,
         attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
 
     
-    for m in mapper.polymorphic_iterator():
+    for m in mapper.self_and_descendants:
         if prop is m._props.get(prop.key):
             
             attributes.register_attribute_impl(
@@ -696,7 +696,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         
         leftmost_attr = [
-            leftmost_mapper._get_col_to_prop(c).class_attribute
+            leftmost_mapper._columntoproperty[c].class_attribute
             for c in leftmost_cols
         ]
 
@@ -743,7 +743,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                         self._local_remote_columns(self.parent_property)
 
         local_attr = [
-            getattr(parent_alias, self.parent._get_col_to_prop(c).key)
+            getattr(parent_alias, self.parent._columntoproperty[c].key)
             for c in local_cols
         ]
         q = q.order_by(*local_attr)
@@ -825,7 +825,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
         remote_attr = [
-                        self.mapper._get_col_to_prop(c).key 
+                        self.mapper._columntoproperty[c].key
                         for c in remote_cols]
         
         q = context.attributes[('subquery', path)]
@@ -943,7 +943,7 @@ class EagerLoader(AbstractRelationshipLoader):
                                 ("eager_row_processor", reduced_path)
                               ] = clauses
 
-        for value in self.mapper._iterate_polymorphic_properties():
+        for value in self.mapper._polymorphic_properties:
             value.setup(
                 context, 
                 entity, 

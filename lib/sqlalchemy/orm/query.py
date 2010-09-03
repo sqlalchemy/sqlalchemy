@@ -2567,8 +2567,12 @@ class _MapperEntity(_QueryEntity):
                                         )
                                     )
 
-        for value in self.mapper._iterate_polymorphic_properties(
-                                            self._with_polymorphic):
+        if self._with_polymorphic:
+            poly_properties = self.mapper._iterate_polymorphic_properties(
+                self._with_polymorphic)
+        else:
+            poly_properties = self.mapper._polymorphic_properties
+        for value in poly_properties:
             if query._only_load_props and \
                     value.key not in query._only_load_props:
                 continue
