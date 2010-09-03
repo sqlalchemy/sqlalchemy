@@ -181,21 +181,23 @@ class frozendict(dict):
 class _probe(dict):
     def __missing__(self, key):
         return 1
+        
 try:
-    _probe()['missing']
-    py25_dict = dict
-except KeyError:
-    class py25_dict(dict):
-        def __getitem__(self, key):
-            try:
-                return dict.__getitem__(self, key)
-            except KeyError:
+    try:
+        _probe()['missing']
+        py25_dict = dict
+    except KeyError:
+        class py25_dict(dict):
+            def __getitem__(self, key):
                 try:
-                    missing = self.__missing__
-                except AttributeError:
-                    raise KeyError(key)
-                else:
-                    return missing(key)
+                    return dict.__getitem__(self, key)
+                except KeyError:
+                    try:
+                        missing = self.__missing__
+                    except AttributeError:
+                        raise KeyError(key)
+                    else:
+                        return missing(key)
 finally:
     del _probe
 
