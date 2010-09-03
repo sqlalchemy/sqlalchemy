@@ -911,6 +911,14 @@ class Connection(Connectable):
             raise exc.ResourceClosedError("This Connection is closed")
 
     @property
+    def _connection_is_valid(self):
+        # use getattr() for is_valid to support exceptions raised in
+        # dialect initializer, where the connection is not wrapped in
+        # _ConnectionFairy
+        
+        return getattr(self.__connection, 'is_valid', False)
+
+    @property
     def info(self):
         """A collection of per-DB-API connection instance properties."""
 
@@ -954,15 +962,18 @@ class Connection(Connectable):
         operations in a non-transactional state.
 
         """
-
+        if self.invalidated:
+            return
+            
         if self.closed:
             raise exc.ResourceClosedError("This Connection is closed")
 
-        if self.__connection.is_valid:
+        if self._connection_is_valid:
             self.__connection.invalidate(exception)
         del self.__connection
         self.__invalid = True
-
+    
+        
     def detach(self):
         """Detach the underlying DB-API connection from its connection pool.
 
@@ -1055,11 +1066,8 @@ class Connection(Connectable):
             raise
 
     def _rollback_impl(self):
-        # use getattr() for is_valid to support exceptions raised in 
-        # dialect initializer, 
-        # where we do not yet have the pool wrappers plugged in
         if not self.closed and not self.invalidated and \
-                        getattr(self.__connection, 'is_valid', False):
+                        self._connection_is_valid:
             if self._echo:
                 self.engine.logger.info("ROLLBACK")
             try:
@@ -1085,37 +1093,37 @@ class Connection(Connectable):
         if name is None:
             self.__savepoint_seq += 1
             name = 'sa_savepoint_%s' % self.__savepoint_seq
-        if self.__connection.is_valid:
+        if self._connection_is_valid:
             self.engine.dialect.do_savepoint(self, name)
             return name
 
     def _rollback_to_savepoint_impl(self, name, context):
-        if self.__connection.is_valid:
+        if self._connection_is_valid:
             self.engine.dialect.do_rollback_to_savepoint(self, name)
         self.__transaction = context
 
     def _release_savepoint_impl(self, name, context):
-        if self.__connection.is_valid:
+        if self._connection_is_valid:
             self.engine.dialect.do_release_savepoint(self, name)
         self.__transaction = context
 
     def _begin_twophase_impl(self, xid):
-        if self.__connection.is_valid:
+        if self._connection_is_valid:
             self.engine.dialect.do_begin_twophase(self, xid)
 
     def _prepare_twophase_impl(self, xid):
-        if self.__connection.is_valid:
+        if self._connection_is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
             self.engine.dialect.do_prepare_twophase(self, xid)
 
     def _rollback_twophase_impl(self, xid, is_prepared):
-        if self.__connection.is_valid:
+        if self._connection_is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
             self.engine.dialect.do_rollback_twophase(self, xid, is_prepared)
         self.__transaction = None
 
     def _commit_twophase_impl(self, xid, is_prepared):
-        if self.__connection.is_valid:
+        if self._connection_is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
             self.engine.dialect.do_commit_twophase(self, xid, is_prepared)
         self.__transaction = None

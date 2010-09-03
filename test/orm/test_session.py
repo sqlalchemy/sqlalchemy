@@ -10,7 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, backref, joinedload
+from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
+    exc as orm_exc, object_session
 from sqlalchemy.test.testing import eq_
 from test.engine import _base as engine_base
 from test.orm import _base, _fixtures
@@ -67,6 +68,20 @@ class SessionTest(_fixtures.FixtureTest):
         finally:
             c.close()
 
+    @testing.resolve_artifact_names
+    def test_object_session_raises(self):
+        assert_raises(
+            orm_exc.UnmappedInstanceError,
+            object_session, 
+            object()
+        )
+
+        assert_raises(
+            orm_exc.UnmappedInstanceError,
+            object_session, 
+            User()
+        )
+        
     @testing.requires.sequences
     def test_sequence_execute(self):
         seq = Sequence("some_sequence")
@@ -265,6 +280,52 @@ class SessionTest(_fixtures.FixtureTest):
         assert u1.id is None
         assert u1.name is None
 
+        # works twice
+        make_transient(u1)
+        
+        sess.close()
+        
+        u1.name = 'test2'
+        sess.add(u1)
+        sess.flush()
+        assert u1 in sess
+        sess.delete(u1)
+        sess.flush()
+        assert u1 not in sess
+        
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        make_transient(u1)
+        sess.add(u1)
+        sess.flush()
+        assert u1 in sess
+
+    @testing.resolve_artifact_names
+    def test_deleted_flag(self):
+        mapper(User, users)
+        
+        sess = sessionmaker()()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        
+        sess.delete(u1)
+        sess.flush()
+        assert u1 not in sess
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        sess.rollback()
+        assert u1 in sess
+        
+        sess.delete(u1)
+        sess.commit()
+        assert u1 not in sess
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        
+        make_transient(u1)
+        sess.add(u1)
+        sess.commit()
+        
+        eq_(sess.query(User).count(), 1)
         
     @testing.resolve_artifact_names
     def test_autoflush_expressions(self):

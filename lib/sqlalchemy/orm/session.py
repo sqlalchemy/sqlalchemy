@@ -278,8 +278,11 @@ class SessionTransaction(object):
 
         for s in set(self._new).union(self.session._new):
             self.session._expunge_state(s)
-
+            
         for s in set(self._deleted).union(self.session._deleted):
+            if s.deleted:
+                # assert s in self._deleted
+                del s.deleted
             self.session._update_impl(s)
 
         assert not self.session._deleted
@@ -494,8 +497,8 @@ class Session(object):
       issue any SQL in order to load collections or attributes which are not
       yet loaded, or were marked as "expired".
 
-    The session methods which control instance state include ``add()``,
-    ``delete()``, ``merge()``, and ``expunge()``.
+    The session methods which control instance state include :meth:`.Session.add`,
+    :meth:`.Session.delete`, :meth:`.Session.merge`, and :meth:`.Session.expunge`.
 
     The Session object is generally **not** threadsafe.  A session which is
     set to ``autocommit`` and is only read from may be used by concurrent
@@ -1102,6 +1105,7 @@ class Session(object):
 
         self.identity_map.discard(state)
         self._deleted.pop(state, None)
+        state.deleted = True
 
     def _save_without_cascade(self, instance):
         """Used by scoping.py to save on init without cascade."""
@@ -1309,7 +1313,13 @@ class Session(object):
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is not persisted" %
                 mapperutil.state_str(state))
-
+        
+        if state.deleted:
+            raise sa_exc.InvalidRequestError(
+                "Instance '%s' has been deleted.  Use the make_transient() "
+                "function to send this object back to the transient state." %
+                mapperutil.state_str(state)
+            )
         self._attach(state)
         self._deleted.pop(state, None)
         self.identity_map.add(state)
@@ -1655,7 +1665,9 @@ def make_transient(instance):
     This will remove its association with any 
     session and additionally will remove its "identity key",
     such that it's as though the object were newly constructed,
-    except retaining its values.
+    except retaining its values.   It also resets the
+    "deleted" flag on the state if this object
+    had been explicitly deleted by its session.
     
     Attributes which were "expired" or deferred at the
     instance level are reverted to undefined, and 
@@ -1670,13 +1682,23 @@ def make_transient(instance):
     # remove expired state and 
     # deferred callables
     state.callables.clear()
-    del state.key
-    
+    if state.key:
+        del state.key
+    if state.deleted:
+        del state.deleted
     
 def object_session(instance):
-    """Return the ``Session`` to which instance belongs, or None."""
+    """Return the ``Session`` to which instance belongs.
+    
+    If the instance is not a mapped instance, an error is raised.
 
-    return _state_session(attributes.instance_state(instance))
+    """
+    
+    try:
+        return _state_session(attributes.instance_state(instance))
+    except exc.NO_STATE:
+        raise exc.UnmappedInstanceError(instance)
+        
 
 def _state_session(state):
     if state.session_id:

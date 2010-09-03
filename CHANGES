@@ -14,6 +14,51 @@ CHANGES
     for schemes that may be specifying 
     ConcurrentModificationError in an "except:"
     clause.
+
+  - The Session class is now present in sqlalchemy.orm.*.
+    We're moving away from the usage of create_session(),
+    which has non-standard defaults, for those situations
+    where a one-step Session constructor is desired. Most
+    users should stick with sessionmaker() for general use,
+    however.
+
+  - The include_properties and exclude_properties arguments
+    to mapper() now accept Column objects as members in 
+    addition to strings.  This so that same-named Column
+    objects, such as those within a join(), can be
+    disambiguated.
+
+  - A warning is now emitted if a mapper is created against a
+    join or other single selectable that includes multiple
+    columns with the same name in its .c. collection,
+    and those columns aren't explictly named as part of
+    the same or separate attributes (or excluded).
+    In 0.7 this warning will be an exception.   Note that
+    this warning is not emitted when the combination occurs
+    as a result of inheritance, so that attributes
+    still allow being overridden naturally.  
+    [ticket:1896].  In 0.7 this will be improved further.
+    
+  - The primary_key argument to mapper() can now specify
+    a series of columns that are only a subset of 
+    the calculated "primary key" columns of the mapped 
+    selectable, without an error being raised.  This
+    helps for situations where a selectable's effective
+    primary key is simpler than the number of columns
+    in the selectable that are actually marked as 
+    "primary_key", such as a join against two 
+    tables on their primary key columns [ticket:1896].
+    
+  - An object that's been deleted now gets a flag
+    'deleted', which prohibits the object from
+    being re-add()ed to the session, as previously
+    the object would live in the identity map
+    silently until its attributes were accessed.
+    The make_transient() function now resets this
+    flag along with the "key" flag.
+
+  - make_transient() can be safely called on an
+    already transient instance.
     
   - a warning is emitted in mapper() if the polymorphic_on
     column is not present either in direct or derived
@@ -87,6 +132,12 @@ CHANGES
     misleads with incorrect information about
     text() or literal().  [ticket:1863]
 
+  - Similarly, for relationship(), foreign_keys,
+    remote_side, order_by - all column-based 
+    expressions are enforced - lists of strings
+    are explicitly disallowed since this is a
+    very common error
+    
   - Dynamic attributes don't support collection 
     population - added an assertion for when
     set_committed_value() is called, as well as
@@ -100,7 +151,15 @@ CHANGES
     in some UNION situations, would fail to 
     propagate the inner columns completely to
     the outer query.  [ticket:1852]
-    
+
+  - object_session() raises the proper 
+    UnmappedInstanceError when presented with an
+    unmapped instance.  [ticket:1881]
+
+  - Applied further memoizations to calculated Mapper properties,
+    with significant (~90%) runtime mapper.py call count reduction
+    in heavily polymorphic mapping configurations.
+
 - sql
   - Added basic math expression coercion for 
     Numeric->Integer,
@@ -124,21 +183,6 @@ CHANGES
     this to appease MySQL who has a max length
     of 64 for index names, separate from their
     overall max length of 255.  [ticket:1412]
-
-  - Calling fetchone() or similar on a result that
-    has already been exhausted, has been closed,
-    or is not a result-returning result now 
-    raises ResourceClosedError, a subclass of
-    InvalidRequestError, in all cases, regardless
-    of backend.  Previously, some DBAPIs would
-    raise ProgrammingError (i.e. pysqlite), others
-    would return None leading to downstream breakages
-    (i.e. MySQL-python).
-
-  - Connection, ResultProxy, as well as Session use
-    ResourceClosedError for all "this
-    connection/transaction/result is closed" types of
-    errors.
 
   - the text() construct, if placed in a column
     oriented situation, will at least return NULLTYPE
@@ -165,7 +209,33 @@ CHANGES
     operations which depend on the identity of the 
     _Labels themselves to return the correct result
     - fixes ORM bug [ticket:1852].
-    
+
+- engine
+
+  - Calling fetchone() or similar on a result that
+    has already been exhausted, has been closed,
+    or is not a result-returning result now 
+    raises ResourceClosedError, a subclass of
+    InvalidRequestError, in all cases, regardless
+    of backend.  Previously, some DBAPIs would
+    raise ProgrammingError (i.e. pysqlite), others
+    would return None leading to downstream breakages
+    (i.e. MySQL-python).
+
+  - Fixed bug in Connection whereby if a "disconnect"
+    event occurred in the "initialize" phase of the
+    first connection pool connect, an AttributeError
+    would be raised when the Connection would attempt
+    to invalidate the DBAPI connection.  [ticket:1894]
+
+  - Connection, ResultProxy, as well as Session use
+    ResourceClosedError for all "this
+    connection/transaction/result is closed" types of
+    errors.
+
+  - Connection.invalidate() can be called more than
+    once and subsequent calls do nothing.
+
 - declarative
   - if @classproperty is used with a regular class-bound
     mapper property attribute, it will be called to get the
@@ -190,6 +260,27 @@ CHANGES
   - Fixed "default schema" query to work with
     pymssql backend.
 
+- oracle
+  - Added ROWID type to the Oracle dialect, for those
+    cases where an explicit CAST might be needed.
+    [ticket:1879]
+
+  - Oracle reflection of indexes has been tuned so
+    that indexes which include some or all primary
+    key columns, but not the same set of columns
+    as that of the primary key, are reflected.
+    Indexes which contain the identical columns
+    as that of the primary key are skipped within
+    reflection, as the index in that case is assumed
+    to be the auto-generated primary key index.
+    Previously, any index with PK columns present
+    would be skipped.  Thanks to Kent Bower
+    for the patch.  [ticket:1867]
+
+  - Oracle now reflects the names of primary key
+    constraints - also thanks to Kent Bower.
+    [ticket:1868]
+    
 - examples
   - The beaker_caching example has been reorgnized
     such that the Session, cache manager, 
@@ -197,6 +288,11 @@ CHANGES
     custom cache code is portable and now within
     "caching_query.py".  This allows the example to 
     be easier to "drop in" to existing projects.
+
+  - the history_meta versioning recipe sets "unique=False"
+    when copying columns, so that the versioning 
+    table handles multiple rows with repeating values.
+    [ticket:1887]
     
 0.6.3
 =====

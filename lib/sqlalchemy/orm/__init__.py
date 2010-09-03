@@ -51,7 +51,7 @@ from sqlalchemy.orm.mapper import reconstructor, validates
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import AliasOption, Query
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.orm.session import Session as _Session
+from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.session import object_session, sessionmaker, \
     make_transient
 from sqlalchemy.orm.scoping import ScopedSession
@@ -66,6 +66,7 @@ __all__ = (
     'Validator',
     'PropComparator',
     'Query',
+    'Session',
     'aliased',
     'backref',
     'class_mapper',
@@ -115,8 +116,7 @@ def scoped_session(session_factory, scopefunc=None):
     :class:`~sqlalchemy.orm.scoping.ScopedSession`.
 
     :param session_factory: a callable function that produces
-      :class:`Session` instances, such as :func:`sessionmaker` or
-      :func:`create_session`.
+      :class:`Session` instances, such as :func:`sessionmaker`.
 
     :param scopefunc: optional, TODO
 
@@ -141,7 +141,12 @@ def scoped_session(session_factory, scopefunc=None):
     return ScopedSession(session_factory, scopefunc=scopefunc)
 
 def create_session(bind=None, **kwargs):
-    """Create a new :class:`~sqlalchemy.orm.session.Session`.
+    """Create a new :class:`.Session` 
+    with no automation enabled by default.
+    
+    This function is used primarily for testing.   The usual
+    route to :class:`.Session` creation is via its constructor
+    or the :func:`.sessionmaker` function.
 
     :param bind: optional, a single Connectable to use for all
       database access in the created
@@ -169,7 +174,7 @@ def create_session(bind=None, **kwargs):
     kwargs.setdefault('autoflush', False)
     kwargs.setdefault('autocommit', True)
     kwargs.setdefault('expire_on_commit', False)
-    return _Session(bind=bind, **kwargs)
+    return Session(bind=bind, **kwargs)
 
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
@@ -666,22 +671,27 @@ def mapper(class_, local_table=None, *args, **params):
         :param concrete: If True, indicates this mapper should use concrete
            table inheritance with its parent mapper.
 
-        :param exclude_properties: A list of properties not to map.  Columns
-           present in the mapped table and present in this list will not be
-           automatically converted into properties. Note that neither this
-           option nor include_properties will allow an end-run around Python
-           inheritance. If mapped class ``B`` inherits from mapped class
-           ``A``, no combination of includes or excludes will allow ``B`` to
-           have fewer properties than its superclass, ``A``.
+        :param exclude_properties: A list or set of string column names to 
+          be excluded from mapping. As of SQLAlchemy 0.6.4, this collection
+          may also include :class:`.Column` objects. Columns named or present
+          in this list will not be automatically mapped. Note that neither
+          this option nor include_properties will allow one to circumvent plan
+          Python inheritance - if mapped class ``B`` inherits from mapped
+          class ``A``, no combination of includes or excludes will allow ``B``
+          to have fewer properties than its superclass, ``A``.
 
         :param extension: A :class:`.MapperExtension` instance or
            list of :class:`~sqlalchemy.orm.interfaces.MapperExtension`
            instances which will be applied to all operations by this
            :class:`~sqlalchemy.orm.mapper.Mapper`.
 
-        :param include_properties: An inclusive list of properties to map. 
-           Columns present in the mapped table but not present in this list
-           will not be automatically converted into properties.
+        :param include_properties: An inclusive list or set of string column
+          names to map. As of SQLAlchemy 0.6.4, this collection may also
+          include :class:`.Column` objects in order to disambiguate between
+          same-named columns in a selectable (such as a
+          :func:`~.expression.join()`). If this list is not ``None``, columns
+          present in the mapped table but not named or present in this list
+          will not be automatically mapped. See also "exclude_properties".
 
         :param inherits: Another :class:`~sqlalchemy.orm.Mapper` for which 
             this :class:`~sqlalchemy.orm.Mapper` will have an inheritance

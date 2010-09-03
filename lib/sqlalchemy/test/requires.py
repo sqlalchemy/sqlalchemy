@@ -257,7 +257,7 @@ def reflects_pk_names(fn):
     """Target driver reflects the name of primary key constraints."""
     return _chain_decorators_on(
         fn,
-        fails_on_everything_except('postgresql')
+        fails_on_everything_except('postgresql', 'oracle')
     )
     
 def python2(fn):

@@ -17,11 +17,13 @@ from sqlalchemy.test.util import round_decimal
 
 class AdaptTest(TestBase):
     def test_uppercase_rendering(self):
-        """Test that uppercase types from types.py always render as their type.
+        """Test that uppercase types from types.py always render as their
+        type.
         
-        As of SQLA 0.6, using an uppercase type means you want specifically that
-        type.  If the database in use doesn't support that DDL, it (the DB backend) 
-        should raise an error - it means you should be using a lowercased (genericized) type.
+        As of SQLA 0.6, using an uppercase type means you want specifically
+        that type. If the database in use doesn't support that DDL, it (the DB
+        backend) should raise an error - it means you should be using a
+        lowercased (genericized) type.
         
         """
         
@@ -30,20 +32,21 @@ class AdaptTest(TestBase):
                 mysql.dialect(), 
                 postgresql.dialect(), 
                 sqlite.dialect(), 
-                mssql.dialect()]: # TODO when dialects are complete:  engines.all_dialects():
+                mssql.dialect()]: 
             for type_, expected in (
                 (FLOAT, "FLOAT"),
                 (NUMERIC, "NUMERIC"),
                 (DECIMAL, "DECIMAL"),
                 (INTEGER, "INTEGER"),
                 (SMALLINT, "SMALLINT"),
-                (TIMESTAMP, "TIMESTAMP"),
+                (TIMESTAMP, ("TIMESTAMP", "TIMESTAMP WITHOUT TIME ZONE")),
                 (DATETIME, "DATETIME"),
                 (DATE, "DATE"),
-                (TIME, "TIME"),
+                (TIME, ("TIME", "TIME WITHOUT TIME ZONE")),
                 (CLOB, "CLOB"),
                 (VARCHAR(10), ("VARCHAR(10)","VARCHAR(10 CHAR)")),
-                (NVARCHAR(10), ("NVARCHAR(10)", "NATIONAL VARCHAR(10)", "NVARCHAR2(10)")),
+                (NVARCHAR(10), ("NVARCHAR(10)", "NATIONAL VARCHAR(10)",
+                                    "NVARCHAR2(10)")),
                 (CHAR, "CHAR"),
                 (NCHAR, ("NCHAR", "NATIONAL CHAR")),
                 (BLOB, "BLOB"),
@@ -51,14 +54,18 @@ class AdaptTest(TestBase):
             ):
                 if isinstance(expected, str):
                     expected = (expected, )
-                for exp in expected:
-                    compiled = types.to_instance(type_).compile(dialect=dialect)
-                    if exp in compiled:
-                        break
-                else:
-                    assert False, "%r matches none of %r for dialect %s" % \
-                                            (compiled, expected, dialect.name)
-            
+
+                compiled = types.to_instance(type_).\
+                            compile(dialect=dialect)
+                    
+                assert compiled in expected, \
+                    "%r matches none of %r for dialect %s" % \
+                    (compiled, expected, dialect.name)
+                
+                assert str(types.to_instance(type_)) in expected, \
+                    "default str() of type %r not expected, %r" % \
+                    (type_, expected)
+                
 class TypeAffinityTest(TestBase):
     def test_type_affinity(self):
         for type_, affin in [

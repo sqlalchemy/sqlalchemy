@@ -251,7 +251,8 @@ Similarly, :func:`comparable_using` is a front end for the
 Defining SQL Expressions
 ========================
 
-The usage of :func:`.column_property` with Declarative is
+The usage of :func:`.column_property` with Declarative to define
+load-time, mapped SQL expressions is
 pretty much the same as that described in
 :ref:`mapper_sql_expressions`. Local columns within the same
 class declaration can be referenced directly::
@@ -364,7 +365,9 @@ and simply pass it to declarative classes::
 
 Some configuration schemes may find it more appropriate to use ``__table__``, 
 such as those which already take advantage of the data-driven nature of 
-:class:`.Table` to customize and/or automate schema definition.
+:class:`.Table` to customize and/or automate schema definition.   See
+the wiki example `NamingConventions <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/NamingConventions>`_
+for one such example.
 
 Mapper Configuration
 ====================

@@ -62,6 +62,14 @@ class CachingQuery(Query):
         """override __iter__ to pull results from Beaker
            if particular attributes have been configured.
            
+           Note that this approach does *not* detach the loaded objects from
+           the current session. If the cache backend is an in-process cache
+           (like "memory") and lives beyond the scope of the current session's
+           transaction, those objects may be expired. The method here can be
+           modified to first expunge() each loaded item from the current
+           session before returning the list of items, so that the items
+           in the cache are not the same ones in the current Session.
+           
         """
         if hasattr(self, '_cache_parameters'):
             return self.get_value(createfunc=lambda: list(Query.__iter__(self)))
