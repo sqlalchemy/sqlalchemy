@@ -83,6 +83,15 @@ def _get_table_key(name, schema):
         return schema + "." + name
 
 class DDLEvents(event.Events):
+    """
+    Define create/drop event listers for schema objects.
+    
+    See also:
+
+        :mod:`sqlalchemy.event`
+    
+    """
+    
     def on_before_create(self, target, connection, **kw):
         pass
 
@@ -2127,6 +2136,8 @@ class DDLElement(expression.Executable, expression.ClauseElement):
 
     target = None
     on = None
+    dialect = None
+    callable_ = None
     
     def execute(self, bind=None, target=None):
         """Execute this DDL immediately.
@@ -2153,7 +2164,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         if bind is None:
             bind = _bind_or_error(self)
 
-        if self._should_execute(None, target, bind):
+        if self._should_execute(target, bind):
             return bind.execute(self.against(target))
         else:
             bind.engine.logger.info(
@@ -2161,37 +2172,18 @@ class DDLElement(expression.Executable, expression.ClauseElement):
 
     def execute_at(self, event_name, target):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
-
-        Links this ``DDLElement`` to a ``Table`` or ``MetaData`` instance,
-        executing it when that schema item is created or dropped. The DDL
-        statement will be executed using the same Connection and transactional
-        context as the Table create/drop itself. The ``.bind`` property of
-        this statement is ignored.
         
-        :param event_name:
-          Name of an event from :class:`.DDLEvents`. e.g.:
-          'on_before_create', 'on_after_create', 'on_before_drop', 
-          'on_after_drop'.
-
-        :param target:
-          The Table or MetaData instance for which this DDLElement will
-          be associated with.
-
-        A DDLElement instance can be linked to any number of schema items. 
-
-        ``execute_at`` builds on the ``append_ddl_listener`` interface of
-        :class:`MetaData` and :class:`Table` objects.
-
-        Caveat: Creating or dropping a Table in isolation will also trigger
-        any DDL set to ``execute_at`` that Table's MetaData.  This may change
-        in a future release.
+        Deprecated.  See :class:`.DDLEvents`, as well as
+        :meth:`.DDLEvent.execute_if`.
+        
         """
         
-        event_name = "on_" + event_name.replace('-', '_')
         def call_event(target, connection, **kw):
-            self(event_name, target, connection, **kw)
+            if self._should_execute_deprecated(event_name, 
+                                    target, connection, **kw):
+                return connection.execute(self.against(target))
             
-        event.listen(call_event, event_name, target)
+        event.listen(call_event, "on_" + event_name.replace('-', '_'), target)
 
     @expression._generative
     def against(self, target):
@@ -2199,10 +2191,59 @@ class DDLElement(expression.Executable, expression.ClauseElement):
 
         self.target = target
 
-    def __call__(self, event, target, bind, **kw):
-        """Execute the DDL as a ddl_listener."""
+    @expression._generative
+    def execute_if(self, dialect=None, callable_=None):
+        """Return a callable that will execute this 
+        DDLElement conditionally.
+        
+        Used to provide a wrapper for event listening::
+        
+            event.listen(
+                        DDL("my_ddl").execute_if(dialect='postgresql'), 
+                        'on_before_create', 
+                        metadata
+                    )
+                    
+        See also:
+        
+            :class:`.DDLEvents`
+            :mod:`sqlalchemy.event`
+            
+        """
+        self.dialect = dialect
+        self.callable_ = callable_
 
-        if self._should_execute(event, target, bind, **kw):
+    def _should_execute(self, target, bind, **kw):
+        if self.on is not None and \
+            not self._should_execute_deprecated(None, target, bind, **kw):
+            return False
+            
+        if isinstance(self.dialect, basestring):
+            if self.dialect != bind.engine.name:
+                return False
+        elif isinstance(self.dialect, (tuple, list, set)):
+            if bind.engine.name not in self.dialect:
+                return False
+        if self.callable_ is not None and \
+            not self.callable_(self, target, bind, **kw):
+            return False
+            
+        return True
+
+    def _should_execute_deprecated(self, event, target, bind, **kw):
+        if self.on is None:
+            return True
+        elif isinstance(self.on, basestring):
+            return self.on == bind.engine.name
+        elif isinstance(self.on, (tuple, list, set)):
+            return bind.engine.name in self.on
+        else:
+            return self.on(self, event, target, bind, **kw)
+        
+    def __call__(self, target, bind, **kw):
+        """Execute the DDL as a ddl_listener."""
+        
+        if self._should_execute(target, bind, **kw):
             return bind.execute(self.against(target))
 
     def _check_ddl_on(self, on):
@@ -2213,16 +2254,6 @@ class DDLElement(expression.Executable, expression.ClauseElement):
                 "Expected the name of a database dialect, a tuple "
                 "of names, or a callable for "
                 "'on' criteria, got type '%s'." % type(on).__name__)
-
-    def _should_execute(self, event, target, bind, **kw):
-        if self.on is None:
-            return True
-        elif isinstance(self.on, basestring):
-            return self.on == bind.engine.name
-        elif isinstance(self.on, (tuple, list, set)):
-            return bind.engine.name in self.on
-        else:
-            return self.on(self, event, target, bind, **kw)
 
     def bind(self):
         if self._bind:
@@ -2290,42 +2321,7 @@ class DDL(DDLElement):
           SQL bind parameters are not available in DDL statements.
 
         :param on:
-          Optional filtering criteria.  May be a string, tuple or a callable
-          predicate.  If a string, it will be compared to the name of the
-          executing database dialect::
-
-            DDL('something', on='postgresql')
-
-          If a tuple, specifies multiple dialect names::
-
-            DDL('something', on=('postgresql', 'mysql'))
-
-          If a callable, it will be invoked with four positional arguments
-          as well as optional keyword arguments:
-            
-            :ddl:
-              This DDL element.
-              
-            :event:
-              The name of the event that has triggered this DDL, such as
-              'on_after_create' Will be None if the DDL is executed
-              explicitly.
-
-            :target:
-              The ``Table`` or ``MetaData`` object which is the target of 
-              this event. May be None if the DDL is executed explicitly.
-
-            :connection:
-              The ``Connection`` being used for DDL execution
-
-            :tables:  
-              Optional keyword argument - a list of Table objects which are to
-              be created/ dropped within a MetaData.create_all() or drop_all()
-              method call.
-
-              
-          If the callable returns a true value, the DDL statement will be
-          executed.
+          Deprecated.  See :meth:`.DDLElement.execute_if`.
 
         :param context:
           Optional dictionary, defaults to None.  These values will be
@@ -2334,6 +2330,12 @@ class DDL(DDLElement):
         :param bind:
           Optional. A :class:`~sqlalchemy.engine.base.Connectable`, used by
           default when ``execute()`` is invoked without a bind argument.
+
+
+        See also:
+        
+            :class:`.DDLEvents`
+            :mod:`sqlalchemy.event`
           
         """
 

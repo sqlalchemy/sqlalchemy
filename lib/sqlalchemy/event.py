@@ -41,6 +41,11 @@ class _Dispatch(object):
     def __init__(self, parent_cls):
         self.parent_cls = parent_cls
     
+    def __reduce__(self):
+        return dispatcher, (
+                            self.parent_cls.__dict__['dispatch'].events, 
+                            )
+        
     @property
     def descriptors(self):
         return (getattr(self, k) for k in dir(self) if k.startswith("on_"))

@@ -218,6 +218,28 @@ class DDLExecutionTest(TestBase):
 
     def test_table_by_metadata(self):
         metadata, users, engine = self.metadata, self.users, self.engine
+
+        event.listen(DDL('mxyzptlk'), 'on_before_create', users)
+        event.listen(DDL('klptzyxm'), 'on_after_create', users)
+        event.listen(DDL('xyzzy'), 'on_before_drop', users)
+        event.listen(DDL('fnord'), 'on_after_drop', users)
+
+        metadata.create_all()
+        strings = [str(x) for x in engine.mock]
+        assert 'mxyzptlk' in strings
+        assert 'klptzyxm' in strings
+        assert 'xyzzy' not in strings
+        assert 'fnord' not in strings
+        del engine.mock[:]
+        metadata.drop_all()
+        strings = [str(x) for x in engine.mock]
+        assert 'mxyzptlk' not in strings
+        assert 'klptzyxm' not in strings
+        assert 'xyzzy' in strings
+        assert 'fnord' in strings
+
+    def test_table_by_metadata_deprecated(self):
+        metadata, users, engine = self.metadata, self.users, self.engine
         DDL('mxyzptlk').execute_at('before-create', users)
         DDL('klptzyxm').execute_at('after-create', users)
         DDL('xyzzy').execute_at('before-drop', users)
@@ -236,8 +258,88 @@ class DDLExecutionTest(TestBase):
         assert 'klptzyxm' not in strings
         assert 'xyzzy' in strings
         assert 'fnord' in strings
-    
+
+        
+    def test_metadata(self):
+        metadata, engine = self.metadata, self.engine
+
+        event.listen(DDL('mxyzptlk'), 'on_before_create', metadata)
+        event.listen(DDL('klptzyxm'), 'on_after_create', metadata)
+        event.listen(DDL('xyzzy'), 'on_before_drop', metadata)
+        event.listen(DDL('fnord'), 'on_after_drop', metadata)
+
+        metadata.create_all()
+        strings = [str(x) for x in engine.mock]
+        assert 'mxyzptlk' in strings
+        assert 'klptzyxm' in strings
+        assert 'xyzzy' not in strings
+        assert 'fnord' not in strings
+        del engine.mock[:]
+        metadata.drop_all()
+        strings = [str(x) for x in engine.mock]
+        assert 'mxyzptlk' not in strings
+        assert 'klptzyxm' not in strings
+        assert 'xyzzy' in strings
+        assert 'fnord' in strings
+
+    def test_metadata_deprecated(self):
+        metadata, engine = self.metadata, self.engine
+
+        DDL('mxyzptlk').execute_at('before-create', metadata)
+        DDL('klptzyxm').execute_at('after-create', metadata)
+        DDL('xyzzy').execute_at('before-drop', metadata)
+        DDL('fnord').execute_at('after-drop', metadata)
+
+        metadata.create_all()
+        strings = [str(x) for x in engine.mock]
+        assert 'mxyzptlk' in strings
+        assert 'klptzyxm' in strings
+        assert 'xyzzy' not in strings
+        assert 'fnord' not in strings
+        del engine.mock[:]
+        metadata.drop_all()
+        strings = [str(x) for x in engine.mock]
+        assert 'mxyzptlk' not in strings
+        assert 'klptzyxm' not in strings
+        assert 'xyzzy' in strings
+        assert 'fnord' in strings
+
     def test_conditional_constraint(self):
+        metadata, users, engine = self.metadata, self.users, self.engine
+        nonpg_mock = engines.mock_engine(dialect_name='sqlite')
+        pg_mock = engines.mock_engine(dialect_name='postgresql')
+        constraint = CheckConstraint('a < b', name='my_test_constraint'
+                , table=users)
+
+        # by placing the constraint in an Add/Drop construct, the
+        # 'inline_ddl' flag is set to False
+
+        event.listen(
+            AddConstraint(constraint).execute_if(dialect='postgresql'),
+            'on_after_create',
+            users
+        )
+        
+        event.listen(
+            DropConstraint(constraint).execute_if(dialect='postgresql'),
+            'on_before_drop',
+            users
+        )
+        
+        metadata.create_all(bind=nonpg_mock)
+        strings = ' '.join(str(x) for x in nonpg_mock.mock)
+        assert 'my_test_constraint' not in strings
+        metadata.drop_all(bind=nonpg_mock)
+        strings = ' '.join(str(x) for x in nonpg_mock.mock)
+        assert 'my_test_constraint' not in strings
+        metadata.create_all(bind=pg_mock)
+        strings = ' '.join(str(x) for x in pg_mock.mock)
+        assert 'my_test_constraint' in strings
+        metadata.drop_all(bind=pg_mock)
+        strings = ' '.join(str(x) for x in pg_mock.mock)
+        assert 'my_test_constraint' in strings
+    
+    def test_conditional_constraint_deprecated(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         nonpg_mock = engines.mock_engine(dialect_name='sqlite')
         pg_mock = engines.mock_engine(dialect_name='postgresql')
@@ -263,27 +365,6 @@ class DDLExecutionTest(TestBase):
         metadata.drop_all(bind=pg_mock)
         strings = ' '.join(str(x) for x in pg_mock.mock)
         assert 'my_test_constraint' in strings
-        
-    def test_metadata(self):
-        metadata, engine = self.metadata, self.engine
-        DDL('mxyzptlk').execute_at('before-create', metadata)
-        DDL('klptzyxm').execute_at('after-create', metadata)
-        DDL('xyzzy').execute_at('before-drop', metadata)
-        DDL('fnord').execute_at('after-drop', metadata)
-
-        metadata.create_all()
-        strings = [str(x) for x in engine.mock]
-        assert 'mxyzptlk' in strings
-        assert 'klptzyxm' in strings
-        assert 'xyzzy' not in strings
-        assert 'fnord' not in strings
-        del engine.mock[:]
-        metadata.drop_all()
-        strings = [str(x) for x in engine.mock]
-        assert 'mxyzptlk' not in strings
-        assert 'klptzyxm' not in strings
-        assert 'xyzzy' in strings
-        assert 'fnord' in strings
 
     def test_ddl_execute(self):
         try:
@@ -361,18 +442,38 @@ class DDLTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(ddl.against(insane_schema),
                             'S S-T T-"s s"."t t"-b', dialect=dialect)
 
+
     def test_filter(self):
         cx = self.mock_engine()
 
         tbl = Table('t', MetaData(), Column('id', Integer))
         target = cx.name
 
-        assert DDL('')._should_execute('x', tbl, cx)
-        assert DDL('', on=target)._should_execute('x', tbl, cx)
-        assert not DDL('', on='bogus')._should_execute('x', tbl, cx)
-        assert DDL('', on=lambda d, x,y,z: True)._should_execute('x', tbl, cx)
+        assert DDL('')._should_execute(tbl, cx)
+        assert DDL('').execute_if(dialect=target)._should_execute(tbl, cx)
+        assert not DDL('').execute_if(dialect='bogus').\
+                        _should_execute(tbl, cx)
+        assert DDL('').execute_if(callable_=lambda d, y,z: True).\
+                        _should_execute(tbl, cx)
+        assert(DDL('').execute_if(
+                        callable_=lambda d, y,z: z.engine.name 
+                        != 'bogus').
+               _should_execute(tbl, cx))
+
+    def test_filter_deprecated(self):
+        cx = self.mock_engine()
+
+        tbl = Table('t', MetaData(), Column('id', Integer))
+        target = cx.name
+
+        assert DDL('')._should_execute_deprecated('x', tbl, cx)
+        assert DDL('', on=target)._should_execute_deprecated('x', tbl, cx)
+        assert not DDL('', on='bogus').\
+                        _should_execute_deprecated('x', tbl, cx)
+        assert DDL('', on=lambda d, x,y,z: True).\
+                        _should_execute_deprecated('x', tbl, cx)
         assert(DDL('', on=lambda d, x,y,z: z.engine.name != 'bogus').
-               _should_execute('x', tbl, cx))
+               _should_execute_deprecated('x', tbl, cx))
 
     def test_repr(self):
         assert repr(DDL('s'))
