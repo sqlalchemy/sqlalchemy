@@ -51,10 +51,15 @@ class _Dispatch(object):
         return (getattr(self, k) for k in dir(self) if k.startswith("on_"))
 
     def update(self, other):
-        """Populate from the listeners in another :class:`Events` object."""
+        """Populate from the listeners in another :class:`_Dispatch`
+            object."""
 
         for ls in other.descriptors:
-            getattr(self, ls.name).listeners.extend(ls.listeners)
+            existing_listeners = getattr(self, ls.name).listeners
+            existing_listener_set = set(existing_listeners)
+            existing_listeners.extend([l for l 
+                                    in ls.listeners 
+                                    if l not in existing_listener_set])
 
 class _EventMeta(type):
     """Intercept new Event subclasses and create 

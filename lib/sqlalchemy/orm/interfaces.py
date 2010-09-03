@@ -895,9 +895,12 @@ class AttributeExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen(listener.append, 'on_append', self, active_history=listener.active_history)
-        event.listen(listener.remove, 'on_remove', self, active_history=listener.active_history)
-        event.listen(listener.set, 'on_set', self, active_history=listener.active_history)
+        event.listen(listener.append, 'on_append', self,
+                            active_history=listener.active_history)
+        event.listen(listener.remove, 'on_remove', self,
+                            active_history=listener.active_history)
+        event.listen(listener.set, 'on_set', self,
+                            active_history=listener.active_history)
         
     
     def append(self, state, value, initiator):

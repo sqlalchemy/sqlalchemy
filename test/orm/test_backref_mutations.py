@@ -420,7 +420,8 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         mapper(User, users, properties = {
             'address':relationship(Address, uselist=False, 
-                backref=backref('user', single_parent=True, cascade="all, delete-orphan"))
+                backref=backref('user', single_parent=True, 
+                                    cascade="all, delete-orphan"))
         })
 
     @testing.resolve_artifact_names

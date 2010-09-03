@@ -90,6 +90,60 @@ ClassManager instrumentation is used.
 
 """
 
+class AttributeEvents(event.Events):
+    """Events for ORM attributes.
+
+    e.g.::
+    
+        from sqlalchemy import event
+        event.listen(listener, 'on_append', MyClass.collection)
+        event.listen(listener, 'on_set', MyClass.some_scalar,
+                                        active_history=True)
+        
+    active_history = True indicates that the "on_set" event would like
+    to receive the 'old' value, even if it means firing lazy callables.
+    
+    """
+    
+    # TODO: what to do about subclasses !!
+    # a shared approach will be needed.   listeners can be placed
+    # before subclasses are created.   new attrs on subclasses
+    # can pull them from the superclass attr.  listeners
+    # should be auto-propagated to existing subclasses.
+    
+    @classmethod
+    def listen(cls, fn, identifier, target, active_history=False):
+        if active_history:
+            target.dispatch.active_history = True
+        event.Events.listen(fn, identifier, target)
+    
+    @classmethod
+    def unwrap(cls, identifier, event):
+        return event['value']
+        
+    def on_append(self, state, value, initiator):
+        """Receive a collection append event.
+
+        The returned value will be used as the actual value to be
+        appended.
+
+        """
+
+    def on_remove(self, state, value, initiator):
+        """Receive a remove event.
+
+        No return value is defined.
+
+        """
+
+    def on_set(self, state, value, oldvalue, initiator):
+        """Receive a set event.
+
+        The returned value will be used as the actual value to be
+        set.
+
+        """
+
 class QueryableAttribute(interfaces.PropComparator):
 
     def __init__(self, key, impl=None, comparator=None, parententity=None):
@@ -104,63 +158,9 @@ class QueryableAttribute(interfaces.PropComparator):
         self.comparator = comparator
         self.parententity = parententity
 
-    class events(event.Events):
-        """Events for ORM attributes.
-
-        e.g.::
-        
-            from sqlalchemy import event
-            event.listen(listener, 'on_append', MyClass.collection)
-            event.listen(listener, 'on_set', MyClass.some_scalar, active_history=True)
-            
-        active_history = True indicates that the "on_set" event would like
-        to receive the 'old' value, even if it means firing lazy callables.
-        
-        """
-        
-        active_history = False
-        
-        # TODO: what to do about subclasses !!
-        # a shared approach will be needed.   listeners can be placed
-        # before subclasses are created.   new attrs on subclasses
-        # can pull them from the superclass attr.  listeners
-        # should be auto-propagated to existing subclasses.
-        
-        @classmethod
-        def listen(cls, fn, identifier, target, active_history=False):
-            if active_history:
-                target.active_history = True
-            event.Events.listen(fn, identifier, target)
-        
-        @classmethod
-        def unwrap(cls, identifier, event):
-            return event['value']
-            
-        def on_append(self, state, value, initiator):
-            """Receive a collection append event.
-
-            The returned value will be used as the actual value to be
-            appended.
-
-            """
-
-        def on_remove(self, state, value, initiator):
-            """Receive a remove event.
-
-            No return value is defined.
-
-            """
-
-        def on_set(self, state, value, oldvalue, initiator):
-            """Receive a set event.
-
-            The returned value will be used as the actual value to be
-            set.
-
-            """
-    dispatch = event.dispatcher(events)
+    dispatch = event.dispatcher(AttributeEvents)
+    dispatch.dispatch_cls.active_history = False
     
-
     def get_history(self, instance, **kwargs):
         return self.impl.get_history(instance_state(instance),
                                         instance_dict(instance), **kwargs)
@@ -343,7 +343,6 @@ class AttributeImpl(object):
         self.class_ = class_
         self.key = key
         self.callable_ = callable_
-        self.active_history = False
         self.dispatch = dispatch
         self.trackparent = trackparent
         self.parent_token = parent_token or self
@@ -360,10 +359,11 @@ class AttributeImpl(object):
             ext._adapt_listener(attr, ext)
             
         if active_history:
-            self.active_history = True
-            
-        self.expire_missing = expire_missing
+            self.dispatch.active_history = True
 
+        self.expire_missing = expire_missing
+        
+        
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to 
         the given state.
@@ -497,7 +497,7 @@ class ScalarAttributeImpl(AttributeImpl):
     def delete(self, state, dict_):
 
         # TODO: catch key errors, convert to attributeerror?
-        if self.active_history:
+        if self.dispatch.active_history:
             old = self.get(state, dict_)
         else:
             old = dict_.get(self.key, NO_VALUE)
@@ -515,7 +515,7 @@ class ScalarAttributeImpl(AttributeImpl):
         if initiator is self:
             return
 
-        if self.active_history:
+        if self.dispatch.active_history:
             old = self.get(state, dict_)
         else:
             old = dict_.get(self.key, NO_VALUE)
@@ -656,7 +656,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if initiator is self:
             return
 
-        if self.active_history:
+        if self.dispatch.active_history:
             old = self.get(state, dict_)
         else:
             old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)
@@ -967,6 +967,18 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
                                             initiator,
                                             passive=PASSIVE_NO_FETCH)
 
+class ClassEvents(event.Events):
+    def on_init(self, state, instance, args, kwargs):
+        """"""
+        
+    def on_init_failure(self, state, instance, args, kwargs):
+        """"""
+    
+    def on_load(self, instance):
+        """"""
+    
+    def on_resurrect(self, state, instance):
+        """"""
 
 class ClassManager(dict):
     """tracks state information at the class level."""
@@ -995,20 +1007,7 @@ class ClassManager(dict):
         self.manage()
         self._instrument_init()
     
-    class events(event.Events):
-        def on_init(self, state, instance, args, kwargs):
-            """"""
-            
-        def on_init_failure(self, state, instance, args, kwargs):
-            """"""
-        
-        def on_load(self, instance):
-            """"""
-        
-        def on_resurrect(self, state, instance):
-            """"""
-            
-    dispatch = event.dispatcher(events)
+    dispatch = event.dispatcher(ClassEvents)
     
     @property
     def is_mapped(self):
@@ -1504,12 +1503,13 @@ def register_attribute_impl(class_, key,
     dispatch = manager[key].dispatch
     
     if impl_class:
-        impl = impl_class(class_, key, typecallable, **kw)
+        impl = impl_class(class_, key, typecallable, dispatch, **kw)
     elif uselist:
         impl = CollectionAttributeImpl(class_, key, callable_, dispatch,
                                        typecallable=typecallable, **kw)
     elif useobject:
-        impl = ScalarObjectAttributeImpl(class_, key, callable_, dispatch,**kw)
+        impl = ScalarObjectAttributeImpl(class_, key, callable_,
+                                        dispatch,**kw)
     elif mutable_scalars:
         impl = MutableScalarAttributeImpl(class_, key, callable_, dispatch,
                                           class_manager=manager, **kw)
