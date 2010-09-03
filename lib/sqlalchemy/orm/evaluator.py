@@ -35,7 +35,8 @@ class EvaluatorCompiler(object):
 
     def visit_column(self, clause):
         if 'parentmapper' in clause._annotations:
-            key = clause._annotations['parentmapper']._get_col_to_prop(clause).key
+            key = clause._annotations['parentmapper'].\
+              _columntoproperty[clause].key
         else:
             key = clause.key
         get_corresponding_attr = operator.attrgetter(key)

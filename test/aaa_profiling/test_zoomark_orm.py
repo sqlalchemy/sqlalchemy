@@ -366,7 +366,7 @@ class ZooMarkTest(TestBase):
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 
-    @profiling.function_call_count(3172)
+    @profiling.function_call_count(2929)
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
 

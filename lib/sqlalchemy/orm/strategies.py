@@ -48,7 +48,7 @@ def _register_attribute(strategy, mapper, useobject,
         attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
 
     
-    for m in mapper.polymorphic_iterator():
+    for m in mapper.self_and_descendants:
         if prop is m._props.get(prop.key):
             
             attributes.register_attribute_impl(
@@ -118,17 +118,20 @@ class ColumnLoader(LoaderStrategy):
        )
         
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        key, col = self.key, self.columns[0]
-        if adapter:
-            col = adapter.columns[col]
-            
-        if col is not None and col in row:
-            def new_execute(state, dict_, row):
-                dict_[key] = row[col]
+        key = self.key
+        # look through list of columns represented here
+        # to see which, if any, is present in the row.
+        for col in self.columns:
+            if adapter:
+                col = adapter.columns[col]
+            if col is not None and col in row:
+                def new_execute(state, dict_, row):
+                    dict_[key] = row[col]
+                return new_execute, None
         else:
             def new_execute(state, dict_, row):
                 state.expire_attribute_pre_commit(dict_, key)
-        return new_execute, None
+            return new_execute, None
 
 log.class_logger(ColumnLoader)
 
@@ -693,7 +696,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         
         leftmost_attr = [
-            leftmost_mapper._get_col_to_prop(c).class_attribute
+            leftmost_mapper._columntoproperty[c].class_attribute
             for c in leftmost_cols
         ]
 
@@ -740,7 +743,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                         self._local_remote_columns(self.parent_property)
 
         local_attr = [
-            getattr(parent_alias, self.parent._get_col_to_prop(c).key)
+            getattr(parent_alias, self.parent._columntoproperty[c].key)
             for c in local_cols
         ]
         q = q.order_by(*local_attr)
@@ -822,7 +825,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
         remote_attr = [
-                        self.mapper._get_col_to_prop(c).key 
+                        self.mapper._columntoproperty[c].key
                         for c in remote_cols]
         
         q = context.attributes[('subquery', path)]
@@ -940,7 +943,7 @@ class EagerLoader(AbstractRelationshipLoader):
                                 ("eager_row_processor", reduced_path)
                               ] = clauses
 
-        for value in self.mapper._iterate_polymorphic_properties():
+        for value in self.mapper._polymorphic_properties:
             value.setup(
                 context, 
                 entity, 

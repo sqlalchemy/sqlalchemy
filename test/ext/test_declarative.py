@@ -1316,7 +1316,42 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             primary_language = Column('primary_language', String(50))
 
         assert class_mapper(Engineer).inherits is class_mapper(Person)
+    
+    @testing.fails_if(lambda: True, "Not implemented until 0.7")
+    def test_foreign_keys_with_col(self):
+        """Test that foreign keys that reference a literal 'id' subclass 
+        'id' attribute behave intuitively.  
+        
+        See ticket 1892.
+        
+        """
+        class Booking(Base):
+            __tablename__ = 'booking'
+            id = Column(Integer, primary_key=True)
 
+        class PlanBooking(Booking):
+            __tablename__ = 'plan_booking'
+            id = Column(Integer, ForeignKey(Booking.id),
+                            primary_key=True)
+
+        # referencing PlanBooking.id gives us the column
+        # on plan_booking, not booking
+        class FeatureBooking(Booking):
+            __tablename__ = 'feature_booking'
+            id = Column(Integer, ForeignKey(Booking.id),
+                                        primary_key=True)
+            plan_booking_id = Column(Integer,
+                                ForeignKey(PlanBooking.id))
+            
+            plan_booking = relationship(PlanBooking,
+                        backref='feature_bookings')
+        
+        assert FeatureBooking.__table__.c.plan_booking_id.\
+                    references(PlanBooking.__table__.c.id)
+
+        assert FeatureBooking.__table__.c.id.\
+                    references(Booking.__table__.c.id)
+      
     def test_with_undefined_foreignkey(self):
 
         class Parent(Base):

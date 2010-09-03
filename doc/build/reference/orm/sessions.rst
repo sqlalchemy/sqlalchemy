@@ -7,6 +7,8 @@ Sessions
 
 .. autofunction:: make_transient
 
+.. autofunction:: object_session
+
 .. autofunction:: sqlalchemy.orm.scoped_session
 
 .. autofunction:: sessionmaker

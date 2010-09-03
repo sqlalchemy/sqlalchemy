@@ -4045,15 +4045,15 @@ class Select(_SelectBaseMixin, FromClause):
         """return a new select() construct which will correlate the given FROM
         clauses to that of an enclosing select(), if a match is found.
         
-         By "match", the given fromclause must be present in this select's
+        By "match", the given fromclause must be present in this select's
         list of FROM objects and also present in an enclosing select's list of
         FROM objects.
         
-         Calling this method turns off the select's default behavior of
+        Calling this method turns off the select's default behavior of
         "auto-correlation". Normally, select() auto-correlates all of its FROM
         clauses to those of an embedded select when compiled.
         
-         If the fromclause is None, correlation is disabled for the returned
+        If the fromclause is None, correlation is disabled for the returned
         select().
 
         """

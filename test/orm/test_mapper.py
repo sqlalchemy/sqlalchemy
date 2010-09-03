@@ -482,18 +482,19 @@ class MapperTest(_fixtures.FixtureTest):
         class Manager(Employee): pass
         class Hoho(object): pass
         class Lala(object): pass
-
+        class Fub(object):pass
+        class Frob(object):pass
         class HasDef(object):
             def name(self):
                 pass
             
         p_m = mapper(Person, t, polymorphic_on=t.c.type,
                      include_properties=('id', 'type', 'name'))
-        e_m = mapper(Employee, inherits=p_m, polymorphic_identity='employee',
-          properties={
-            'boss': relationship(Manager, backref=backref('peon', ), remote_side=t.c.id)
-          },
-          exclude_properties=('vendor_id',))
+        e_m = mapper(Employee, inherits=p_m,
+                     polymorphic_identity='employee', properties={'boss'
+                     : relationship(Manager, backref=backref('peon'),
+                     remote_side=t.c.id)},
+                     exclude_properties=('vendor_id', ))
 
         m_m = mapper(Manager, inherits=e_m, polymorphic_identity='manager',
                      include_properties=('id', 'type'))
@@ -506,8 +507,12 @@ class MapperTest(_fixtures.FixtureTest):
 
         hd_m = mapper(HasDef, t, column_prefix="h_")
         
+        fb_m = mapper(Fub, t, include_properties=(t.c.id, t.c.type))
+        frb_m = mapper(Frob, t, column_prefix='f_',
+                       exclude_properties=(t.c.boss_id,
+                       'employee_number', t.c.vendor_id))
+        
         p_m.compile()
-        #sa.orm.compile_mappers()
 
         def assert_props(cls, want):
             have = set([n for n in dir(cls) if not n.startswith('_')])
@@ -519,7 +524,8 @@ class MapperTest(_fixtures.FixtureTest):
             want = set(want)
             eq_(have, want)
         
-        assert_props(HasDef, ['h_boss_id', 'h_employee_number', 'h_id', 'name', 'h_name', 'h_vendor_id', 'h_type'])    
+        assert_props(HasDef, ['h_boss_id', 'h_employee_number', 'h_id', 
+                                'name', 'h_name', 'h_vendor_id', 'h_type'])    
         assert_props(Person, ['id', 'name', 'type'])
         assert_instrumented(Person, ['id', 'name', 'type'])
         assert_props(Employee, ['boss', 'boss_id', 'employee_number',
@@ -535,24 +541,57 @@ class MapperTest(_fixtures.FixtureTest):
         assert_props(Vendor, ['vendor_id', 'id', 'name', 'type'])
         assert_props(Hoho, ['id', 'name', 'type'])
         assert_props(Lala, ['p_employee_number', 'p_id', 'p_name', 'p_type'])
-
+        assert_props(Fub, ['id', 'type'])
+        assert_props(Frob, ['f_id', 'f_type', 'f_name', ])
         # excluding the discriminator column is currently not allowed
         class Foo(Person):
             pass
-        assert_raises(sa.exc.InvalidRequestError, mapper, Foo, inherits=Person, polymorphic_identity='foo', exclude_properties=('type',) )
+
+        assert_raises(
+            sa.exc.InvalidRequestError,
+            mapper,
+            Foo, inherits=Person, polymorphic_identity='foo',
+            exclude_properties=('type', ),
+            )
     
+    @testing.resolve_artifact_names
+    def test_mapping_to_join_raises(self):
+        """Test implicit merging of two cols warns."""
+        
+        usersaddresses = sa.join(users, addresses,
+                                 users.c.id == addresses.c.user_id)
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "Implicitly",
+            mapper, User, usersaddresses, primary_key=[users.c.id]
+        )
+        sa.orm.clear_mappers()
+        
+        @testing.emits_warning(r'Implicitly')
+        def go():
+            # but it works despite the warning
+            mapper(User, usersaddresses, primary_key=[users.c.id])
+            l = create_session().query(User).order_by(users.c.id).all()
+            eq_(l, self.static.user_result[:3])
+        go()
+
     @testing.resolve_artifact_names
     def test_mapping_to_join(self):
         """Mapping to a join"""
-        usersaddresses = sa.join(users, addresses,
-                                 users.c.id == addresses.c.user_id)
-        mapper(User, usersaddresses, primary_key=[users.c.id])
+
+        usersaddresses = sa.join(users, addresses, users.c.id
+                                 == addresses.c.user_id)
+        mapper(User, usersaddresses, primary_key=[users.c.id],
+               exclude_properties=[addresses.c.id])
         l = create_session().query(User).order_by(users.c.id).all()
         eq_(l, self.static.user_result[:3])
 
     @testing.resolve_artifact_names
     def test_mapping_to_join_no_pk(self):
-        m = mapper(Address, addresses.join(email_bounces))
+        m = mapper(Address, 
+                    addresses.join(email_bounces), 
+                    properties={'id':[addresses.c.id, email_bounces.c.id]}
+                )
         m.compile()
         assert addresses in m._pks_by_table
         assert email_bounces not in m._pks_by_table

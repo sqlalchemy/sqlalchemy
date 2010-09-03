@@ -176,6 +176,32 @@ class frozendict(dict):
     def __repr__(self):
         return "frozendict(%s)" % dict.__repr__(self)
 
+
+# find or create a dict implementation that supports __missing__
+class _probe(dict):
+    def __missing__(self, key):
+        return 1
+        
+try:
+    try:
+        _probe()['missing']
+        py25_dict = dict
+    except KeyError:
+        class py25_dict(dict):
+            def __getitem__(self, key):
+                try:
+                    return dict.__getitem__(self, key)
+                except KeyError:
+                    try:
+                        missing = self.__missing__
+                    except AttributeError:
+                        raise KeyError(key)
+                    else:
+                        return missing(key)
+finally:
+    del _probe
+
+
 def to_list(x, default=None):
     if x is None:
         return default
@@ -1434,6 +1460,7 @@ def function_named(fn, name):
                           fn.func_defaults, fn.func_closure)
     return fn
 
+
 class memoized_property(object):
     """A read-only @property that is only evaluated once."""
     def __init__(self, fget, doc=None):
@@ -1477,6 +1504,24 @@ class memoized_instancemethod(object):
 
 def reset_memoized(instance, name):
     instance.__dict__.pop(name, None)
+
+
+class group_expirable_memoized_property(object):
+    """A family of @memoized_properties that can be expired in tandem."""
+
+    def __init__(self):
+        self.attributes = []
+
+    def expire_instance(self, instance):
+        """Expire all memoized properties for *instance*."""
+        stash = instance.__dict__
+        for attribute in self.attributes:
+            stash.pop(attribute, None)
+
+    def __call__(self, fn):
+        self.attributes.append(fn.__name__)
+        return memoized_property(fn)
+
 
 class WeakIdentityMapping(weakref.WeakKeyDictionary):
     """A WeakKeyDictionary with an object identity index.

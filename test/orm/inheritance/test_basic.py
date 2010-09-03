@@ -981,7 +981,8 @@ class OverrideColKeyTest(_base.MappedTest):
         # s2 gets a new id, base_id is overwritten by the ultimate
         # PK col
         assert s2.id == s2.base_id != 15
-        
+    
+    @testing.emits_warning(r'Implicit')
     def test_override_implicit(self):
         # this is how the pattern looks intuitively when 
         # using declarative.
@@ -1143,7 +1144,9 @@ class OptimizedLoadTest(_base.MappedTest):
         
         # redefine Sub's "id" to favor the "id" col in the subtable.
         # "id" is also part of the primary join condition
-        mapper(Sub, sub, inherits=Base, polymorphic_identity='sub', properties={'id':sub.c.id})
+        mapper(Sub, sub, inherits=Base, 
+                        polymorphic_identity='sub',
+                        properties={'id':[sub.c.id, base.c.id]})
         sess = sessionmaker()()
         s1 = Sub(data='s1data', sub='s1sub')
         sess.add(s1)

@@ -222,6 +222,16 @@ class INTERVAL(sqltypes.TypeEngine):
     @property
     def _type_affinity(self):
         return sqltypes.Interval
+
+class ROWID(sqltypes.TypeEngine):
+    """Oracle ROWID type.
+    
+    When used in a cast() or similar, generates ROWID.
+    
+    """
+    __visit_name__ = 'ROWID'
+    
+    
     
 class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
@@ -336,6 +346,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     def visit_RAW(self, type_):
         return "RAW(%(length)s)" % {'length' : type_.length}
 
+    def visit_ROWID(self, type_):
+        return "ROWID"
+        
 class OracleCompiler(compiler.SQLCompiler):
     """Oracle compiler modifies the lexical structure of Select
     statements to work under non-ANSI configured Oracle databases, if
@@ -886,11 +899,22 @@ class OracleDialect(default.DefaultDialect):
         uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
         
         oracle_sys_col = re.compile(r'SYS_NC\d+\$', re.IGNORECASE)
+
+        def upper_name_set(names):
+            return set([i.upper() for i in names])
+
+        pk_names = upper_name_set(pkeys)
+
+        def remove_if_primary_key(index):
+            # don't include the primary key index
+            if index is not None and \
+               upper_name_set(index['column_names']) == pk_names:
+                indexes.pop()
+
+        index = None
         for rset in rp:
-            # don't include the primary key columns
-            if rset.column_name in [s.upper() for s in pkeys]:
-                continue
             if rset.index_name != last_index_name:
+                remove_if_primary_key(index)
                 index = dict(name=self.normalize_name(rset.index_name), column_names=[])
                 indexes.append(index)
             index['unique'] = uniqueness.get(rset.uniqueness, False)
@@ -900,6 +924,7 @@ class OracleDialect(default.DefaultDialect):
             if not oracle_sys_col.match(rset.column_name):
                 index['column_names'].append(self.normalize_name(rset.column_name))
             last_index_name = rset.index_name
+        remove_if_primary_key(index)
         return indexes
 
     @reflection.cache
@@ -932,7 +957,6 @@ class OracleDialect(default.DefaultDialect):
         constraint_data = rp.fetchall()
         return constraint_data
 
-    @reflection.cache
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
         """
 
@@ -943,7 +967,10 @@ class OracleDialect(default.DefaultDialect):
             dblink
 
         """
+        return self._get_primary_keys(connection, table_name, schema, **kw)[0]
 
+    @reflection.cache
+    def _get_primary_keys(self, connection, table_name, schema=None, **kw):
         resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
         dblink = kw.get('dblink', '')
         info_cache = kw.get('info_cache')
@@ -953,6 +980,7 @@ class OracleDialect(default.DefaultDialect):
                                           resolve_synonyms, dblink,
                                           info_cache=info_cache)
         pkeys = []
+        constraint_name = None
         constraint_data = self._get_constraint_data(connection, table_name,
                                         schema, dblink,
                                         info_cache=kw.get('info_cache'))
@@ -962,8 +990,18 @@ class OracleDialect(default.DefaultDialect):
             (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = \
                 row[0:2] + tuple([self.normalize_name(x) for x in row[2:6]])
             if cons_type == 'P':
+                if constraint_name is None:
+                    constraint_name = self.normalize_name(cons_name)
                 pkeys.append(local_column)
-        return pkeys
+        return pkeys, constraint_name
+
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        cols, name = self._get_primary_keys(connection, table_name, schema=schema, **kw)
+
+        return {
+            'constrained_columns':cols,
+            'name':name
+        }
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
