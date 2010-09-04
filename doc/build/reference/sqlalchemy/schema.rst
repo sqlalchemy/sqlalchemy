@@ -102,8 +102,13 @@ Default Generators and Markers
 
 .. _schema_api_ddl:
 
-DDL Generation
---------------
+DDL Generation and Events
+--------------------------
+
+.. autoclass:: DDLEvents
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 .. autoclass:: DDLElement
     :members:
@@ -155,15 +160,3 @@ DDL Generation
     :undoc-members:
     :show-inheritance:
 
-Internals
----------
-
-.. autoclass:: SchemaItem
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. autoclass:: SchemaVisitor
-    :members:
-    :undoc-members:
-    :show-inheritance:

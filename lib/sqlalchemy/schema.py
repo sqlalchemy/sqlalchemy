@@ -2170,11 +2170,33 @@ class DDLElement(expression.Executable, expression.ClauseElement):
             bind.engine.logger.info(
                         "DDL execution skipped, criteria not met.")
 
+    @util.deprecated("0.7", "See :class:`.DDLEvents`, as well as "
+        ":meth:`.DDLEvent.execute_if`.")
     def execute_at(self, event_name, target):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
         
-        Deprecated.  See :class:`.DDLEvents`, as well as
-        :meth:`.DDLEvent.execute_if`.
+        Links this ``DDLElement`` to a ``Table`` or ``MetaData`` instance,
+        executing it when that schema item is created or dropped. The DDL
+        statement will be executed using the same Connection and transactional
+        context as the Table create/drop itself. The ``.bind`` property of
+        this statement is ignored.
+        
+        :param event:
+          One of the events defined in the schema item's ``.ddl_events``;
+          e.g. 'before-create', 'after-create', 'before-drop' or 'after-drop'
+
+        :param target:
+          The Table or MetaData instance for which this DDLElement will
+          be associated with.
+
+        A DDLElement instance can be linked to any number of schema items. 
+
+        ``execute_at`` builds on the ``append_ddl_listener`` interface of
+        :class:`MetaData` and :class:`Table` objects.
+
+        Caveat: Creating or dropping a Table in isolation will also trigger
+        any DDL set to ``execute_at`` that Table's MetaData.  This may change
+        in a future release.
         
         """
         
@@ -2322,6 +2344,42 @@ class DDL(DDLElement):
 
         :param on:
           Deprecated.  See :meth:`.DDLElement.execute_if`.
+
+          Optional filtering criteria.  May be a string, tuple or a callable
+          predicate.  If a string, it will be compared to the name of the
+          executing database dialect::
+
+            DDL('something', on='postgresql')
+
+          If a tuple, specifies multiple dialect names::
+
+            DDL('something', on=('postgresql', 'mysql'))
+
+          If a callable, it will be invoked with four positional arguments
+          as well as optional keyword arguments:
+            
+            :ddl:
+              This DDL element.
+              
+            :event:
+              The name of the event that has triggered this DDL, such as
+              'after-create' Will be None if the DDL is executed explicitly.
+
+            :target:
+              The ``Table`` or ``MetaData`` object which is the target of 
+              this event. May be None if the DDL is executed explicitly.
+
+            :connection:
+              The ``Connection`` being used for DDL execution
+
+            :tables:  
+              Optional keyword argument - a list of Table objects which are to
+              be created/ dropped within a MetaData.create_all() or drop_all()
+              method call.
+
+              
+          If the callable returns a true value, the DDL statement will be
+          executed.
 
         :param context:
           Optional dictionary, defaults to None.  These values will be

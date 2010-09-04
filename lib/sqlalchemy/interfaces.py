@@ -13,7 +13,7 @@ class PoolListener(object):
 
     .. note:: :class:`PoolListener` is deprecated.   Please
        refer to :func:`event.listen` as well as 
-       :attr:`.Pool.events`.
+       :class:`.PoolEvents`.
     
     Usage::
     
