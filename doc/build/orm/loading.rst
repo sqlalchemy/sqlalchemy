@@ -12,26 +12,11 @@ as well as by using options with the :class:`.Query` object.
 Using Loader Strategies: Lazy Loading, Eager Loading
 ----------------------------------------------------
 
-In the :ref:`ormtutorial_toplevel`, we introduced the concept of **Eager
-Loading**. We used an ``option`` in conjunction with the
-:class:`~sqlalchemy.orm.query.Query` object in order to indicate that a
-relationship should be loaded at the same time as the parent, within a single
-SQL query:
-
-.. sourcecode:: python+sql
-
-    {sql}>>> jack = session.query(User).options(joinedload('addresses')).filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
-    addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password
-    FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
-    WHERE users.name = ?
-    ['jack']
-
 By default, all inter-object relationships are **lazy loading**. The scalar or
 collection attribute associated with a :func:`~sqlalchemy.orm.relationship`
-contains a trigger which fires the first time the attribute is accessed, which
-issues a SQL call at that point:
+contains a trigger which fires the first time the attribute is accessed.  This
+trigger, in all but one case, issues a SQL call at the point of access
+in order to load the related object or objects:
 
 .. sourcecode:: python+sql
 
@@ -43,9 +28,35 @@ issues a SQL call at that point:
     [5]
     {stop}[<Address(u'jack@google.com')>, <Address(u'j25@yahoo.com')>]
 
-A second option for eager loading exists, called "subquery" loading. This kind
-of eager loading emits an additional SQL statement for each collection
-requested, aggregated across all parent objects:
+The one case where SQL is not emitted is for a simple many-to-one relationship, when 
+the related object can be identified by its primary key alone and that object is already
+present in the current :class:`.Session`.
+
+This default behavior of "load upon attribute access" is known as "lazy" or
+"select" loading - the name "select" because a "SELECT" statement is typically emitted
+when the attribute is first accessed.
+
+In the :ref:`ormtutorial_toplevel`, we introduced the concept of **Eager
+Loading**. We used an ``option`` in conjunction with the
+:class:`~sqlalchemy.orm.query.Query` object in order to indicate that a
+relationship should be loaded at the same time as the parent, within a single
+SQL query.   This option, known as :func:`.joinedload`
+
+.. sourcecode:: python+sql
+
+    {sql}>>> jack = session.query(User).options(joinedload('addresses')).filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
+    addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
+    users.fullname AS users_fullname, users.password AS users_password
+    FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE users.name = ?
+    ['jack']
+
+
+In addition to "joined eager loading", a second option for eager loading
+exists, called "subquery eager loading". This kind of eager loading emits an
+additional SQL statement for each collection requested, aggregated across all
+parent objects:
 
 .. sourcecode:: python+sql
     
@@ -64,7 +75,8 @@ requested, aggregated across all parent objects:
     ('jack',)
 
 The default **loader strategy** for any :func:`~sqlalchemy.orm.relationship`
-is configured by the ``lazy`` keyword argument, which defaults to ``select``.
+is configured by the ``lazy`` keyword argument, which defaults to ``select`` - this indicates
+a "select" statement .
 Below we set it as ``joined`` so that the ``children`` relationship is eager
 loading, using a join:
 
@@ -133,6 +145,34 @@ or more simply just use :func:`~sqlalchemy.orm.joinedload_all` or :func:`~sqlalc
 
 There are two other loader strategies available, **dynamic loading** and **no loading**; these are described in :ref:`largecollections`.
 
+The Zen of Eager Loading
+-------------------------
+
+The philosophy behind loader strategies is that any set of loading schemes can be
+applied to a particular query, and *the results don't change* - only the number 
+of SQL statements required to fully load related objects and collections changes. A particular
+query might start out using all lazy loads.   After using it in context, it might be revealed
+that particular attributes or collections are always accessed, and that it would be more
+efficient to change the loader strategy for these.   The strategy can be changed with no other
+modifications to the query, the results will remain identical, but fewer SQL statements would be emitted.
+In theory (and pretty much in practice), nothing you can do to the :class:`.Query` would make it load
+a different set of primary or related objects based on a change in loader strategy.
+
+The way eagerloading does this, and in particular how :func:`joinedload`
+works, is that it creates an anonymous alias of all the joins it adds to your
+query, so that they can't be referenced by other parts of the query. If the
+query contains a DISTINCT, or a limit or offset, the statement is first
+wrapped inside a subquery, and joins are applied to that. As the user, you
+don't have access to these aliases or subqueries, and you cannot affect what
+data they will load at query time - a typical beginner misunderstanding is
+that adding a :meth:`.Query.order_by`, naming the joined relationship, would
+change the order of the collection, or that the entries in the collection as
+it is loaded could be affected by :meth:`.Query.filter`. Not the case ! If
+you'd like to join from one table to another, filtering or ordering on the
+joined result, you'd use :meth:`.Query.join`. If you then wanted that joined
+result to populate itself into a related collection, this is also available,
+via :func:`.contains_eager` option - see :ref:`contains_eager`.
+
 What Kind of Loading to Use ?
 -----------------------------
 
@@ -189,6 +229,8 @@ references a scalar many-to-one reference.
    there would be two SQL statements emitted.  There's probably not much advantage here over
    joined loading, however, except perhaps that subquery loading can use an INNER JOIN in all cases
    whereas joined loading requires that the foreign key is NOT NULL.
+
+.. _contains_eager:
 
 Routing Explicit Joins/Statements into Eagerly Loaded Collections
 ------------------------------------------------------------------

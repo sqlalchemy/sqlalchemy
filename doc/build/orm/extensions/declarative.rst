@@ -1,4 +1,4 @@
-declarative
+Declarative
 ===========
 
 .. automodule:: sqlalchemy.ext.declarative

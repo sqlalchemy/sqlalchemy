@@ -23,6 +23,9 @@ Location: /examples/association/
 
 .. automodule:: association
 
+
+.. _examples_instrumentation:
+
 Attribute Instrumentation
 -------------------------
 

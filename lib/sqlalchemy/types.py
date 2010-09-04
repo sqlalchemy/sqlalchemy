@@ -485,6 +485,14 @@ class TypeDecorator(AbstractType):
         return self.impl.compare_values(x, y)
 
     def is_mutable(self):
+        """Return True if the target Python type is 'mutable'.
+        
+        When this method is overridden, :meth:`copy_value` should
+        also be supplied.   The :class:`.MutableType` mixin
+        is recommended as a helper.
+        
+        """
+
         return self.impl.is_mutable()
 
     def _adapt_expression(self, op, othertype):
@@ -562,7 +570,9 @@ class MutableType(object):
     """
 
     def is_mutable(self):
-        """Return True, mutable."""
+        """Return True if the target Python type is 'mutable'.
+        
+        """
         return True
 
     def copy_value(self, value):

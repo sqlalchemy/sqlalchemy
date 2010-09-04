@@ -1,3 +1,5 @@
+.. _core_toplevel:
+
 SQLAlchemy Core
 ===============
 
@@ -7,10 +9,11 @@ SQLAlchemy Core
     tutorial
     expression_api
     engines
-    pooling
     connections
+    pooling
     schema
     types
+    interfaces
     compiler
     
     

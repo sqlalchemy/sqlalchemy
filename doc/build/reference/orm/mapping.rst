@@ -56,8 +56,3 @@ Attribute Utilities
 
 .. autofunction:: sqlalchemy.orm.attributes.set_committed_value
 
-Internals
----------
-
-.. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
-  :members:

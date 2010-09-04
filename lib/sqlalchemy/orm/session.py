@@ -446,71 +446,8 @@ class SessionTransaction(object):
 class Session(object):
     """Manages persistence operations for ORM-mapped objects.
 
-    The Session is the front end to SQLAlchemy's **Unit of Work**
-    implementation.  The concept behind Unit of Work is to track modifications
-    to a field of objects, and then be able to flush those changes to the
-    database in a single operation.
-
-    SQLAlchemy's unit of work includes these functions:
-
-    * The ability to track in-memory changes on scalar- and collection-based
-      object attributes, such that database persistence operations can be
-      assembled based on those changes.
-
-    * The ability to organize individual SQL queries and population of newly
-      generated primary and foreign key-holding attributes during a persist
-      operation such that referential integrity is maintained at all times.
-
-    * The ability to maintain insert ordering against the order in which new
-      instances were added to the session.
-
-    * An Identity Map, which is a dictionary keying instances to their unique
-      primary key identity. This ensures that only one copy of a particular
-      entity is ever present within the session, even if repeated load
-      operations for the same entity occur. This allows many parts of an
-      application to get a handle to a particular object without any chance of
-      modifications going to two different places.
-
-    When dealing with instances of mapped classes, an instance may be
-    *attached* to a particular Session, else it is *unattached* . An instance
-    also may or may not correspond to an actual row in the database. These
-    conditions break up into four distinct states:
-
-    * *Transient* - an instance that's not in a session, and is not saved to
-      the database; i.e. it has no database identity. The only relationship
-      such an object has to the ORM is that its class has a ``mapper()``
-      associated with it.
-
-    * *Pending* - when you ``add()`` a transient instance, it becomes
-      pending. It still wasn't actually flushed to the database yet, but it
-      will be when the next flush occurs.
-
-    * *Persistent* - An instance which is present in the session and has a
-      record in the database. You get persistent instances by either flushing
-      so that the pending instances become persistent, or by querying the
-      database for existing instances (or moving persistent instances from
-      other sessions into your local session).
-
-    * *Detached* - an instance which has a record in the database, but is not
-      in any session. Theres nothing wrong with this, and you can use objects
-      normally when they're detached, **except** they will not be able to
-      issue any SQL in order to load collections or attributes which are not
-      yet loaded, or were marked as "expired".
-
-    The session methods which control instance state include :meth:`.Session.add`,
-    :meth:`.Session.delete`, :meth:`.Session.merge`, and :meth:`.Session.expunge`.
-
-    The Session object is generally **not** threadsafe.  A session which is
-    set to ``autocommit`` and is only read from may be used by concurrent
-    threads if it's acceptable that some object instances may be loaded twice.
-
-    The typical pattern to managing Sessions in a multi-threaded environment
-    is either to use mutexes to limit concurrent access to one thread at a
-    time, or more commonly to establish a unique session for every thread,
-    using a threadlocal variable.  SQLAlchemy provides a thread-managed
-    Session adapter, provided by the :func:`~sqlalchemy.orm.scoped_session`
-    function.
-
+    The Session's usage paradigm is described at :ref:`session_toplevel`.
+    
     """
 
     public_methods = (
@@ -529,8 +466,9 @@ class Session(object):
                  query_cls=query.Query):
         """Construct a new Session.
 
-        Arguments to ``Session`` are described using the
-        :func:`~sqlalchemy.orm.sessionmaker` function.
+        Arguments to :class:`.Session` are described using the
+        :func:`.sessionmaker` function, which is the 
+        typical point of entry.
 
         """
         

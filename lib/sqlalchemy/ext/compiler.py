@@ -119,6 +119,8 @@ overriding routine and cause an endless loop.   Such as, to add "prefix" to all 
 
 The above compiler will prefix all INSERT statements with "some prefix" when compiled.
 
+.. _type_compilation_extension:
+
 Changing Compilation of Types
 =============================
 

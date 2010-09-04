@@ -1,3 +1,5 @@
+.. _orm_toplevel:
+
 SQLAlchemy ORM
 ===============
 
@@ -12,8 +14,8 @@ SQLAlchemy ORM
     session
     query
     loading
-    events
-    extensions
+    interfaces
+    extensions/index
     examples
-    deprecated
+    
     

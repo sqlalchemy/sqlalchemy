@@ -1,5 +1,5 @@
-orderinglist
-============
+Ordering List
+=============
 
 .. automodule:: sqlalchemy.ext.orderinglist
 

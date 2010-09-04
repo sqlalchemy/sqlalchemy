@@ -239,15 +239,24 @@ such as `collation` and `charset`::
 Custom Types
 ------------
 
-User-defined types may be created to match special capabilities of a
-particular database or simply for implementing custom processing logic
-in Python.
+A variety of methods exist to redefine the behavior of existing types
+as well as to provide new ones.
 
-The simplest method is implementing a :class:`TypeDecorator`, a helper
-class that makes it easy to augment the bind parameter and result
-processing capabilities of one of the built in types.
+Overriding Type Compilation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To build a type object from scratch, subclass `:class:UserDefinedType`.
+The string produced by any type object, when rendered in a CREATE TABLE 
+statement or other SQL function like CAST, can be changed.  See the
+section :ref:`type_compilation_extension`, a subsection of 
+:ref:`sqlalchemy.ext.compiler_toplevel`, for a short example.
+
+Augmenting Existing Types
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`TypeDecorator` allows the creation of custom types which
+add bind-parameter and result-processing behavior to an existing
+type object.  It is used when additional in-Python marshalling of data
+to and from the database is required.
 
 .. autoclass:: TypeDecorator
    :members:
@@ -255,19 +264,28 @@ To build a type object from scratch, subclass `:class:UserDefinedType`.
    :inherited-members:
    :show-inheritance:
 
+Creating New Types
+~~~~~~~~~~~~~~~~~~
+
+The :class:`UserDefinedType` class is provided as a simple base class
+for defining entirely new database types:
+
 .. autoclass:: UserDefinedType
    :members:
    :undoc-members:
    :inherited-members:
    :show-inheritance:
 
-.. autoclass:: TypeEngine
+Base Type API
+--------------
+
+.. autoclass:: AbstractType
    :members:
    :undoc-members:
    :inherited-members:
    :show-inheritance:
 
-.. autoclass:: AbstractType
+.. autoclass:: TypeEngine
    :members:
    :undoc-members:
    :inherited-members:

@@ -3,6 +3,11 @@
 Querying
 ========
 
+This section provides API documentation for the :class:`.Query` object and related constructs.
+
+For an in-depth introduction to querying with the SQLAlchemy ORM, please see the :ref:`ormtutorial_toplevel`.
+
+
 .. module:: sqlalchemy.orm
 
 The Query Object

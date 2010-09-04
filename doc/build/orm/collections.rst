@@ -1,5 +1,7 @@
 .. _collections_toplevel:
 
+.. currentmodule:: sqlalchemy.orm
+
 Collection Configuration and Techniques
 =======================================
 
@@ -69,6 +71,8 @@ To place a dynamic relationship on a backref, use ``lazy='dynamic'``:
     })
 
 Note that eager/lazy loading options cannot be used in conjunction dynamic relationships at this time.
+
+.. autofunction:: dynamic_loader
 
 Setting Noload
 ~~~~~~~~~~~~~~~
@@ -362,12 +366,13 @@ Collections API
 
 .. autoclass:: collection
 
-.. autoclass:: sqlalchemy.orm.collections.MappedCollection
-   :members:
-
 .. autofunction:: collection_adapter
 
 .. autofunction:: column_mapped_collection
 
 .. autofunction:: mapped_collection
+
+.. autoclass:: sqlalchemy.orm.collections.MappedCollection
+   :members:
+
 

@@ -14,43 +14,52 @@ The SQLAlchemy SQL Toolkit and Object Relational Mapper is a comprehensive set o
 
 Above, the two most significant front-facing portions of SQLAlchemy are the **Object Relational Mapper** and the **SQL Expression Language**.  SQL Expressions can be used independently of the ORM.  When using the ORM, the SQL Expression language remains part of the public facing API as it is used within object-relational configurations and queries.
 
-Tutorials
-=========
+Documentation Overview
+======================
 
-* :ref:`ormtutorial_toplevel` - This describes the richest feature of SQLAlchemy, its object relational mapper.  If you want to work with higher-level SQL which is constructed automatically for you, as well as management of Python objects, proceed to this tutorial.
-* :ref:`sqlexpression_toplevel` - The core of SQLAlchemy is its SQL expression language.  The SQL Expression Language is a toolkit all its own, independent of the ORM package, which can be used to construct manipulable SQL expressions which can be programmatically constructed, modified, and executed, returning cursor-like result sets.  It's a lot more lightweight than the ORM and is appropriate for higher scaling SQL operations.  It's also heavily present within the ORM's public facing API, so advanced ORM users will want to master this language as well.
+The documentation is separated into three sections: :ref:`orm_toplevel`, :ref:`core_toplevel`, and :ref:`dialect_toplevel`.  
 
-Main Documentation
-==================
+In :ref:`orm_toplevel`, the Object Relational Mapper is introduced and fully
+described. New users should begin with the :ref:`ormtutorial_toplevel`. If you
+want to work with higher-level SQL which is constructed automatically for you,
+as well as management of Python objects, proceed to this tutorial.
 
-* :ref:`datamapping_toplevel` - A comprehensive walkthrough of major ORM patterns and techniques.
-* :ref:`session_toplevel` - A detailed description of SQLAlchemy's Session object
-* :ref:`engines_toplevel` - Describes SQLAlchemy's database-connection facilities, including connection documentation and working with connections and transactions.
-* :ref:`metadata_toplevel` - All about schema management using :class:`~sqlalchemy.schema.MetaData` and :class:`~sqlalchemy.schema.Table` objects; reading database schemas into your application, creating and dropping tables, constraints, defaults, sequences, indexes.
-* :ref:`pooling_toplevel` - Further detail about SQLAlchemy's connection pool library.
-* :ref:`types` - Datatypes included with SQLAlchemy, their functions, as well as how to create your own types.
-* :ref:`plugins` - Included addons for SQLAlchemy
+In :ref:`core_toplevel`, the breadth of SQLAlchemy's SQL and database
+integration and description services are documented, the core of which is the
+SQL Expression language.  The SQL Expression Language is a toolkit all its own,
+independent of the ORM package, which can be used to construct manipulable SQL
+expressions which can be programmatically constructed, modified, and executed,
+returning cursor-like result sets.  In contrast to the ORM's domain-centric 
+mode of usage, the expression language provides a schema-centric usage
+paradigm.  New users should begin here with :ref:`sqlexpression_toplevel`.
+SQLAlchemy engine, connection, and pooling services are also described in 
+:ref:`core_toplevel`.
+
+In :ref:`dialect_toplevel`, reference documentation for all provided 
+database and DBAPI backends is provided.
 
 Code Examples
 =============
 
-Working code examples are included in the SQLAlchemy distribution, and there are also usage recipes on the SQLAlchemy wiki.   A description of all the included example applications is at :ref:`examples_toplevel`.
-
-API Reference
-=============
-
-An organized section of all SQLAlchemy APIs is at :ref:`api_reference_toplevel`.
+Working code examples, mostly regarding the ORM, are included in the
+SQLAlchemy distribution, and there are also usage recipes on the SQLAlchemy
+wiki. A description of all the included example applications is at
+:ref:`examples_toplevel`.
 
 Installing SQLAlchemy
 ======================
 
-Installing SQLAlchemy from scratch is most easily achieved with `setuptools <http://pypi.python.org/pypi/setuptools/>`_. Assuming it's installed, just run this from the command-line:
+Installing SQLAlchemy from scratch is most easily achieved with `setuptools
+<http://pypi.python.org/pypi/setuptools/>`_. Assuming it's installed, just run
+this from the command-line:
 
 .. sourcecode:: none
 
     # easy_install SQLAlchemy
 
-This command will download the latest version of SQLAlchemy from the `Python Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
+This command will download the latest version of SQLAlchemy from the `Python
+Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your
+system.
 
 * setuptools_ 
 * `install setuptools <http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions>`_

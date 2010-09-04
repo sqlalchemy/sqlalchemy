@@ -1,7 +1,7 @@
 .. _associationproxy:
 
-associationproxy
-================
+Association Proxy
+=================
 
 .. module:: sqlalchemy.ext.associationproxy
 

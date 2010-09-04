@@ -1,5 +1,5 @@
-Horizontal Shard
-=================
+Horizontal Sharding
+===================
 
 .. automodule:: sqlalchemy.ext.horizontal_shard
 

@@ -1150,6 +1150,9 @@ def contains_eager(*keys, **kwargs):
     See also :func:`eagerload` for the "automatic" version of this 
     functionality.
 
+    For additional examples of :func:`contains_eager` see
+    :ref:`contains_eager`.
+
     """
     alias = kwargs.pop('alias', None)
     if kwargs:

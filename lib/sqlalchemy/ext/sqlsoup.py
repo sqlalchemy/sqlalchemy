@@ -3,7 +3,15 @@ Introduction
 ============
 
 SqlSoup provides a convenient way to access existing database tables without
-having to declare table or mapper classes ahead of time.  It is built on top of the SQLAlchemy ORM and provides a super-minimalistic interface to an existing database.   
+having to declare table or mapper classes ahead of time. It is built on top of
+the SQLAlchemy ORM and provides a super-minimalistic interface to an existing
+database.
+
+SqlSoup effectively provides a coarse grained, alternative interface to
+working with the SQLAlchemy ORM, providing a "self configuring" interface
+for extremely rudimental operations.  It's somewhat akin to a 
+"super novice mode" version of the ORM.  While SqlSoup can be very handy,
+users are strongly encouraged to use the full ORM for non-trivial applications.
 
 Suppose we have a database with users, books, and loans tables
 (corresponding to the PyWebOff dataset, if you're curious).  

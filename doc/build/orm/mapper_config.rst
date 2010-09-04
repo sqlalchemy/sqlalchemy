@@ -142,6 +142,8 @@ together using a list, as below where we map to a :func:`~.expression.join`::
 
 For further examples on this particular use case, see :ref:`maptojoin`.
 
+.. _deferred:
+
 Deferred Column Loading
 ------------------------
 
@@ -710,6 +712,10 @@ The :func:`mapper` API
 .. autofunction:: compile_mappers
 
 .. autofunction:: clear_mappers
+
+.. autofunction:: sqlalchemy.orm.util.identity_key
+
+.. autofunction:: sqlalchemy.orm.util.polymorphic_union
 
 .. autoclass:: sqlalchemy.orm.mapper.Mapper
    :members:

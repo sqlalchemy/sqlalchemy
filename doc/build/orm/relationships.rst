@@ -760,8 +760,6 @@ The :func:`relationship` API
 
 .. autofunction:: backref
 
-.. autofunction:: dynamic_loader
-
 .. autofunction:: relation
 
 

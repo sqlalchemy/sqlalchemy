@@ -4,6 +4,8 @@
 Using the Session
 =================
 
+.. module:: sqlalchemy.orm.session
+
 The :func:`.orm.mapper` function and :mod:`~sqlalchemy.ext.declarative` extensions
 are the primary configurational interface for the ORM. Once mappings are
 configured, the primary usage interface for persistence operations is the
@@ -1036,6 +1038,14 @@ you explicitly bind it::
 
     engine.commit() # commit the transaction
 
+The :class:`.Session` object and :func:`.sessionmaker` function
+================================================================
+
+.. autofunction:: sessionmaker
+
+.. autoclass:: sqlalchemy.orm.session.Session
+   :members:
+
 .. _unitofwork_contextual:
 
 Contextual/Thread-local Sessions
@@ -1143,41 +1153,24 @@ in a web application::
                         Session.remove() <-
     web response   <-
 
-The above example illustrates an explicit call to ``Session.remove()``. This
+The above example illustrates an explicit call to :meth:`.ScopedSession.remove`. This
 has the effect such that each web request starts fresh with a brand new
-session. When integrating with a web framework, there's actually many options
-on how to proceed for this step:
+session, and is the most definitive approach to closing out a request.
 
-* Session.remove() - this is the most cut and dry approach; the
-  :class:`~sqlalchemy.orm.session.Session` is thrown away, all of its
-  transactional resources rolled back and connections checked back to the
-  connection pool. A new :class:`~sqlalchemy.orm.session.Session` will be used
-  on the next request.
-* Session.close() - Similar to calling ``remove()``, in that all objects are
-  explicitly expunged, transactional resources are rolled back, connection
-  resources checked back into the connection pool, except the actual
-  :class:`~sqlalchemy.orm.session.Session` object hangs around. It doesn't
-  make too much difference here unless the start of the web request would like
-  to pass specific options to the initial construction of
-  :class:`~sqlalchemy.orm.session.Session()`, such as a specific
-  :class:`~sqlalchemy.engine.base.Engine` to bind to.
-* Session.commit() - In this case, the behavior is that any remaining changes
-  pending are flushed, and the transaction is committed; connection resources
-  are returned to the connection pool. The full state of the session is
-  expired, so that when the next web request is started, all data will be
-  reloaded. In reality, the contents of the
-  :class:`~sqlalchemy.orm.session.Session` are weakly referenced anyway so its
-  likely that it will be empty on the next request in any case.
-* Session.rollback() - Similar to calling commit, except we assume that the
-  user would have called commit explicitly if that was desired; the
-  :func:`~sqlalchemy.orm.session.Session.rollback` ensures that no
-  transactional state remains, returns connections to the connection pool, and
-  expires all data, in the case that the request was aborted and did not roll
-  back itself.
-* do nothing - this is a valid option as well. The controller code is
-  responsible for doing one of the above steps at the end of the request.
+It's not strictly necessary to remove the session at the end of the request -
+other options include calling :meth:`.Session.close`, :meth:`.Session.rollback`,
+:meth:`.Session.commit` at the end so that the existing session returns 
+its connections to the pool and removes any existing transactional context.
+Doing nothing is an option too, if individual controller methods take responsibility
+for ensuring that no transactions remain open after a request ends.
 
-Scoped Session API docs: :func:`sqlalchemy.orm.scoped_session`
+Contextual Session API
+-----------------------
+
+.. autofunction:: sqlalchemy.orm.scoped_session
+
+.. autoclass:: sqlalchemy.orm.scoping.ScopedSession
+   :members:
 
 .. _session_partitioning:
 
@@ -1206,6 +1199,38 @@ Horizontal Partitioning
 Horizontal partitioning partitions the rows of a single table (or a set of
 tables) across multiple databases.
 
-See the "sharding" example in `attribute_shard.py
-<http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/sharding/attribute_shard.py>`_
+See the "sharding" example: :ref:`examples_sharding`.
+
+Session Utilities
+=================
+
+.. autofunction:: make_transient
+
+.. autofunction:: object_session
+
+Attribute and State Management Utilities
+========================================
+
+.. autofunction:: sqlalchemy.orm.attributes.del_attribute
+
+.. autofunction:: sqlalchemy.orm.attributes.get_attribute
+
+.. autofunction:: sqlalchemy.orm.attributes.get_history
+
+.. autofunction:: sqlalchemy.orm.attributes.init_collection
+
+.. function:: sqlalchemy.orm.attributes.instance_state
+
+    Return the :class:`InstanceState` for a given object.
+
+.. autofunction:: sqlalchemy.orm.attributes.is_instrumented
+
+.. function:: sqlalchemy.orm.attributes.manager_of_class
+
+    Return the :class:`ClassManager` for a given class.
+
+.. autofunction:: sqlalchemy.orm.attributes.set_attribute
+
+.. autofunction:: sqlalchemy.orm.attributes.set_committed_value
+
 

@@ -51,7 +51,7 @@ MANYTOMANY = util.symbol('MANYTOMANY')
 
 class MapperExtension(object):
     """Base implementation for customizing ``Mapper`` behavior.
-
+    
     New extension classes subclass ``MapperExtension`` and are specified
     using the ``extension`` mapper() argument, which is a single
     ``MapperExtension`` or a list of such.   A single mapper
@@ -74,8 +74,9 @@ class MapperExtension(object):
     when this symbol is returned.  Like EXT_CONTINUE, it also
     has additional significance in some cases that a default
     mapper activity will not be performed.
-
+    
     """
+
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
         applied instrumentation to the mapped class.
@@ -185,7 +186,7 @@ class MapperExtension(object):
         \**flags
           extra information about the row, same as criterion in
           ``create_row_processor()`` method of
-           :class:`~sqlalchemy.orm.interfaces.MapperProperty`
+          :class:`~sqlalchemy.orm.interfaces.MapperProperty`
         """
 
         return EXT_CONTINUE
@@ -324,10 +325,10 @@ class MapperExtension(object):
 
     def after_delete(self, mapper, connection, instance):
         """Receive an object instance after that instance is deleted.
-        
-        The return value is only significant within the ``MapperExtension`` 
+
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
-        
+
         """
 
         return EXT_CONTINUE

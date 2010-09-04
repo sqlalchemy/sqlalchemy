@@ -779,8 +779,13 @@ class Query(object):
 
     def options(self, *args):
         """Return a new Query object, applying the given list of
-        MapperOptions.
-
+        mapper options.
+        
+        Most supplied options regard changing how column- and
+        relationship-mapped attributes are loaded. See the sections
+        :ref:`deferred` and :ref:`loading_toplevel` for reference
+        documentation.
+        
         """
         return self._options(False, *args)
 
