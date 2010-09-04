@@ -103,7 +103,7 @@ class Mapper(object):
         """Construct a new mapper.
 
         Mappers are normally constructed via the
-         :func:`~sqlalchemy.orm.mapper` function.  See for details.
+        :func:`~sqlalchemy.orm.mapper` function.  See for details.
 
         """
 
@@ -1374,11 +1374,11 @@ class Mapper(object):
         """Iterate each element and its mapper in an object graph,
         for all relationships that meet the given cascade rule.
 
-        ``type\_``:
+        :param type_:
           The name of the cascade rule (i.e. save-update, delete,
           etc.)
 
-        ``state``:
+        :param state:
           The lead InstanceState.  child items will be processed per
           the relationships defined for this object's mapper.
 

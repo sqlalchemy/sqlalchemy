@@ -1,0 +1,169 @@
+introduction   intro.rst
+SQLAlchemy ORM   orm.rst
+    tutorial   tutorial.rst
+    mapper configuration   mapper_config.rst
+        customizing column properties
+            subset of table columns
+            attr names for mapped columns
+            multiple cols for single attribute
+        deferred col loading
+            ref: deferred
+            ref: defer
+            ref: undefer
+            ref: undefer-group
+        sql expressions as mapped attributes
+            ref: column_property
+        changing attribute behavior
+            simple validators
+                ref: validates
+            using descriptors
+                ref: synonym
+                ref: hybrid
+            custom comparators
+                ref: PropComparator (needs the inherits)
+                ref: comparable_property
+        composite column types
+            ref: composite
+        Mapper API
+            ref: mapper
+            ref: Mapper
+    relationship configuration  relationships.rst
+        basic patterns
+        adjacency list
+        join conditions
+        mutually dependent rows
+        mutable priamry keys update cascades
+        loading options (blah blah eager loading is better ad-hoc link)
+        ref: relationship()
+    inheritance configuration and usage   inheritance.rst
+    session usage  session.rst
+        reference
+            ref: session
+            ref: object_session
+            ref: attribute stuff
+    query object  query.rst
+        ref: query
+    eagerloading  loading.rst
+        what kind of loading to use ?
+        routing explicit joins
+        reference
+            ref: joinedload
+            ref: subqueryload
+            ref: lazyload
+            ref: noload
+            ref: contains_eager
+        other options
+            ref:
+        constructs
+    events events.rst
+    collection configuration collections.rst
+        dictionaries
+        custom collections
+        collection decorators
+        instr and custom types
+        large collection techniques
+    ORM Extensions extensions.rst
+        association proxy
+        declarative
+        orderinglist
+        horizontal shard
+        sqlsoup
+    examples examples.rst
+    deprecated interfaces deprecated.rst
+    
+SQLAlchemy Core core.rst
+    Expression Tutorial  sqlexpression.rst
+    Expression API Reference  expression_api.rst
+    engines  engines.rst
+        intro
+        db support
+        create_engine URLs
+        DBAPI arguments
+        logging
+        api reference
+         ref: create_engine
+         ref: engine_from_config
+         ref: engine
+         ref: resultproxy
+         ref: URL
+         
+    connection pools  pooling.rst
+        events
+        
+    connections / transactions connections.rst
+        more on connections
+        using transactions with connection
+        understanding autocommit
+        connectionless/implicit
+        threadlocal
+        events
+        Connection API ref
+            ref: connection
+            ref: connectable
+            ref: transaction
+            
+    schema schema.rst
+        metadata
+            accessing tables and columns
+            creating dropping
+            binding
+            reflecting
+                ..
+                ..
+                ..
+                ref: inspector
+            specifying schema name
+            backend options
+            table metadata API
+                ref: metadata
+                ref: table  (put the tometadata section in the method)
+                ref: column
+            column insert/update defaults
+                scalar defaults
+                pyhton functions
+                    context sensitive
+                sql expressions
+                server side defaults
+                triggered
+                defining sequences
+                column default API
+                    ref: fetchavlue
+                    ref: seq
+                    etc
+            defining constraints and indexes
+                defining foregin keys
+                    creating/dropping via alter
+                    onupdate ondelete
+                    Foreign Key API
+                unique constraint
+                    ref: unique
+                check constraint
+                    ref: check
+                indexes
+                    ref: index
+            customizing ddl
+                contorl ddl sequences
+                custom ddl
+                events
+                DDL API
+                    :ddlelement
+                    ddl
+                    ddlevents
+                    ceratetable
+                    droptable
+                    et etc
+    datatypes types.rst
+        generic
+        sql standard
+        vendor
+        custom
+            - changing type compliation
+            - wrapping types with typedec
+            - user defined types
+        base API    
+            - abstract
+            - typeengine
+            - mutable
+            - etc
+    custom compilation compiler.rst
+Dialects

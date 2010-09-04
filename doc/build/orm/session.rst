@@ -1209,26 +1209,3 @@ tables) across multiple databases.
 See the "sharding" example in `attribute_shard.py
 <http://www.sqlalchemy.org/trac/browser/sqlalchemy/trunk/examples/sharding/attribute_shard.py>`_
 
-Extending Session
-=================
-
-Extending the session can be achieved through subclassing as well as through a
-simple extension class, which resembles the style of :ref:`extending_mapper`
-called :class:`~sqlalchemy.orm.interfaces.SessionExtension`. See the
-docstrings for more information on this class' methods.
-
-Basic usage is similar to
-:class:`~sqlalchemy.orm.interfaces.MapperExtension`::
-
-    class MySessionExtension(SessionExtension):
-        def before_commit(self, session):
-            print "before commit!"
-
-    Session = sessionmaker(extension=MySessionExtension())
-
-or with :func:`~sqlalchemy.orm.create_session`::
-
-    session = create_session(extension=MySessionExtension())
-
-The same :class:`~sqlalchemy.orm.interfaces.SessionExtension` instance can be
-used with any number of sessions.

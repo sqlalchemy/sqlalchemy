@@ -6,9 +6,6 @@ Class Mapping
 Defining Mappings
 -----------------
 
-Python classes are mapped to the database using the :func:`mapper` function.
-
-.. autofunction:: mapper
 
 Mapper Properties
 -----------------
@@ -28,13 +25,9 @@ call::
 
 .. autofunction:: backref
 
-.. autofunction:: column_property
 
-.. autofunction:: comparable_property
 
-.. autofunction:: composite
 
-.. autofunction:: deferred
 
 .. autofunction:: dynamic_loader
 
@@ -42,25 +35,14 @@ call::
 
 .. autofunction:: relationship
 
-.. autofunction:: synonym
 
 Decorators
 ----------
 
-.. autofunction:: reconstructor
-
-.. autofunction:: validates
 
 Utilities
 ---------
 
-.. autofunction:: object_mapper
-
-.. autofunction:: class_mapper
-
-.. autofunction:: compile_mappers
-
-.. autofunction:: clear_mappers
 
 Attribute Utilities
 -------------------
@@ -88,9 +70,6 @@ Attribute Utilities
 
 Internals
 ---------
-
-.. autoclass:: sqlalchemy.orm.mapper.Mapper
-   :members:
 
 .. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
   :members:

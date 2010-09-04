@@ -4,14 +4,9 @@ Table of Contents
 .. toctree::
 
     intro
-    ormtutorial
-    sqlexpression
-    mappers
-    session
-    dbengine
-    metadata
-    examples
-    reference/index
+    orm/index
+    core/index
+    dialects/index
 
 Indices and tables
 ------------------

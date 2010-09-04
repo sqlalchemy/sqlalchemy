@@ -40,7 +40,6 @@ Options which are passed to ``query.options()``, to affect the behavior of loadi
 
 .. autofunction:: contains_eager
 
-.. autofunction:: defer
 
 .. autofunction:: eagerload
 
@@ -58,7 +57,4 @@ Options which are passed to ``query.options()``, to affect the behavior of loadi
 
 .. autofunction:: subqueryload_all
 
-.. autofunction:: undefer
-
-.. autofunction:: undefer_group
 

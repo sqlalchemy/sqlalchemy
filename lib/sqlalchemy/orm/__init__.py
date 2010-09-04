@@ -629,7 +629,7 @@ def deferred(*columns, **kwargs):
     return ColumnProperty(deferred=True, *columns, **kwargs)
 
 def mapper(class_, local_table=None, *args, **params):
-    """Return a new :class:`~sqlalchemy.orm.Mapper` object.
+    """Return a new :class:`~.Mapper` object.
 
         :param class\_: The class to be mapped.
 
@@ -720,7 +720,7 @@ def mapper(class_, local_table=None, *args, **params):
            when a primary key changes on a joined-table inheritance or other
            joined table mapping.
            
-            When True, it is assumed that ON UPDATE CASCADE is configured on
+           When True, it is assumed that ON UPDATE CASCADE is configured on
            the foreign key in the database, and that the database will handle
            propagation of an UPDATE from a source column to dependent rows.
            Note that with databases which enforce referential integrity (i.e.
@@ -729,20 +729,20 @@ def mapper(class_, local_table=None, *args, **params):
            value of the attribute on related items which are locally present
            in the session during a flush.
            
-            When False, it is assumed that the database does not enforce
+           When False, it is assumed that the database does not enforce
            referential integrity and will not be issuing its own CASCADE
            operation for an update. The relationship() will issue the
            appropriate UPDATE statements to the database in response to the
            change of a referenced key, and items locally present in the
            session during a flush will also be refreshed.
            
-            This flag should probably be set to False if primary key changes
+           This flag should probably be set to False if primary key changes
            are expected and the database in use doesn't support CASCADE (i.e.
            SQLite, MySQL MyISAM tables).
            
             Also see the passive_updates flag on :func:`relationship()`.
            
-            A future SQLAlchemy release will provide a "detect" feature for
+           A future SQLAlchemy release will provide a "detect" feature for
            this flag.
 
         :param polymorphic_on: Used with mappers in an inheritance
