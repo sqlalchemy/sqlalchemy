@@ -179,12 +179,8 @@ def create_session(bind=None, **kwargs):
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
     
-    .. note:: This function is known as :func:`relation` in all versions
-       of SQLAlchemy prior to version 0.6beta2, including the 0.5 and 0.4
-       series. :func:`~sqlalchemy.orm.relationship()` is only available
-       starting with SQLAlchemy 0.6beta2. The :func:`relation` name will
-       remain available for the foreseeable future in order to enable
-       cross-compatibility.
+    .. note:: :func:`relationship` is historically known as
+       :func:`relation` prior to version 0.6.
     
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`RelationshipProperty`.
@@ -261,6 +257,8 @@ def relationship(argument, secondary=None, **kwargs):
     :param collection_class:
       a class or callable that returns a new list-holding object. will
       be used in place of a plain list for storing elements.
+      Behavior of this attribute is described in detail at
+      :ref:`custom_collections`.
 
     :param comparator_factory:
       a class which extends :class:`RelationshipProperty.Comparator` which
@@ -351,6 +349,8 @@ def relationship(argument, secondary=None, **kwargs):
        
       * None - a synonym for 'noload'
        
+      Detailed discussion of loader strategies is at :ref:`loading_toplevel`.
+      
     :param order_by:
       indicates the ordering that should be applied when loading these
       items.
@@ -858,7 +858,8 @@ def synonym(name, map_column=False, descriptor=None,
                             doc=doc)
 
 def comparable_property(comparator_factory, descriptor=None):
-    """Provide query semantics for an unmanaged attribute.
+    """Provides a method of applying a :class:`.PropComparator` 
+    to any Python descriptor attribute.
 
     Allows a regular Python @property (descriptor) to be used in Queries and
     SQL constructs like a managed attribute.  comparable_property wraps a
@@ -1041,8 +1042,6 @@ def subqueryload(*keys):
     """Return a ``MapperOption`` that will convert the property 
     of the given name into an subquery eager load.
 
-    .. note:: This function is new as of SQLAlchemy version 0.6beta3.
-
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     examples::
@@ -1066,8 +1065,6 @@ def subqueryload(*keys):
 def subqueryload_all(*keys):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path into a subquery eager load.
-
-    .. note:: This function is new as of SQLAlchemy version 0.6beta3.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 

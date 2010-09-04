@@ -31,30 +31,4 @@ The public name of the :class:`.AliasedClass` class.
 
 .. autofunction:: outerjoin
 
-Query Options
--------------
-
-Options which are passed to ``query.options()``, to affect the behavior of loading.
-
-.. autofunction:: contains_alias
-
-.. autofunction:: contains_eager
-
-
-.. autofunction:: eagerload
-
-.. autofunction:: eagerload_all
-
-.. autofunction:: extension
-
-.. autofunction:: joinedload
-
-.. autofunction:: joinedload_all
-
-.. autofunction:: lazyload
-
-.. autofunction:: subqueryload
-
-.. autofunction:: subqueryload_all
-
 

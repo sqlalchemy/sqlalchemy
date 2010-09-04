@@ -491,12 +491,10 @@ between ``Employee`` and ``Company``:
        'employees': relationship(Employee, backref='company')
     })
 
-SQLAlchemy has a lot of experience in this area; the optimized "outer join"
-approach can be used freely for parent and child relationships, eager loads
-are fully useable, :func:`~sqlalchemy.orm.aliased` objects and other
-techniques are fully supported as well.
+Relationships with Concrete Inheritance
++++++++++++++++++++++++++++++++++++++++
 
-In a concrete inheritance scenario, mapping relationships is more difficult
+In a concrete inheritance scenario, mapping relationships is more challenging
 since the distinct classes do not share a table. In this case, you *can*
 establish a relationship from parent to child if a join condition can be
 constructed from parent to child, if each child table contains a foreign key
@@ -528,9 +526,21 @@ to the parent:
         Column('company_id', Integer, ForeignKey('companies.id'))
     )
 
-    mapper(Employee, employees_table, with_polymorphic=('*', pjoin), polymorphic_on=pjoin.c.type, polymorphic_identity='employee')
-    mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
-    mapper(Engineer, engineers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='engineer')
+    mapper(Employee, employees_table, 
+                    with_polymorphic=('*', pjoin), 
+                    polymorphic_on=pjoin.c.type, 
+                    polymorphic_identity='employee')
+                    
+    mapper(Manager, managers_table, 
+                    inherits=employee_mapper, 
+                    concrete=True, 
+                    polymorphic_identity='manager')
+                    
+    mapper(Engineer, engineers_table, 
+                    inherits=employee_mapper, 
+                    concrete=True, 
+                    polymorphic_identity='engineer')
+                    
     mapper(Company, companies, properties={
         'employees': relationship(Employee)
     })
@@ -562,3 +572,8 @@ bidirectionally reference ``C``::
     mapper(C, c_table, properties={
         'many_a':relationship(A, collection_class=set, back_populates='some_c'),
     })
+
+Using Inheritance with Declarative
+-----------------------------------
+
+Declarative makes inheritance configuration more intuitive.   See the docs at :ref:`declarative_inheritance`.

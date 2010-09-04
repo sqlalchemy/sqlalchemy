@@ -23,18 +23,6 @@ call::
      'children': relationship(Children)
   }
 
-.. autofunction:: backref
-
-
-
-
-
-.. autofunction:: dynamic_loader
-
-.. autofunction:: relation
-
-.. autofunction:: relationship
-
 
 Decorators
 ----------

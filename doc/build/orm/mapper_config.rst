@@ -243,16 +243,17 @@ scalar-returning
 :class:`.ClauseElement` may be
 used.  Unlike older versions of SQLAlchemy, there is no :func:`~.sql.expression.label` requirement::
 
+    from sqlalchemy.orm import column_property
+    
     mapper(User, users_table, properties={
         'fullname': column_property(
             users_table.c.firstname + " " + users_table.c.lastname
         )
     })
 
-Correlated subqueries may be used as well:
+Correlated subqueries may be used as well::
 
-.. sourcecode:: python+sql
-
+    from sqlalchemy.orm import column_property
     from sqlalchemy import select, func
     
     mapper(User, users_table, properties={
@@ -263,6 +264,8 @@ Correlated subqueries may be used as well:
     })
 
 The declarative form of the above is described in :ref:`declarative_sql_expressions`.
+
+.. autofunction:: column_property
 
 Note that :func:`.column_property` is used to provide the effect of a SQL
 expression that is actively rendered into the SELECT generated for a
@@ -298,7 +301,6 @@ which provides a simple method of reusing instance-level expressions simultaneou
 as SQL expressions.   The :mod:`.derived_attributes` example is slated to become a
 built-in feature of SQLAlchemy in a future release.
 
-.. autofunction:: column_property
 
 Changing Attribute Behavior
 ----------------------------
@@ -417,12 +419,12 @@ before resorting to custom comparison objects.
 
 Each of :func:`.column_property`, :func:`~.composite`, :func:`.relationship`,
 and :func:`.comparable_property` accept an argument called
-``comparator_factory``. A subclass of :class:`.PropComparator` can be provided
+``comparator_factory``.   A subclass of :class:`.PropComparator` can be provided
 for this argument, which can then reimplement basic Python comparison methods
-such as ``__eq__()``, ``__ne__()``, ``__lt__()``, and so on. See each of those
-functions for subclassing guidelines, as it's usually best to subclass the
-:class:`.PropComparator` subclass used by that type of property, so that all
-methods remain implemented. For example, to allow a column-mapped attribute to
+such as ``__eq__()``, ``__ne__()``, ``__lt__()``, and so on. 
+
+It's best to subclass the :class:`.PropComparator` subclass provided by
+each type of property.  For example, to allow a column-mapped attribute to
 do case-insensitive comparison::
 
     from sqlalchemy.orm.properties import ColumnProperty
@@ -437,28 +439,22 @@ do case-insensitive comparison::
                                 comparator_factory=MyComparator)
     })
 
-Above, comparisons on the ``email`` column are wrapped in the SQL lower() function to produce case-insensitive matching::
+Above, comparisons on the ``email`` column are wrapped in the SQL lower()
+function to produce case-insensitive matching::
 
     >>> str(EmailAddress.email == 'SomeAddress@foo.com')
     lower(addresses.email) = lower(:lower_1)
 
-In contrast, a similar effect is more easily accomplished, although
-with less control of it's behavior, using a column-mapped expression::
-    
-    from sqlachemy.orm import column_property
-    from sqlalchemy.sql import func
-    
-    mapper(EmailAddress, addresses_table, properties={
-        'email':column_property(func.lower(addresses_table.c.email))
-    })
+When building a :class:`.PropComparator`, the ``__clause_element__()`` method
+should be used in order to acquire the underlying mapped column.  This will 
+return a column that is appropriately wrapped in any kind of subquery
+or aliasing that has been applied in the context of the generated SQL statement.
 
-In the above case, the "email" attribute will be rendered as ``lower(email)`` 
-in all queries, including in the columns clause of the SELECT statement.  
-This means the value of "email" will be loaded as lower case, not just in
-comparisons.  It's up to the user to decide if the finer-grained control
-but more upfront work of a custom :class:`.PropComparator` is necessary.
+.. autoclass:: sqlalchemy.orm.interfaces.PropComparator
+    :show-inheritance:
 
 .. autofunction:: comparable_property
+
 
 .. _mapper_composite:
 
@@ -513,7 +509,7 @@ attributes on the object, and ``setattr()`` is used to set data.
 
 The :func:`.composite` function is then used in the mapping::
 
-    from sqlalchemy.orm import mapper, composite
+    from sqlalchemy.orm import composite
 
     class Vertex(object):
         pass
@@ -558,56 +554,17 @@ the same expression that the base "greater than" does::
 
 .. autofunction:: composite
 
-Controlling Ordering
----------------------
-
-The ORM does not generate ordering for any query unless explicitly configured.
-
-The "default" ordering for a collection, which applies to list-based
-collections, can be configured using the ``order_by`` keyword argument on
-:func:`~sqlalchemy.orm.relationship`::
-
-    mapper(Address, addresses_table)
-
-    # order address objects by address id
-    mapper(User, users_table, properties={
-        'addresses': relationship(Address, order_by=addresses_table.c.address_id)
-    })
-
-Note that when using joined eager loaders with relationships, the tables used
-by the eager load's join are anonymously aliased. You can only order by these
-columns if you specify it at the :func:`~sqlalchemy.orm.relationship` level.
-To control ordering at the query level based on a related table, you
-``join()`` to that relationship, then order by it::
-
-    session.query(User).join('addresses').order_by(Address.street)
-
-Ordering for rows loaded through :class:`~sqlalchemy.orm.query.Query` is
-usually specified using the ``order_by()`` generative method. There is also an
-option to set a default ordering for Queries which are against a single mapped
-entity and where there was no explicit ``order_by()`` stated, which is the
-``order_by`` keyword argument to ``mapper()``::
-
-    # order by a column
-    mapper(User, users_table, order_by=users_table.c.user_id)
-
-    # order by multiple items
-    mapper(User, users_table, order_by=[users_table.c.user_id, users_table.c.user_name.desc()])
-
-Above, a :class:`~sqlalchemy.orm.query.Query` issued for the ``User`` class
-will use the value of the mapper's ``order_by`` setting if the
-:class:`~sqlalchemy.orm.query.Query` itself has no ordering specified.
-
-.. _datamapping_inheritance:
-
-
 
 .. _maptojoin:
 
 Mapping a Class against Multiple Tables
 ----------------------------------------
 
-Mappers can be constructed against arbitrary relational units (called ``Selectables``) as well as plain ``Tables``.  For example, The ``join`` keyword from the SQL package creates a neat selectable unit comprised of multiple tables, complete with its own composite primary key, which can be passed in to a mapper as the table.
+Mappers can be constructed against arbitrary relational units (called
+``Selectables``) as well as plain ``Tables``. For example, The ``join``
+keyword from the SQL package creates a neat selectable unit comprised of
+multiple tables, complete with its own composite primary key, which can be
+passed in to a mapper as the table.
 
 .. sourcecode:: python+sql
 
@@ -647,7 +604,10 @@ A second example:
         'keyword_id': [userkeywords.c.keyword_id, keywords.c.keyword_id]
     })
 
-In both examples above, "composite" columns were added as properties to the mappers; these are aggregations of multiple columns into one mapper property, which instructs the mapper to keep both of those columns set at the same value.
+In both examples above, "composite" columns were added as properties to the
+mappers; these are aggregations of multiple columns into one mapper property,
+which instructs the mapper to keep both of those columns set at the same
+value.
 
 Mapping a Class against Arbitrary Selects
 ------------------------------------------
@@ -738,8 +698,8 @@ the ORM, allowing mappers to be compiled automatically and will fire a :func:`~s
 
 .. autofunction:: reconstructor
 
-Mapper API
-----------
+The :func:`mapper` API
+----------------------
 
 .. autofunction:: mapper
 

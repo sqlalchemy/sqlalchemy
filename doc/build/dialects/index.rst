@@ -1,7 +1,12 @@
 .. _sqlalchemy.dialects_toplevel:
 
-sqlalchemy.dialects
-====================
+Dialects
+========
+
+The *dialect* is the system SQLAlchemy uses to communicate with various types of DBAPIs and databases.
+A compatibility chart of supported backends can be found at :ref:`supported_dbapis`.
+
+This section contains all notes and documentation specific to the usage of various backends.
 
 Supported Databases
 -------------------
@@ -10,6 +15,7 @@ These backends are fully operational with
 current versions of SQLAlchemy.
 
 .. toctree::
+    :maxdepth: 1
     :glob:
 
     firebird
@@ -27,6 +33,7 @@ These backends are untested and may not be completely
 ported to current versions of SQLAlchemy.
 
 .. toctree::
+    :maxdepth: 1
     :glob:
 
     access

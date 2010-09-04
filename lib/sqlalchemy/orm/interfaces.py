@@ -552,11 +552,29 @@ class MapperProperty(object):
         return operator(self.comparator, value)
 
 class PropComparator(expression.ColumnOperators):
-    """defines comparison operations for MapperProperty objects.
+    """Defines comparison operations for MapperProperty objects.
 
-    PropComparator instances should also define an accessor 'property'
-    which returns the MapperProperty associated with this
-    PropComparator.
+    User-defined subclasses of :class:`.PropComparator` may be created. The
+    built-in Python comparison and math operator methods, such as
+    ``__eq__()``, ``__lt__()``, ``__add__()``, can be overridden to provide
+    new operator behaivor. The custom :class:`.PropComparator` is passed to
+    the mapper property via the ``comparator_factory`` argument. In each case,
+    the appropriate subclass of :class:`.PropComparator` should be used::
+    
+        from sqlalchemy.orm.properties import \\
+                                ColumnProperty,\\
+                                CompositeProperty,\\
+                                RelationshipProperty
+
+        class MyColumnComparator(ColumnProperty.Comparator):
+            pass
+        
+        class MyCompositeComparator(CompositeProperty.Comparator):
+            pass
+            
+        class MyRelationshipComparator(RelationshipProperty.Comparator):
+            pass
+    
     """
 
     def __init__(self, prop, mapper, adapter=None):

@@ -2,7 +2,8 @@ Table of Contents
 =================
 
 .. toctree::
-
+    :maxdepth: 2
+    
     intro
     orm/index
     core/index
