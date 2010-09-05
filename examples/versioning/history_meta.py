@@ -144,9 +144,9 @@ def create_version(obj, session, deleted = False):
             elif u:
                 attr[hist_col.key] = u[0]
             else:
-                assert False, "Attribute had no previous state. "\
-                            "This indicates active_history isn't "\
-                            "working as expected."
+                # if the attribute had no value.
+                attr[hist_col.key] = a[0]
+                obj_changed = True
                 
     if not obj_changed and not deleted:            
         return

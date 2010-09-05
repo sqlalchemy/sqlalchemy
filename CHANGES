@@ -164,6 +164,10 @@ CHANGES
     by the versioning example is deprecated; 
     now use mapper.get_property_by_column() which 
     will remain the public method for this.
+
+  - the versioning example works correctly now
+    if versioning on a col that was formerly 
+    NULL.
     
 - sql
   - Added basic math expression coercion for 
