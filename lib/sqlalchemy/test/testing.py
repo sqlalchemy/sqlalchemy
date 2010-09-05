@@ -398,6 +398,7 @@ def uses_deprecated(*messages):
     verbiage emitted by the sqlalchemy.util.deprecated decorator.
     """
 
+    
     def decorate(fn):
         def safe(*args, **kw):
             # todo: should probably be strict about this, too
