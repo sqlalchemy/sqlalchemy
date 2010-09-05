@@ -811,10 +811,12 @@ transaction::
         item1.foo = 'bar'
         item2.bar = 'foo'
 
-        # commit- will immediately go into a new transaction afterwards
+        # commit- will immediately go into 
+        # a new transaction on next use.
         session.commit()
     except:
-        # rollback - will immediately go into a new transaction afterwards.
+        # rollback - will immediately go into 
+        # a new transaction on next use.
         session.rollback()
 
 A session which is configured with ``autocommit=True`` may be placed into a
