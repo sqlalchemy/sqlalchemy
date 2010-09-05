@@ -1,8 +1,9 @@
 .. _engines_toplevel:
 
-================
-Database Engines
-================
+====================
+Engine Configuration
+====================
+
 The **Engine** is the starting point for any SQLAlchemy application. It's
 "home base" for the actual database and its DBAPI, delivered to the SQLAlchemy
 application through a connection pool and a **Dialect**, which describes how
@@ -31,70 +32,12 @@ Creating an engine is just a matter of issuing a single call,
 The above engine invokes the ``postgresql`` dialect and a connection pool
 which references ``localhost:5432``.
 
-Note that the appropriate usage of :func:`create_engine()` is once per
-particular configuration, held globally for the lifetime of a single
-application process (not including child processes via ``fork()`` - these
-would require a new engine). A single :class:`~sqlalchemy.engine.base.Engine`
-manages connections on behalf of the process and is intended to be called upon
-in a concurrent fashion. Creating engines for each particular operation is not
-the intended usage.
+The :class:`.Engine`, once created, can either be used directly to interact with the database,
+or can be passed to a :class:`.Session` object to work with the ORM.   This section
+covers the details of configuring an :class:`.Engine`.   The next section, :ref:`connections_toplevel`,
+will detail the usage API of the :class:`.Engine` and similar, typically for non-ORM
+applications.
 
-The engine can be used directly to issue SQL to the database. The most generic
-way is to use connections, which you get via the ``connect()`` method::
-
-    connection = engine.connect()
-    result = connection.execute("select username from users")
-    for row in result:
-        print "username:", row['username']
-    connection.close()
-
-The connection is an instance of :class:`~sqlalchemy.engine.base.Connection`,
-which is a **proxy** object for an actual DBAPI connection. The returned
-result is an instance of :class:`~sqlalchemy.engine.ResultProxy`, which acts
-very much like a DBAPI cursor.
-
-When you say ``engine.connect()``, a new
-:class:`~sqlalchemy.engine.base.Connection` object is created, and a DBAPI
-connection is retrieved from the connection pool. Later, when you call
-``connection.close()``, the DBAPI connection is returned to the pool; nothing
-is actually "closed" from the perspective of the database.
-
-To execute some SQL more quickly, you can skip the
-:class:`~sqlalchemy.engine.base.Connection` part and just say::
-
-    result = engine.execute("select username from users")
-    for row in result:
-        print "username:", row['username']
-    result.close()
-
-Where above, the ``execute()`` method on the
-:class:`~sqlalchemy.engine.base.Engine` does the ``connect()`` part for you,
-and returns the :class:`~sqlalchemy.engine.base.ResultProxy` directly. The
-actual :class:`~sqlalchemy.engine.base.Connection` is *inside* the
-:class:`~sqlalchemy.engine.base.ResultProxy`, waiting for you to finish
-reading the result. In this case, when you ``close()`` the
-:class:`~sqlalchemy.engine.base.ResultProxy`, the underlying
-:class:`~sqlalchemy.engine.base.Connection` is closed, which returns the DBAPI
-connection to the pool.
-
-To summarize the above two examples, when you use a
-:class:`~sqlalchemy.engine.base.Connection` object, it's known as **explicit
-execution**. When you don't see the
-:class:`~sqlalchemy.engine.base.Connection` object, but you still use the
-``execute()`` method on the :class:`~sqlalchemy.engine.base.Engine`, it's
-called **explicit, connectionless execution**. A third variant of execution
-also exists called **implicit execution**; this will be described later.
-
-The :class:`~sqlalchemy.engine.base.Engine` and
-:class:`~sqlalchemy.engine.base.Connection` can do a lot more than what we
-illustrated above; SQL strings are only its most rudimentary function. Later
-chapters will describe how "constructed SQL" expressions can be used with
-engines; in many cases, you don't have to deal with the
-:class:`~sqlalchemy.engine.base.Engine` at all after it's created. The Object
-Relational Mapper (ORM), an optional feature of SQLAlchemy, also uses the
-:class:`~sqlalchemy.engine.base.Engine` in order to get at connections; that's
-also a case where you can often create the engine once, and then forget about
-it.
 
 .. _supported_dbapis:
 

@@ -361,10 +361,10 @@ Backend-Specific Options
         mysql_engine='InnoDB'
     )
 
-Other backends may support table-level options as well. 
+Other backends may support table-level options as well - these would be described in the individual documentation sections for each dialect.
 
-API Constructs
---------------
+Schema API Constructs
+---------------------
 
 .. autoclass:: Column
     :members:
@@ -797,8 +797,8 @@ executed standalone like a SQL expression, which has the effect of calling its
     seq = Sequence('some_sequence')
     nextid = connection.execute(seq)
 
-API Constructs
---------------
+Default Geneation API Constructs
+--------------------------------
 
 .. autoclass:: ColumnDefault
     :show-inheritance:
@@ -976,8 +976,8 @@ Note that these clauses are not supported on SQLite, and require ``InnoDB``
 tables when used with MySQL. They may also not be supported on other
 databases.
 
-API Constructs
-~~~~~~~~~~~~~~~
+Foreign Key API Constructs
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: ForeignKey
     :members:

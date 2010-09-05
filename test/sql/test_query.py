@@ -743,6 +743,7 @@ class QueryTest(TestBase):
         r = testing.db.execute('select user_name from query_users').first()
         eq_(len(r), 1)
 
+    @testing.uses_deprecated(r'.*which subclass Executable')
     def test_cant_execute_join(self):
         try:
             users.join(addresses).execute()

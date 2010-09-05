@@ -77,30 +77,36 @@ Builtin Pool Implementations
 ----------------------------
 
 .. autoclass:: AssertionPool
-   :members:
    :show-inheritance:
+
+   .. automethod:: __init__
 
 .. autoclass:: NullPool
-   :members:
    :show-inheritance:
+
+   .. automethod:: __init__
 
 .. autoclass:: sqlalchemy.pool.Pool
-   :members:
-   :show-inheritance:
-   :undoc-members:
-   :inherited-members:
+
+   .. automethod:: __init__
+   .. automethod:: connect
+   .. automethod:: dispose
+   .. automethod:: recreate
 
 .. autoclass:: sqlalchemy.pool.QueuePool
-   :members:
    :show-inheritance:
+
+   .. automethod:: __init__
 
 .. autoclass:: SingletonThreadPool
-   :members:
    :show-inheritance:
 
+   .. automethod:: __init__
+
 .. autoclass:: StaticPool
-   :members:
    :show-inheritance:
+
+   .. automethod:: __init__
 
 
 Pooling Plain DB-API Connections

@@ -797,9 +797,10 @@ class Connectable(object):
 class Connection(Connectable):
     """Provides high-level functionality for a wrapped DB-API connection.
 
-    Provides execution support for string-based SQL statements as well
-    as ClauseElement, Compiled and DefaultGenerator objects.  Provides
-    a :meth:`begin` method to return Transaction objects.
+    Provides execution support for string-based SQL statements as well as
+    :class:`.ClauseElement`, :class:`.Compiled` and :class:`.DefaultGenerator`
+    objects. Provides a :meth:`begin` method to return :class:`.Transaction`
+    objects.
 
     The Connection object is **not** thread-safe.  While a Connection can be
     shared among threads using properly synchronized access, it is still
@@ -825,9 +826,9 @@ class Connection(Connectable):
                  _branch=False, _execution_options=None):
         """Construct a new Connection.
 
-        Connection objects are typically constructed by an
-        :class:`~sqlalchemy.engine.Engine`, see the ``connect()`` and
-        ``contextual_connect()`` methods of Engine.
+        The constructor here is not public and is only called only by an
+        :class:`.Engine`. See :meth:`.Engine.connect` and
+        :meth:`.Engine.contextual_connect` methods.
         
         """
         self.engine = engine
@@ -1167,7 +1168,22 @@ class Connection(Connectable):
         return self.execute(object, *multiparams, **params).scalar()
 
     def execute(self, object, *multiparams, **params):
-        """Executes and returns a ResultProxy."""
+        """Executes the given construct and returns a :class:`.ResultProxy`.
+        
+        The construct can be one of:
+        
+        * a textual SQL string
+        * any :class:`.ClauseElement` construct that is also
+          a subclass of :class:`.Executable`, such as a 
+          :func:`.select` construct
+        * a :class:`.FunctionElement`, such as that generated
+          by :attr:`.func`, will be automatically wrapped in
+          a SELECT statement, which is then executed.
+        * a :class:`.DDLElement` object
+        * a :class:`.DefaultGenerator` object
+        * a :class:`.Compiled` object
+            
+        """
 
         for c in type(object).__mro__:
             if c in Connection.executors:
@@ -1739,7 +1755,20 @@ class Engine(Connectable, log.Identified):
             conn.close()
 
     def execute(self, statement, *multiparams, **params):
-        """Executes and returns a ResultProxy."""
+        """Executes the given construct and returns a :class:`.ResultProxy`.
+        
+        The arguments are the same as those used by
+        :meth:`.Connection.execute`.
+        
+        Here, a :class:`.Connection` is acquired using the
+        :meth:`~.Engine.contextual_connect` method, and the statement executed
+        with that connection. The returned :class:`.ResultProxy` is flagged
+        such that when the :class:`.ResultProxy` is exhausted and its
+        underlying cursor is closed, the :class:`.Connection` created here
+        will also be closed, which allows its associated DBAPI connection
+        resource to be returned to the connection pool.
+        
+        """
 
         connection = self.contextual_connect(close_with_result=True)
         return connection.execute(statement, *multiparams, **params)
@@ -1756,16 +1785,30 @@ class Engine(Connectable, log.Identified):
         return connection._execute_compiled(compiled, multiparams, params)
 
     def connect(self, **kwargs):
-        """Return a newly allocated Connection object."""
+        """Return a new :class:`.Connection` object.
+        
+        The :class:`.Connection`, upon construction, will procure a DBAPI connection
+        from the :class:`.Pool` referenced by this :class:`.Engine`,
+        returning it back to the :class:`.Pool` after the :meth:`.Connection.close`
+        method is called.
+        
+        """
 
         return self.Connection(self, **kwargs)
 
     def contextual_connect(self, close_with_result=False, **kwargs):
-        """Return a Connection object which may be newly allocated, 
-        or may be part of some ongoing context.
+        """Return a :class:`.Connection` object which may be part of some ongoing context.
+        
+        By default, this method does the same thing as :meth:`.Engine.connect`.
+        Subclasses of :class:`.Engine` may override this method
+        to provide contextual behavior.
 
-        This Connection is meant to be used by the various 
-        "auto-connecting" operations.
+        :param close_with_result: When True, the first :class:`.ResultProxy` created
+          by the :class:`.Connection` will call the :meth:`.Connection.close` method
+          of that connection as soon as any pending result rows are exhausted.  
+          This is used to supply the "connectionless execution" behavior provided
+          by the :meth:`.Engine.execute` method.
+          
         """
 
         return self.Connection(self, 
