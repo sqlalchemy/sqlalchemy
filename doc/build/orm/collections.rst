@@ -51,16 +51,19 @@ applied as well as limits and offsets, either explicitly or via array slices:
     posts = jack.posts[5:20]
 
 The dynamic relationship supports limited write operations, via the
-``append()`` and ``remove()`` methods. Since the read side of the dynamic
-relationship always queries the database, changes to the underlying collection
-will not be visible until the data has been flushed:
-
-.. sourcecode:: python+sql
+``append()`` and ``remove()`` methods::
 
     oldpost = jack.posts.filter(Post.headline=='old post').one()
     jack.posts.remove(oldpost)
 
     jack.posts.append(Post('new post'))
+
+Since the read side of the dynamic relationship always queries the 
+database, changes to the underlying collection will not be visible 
+until the data has been flushed.  However, as long as "autoflush" is 
+enabled on the :class:`.Session` in use, this will occur 
+automatically each time the collection is about to emit a 
+query.
 
 To place a dynamic relationship on a backref, use ``lazy='dynamic'``:
 
@@ -135,7 +138,7 @@ values accessible through an attribute on the parent instance. By default,
 this collection is a ``list``::
 
     mapper(Parent, properties={
-        children = relationship(Child)
+        'children' : relationship(Child)
     })
 
     parent = Parent()
@@ -151,7 +154,7 @@ default list, by specifying the ``collection_class`` option on
 
     # use a set
     mapper(Parent, properties={
-        children = relationship(Child, collection_class=set)
+        'children' : relationship(Child, collection_class=set)
     })
 
     parent = Parent()

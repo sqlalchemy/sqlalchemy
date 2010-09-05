@@ -237,7 +237,7 @@ Using :func:`~sqlalchemy.orm.query.Query.with_polymorphic` with
 ``with_polymorphic`` setting.
 
 Advanced Control of Which Tables are Queried
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++++++++++++++++++++++++++++++++++++++++++++++
 
 The :meth:`.Query.with_polymorphic` method and configuration works fine for
 simplistic scenarios. However, it currently does not work with any
@@ -249,8 +249,8 @@ use the :class:`.Table` objects directly and construct joins manually.  For exam
 query the name of employees with particular criterion::
 
     session.query(Employee.name).\
-        outerjoin((engineer, engineer.c.employee_id==Employee.c.employee_id)).\
-        outerjoin((manager, manager.c.employee_id==Employee.c.employee_id)).\
+        outerjoin((engineer, engineer.c.employee_id==Employee.employee_id)).\
+        outerjoin((manager, manager.c.employee_id==Employee.employee_id)).\
         filter(or_(Engineer.engineer_info=='w', Manager.manager_data=='q'))
 
 The base table, in this case the "employees" table, isn't always necessary. A
@@ -265,7 +265,7 @@ what's specified in the :meth:`.Session.query`, :meth:`.Query.filter`, or
     session.query(engineer.c.id).filter(engineer.c.engineer_info==manager.c.manager_data)
 
 Creating Joins to Specific Subtypes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++++++++++++++++++++++++++++++++++++
 
 The :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` method is a
 helper which allows the construction of joins along
