@@ -160,6 +160,11 @@ CHANGES
     with significant (~90%) runtime mapper.py call count reduction
     in heavily polymorphic mapping configurations.
 
+  - mapper _get_col_to_prop private method used 
+    by the versioning example is deprecated; 
+    now use mapper.get_property_by_column() which 
+    will remain the public method for this.
+    
 - sql
   - Added basic math expression coercion for 
     Numeric->Integer,

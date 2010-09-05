@@ -931,7 +931,19 @@ class Mapper(object):
                         "Mapper '%s' has no property '%s'" % (self, key))
                 else:
                     return None
+    
+    @util.deprecated('0.7',
+                     'Call to deprecated function mapper._get_col_to_pr'
+                     'op(). Use mapper.get_property_by_column()')
+    def _get_col_to_prop(self, col):
+        return self._columntoproperty[col]
+        
+    def get_property_by_column(self, column):
+        """Given a :class:`.Column` object, return the
+        :class:`.MapperProperty` which maps this column."""
 
+        return self._columntoproperty[column]
+        
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""

@@ -123,7 +123,7 @@ def create_version(obj, session, deleted = False):
             # mapped column.  this will allow usage of MapperProperties
             # that have a different keyname than that of the mapped column.
             try:
-                prop = obj_mapper._get_col_to_prop(obj_col)
+                prop = obj_mapper.get_property_by_column(obj_col)
             except UnmappedColumnError:
                 # in the case of single table inheritance, there may be 
                 # columns on the mapped table intended for the subclass only.
@@ -144,7 +144,9 @@ def create_version(obj, session, deleted = False):
             elif u:
                 attr[hist_col.key] = u[0]
             else:
-                raise Exception("TODO: what makes us arrive here ?")
+                assert False, "Attribute had no previous state. "\
+                            "This indicates active_history isn't "\
+                            "working as expected."
                 
     if not obj_changed and not deleted:            
         return
